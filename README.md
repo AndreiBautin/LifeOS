@@ -62,6 +62,8 @@ storage cleanup, and what the app does about each — is in
 
 ## Running it
 
+Double-click `start-app.bat`, or:
+
 ```bash
 pnpm install
 pnpm dev
