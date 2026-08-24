@@ -1,0 +1,31 @@
+version: 2
+
+updates:
+  # Routine bumps arrive as one grouped PR a week; majors and security
+  # fixes stay separate so they get read rather than rubber-stamped.
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      minor-and-patch:
+        update-types: [minor, patch]
+    ignore:
+      - dependency-name: '*'
+        update-types: [version-update:semver-major]
+
+  # Action versions go stale too, and a stale action is the thing that
+  # breaks a deploy nobody has run in three months.
+  #
+  # Watch the first deploy after one of these merges: a PR only exercises
+  # the workflows that run *on* pull requests, so actions used solely by
+  # the deploy workflow are untested until the merge lands.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      actions:
+        patterns: ['*']

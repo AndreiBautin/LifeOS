@@ -1,0 +1,99 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  # A weekly run catches an advisory published against a dependency that
+  # has not changed. Without it, a vulnerability only surfaces the next
+  # time someone happens to push.
+  schedule:
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Typecheck, lint, test, build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+
+      # --frozen-lockfile makes CI fail on a lockfile that drifted from
+      # package.json, rather than quietly resolving something different
+      # from what runs locally.
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Check formatting
+        run: pnpm format:check
+
+      - name: Test
+        run: pnpm test:run
+
+      - name: Build
+        run: pnpm build
+
+      # The icons are generated from a checked-in script. If someone edits
+      # the script and forgets to run it, the repository and the deployed
+      # app disagree about what the app looks like.
+      - name: Icons match their generator
+        run: |
+          node scripts/generate-icons.mjs
+          git diff --exit-code -- public/icons
+
+  security:
+    name: Dependency audit and secret scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          # gitleaks needs real history. The default shallow clone leaves
+          # it with a commit range it cannot resolve, which fails the step
+          # without having scanned anything — a false alarm that is worse
+          # than no scan, because it trains you to ignore the job.
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Gated at `high` on purpose. A personal app blocked by a moderate
+      # advisory in a transitive build-time dependency teaches nothing; a
+      # high or critical one is worth stopping for.
+      - name: Audit dependencies
+        run: pnpm audit --audit-level high
+
+      - name: Scan for committed secrets
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

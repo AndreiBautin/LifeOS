@@ -1,0 +1,113 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deploy at a time, and never cancel one midway — a half-published
+# site is worse than an out-of-date one.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  # The deploy is gated on the same verification CI runs. Duplicated
+  # minutes are cheap; a pipeline that can publish a commit which failed
+  # its own tests is decorative.
+  verify:
+    name: Verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm verify
+
+  build:
+    name: Build
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Build
+        env:
+          # A GitHub project page serves from /<repo>/, and both the
+          # bundler's asset paths and the router's basename derive from
+          # this one value. Getting it wrong is how a static SPA deploy
+          # ends up with working assets and a 404 on every route.
+          VITE_BASE_PATH: /${{ github.event.repository.name }}/
+          VITE_APP_VERSION: ${{ github.ref_name }}
+          VITE_COMMIT_SHA: ${{ github.sha }}
+          VITE_LOG_LEVEL: warn
+        run: pnpm build
+
+      # Static hosts 404 on a client-side route requested cold. Serving
+      # the shell as the 404 document turns that into a working deep link.
+      # The status code stays 404, which is honest but invisible to a user.
+      - name: SPA fallback
+        run: cp dist/index.html dist/404.html
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: dist
+
+  deploy:
+    name: Deploy to Pages
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
+
+      # A green deploy step means an upload succeeded. A green smoke test
+      # means the site answered.
+      - name: Smoke-test the live site
+        run: |
+          set -euo pipefail
+          url="${{ steps.deployment.outputs.page_url }}"
+          echo "Fetching $url"
+
+          for attempt in 1 2 3 4 5; do
+            if body=$(curl --fail --silent --show-error --location "$url"); then
+              break
+            fi
+            echo "Attempt $attempt failed; Pages may still be propagating."
+            sleep 10
+          done
+
+          echo "$body" | grep -q '<div id="root">' \
+            || { echo "The response did not contain the app shell."; exit 1; }
+          echo "$body" | grep -q 'manifest.webmanifest' \
+            || { echo "The response did not link the web manifest."; exit 1; }
+
+          echo "Live site responded with the app shell and a manifest."
