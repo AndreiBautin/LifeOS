@@ -1,0 +1,21 @@
+node_modules
+dist
+dist-ssr
+coverage
+*.local
+.DS_Store
+
+# Local environment overrides. .env.example and .env.demo are committed;
+# anything else is machine-specific and must never reach the remote.
+.env
+.env.*
+!.env.example
+!.env.demo
+
+# Editor
+.vscode/*
+!.vscode/extensions.json
+.idea
+
+# Vite / PWA build artefacts
+dev-dist
