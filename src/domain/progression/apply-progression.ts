@@ -185,7 +185,9 @@ function evaluateCondition(condition: ProgressionCondition, logs: readonly Worko
 
     case 'all-sets-completed': {
       const anySkipped = logs.some((log) =>
-        log.entries.some((entry) => entry.sets.some((set) => set.outcome !== 'completed')),
+        log.entries.some((entry) =>
+          entry.sets.some((set) => set.outcome === 'skipped' || set.outcome === 'failed'),
+        ),
       )
       return anySkipped
         ? { fired: false, reason: 'Some sets were skipped or missed this cycle.' }

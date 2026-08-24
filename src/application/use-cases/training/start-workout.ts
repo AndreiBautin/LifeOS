@@ -1,0 +1,204 @@
+import type { Exercise } from '@/domain/exercises/exercise'
+import type { ExerciseId, IdGenerator, WorkoutId } from '@/domain/ids/ids'
+import { asWorkoutId } from '@/domain/ids/ids'
+import type { LogEntry, LoggedSet, WorkoutLog } from '@/domain/logging/workout-log'
+import type { ProgramDay, ProgramTemplate, Slot } from '@/domain/programs/program'
+import type {
+  Clock,
+  ExerciseRepository,
+  InstanceRepository,
+  ProgramInstance,
+  WorkoutRepository,
+} from '@/domain/repositories/ports'
+import type { AthleteState } from '@/domain/resolution/resolve'
+import { resolveSets } from '@/domain/resolution/resolve'
+import { matchesQuery } from '@/domain/exercises/exercise'
+
+/**
+ * Turning the next scheduled day into a workout that can be logged.
+ *
+ * The moment where the program stops being a template and becomes a
+ * session. Resolution happens *here*, against the training maxes as they
+ * are today, and the numbers are copied into the log as `plannedLoad` —
+ * so a training max changed tomorrow does not retroactively alter what
+ * yesterday's workout says it asked for.
+ */
+
+export interface StartWorkoutDeps {
+  readonly workouts: WorkoutRepository
+  readonly instances: InstanceRepository
+  readonly exercises: ExerciseRepository
+  readonly ids: IdGenerator
+  readonly clock: Clock
+}
+
+export interface StartWorkoutRequest {
+  readonly athlete: AthleteState
+  readonly roundingIncrement: number
+  /** Omit to start the active program's next day. */
+  readonly freestyleTitle?: string
+}
+
+export type StartWorkoutResult =
+  | { readonly kind: 'started'; readonly workout: WorkoutLog }
+  | { readonly kind: 'resumed'; readonly workout: WorkoutLog }
+  | { readonly kind: 'no-program'; readonly message: string }
+  | { readonly kind: 'program-finished'; readonly message: string }
+
+export async function startWorkout(
+  request: StartWorkoutRequest,
+  deps: StartWorkoutDeps,
+): Promise<StartWorkoutResult> {
+  // An unfinished session always wins. Starting a second one and leaving
+  // the first orphaned is how a half-logged workout gets lost, and it is
+  // the most common way a training app loses real data.
+  const open = await deps.workouts.inProgress()
+  if (open !== undefined) return { kind: 'resumed', workout: open }
+
+  if (request.freestyleTitle !== undefined) {
+    const workout = emptyWorkout(request.freestyleTitle, deps)
+    await deps.workouts.save(workout)
+    return { kind: 'started', workout }
+  }
+
+  const instance = await deps.instances.active()
+  if (instance === undefined) {
+    return {
+      kind: 'no-program',
+      message: 'No program is running. Pick one from Programs, or log a workout without one.',
+    }
+  }
+
+  const day = dayAt(instance.templateSnapshot, instance)
+  if (day === undefined) {
+    return { kind: 'program-finished', message: 'This program has no more scheduled days.' }
+  }
+
+  const library = await deps.exercises.all()
+  const workout = buildFromDay(day, instance, request, library, deps)
+  await deps.workouts.save(workout)
+
+  return { kind: 'started', workout }
+}
+
+function emptyWorkout(title: string, deps: StartWorkoutDeps): WorkoutLog {
+  const now = deps.clock.now()
+  return {
+    id: asWorkoutId(deps.ids.next()),
+    date: isoDate(now),
+    startedAt: now.toISOString(),
+    status: 'in-progress',
+    title,
+    entries: [],
+  }
+}
+
+function dayAt(program: ProgramTemplate, position: ProgramInstance): ProgramDay | undefined {
+  return program.blocks[position.blockIndex]?.weeks[position.weekIndex]?.days[position.dayIndex]
+}
+
+function buildFromDay(
+  day: ProgramDay,
+  instance: ProgramInstance,
+  request: StartWorkoutRequest,
+  library: readonly Exercise[],
+  deps: StartWorkoutDeps,
+): WorkoutLog {
+  const now = deps.clock.now()
+
+  const entries = day.slots.flatMap((slot, order): LogEntry[] => {
+    const exerciseId = resolveExercise(slot, library)
+    // A slot whose query matches nothing is dropped with the rest of the
+    // session intact. LiftTracker rendered such a slot as a blank row
+    // prescribing zero, which reads as an answer rather than a gap.
+    if (exerciseId === undefined) return []
+
+    const resolved = resolveSets(slot.sets, {
+      athlete: request.athlete,
+      exerciseId,
+      roundingIncrement: request.roundingIncrement,
+    })
+
+    const sets: LoggedSet[] = resolved.map((set) => {
+      const reps = plannedReps(set.reps)
+      return {
+        prescription: set.prescription,
+        ...(set.load !== undefined ? { plannedLoad: set.load } : {}),
+        ...(reps !== undefined ? { plannedReps: reps } : {}),
+        // A set starts life as an unrecorded intention. `completedAt`
+        // being absent is what marks it as still to do — the outcome
+        // field says what *kind* of thing it will be, not whether it
+        // has happened.
+        outcome: 'pending' as const,
+        isWarmup: set.isWarmup,
+      }
+    })
+
+    return [
+      {
+        exerciseId,
+        role: slot.role,
+        slotId: slot.id,
+        order,
+        sets,
+        ...(slot.notes !== undefined ? { notes: slot.notes } : {}),
+      },
+    ]
+  })
+
+  return {
+    id: asWorkoutId(deps.ids.next()),
+    position: {
+      instanceId: instance.id,
+      blockIndex: instance.blockIndex,
+      cycleNumber: instance.cycleNumber,
+      weekIndex: instance.weekIndex,
+      dayIndex: instance.dayIndex,
+    },
+    date: isoDate(now),
+    startedAt: now.toISOString(),
+    status: 'in-progress',
+    title: day.label,
+    entries,
+    ...(request.athlete.bodyweight !== undefined ? { bodyweight: request.athlete.bodyweight } : {}),
+  }
+}
+
+/**
+ * A slot names an exercise, or describes one. The second form is what
+ * lets a template stay valid in a gym with different equipment.
+ */
+function resolveExercise(slot: Slot, library: readonly Exercise[]): ExerciseId | undefined {
+  if (slot.exercise.kind === 'specific') {
+    const { exerciseId } = slot.exercise
+    return library.some((exercise) => exercise.id === exerciseId) ? exerciseId : undefined
+  }
+
+  const { query } = slot.exercise
+  return library.find((exercise) => matchesQuery(exercise, query))?.id
+}
+
+function plannedReps(reps: LoggedSet['prescription']['reps']): number | undefined {
+  switch (reps.kind) {
+    case 'fixed':
+      return reps.reps
+    case 'amrap':
+      return reps.minimum
+    case 'range':
+      return reps.low
+    case 'time':
+      return undefined
+  }
+}
+
+/** Local calendar date, not UTC — a 9pm workout belongs to that evening. */
+export function isoDate(date: Date): string {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${String(year)}-${month}-${day}`
+}
+
+export function workoutIdOf(log: WorkoutLog): WorkoutId {
+  return log.id
+}

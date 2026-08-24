@@ -24,7 +24,19 @@ import { emptyVolumeMap } from '@/domain/volume/landmarks'
  * written back into the template.
  */
 
-export type SetOutcome = 'completed' | 'skipped' | 'failed'
+/**
+ * What became of a prescribed set.
+ *
+ * `pending` is a distinct state and not an absence, because the
+ * alternative — treating "not yet done" as a completed set with no
+ * numbers in it — lets unperformed work count toward volume, which is the
+ * one number the entire autoregulation loop depends on. Skipping is also
+ * its own outcome rather than a gap, carried from LiftTracker, which was
+ * right to separate `IsSkipped` from `IsComplete`: choosing not to do
+ * something is information, and abandoning a session halfway is a
+ * different thing again.
+ */
+export type SetOutcome = 'pending' | 'completed' | 'skipped' | 'failed'
 
 export interface LoggedSet {
   /** What the program asked for, frozen at the moment the set was opened. */
@@ -102,15 +114,13 @@ export function workingSets(entry: LogEntry): readonly LoggedSet[] {
 }
 
 export function isEntryComplete(entry: LogEntry): boolean {
-  return entry.sets.every((set) => set.outcome !== 'completed' || set.completedAt !== undefined)
+  return entry.sets.every((set) => set.outcome !== 'pending')
 }
 
 /** A workout is finishable once nothing is left untouched. */
 export function remainingSets(log: WorkoutLog): number {
   return log.entries.reduce(
-    (total, entry) =>
-      total +
-      entry.sets.filter((set) => set.completedAt === undefined && set.outcome !== 'skipped').length,
+    (total, entry) => total + entry.sets.filter((set) => set.outcome === 'pending').length,
     0,
   )
 }

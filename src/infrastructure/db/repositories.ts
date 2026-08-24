@@ -13,7 +13,7 @@ import type {
   WorkoutRepository,
 } from '@/domain/repositories/ports'
 
-import type { LiftDatabase } from './database'
+import { fromStored, toStored, type LiftDatabase } from './database'
 
 /**
  * IndexedDB implementations of the domain's repository ports.
@@ -94,9 +94,12 @@ export function createInstanceRepository(db: LiftDatabase): InstanceRepository {
 }
 
 export function createWorkoutRepository(db: LiftDatabase): WorkoutRepository {
+  const newestFirst = (a: WorkoutLog, b: WorkoutLog): number => b.date.localeCompare(a.date)
+
   return {
     async byId(id: WorkoutId) {
-      return db.get('workouts', id)
+      const stored = await db.get('workouts', id)
+      return stored === undefined ? undefined : fromStored(stored)
     },
 
     async recent(limit: number) {
@@ -107,7 +110,7 @@ export function createWorkoutRepository(db: LiftDatabase): WorkoutRepository {
       let cursor = await db.transaction('workouts').store.index('by-date').openCursor(null, 'prev')
 
       while (cursor !== null && results.length < limit) {
-        results.push(cursor.value)
+        results.push(fromStored(cursor.value))
         cursor = await cursor.continue()
       }
 
@@ -124,33 +127,38 @@ export function createWorkoutRepository(db: LiftDatabase): WorkoutRepository {
               ? IDBKeyRange.upperBound(query.to)
               : null
 
-      const all = await db.getAllFromIndex('workouts', 'by-date', range)
+      const all = (await db.getAllFromIndex('workouts', 'by-date', range)).map(fromStored)
       const filtered =
         query.instanceId === undefined
           ? all
           : all.filter((workout) => workout.position?.instanceId === query.instanceId)
 
-      const ordered = filtered.sort((a, b) => b.date.localeCompare(a.date))
+      const ordered = filtered.sort(newestFirst)
       return query.limit === undefined ? ordered : ordered.slice(0, query.limit)
     },
 
     async onDate(date: string) {
-      return db.getAllFromIndex('workouts', 'by-date', date)
+      return (await db.getAllFromIndex('workouts', 'by-date', date)).map(fromStored)
     },
 
     async forExercise(exerciseId: ExerciseId, limit?: number) {
-      const matches = await db.getAllFromIndex('workouts', 'by-exercise', exerciseId)
-      const ordered = matches.sort((a, b) => b.date.localeCompare(a.date))
+      const matches = (await db.getAllFromIndex('workouts', 'by-exercise', exerciseId)).map(
+        fromStored,
+      )
+      const ordered = matches.sort(newestFirst)
       return limit === undefined ? ordered : ordered.slice(0, limit)
     },
 
     async inProgress() {
       const open = await db.getAllFromIndex('workouts', 'by-status', 'in-progress')
-      return open.sort((a, b) => b.startedAt.localeCompare(a.startedAt))[0]
+      const newest = open.sort((a, b) => b.startedAt.localeCompare(a.startedAt))[0]
+      return newest === undefined ? undefined : fromStored(newest)
     },
 
     async save(log: WorkoutLog) {
-      await db.put('workouts', log)
+      // The index field is derived here and nowhere else, so it cannot
+      // drift from the entries it summarises.
+      await db.put('workouts', toStored(log))
     },
 
     async remove(id: WorkoutId) {
@@ -162,7 +170,7 @@ export function createWorkoutRepository(db: LiftDatabase): WorkoutRepository {
     },
 
     async all() {
-      return db.getAll('workouts')
+      return (await db.getAll('workouts')).map(fromStored)
     },
   }
 }

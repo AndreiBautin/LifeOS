@@ -42,6 +42,30 @@ export const DB_NAME = 'lift'
  */
 export const DB_VERSION = 1
 
+/**
+ * A workout as it is stored, which is not quite a workout as the domain
+ * models one.
+ *
+ * IndexedDB key paths cannot reach into the elements of an array, so
+ * `entries.exerciseId` indexes nothing — the multi-entry index needs a
+ * property that *is* an array of keys. `exerciseIds` is that array,
+ * derived on write and stripped on read, so the domain type stays free of
+ * a field that exists only to satisfy the storage engine.
+ *
+ * Deriving it in one place, rather than asking callers to maintain it, is
+ * what keeps the index from silently going stale.
+ */
+export type StoredWorkout = WorkoutLog & { readonly exerciseIds: readonly string[] }
+
+export function toStored(log: WorkoutLog): StoredWorkout {
+  return { ...log, exerciseIds: [...new Set(log.entries.map((entry) => entry.exerciseId))] }
+}
+
+export function fromStored(stored: StoredWorkout): WorkoutLog {
+  const { exerciseIds: _index, ...log } = stored
+  return log
+}
+
 export interface LiftDB extends DBSchema {
   exercises: {
     key: string
@@ -60,7 +84,7 @@ export interface LiftDB extends DBSchema {
   }
   workouts: {
     key: string
-    value: WorkoutLog
+    value: StoredWorkout
     indexes: {
       'by-date': string
       'by-status': string
@@ -109,7 +133,7 @@ export function openLiftDatabase(name = DB_NAME): Promise<LiftDatabase> {
         workouts.createIndex('by-date', 'date')
         workouts.createIndex('by-status', 'status')
         workouts.createIndex('by-instance', 'position.instanceId')
-        workouts.createIndex('by-exercise', 'entries.exerciseId', { multiEntry: true })
+        workouts.createIndex('by-exercise', 'exerciseIds', { multiEntry: true })
 
         const checkIns = db.createObjectStore('checkIns', { keyPath: 'id' })
         checkIns.createIndex('by-workout', 'workoutId')
