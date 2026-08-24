@@ -195,7 +195,14 @@ export default defineConfig([
       '**/*.test.tsx',
       'src/test/**/*.{ts,tsx}',
     ],
-    rules: { 'no-restricted-properties': 'off', 'no-restricted-globals': 'off' },
+    rules: {
+      'no-restricted-properties': 'off',
+      'no-restricted-globals': 'off',
+      // The clock adapter's whole job is to read the system clock. It is
+      // the one place allowed to, which is what makes every consumer
+      // testable.
+      'no-restricted-syntax': 'off',
+    },
   },
   {
     // The layer rule constrains what *ships*, not what verifies it. A

@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#0a0a0b" />
+    <meta name="color-scheme" content="dark light" />
+
+    <title>Lift</title>
+    <meta
+      name="description"
+      content="Build strength programs and track the workouts that follow them. Works offline; your data stays on your device."
+    />
+
+    <!-- iOS has no beforeinstallprompt and reads these instead. Without
+         apple-mobile-web-app-capable, adding to the home screen produces a
+         Safari shortcut rather than a standalone app - and on iOS 16.4+ a
+         standalone app is also what earns storage separate from Safari. -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Lift" />
+    <link rel="apple-touch-icon" href="./icons/icon-192.png" />
+
+    <link rel="icon" type="image/svg+xml" href="./icons/favicon.svg" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <noscript
+      >Lift needs JavaScript to run. Everything happens on your device; nothing is sent
+      anywhere.</noscript
+    >
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
