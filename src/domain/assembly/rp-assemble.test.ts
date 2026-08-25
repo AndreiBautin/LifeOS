@@ -504,18 +504,11 @@ describe('tiers driving volume', () => {
     expect(volume['side-delts']).toBeGreaterThan(volume.calves)
   })
 
-  /*
-   * The biceps are a tier below the other two now. Every pull in a
-   * barbell gym pays them, so at a tier-1 target they hit MRV midweek
-   * and blocked the lat work that was feeding them.
-   */
-  it('weights the specialised arm muscles equally, and the biceps below them', () => {
-    const specialised = (['triceps', 'forearms'] as const).map((muscle) =>
+  it('weights the three arm muscles equally, as tiered', () => {
+    const positions = (['biceps', 'triceps', 'forearms'] as const).map((muscle) =>
       priorityPosition(DEFAULT_MUSCLE_TIERS, muscle),
     )
-    expect(new Set(specialised).size).toBe(1)
-
-    expect(priorityPosition(DEFAULT_MUSCLE_TIERS, 'biceps')).toBeLessThan(specialised[0] ?? 1)
+    expect(new Set(positions).size).toBe(1)
   })
 
   it('ramps volume into position rather than opening at the ceiling', () => {

@@ -9,14 +9,18 @@ import type { VolumeLandmarks } from '@/domain/volume/landmarks'
  * matters — tier 1 is highest — and the tier structure decides where each
  * muscle sits inside its own landmark band.
  *
- * The part that makes this more than a lookup table is that **the shape of
- * the tier list changes how aggressive the mapping is allowed to be.**
- * Prioritising two things means the rest of the body subsidises them, and
- * you can afford to push those two close to MRV. Prioritising nine things
- * means nobody is subsidising anything, and pushing them all toward MRV
- * just buys a stalled block and a premature deload. So the same tier-1
- * membership produces a different target depending on how many others
- * share it and how the remainder is spread.
+ * A muscle's target depends on **its own rank and its own landmarks**,
+ * and on nothing else. Tier 1 sits at the top of the adaptive range,
+ * tier 3 at maintenance, and the tiers between are spaced evenly. Adding
+ * a muscle to a tier gives that muscle that tier's target and moves no
+ * other number.
+ *
+ * That is a deliberate reversal — see {@link priorityPosition} for what
+ * was there before and why it had to go. The finite-recovery argument it
+ * encoded is true, but it is a limit on what a week can *hold*, not a
+ * reason to quietly renegotiate what the lifter asked for. That limit is
+ * reported by comparing the ask against the program the assembler
+ * actually builds, where it can be seen and acted on.
  */
 
 /** A tier holds one or more members, all treated as equal priority. */
@@ -52,46 +56,35 @@ export type StrengthTiers = readonly Tier<StrengthLift>[]
 /* -------------------------------------------------------------------- */
 
 /**
- * How far toward the extremes the tier structure permits, 0–1.
+ * Where the top and bottom of the ordering land inside a muscle's band.
  *
- * 1 means "spend freely": the top tier can sit near MRV and the bottom
- * near MV. 0 means "everything lands mid-band" — the correct answer when
- * priority is so evenly spread that it is not really priority at all.
- *
- * Two things pull it down:
- *
- *   - **A crowded top tier.** Blasting two muscles is a strategy;
- *     blasting eight is just a high-volume block with extra steps.
- *   - **A flat structure.** One tier holding everything expresses no
- *     preference, so the mapping should express none either.
+ * Chosen against the landmarks rather than as round numbers.
+ * {@link weeklyTargetFor} puts MEV at 0.25 and MAV at 0.75, so the top
+ * tier sits just past MAV — the top of the adaptive range, with the last
+ * week before a deload overreaching past it — and the bottom sits just
+ * under MEV, which is what maintenance means.
  */
-export function spreadFactor<T extends string>(tiers: readonly Tier<T>[]): number {
-  const populated = tiers.filter((tier) => tier.members.length > 0)
-  const total = populated.reduce((sum, tier) => sum + tier.members.length, 0)
-
-  if (total === 0) return 0
-  // A single tier is a statement that nothing is prioritised. Honour it.
-  if (populated.length < 2) return 0
-
-  const ordered = [...populated].sort((a, b) => a.rank - b.rank)
-  const topShare = (ordered[0]?.members.length ?? 0) / total
-
-  // A top tier holding a fifth of the roster or less is a real
-  // priority call and earns the full range; at half the roster or more
-  // the word has stopped meaning anything.
-  const concentration = clamp01((0.5 - topShare) / (0.5 - 0.2))
-
-  // More tiers means finer gradation, but each step is smaller — a
-  // five-tier structure is a considered ordering, not five extremes.
-  const granularity = clamp01((populated.length - 1) / 3)
-
-  // Concentration dominates: it is the one that says how much of the
-  // body is available to subsidise the priority.
-  return clamp01(0.25 + 0.6 * concentration + 0.15 * granularity)
-}
+export const TOP_TIER_POSITION = 0.8
+export const BOTTOM_TIER_POSITION = 0.15
 
 /**
  * A muscle's position in its own band, 0 (MV) to 1 (just under MRV).
+ *
+ * **Depends on the muscle's own rank and nothing else.** There used to be
+ * a `spreadFactor` here that scaled the whole mapping by how crowded the
+ * top tier was, on the reasoning that prioritising eight things is not
+ * prioritising. The reasoning is sound and the implementation was not:
+ * it made every target depend on every other muscle's placement, so
+ * moving the biceps out of tier 1 silently raised the side delts from 22
+ * sets to 24, and a lifter could not say "these five matter to me"
+ * without the app quietly renegotiating. Priority became a zero-sum game
+ * played against yourself, with the rules hidden inside a curve.
+ *
+ * The constraint it was reaching for is real, but it is a **capacity**
+ * constraint, not a scaling one, and it belongs where it can be seen: the
+ * plan reports what the tiers ask for against what the week actually
+ * delivers. Asking for more than five sessions can hold is a thing to be
+ * told, not a thing to be silently corrected.
  *
  * Returned as a position rather than a set count so the caller can decide
  * what to do with it — the same position means different absolute volumes
@@ -105,17 +98,14 @@ export function priorityPosition<T extends string>(tiers: readonly Tier<T>[], me
   const index = ordered.findIndex((tier) => tier.members.includes(member))
   // Anything not placed in a tier is treated as lowest priority rather
   // than as an error: a new muscle group should not break a program.
-  if (index === -1) return neutralPosition(0)
+  if (index === -1) return BOTTOM_TIER_POSITION
 
-  // Rank within the ordering, 1 at the top down to 0 at the bottom.
-  const rankScore = ordered.length === 1 ? 0.5 : 1 - index / (ordered.length - 1)
+  // One tier is a statement that nothing is prioritised over anything
+  // else, so everything lands in the middle of the range.
+  if (ordered.length === 1) return (TOP_TIER_POSITION + BOTTOM_TIER_POSITION) / 2
 
-  const k = spreadFactor(tiers)
-  return clamp01(0.5 + k * (rankScore - 0.5))
-}
-
-function neutralPosition(k: number): number {
-  return clamp01(0.5 - k * 0.5)
+  const step = index / (ordered.length - 1)
+  return clamp01(TOP_TIER_POSITION - step * (TOP_TIER_POSITION - BOTTOM_TIER_POSITION))
 }
 
 /**
@@ -264,33 +254,16 @@ export const DEFAULT_STRENGTH_TIERS: StrengthTiers = [
 ]
 
 export const DEFAULT_MUSCLE_TIERS: MuscleTiers = [
-  /*
-   * Biceps sit in tier 2, not tier 1, and the reason is the equipment.
-   *
-   * Every lat movement in a barbell-and-dumbbell gym — pull-up, chin-up,
-   * row — pays the biceps as a secondary. At a tier-1 target of nineteen
-   * sets the biceps reached MRV by midweek, and from then on the
-   * assembler could not add lat work without breaching it: the lats
-   * finished on 7.5 of fourteen sets across a single direct session,
-   * while the biceps ran over on credit from the very pulling the lats
-   * were being denied.
-   *
-   * Nothing was wrong with the arithmetic. The two targets were simply
-   * not simultaneously satisfiable with these movements, and the biceps
-   * were winning by being counted first. Dropping them a tier lets the
-   * pulling happen — and they still receive most of a specialisation's
-   * volume indirectly, because that pulling is what trains them.
-   */
   {
     rank: 1,
-    members: ['triceps', 'forearms', 'side-delts'],
+    members: ['biceps', 'triceps', 'forearms', 'side-delts'],
     label: 'Specialising',
   },
   // Front delts sit here rather than in the bottom tier so the overhead
   // press keeps a real allocation. Its primary muscle is what decides how
   // many sets it gets, and at tier 3 a lift meant to stay in the rotation
   // was receiving maintenance volume.
-  { rank: 2, members: ['biceps', 'lats', 'upper-back', 'chest', 'front-delts'], label: 'Building' },
+  { rank: 2, members: ['lats', 'upper-back', 'chest', 'front-delts'], label: 'Building' },
   {
     rank: 3,
     members: ['rear-delts', 'quads', 'hamstrings', 'glutes', 'calves', 'core'],

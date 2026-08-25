@@ -1,7 +1,6 @@
 import { MUSCLE_GROUPS, MUSCLE_GROUP_LABELS, type MuscleGroup } from '@/domain/exercises/taxonomy'
 import {
   priorityPosition,
-  spreadFactor,
   STRENGTH_LIFT_LABELS,
   STRENGTH_LIFTS,
   weeklyTargetFor,
@@ -19,10 +18,15 @@ import { cn } from '@/lib/cn'
  *
  * Tapping a tier is easy; understanding what it *does* is the hard part,
  * so the resulting weekly set target is shown next to every muscle and
- * updates as the tiers move. Without that, a lifter promoting a fourth
- * muscle to tier 1 sees nothing happen — when in fact they have just
- * diluted the other three, because the spread factor falls as the top
- * tier fills up.
+ * updates as the tiers move.
+ *
+ * Promoting a muscle now moves that muscle's number and nothing else.
+ * It used to move all of them — a fourth muscle in tier 1 quietly
+ * diluted the other three — and this panel carried a badge grading how
+ * focused the structure was, which was really a warning about a rule
+ * that should not have existed. Whether the total fits in a week is a
+ * separate question, answered on the Plan screen against the program the
+ * assembler actually builds.
  */
 
 const TIER_COUNT = 3
@@ -44,8 +48,6 @@ export function TierEditor({
   onMuscleTiers,
   onStrengthTiers,
 }: Props) {
-  const spread = spreadFactor(muscleTiers)
-
   const rankOf = (muscle: MuscleGroup): number =>
     muscleTiers.find((tier) => tier.members.includes(muscle))?.rank ?? TIER_COUNT
 
@@ -119,19 +121,12 @@ export function TierEditor({
       </Card>
 
       <Card>
-        <div className="mb-1 flex items-center justify-between gap-2">
-          <h3 className="text-ink-50 text-sm font-semibold">Muscles</h3>
-          <Badge tone={spread > 0.7 ? 'good' : spread > 0.45 ? 'warn' : 'bad'}>
-            {spread > 0.7 ? 'focused' : spread > 0.45 ? 'moderate' : 'diluted'}
-          </Badge>
-        </div>
+        <h3 className="text-ink-50 mb-1 text-sm font-semibold">Muscles</h3>
 
         <p className="text-ink-500 mb-3 text-xs">
-          {spread > 0.7
-            ? 'A small top tier means the rest of the body subsidises it, so your priorities can be pushed close to their ceiling.'
-            : spread > 0.45
-              ? 'A moderately sized top tier. Priorities get more than the rest, but not by much.'
-              : 'Almost everything is prioritised, which means nothing is. Targets are compressed toward the middle of every band — move some muscles down to make the top tier mean something.'}
+          Tier 1 sits at the top of a muscle's adaptive range, tier 3 at maintenance. Each number
+          depends on that muscle's tier and its own landmarks — moving one muscle never changes
+          another's. Whether the total fits in your week is on the Plan screen.
         </p>
 
         <ul className="space-y-1.5">

@@ -4,9 +4,10 @@ import type { MuscleGroup } from '@/domain/exercises/taxonomy'
 import { DEFAULT_LANDMARKS } from '@/domain/volume/landmarks'
 
 import {
+  BOTTOM_TIER_POSITION,
   DEFAULT_MUSCLE_TIERS,
   priorityPosition,
-  spreadFactor,
+  TOP_TIER_POSITION,
   validateTiers,
   weeklyTargetFor,
   weeklyTargetForWeek,
@@ -15,47 +16,56 @@ import {
 
 const tier = (rank: number, members: MuscleGroup[]) => ({ rank, members })
 
-describe('the spread factor', () => {
-  it('is high when a small top tier is subsidised by everything else', () => {
-    const concentrated: MuscleTiers = [
-      tier(1, ['biceps', 'side-delts']),
-      tier(2, ['chest', 'lats', 'quads', 'hamstrings', 'glutes', 'calves', 'core', 'triceps']),
-    ]
+/*
+ * The property a `spreadFactor` used to destroy.
+ *
+ * It scaled every target by how crowded the top tier was, so promoting
+ * one muscle demoted the others by an amount nobody could see — moving
+ * the biceps out of tier 1 silently raised the side delts from 22 sets
+ * to 24. A lifter could not state a mental map, "these four matter to
+ * me", without the app renegotiating it against them.
+ *
+ * Independence is what is worth protecting here. Whether the total fits
+ * in a week is a real constraint and a separate question, answered by
+ * measuring the program the assembler builds rather than by bending the
+ * targets until they look affordable.
+ */
+describe('a muscle tier changes that muscle and nothing else', () => {
+  const base: MuscleTiers = [tier(1, ['side-delts']), tier(2, ['chest']), tier(3, ['calves'])]
+  const promoted: MuscleTiers = [
+    tier(1, ['side-delts', 'biceps', 'triceps', 'forearms']),
+    tier(2, ['chest']),
+    tier(3, ['calves']),
+  ]
 
-    expect(spreadFactor(concentrated)).toBeGreaterThan(0.75)
+  it('leaves the top tier untouched when three more muscles join it', () => {
+    expect(priorityPosition(promoted, 'side-delts')).toBe(priorityPosition(base, 'side-delts'))
   })
 
-  it('falls when the top tier holds half the roster', () => {
-    const crowded: MuscleTiers = [
-      tier(1, ['biceps', 'triceps', 'chest', 'lats', 'quads']),
-      tier(2, ['hamstrings', 'glutes', 'calves', 'core']),
-    ]
-
-    // Prioritising five of nine is not a priority call, so the mapping
-    // should refuse to treat it like one.
-    expect(spreadFactor(crowded)).toBeLessThan(spreadFactor(DEFAULT_MUSCLE_TIERS))
+  it('leaves the lower tiers untouched too', () => {
+    expect(priorityPosition(promoted, 'chest')).toBe(priorityPosition(base, 'chest'))
+    expect(priorityPosition(promoted, 'calves')).toBe(priorityPosition(base, 'calves'))
   })
 
-  it('is zero when a single tier holds everything', () => {
-    // One tier expresses no preference; the mapping should express none.
-    expect(spreadFactor([tier(1, ['chest', 'lats', 'quads'])])).toBe(0)
+  it('gives a newly promoted muscle the same position as the rest of its tier', () => {
+    expect(priorityPosition(promoted, 'biceps')).toBe(priorityPosition(promoted, 'side-delts'))
   })
 
-  it('is zero for an empty roster rather than dividing by zero', () => {
-    expect(spreadFactor([])).toBe(0)
-    expect(spreadFactor([tier(1, [])])).toBe(0)
+  it('anchors the ends of the ordering where the landmarks are', () => {
+    expect(priorityPosition(base, 'side-delts')).toBeCloseTo(TOP_TIER_POSITION, 6)
+    expect(priorityPosition(base, 'calves')).toBeCloseTo(BOTTOM_TIER_POSITION, 6)
   })
 
-  it('rewards a considered multi-tier ordering over a binary one', () => {
-    const binary: MuscleTiers = [tier(1, ['biceps']), tier(2, ['chest', 'lats', 'quads'])]
-    const graded: MuscleTiers = [
-      tier(1, ['biceps']),
-      tier(2, ['chest']),
-      tier(3, ['lats']),
-      tier(4, ['quads']),
-    ]
+  it('puts an untiered muscle at the bottom rather than erroring', () => {
+    expect(priorityPosition(base, 'core')).toBeCloseTo(BOTTOM_TIER_POSITION, 6)
+  })
 
-    expect(spreadFactor(graded)).toBeGreaterThan(spreadFactor(binary))
+  it('expresses no preference when a single tier holds everything', () => {
+    const flat: MuscleTiers = [tier(1, ['chest', 'lats', 'quads'])]
+    const middle = (TOP_TIER_POSITION + BOTTOM_TIER_POSITION) / 2
+
+    expect(priorityPosition(flat, 'chest')).toBe(middle)
+    expect(priorityPosition(flat, 'quads')).toBe(middle)
   })
 })
 
@@ -72,28 +82,13 @@ describe('priority position', () => {
   })
 
   it('treats every member of a tier identically', () => {
-    // Triceps, forearms and side delts share tier 1 and must come out
-    // the same. The biceps sit a tier below — see DEFAULT_MUSCLE_TIERS.
-    const positions = (['triceps', 'forearms', 'side-delts'] as const).map((muscle) =>
+    // Arms are weighted equally by request: biceps, triceps and forearms
+    // share tier 1 with the side delts and must come out the same.
+    const positions = (['biceps', 'triceps', 'forearms', 'side-delts'] as const).map((muscle) =>
       priorityPosition(DEFAULT_MUSCLE_TIERS, muscle),
     )
 
     expect(new Set(positions).size).toBe(1)
-  })
-
-  it('compresses toward the middle when priority is spread thin', () => {
-    const concentrated: MuscleTiers = [
-      tier(1, ['biceps']),
-      tier(2, ['chest', 'lats', 'quads', 'hamstrings', 'glutes', 'calves']),
-    ]
-    const crowded: MuscleTiers = [
-      tier(1, ['biceps', 'chest', 'lats', 'quads']),
-      tier(2, ['hamstrings', 'glutes', 'calves']),
-    ]
-
-    expect(priorityPosition(concentrated, 'biceps')).toBeGreaterThan(
-      priorityPosition(crowded, 'biceps'),
-    )
   })
 
   it('places an untiered muscle at the bottom rather than throwing', () => {

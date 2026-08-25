@@ -98,21 +98,25 @@ also wrong — three upper days cannot hold a specialised upper body, and
 the side delts fell to 7.5 of 22 sets. Overflow is the shape that gives a
 lower day its own identity and still lands the volume.
 
-**Three upper days hold about eighteen direct sets of any one muscle.**
-`MAX_DIRECT_SETS_PER_SESSION` × three upper sessions. A tier-1 target
-above that cannot be delivered however the fill is ordered, and shrinking
-tier 1 _raises_ every remaining target (`spreadFactor`) — so removing a
-muscle from the top tier can push the survivors past what the week holds.
-Side delts sit there now at 24 asked and ~18 available. Before adjusting
-the assembler to chase a shortfall, check whether the tiers are asking
-for something the schedule cannot contain.
+**A muscle's target depends on its own tier and nothing else.**
+`priorityPosition` maps rank onto a position between
+`BOTTOM_TIER_POSITION` and `TOP_TIER_POSITION` and stops there. There
+used to be a `spreadFactor` scaling the whole mapping by how crowded the
+top tier was — sound reasoning ("prioritising everything prioritises
+nothing"), catastrophic as an implementation. Every target depended on
+every other muscle's placement, so moving the biceps out of tier 1
+silently raised the side delts from 22 to 24 and pushed them past what
+the week could deliver. A lifter could not state a mental map without the
+app renegotiating it. **Do not reintroduce a cross-muscle term here.**
 
-**Biceps are tier 2 on purpose.** Every pull in a barbell gym pays them,
-so at a tier-1 target they reached MRV midweek and `fittableSets` then
-refused the pull-ups and chin-ups that would have fed the lats — which
-finished on 7.5 of 14 sets across one session. Dropping them a tier put
-the lats on 11.5 across three. They still receive a specialisation's
-worth of volume; it arrives as secondary credit from the back work.
+**"You cannot prioritise everything" is a capacity report, not a
+multiplier.** It lives on the Plan screen: the tiers state the ask, and
+the page lists any muscle the hardest week of the built program leaves
+short. Measured off the assembler's output rather than modelled, so it
+cannot drift from what the program does — and **counted per muscle, never
+in aggregate**, because every set pays two or three muscles and the
+delivered total therefore exceeds the asked total even when individual
+muscles are starved.
 
 **A jump is the only non-training way to move the position.**
 `jumpToWeek`. Everything else advances by finishing or skipping, which

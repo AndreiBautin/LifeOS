@@ -3,7 +3,6 @@ import { MUSCLE_GROUP_LABELS, MUSCLE_GROUPS } from '@/domain/exercises/taxonomy'
 import type { MuscleTiers, StrengthLift, StrengthTiers } from '@/domain/priority/tiers'
 import {
   priorityPosition,
-  spreadFactor,
   STRENGTH_LIFT_LABELS,
   STRENGTH_LIFTS,
   weeklyTargetFor,
@@ -57,10 +56,8 @@ export interface StrengthAllocation {
 export interface VolumePlan {
   readonly muscles: readonly MuscleAllocation[]
   readonly lifts: readonly StrengthAllocation[]
-  /** How concentrated the tier structure is, 0–1. */
-  readonly spread: number
-  readonly spreadLabel: 'focused' | 'moderate' | 'diluted'
-  readonly spreadReason: string
+  /** How many muscles sit in the top tier. Reported, never applied. */
+  readonly prioritisedCount: number
   readonly totalWeeklySets: number
 }
 
@@ -177,7 +174,6 @@ export function explainVolume(
   strengthTiers: StrengthTiers,
   landmarks: LandmarkSet,
 ): VolumePlan {
-  const spread = spreadFactor(muscleTiers)
   const tierCount = muscleTiers.length
 
   const muscles = MUSCLE_GROUPS.map((muscle): MuscleAllocation => {
@@ -224,20 +220,10 @@ export function explainVolume(
     }
   })
 
-  const spreadLabel = spread > 0.7 ? 'focused' : spread > 0.45 ? 'moderate' : 'diluted'
-  const topTier = muscleTiers.find((tier) => tier.rank === 1)?.members.length ?? 0
-
   return {
     muscles,
     lifts,
-    spread,
-    spreadLabel,
-    spreadReason:
-      spreadLabel === 'focused'
-        ? `Only ${String(topTier)} muscles are prioritised, so the rest of the body subsidises them and their targets can sit near the ceiling.`
-        : spreadLabel === 'moderate'
-          ? `${String(topTier)} muscles are prioritised. They get more than the rest, but not dramatically more — there is only so much recovery to redistribute.`
-          : `${String(topTier)} muscles are prioritised, which is most of the body. Every target is compressed toward the middle of its band: prioritising everything prioritises nothing.`,
+    prioritisedCount: muscleTiers.find((tier) => tier.rank === 1)?.members.length ?? 0,
     totalWeeklySets: muscles.reduce((total, entry) => total + entry.weeklySets, 0),
   }
 }
