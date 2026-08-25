@@ -16,7 +16,11 @@ import {
   createProgramRepository,
   createWorkoutRepository,
 } from '@/infrastructure/db/repositories'
-import { seedIfEmpty, syncBuiltInExercises } from '@/infrastructure/seed/seed'
+import { seedIfEmpty, syncBuiltInExercises, syncBuiltInPrograms } from '@/infrastructure/seed/seed'
+import {
+  readDeliveredBuiltIns,
+  recordDeliveredBuiltIns,
+} from '@/infrastructure/storage/built-in-delivery'
 import { requestPersistence } from '@/infrastructure/storage/durability'
 import { logger } from '@/shared/logging/logger'
 
@@ -89,20 +93,29 @@ export async function bootstrap(): Promise<BootstrapResult> {
     logger.info('storage.persistence', { state })
   })
 
-  // Additive, every start: an install predating an exercise would
-  // otherwise never receive it, and programs referencing it would quietly
-  // drop the slot.
-  const added = await syncBuiltInExercises({
+  const seedDeps = {
     exercises: services.exercises,
     programs: services.programs,
     ids: services.ids,
     now: services.clock.now(),
-  })
+  }
+
+  // Additive, every start: an install predating an exercise would
+  // otherwise never receive it, and programs referencing it would quietly
+  // drop the slot.
+  const exercisesAdded = await syncBuiltInExercises(seedDeps)
+
+  // The same for programs, except a missing program may have been deleted
+  // on purpose — so this offers each built-in exactly once and records
+  // that it did.
+  const programSync = await syncBuiltInPrograms(seedDeps, readDeliveredBuiltIns())
+  recordDeliveredBuiltIns(programSync.allIds)
 
   logger.info('app.bootstrap', {
     exercisesSeeded: seeded.exercisesAdded,
     programsSeeded: seeded.programsAdded,
-    exercisesAddedBySync: added,
+    exercisesAddedBySync: exercisesAdded,
+    programsAddedBySync: programSync.added.length,
   })
 
   return { services, seeded }

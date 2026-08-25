@@ -75,6 +75,46 @@ export async function syncBuiltInExercises(deps: SeedDeps): Promise<number> {
   return missing.length
 }
 
+export interface ProgramSyncResult {
+  readonly added: readonly string[]
+  /** Every built-in id, for the caller to record as delivered. */
+  readonly allIds: readonly string[]
+}
+
+/**
+ * Adds built-in programs this install has never been offered.
+ *
+ * The same upgrade problem as {@link syncBuiltInExercises}: `seedIfEmpty`
+ * skips a non-empty program store, so a program shipped in an update
+ * would reach new installs only, and an existing lifter would never see
+ * it — the failure being silent, since nothing looks broken.
+ *
+ * Unlike exercises, a missing program is not necessarily a gap to fill:
+ * the lifter may have deleted it. So the test is *never delivered*, not
+ * *not present*, and `delivered` is passed in rather than read here so
+ * this stays a pure function of its inputs.
+ *
+ * Built-in programs have stable ids (`built-in-rp-block`), which is what
+ * makes any of this possible — a generated id could not be recognised
+ * across runs.
+ */
+export async function syncBuiltInPrograms(
+  deps: SeedDeps,
+  delivered: ReadonlySet<string>,
+): Promise<ProgramSyncResult> {
+  const programs = builtInPrograms(deps.ids, deps.now)
+  const allIds = programs.map((program) => program.id as string)
+
+  const present = new Set((await deps.programs.all()).map((program) => program.id as string))
+  const missing = programs.filter(
+    (program) => !present.has(program.id as string) && !delivered.has(program.id as string),
+  )
+
+  for (const program of missing) await deps.programs.save(program)
+
+  return { added: missing.map((program) => program.id as string), allIds }
+}
+
 /**
  * Restores the shipped exercises and programs over whatever is there.
  *

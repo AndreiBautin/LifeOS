@@ -20,6 +20,11 @@ export const STORAGE_KEYS = {
   installPromptDismissed: `${PREFIX}.install-dismissed`,
   /** Set once the storage-durability explanation has been acknowledged. */
   storageNoticeSeen: `${PREFIX}.storage-notice-seen`,
+  /**
+   * Ids of built-in programs this install has already been offered, so an
+   * update can add new ones without resurrecting deleted ones.
+   */
+  deliveredBuiltIns: `${PREFIX}.delivered-built-ins`,
 } as const
 
 /** The IndexedDB database name, kept in the same namespace as the keys. */

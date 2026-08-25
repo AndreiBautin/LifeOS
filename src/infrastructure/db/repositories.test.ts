@@ -5,7 +5,13 @@ import { builtInExercises } from '@/domain/exercises/catalogue'
 import type { Exercise } from '@/domain/exercises/exercise'
 import { asExerciseId, asInstanceId, asProgramId, type IdGenerator } from '@/domain/ids/ids'
 import type { ProgramInstance } from '@/domain/repositories/ports'
-import { seedIfEmpty, syncBuiltInExercises } from '@/infrastructure/seed/seed'
+import { STORAGE_KEYS } from '@/config/storage-keys'
+import { BUILT_IN_PROGRAM_COUNT, builtInPrograms } from '@/infrastructure/seed/built-in-programs'
+import { seedIfEmpty, syncBuiltInExercises, syncBuiltInPrograms } from '@/infrastructure/seed/seed'
+import {
+  readDeliveredBuiltIns,
+  recordDeliveredBuiltIns,
+} from '@/infrastructure/storage/built-in-delivery'
 import { anEntry, aWorkout, BENCH, SQUAT } from '@/test/builders/workout'
 
 import { closeLiftDatabase, openLiftDatabase, type LiftDatabase } from './database'
@@ -326,5 +332,118 @@ describe('keeping the built-in library current', () => {
   it('adds nothing when the library is already current', async () => {
     await seedIfEmpty(deps())
     expect(await syncBuiltInExercises(deps())).toBe(0)
+  })
+
+  it('adds programs an older install never received', async () => {
+    // The upgrade path that was broken: `seedIfEmpty` skips a non-empty
+    // program store entirely, so an install holding the older built-ins
+    // would never have seen the RP blocks.
+    const programs = createProgramRepository(db)
+    const all = builtInPrograms(counterIds(), new Date('2026-08-24T00:00:00Z'))
+    const older = all.filter((program) => !(program.id as string).startsWith('built-in-rp'))
+    for (const program of older) await programs.save(program)
+
+    const result = await syncBuiltInPrograms(deps(), new Set())
+
+    expect(result.added).toEqual(['built-in-rp-block', 'built-in-rp-block-6day'])
+    expect(await programs.count()).toBe(all.length)
+  })
+
+  it('does not resurrect a built-in program the lifter deleted', async () => {
+    // "Missing" and "deleted" look identical in the database, so delivery
+    // is recorded separately. Getting this wrong would put a deleted
+    // program back on every single app start.
+    const programs = createProgramRepository(db)
+    await seedIfEmpty(deps())
+
+    const delivered = new Set(
+      builtInPrograms(counterIds(), new Date('2026-08-24T00:00:00Z')).map(
+        (program) => program.id as string,
+      ),
+    )
+
+    await programs.remove(asProgramId('built-in-rp-block'))
+    const result = await syncBuiltInPrograms(deps(), delivered)
+
+    expect(result.added).toEqual([])
+    expect(await programs.byId(asProgramId('built-in-rp-block'))).toBeUndefined()
+  })
+
+  it('leaves an edited built-in program alone', async () => {
+    const programs = createProgramRepository(db)
+    await seedIfEmpty(deps())
+
+    const original = await programs.byId(asProgramId('built-in-rp-block'))
+    if (original === undefined) throw new Error('expected the built-in block to be seeded')
+    await programs.save({ ...original, name: 'My Block' })
+
+    await syncBuiltInPrograms(deps(), new Set())
+
+    expect((await programs.byId(asProgramId('built-in-rp-block')))?.name).toBe('My Block')
+  })
+
+  it('reports every built-in id so delivery can be recorded', async () => {
+    // The caller records `allIds`, not `added` — otherwise a program that
+    // was present but never explicitly delivered stays unrecorded, and
+    // deleting it later would bring it back.
+    const result = await syncBuiltInPrograms(deps(), new Set())
+
+    expect(result.allIds).toContain('built-in-rp-block')
+    expect(result.allIds.length).toBe(BUILT_IN_PROGRAM_COUNT)
+  })
+})
+
+describe('recording which built-ins were delivered', () => {
+  const memoryStorage = (): Storage => {
+    const map = new Map<string, string>()
+    return {
+      getItem: (key) => map.get(key) ?? null,
+      setItem: (key, value) => void map.set(key, value),
+      removeItem: (key) => void map.delete(key),
+      clear: () => {
+        map.clear()
+      },
+      key: (index) => [...map.keys()][index] ?? null,
+      get length() {
+        return map.size
+      },
+    }
+  }
+
+  it('round-trips ids', () => {
+    const storage = memoryStorage()
+    recordDeliveredBuiltIns(['a', 'b'], storage)
+
+    expect([...readDeliveredBuiltIns(storage)]).toEqual(['a', 'b'])
+  })
+
+  it('merges rather than replaces', () => {
+    // A later app version ships a new built-in. Recording it must not
+    // forget that the earlier ones were already offered, or deleting one
+    // of those would undo the delete.
+    const storage = memoryStorage()
+    recordDeliveredBuiltIns(['a'], storage)
+    recordDeliveredBuiltIns(['b'], storage)
+
+    expect([...readDeliveredBuiltIns(storage)]).toEqual(['a', 'b'])
+  })
+
+  it('treats a corrupt record as nothing delivered', () => {
+    const storage = memoryStorage()
+    storage.setItem(STORAGE_KEYS.deliveredBuiltIns, '{not json')
+
+    expect(readDeliveredBuiltIns(storage).size).toBe(0)
+  })
+
+  it('survives storage that throws', () => {
+    const base = memoryStorage()
+    const throwing: Storage = Object.assign(base, {
+      setItem: () => {
+        throw new Error('quota')
+      },
+    })
+
+    // Private-mode Safari. Startup must not depend on this succeeding.
+    expect(recordDeliveredBuiltIns(['a'], throwing)).toBe(false)
   })
 })
