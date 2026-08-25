@@ -42,12 +42,12 @@ That file is the only place allowed to name a concrete implementation.
 These are each enforced by a lint rule or a test. They are listed here so
 you know _why_ before you meet the error.
 
-**The program is never the log.** A `ProgramTemplate` stores intent; a
-`WorkoutLog` stores what happened; a `ProgramInstance` holds a frozen
-`templateSnapshot` of the template it started from. Never write a result
-back into a template. All three predecessor apps collapsed these, and
-that single decision is why editing a program corrupted history in every
-one of them.
+**The program is never the log.** A `ProgramTemplate` stores intent and a
+`WorkoutLog` stores what happened. Never write a result back into a
+template. All three predecessor apps collapsed these, and that single
+decision is why editing a program corrupted history in every one of them.
+Here it cannot happen at all: the template is derived rather than stored,
+so there is nothing to write back into.
 
 **Resolution is pure.** `domain/resolution/resolve.ts` turns a
 prescription into a number with no I/O and no clock. Keep it that way; it
@@ -132,8 +132,8 @@ the weekly target. A hardcoded "Monday — press and pull" is a claim that
 goes stale the moment a tier moves, and counting secondaries named an
 upper day after the core.
 
-**A low-rep set is worth less than a full one.** in
-— linear below five reps, capped above.
+**A low-rep set is worth less than a full one.** `hypertrophyCredit` in
+`domain/volume/accounting.ts` — linear below five reps, capped above.
 Counting a top-set single as one hard set let the three competition lifts
 overshoot a maintained muscle's weekly target on their own, which is
 arithmetically true and physiologically misleading. Changing it changes
