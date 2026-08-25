@@ -1010,7 +1010,11 @@ function conditioningSlots(
     const exercise = deps.exercises.find((candidate) => candidate.id === asExerciseId(slug))
     if (exercise === undefined || excluded.has(exercise.id)) return []
 
-    const plan = CONDITIONING_PLANS[slug] ?? { minutes: 15, note: 'Easy, conversational pace.' }
+    const plan = CONDITIONING_PLANS[slug] ?? {
+      minutes: 15,
+      style: 'Zone 2',
+      note: 'Easy, conversational pace.',
+    }
     // A deload cuts conditioning the same way it cuts everything else.
     // Leaving it at full duration would make the deload week the hardest
     // conditioning week of the block.
@@ -1020,6 +1024,12 @@ function conditioningSlots(
       {
         id: asSlotId(deps.ids.next()),
         role: 'conditioning',
+        // The intensity domain, which is the only thing about a
+        // conditioning slot you need to know before you start it — and
+        // the thing its duration and its effort note both fail to say. A
+        // twenty-minute walk and a twelve-minute swing session look
+        // interchangeable on a page and are nothing alike.
+        variant: plan.style,
         exercise: { kind: 'specific', exerciseId: exercise.id },
         sets: [{ load: { kind: 'open' }, reps: { kind: 'time', seconds: minutes * 60 } }],
         restSeconds: 0,
@@ -1037,17 +1047,29 @@ function conditioningSlots(
  * is steady aerobic work, and an incline walk is deliberately low enough
  * to cost nothing at all.
  */
-const CONDITIONING_PLANS: Readonly<Record<string, { minutes: number; note: string }>> = {
+const CONDITIONING_PLANS: Readonly<
+  Record<string, { minutes: number; note: string; style: string }>
+> = {
   'incline-walk': {
     minutes: 20,
+    // LISS rather than Zone 2, and the distinction is not pedantry: a
+    // walk sits below the aerobic threshold, costs the next session
+    // nothing, and can go the day before a deadlift. That is what it is
+    // scheduled *for*.
+    style: 'LISS',
     note: 'Steep incline, easy pace. You should be able to hold a conversation.',
   },
   running: {
     minutes: 25,
+    // Zone 2: conversational, but a real aerobic stimulus with a real
+    // cost. The same effort description as the walk and a different
+    // place in the week, which is exactly why they need different names.
+    style: 'Zone 2',
     note: 'Steady aerobic pace — this is the base-building run, not a test.',
   },
   'kb-swing': {
     minutes: 12,
+    style: 'HIIT',
     note: 'Intervals: 30 seconds hard, 30 seconds rest. Hips, not arms.',
   },
 }

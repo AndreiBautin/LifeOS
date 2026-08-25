@@ -151,8 +151,12 @@ found a bug whatever the arithmetic said.
 
 **Every slot has a category and a sub-category.** Strength splits into
 `Top set` and `Back-off`, hypertrophy into `Compound` and `Isolation`,
-warm-ups into `Upper` and `Lower`; conditioning has none, because a run
-does not divide into two sorts of run. The sub-category lives on
+warm-ups into `Upper` and `Lower`, conditioning into its intensity
+domain — `LISS`, `Zone 2`, `HIIT`. LISS and Zone 2 are not the same
+label twice: the walk sits below the aerobic threshold and costs the next
+session nothing, the run is a real aerobic stimulus with a real cost, and
+they share an effort description while sitting in different places in the
+week. The sub-category lives on
 `Slot.variant` and is copied onto `LogEntry.variant` at start, not
 derived from the role — a warm-up's body half and a strength slot's
 position in the pair cannot be read off `role` at all. The roles stay

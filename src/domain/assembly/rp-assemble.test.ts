@@ -140,14 +140,36 @@ describe('the assembled block', () => {
     for (const week of block?.weeks ?? []) {
       for (const day of week.days) {
         for (const slot of day.slots) {
-          // Conditioning is the exception: a run does not divide into two
-          // sorts of run, and inventing a split to fill the space would
-          // be decoration rather than information.
-          if (slot.role === 'conditioning') continue
           expect(slot.variant, `${day.label}: ${slot.role}`).toBeDefined()
         }
       }
     }
+  })
+
+  /*
+   * The intensity domain, which is the one thing about a conditioning
+   * slot you need before starting it and the thing neither its duration
+   * nor its effort note says. A walk and a swing session read as
+   * interchangeable on a page and are nothing alike — and the walk and
+   * the run share an effort description while sitting in different
+   * places in the week, which is exactly why they need different names.
+   */
+  it('names the intensity domain of each conditioning slot', () => {
+    const styles = new Map<string, string>()
+
+    for (const week of block?.weeks ?? []) {
+      for (const day of week.days) {
+        for (const slot of day.slots) {
+          if (slot.role !== 'conditioning') continue
+          if (slot.exercise.kind !== 'specific') continue
+          styles.set(slot.exercise.exerciseId, slot.variant ?? '')
+        }
+      }
+    }
+
+    expect(styles.get(asExerciseId('incline-walk'))).toBe('LISS')
+    expect(styles.get(asExerciseId('running'))).toBe('Zone 2')
+    expect(styles.get(asExerciseId('kb-swing'))).toBe('HIIT')
   })
 })
 
