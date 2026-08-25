@@ -51,8 +51,26 @@ export interface Exercise {
   readonly systemicCost?: SystemicCost
 
   /**
-   * Whether the last work set should be taken to failure — covering both
-   * "you would be pinned under it" and "the fatigue is not worth it".
+   * Whether the last work set should be taken to failure.
+   *
+   * Three separate reasons to say no, and they are worth keeping straight
+   * because only the first is about danger:
+   *
+   *   - **You would be pinned under it.** A squat or a bench with nobody
+   *     to lift the bar off you.
+   *   - **Failing hurts.** The triceps isolations, where the failing rep
+   *     is the one that puts an elbow somewhere it should not go.
+   *   - **Failure is not a clean event.** A lateral raise, a shrug, a
+   *     calf raise, a hanging leg raise: there is always another rep if
+   *     you cheat the form a little, so "to failure" resolves to
+   *     "until your technique goes" rather than to a definite point.
+   *     Dips and pull-ups are the contrast — you either complete the rep
+   *     or you do not, and the set ends itself.
+   *
+   * The third is the reason most of the isolation work here is `false`.
+   * It is not that failing is risky; it is that the instruction does not
+   * mean anything specific, and an instruction that resolves differently
+   * every week is worse than one rep in reserve every week.
    */
   readonly safeToFail: FailureSafety
 

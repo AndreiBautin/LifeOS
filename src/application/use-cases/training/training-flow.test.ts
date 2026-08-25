@@ -56,8 +56,9 @@ const athlete: AthleteState = {
     [asExerciseId(STRENGTH_LIFT_SLUGS.bench)]: 250,
     [asExerciseId(STRENGTH_LIFT_SLUGS.deadlift)]: 450,
     // Monday is arms and delts, so the curl is the day-one exercise a
-    // suggested load can be checked against.
-    [asExerciseId('db-curl')]: 60,
+    // suggested load can be checked against. The dumbbell version was
+    // withdrawn from the catalogue — an EZ bar is easier to load.
+    [asExerciseId('ez-bar-curl')]: 60,
   },
   bodyweight: 180,
   units: 'lb',
@@ -110,7 +111,7 @@ describe('starting a session from a program', () => {
     expect(result.kind).toBe('started')
     if (result.kind !== 'started') throw new Error('expected a started workout')
 
-    const curl = result.workout.entries.find((entry) => entry.exerciseId === 'db-curl')
+    const curl = result.workout.entries.find((entry) => entry.exerciseId === 'ez-bar-curl')
     expect(curl).toBeDefined()
 
     /*
@@ -142,7 +143,7 @@ describe('starting a session from a program', () => {
     const result = await startWorkout({ athlete: bare, program, roundingIncrement: 5 }, deps)
     if (result.kind !== 'started') throw new Error('expected a started workout')
 
-    const curl = result.workout.entries.find((entry) => entry.exerciseId === 'db-curl')
+    const curl = result.workout.entries.find((entry) => entry.exerciseId === 'ez-bar-curl')
     expect(curl?.sets.every((set) => set.plannedLoad === undefined)).toBe(true)
     expect(curl?.sets[0]?.prescription.load).toEqual({ kind: 'rpe', target: 9 })
   })
@@ -192,7 +193,9 @@ describe('logging', () => {
     const started = await startWorkout({ athlete, program, roundingIncrement: 5 }, deps)
     if (started.kind !== 'started') throw new Error('expected a started workout')
 
-    const curlIndex = started.workout.entries.findIndex((entry) => entry.exerciseId === 'db-curl')
+    const curlIndex = started.workout.entries.findIndex(
+      (entry) => entry.exerciseId === 'ez-bar-curl',
+    )
     const plannedLoad = started.workout.entries[curlIndex]?.sets[0]?.plannedLoad
 
     await logSet(
@@ -225,7 +228,9 @@ describe('logging', () => {
     const started = await startWorkout({ athlete, program, roundingIncrement: 5 }, deps)
     if (started.kind !== 'started') throw new Error('expected a started workout')
 
-    const curlIndex = started.workout.entries.findIndex((entry) => entry.exerciseId === 'db-curl')
+    const curlIndex = started.workout.entries.findIndex(
+      (entry) => entry.exerciseId === 'ez-bar-curl',
+    )
 
     await logSet(
       {
@@ -308,7 +313,9 @@ describe('finishing a session', () => {
     const started = await startWorkout({ athlete, program, roundingIncrement: 5 }, deps)
     if (started.kind !== 'started') throw new Error('expected a started workout')
 
-    const curlIndex = started.workout.entries.findIndex((entry) => entry.exerciseId === 'db-curl')
+    const curlIndex = started.workout.entries.findIndex(
+      (entry) => entry.exerciseId === 'ez-bar-curl',
+    )
 
     for (let setIndex = 0; setIndex <= 2; setIndex += 1) {
       await logSet(
@@ -340,7 +347,9 @@ describe('finishing a session', () => {
 
     // One working set logged; the mobility warm-ups that open the day and
     // everything else left untouched.
-    const curlIndex = started.workout.entries.findIndex((entry) => entry.exerciseId === 'db-curl')
+    const curlIndex = started.workout.entries.findIndex(
+      (entry) => entry.exerciseId === 'ez-bar-curl',
+    )
 
     await logSet(
       {
@@ -430,7 +439,9 @@ describe('abandoning a session', () => {
     const started = await startWorkout({ athlete, program, roundingIncrement: 5 }, deps)
     if (started.kind !== 'started') throw new Error('expected a started workout')
 
-    const curlIndex = started.workout.entries.findIndex((entry) => entry.exerciseId === 'db-curl')
+    const curlIndex = started.workout.entries.findIndex(
+      (entry) => entry.exerciseId === 'ez-bar-curl',
+    )
     await logSet(
       {
         workoutId: started.workout.id,
