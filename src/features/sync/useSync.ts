@@ -77,11 +77,30 @@ export function useAccount(): { account: Account | undefined; ready: boolean } {
      */
     const mounted = new AbortController()
 
+    // Read through a call, not a property. Checked directly, the type
+    // checker narrows `aborted` to false at the first guard and reports
+    // every later one as dead code — which is exactly backwards, since
+    // the point is that it can change while an await is in flight.
+    const gone = () => mounted.signal.aborted
+
     void (async () => {
-      const { firebaseClient, watchAccount } = await firebase()
-      if (mounted.signal.aborted) return
+      const { firebaseClient, watchAccount, completeRedirectSignIn } = await firebase()
+      if (gone()) return
 
       const { auth } = firebaseClient(configuredOrThrow())
+
+      /*
+       * Collected before the listener is attached.
+       *
+       * A sign-in that fell back to a redirect finishes on the way back
+       * into the app, and the result is only available on that one
+       * navigation. Not asking for it means the round trip completes,
+       * the credential is discarded, and the screen shows a Sign in
+       * button to someone who has just signed in.
+       */
+      await completeRedirectSignIn(auth)
+      if (gone()) return
+
       unsubscribe = watchAccount(auth, (next) => {
         setAccount(next)
         setReady(true)
