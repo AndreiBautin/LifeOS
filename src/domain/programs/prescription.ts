@@ -226,8 +226,25 @@ export function validateSetPrescription(set: SetPrescription): void {
  * RPE is not a weight, so it does not belong in the "weight × reps"
  * position that every training log has used for a century.
  */
-export function describePrescription(set: SetPrescription): string {
-  const reps = describeReps(set.reps)
+export function describePrescription(
+  set: SetPrescription,
+  /**
+   * The rep count actually being asked for, when it is no longer the one
+   * written into the prescription.
+   *
+   * An RTS back-off matches the top set, so its rep target is not known
+   * until the top set has been performed — the number frozen at assembly
+   * is a projection. Once the measurement exists the row shows the real
+   * one (`290 lb × 3`), and leaving this text saying "5 at 5% off the top
+   * set" beside it puts two different rep counts on one line and makes
+   * the reader work out which is binding.
+   */
+  plannedReps?: number,
+): string {
+  const reps =
+    plannedReps === undefined
+      ? describeReps(set.reps)
+      : describeReps({ kind: 'fixed', reps: plannedReps })
 
   switch (set.load.kind) {
     case 'rpe':

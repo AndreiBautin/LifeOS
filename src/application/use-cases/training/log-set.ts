@@ -1,6 +1,7 @@
 import type { ExerciseId, WorkoutId } from '@/domain/ids/ids'
 import type { LoggedSet, SetOutcome, WorkoutLog } from '@/domain/logging/workout-log'
 import { comparePerformance } from '@/domain/logging/workout-log'
+import { replanBackoffs } from '@/domain/framework/replan-backoffs'
 import type { Clock, WorkoutRepository } from '@/domain/repositories/ports'
 
 /**
@@ -17,6 +18,11 @@ import type { Clock, WorkoutRepository } from '@/domain/repositories/ports'
 export interface LogSetDeps {
   readonly workouts: WorkoutRepository
   readonly clock: Clock
+  /**
+   * Needed because logging a top set re-plans the back-offs below it, and
+   * the new bar weight has to land on plates the lifter owns.
+   */
+  readonly roundingIncrement: number
 }
 
 export interface SetResult {
@@ -40,7 +46,19 @@ export async function logSet(request: LogSetRequest, deps: LogSetDeps): Promise<
     throw new Error(`No workout found with id ${request.workoutId}.`)
   }
 
-  const updated = updateSet(workout, request, deps.clock.now())
+  /*
+   * Logged first, then re-planned from what was logged.
+   *
+   * The order is the whole point: a top set is a measurement, and the
+   * back-offs below it are derived from the measurement rather than from
+   * the estimate that suggested it. Running the re-plan on every set
+   * rather than only on top sets keeps this free of a rule about which
+   * set index matters — `replanBackoffs` reads the log and is a no-op
+   * when there is no completed top set to read.
+   */
+  const logged = updateSet(workout, request, deps.clock.now())
+  const updated = replanBackoffs(logged, { roundingIncrement: deps.roundingIncrement })
+
   await deps.workouts.save(updated)
   return updated
 }
@@ -143,7 +161,10 @@ export async function previousSetFor(
   exerciseId: ExerciseId,
   setIndex: number,
   currentWorkoutId: WorkoutId,
-  deps: LogSetDeps,
+  // Reads history and writes nothing, so it asks for the repository and
+  // not for the writing use-case's dependencies. Taking `LogSetDeps` here
+  // made a read-only query demand a rounding increment.
+  deps: { readonly workouts: WorkoutRepository },
   /**
    * Which of the exercise's entries to compare against.
    *

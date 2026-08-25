@@ -122,12 +122,16 @@ export function useStartWorkout() {
 
 export function useLogSet(workoutId: WorkoutId | undefined) {
   const services = useServices()
+  const { settings } = useSettings()
   const client = useQueryClient()
 
   return useMutation({
     mutationFn: (input: { entryIndex: number; setIndex: number; result: SetResult }) => {
       if (workoutId === undefined) throw new Error('No workout is open.')
-      return logSet({ workoutId, ...input }, services)
+      return logSet(
+        { workoutId, ...input },
+        { ...services, roundingIncrement: settings.roundingIncrement },
+      )
     },
     onSuccess: () => {
       void client.invalidateQueries({ queryKey: keys.activeWorkout })
@@ -137,12 +141,16 @@ export function useLogSet(workoutId: WorkoutId | undefined) {
 
 export function useClearSet(workoutId: WorkoutId | undefined) {
   const services = useServices()
+  const { settings } = useSettings()
   const client = useQueryClient()
 
   return useMutation({
     mutationFn: (input: { entryIndex: number; setIndex: number }) => {
       if (workoutId === undefined) throw new Error('No workout is open.')
-      return clearSet({ workoutId, ...input }, services)
+      return clearSet(
+        { workoutId, ...input },
+        { ...services, roundingIncrement: settings.roundingIncrement },
+      )
     },
     onSuccess: () => {
       void client.invalidateQueries({ queryKey: keys.activeWorkout })

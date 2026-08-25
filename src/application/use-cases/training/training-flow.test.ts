@@ -73,6 +73,7 @@ function services() {
     position: createPositionRepository(db),
     workouts: createWorkoutRepository(db),
     ids: counterIds(),
+    roundingIncrement: 5,
     clock,
     program,
   }

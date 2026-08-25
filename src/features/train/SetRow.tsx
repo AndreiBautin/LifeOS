@@ -55,11 +55,26 @@ export function SetRow(props: Props) {
   const done = set.outcome === 'completed' && set.completedAt !== undefined
   const skipped = set.outcome === 'skipped'
 
+  /*
+   * A re-planned back-off states the reps it was re-planned to.
+   *
+   * Only when it differs from the prescription, so nothing changes for
+   * every other kind of set — and only for a fixed target, because
+   * overriding a range or an AMRAP with a single number would throw away
+   * what those prescriptions mean.
+   */
+  const repsOverride =
+    set.prescription.reps.kind === 'fixed' &&
+    set.plannedReps !== undefined &&
+    set.plannedReps !== set.prescription.reps.reps
+      ? set.plannedReps
+      : undefined
+
   const summary = done
     ? `${set.actualLoad === undefined ? '—' : formatLoad(set.actualLoad, units)} × ${String(set.actualReps ?? '—')}${
         set.actualRpe === undefined ? '' : ` @ ${String(set.actualRpe)}`
       }`
-    : describePrescription(set.prescription)
+    : describePrescription(set.prescription, repsOverride)
 
   const plannedSummary =
     set.plannedLoad === undefined

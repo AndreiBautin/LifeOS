@@ -5,6 +5,7 @@ import { HYPERTROPHY_RPE } from '@/domain/exercises/loading'
 import type { MuscleGroup } from '@/domain/exercises/taxonomy'
 import { MUSCLE_GROUP_LABELS } from '@/domain/exercises/taxonomy'
 import type { RtsPrescription } from '@/domain/framework/rts'
+import { BACKOFF_VARIANT, TOP_SET_VARIANT } from '@/domain/framework/replan-backoffs'
 import { backoffStopRpe, DEFAULT_RTS } from '@/domain/framework/rts'
 import type { ExerciseId, IdGenerator, ProgramId } from '@/domain/ids/ids'
 import { asExerciseId, asSlotId } from '@/domain/ids/ids'
@@ -529,7 +530,7 @@ function buildStrengthSlots(
   const top: Slot = {
     id: asSlotId(deps.ids.next()),
     role: 'strength',
-    variant: 'Top set',
+    variant: TOP_SET_VARIANT,
     exercise: { kind: 'specific', exerciseId },
     sets: [topSet],
     restSeconds: exercise.defaultRestSeconds ?? 180,
@@ -541,7 +542,7 @@ function buildStrengthSlots(
   const backoff: Slot = {
     id: asSlotId(deps.ids.next()),
     role: 'strength',
-    variant: 'Back-off',
+    variant: BACKOFF_VARIANT,
     exercise: { kind: 'specific', exerciseId },
     sets: backoffs,
     restSeconds: exercise.defaultRestSeconds ?? 180,
