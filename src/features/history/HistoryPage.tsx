@@ -1,13 +1,19 @@
 import { useQuery } from '@tanstack/react-query'
+import { Trash2 } from 'lucide-react'
+import { useState } from 'react'
 
 import { useServices, useSettings } from '@/app/context'
 import type { Exercise } from '@/domain/exercises/exercise'
 import { MUSCLE_GROUP_LABELS, type MuscleGroup } from '@/domain/exercises/taxonomy'
-import type { ExerciseId } from '@/domain/ids/ids'
+import type { ExerciseId, WorkoutId } from '@/domain/ids/ids'
+import type { WorkoutLog } from '@/domain/logging/workout-log'
 import { loggedVolume, totalTonnage, totalWorkingSets } from '@/domain/logging/workout-log'
+import type { WeightUnit } from '@/domain/units/weight'
 import { formatLoad } from '@/domain/units/weight'
 import { displaySets, sumVolume, type VolumeMap } from '@/domain/volume/accounting'
-import { Badge, Card, Empty, Section } from '@/components/shared/primitives'
+import { Badge, Button, Card, Empty, Section } from '@/components/shared/primitives'
+
+import { useDeleteWorkout } from './hooks'
 
 /**
  * Training history, and the weekly volume that comes out of it.
@@ -21,6 +27,16 @@ import { Badge, Card, Empty, Section } from '@/components/shared/primitives'
 export function HistoryPage() {
   const services = useServices()
   const { settings } = useSettings()
+  const deleteWorkout = useDeleteWorkout()
+
+  /*
+   * Which row is asking to be confirmed, if any.
+   *
+   * Held here rather than per row so that opening one confirmation closes
+   * any other: two rows both showing a red "Delete" at once, in a list
+   * where every row looks alike, is how the wrong session gets removed.
+   */
+  const [confirming, setConfirming] = useState<WorkoutId | undefined>(undefined)
 
   const workouts = useQuery({
     queryKey: ['workouts', 'recent', 50],
@@ -98,26 +114,121 @@ export function HistoryPage() {
           <ul className="space-y-2">
             {completed.map((workout) => (
               <li key={workout.id}>
-                <Card className="flex items-center justify-between gap-3 p-3">
-                  <div className="min-w-0">
-                    <p className="text-ink-50 truncate text-sm font-medium">{workout.title}</p>
-                    <p className="text-ink-500 mt-0.5 text-xs">
-                      {formatDate(workout.date)} · {totalWorkingSets(workout)} sets ·{' '}
-                      {formatLoad(totalTonnage(workout), settings.units)}
-                    </p>
-                  </div>
-                  {workout.position !== undefined && (
-                    <Badge>
-                      C{workout.position.cycleNumber} W{workout.position.weekIndex + 1}
-                    </Badge>
-                  )}
-                </Card>
+                <SessionRow
+                  workout={workout}
+                  units={settings.units}
+                  confirming={confirming === workout.id}
+                  pending={deleteWorkout.isPending}
+                  onAskDelete={() => {
+                    setConfirming(workout.id)
+                  }}
+                  onCancel={() => {
+                    setConfirming(undefined)
+                  }}
+                  onConfirm={() => {
+                    deleteWorkout.mutate(workout.id, {
+                      onSuccess: () => {
+                        setConfirming(undefined)
+                      },
+                    })
+                  }}
+                />
               </li>
             ))}
           </ul>
         )}
       </Section>
     </div>
+  )
+}
+
+/**
+ * One session, and the way to take it back out.
+ *
+ * The delete is a two-tap confirm rather than a modal. A dialog is the
+ * conventional answer and the wrong one here: this list is read on a
+ * phone, one-handed, and a sheet that covers the row being deleted asks
+ * the lifter to confirm from memory. Expanding the row keeps what is
+ * about to be removed — the title, the date, the set count — on screen
+ * while the question is being asked.
+ *
+ * The confirm names the working sets it is about to destroy, because that
+ * is the number that distinguishes the case this was built for (a
+ * mis-tapped finish, nothing logged) from the case that should give
+ * anyone pause (a real session, twenty sets in it).
+ */
+function SessionRow({
+  workout,
+  units,
+  confirming,
+  pending,
+  onAskDelete,
+  onCancel,
+  onConfirm,
+}: {
+  readonly workout: WorkoutLog
+  readonly units: WeightUnit
+  readonly confirming: boolean
+  readonly pending: boolean
+  readonly onAskDelete: () => void
+  readonly onCancel: () => void
+  readonly onConfirm: () => void
+}) {
+  const sets = totalWorkingSets(workout)
+
+  return (
+    <Card className="p-3">
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-ink-50 truncate text-sm font-medium">{workout.title}</p>
+          <p className="text-ink-500 mt-0.5 text-xs">
+            {formatDate(workout.date)} · {sets} sets · {formatLoad(totalTonnage(workout), units)}
+          </p>
+        </div>
+
+        <div className="flex shrink-0 items-center gap-2">
+          {workout.position !== undefined && (
+            <Badge>
+              C{workout.position.cycleNumber} W{workout.position.weekIndex + 1}
+            </Badge>
+          )}
+          {!confirming && (
+            <button
+              type="button"
+              onClick={onAskDelete}
+              aria-label={`Delete ${workout.title} from ${formatDate(workout.date)}`}
+              className="tap-target text-ink-500 hover:text-bad-500 flex items-center justify-center rounded-lg transition-colors"
+            >
+              <Trash2 size={16} aria-hidden />
+            </button>
+          )}
+        </div>
+      </div>
+
+      {confirming && (
+        <div className="border-ink-800 mt-3 border-t pt-3">
+          <p className="text-ink-300 text-xs">
+            Delete this session?{' '}
+            {sets === 0 ? (
+              <span className="text-ink-500">Nothing was logged in it.</span>
+            ) : (
+              <span className="text-ink-500">
+                {sets} logged set{sets === 1 ? '' : 's'} will go with it.
+              </span>
+            )}{' '}
+            This cannot be undone, and it does not move your program.
+          </p>
+          <div className="mt-2 flex gap-2">
+            <Button variant="danger" full disabled={pending} onClick={onConfirm}>
+              {pending ? 'Deleting…' : 'Delete'}
+            </Button>
+            <Button variant="outline" full disabled={pending} onClick={onCancel}>
+              Keep
+            </Button>
+          </div>
+        </div>
+      )}
+    </Card>
   )
 }
 
