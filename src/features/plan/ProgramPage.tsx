@@ -80,8 +80,23 @@ export function ProgramPage() {
     <div>
       <header className="mb-6">
         <h1 className="text-ink-50 text-2xl font-semibold tracking-tight">Program</h1>
+        {/*
+          The week you are on, spelled out.
+
+          It was inferable only from which tab was tinted, which is a lot
+          of weight for a border colour to carry — and useless for
+          answering the question people actually ask, which is "does this
+          app know where I am". Saying it in words also makes it obvious
+          when the answer is wrong, and therefore that there is something
+          to change.
+        */}
         <p className="text-ink-500 mt-0.5 text-sm">
-          {weeks.length} weeks · {week.days.length} days a week
+          {weeks.length} weeks · {week.days.length} days a week · on{' '}
+          <span className="text-ink-300">
+            {weeks[currentWeek]?.isDeload === true
+              ? 'the deload'
+              : `week ${String(currentWeek + 1)}`}
+          </span>
         </p>
       </header>
 
