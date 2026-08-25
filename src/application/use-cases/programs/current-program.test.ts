@@ -48,7 +48,7 @@ describe('deriving the program', () => {
     )
 
     expect(after).not.toEqual(before)
-    expect(after.name).toBe('RP block — chest')
+    expect(after.name).toBe('Chest')
   })
 
   it('honours an exclusion made in settings', () => {

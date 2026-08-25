@@ -137,7 +137,9 @@ export function describeBlock(
   ].filter((sentence) => sentence !== '')
 
   return {
-    name: top.length > 0 ? `RP block — ${list(top)}` : 'RP block',
+    // No 'RP block' prefix. Everything here is RP volume with RTS
+    // strength, so naming it that distinguishes the block from nothing.
+    name: top.length > 0 ? sentenceCase(list(top)) : 'General',
     description: sentences.join(' '),
   }
 }

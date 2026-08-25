@@ -436,7 +436,7 @@ const ENTRIES: readonly CatalogueEntry[] = [
   /* ---- Traps -------------------------------------------------------- */
   {
     slug: 'barbell-shrug',
-    name: 'Barbell Shrug (front)',
+    name: 'Barbell Shrug',
     primaryMuscle: 'upper-back',
     secondaryMuscles: ['forearms'],
     equipment: 'barbell',

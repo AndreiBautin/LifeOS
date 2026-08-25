@@ -3,6 +3,7 @@ import { createBrowserRouter, Navigate } from 'react-router-dom'
 import { CharacterPage } from '@/features/character/CharacterPage'
 import { HistoryPage } from '@/features/history/HistoryPage'
 import { PlanPage } from '@/features/plan/PlanPage'
+import { ProgramPage } from '@/features/plan/ProgramPage'
 import { NotFoundPage } from '@/features/not-found/NotFoundPage'
 import { SettingsPage } from '@/features/settings/SettingsPage'
 import { TrainPage } from '@/features/train/TrainPage'
@@ -26,6 +27,7 @@ export const router = createBrowserRouter(
         { index: true, element: <Navigate to="/train" replace /> },
         { path: 'train', element: <TrainPage /> },
         { path: 'plan', element: <PlanPage /> },
+        { path: 'program', element: <ProgramPage /> },
         { path: 'character', element: <CharacterPage /> },
         { path: 'history', element: <HistoryPage /> },
         { path: 'settings', element: <SettingsPage /> },

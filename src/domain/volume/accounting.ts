@@ -27,7 +27,7 @@ import { emptyVolumeMap, SECONDARY_SET_FRACTION } from './landmarks'
 export type VolumeMap = Record<MuscleGroup, number>
 
 /** Warm-ups earn no credit. A 40% single for five is not a working set. */
-function countsAsWorking(set: SetPrescription): boolean {
+export function countsAsWorking(set: SetPrescription): boolean {
   return set.isWarmup !== true
 }
 

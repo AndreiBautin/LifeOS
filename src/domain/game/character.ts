@@ -210,7 +210,6 @@ export function buildCharacter(inputs: CharacterInputs): Character {
     [asExerciseId(STRENGTH_LIFT_SLUGS.squat), 'Squat'],
     [asExerciseId(STRENGTH_LIFT_SLUGS.bench), 'Bench press'],
     [asExerciseId(STRENGTH_LIFT_SLUGS.deadlift), 'Deadlift'],
-    [asExerciseId('overhead-press'), 'Overhead press'],
   ]
 
   const lifts = liftIds.map(([id, name]): Attribute => {

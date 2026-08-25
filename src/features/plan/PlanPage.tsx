@@ -51,6 +51,12 @@ export function PlanPage() {
         <p className="text-ink-500 mt-0.5 text-sm">{running?.name ?? 'Loading…'}</p>
       </header>
 
+      <Section title="The block itself">
+        <Link to="/program" className={cn(buttonStyles({ variant: 'primary' }), 'w-full')}>
+          See every week, with the weights it would give you
+        </Link>
+      </Section>
+
       <Section title="How the week is shaped">
         <Card>
           <div className="mb-2 flex items-center justify-between gap-2">

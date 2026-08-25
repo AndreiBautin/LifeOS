@@ -17,7 +17,7 @@ describe('naming a block from its tiers', () => {
   it('names it after what is actually specialised', () => {
     const described = describeBlock(DEFAULT_MUSCLE_TIERS, DEFAULT_STRENGTH_TIERS)
 
-    expect(described.name).toBe('RP block — arms and side delts')
+    expect(described.name).toBe('Arms and side delts')
   })
 
   it('follows a tier when it moves', () => {
@@ -32,7 +32,7 @@ describe('naming a block from its tiers', () => {
       DEFAULT_STRENGTH_TIERS,
     )
 
-    expect(chestFocus.name).toBe('RP block — chest')
+    expect(chestFocus.name).toBe('Chest')
     expect(chestFocus.description).toContain('Chest specialised.')
     expect(chestFocus.description).toContain('Triceps building.')
     expect(chestFocus.description).toContain('Biceps maintained.')
@@ -44,7 +44,7 @@ describe('naming a block from its tiers', () => {
       DEFAULT_STRENGTH_TIERS,
     )
 
-    expect(armsAndLegs.name).toBe('RP block — arms')
+    expect(armsAndLegs.name).toBe('Arms')
   })
 
   it('does not collapse a partial group', () => {
@@ -55,7 +55,7 @@ describe('naming a block from its tiers', () => {
       DEFAULT_STRENGTH_TIERS,
     )
 
-    expect(bicepsOnly.name).toBe('RP block — biceps and triceps')
+    expect(bicepsOnly.name).toBe('Biceps and triceps')
   })
 
   it('names the lift leading the strength work', () => {
