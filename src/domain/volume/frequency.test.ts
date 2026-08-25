@@ -74,3 +74,26 @@ describe('setsPerSession', () => {
     expect(setsPerSession(12, 0)).toBe(0)
   })
 })
+
+/*
+ * The rounding case that matters, and the one that motivated `ceil`.
+ *
+ * Two thirds of three is two, which is the case the share was written
+ * for. Two thirds of two is 1.33, and rounding it down made a tier-2
+ * muscle on a two-day pool indistinguishable from a maintained one — the
+ * core came out at a single session on a pair of lower days that had the
+ * room for both.
+ */
+describe('a middle tier on a two-day pool', () => {
+  it('takes both days rather than rounding down to one', () => {
+    expect(requiredFrequency(2, 2)).toBe(2)
+  })
+
+  it('still takes two of three when there are three', () => {
+    expect(requiredFrequency(2, 3)).toBe(2)
+  })
+
+  it('does not promote maintenance by the same route', () => {
+    expect(requiredFrequency(3, 2)).toBe(1)
+  })
+})

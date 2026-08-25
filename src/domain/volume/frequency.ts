@@ -53,8 +53,17 @@ export const TIER_FREQUENCY_SHARE: Readonly<Record<number, number>> = {
 export function requiredFrequency(tierRank: number, daysAvailable: number): number {
   if (daysAvailable <= 0) return 0
 
+  /*
+   * Rounded up, so "most of them" never rounds down to one.
+   *
+   * Two thirds of three is two, which is the case the share was written
+   * for. Two thirds of *two* is 1.33, and rounding that to one made a
+   * tier-2 muscle on a two-day pool indistinguishable from a maintained
+   * one — the core came out at a single session on a pair of lower days
+   * that had the room for both.
+   */
   const share = TIER_FREQUENCY_SHARE[tierRank] ?? 0
-  return Math.min(daysAvailable, Math.max(1, Math.round(daysAvailable * share)))
+  return Math.min(daysAvailable, Math.max(1, Math.ceil(daysAvailable * share)))
 }
 
 /**

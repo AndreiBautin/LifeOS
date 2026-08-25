@@ -274,10 +274,19 @@ export const DEFAULT_MUSCLE_TIERS: MuscleTiers = [
   // press keeps a real allocation. Its primary muscle is what decides how
   // many sets it gets, and at tier 3 a lift meant to stay in the rotation
   // was receiving maintenance volume.
-  { rank: 2, members: ['lats', 'upper-back', 'chest', 'front-delts'], label: 'Building' },
+  /*
+   * Core sits here rather than in maintenance.
+   *
+   * At tier 3 it asked for two sets a week and the squat and deadlift
+   * paid that in bracing alone, so it never received a slot of its own —
+   * technically satisfied, never actually trained. The lower days have
+   * the room, and abs are the one thing a maintained lower body should
+   * still be working directly.
+   */
+  { rank: 2, members: ['lats', 'upper-back', 'chest', 'front-delts', 'core'], label: 'Building' },
   {
     rank: 3,
-    members: ['rear-delts', 'quads', 'hamstrings', 'glutes', 'calves', 'core'],
+    members: ['rear-delts', 'quads', 'hamstrings', 'glutes', 'calves'],
     label: 'Maintaining',
   },
 ]
