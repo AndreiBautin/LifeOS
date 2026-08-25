@@ -58,7 +58,17 @@ export function PlanPage() {
         </Link>
       </Section>
 
-      <Section title="The three lifts" description="Strength work, run by RTS">
+      {/*
+        What every session shares is said here, once.
+
+        It was on each lift, which put the same sentence on three
+        consecutive rows and taught the eye to skip all three — including
+        the session count, which is the only part that differs.
+      */}
+      <Section
+        title="The three lifts"
+        description="Every session is the same shape — a top set, then back-offs until the lighter bar feels like it did. Priority buys how many, not how long."
+      >
         <Card>
           <ul className="space-y-3">
             {plan.lifts.map((lift) => (

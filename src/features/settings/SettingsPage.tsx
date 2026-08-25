@@ -153,13 +153,12 @@ export function SettingsPage() {
         Nothing here autoregulates, whatever this used to say.
 
         The description claimed "session length moves the day count,
-        performance moves the block length". Both were built —
-        `proposeFrequency` and `proposeDeload` in
-        domain/autoregulation/schedule.ts — and neither was ever wired to
-        anything. The copy described the intention rather than the app,
-        which is the one thing a settings screen must not do: every other
-        number here is checkable against a session, and a claim about
-        behaviour that does not happen is unfalsifiable.
+        performance moves the block length". Both were built, both were
+        tested, neither was ever called; they have since been deleted.
+        The copy described an intention rather than the app, which is the
+        one thing a settings screen must not do — every other number here
+        is checkable against a session, and a claim about behaviour that
+        does not happen cannot be checked at all.
       */}
       <Section title="Block" description="Three numbers you set. Nothing moves them for you.">
         <Card className="space-y-3">

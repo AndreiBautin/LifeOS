@@ -214,17 +214,20 @@ export function explainVolume(
       label: STRENGTH_LIFT_LABELS[lift],
       tier: rank,
       /*
-       * Frequency, not fatigue.
+       * Only what differs between lifts.
        *
        * These sentences used to describe a tier-dependent fatigue
        * allowance — "the highest fatigue target, so the most back-off
        * volume" — which stopped being true when the allowance was
-       * flattened to match the load drop. Every session is now the same
-       * shape and priority is spent on how many there are.
+       * flattened to match the load drop. The replacement then explained
+       * the flat rule on every row, which is worse in a different way:
+       * three identical sentences train the reader to skip all three,
+       * including the number that is not identical. What every session
+       * shares belongs above the list, once.
        */
       reason: `${
         rank === 1 ? 'Specialising' : rank === 2 ? 'Building' : 'Maintaining'
-      }: ${String(sessions)} session${sessions === 1 ? '' : 's'} a week. Every one is the same shape — a top set, then back-offs until the lighter bar feels like it did.`,
+      }: ${String(sessions)} session${sessions === 1 ? '' : 's'} a week.`,
     }
   })
 
