@@ -3,6 +3,7 @@ import { WARM_UPS } from '@/domain/exercises/catalogue'
 import type { Exercise } from '@/domain/exercises/exercise'
 import { HYPERTROPHY_RPE } from '@/domain/exercises/loading'
 import type { MuscleGroup } from '@/domain/exercises/taxonomy'
+import { MUSCLE_GROUP_LABELS } from '@/domain/exercises/taxonomy'
 import type { RtsPrescription } from '@/domain/framework/rts'
 import { DEFAULT_RTS } from '@/domain/framework/rts'
 import type { ExerciseId, IdGenerator, ProgramId } from '@/domain/ids/ids'
@@ -266,7 +267,13 @@ function buildWeek(
     slots.push(...filled.slots)
     slots.push(...conditioning)
 
-    days.push({ index: dayIndex, label: splitDay.label, slots })
+    const ordered = inSessionOrder(slots, deps.exercises)
+
+    days.push({
+      index: dayIndex,
+      label: describeDay(splitDay, ordered, deps.exercises, targets),
+      slots: ordered,
+    })
 
     yesterday = new Set(
       slots.flatMap((slot) =>
@@ -883,6 +890,150 @@ const CONDITIONING_PLANS: Readonly<Record<string, { minutes: number; note: strin
     minutes: 12,
     note: 'Intervals: 30 seconds hard, 30 seconds rest. Hips, not arms.',
   },
+}
+
+/**
+ * A day named after what is actually in it.
+ *
+ * "Monday — press and pull" was written into the split, which made it a
+ * claim rather than a description: move a tier and the fill changes
+ * underneath the label, and the session on screen stops matching the
+ * words above it. Reading the label off the finished slots means it
+ * cannot be wrong.
+ *
+ * Built from the muscles that received the most work, capped at three so
+ * the result is a name rather than an inventory. The competition lift is
+ * named first when there is one, because it is what the day is organised
+ * around even when the volume sits elsewhere.
+ */
+function describeDay(
+  splitDay: RpDay,
+  slots: readonly Slot[],
+  library: readonly Exercise[],
+  targets: Record<MuscleGroup, number>,
+): string {
+  const lookup = (id: ExerciseId): Exercise | undefined =>
+    library.find((exercise) => exercise.id === id)
+
+  const worked = emptyVolumeMap()
+  let strengthName: string | undefined
+
+  for (const slot of slots) {
+    if (slot.exercise.kind !== 'specific') continue
+    const exercise = lookup(slot.exercise.exerciseId)
+    if (exercise === undefined) continue
+
+    if (slot.role === 'strength') strengthName = exercise.name
+    if (slot.role === 'warmup' || slot.role === 'conditioning') continue
+
+    /*
+     * Primary muscles only, deliberately.
+     *
+     * Counting secondaries as well named an upper day after the core,
+     * because pull-ups pay it a fraction and the core's weekly target is
+     * small enough for that fraction to dominate. A lifter naming a
+     * session names what they chose the exercises *for*.
+     */
+    worked[exercise.primaryMuscle] += slot.sets.filter((set) => set.isWarmup !== true).length
+  }
+
+  /*
+   * Ranked by the share of a muscle's *week* that lands today, not by raw
+   * set count.
+   *
+   * Sets alone name every day after the arms. They are trained on all
+   * five days, so they out-total anything specific to one session and
+   * every label came out "biceps and side delts" — including leg day.
+   * Share asks the question that actually distinguishes a session: of
+   * everything this muscle gets in a week, how much is here?
+   */
+  const top = (Object.keys(worked) as MuscleGroup[])
+    .filter((muscle) => worked[muscle] > 0)
+    .map((muscle) => ({ muscle, share: worked[muscle] / Math.max(1, targets[muscle]) }))
+    .sort((a, b) => b.share - a.share)
+    .slice(0, 4)
+    .map((entry) => MUSCLE_GROUP_LABELS[entry.muscle].toLowerCase())
+
+  // The competition lift is named without its parenthetical variant —
+  // "low bar squat", not "low bar squat (competition)".
+  const lift = strengthName?.replace(/\s*\([^)]*\)\s*/g, '').toLowerCase()
+
+  const parts = [...(lift === undefined ? [] : [lift]), ...top]
+  if (parts.length === 0) return splitDay.label
+
+  const named =
+    parts.length === 1
+      ? (parts[0] ?? '')
+      : `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1] ?? ''}`
+
+  return `${splitDay.label} — ${named}`
+}
+
+/**
+ * The order a session is actually performed in.
+ *
+ * The fill chooses exercises by which muscle is owed the most, which is
+ * the right way to decide *what* is in a day and a terrible way to decide
+ * *when*. It produced sessions that opened with a maximal deadlift, went
+ * to a calf raise, and then came back to a high-bar squat — heavy
+ * compound work done on the fatigue of everything that preceded it, for
+ * no reason beyond the order the debts happened to be settled in.
+ *
+ * So placement is a separate pass. Warm-ups, then the competition lift,
+ * then compounds heaviest-first while the lifter is fresh, then
+ * isolation, then conditioning. Nothing about *what* is in the session
+ * changes — only the order, which is the part the debt ordering had no
+ * business deciding.
+ */
+function inSessionOrder(slots: readonly Slot[], library: readonly Exercise[]): readonly Slot[] {
+  const rank = (slot: Slot): number => {
+    switch (slot.role) {
+      case 'warmup':
+        return 0
+      case 'main':
+      case 'strength':
+        return 1
+      case 'hypertrophy':
+        return 2
+      case 'assistance':
+        return 3
+      case 'conditioning':
+        return 4
+    }
+  }
+
+  const cost = (slot: Slot): number => {
+    if (slot.exercise.kind !== 'specific') return 0
+    const id = slot.exercise.exerciseId
+    return library.find((exercise) => exercise.id === id)?.systemicCost ?? 0
+  }
+
+  return [...slots]
+    .map((slot, index) => ({ slot, index }))
+    .sort((a, b) => {
+      const byRank = rank(a.slot) - rank(b.slot)
+      if (byRank !== 0) return byRank
+
+      /*
+       * Only the compounds are re-ordered by cost.
+       *
+       * That is where it matters — a heavy squat done after a light one
+       * is a worse squat. Among isolation the costs differ by hundredths
+       * and sorting on them only overrides a sequence somebody chose: it
+       * put the rotator-cuff work ahead of the shoulder dislocations, and
+       * curls ahead of the lateral raises Monday is anchored to.
+       */
+      if (a.slot.role !== 'hypertrophy') return a.index - b.index
+
+      // Heaviest first, so the work that most needs a fresh lifter gets one.
+      const byCost = cost(b.slot) - cost(a.slot)
+      if (byCost !== 0) return byCost
+
+      // Ties keep the fill's order, which is the muscle-debt ordering —
+      // the neediest muscle goes first among equals.
+      return a.index - b.index
+    })
+    .map((entry) => entry.slot)
 }
 
 function addInto(target: VolumeMap, addition: VolumeMap): VolumeMap {

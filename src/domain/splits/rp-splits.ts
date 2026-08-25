@@ -16,6 +16,15 @@ import type { StrengthLift } from '@/domain/priority/tiers'
 
 export interface RpDay {
   readonly index: number
+  /**
+   * The day's name only — "Monday", "Full body".
+   *
+   * What the day *contains* is appended when the block is assembled,
+   * because it is not knowable here. A hardcoded "press and pull" was
+   * wrong the moment a tier moved and the fill changed underneath it, and
+   * a label that describes a different session from the one on screen is
+   * worse than no label.
+   */
   readonly label: string
   /** Muscles this day is accountable for filling toward their weekly target. */
   readonly muscles: readonly MuscleGroup[]
@@ -170,7 +179,7 @@ const WEEK_5: RpSplit = {
   days: [
     {
       index: 0,
-      label: 'Monday — press and pull',
+      label: 'Monday',
       muscles: UPPER,
       // Pinned to the session actually trained: press, pull-ups, lateral
       // raises, curls. Other work is added around these, but these four
@@ -182,14 +191,14 @@ const WEEK_5: RpSplit = {
     },
     {
       index: 1,
-      label: 'Tuesday — squat',
+      label: 'Tuesday',
       muscles: LOWER,
       strengthLift: 'squat',
       warmUp: 'lower',
     },
     {
       index: 2,
-      label: 'Wednesday — bench',
+      label: 'Wednesday',
       muscles: UPPER,
       strengthLift: 'bench',
       conditioning: ['running'],
@@ -197,14 +206,14 @@ const WEEK_5: RpSplit = {
     },
     {
       index: 3,
-      label: 'Thursday — deadlift',
+      label: 'Thursday',
       muscles: LOWER,
       strengthLift: 'deadlift',
       warmUp: 'lower',
     },
     {
       index: 4,
-      label: 'Friday — arms and upper',
+      label: 'Friday',
       /*
        * Accountable for the whole upper body, not only for arms.
        *

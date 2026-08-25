@@ -127,6 +127,105 @@ describe('the assembled block', () => {
   })
 })
 
+describe('naming a day after what is in it', () => {
+  const week = weekAt(build(), 5)
+
+  it('names the competition lift first when the day has one', () => {
+    const tuesday = week.days[1]
+
+    expect(tuesday?.label).toMatch(/^Tuesday — low bar squat/)
+    // Without the parenthetical variant, which is catalogue bookkeeping.
+    expect(tuesday?.label).not.toContain('(')
+  })
+
+  it('names the muscles the day is actually for', () => {
+    // The hardcoded "Monday — press and pull" was a claim, not a
+    // description: move a tier and the fill changes underneath it.
+    expect(week.days[0]?.label).toContain('front delts')
+    expect(week.days[0]?.label).toContain('lats')
+    expect(week.days[1]?.label).toContain('calves')
+    expect(week.days[1]?.label).toContain('hamstrings')
+  })
+
+  it('does not name a day after a muscle it only trains incidentally', () => {
+    // Counting secondaries named an upper day after the core: pull-ups
+    // pay it a fraction, and the core's weekly target is small enough for
+    // that fraction to outrank everything chosen on purpose.
+    expect(week.days[0]?.label).not.toContain('core')
+  })
+})
+
+describe('the order a session is performed in', () => {
+  const week = weekAt(build(), 5)
+
+  const rolesOn = (dayIndex: number): string[] =>
+    (week.days[dayIndex]?.slots ?? []).map((slot) => slot.role)
+
+  it('puts the heavy work before the isolation on every day', () => {
+    /*
+     * The failure this guards against, in the lifter's own words: hit the
+     * competition lift, move to some random-seeming isolation, then go
+     * right back to two lower-body compounds. Choosing exercises by which
+     * muscle is owed the most is the right way to decide *what* is in a
+     * session and a terrible way to decide *when*.
+     */
+    const order = ['warmup', 'main', 'strength', 'hypertrophy', 'assistance', 'conditioning']
+
+    for (const [index, day] of week.days.entries()) {
+      const ranks = rolesOn(index).map((role) => order.indexOf(role))
+      expect(
+        [...ranks].sort((a, b) => a - b),
+        day.label,
+      ).toEqual(ranks)
+    }
+  })
+
+  it('opens a strength day with the competition lift, not with an accessory', () => {
+    const thursday = week.days[3]
+    const firstWorking = thursday?.slots.find((slot) => slot.role !== 'warmup')
+
+    expect(firstWorking?.role).toBe('strength')
+  })
+
+  it('does the heaviest compound first among the accessories', () => {
+    // Whatever most needs a fresh lifter should get one.
+    const costOf = (id: string): number => lookup(id)?.systemicCost ?? 0
+
+    for (const [index, day] of week.days.entries()) {
+      const costs = (week.days[index]?.slots ?? [])
+        .filter((slot) => slot.role === 'hypertrophy' && slot.exercise.kind === 'specific')
+        .flatMap((slot) =>
+          slot.exercise.kind === 'specific' ? [costOf(slot.exercise.exerciseId)] : [],
+        )
+
+      expect(
+        [...costs].sort((a, b) => b - a),
+        day.label,
+      ).toEqual(costs)
+    }
+  })
+
+  it('keeps the warm-ups in the order they were prescribed', () => {
+    // A sequence somebody chose, not a load to be spent while fresh.
+    // Sorting these by cost put the rotator-cuff work first.
+    const monday = (week.days[0]?.slots ?? [])
+      .filter((slot) => slot.role === 'warmup')
+      .flatMap((slot) => (slot.exercise.kind === 'specific' ? [slot.exercise.exerciseId] : []))
+
+    expect(monday).toEqual(['shoulder-dislocation', 'rotator-cuff-plate'])
+  })
+
+  it('finishes with conditioning', () => {
+    for (const [index, day] of week.days.entries()) {
+      const roles = rolesOn(index)
+      const conditioning = roles.indexOf('conditioning')
+      if (conditioning === -1) continue
+
+      expect(conditioning, day.label).toBe(roles.length - 1)
+    }
+  })
+})
+
 describe('conditioning', () => {
   const program = build()
   const week = weekAt(program, 3)

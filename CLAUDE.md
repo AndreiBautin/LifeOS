@@ -114,6 +114,19 @@ alternatives puts an empty workout in the history, where it counts as a
 training day and drags every frequency and volume figure down. Finishing
 and skipping share `nextPosition` so they cannot drift.
 
+**Choosing is not ordering.** The fill picks exercises by which muscle
+is owed the most, which is right for deciding _what_ is in a session and
+wrong for deciding _when_. `inSessionOrder` is a separate pass:
+warm-ups, the competition lift, compounds heaviest-first, isolation,
+conditioning. Without it a day opened with a maximal deadlift, went to a
+calf raise, and came back to a squat.
+
+**A day is named after what is in it.** `describeDay` reads the label off
+the finished slots, counting primary muscles only and ranking by share of
+the weekly target. A hardcoded "Monday — press and pull" is a claim that
+goes stale the moment a tier moves, and counting secondaries named an
+upper day after the core.
+
 **A timed set is costed by its duration.** `setSeconds` in
 `domain/programs/program.ts`. Counting a twenty-minute walk as one
 thirty-second set made conditioning free to the planner, which then
