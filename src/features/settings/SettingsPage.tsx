@@ -1,12 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { AlertTriangle, Download, HardDrive, RefreshCw, Upload } from 'lucide-react'
+import { AlertTriangle, Download, HardDrive, Play, RefreshCw, Upload } from 'lucide-react'
 import { useId, useRef, useState } from 'react'
 
 import { useServices, useSettings } from '@/app/context'
 import { MUSCLE_GROUPS, MUSCLE_GROUP_LABELS } from '@/domain/exercises/taxonomy'
 import { DEFAULT_INCREMENT } from '@/domain/units/weight'
 import { Badge, Button, Card, Section } from '@/components/shared/primitives'
-import { buildRpBlock } from '@/application/use-cases/programs/build-rp-block'
+import { buildRpBlock, CUSTOM_BLOCK_ID } from '@/application/use-cases/programs/build-rp-block'
+import { startProgram } from '@/application/use-cases/programs/manage-programs'
+import { asProgramId } from '@/domain/ids/ids'
 import {
   MAX_DAYS_PER_WEEK,
   MAX_WEEKS_BEFORE_DELOAD,
@@ -42,6 +44,23 @@ export function SettingsPage() {
   const rebuild = useMutation({
     mutationFn: () => buildRpBlock(settings, services),
     onSuccess: () => {
+      void client.invalidateQueries({ queryKey: ['programs'] })
+    },
+  })
+
+  /*
+   * Starting the block is offered here rather than sent elsewhere.
+   *
+   * "Built. Start it from Programs" was a dead end: Programs left the
+   * navigation when the picker did, so the sentence named a screen with
+   * no way to reach it. Building a block and running it are one
+   * intention, and splitting them across two screens was an artefact of
+   * there once being a library to choose from.
+   */
+  const startBuilt = useMutation({
+    mutationFn: () => startProgram(asProgramId(CUSTOM_BLOCK_ID), services),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: ['instance'] })
       void client.invalidateQueries({ queryKey: ['programs'] })
     },
   })
@@ -126,14 +145,41 @@ export function SettingsPage() {
             <RefreshCw size={16} aria-hidden />
             {rebuild.isPending ? 'Building…' : 'Build a block from these priorities'}
           </Button>
-          {rebuild.isSuccess && (
+          {rebuild.isSuccess && !startBuilt.isSuccess && (
+            <div className="border-ink-800 mt-3 border-t pt-3">
+              <p className="text-ink-50 text-sm font-medium">{rebuild.data.name}</p>
+              <p className="text-ink-500 mt-0.5 text-xs">{rebuild.data.description}</p>
+              <Button
+                variant="primary"
+                full
+                className="mt-3"
+                disabled={startBuilt.isPending}
+                onClick={() => {
+                  startBuilt.mutate()
+                }}
+              >
+                <Play size={16} aria-hidden />
+                {startBuilt.isPending ? 'Starting…' : 'Train this block'}
+              </Button>
+              <p className="text-ink-500 mt-2 text-xs">
+                Starts it from week one. Anything you are part-way through is paused rather than
+                lost, and its logged sessions stay in your history.
+              </p>
+            </div>
+          )}
+          {startBuilt.isSuccess && (
             <p className="text-good-500 mt-2 text-xs" role="status">
-              Built. Start it from Programs.
+              Running. Today’s session is on the Train screen.
             </p>
           )}
           {rebuild.isError && (
             <p className="text-bad-500 mt-2 text-xs" role="alert">
               {rebuild.error.message}
+            </p>
+          )}
+          {startBuilt.isError && (
+            <p className="text-bad-500 mt-2 text-xs" role="alert">
+              {startBuilt.error.message}
             </p>
           )}
         </Card>

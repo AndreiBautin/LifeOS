@@ -6,6 +6,8 @@ import type { Exercise } from '@/domain/exercises/exercise'
 import { asExerciseId, asInstanceId, asProgramId, type IdGenerator } from '@/domain/ids/ids'
 import type { ProgramTemplate } from '@/domain/programs/program'
 import type { ProgramInstance } from '@/domain/repositories/ports'
+import { buildRpBlock } from '@/application/use-cases/programs/build-rp-block'
+import { DEFAULT_SETTINGS } from '@/domain/settings/settings'
 import { STORAGE_KEYS } from '@/config/storage-keys'
 import { BUILT_IN_PROGRAM_COUNT, builtInPrograms } from '@/infrastructure/seed/built-in-programs'
 import {
@@ -474,6 +476,30 @@ describe('keeping the built-in library current', () => {
 
     expect(await refreshBuiltInPrograms(deps())).toEqual([])
     expect((await programs.byId(asProgramId('built-in-rp-block')))?.name).toBe('My tweaked block')
+  })
+
+  it('replaces the built block rather than accumulating one per press', async () => {
+    // A generated id left another near-identical template behind on every
+    // press of Build — precisely the library of things-to-choose-between
+    // this app does not have.
+    const programs = createProgramRepository(db)
+    await seedIfEmpty(deps())
+
+    const buildDeps = {
+      programs,
+      instances: createInstanceRepository(db),
+      exercises: createExerciseRepository(db),
+      ids: counterIds(),
+      clock: { now: () => new Date('2026-08-24T00:00:00Z') },
+    }
+
+    const before = await programs.count()
+    await buildRpBlock(DEFAULT_SETTINGS, buildDeps)
+    const afterFirst = await programs.count()
+    await buildRpBlock(DEFAULT_SETTINGS, buildDeps)
+
+    expect(afterFirst).toBe(before + 1)
+    expect(await programs.count()).toBe(afterFirst)
   })
 
   it('re-snapshots a run nothing has been logged against', async () => {

@@ -14,6 +14,16 @@ import type { ProgramDeps } from './manage-programs'
  * is something the app is already autoregulating. Asking for them again
  * would let the two drift.
  */
+/**
+ * The id every block built from settings uses.
+ *
+ * Stable, so building twice replaces rather than accumulates. A generated
+ * id meant each press of the button left another near-identical template
+ * behind, which is precisely the library of things-to-choose-between that
+ * this app does not have.
+ */
+export const CUSTOM_BLOCK_ID = 'custom-rp-block'
+
 export function recipeFromSettings(
   settings: AppSettings,
   overrides: Partial<RpRecipe> = {},
@@ -39,9 +49,11 @@ export async function buildRpBlock(
   deps: ProgramDeps,
   overrides: Partial<RpRecipe> = {},
 ): Promise<ProgramTemplate> {
+  const existing = await deps.programs.byId(asProgramId(CUSTOM_BLOCK_ID))
+
   const program = assembleRpProgram(
     recipeFromSettings(settings, overrides),
-    asProgramId(deps.ids.next()),
+    asProgramId(CUSTOM_BLOCK_ID),
     {
       exercises: await deps.exercises.all(),
       ids: deps.ids,
@@ -49,7 +61,11 @@ export async function buildRpBlock(
     },
   )
 
-  await deps.programs.save(program)
+  await deps.programs.save({
+    ...program,
+    ...(existing !== undefined ? { createdAt: existing.createdAt } : {}),
+  })
+
   return program
 }
 

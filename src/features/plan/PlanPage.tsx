@@ -131,6 +131,15 @@ export function PlanPage() {
               See the block itself
             </Link>
           )}
+          {/*
+            Not a picker — the app starts and replaces blocks on its own.
+            It is here because the page exists and was otherwise
+            unreachable once Programs left the navigation, which is how a
+            lifter ends up with templates they cannot delete.
+          */}
+          <Link to="/programs" className={cn(buttonStyles({ variant: 'ghost' }), 'w-full')}>
+            Every block you have built
+          </Link>
         </Card>
       </Section>
     </div>
