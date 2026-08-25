@@ -65,8 +65,8 @@ const keys = {
   recent: (limit: number) => ['workouts', 'recent', limit] as const,
   exercises: ['exercises'] as const,
   programs: ['programs'] as const,
-  previousSet: (exerciseId: ExerciseId, setIndex: number) =>
-    ['previous-set', exerciseId, setIndex] as const,
+  previousSet: (exerciseId: ExerciseId, setIndex: number, variant: string) =>
+    ['previous-set', exerciseId, setIndex, variant] as const,
 }
 
 export function useActiveWorkout() {
@@ -228,15 +228,23 @@ export function usePreviousSet(
   exerciseId: ExerciseId | undefined,
   setIndex: number,
   currentWorkoutId: WorkoutId | undefined,
+  /** Distinguishes the top-set row from the back-off row of the same lift. */
+  variant?: string,
 ) {
   const services = useServices()
 
   return useQuery<PreviousSet | null>({
-    queryKey: keys.previousSet(exerciseId ?? ('' as ExerciseId), setIndex),
+    queryKey: keys.previousSet(exerciseId ?? ('' as ExerciseId), setIndex, variant ?? ''),
     enabled: exerciseId !== undefined && currentWorkoutId !== undefined,
     queryFn: async () => {
       if (exerciseId === undefined || currentWorkoutId === undefined) return null
-      const previous = await previousSetFor(exerciseId, setIndex, currentWorkoutId, services)
+      const previous = await previousSetFor(
+        exerciseId,
+        setIndex,
+        currentWorkoutId,
+        services,
+        variant,
+      )
       return previous ?? null
     },
   })

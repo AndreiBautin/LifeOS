@@ -149,12 +149,25 @@ under it. **Every muscle with direct work is named**, uncapped: a reader
 who can see a curl in the session and no biceps in the description has
 found a bug whatever the arithmetic said.
 
-**Compound and isolation are sub-categories of hypertrophy.** The roles
-stay `hypertrophy` and `assistance` because they are written into every
-stored log, but they both _label_ as "Hypertrophy" with a separate
-sub-badge — the same relationship the competition lifts have to strength.
-Labelling them "Hypertrophy" and "Assistance" implied two different
-purposes when the only difference is what a set costs.
+**Every slot has a category and a sub-category.** Strength splits into
+`Top set` and `Back-off`, hypertrophy into `Compound` and `Isolation`,
+warm-ups into `Upper` and `Lower`; conditioning has none, because a run
+does not divide into two sorts of run. The sub-category lives on
+`Slot.variant` and is copied onto `LogEntry.variant` at start, not
+derived from the role — a warm-up's body half and a strength slot's
+position in the pair cannot be read off `role` at all. The roles stay
+`hypertrophy` and `assistance` because they are written into every stored
+log, but both _label_ as "Hypertrophy".
+
+**The competition lift is two slots, not one.** They were merged once on
+the reasoning that it is one exercise in one trip to the rack — true, and
+it hid what makes this RTS: the top set is a _measurement_ everything
+below derives from, and the back-off count is discovered rather than
+planned. As one six-set row it read exactly like a percentage
+prescription. They stay adjacent because `inSessionOrder` is a stable
+sort and both rank the same. **`previousSetFor` must take the variant**:
+matching on the exercise alone hands the first back-off the previous
+session's _top set_ as its "last time".
 
 **A heavy hypertrophy set is not taken to failure.** `safeToFail` covers
 "you would be pinned under it"; `HEAVY_HYPERTROPHY_REPS` covers the other

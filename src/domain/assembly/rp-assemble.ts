@@ -398,23 +398,49 @@ function buildStrengthSlots(
       : {}),
   }))
 
-  // One slot, with the sets labelled. The top set and its back-offs are
-  // the same exercise in the same trip to the rack; splitting them into
-  // two rows made a lifter scroll past the lift to find the rest of it.
-  // What actually needed distinguishing was the *sets*, and they carry
-  // their own labels.
-  const slot: Slot = {
+  /*
+   * Two slots, not one, and they do different jobs.
+   *
+   * They were merged for a while on the reasoning that the top set and
+   * its back-offs are the same exercise in the same trip to the rack.
+   * True, and it hid the thing that makes RTS RTS: the top set is a
+   * *measurement* the rest of the session is derived from, and the
+   * back-offs are work whose number is not known in advance. One row
+   * labelled "Strength" said neither, and the pair of them read as one
+   * six-set prescription — which is exactly what a percentage program
+   * would give you and exactly what this is not.
+   *
+   * They stay adjacent because the ordering pass is a stable sort and
+   * both rank the same, so the top set is always the row above.
+   */
+  const top: Slot = {
     id: asSlotId(deps.ids.next()),
     role: 'strength',
+    variant: 'Top set',
     exercise: { kind: 'specific', exerciseId },
-    sets: [topSet, ...backoffs],
+    sets: [topSet],
     restSeconds: exercise.defaultRestSeconds ?? 180,
     notes: isDeload
-      ? 'Deload — top set and one back-off, both easy.'
-      : `${describeMethod(recipe.rts)} · ${String(fatigueTarget)}% fatigue target`,
+      ? 'Deload — work up to something easy and stop.'
+      : 'One set. What it weighs and how it felt is where every number below comes from.',
   }
 
-  return { slots: [slot], spent: slotVolume(exercise, slot.sets) }
+  const backoff: Slot = {
+    id: asSlotId(deps.ids.next()),
+    role: 'strength',
+    variant: 'Back-off',
+    exercise: { kind: 'specific', exerciseId },
+    sets: backoffs,
+    restSeconds: exercise.defaultRestSeconds ?? 180,
+    notes: isDeload
+      ? 'Deload — one back-off, easy.'
+      : `${describeMethod(recipe.rts)} · ${String(fatigueTarget)}% fatigue target. The set count is a cap, not a plan.`,
+  }
+
+  return {
+    slots: [top, backoff],
+    spent: addInto(slotVolume(exercise, top.sets), slotVolume(exercise, backoff.sets)),
+  }
 }
 
 function describeMethod(rts: RtsPrescription): string {
@@ -514,6 +540,7 @@ function fillHypertrophy(args: FillArgs): BuiltSlots {
     const slot: Slot = {
       id: asSlotId(deps.ids.next()),
       role: exercise.isCompound ? 'hypertrophy' : 'assistance',
+      variant: exercise.isCompound ? 'Compound' : 'Isolation',
       exercise: { kind: 'specific', exerciseId: exercise.id },
       sets,
       restSeconds: exercise.defaultRestSeconds ?? 120,
@@ -581,6 +608,7 @@ function fillHypertrophy(args: FillArgs): BuiltSlots {
     const slot: Slot = {
       id: asSlotId(deps.ids.next()),
       role: exercise.isCompound ? 'hypertrophy' : 'assistance',
+      variant: exercise.isCompound ? 'Compound' : 'Isolation',
       exercise: { kind: 'specific', exerciseId: exercise.id },
       sets,
       restSeconds: exercise.defaultRestSeconds ?? 120,
@@ -646,6 +674,7 @@ function fillHypertrophy(args: FillArgs): BuiltSlots {
     const slot: Slot = {
       id: asSlotId(deps.ids.next()),
       role: exercise.isCompound ? 'hypertrophy' : 'assistance',
+      variant: exercise.isCompound ? 'Compound' : 'Isolation',
       exercise: { kind: 'specific', exerciseId: exercise.id },
       sets,
       restSeconds: exercise.defaultRestSeconds ?? 120,
@@ -940,6 +969,10 @@ function warmUpSlots(
       {
         id: asSlotId(deps.ids.next()),
         role: 'warmup',
+        // Which half of the body it prepares. Not inferable from the
+        // exercise — shoulder dislocations open an upper day and foam
+        // rolling a lower one, and the routine is a property of the day.
+        variant: day.warmUp === 'upper' ? 'Upper' : 'Lower',
         exercise: { kind: 'specific', exerciseId: exercise.id },
         sets: Array.from({ length: plan.sets }, () => ({
           load: { kind: 'open' as const },

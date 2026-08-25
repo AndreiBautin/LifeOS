@@ -64,6 +64,14 @@ export interface LoggedSet {
 export interface LogEntry {
   readonly exerciseId: ExerciseId
   readonly role: SlotRole
+  /**
+   * The slot's sub-category, copied at the time the session was started.
+   *
+   * Embedded rather than looked up, for the same reason the prescription
+   * is: a log describes itself. Absent on anything logged before slots
+   * carried one.
+   */
+  readonly variant?: string
   /** Links back to the slot this came from, when the workout follows a program. */
   readonly slotId?: SlotId
   readonly order: number

@@ -138,6 +138,7 @@ function buildFromDay(
       {
         exerciseId,
         role: slot.role,
+        ...(slot.variant !== undefined ? { variant: slot.variant } : {}),
         slotId: slot.id,
         order,
         sets,

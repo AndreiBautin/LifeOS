@@ -34,6 +34,8 @@ interface Props {
   readonly entryIndex: number
   readonly exerciseId: ExerciseId
   readonly workoutId: WorkoutId
+  /** The entry sub-category, so a back-off compares against back-offs. */
+  readonly variant?: string | undefined
   readonly units: WeightUnit
   readonly isOpen: boolean
   readonly onOpen: () => void
@@ -48,7 +50,7 @@ interface Props {
 
 export function SetRow(props: Props) {
   const { set, index, exerciseId, workoutId, units, isOpen, onOpen } = props
-  const { data: previous } = usePreviousSet(exerciseId, index, workoutId)
+  const { data: previous } = usePreviousSet(exerciseId, index, workoutId, props.variant)
 
   const done = set.outcome === 'completed' && set.completedAt !== undefined
   const skipped = set.outcome === 'skipped'

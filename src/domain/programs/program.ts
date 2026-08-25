@@ -68,20 +68,31 @@ export const SLOT_ROLE_LABELS: Record<SlotRole, string> = {
 }
 
 /**
- * The sub-category, where the role has one.
+ * The sub-category a slot reads under its role.
  *
- * Compound and isolation are two ways of doing hypertrophy work, not two
- * kinds of work — the same relationship the competition lifts have to
- * strength. Labelling them "Hypertrophy" and "Assistance" put them in
- * different buckets and implied different purposes; showing the bucket
- * and the sub-category as separate marks says what is actually true,
- * which is that a barbell row and a rear-delt raise share a goal and
- * cost very different amounts.
+ * Every category has one, so the badge pair is a consistent shape rather
+ * than something that appears on some rows and not others: strength
+ * splits into the top set and the back-offs, hypertrophy into compound
+ * and isolation, warm-ups into upper and lower. In each case the two are
+ * the same kind of work done differently, not different kinds of work.
+ *
+ * Carried on the slot rather than derived from the role, because two of
+ * the three cannot be read off the role at all — a warm-up is upper or
+ * lower according to the day it opens, and a strength slot is a top set
+ * or a back-off according to which of the pair it is.
  */
-export function slotRoleVariant(role: string): string | undefined {
-  return (SLOT_ROLE_VARIANTS as Partial<Record<string, string>>)[role]
+export function slotVariant(slot: { readonly role: string; readonly variant?: string }): string {
+  return slot.variant ?? (SLOT_ROLE_VARIANTS as Partial<Record<string, string>>)[slot.role] ?? ''
 }
 
+/**
+ * The fallback for a slot with no variant of its own.
+ *
+ * Only reached by a workout logged before slots carried one. Compound and
+ * isolation are recoverable from the role; a warm-up's body half and a
+ * strength slot's position in the pair are not, and those simply show no
+ * sub-badge rather than a guessed one.
+ */
 export const SLOT_ROLE_VARIANTS: Partial<Record<SlotRole, string>> = {
   hypertrophy: 'Compound',
   assistance: 'Isolation',
@@ -128,6 +139,8 @@ export type ExerciseRef =
 export interface Slot {
   readonly id: SlotId
   readonly role: SlotRole
+  /** The sub-category shown beside the role — see {@link slotVariant}. */
+  readonly variant?: string
   readonly exercise: ExerciseRef
   readonly sets: readonly SetPrescription[]
   readonly restSeconds?: number

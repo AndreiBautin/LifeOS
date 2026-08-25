@@ -4,7 +4,7 @@ import { useSettings } from '@/app/context'
 import type { Exercise } from '@/domain/exercises/exercise'
 import type { ExerciseId } from '@/domain/ids/ids'
 import type { Slot } from '@/domain/programs/program'
-import { slotRoleLabel, slotRoleTone, slotRoleVariant } from '@/domain/programs/program'
+import { slotRoleLabel, slotRoleTone, slotVariant } from '@/domain/programs/program'
 import { describeReps } from '@/domain/programs/prescription'
 import { resolveSets } from '@/domain/resolution/resolve'
 import { attributeWeek, type MuscleAttribution } from '@/domain/volume/attribution'
@@ -216,9 +216,7 @@ function SlotRow({
       */}
       <span className="flex shrink-0 items-center gap-1.5">
         <Badge tone={slotRoleTone(slot.role)}>{slotRoleLabel(slot.role)}</Badge>
-        {slotRoleVariant(slot.role) !== undefined && (
-          <Badge tone="sub">{slotRoleVariant(slot.role)}</Badge>
-        )}
+        {slotVariant(slot) !== '' && <Badge tone="sub">{slotVariant(slot)}</Badge>}
       </span>
     </div>
   )

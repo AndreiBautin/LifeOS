@@ -144,13 +144,28 @@ export async function previousSetFor(
   setIndex: number,
   currentWorkoutId: WorkoutId,
   deps: LogSetDeps,
+  /**
+   * Which of the exercise's entries to compare against.
+   *
+   * One exercise can appear twice in a session — the competition lift is
+   * a top-set slot and a back-off slot, deliberately. Matching on the
+   * exercise alone took the *first* entry, so the first back-off was
+   * shown the previous session's top set as its "last time": a heavier
+   * number, silently, on the one row where the lifter is deciding what to
+   * put on the bar.
+   */
+  variant?: string,
 ): Promise<PreviousSet | undefined> {
   const history = await deps.workouts.forExercise(exerciseId, 10)
 
   for (const workout of history) {
     if (workout.id === currentWorkoutId) continue
 
-    const entry = workout.entries.find((candidate) => candidate.exerciseId === exerciseId)
+    const matching = workout.entries.filter((candidate) => candidate.exerciseId === exerciseId)
+
+    // Falls back to the first entry when nothing matches — a workout
+    // logged before entries carried a variant has only one anyway.
+    const entry = matching.find((candidate) => candidate.variant === variant) ?? matching[0]
     if (entry === undefined) continue
 
     const performed = entry.sets.filter((set) => !set.isWarmup && set.outcome === 'completed')

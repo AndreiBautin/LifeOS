@@ -88,42 +88,66 @@ describe('the assembled block', () => {
 
   it('opens three of the five days with a competition lift', () => {
     const week = block?.weeks[0]
-    const mains = (week?.days ?? []).map((day) =>
-      day.slots
-        .filter((slot) => slot.role === 'strength')
-        .flatMap((slot) => (slot.exercise.kind === 'specific' ? [slot.exercise.exerciseId] : [])),
-    )
+    const mains = (week?.days ?? []).map((day) => [
+      ...new Set(
+        day.slots
+          .filter((slot) => slot.role === 'strength')
+          .flatMap((slot) => (slot.exercise.kind === 'specific' ? [slot.exercise.exerciseId] : [])),
+      ),
+    ])
 
     // The press-led upper day carries none: the overhead press is
     // hypertrophy work under this model, not part of the total.
     expect(mains).toEqual([[], ['low-bar-squat'], ['bench-press'], ['sumo-deadlift'], []])
   })
 
-  it('labels the top set and the back-offs inside one exercise', () => {
-    // One slot, not two. The top set and its back-offs are the same
-    // exercise in the same trip to the rack, so splitting them into two
-    // rows made a lifter scroll past the lift to find the rest of it.
-    // What needed distinguishing was the sets, and they carry labels.
-    const benchDay = block?.weeks[0]?.days[2]
-    const bench = benchDay?.slots.filter((slot) => slot.role === 'strength') ?? []
+  /*
+   * Two slots, adjacent, and they are not the same kind of thing.
+   *
+   * They were merged for a while on the reasoning that it is one exercise
+   * in one trip to the rack. True, and it hid what makes this RTS: the
+   * top set is a measurement everything below is derived from, and the
+   * back-offs are work whose count is discovered rather than planned. As
+   * one six-set row it read exactly like a percentage prescription.
+   */
+  it('splits the competition lift into a top set and its back-offs', () => {
+    const bench = block?.weeks[0]?.days[2]?.slots.filter((slot) => slot.role === 'strength') ?? []
 
-    expect(bench).toHaveLength(1)
+    expect(bench).toHaveLength(2)
+    expect(bench.map((slot) => slot.variant)).toEqual(['Top set', 'Back-off'])
 
-    const sets = bench[0]?.sets ?? []
-    expect(sets[0]?.label).toBe('Top set')
-    expect(sets[0]?.notes).toMatch(/work up until this feels like/i)
-    expect(sets.slice(1).every((set) => set.label === 'Back-off')).toBe(true)
-    expect(bench[0]?.notes).toMatch(/fatigue target/)
+    // The top set first, always: the ordering pass is a stable sort and
+    // both slots rank the same, so build order is what survives.
+    expect(bench[0]?.sets).toHaveLength(1)
+    expect(bench[0]?.sets[0]?.label).toBe('Top set')
+    expect(bench[0]?.sets[0]?.notes).toMatch(/work up until this feels like/i)
+
+    expect(bench[1]?.sets.every((set) => set.label === 'Back-off')).toBe(true)
+    expect(bench[1]?.notes).toMatch(/fatigue target/)
   })
 
   it('gives the prioritised lift more back-off volume than the maintained ones', () => {
     const week = block?.weeks[0]
-    const setsFor = (dayIndex: number): number =>
-      week?.days[dayIndex]?.slots.find((slot) => slot.role === 'strength')?.sets.length ?? 0
+    const backoffsOn = (dayIndex: number): number =>
+      week?.days[dayIndex]?.slots.find((slot) => slot.variant === 'Back-off')?.sets.length ?? 0
 
     // Bench is tier 1, squat and deadlift tier 2.
-    expect(setsFor(2)).toBeGreaterThan(setsFor(1))
-    expect(setsFor(3)).toBeGreaterThan(0)
+    expect(backoffsOn(2)).toBeGreaterThan(backoffsOn(1))
+    expect(backoffsOn(3)).toBeGreaterThan(0)
+  })
+
+  it('gives every slot a sub-category, so the badge pair is one shape', () => {
+    for (const week of block?.weeks ?? []) {
+      for (const day of week.days) {
+        for (const slot of day.slots) {
+          // Conditioning is the exception: a run does not divide into two
+          // sorts of run, and inventing a split to fill the space would
+          // be decoration rather than information.
+          if (slot.role === 'conditioning') continue
+          expect(slot.variant, `${day.label}: ${slot.role}`).toBeDefined()
+        }
+      }
+    }
   })
 })
 
