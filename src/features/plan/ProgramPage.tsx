@@ -75,25 +75,50 @@ export function ProgramPage() {
       </header>
 
       <div className="mb-5 flex gap-1.5 overflow-x-auto pb-1" role="tablist" aria-label="Week">
-        {weeks.map((candidate, index) => (
-          <button
-            key={index}
-            type="button"
-            role="tab"
-            aria-selected={index === current}
-            onClick={() => {
-              setWeekIndex(index)
-            }}
-            className={cn(
-              'tap-target shrink-0 rounded-lg border px-3 text-xs font-semibold transition-colors',
-              index === current
-                ? 'border-accent-500 bg-accent-500 text-black'
-                : 'border-ink-800 bg-ink-850 text-ink-500 hover:border-ink-700',
-            )}
-          >
-            {candidate.isDeload ? 'Deload' : `Wk ${String(index + 1)}`}
-          </button>
-        ))}
+        {weeks.map((candidate, index) => {
+          const label = candidate.isDeload ? 'Deload' : `Wk ${String(index + 1)}`
+          /*
+           * Two different things were both signalled by "this tab is
+           * highlighted": the week being *looked at* and the week being
+           * *trained*. They are the same until you tap another tab, and
+           * then there is no way to tell where you actually are — which
+           * makes a page opened on week three indistinguishable from one
+           * opened on week one and browsed forward.
+           */
+          const isHere = index === here?.weekIndex
+
+          return (
+            <button
+              key={index}
+              type="button"
+              role="tab"
+              aria-selected={index === current}
+              aria-label={isHere ? `${label}, the week you are on` : label}
+              onClick={() => {
+                setWeekIndex(index)
+              }}
+              className={cn(
+                'tap-target flex shrink-0 items-center gap-1.5 rounded-lg border px-3 text-xs font-semibold transition-colors',
+                index === current
+                  ? 'border-accent-500 bg-accent-500 text-black'
+                  : isHere
+                    ? 'border-accent-500/50 bg-ink-850 text-ink-100'
+                    : 'border-ink-800 bg-ink-850 text-ink-500 hover:border-ink-700',
+              )}
+            >
+              {label}
+              {isHere && (
+                <span
+                  aria-hidden
+                  className={cn(
+                    'size-1.5 rounded-full',
+                    index === current ? 'bg-black/50' : 'bg-accent-500',
+                  )}
+                />
+              )}
+            </button>
+          )
+        })}
       </div>
 
       {/*
