@@ -117,8 +117,15 @@ describe('turning a position into a weekly target', () => {
     expect(weeklyTargetFor(chest, 1, { overreach: true })).toBe(chest.mrv)
   })
 
-  it('lands at minimum effective volume in the middle of the range', () => {
-    expect(weeklyTargetFor(chest, 0.5)).toBe(chest.mev)
+  it('lands at minimum effective volume a quarter of the way up', () => {
+    expect(weeklyTargetFor(chest, 0.25)).toBe(chest.mev)
+  })
+
+  it('puts the middle of the ordering in the productive band, not at its floor', () => {
+    // A muscle a lifter named as one to build should get building volume.
+    const middle = weeklyTargetFor(chest, 0.5)
+    expect(middle).toBeGreaterThan(chest.mev)
+    expect(middle).toBeLessThan(chest.mav)
   })
 
   it('drops toward maintenance at the bottom', () => {

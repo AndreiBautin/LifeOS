@@ -125,15 +125,26 @@ export function weeklyTargetFor(
   options: VolumeTargetOptions = {},
 ): number {
   const p = clamp01(position)
-
-  // Below the midpoint we interpolate MV → MEV → the low end of the
-  // productive band; above it, toward the ceiling.
   const ceiling = options.overreach === true ? landmarks.mrv : justUnder(landmarks)
 
+  /*
+   * Four anchors rather than two: MV at the bottom, MEV a quarter of the
+   * way up, MAV three quarters, and the ceiling at the top.
+   *
+   * The obvious two-anchor version — MV → MEV → ceiling with MEV at the
+   * midpoint — puts the *middle* tier of a three-tier structure at
+   * exactly MEV, which is the least volume that grows anything. A muscle
+   * a lifter explicitly named as one they want to build would then get
+   * maintenance volume and no ramp. Putting MEV at a quarter leaves the
+   * whole productive band available to the middle of the ordering, which
+   * is where most muscles sit.
+   */
   const value =
-    p <= 0.5
-      ? lerp(landmarks.mv, landmarks.mev, p / 0.5)
-      : lerp(landmarks.mev, ceiling, (p - 0.5) / 0.5)
+    p <= 0.25
+      ? lerp(landmarks.mv, landmarks.mev, p / 0.25)
+      : p <= 0.75
+        ? lerp(landmarks.mev, landmarks.mav, (p - 0.25) / 0.5)
+        : lerp(landmarks.mav, ceiling, (p - 0.75) / 0.25)
 
   return Math.max(0, Math.round(value))
 }
@@ -177,7 +188,9 @@ export function weeklyTargetForWeek(
     overreach: workingWeeks > 1 && weekIndex === workingWeeks - 1,
   })
 
-  const start = Math.max(landmarks.mev, Math.min(peak, landmarks.mev))
+  // Open at MEV, or at the peak itself when the peak is below MEV — a
+  // deprioritised muscle should not start above where it is going.
+  const start = Math.min(peak, landmarks.mev)
   if (workingWeeks <= 1) return Math.round(peak)
 
   const progress = clamp01(weekIndex / (workingWeeks - 1))

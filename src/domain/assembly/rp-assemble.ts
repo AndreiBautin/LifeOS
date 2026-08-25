@@ -1,0 +1,649 @@
+import { invariant } from '@/domain/errors/domain-error'
+import { WARM_UP_SLUGS } from '@/domain/exercises/catalogue'
+import type { Exercise } from '@/domain/exercises/exercise'
+import { HYPERTROPHY_RPE } from '@/domain/exercises/loading'
+import type { MuscleGroup } from '@/domain/exercises/taxonomy'
+import type { RtsPrescription } from '@/domain/framework/rts'
+import { DEFAULT_RTS } from '@/domain/framework/rts'
+import type { ExerciseId, IdGenerator, ProgramId } from '@/domain/ids/ids'
+import { asExerciseId, asSlotId } from '@/domain/ids/ids'
+import type { SetPrescription } from '@/domain/programs/prescription'
+import type {
+  ProgramDay,
+  ProgramSettings,
+  ProgramTemplate,
+  ProgramWeek,
+  Slot,
+} from '@/domain/programs/program'
+import { DEFAULT_PROGRAM_SETTINGS } from '@/domain/programs/program'
+import type { MuscleTiers, StrengthLift, StrengthTiers } from '@/domain/priority/tiers'
+import {
+  DEFAULT_MUSCLE_TIERS,
+  DEFAULT_STRENGTH_TIERS,
+  priorityPosition,
+  validateTiers,
+  weeklyTargetForWeek,
+} from '@/domain/priority/tiers'
+import type { RpDay, RpSplit } from '@/domain/splits/rp-splits'
+import { rpFrequency, rpSplitForDays } from '@/domain/splits/rp-splits'
+import { slotVolume, type VolumeMap } from '@/domain/volume/accounting'
+import { emptyVolumeMap } from '@/domain/volume/landmarks'
+import type { LandmarkSet } from '@/domain/volume/landmarks'
+import { DEFAULT_LANDMARKS } from '@/domain/volume/landmarks'
+
+import { DEFAULT_WEEKS_BEFORE_DELOAD } from '@/domain/autoregulation/schedule'
+
+/**
+ * Assembling an RP block with RTS strength work.
+ *
+ * Reads top to bottom as the decisions actually stack:
+ *
+ *   1. **Tiers set the ceiling.** Each muscle's weekly target comes from
+ *      where its tier sits and how concentrated the tier structure is.
+ *   2. **The week ramps into it.** Week one opens near MEV and climbs, so
+ *      the block has somewhere to go.
+ *   3. **Strength work is placed first** and its volume counted, because
+ *      the competition lifts are not negotiable and they pay several
+ *      muscles at once.
+ *   4. **Hypertrophy fills the remainder**, cheapest-first by SFR, capped
+ *      at MRV across the whole week rather than per session.
+ *
+ * Step 4's ordering is what a garage gym makes matter. With no cables,
+ * the difference between filling side delts with lateral raises and
+ * filling them with upright rows is most of the week's systemic budget.
+ */
+
+export interface RpRecipe {
+  readonly name: string
+  readonly description: string
+  readonly strengthTiers: StrengthTiers
+  readonly muscleTiers: MuscleTiers
+  readonly landmarks: LandmarkSet
+  readonly daysPerWeek: number
+  readonly weeksBeforeDeload: number
+  readonly rts: RtsPrescription
+  readonly includeWarmUps: boolean
+  readonly maxHypertrophySlotsPerDay: number
+  readonly minSetsPerSlot: number
+  readonly maxSetsPerSlot: number
+  readonly excludedExercises: readonly ExerciseId[]
+  readonly settings: ProgramSettings
+}
+
+export function defaultRpRecipe(overrides: Partial<RpRecipe> = {}): RpRecipe {
+  return {
+    name: 'RP block — arms and side delts',
+    description:
+      'Renaissance Periodization volume with RTS autoregulated strength on the three lifts. Arms and side delts specialised; back and chest building; everything else maintained.',
+    strengthTiers: DEFAULT_STRENGTH_TIERS,
+    muscleTiers: DEFAULT_MUSCLE_TIERS,
+    landmarks: DEFAULT_LANDMARKS,
+    daysPerWeek: 4,
+    weeksBeforeDeload: DEFAULT_WEEKS_BEFORE_DELOAD,
+    rts: DEFAULT_RTS,
+    includeWarmUps: true,
+    maxHypertrophySlotsPerDay: 6,
+    minSetsPerSlot: 2,
+    maxSetsPerSlot: 5,
+    excludedExercises: [],
+    settings: DEFAULT_PROGRAM_SETTINGS,
+    ...overrides,
+  }
+}
+
+export interface RpAssembleDeps {
+  readonly exercises: readonly Exercise[]
+  readonly ids: IdGenerator
+  readonly now: Date
+}
+
+export function assembleRpProgram(
+  recipe: RpRecipe,
+  programId: ProgramId,
+  deps: RpAssembleDeps,
+): ProgramTemplate {
+  validateTiers(recipe.muscleTiers)
+  validateTiers(recipe.strengthTiers)
+  invariant(
+    recipe.weeksBeforeDeload >= 1,
+    'RP_BLOCK_TOO_SHORT',
+    'A block needs at least one working week.',
+  )
+
+  const split = rpSplitForDays(recipe.daysPerWeek)
+  const timestamp = deps.now.toISOString()
+  const workingWeeks = recipe.weeksBeforeDeload
+
+  const weeks: ProgramWeek[] = []
+  for (let weekIndex = 0; weekIndex <= workingWeeks; weekIndex += 1) {
+    const isDeload = weekIndex === workingWeeks
+    weeks.push(buildWeek(recipe, deps, split, weekIndex, workingWeeks, isDeload))
+  }
+
+  return {
+    id: programId,
+    name: recipe.name,
+    description: recipe.description,
+    origin: 'custom',
+    blocks: [
+      {
+        index: 0,
+        label: `${String(workingWeeks)}-week block`,
+        phase: 'hypertrophy',
+        weeks,
+        // Progression is autoregulated in-session by RTS rather than
+        // scheduled, so the block carries no percentage rules.
+        progression: [],
+        repeat: 'indefinite',
+      },
+    ],
+    settings: recipe.settings,
+    // RTS finds the load by feel; nothing here needs a training max.
+    requiredTrainingMaxes: [],
+    tags: ['rp', 'rts', split.id],
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  }
+}
+
+/* -------------------------------------------------------------------- */
+
+function buildWeek(
+  recipe: RpRecipe,
+  deps: RpAssembleDeps,
+  split: RpSplit,
+  weekIndex: number,
+  workingWeeks: number,
+  isDeload: boolean,
+): ProgramWeek {
+  /*
+   * Strength work first, for the whole week, before any hypertrophy is
+   * chosen. The competition lifts are fixed and they pay several muscles
+   * at once — a squat is quads, glutes, hamstrings and core — so filling
+   * day by day would let Monday's accessories spend a budget Thursday's
+   * deadlift is going to need.
+   */
+  const strengthByDay = split.days.map((day) => buildStrengthSlots(recipe, deps, day, isDeload))
+  const strengthWeekSpend = strengthByDay.reduce<VolumeMap>(
+    (total, built) => addInto(total, built.spent),
+    emptyVolumeMap(),
+  )
+
+  const targets = weeklyTargets(recipe, weekIndex, workingWeeks, isDeload)
+
+  let committed = strengthWeekSpend
+
+  /*
+   * Days *already built* on which each muscle received work.
+   *
+   * Counted as the week is assembled rather than totalled up front:
+   * pre-counting the whole week's strength spend would tell the press day
+   * that the chest is already served, because the bench day two sessions
+   * later pays it — and the press day would then skip it, leaving the
+   * chest trained once on a split built to train it twice.
+   */
+  const daysTrained = Object.fromEntries(
+    (Object.keys(recipe.landmarks) as MuscleGroup[]).map((muscle) => [muscle, 0]),
+  ) as Record<MuscleGroup, number>
+
+  const days: ProgramDay[] = []
+
+  for (const [dayIndex, splitDay] of split.days.entries()) {
+    const strength = strengthByDay[dayIndex]
+    const slots: Slot[] = []
+
+    if (recipe.includeWarmUps) {
+      slots.push(...warmUpSlots(deps, splitDay))
+    }
+
+    slots.push(...(strength?.slots ?? []))
+
+    const remainingDays = split.days.slice(dayIndex + 1)
+    const filled = fillHypertrophy({
+      recipe,
+      deps,
+      splitDay,
+      split,
+      targets,
+      committed,
+      remainingDays,
+      alreadyUsed: new Set(
+        slots.flatMap((slot) =>
+          slot.exercise.kind === 'specific' ? [slot.exercise.exerciseId] : [],
+        ),
+      ),
+      daysTrained,
+    })
+
+    committed = addInto(committed, filled.spent)
+
+    // This day's work — strength and hypertrophy together — counts once
+    // per muscle toward frequency.
+    const dayTotal = addInto(strength?.spent ?? emptyVolumeMap(), filled.spent)
+    for (const muscle of Object.keys(dayTotal) as MuscleGroup[]) {
+      if (dayTotal[muscle] > 0) daysTrained[muscle] += 1
+    }
+
+    slots.push(...filled.slots)
+
+    days.push({ index: dayIndex, label: splitDay.label, slots })
+  }
+
+  return {
+    index: weekIndex,
+    label: isDeload ? 'Deload' : `Week ${String(weekIndex + 1)}`,
+    isDeload,
+    days,
+  }
+}
+
+/** Each muscle's weekly set target for this week of the block. */
+function weeklyTargets(
+  recipe: RpRecipe,
+  weekIndex: number,
+  workingWeeks: number,
+  isDeload: boolean,
+): Record<MuscleGroup, number> {
+  const targets = {} as Record<MuscleGroup, number>
+
+  for (const muscle of Object.keys(recipe.landmarks) as MuscleGroup[]) {
+    const position = priorityPosition(recipe.muscleTiers, muscle)
+    targets[muscle] = weeklyTargetForWeek(
+      recipe.landmarks[muscle],
+      position,
+      weekIndex,
+      workingWeeks,
+      isDeload,
+    )
+  }
+
+  return targets
+}
+
+/* -------------------------------------------------------------------- */
+/* Strength                                                              */
+/* -------------------------------------------------------------------- */
+
+interface BuiltSlots {
+  readonly slots: readonly Slot[]
+  readonly spent: VolumeMap
+}
+
+const STRENGTH_SLUG: Record<StrengthLift, string> = {
+  squat: 'low-bar-squat',
+  bench: 'bench-press',
+  deadlift: 'sumo-deadlift',
+}
+
+/**
+ * The RTS work for a day: a top set at a target reps and RPE, then
+ * back-off sets governed by a fatigue percent.
+ *
+ * The back-offs are prescribed as a *maximum* the lifter will not
+ * necessarily reach — the session stops when accumulated fatigue hits the
+ * target, which is discovered set by set. Materialising the cap here is
+ * what lets the rest of the app treat this like any other slot; the
+ * player marks the unused ones as skipped when the stopping rule fires.
+ */
+function buildStrengthSlots(
+  recipe: RpRecipe,
+  deps: RpAssembleDeps,
+  day: RpDay,
+  isDeload: boolean,
+): BuiltSlots {
+  const lift = day.strengthLift
+  if (lift === undefined) return { slots: [], spent: emptyVolumeMap() }
+
+  const exerciseId = asExerciseId(STRENGTH_SLUG[lift])
+  const exercise = deps.exercises.find((candidate) => candidate.id === exerciseId)
+  if (exercise === undefined) return { slots: [], spent: emptyVolumeMap() }
+
+  const position = priorityPosition(recipe.strengthTiers, lift)
+
+  // A prioritised lift earns a higher fatigue target — more back-off
+  // volume — while a maintained one gets the top set and little else.
+  const fatigueTarget = isDeload ? 0 : Math.round((2 + position * 5) * 10) / 10
+
+  const topSetRpe = isDeload ? 6 : recipe.rts.topSetRpe
+
+  const sets: SetPrescription[] = [
+    {
+      load: { kind: 'rpe', target: topSetRpe },
+      reps: { kind: 'fixed', reps: recipe.rts.topSetReps },
+      notes: `Top set — work up until this feels like RPE ${String(topSetRpe)}.`,
+    },
+  ]
+
+  const backoffCap = isDeload
+    ? 1
+    : Math.max(1, Math.min(recipe.rts.maxBackoffSets, Math.round(2 + position * 4)))
+
+  for (let index = 0; index < backoffCap; index += 1) {
+    sets.push({
+      load: { kind: 'rpe', target: Math.max(6, topSetRpe - 0.5) },
+      reps: { kind: 'fixed', reps: recipe.rts.topSetReps },
+      ...(index === 0
+        ? { notes: `Back-off. Stop when you are ${String(fatigueTarget)}% off the top set.` }
+        : {}),
+    })
+  }
+
+  const slot: Slot = {
+    id: asSlotId(deps.ids.next()),
+    role: 'main',
+    exercise: { kind: 'specific', exerciseId },
+    sets,
+    restSeconds: exercise.defaultRestSeconds ?? 180,
+    notes: isDeload
+      ? 'Deload — top set only, and keep it easy.'
+      : `${describeMethod(recipe.rts)} · ${String(fatigueTarget)}% fatigue target`,
+  }
+
+  return { slots: [slot], spent: slotVolume(exercise, sets) }
+}
+
+function describeMethod(rts: RtsPrescription): string {
+  switch (rts.method) {
+    case 'load-drop':
+      return `Load drop ${String(rts.loadDropPercent ?? 5)}%`
+    case 'repeats':
+      return 'Repeats at the same weight'
+    case 'rep-drop':
+      return 'Rep drops at the same weight'
+  }
+}
+
+/* -------------------------------------------------------------------- */
+/* Hypertrophy                                                           */
+/* -------------------------------------------------------------------- */
+
+interface FillArgs {
+  readonly recipe: RpRecipe
+  readonly deps: RpAssembleDeps
+  readonly splitDay: RpDay
+  readonly split: RpSplit
+  readonly targets: Record<MuscleGroup, number>
+  readonly committed: VolumeMap
+  readonly remainingDays: readonly RpDay[]
+  readonly alreadyUsed: ReadonlySet<ExerciseId>
+  /** Days so far this week on which each muscle has received any work. */
+  readonly daysTrained: Record<MuscleGroup, number>
+}
+
+function fillHypertrophy(args: FillArgs): BuiltSlots {
+  const { recipe, deps, splitDay, targets, committed } = args
+
+  const used = new Set(args.alreadyUsed)
+  const slots: Slot[] = []
+  let added = emptyVolumeMap()
+
+  /* The lift the day is built around, if it names one. */
+  const featured = splitDay.featuredExercise
+  if (featured !== undefined) {
+    const exercise = deps.exercises.find(
+      (candidate) => candidate.id === asExerciseId(featured) && !candidate.isArchived,
+    )
+
+    if (exercise !== undefined && !used.has(exercise.id)) {
+      const count = fittableSets(exercise, recipe.maxSetsPerSlot, recipe, committed)
+      if (count >= recipe.minSetsPerSlot) {
+        used.add(exercise.id)
+        const sets = hypertrophySets(exercise, count)
+        added = addInto(added, slotVolume(exercise, sets))
+
+        slots.push({
+          id: asSlotId(deps.ids.next()),
+          role: 'accessory',
+          exercise: { kind: 'specific', exerciseId: exercise.id },
+          sets,
+          restSeconds: exercise.defaultRestSeconds ?? 180,
+          notes: 'Heavy hypertrophy — three to six reps, one rep in reserve.',
+        })
+      }
+    }
+  }
+
+  // Muscles this day is accountable for, neediest first.
+  const debts = splitDay.muscles
+    .map((muscle) => {
+      const sessionsLeft =
+        1 + args.remainingDays.filter((day) => day.muscles.includes(muscle)).length
+      const owed = Math.max(0, targets[muscle] - committed[muscle]) / Math.max(1, sessionsLeft)
+      return { muscle, owed, daysTrained: args.daysTrained[muscle] }
+    })
+    .filter((entry) => entry.owed >= recipe.minSetsPerSlot)
+    /*
+     * Frequency first, then need.
+     *
+     * An upper day is accountable for nine muscles and has room for six,
+     * so a purely need-ordered sort starves the same three every session
+     * — and the ones it starves are exactly those the strength work
+     * already paid, which is how chest ends up trained once a week on a
+     * split built to train it twice. Splitting a weekly target across
+     * fewer sessions than planned makes each one less recoverable, which
+     * is the whole reason the target was split.
+     */
+    .sort((a, b) =>
+      a.daysTrained !== b.daysTrained ? a.daysTrained - b.daysTrained : b.owed - a.owed,
+    )
+
+  for (const { muscle, owed } of debts) {
+    if (slots.length >= recipe.maxHypertrophySlotsPerDay) break
+
+    const exercise = pickHypertrophyExercise(args, muscle, used)
+    if (exercise === undefined) continue
+
+    const setCount = fittableSets(
+      exercise,
+      Math.min(recipe.maxSetsPerSlot, Math.round(owed)),
+      recipe,
+      addInto(committed, added),
+    )
+    if (setCount < recipe.minSetsPerSlot) continue
+
+    used.add(exercise.id)
+
+    const sets = hypertrophySets(exercise, setCount)
+    added = addInto(added, slotVolume(exercise, sets))
+
+    slots.push({
+      id: asSlotId(deps.ids.next()),
+      role: exercise.isCompound ? 'accessory' : 'assistance',
+      exercise: { kind: 'specific', exerciseId: exercise.id },
+      sets,
+      restSeconds: exercise.defaultRestSeconds ?? 120,
+      ...(exercise.safeToFail
+        ? { notes: 'Last set to failure; the rest at one rep in reserve.' }
+        : { notes: 'One rep in reserve on every set — not a lift to fail on.' }),
+    })
+  }
+
+  /*
+   * Frequency backfill.
+   *
+   * The debt ordering above optimises for how far each muscle is from its
+   * weekly target, and on a day accountable for nine muscles with room
+   * for six, the same three lose every time. The ones it starves are
+   * whichever the strength work already paid — so a chest fed six sets by
+   * the bench press on Wednesday can finish the week trained once, on a
+   * split whose entire purpose is to train it twice.
+   *
+   * Splitting a weekly target across fewer sessions than planned makes
+   * each session less recoverable, which is the reason the target was
+   * split in the first place. So after the budget is spent, any muscle
+   * this day is accountable for that would otherwise end the week below
+   * twice-weekly gets one cheap slot.
+   */
+  for (const muscle of splitDay.muscles) {
+    const trainedSoFar = args.daysTrained[muscle]
+    const gotWorkToday = added[muscle] > 0
+    const daysLeftTrainingIt = args.remainingDays.filter((day) =>
+      day.muscles.includes(muscle),
+    ).length
+
+    const projected = trainedSoFar + (gotWorkToday ? 1 : 0) + daysLeftTrainingIt
+    if (projected >= MINIMUM_WEEKLY_FREQUENCY || gotWorkToday) continue
+
+    const exercise = pickHypertrophyExercise(args, muscle, used)
+    if (exercise === undefined) continue
+
+    const count = fittableSets(exercise, recipe.minSetsPerSlot, recipe, addInto(committed, added))
+    if (count < recipe.minSetsPerSlot) continue
+
+    used.add(exercise.id)
+    const sets = hypertrophySets(exercise, count)
+    added = addInto(added, slotVolume(exercise, sets))
+
+    slots.push({
+      id: asSlotId(deps.ids.next()),
+      role: exercise.isCompound ? 'accessory' : 'assistance',
+      exercise: { kind: 'specific', exerciseId: exercise.id },
+      sets,
+      restSeconds: exercise.defaultRestSeconds ?? 120,
+      notes: 'Keeps this muscle at twice-weekly frequency.',
+    })
+  }
+
+  return { slots, spent: added }
+}
+
+/** The floor every split here is built to satisfy. */
+const MINIMUM_WEEKLY_FREQUENCY = 2
+
+/**
+ * Every work set at one rep in reserve, held constant.
+ *
+ * No ramp across the block. Ramping proximity to failure *and* volume at
+ * the same time makes it impossible to attribute a stall to either, and
+ * RIR is the variable with the least room to move: past about 2 RIR the
+ * stimulus falls away, and at 0 the fatigue stops paying for itself on
+ * most sets.
+ *
+ * The exception is the last set, which goes to failure — but only where
+ * failing is neither dangerous nor disproportionately expensive.
+ */
+function hypertrophySets(exercise: Exercise, count: number): readonly SetPrescription[] {
+  const range = exercise.defaultRepRange ?? { low: 8, high: 12 }
+
+  return Array.from({ length: count }, (_unused, index) => {
+    const isLast = index === count - 1
+    const toFailure = isLast && exercise.safeToFail
+
+    return {
+      load: { kind: 'rpe' as const, target: toFailure ? 10 : HYPERTROPHY_RPE },
+      reps: { kind: 'range' as const, low: range.low, high: range.high },
+      ...(toFailure ? { notes: 'Take this one to failure.' } : {}),
+    }
+  })
+}
+
+/**
+ * Picks the cheapest exercise that trains the muscle.
+ *
+ * Highest stimulus-to-fatigue first, because the systemic budget is the
+ * binding constraint on a garage-gym specialisation block — there are no
+ * cables to fall back on, so the ordering has to do that work instead.
+ */
+function pickHypertrophyExercise(
+  args: FillArgs,
+  muscle: MuscleGroup,
+  used: ReadonlySet<ExerciseId>,
+): Exercise | undefined {
+  const excluded = new Set(args.recipe.excludedExercises)
+
+  const candidates = args.deps.exercises.filter(
+    (exercise) =>
+      exercise.intent === 'hypertrophy' &&
+      exercise.primaryMuscle === muscle &&
+      !exercise.isArchived &&
+      !used.has(exercise.id) &&
+      !excluded.has(exercise.id),
+  )
+
+  if (candidates.length === 0) return undefined
+
+  const ordered = [...candidates].sort((a, b) => {
+    if (a.sfr !== b.sfr) return b.sfr - a.sfr
+    const aCost = a.systemicCost ?? 0.3
+    const bCost = b.systemicCost ?? 0.3
+    if (aCost !== bCost) return aCost - bCost
+    return a.name.localeCompare(b.name)
+  })
+
+  // Rotate slightly by day so the same muscle does not get the identical
+  // exercise every session of the week.
+  const offset = args.splitDay.index % ordered.length
+  return ordered[offset] ?? ordered[0]
+}
+
+const STUB: SetPrescription = {
+  load: { kind: 'rpe', target: HYPERTROPHY_RPE },
+  reps: { kind: 'range', low: 8, high: 12 },
+}
+
+/**
+ * The most sets of this exercise that fit under every affected muscle's
+ * ceiling — including the ones it only pays a fraction to.
+ */
+function fittableSets(
+  exercise: Exercise,
+  desired: number,
+  recipe: RpRecipe,
+  committed: VolumeMap,
+): number {
+  for (let count = desired; count >= 1; count -= 1) {
+    const contribution = slotVolume(
+      exercise,
+      Array.from({ length: count }, () => STUB),
+    )
+
+    const fits = (Object.keys(contribution) as MuscleGroup[]).every(
+      (muscle) =>
+        contribution[muscle] <= 0 ||
+        committed[muscle] + contribution[muscle] <= recipe.landmarks[muscle].mrv,
+    )
+
+    if (fits) return count
+  }
+
+  return 0
+}
+
+/* -------------------------------------------------------------------- */
+
+function warmUpSlots(deps: RpAssembleDeps, day: RpDay): readonly Slot[] {
+  return WARM_UP_SLUGS[day.warmUp].flatMap((slug): Slot[] => {
+    const exercise = deps.exercises.find((candidate) => candidate.id === asExerciseId(slug))
+    if (exercise === undefined) return []
+
+    const range = exercise.defaultRepRange ?? { low: 10, high: 15 }
+
+    return [
+      {
+        id: asSlotId(deps.ids.next()),
+        role: 'conditioning',
+        exercise: { kind: 'specific', exerciseId: exercise.id },
+        sets: [
+          {
+            load: { kind: 'open' },
+            reps: { kind: 'range', low: range.low, high: range.high },
+            // Warm-ups are flagged so nothing counts them as volume.
+            isWarmup: true,
+          },
+        ],
+        restSeconds: 0,
+        notes: 'Warm-up. Not counted toward volume.',
+      },
+    ]
+  })
+}
+
+function addInto(target: VolumeMap, addition: VolumeMap): VolumeMap {
+  const result = { ...target }
+  for (const muscle of Object.keys(addition) as MuscleGroup[]) {
+    result[muscle] += addition[muscle]
+  }
+  return result
+}
+
+export { rpFrequency }
