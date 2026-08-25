@@ -15,7 +15,7 @@ import type {
   ProgramWeek,
   Slot,
 } from '@/domain/programs/program'
-import { DEFAULT_PROGRAM_SETTINGS } from '@/domain/programs/program'
+import { DEFAULT_PROGRAM_SETTINGS, SECONDS_PER_SET } from '@/domain/programs/program'
 import type { MuscleTiers, StrengthLift, StrengthTiers } from '@/domain/priority/tiers'
 import {
   DEFAULT_MUSCLE_TIERS,
@@ -64,6 +64,17 @@ export interface RpRecipe {
   readonly rts: RtsPrescription
   readonly includeWarmUps: boolean
   readonly maxHypertrophySlotsPerDay: number
+  /**
+   * Roughly how long a session should run.
+   *
+   * A real constraint, not a hint. Volume targets alone do not distribute
+   * evenly across days — the day carrying the featured lift and the big
+   * pulls claims the shared small-muscle budget first simply because it is
+   * built first, and the last day of the week gets the leftovers. Capping
+   * the fill by projected duration is what makes the *week* balanced
+   * rather than just the totals.
+   */
+  readonly targetSessionMinutes: number
   readonly minSetsPerSlot: number
   readonly maxSetsPerSlot: number
   readonly excludedExercises: readonly ExerciseId[]
@@ -83,6 +94,7 @@ export function defaultRpRecipe(overrides: Partial<RpRecipe> = {}): RpRecipe {
     rts: DEFAULT_RTS,
     includeWarmUps: true,
     maxHypertrophySlotsPerDay: 6,
+    targetSessionMinutes: 70,
     minSetsPerSlot: 2,
     maxSetsPerSlot: 5,
     excludedExercises: [],
@@ -213,6 +225,7 @@ function buildWeek(
         ),
       ),
       daysTrained,
+      existingSlots: slots,
     })
 
     committed = addInto(committed, filled.spent)
@@ -368,49 +381,77 @@ interface FillArgs {
   readonly alreadyUsed: ReadonlySet<ExerciseId>
   /** Days so far this week on which each muscle has received any work. */
   readonly daysTrained: Record<MuscleGroup, number>
+  /** Slots already placed today — warm-ups, strength, featured lift. */
+  readonly existingSlots: readonly Slot[]
 }
 
 function fillHypertrophy(args: FillArgs): BuiltSlots {
-  const { recipe, deps, splitDay, targets, committed } = args
+  const { recipe, deps, splitDay, committed } = args
 
   const used = new Set(args.alreadyUsed)
   const slots: Slot[] = []
+  const placed: Exercise[] = []
   let added = emptyVolumeMap()
 
-  /* The lift the day is built around, if it names one. */
-  const featured = splitDay.featuredExercise
-  if (featured !== undefined) {
+  // What the day already costs before any accessory is chosen.
+  let minutes = args.existingSlots.reduce((total, slot) => total + slotMinutes(slot), 0)
+
+  /*
+   * The exercises this day is pinned to, in order and before anything the
+   * debt ordering would choose. They come first because they are the
+   * reason the day has the shape it does.
+   */
+  for (const slug of splitDay.anchors ?? []) {
     const exercise = deps.exercises.find(
-      (candidate) => candidate.id === asExerciseId(featured) && !candidate.isArchived,
+      (candidate) => candidate.id === asExerciseId(slug) && !candidate.isArchived,
+    )
+    if (exercise === undefined || used.has(exercise.id)) continue
+
+    /*
+     * An anchor ramps like anything else.
+     *
+     * Taking the maximum every week would mean the block opens at its
+     * ceiling on exactly the days a lifter cares most about — which is
+     * the thing ramping exists to prevent — and would leave week one
+     * lopsided, with an anchored day at its peak while every other day is
+     * still climbing. The floor keeps the anchor present even in week
+     * one, because a day pinned to an exercise should contain it.
+     */
+    const owed = shareOwed(exercise.primaryMuscle, args, addInto(committed, added))
+    const wanted = Math.max(
+      recipe.minSetsPerSlot,
+      Math.min(recipe.maxSetsPerSlot, Math.round(owed)),
     )
 
-    if (exercise !== undefined && !used.has(exercise.id)) {
-      const count = fittableSets(exercise, recipe.maxSetsPerSlot, recipe, committed)
-      if (count >= recipe.minSetsPerSlot) {
-        used.add(exercise.id)
-        const sets = hypertrophySets(exercise, count)
-        added = addInto(added, slotVolume(exercise, sets))
+    const count = fittableSets(exercise, wanted, recipe, addInto(committed, added))
+    if (count < recipe.minSetsPerSlot) continue
 
-        slots.push({
-          id: asSlotId(deps.ids.next()),
-          role: 'accessory',
-          exercise: { kind: 'specific', exerciseId: exercise.id },
-          sets,
-          restSeconds: exercise.defaultRestSeconds ?? 180,
-          notes: 'Heavy hypertrophy — three to six reps, one rep in reserve.',
-        })
-      }
+    used.add(exercise.id)
+    const sets = hypertrophySets(exercise, count)
+    added = addInto(added, slotVolume(exercise, sets))
+
+    const slot: Slot = {
+      id: asSlotId(deps.ids.next()),
+      role: exercise.isCompound ? 'accessory' : 'assistance',
+      exercise: { kind: 'specific', exerciseId: exercise.id },
+      sets,
+      restSeconds: exercise.defaultRestSeconds ?? 120,
+      ...(exercise.defaultRepRange !== undefined && exercise.defaultRepRange.high <= 6
+        ? { notes: 'Heavy hypertrophy — one rep in reserve, not a max.' }
+        : {}),
     }
+    minutes += slotMinutes(slot)
+    placed.push(exercise)
+    slots.push(slot)
   }
 
   // Muscles this day is accountable for, neediest first.
   const debts = splitDay.muscles
-    .map((muscle) => {
-      const sessionsLeft =
-        1 + args.remainingDays.filter((day) => day.muscles.includes(muscle)).length
-      const owed = Math.max(0, targets[muscle] - committed[muscle]) / Math.max(1, sessionsLeft)
-      return { muscle, owed, daysTrained: args.daysTrained[muscle] }
-    })
+    .map((muscle) => ({
+      muscle,
+      owed: shareOwed(muscle, args, addInto(committed, added)),
+      daysTrained: args.daysTrained[muscle],
+    }))
     .filter((entry) => entry.owed >= recipe.minSetsPerSlot)
     /*
      * Frequency first, then need.
@@ -429,8 +470,11 @@ function fillHypertrophy(args: FillArgs): BuiltSlots {
 
   for (const { muscle, owed } of debts) {
     if (slots.length >= recipe.maxHypertrophySlotsPerDay) break
+    // Out of time. What this day does not spend stays in the weekly
+    // budget and is picked up by the sessions that follow.
+    if (minutes >= recipe.targetSessionMinutes) break
 
-    const exercise = pickHypertrophyExercise(args, muscle, used)
+    const exercise = pickHypertrophyExercise(args, muscle, used, placed)
     if (exercise === undefined) continue
 
     const setCount = fittableSets(
@@ -441,12 +485,9 @@ function fillHypertrophy(args: FillArgs): BuiltSlots {
     )
     if (setCount < recipe.minSetsPerSlot) continue
 
-    used.add(exercise.id)
-
     const sets = hypertrophySets(exercise, setCount)
-    added = addInto(added, slotVolume(exercise, sets))
 
-    slots.push({
+    const slot: Slot = {
       id: asSlotId(deps.ids.next()),
       role: exercise.isCompound ? 'accessory' : 'assistance',
       exercise: { kind: 'specific', exerciseId: exercise.id },
@@ -455,7 +496,18 @@ function fillHypertrophy(args: FillArgs): BuiltSlots {
       ...(exercise.safeToFail
         ? { notes: 'Last set to failure; the rest at one rep in reserve.' }
         : { notes: 'One rep in reserve on every set — not a lift to fail on.' }),
-    })
+    }
+
+    // Projected, not retrospective. Checking only after adding lets a
+    // twelve-minute slot push a sixty-nine minute day to eighty-one.
+    const cost = slotMinutes(slot)
+    if (minutes + cost > recipe.targetSessionMinutes && slots.length > 0) continue
+
+    used.add(exercise.id)
+    added = addInto(added, slotVolume(exercise, sets))
+    minutes += cost
+    placed.push(exercise)
+    slots.push(slot)
   }
 
   /*
@@ -484,7 +536,7 @@ function fillHypertrophy(args: FillArgs): BuiltSlots {
     const projected = trainedSoFar + (gotWorkToday ? 1 : 0) + daysLeftTrainingIt
     if (projected >= MINIMUM_WEEKLY_FREQUENCY || gotWorkToday) continue
 
-    const exercise = pickHypertrophyExercise(args, muscle, used)
+    const exercise = pickHypertrophyExercise(args, muscle, used, placed)
     if (exercise === undefined) continue
 
     const count = fittableSets(exercise, recipe.minSetsPerSlot, recipe, addInto(committed, added))
@@ -493,6 +545,7 @@ function fillHypertrophy(args: FillArgs): BuiltSlots {
     used.add(exercise.id)
     const sets = hypertrophySets(exercise, count)
     added = addInto(added, slotVolume(exercise, sets))
+    placed.push(exercise)
 
     slots.push({
       id: asSlotId(deps.ids.next()),
@@ -505,6 +558,28 @@ function fillHypertrophy(args: FillArgs): BuiltSlots {
   }
 
   return { slots, spent: added }
+}
+
+/**
+ * This day's share of what a muscle still owes for the week.
+ *
+ * The remaining weekly target divided by the sessions left that train it,
+ * so no single day claims a budget the rest of the week needs.
+ */
+function shareOwed(muscle: MuscleGroup, args: FillArgs, committed: VolumeMap): number {
+  const sessionsLeft = 1 + args.remainingDays.filter((day) => day.muscles.includes(muscle)).length
+
+  return Math.max(0, args.targets[muscle] - committed[muscle]) / Math.max(1, sessionsLeft)
+}
+
+/** Minutes one slot costs: work plus rest, warm-ups rested through. */
+function slotMinutes(slot: Slot): number {
+  const rest = slot.restSeconds ?? 120
+  const seconds = slot.sets.reduce(
+    (total, set) => total + (set.isWarmup === true ? SECONDS_PER_SET : SECONDS_PER_SET + rest),
+    0,
+  )
+  return seconds / 60
 }
 
 /** The floor every split here is built to satisfy. */
@@ -548,8 +623,19 @@ function pickHypertrophyExercise(
   args: FillArgs,
   muscle: MuscleGroup,
   used: ReadonlySet<ExerciseId>,
+  placed: readonly Exercise[],
 ): Exercise | undefined {
   const excluded = new Set(args.recipe.excludedExercises)
+
+  /*
+   * Two movements that train the same muscle through the same pattern are
+   * the same exercise as far as a session is concerned. The `used` set
+   * stops the identical one repeating; this stops pull-ups being followed
+   * by chin-ups, which is not extra stimulus, just extra time.
+   */
+  const alreadyCovered = new Set(
+    placed.map((exercise) => `${exercise.primaryMuscle}|${exercise.pattern}`),
+  )
 
   const candidates = args.deps.exercises.filter(
     (exercise) =>
@@ -557,7 +643,8 @@ function pickHypertrophyExercise(
       exercise.primaryMuscle === muscle &&
       !exercise.isArchived &&
       !used.has(exercise.id) &&
-      !excluded.has(exercise.id),
+      !excluded.has(exercise.id) &&
+      !alreadyCovered.has(`${exercise.primaryMuscle}|${exercise.pattern}`),
   )
 
   if (candidates.length === 0) return undefined

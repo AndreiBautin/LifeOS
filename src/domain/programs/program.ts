@@ -209,3 +209,48 @@ export function findDay(
 export function isIndefinite(program: ProgramTemplate): boolean {
   return program.blocks.some((block) => block.repeat === 'indefinite')
 }
+
+/* -------------------------------------------------------------------- */
+/* Session length                                                        */
+/* -------------------------------------------------------------------- */
+
+/**
+ * Seconds a working set takes to perform, excluding rest.
+ *
+ * A rough constant on purpose. Rest is the dominant term — at two minutes
+ * between everything, a twenty-set session is forty minutes of standing
+ * around before a single rep is counted — so the estimate is accurate
+ * enough to compare two days against each other, which is all it is for.
+ */
+export const SECONDS_PER_SET = 30
+
+/**
+ * Estimated minutes for a day, from set count and prescribed rest.
+ *
+ * Exists so "balanced" is something the build can check rather than
+ * something a person eyeballs. The frequency autoregulator reasons about
+ * *measured* session length; this is the planning-side counterpart, and
+ * the two should roughly agree or the plan is lying about what it costs.
+ */
+export function estimateDayMinutes(day: ProgramDay, defaultRestSeconds = 120): number {
+  let seconds = 0
+
+  for (const slot of day.slots) {
+    const rest = slot.restSeconds ?? defaultRestSeconds
+    for (const set of slot.sets) {
+      // Warm-ups are quick and rested through, so they cost the work but
+      // not the full interval.
+      seconds += set.isWarmup === true ? SECONDS_PER_SET : SECONDS_PER_SET + rest
+    }
+  }
+
+  return Math.round(seconds / 60)
+}
+
+/** Estimated minutes for each day of a week, in order. */
+export function estimateWeekMinutes(
+  week: ProgramWeek,
+  defaultRestSeconds = 120,
+): readonly number[] {
+  return week.days.map((day) => estimateDayMinutes(day, defaultRestSeconds))
+}

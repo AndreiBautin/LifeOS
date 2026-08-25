@@ -5,6 +5,11 @@ import type { MuscleGroup } from '@/domain/exercises/taxonomy'
 import { asExerciseId, asProgramId, type IdGenerator } from '@/domain/ids/ids'
 import type { ProgramTemplate, ProgramWeek } from '@/domain/programs/program'
 import { DEFAULT_MUSCLE_TIERS, priorityPosition } from '@/domain/priority/tiers'
+import {
+  SESSION_TOO_LONG_MINUTES,
+  SESSION_TOO_SHORT_MINUTES,
+} from '@/domain/autoregulation/schedule'
+import { estimateDayMinutes } from '@/domain/programs/program'
 import { sumVolume, volumeForSlots } from '@/domain/volume/accounting'
 import { DEFAULT_LANDMARKS } from '@/domain/volume/landmarks'
 
@@ -257,5 +262,138 @@ describe('respecting the gym', () => {
 
   it('is deterministic', () => {
     expect(JSON.stringify(build())).toBe(JSON.stringify(build()))
+  })
+})
+
+describe('session length', () => {
+  const program = build()
+
+  it('keeps every day under the two hours that would demand another session', () => {
+    for (const week of program.blocks[0]?.weeks ?? []) {
+      for (const day of week.days) {
+        expect(estimateDayMinutes(day), `${day.label} in ${week.label} runs too long`).toBeLessThan(
+          SESSION_TOO_LONG_MINUTES,
+        )
+      }
+    }
+  })
+
+  it('balances upper and lower days at the peak of the block', () => {
+    /*
+     * The failure this guards against is specific. With legs maintained
+     * and arms specialised, an upper/lower split naturally piles every
+     * accessory onto two of the four days: those run past seventy-five
+     * minutes while the lower days finish in thirty, and the *average*
+     * then trips the frequency autoregulator into recommending fewer
+     * sessions — the opposite of what a lopsided week needs.
+     */
+    const peak = weekAt(program, 5)
+    const minutes = peak.days.map((day) => estimateDayMinutes(day))
+
+    const longest = Math.max(...minutes)
+    const shortest = Math.min(...minutes)
+
+    expect(shortest).toBeGreaterThan(0)
+    expect(longest / shortest).toBeLessThan(1.8)
+  })
+
+  it('averages into the band the frequency autoregulator holds at', () => {
+    const peak = weekAt(program, 5)
+    const minutes = peak.days.map((day) => estimateDayMinutes(day))
+    const average = minutes.reduce((sum, m) => sum + m, 0) / minutes.length
+
+    // Between the two thresholds, so a settled block neither adds nor
+    // drops a day.
+    expect(average).toBeGreaterThan(SESSION_TOO_SHORT_MINUTES)
+    expect(average).toBeLessThan(SESSION_TOO_LONG_MINUTES)
+  })
+
+  it('trains the small specialisation muscles on every day', () => {
+    // Arms and side delts are tier 1, recover fast, and cost almost
+    // nothing systemically — so they carry the balancing load.
+    const peak = weekAt(program, 5)
+
+    for (const muscle of ['biceps', 'triceps', 'side-delts'] as const) {
+      const days = peak.days.filter((day) =>
+        day.slots.some((slot) => {
+          if (slot.exercise.kind !== 'specific') return false
+          const exercise = lookup(slot.exercise.exerciseId)
+          return (
+            exercise !== undefined &&
+            (exercise.primaryMuscle === muscle || exercise.secondaryMuscles.includes(muscle))
+          )
+        }),
+      ).length
+
+      expect(days, `${muscle} appears on too few days`).toBeGreaterThanOrEqual(3)
+    }
+  })
+})
+
+describe('day one continues the session already trained', () => {
+  const program = build()
+
+  it('opens the week with exactly the exercises last performed', () => {
+    // The press session logged on the 24th: overhead press, pull-ups,
+    // dumbbell curls, lateral raises. Anchoring the day to it means the
+    // block picks up where training actually is rather than proposing
+    // something different for a day that is already done.
+    const day = weekAt(program, 0).days[0]
+    const names = (day?.slots ?? [])
+      .filter((slot) => slot.role !== 'conditioning')
+      .flatMap((slot) =>
+        slot.exercise.kind === 'specific' ? [lookup(slot.exercise.exerciseId)?.name ?? ''] : [],
+      )
+
+    expect(names.slice(0, 4)).toEqual([
+      'Overhead Press',
+      'Pull-Up',
+      'Dumbbell Curl',
+      'Dumbbell Lateral Raise',
+    ])
+  })
+
+  it('keeps the anchors in every week of the block', () => {
+    for (const [index, week] of (program.blocks[0]?.weeks ?? []).entries()) {
+      if (week.isDeload) continue
+
+      const ids = (week.days[0]?.slots ?? []).flatMap((slot) =>
+        slot.exercise.kind === 'specific' ? [slot.exercise.exerciseId as string] : [],
+      )
+
+      for (const anchor of ['overhead-press', 'pull-up', 'db-curl', 'db-lateral-raise']) {
+        expect(ids, `${anchor} missing from week ${String(index + 1)}`).toContain(anchor)
+      }
+    }
+  })
+
+  it('ramps the anchors rather than opening them at the ceiling', () => {
+    const setsIn = (weekIndex: number, slug: string): number =>
+      weekAt(program, weekIndex).days[0]?.slots.find(
+        (slot) => slot.exercise.kind === 'specific' && slot.exercise.exerciseId === slug,
+      )?.sets.length ?? 0
+
+    // Anchoring a day must not exempt it from the block's ramp, or the
+    // days a lifter cares most about are the ones that open maxed out.
+    expect(setsIn(5, 'db-lateral-raise')).toBeGreaterThan(setsIn(0, 'db-lateral-raise'))
+  })
+
+  it('never programmes two exercises for the same muscle and pattern in one day', () => {
+    // Pull-ups followed by chin-ups is not extra stimulus, just extra time.
+    for (const week of program.blocks[0]?.weeks ?? []) {
+      for (const day of week.days) {
+        const seen = new Set<string>()
+
+        for (const slot of day.slots) {
+          if (slot.exercise.kind !== 'specific') continue
+          const exercise = lookup(slot.exercise.exerciseId)
+          if (exercise?.intent !== 'hypertrophy') continue
+
+          const key = `${exercise.primaryMuscle}|${exercise.pattern}`
+          expect(seen.has(key), `${day.label} repeats ${key}`).toBe(false)
+          seen.add(key)
+        }
+      }
+    }
   })
 })

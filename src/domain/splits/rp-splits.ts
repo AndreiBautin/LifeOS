@@ -22,16 +22,17 @@ export interface RpDay {
   /** The competition lift that opens this day, if any. */
   readonly strengthLift?: StrengthLift
   /**
-   * A hypertrophy lift this day is built around, placed before the debt
+   * Exercises this day is built around, placed in order before the debt
    * ordering gets a say.
    *
-   * The overhead press is the case this exists for: it is heavy
-   * hypertrophy rather than part of the total, its primary muscle sits in
-   * the bottom tier, and a purely need-ordered filler would therefore
-   * never select it — leaving a day called "upper, press" with no press
-   * in it.
+   * Two jobs. The overhead press needs one because it is heavy
+   * hypertrophy whose primary muscle sits in the bottom tier — pure
+   * need-ordering would never select it, leaving a day called "upper,
+   * press" with no press in it. And a day can be pinned to what a lifter
+   * actually trains, so a generated block continues the session they just
+   * did rather than proposing a different one.
    */
-  readonly featuredExercise?: string
+  readonly anchors?: readonly string[]
   /** Which warm-up routine precedes it. */
   readonly warmUp: 'upper' | 'lower'
 }
@@ -44,19 +45,44 @@ export interface RpSplit {
   readonly days: readonly RpDay[]
 }
 
+/**
+ * Small muscles that appear on **every** day, upper and lower alike.
+ *
+ * Two things fall out of this, and both are the point.
+ *
+ * Frequency: these are the tier-1 specialisation targets, they recover
+ * fast, and spreading a high weekly target across four sessions rather
+ * than two keeps each session recoverable — which is the whole reason a
+ * weekly target gets split at all.
+ *
+ * Balance: with legs maintained and arms specialised, an upper/lower
+ * split puts almost all the accessory work on two of the four days. Those
+ * days run past seventy-five minutes while the lower days finish in
+ * thirty, and the *average* then trips the frequency autoregulator into
+ * recommending fewer sessions — which would be exactly the wrong move.
+ * Curls and lateral raises cost almost nothing systemically, so they are
+ * the right things to move.
+ */
+const SMALL_EVERY_DAY: readonly MuscleGroup[] = ['biceps', 'triceps', 'forearms', 'side-delts']
+
+/** Big upper muscles, which stay on upper days where the pressing is. */
 const UPPER: readonly MuscleGroup[] = [
   'chest',
   'front-delts',
-  'side-delts',
   'rear-delts',
-  'triceps',
-  'biceps',
-  'forearms',
   'lats',
   'upper-back',
+  ...SMALL_EVERY_DAY,
 ]
 
-const LOWER: readonly MuscleGroup[] = ['quads', 'hamstrings', 'glutes', 'calves', 'core']
+const LOWER: readonly MuscleGroup[] = [
+  'quads',
+  'hamstrings',
+  'glutes',
+  'calves',
+  'core',
+  ...SMALL_EVERY_DAY,
+]
 
 const PUSH: readonly MuscleGroup[] = ['chest', 'front-delts', 'side-delts', 'triceps']
 const PULL: readonly MuscleGroup[] = ['lats', 'upper-back', 'rear-delts', 'biceps', 'forearms']
@@ -80,7 +106,11 @@ const UPPER_LOWER_4: RpSplit = {
       index: 0,
       label: 'Upper — press',
       muscles: UPPER,
-      featuredExercise: 'overhead-press',
+      // Pinned to the session already trained this week: press, pull-ups,
+      // curls, lateral raises. Anchoring it keeps the block continuous
+      // with what was actually done, and keeps this day short enough that
+      // the accessory budget reaches the lower days.
+      anchors: ['overhead-press', 'pull-up', 'db-curl', 'db-lateral-raise'],
       warmUp: 'upper',
     },
     { index: 1, label: 'Lower — squat', muscles: LOWER, strengthLift: 'squat', warmUp: 'lower' },
@@ -159,7 +189,7 @@ const UPPER_LOWER_5: RpSplit = {
       index: 0,
       label: 'Upper — press',
       muscles: UPPER,
-      featuredExercise: 'overhead-press',
+      anchors: ['overhead-press', 'pull-up'],
       warmUp: 'upper',
     },
     { index: 1, label: 'Lower — squat', muscles: LOWER, strengthLift: 'squat', warmUp: 'lower' },
