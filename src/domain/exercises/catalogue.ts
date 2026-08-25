@@ -77,7 +77,7 @@ const ENTRIES: readonly CatalogueEntry[] = [
   },
   {
     slug: 'low-bar-squat',
-    name: 'Low Bar Squat (competition)',
+    name: 'Low Bar Squat (Competition)',
     primaryMuscle: 'quads',
     secondaryMuscles: ['glutes', 'hamstrings', 'core'],
     equipment: 'barbell',
@@ -94,7 +94,7 @@ const ENTRIES: readonly CatalogueEntry[] = [
   },
   {
     slug: 'sumo-deadlift',
-    name: 'Sumo Deadlift (competition)',
+    name: 'Sumo Deadlift (Competition)',
     primaryMuscle: 'glutes',
     secondaryMuscles: ['hamstrings', 'quads', 'upper-back', 'forearms'],
     equipment: 'barbell',
@@ -126,7 +126,7 @@ const ENTRIES: readonly CatalogueEntry[] = [
     systemicCost: 0.3,
     safeToFail: true,
     loadBasis: 'bodyweight',
-    defaultRepRange: { low: 6, high: 12 },
+    defaultRepRange: { low: 5, high: 30 },
     defaultRestSeconds: REST,
   },
 
@@ -144,7 +144,7 @@ const ENTRIES: readonly CatalogueEntry[] = [
     systemicCost: 0.3,
     safeToFail: true,
     loadBasis: 'bodyweight',
-    defaultRepRange: { low: 5, high: 12 },
+    defaultRepRange: { low: 5, high: 30 },
     defaultRestSeconds: REST,
     notes: 'The width builder. Tier 2 priority — worth the systemic cost.',
   },
@@ -161,7 +161,7 @@ const ENTRIES: readonly CatalogueEntry[] = [
     systemicCost: 0.28,
     safeToFail: true,
     loadBasis: 'bodyweight',
-    defaultRepRange: { low: 6, high: 12 },
+    defaultRepRange: { low: 5, high: 30 },
     defaultRestSeconds: REST,
     notes: 'Doubles as biceps volume, which matters when arms are tier 1.',
   },
@@ -177,7 +177,7 @@ const ENTRIES: readonly CatalogueEntry[] = [
     sfr: 3,
     systemicCost: 0.45,
     safeToFail: true,
-    defaultRepRange: { low: 6, high: 12 },
+    defaultRepRange: { low: 5, high: 30 },
     defaultRestSeconds: REST,
   },
 
@@ -196,7 +196,7 @@ const ENTRIES: readonly CatalogueEntry[] = [
     systemicCost: 0.5,
     safeToFail: true,
     loadBasis: 'estimated-1rm',
-    defaultRepRange: { low: 3, high: 6 },
+    defaultRepRange: { low: 5, high: 30 },
     defaultRestSeconds: REST_HEAVY,
     notes: 'Heavy hypertrophy, not a strength lift. Volume counts toward front delts and triceps.',
   },
@@ -220,7 +220,7 @@ const ENTRIES: readonly CatalogueEntry[] = [
      * still counts; capping the range at twenty would end the overload
      * the week the top of it is reached.
      */
-    defaultRepRange: { low: 12, high: 30 },
+    defaultRepRange: { low: 5, high: 30 },
     defaultRestSeconds: REST,
     notes: 'The highest-SFR movement available here. Tier 1 side delts are built on this.',
   },
@@ -236,7 +236,7 @@ const ENTRIES: readonly CatalogueEntry[] = [
     sfr: 3,
     systemicCost: 0.25,
     safeToFail: true,
-    defaultRepRange: { low: 10, high: 15 },
+    defaultRepRange: { low: 5, high: 30 },
     defaultRestSeconds: REST,
   },
   {
@@ -250,7 +250,7 @@ const ENTRIES: readonly CatalogueEntry[] = [
     sfr: 3,
     systemicCost: 0.05,
     safeToFail: true,
-    defaultRepRange: { low: 12, high: 20 },
+    defaultRepRange: { low: 5, high: 30 },
     defaultRestSeconds: REST,
     notes: 'Largely redundant with pressing. Rarely needed unless front delts are prioritised.',
   },
@@ -266,7 +266,7 @@ const ENTRIES: readonly CatalogueEntry[] = [
     sfr: 5,
     systemicCost: 0.05,
     safeToFail: true,
-    defaultRepRange: { low: 12, high: 20 },
+    defaultRepRange: { low: 5, high: 30 },
     defaultRestSeconds: REST,
   },
 
@@ -283,7 +283,7 @@ const ENTRIES: readonly CatalogueEntry[] = [
     sfr: 4,
     systemicCost: 0.1,
     safeToFail: true,
-    defaultRepRange: { low: 8, high: 12 },
+    defaultRepRange: { low: 5, high: 30 },
     defaultRestSeconds: REST,
   },
   {
@@ -300,7 +300,7 @@ const ENTRIES: readonly CatalogueEntry[] = [
     safeToFail: true,
     // Wide, for the same reason as the lateral raise: the dumbbells stop
     // at 25 lb, so reps are the only overload left.
-    defaultRepRange: { low: 10, high: 30 },
+    defaultRepRange: { low: 5, high: 30 },
     defaultRestSeconds: REST,
   },
   {
@@ -315,7 +315,7 @@ const ENTRIES: readonly CatalogueEntry[] = [
     sfr: 5,
     systemicCost: 0.08,
     safeToFail: true,
-    defaultRepRange: { low: 10, high: 15 },
+    defaultRepRange: { low: 5, high: 30 },
     defaultRestSeconds: REST,
   },
   {
@@ -330,7 +330,7 @@ const ENTRIES: readonly CatalogueEntry[] = [
     sfr: 5,
     systemicCost: 0.07,
     safeToFail: true,
-    defaultRepRange: { low: 12, high: 20 },
+    defaultRepRange: { low: 5, high: 30 },
     defaultRestSeconds: REST,
   },
 
@@ -347,7 +347,7 @@ const ENTRIES: readonly CatalogueEntry[] = [
     systemicCost: 0.12,
     // A bar over the face with no spotter. Stop at one rep in reserve.
     safeToFail: false,
-    defaultRepRange: { low: 10, high: 15 },
+    defaultRepRange: { low: 5, high: 30 },
     defaultRestSeconds: REST,
   },
   {
@@ -361,7 +361,7 @@ const ENTRIES: readonly CatalogueEntry[] = [
     sfr: 4,
     systemicCost: 0.12,
     safeToFail: true,
-    defaultRepRange: { low: 10, high: 15 },
+    defaultRepRange: { low: 5, high: 30 },
     defaultRestSeconds: REST,
     notes:
       'Overhead, so the long head gets a real stretch. Failure just means lowering behind the head.',
@@ -379,7 +379,7 @@ const ENTRIES: readonly CatalogueEntry[] = [
     sfr: 5,
     systemicCost: 0.04,
     safeToFail: true,
-    defaultRepRange: { low: 15, high: 25 },
+    defaultRepRange: { low: 5, high: 30 },
     defaultRestSeconds: REST,
   },
   {
@@ -393,7 +393,7 @@ const ENTRIES: readonly CatalogueEntry[] = [
     sfr: 5,
     systemicCost: 0.04,
     safeToFail: true,
-    defaultRepRange: { low: 15, high: 25 },
+    defaultRepRange: { low: 5, high: 30 },
     defaultRestSeconds: REST,
   },
   {
@@ -408,7 +408,7 @@ const ENTRIES: readonly CatalogueEntry[] = [
     systemicCost: 0.04,
     safeToFail: true,
     isUnilateral: true,
-    defaultRepRange: { low: 15, high: 25 },
+    defaultRepRange: { low: 5, high: 30 },
     defaultRestSeconds: REST,
   },
   {
@@ -423,7 +423,7 @@ const ENTRIES: readonly CatalogueEntry[] = [
     systemicCost: 0.04,
     safeToFail: true,
     isUnilateral: true,
-    defaultRepRange: { low: 15, high: 25 },
+    defaultRepRange: { low: 5, high: 30 },
     defaultRestSeconds: REST,
   },
 
@@ -440,7 +440,7 @@ const ENTRIES: readonly CatalogueEntry[] = [
     sfr: 4,
     systemicCost: 0.18,
     safeToFail: true,
-    defaultRepRange: { low: 10, high: 20 },
+    defaultRepRange: { low: 5, high: 30 },
     defaultRestSeconds: REST,
   },
 
@@ -458,7 +458,7 @@ const ENTRIES: readonly CatalogueEntry[] = [
     // A loaded bar on your back with your heels at full stretch is not a
     // position to reach failure in.
     safeToFail: false,
-    defaultRepRange: { low: 10, high: 20 },
+    defaultRepRange: { low: 5, high: 30 },
     defaultRestSeconds: REST,
   },
 
@@ -475,7 +475,7 @@ const ENTRIES: readonly CatalogueEntry[] = [
     sfr: 2,
     systemicCost: 0.8,
     safeToFail: false,
-    defaultRepRange: { low: 6, high: 10 },
+    defaultRepRange: { low: 5, high: 30 },
     defaultRestSeconds: REST_HEAVY,
   },
   {
@@ -490,7 +490,7 @@ const ENTRIES: readonly CatalogueEntry[] = [
     sfr: 2,
     systemicCost: 0.75,
     safeToFail: false,
-    defaultRepRange: { low: 5, high: 10 },
+    defaultRepRange: { low: 5, high: 30 },
     defaultRestSeconds: REST_HEAVY,
   },
 
@@ -507,7 +507,7 @@ const ENTRIES: readonly CatalogueEntry[] = [
     sfr: 1,
     systemicCost: 0.95,
     safeToFail: false,
-    defaultRepRange: { low: 3, high: 8 },
+    defaultRepRange: { low: 5, high: 30 },
     defaultRestSeconds: REST_HEAVY,
   },
   {
@@ -522,7 +522,7 @@ const ENTRIES: readonly CatalogueEntry[] = [
     sfr: 2,
     systemicCost: 0.5,
     safeToFail: false,
-    defaultRepRange: { low: 8, high: 12 },
+    defaultRepRange: { low: 5, high: 30 },
     defaultRestSeconds: REST,
   },
   {
@@ -537,7 +537,7 @@ const ENTRIES: readonly CatalogueEntry[] = [
     sfr: 2,
     systemicCost: 0.55,
     safeToFail: false,
-    defaultRepRange: { low: 8, high: 12 },
+    defaultRepRange: { low: 5, high: 30 },
     defaultRestSeconds: REST,
   },
   {
@@ -553,7 +553,7 @@ const ENTRIES: readonly CatalogueEntry[] = [
     systemicCost: 0.25,
     safeToFail: true,
     isUnilateral: true,
-    defaultRepRange: { low: 8, high: 15 },
+    defaultRepRange: { low: 5, high: 30 },
     defaultRestSeconds: REST,
   },
 
@@ -570,7 +570,7 @@ const ENTRIES: readonly CatalogueEntry[] = [
     systemicCost: 0.12,
     safeToFail: true,
     loadBasis: 'bodyweight',
-    defaultRepRange: { low: 8, high: 15 },
+    defaultRepRange: { low: 5, high: 30 },
     defaultRestSeconds: REST,
   },
   {
@@ -586,7 +586,7 @@ const ENTRIES: readonly CatalogueEntry[] = [
     systemicCost: 0.12,
     safeToFail: true,
     loadBasis: 'bodyweight',
-    defaultRepRange: { low: 10, high: 20 },
+    defaultRepRange: { low: 5, high: 30 },
     defaultRestSeconds: REST,
   },
 

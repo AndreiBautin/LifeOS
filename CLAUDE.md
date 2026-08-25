@@ -88,6 +88,21 @@ upper back read as trained five days a week off one barbell row while
 being trained directly once. **Frequency counts direct work only**
 (`trainedDirectly`); half credit is right for volume and wrong here.
 
+**Upper is upper; lower days take overflow only.** `rp-splits.ts`.
+`RpDay.overflowMuscles` is a second, lower-priority list the assembler
+fills _after_ the day's own muscles and against a lower time ceiling
+(`OVERFLOW_CEILING`). Arms used to be ordinary accountability on every
+day, which put curls and an upright row after a heavy deadlift because
+Thursday was as entitled to them as Monday. Removing them outright is
+also wrong — three upper days cannot hold a specialised upper body, and
+the side delts fell to 7.5 of 22 sets. Overflow is the shape that gives a
+lower day its own identity and still lands the volume.
+
+**A jump is the only non-training way to move the position.**
+`jumpToWeek`. Everything else advances by finishing or skipping, which
+is right — the position records what happened. But a lifter arriving
+mid-block would otherwise skip fifteen sessions to line the app up.
+
 **Landmarks stay ordered.** `MV ≤ MEV ≤ MAV ≤ MRV`, always. Check-ins
 move MAV only, within bounds, and only with three sessions of evidence.
 MEV never moves from a soreness rating.

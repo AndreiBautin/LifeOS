@@ -1,7 +1,7 @@
 import type { ExerciseId } from '@/domain/ids/ids'
 import type { LoadSource, RepTarget, SetPrescription } from '@/domain/programs/prescription'
 import { describeReps } from '@/domain/programs/prescription'
-import { loadForRpe } from '@/domain/strength/one-rep-max'
+import { loadForRpe, RPE_CHART_MAX_REPS } from '@/domain/strength/one-rep-max'
 import type { RoundingMode, WeightUnit } from '@/domain/units/weight'
 import { formatLoad, roundLoad } from '@/domain/units/weight'
 
@@ -191,9 +191,17 @@ function repsForRpeLookup(reps: RepTarget): number | undefined {
     case 'fixed':
       return reps.reps
     case 'range':
-      // The top of the range is the conservative read: a load chosen for
-      // the bottom of an 8–12 range would be too heavy to reach twelve.
-      return reps.high
+      /*
+       * The top of the range is the conservative read: a load chosen for
+       * the bottom of an 8–12 range would be too heavy to reach twelve.
+       *
+       * Clamped to the chart, because hypertrophy ranges now run to
+       * thirty and the chart stops at twelve. Without the clamp every
+       * accessory lost its suggested weight the day the ranges widened —
+       * an honest "no answer", and a worse one than the weight for a set
+       * of twelve, which is at least a place to start loading from.
+       */
+      return Math.min(reps.high, RPE_CHART_MAX_REPS)
     case 'amrap':
       return reps.minimum
     case 'time':

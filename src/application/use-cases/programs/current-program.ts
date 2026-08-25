@@ -4,6 +4,8 @@ import type { IdGenerator } from '@/domain/ids/ids'
 import { asProgramId } from '@/domain/ids/ids'
 import type { ProgramDay, ProgramTemplate, ProgramWeek } from '@/domain/programs/program'
 import type { ProgramPosition } from '@/domain/programs/position'
+import { STARTING_POSITION } from '@/domain/programs/position'
+import type { Clock, PositionRepository } from '@/domain/repositories/ports'
 import type { AppSettings } from '@/domain/settings/settings'
 
 /**
@@ -120,4 +122,42 @@ export function clampPosition(
   const dayIndex = Math.min(position.dayIndex, Math.max(0, week.days.length - 1))
 
   return { ...position, blockIndex, weekIndex, dayIndex }
+}
+
+export interface JumpToWeekDeps {
+  readonly position: PositionRepository
+  readonly clock: Clock
+}
+
+/**
+ * Moves the lifter to the start of a given week.
+ *
+ * The position only advances by finishing or skipping a session, which is
+ * right — it is a record of what happened, not a calendar. But it leaves
+ * no way to say "I am three weeks into this block already", and a lifter
+ * arriving mid-block otherwise has to skip fifteen sessions to line the
+ * app up with their training. That is fifteen chances to mis-tap, and the
+ * app would be counting the block from the wrong place until they did.
+ *
+ * Lands on day one of the week rather than preserving the day, because
+ * the reason to reach for this is "start me here", and a jump that put
+ * them on Thursday of week three would need explaining.
+ */
+export async function jumpToWeek(
+  program: ProgramTemplate,
+  weekIndex: number,
+  deps: JumpToWeekDeps,
+): Promise<ProgramPosition> {
+  const current = await deps.position.get()
+
+  const moved = clampPosition(program, {
+    cycleNumber: current?.cycleNumber ?? STARTING_POSITION.cycleNumber,
+    blockIndex: current?.blockIndex ?? STARTING_POSITION.blockIndex,
+    weekIndex,
+    dayIndex: 0,
+    startedAt: current?.startedAt ?? deps.clock.now().toISOString(),
+  })
+
+  await deps.position.save(moved)
+  return moved
 }

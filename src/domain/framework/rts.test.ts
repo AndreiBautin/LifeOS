@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import {
   accumulatedFatiguePercent,
+  backoffStopRpe,
   DEFAULT_RTS,
   estimatedMaxFromSet,
   evaluateFatigue,
@@ -192,5 +193,55 @@ describe('validation', () => {
     expect(() => {
       validateRtsPrescription({ ...DEFAULT_RTS, fatigueTargetPercent: 40 })
     }).toThrow(/outside the useful range/)
+  })
+})
+
+/*
+ * The stopping rule, restated in a unit a lifter can act on.
+ *
+ * "Stop when a set implies a max 5.3% below the top set" is correct and
+ * unusable between sets. The RPE form is the same rule — the top set's
+ * weight cancels out of the comparison — so it can be worked out when
+ * the block is assembled rather than in the gym.
+ */
+describe('the RPE a back-off block stops at', () => {
+  it('sits above the top-set RPE, because that is what fatigue looks like', () => {
+    const stop = backoffStopRpe(5, 8, 5, 5.3)
+
+    expect(stop).toBeGreaterThan(8)
+    expect(stop).toBe(8.5)
+  })
+
+  it('runs further on a lift with a larger fatigue allowance', () => {
+    // A specialised lift is allowed to fall further before it stops, so
+    // it takes more back-offs to get there.
+    const building = backoffStopRpe(5, 8, 5, 5) ?? 0
+    const specialising = backoffStopRpe(5, 8, 5, 7) ?? 0
+
+    expect(specialising).toBeGreaterThan(building)
+  })
+
+  /*
+   * A heavier back-off has to be *ground out further* before it has
+   * spent the allowance, because the drop itself is not fatigue. Fewer
+   * sets to get there, but a higher reading on the one that ends it —
+   * which is why the load drop belongs inside the threshold rather than
+   * being counted against the lifter.
+   */
+  it('asks for a higher reading when the back-off is heavier', () => {
+    const bigDrop = backoffStopRpe(5, 8, 10, 5.3) ?? 0
+    const smallDrop = backoffStopRpe(5, 8, 2, 5.3) ?? 0
+
+    expect(smallDrop).toBeGreaterThan(bigDrop)
+  })
+
+  it('caps at the top of the chart rather than promising an impossible set', () => {
+    // A tiny drop against a large allowance: no RPE reaches the target,
+    // so the set cap is what ends the block.
+    expect(backoffStopRpe(5, 8, 0, 40)).toBe(10)
+  })
+
+  it('has no answer for reps the chart does not cover', () => {
+    expect(backoffStopRpe(30, 8, 5, 5)).toBeUndefined()
   })
 })

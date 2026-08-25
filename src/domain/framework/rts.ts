@@ -1,5 +1,10 @@
 import { invariant } from '@/domain/errors/domain-error'
-import { estimateOneRepMax, percentOfMaxAtRpe } from '@/domain/strength/one-rep-max'
+import {
+  estimateOneRepMax,
+  percentOfMaxAtRpe,
+  RPE_CHART_MAX,
+  RPE_CHART_MIN,
+} from '@/domain/strength/one-rep-max'
 
 /**
  * Reactive Training Systems — autoregulated strength work.
@@ -155,6 +160,17 @@ export function evaluateFatigue(
   topSet: PerformedSet,
   backoffs: readonly PerformedSet[],
 ): FatigueState {
+  /*
+   * Measured against the top set, including under a load drop.
+   *
+   * That looks wrong at first — a lighter bar implies a lower max before
+   * any fatigue has accumulated, so the drop spends part of the
+   * allowance by itself. It is the published rule, and it is coherent:
+   * with a 5% drop and a 5% target you stop when the lighter weight
+   * feels as hard as the top set did, which is precisely the point at
+   * which the day's work is done. Re-baselining on the first back-off
+   * would make the drop free and let every session run to its cap.
+   */
   const latest = backoffs[backoffs.length - 1] ?? topSet
   const accumulated = accumulatedFatiguePercent(topSet, latest) ?? 0
   const done = backoffs.length
@@ -281,4 +297,50 @@ export function suggestTopSetLoad(
   if (percent === undefined) return undefined
 
   return Number((estimatedMax * (percent / 100)).toFixed(2))
+}
+
+/**
+ * The RPE at which a back-off has spent the day's fatigue allowance.
+ *
+ * The stopping rule is a *fatigue percentage*: keep taking back-offs
+ * until one implies a max some percent below the top set's. Correct, and
+ * not a thing anyone can evaluate between sets with chalk on their hands
+ * — it asks the lifter to run the RPE chart twice and compare.
+ *
+ * The same rule stated as an RPE is immediately actionable, and it is
+ * derivable in advance because the top set's *weight cancels out*. Let
+ * `p(r, x)` be the chart's percentage of max for `r` reps at RPE `x`.
+ * Stopping when the implied max has fallen by `f` means
+ *
+ *     top × (1 − d) / p(r, x)  ≤  top / p(r, t) × (1 − f)
+ *
+ * and `top` divides out of both sides, leaving a condition on the chart
+ * alone. So the answer depends only on the reps, the top-set RPE, the
+ * load drop and the fatigue target — all of them known when the block is
+ * assembled.
+ *
+ * Returns the *lowest* RPE that satisfies it, because that is the first
+ * set at which the lifter should stop. Undefined when the reps fall
+ * outside the chart, and `RPE_CHART_MAX` when no RPE reaches the target:
+ * with a small drop and a large allowance you would fail before you got
+ * there, and the set cap is what ends the block instead.
+ */
+export function backoffStopRpe(
+  topSetReps: number,
+  topSetRpe: number,
+  dropPercent: number,
+  fatiguePercent: number,
+): number | undefined {
+  const topPercent = percentOfMaxAtRpe(topSetReps, topSetRpe)
+  if (topPercent === undefined) return undefined
+  if (fatiguePercent >= 100) return undefined
+
+  const required = (topPercent * (1 - dropPercent / 100)) / (1 - fatiguePercent / 100)
+
+  for (let rpe = RPE_CHART_MIN; rpe <= RPE_CHART_MAX; rpe += 0.5) {
+    const percent = percentOfMaxAtRpe(topSetReps, rpe)
+    if (percent !== undefined && percent >= required) return rpe
+  }
+
+  return RPE_CHART_MAX
 }

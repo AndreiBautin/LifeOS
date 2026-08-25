@@ -112,18 +112,20 @@ describe('starting a session from a program', () => {
     expect(press).toBeDefined()
 
     /*
-     * Every set held at 1 RIR, the last one included.
+     * Every set at 1 RIR except the last, which goes to failure.
      *
-     * The press is safe to fail on and still does not, because it runs
-     * 3–6: failing a top-heavy triple costs what a max costs and returns
-     * hypertrophy's worth of stimulus. Asserted as a shape rather than a
-     * fixed count, because how many sets it gets is a volume decision
-     * that moves with the tiers and the day count.
+     * The press is safe to fail on, and now runs 5–30 like every other
+     * hypertrophy movement, so the heavy-set exemption no longer applies
+     * to it — failing a set of twelve presses is not a max attempt.
+     * Asserted as a shape rather than a fixed count, because how many
+     * sets it gets is a volume decision that moves with the tiers and the
+     * day count.
      */
     const loads = press?.sets.map((set) => set.prescription.load) ?? []
 
     expect(loads.length).toBeGreaterThan(1)
-    expect(loads).toEqual(loads.map(() => ({ kind: 'rpe', target: 9 })))
+    expect(loads.slice(0, -1)).toEqual(loads.slice(0, -1).map(() => ({ kind: 'rpe', target: 9 })))
+    expect(loads.at(-1)).toEqual({ kind: 'rpe', target: 10 })
 
     // 150 lb estimate, RPE 9 at the top of a 3–6 range.
     expect(press?.sets[0]?.plannedLoad).toBeGreaterThan(0)

@@ -178,6 +178,17 @@ export const RPE_CHART_MIN = 6
 export const RPE_CHART_MAX = 10
 
 /**
+ * The most reps the chart covers.
+ *
+ * Past this the relationship between reps, proximity to failure and
+ * percentage of max stops being stable enough to tabulate — a set of
+ * thirty is limited by things the chart does not model. Callers that
+ * need a number for a longer set anchor on this instead, which errs
+ * light, rather than refusing to suggest anything.
+ */
+export const RPE_CHART_MAX_REPS = 12
+
+/**
  * Returns the percentage of one-rep max, or undefined when the
  * combination falls outside the chart. Undefined is the honest answer —
  * interpolating past the edges produces numbers with no basis.

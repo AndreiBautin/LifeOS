@@ -12,7 +12,7 @@ import { explainVolume } from '@/domain/priority/explain'
 import { Badge, Button, Card, Section } from '@/components/shared/primitives'
 import { cn } from '@/lib/cn'
 
-import { useExercises, usePosition, useProgram } from '@/features/train/hooks'
+import { useExercises, useJumpToWeek, usePosition, useProgram } from '@/features/train/hooks'
 
 /**
  * The whole block, laid out, with the numbers it would actually give you.
@@ -32,6 +32,7 @@ export function ProgramPage() {
   const program = useProgram()
   const position = usePosition()
   const exercises = useExercises()
+  const jumpToWeek = useJumpToWeek()
 
   const [weekIndex, setWeekIndex] = useState<number | undefined>(undefined)
   const [openMuscle, setOpenMuscle] = useState<string | undefined>(undefined)
@@ -40,7 +41,8 @@ export function ProgramPage() {
   const weeks = block?.weeks ?? []
 
   // Opens on the week the lifter is actually in, not on week one.
-  const current = weekIndex ?? position.data?.weekIndex ?? 0
+  const here = position.data ?? undefined
+  const current = weekIndex ?? here?.weekIndex ?? 0
   const week = weeks[Math.min(current, Math.max(0, weeks.length - 1))]
 
   const library = exercises.data ?? []
@@ -93,6 +95,36 @@ export function ProgramPage() {
           </button>
         ))}
       </div>
+
+      {/*
+        The way to say "I am already three weeks into this".
+
+        The position otherwise only moves by finishing or skipping a
+        session, which is right — it records what happened rather than
+        what a calendar says. But a lifter arriving mid-block would have
+        to skip their way to the right week, and until they did the app
+        would be counting the block from the wrong place.
+      */}
+      {here !== undefined && current !== here.weekIndex && (
+        <Card className="mb-5 flex items-center justify-between gap-3">
+          <p className="text-ink-500 text-xs">
+            You are on{' '}
+            {weeks[here.weekIndex]?.isDeload === true
+              ? 'the deload'
+              : `week ${String(here.weekIndex + 1)}`}
+            .
+          </p>
+          <Button
+            variant="outline"
+            onClick={() => {
+              jumpToWeek.mutate({ program: program.data, weekIndex: current })
+            }}
+            disabled={jumpToWeek.isPending}
+          >
+            Start from here
+          </Button>
+        </Card>
+      )}
 
       {week.days.map((day) => (
         <Section
@@ -194,23 +226,34 @@ function SlotRow({
   }, [])
 
   /*
-   * "Up to 5 ×", not "5 ×", where the count is a cap.
+   * A back-off block is written as the instruction it actually is.
    *
-   * A back-off block ends when accumulated fatigue says so, which is
-   * usually before the last row. Written the same way as a fixed
-   * prescription it reads as five sets you are expected to complete —
-   * and a lifter who grinds out all five because the page said five has
+   * "3 × 5 · 235 lb" is the shape of a fixed prescription and says none
+   * of the three things that make this an RTS block: that the bar stays
+   * where it is, that the RPE is the reading rather than the
+   * instruction, and that the count is a cap you will usually not reach.
+   * A lifter who grinds out all three because the page said three has
    * had the stopping rule taken away from them.
+   *
+   *   5 × 235 lb  ·  5% drop, stop at RPE 8.5  ·  cap 3
    */
-  const capped = shown.some((set) => set.prescription.load.kind === 'rts-backoff')
+  const load = shown[0]?.prescription.load
+  const backoff = load?.kind === 'rts-backoff' ? load : undefined
 
-  const line = grouped
-    .map((row) =>
-      row.count === 1 && shown[0]?.reps.kind === 'time'
-        ? row.label
-        : `${capped ? 'up to ' : ''}${String(row.count)} × ${row.label}`,
-    )
-    .join('  ·  ')
+  const line =
+    backoff !== undefined
+      ? [
+          `${describeReps(shown[0]?.reps ?? { kind: 'fixed', reps: 0 })} × ${shown[0]?.loadDisplay ?? '—'}`,
+          `${String(backoff.dropPercent)}% drop${backoff.stopRpe === undefined ? '' : `, stop at RPE ${String(backoff.stopRpe)}`}`,
+          `cap ${String(shown.length)}`,
+        ].join('  ·  ')
+      : grouped
+          .map((row) =>
+            row.count === 1 && shown[0]?.reps.kind === 'time'
+              ? row.label
+              : `${String(row.count)} × ${row.label}`,
+          )
+          .join('  ·  ')
 
   return (
     <div className="border-ink-800 flex items-start justify-between gap-3 border-b pb-2 last:border-0 last:pb-0">

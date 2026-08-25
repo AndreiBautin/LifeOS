@@ -5,7 +5,7 @@ import { HYPERTROPHY_RPE } from '@/domain/exercises/loading'
 import type { MuscleGroup } from '@/domain/exercises/taxonomy'
 import { MUSCLE_GROUP_LABELS } from '@/domain/exercises/taxonomy'
 import type { RtsPrescription } from '@/domain/framework/rts'
-import { DEFAULT_RTS } from '@/domain/framework/rts'
+import { backoffStopRpe, DEFAULT_RTS } from '@/domain/framework/rts'
 import type { ExerciseId, IdGenerator, ProgramId } from '@/domain/ids/ids'
 import { asExerciseId, asSlotId } from '@/domain/ids/ids'
 import type { SetPrescription } from '@/domain/programs/prescription'
@@ -400,18 +400,35 @@ function buildStrengthSlots(
    * below the top set on a slot labelled "Load drop 5%", because the
    * suggestion came from the RPE chart rather than from the drop.
    */
+  const dropPercent = recipe.rts.method === 'load-drop' ? (recipe.rts.loadDropPercent ?? 5) : 0
+
+  /*
+   * The same stopping rule, in a unit you can act on.
+   *
+   * The rule is a fatigue percentage, and asking a lifter to compare two
+   * implied maxes between sets is asking them to run the RPE chart twice
+   * with chalk on their hands. Stated as "stop when a set hits RPE 8.5"
+   * it is the same rule and needs no arithmetic — and it is knowable now
+   * rather than in the gym, because the top set's weight cancels out.
+   */
+  const stopRpe = backoffStopRpe(recipe.rts.topSetReps, topSetRpe, dropPercent, fatigueTarget)
+
   const backoffs: SetPrescription[] = Array.from({ length: backoffCap }, (_unused, index) => ({
     load: {
       kind: 'rts-backoff' as const,
-      dropPercent: recipe.rts.method === 'load-drop' ? (recipe.rts.loadDropPercent ?? 5) : 0,
+      dropPercent,
       topSetReps: recipe.rts.topSetReps,
       topSetRpe,
+      ...(stopRpe !== undefined ? { stopRpe } : {}),
     },
     reps: { kind: 'fixed' as const, reps: recipe.rts.topSetReps },
     label: 'Back-off',
     ...(index === 0
       ? {
-          notes: `Log the RPE of each one. Stop when a set implies a max ${String(fatigueTarget)}% below the top set.`,
+          notes:
+            stopRpe === undefined
+              ? `Log the RPE of each one. Stop when a set implies a max ${String(fatigueTarget)}% below the top set.`
+              : `Same weight every set. Log the RPE — when one comes in at ${String(stopRpe)}, that is the ${String(fatigueTarget)}% drop and you are done.`,
         }
       : {}),
   }))
@@ -572,80 +589,99 @@ function fillHypertrophy(args: FillArgs): BuiltSlots {
     slots.push(slot)
   }
 
-  // Muscles this day is accountable for, neediest first.
-  const debts = splitDay.muscles
-    .map((muscle) => ({
-      muscle,
-      owed: shareOwed(muscle, args, addInto(committed, added)),
+  /** Places one pass of accessory work, neediest muscle first. */
+  const fillFor = (muscles: readonly MuscleGroup[], ceiling: number): void => {
+    const debts = muscles
+      .map((muscle) => ({
+        muscle,
+        owed: shareOwed(muscle, args, addInto(committed, added)),
+        /*
+         * How far behind its *own* required frequency this muscle is.
+         *
+         * Not the raw day count. Comparing side delts on two direct days
+         * against calves on two says they are equally served, when the
+         * first is owed twenty-two sets and needs four sessions and the
+         * second is owed seven and needs two. The deficit puts them in
+         * the order the volume actually implies.
+         */
+        behind:
+          requiredFrequency(args.targets[muscle], daysAvailableFor(muscle, args.split)) -
+          args.directDays[muscle],
+      }))
+      .filter((entry) => entry.owed >= recipe.minSetsPerSlot)
       /*
-       * How far behind its *own* required frequency this muscle is.
+       * Frequency first, then need.
        *
-       * Not the raw day count. Comparing side delts on two direct days
-       * against calves on two says they are equally served, when the
-       * first is owed twenty-two sets and needs four sessions and the
-       * second is owed seven and needs two. The deficit puts them in the
-       * order the volume actually implies.
+       * An upper day is accountable for nine muscles and has room for
+       * six, so a purely need-ordered sort starves the same three every
+       * session — and the ones it starves are exactly those the strength
+       * work already paid, which is how chest ends up trained once a week
+       * on a split built to train it twice. Splitting a weekly target
+       * across fewer sessions than planned makes each one less
+       * recoverable, which is the whole reason the target was split.
        */
-      behind:
-        requiredFrequency(args.targets[muscle], daysAvailableFor(muscle, args.split)) -
-        args.directDays[muscle],
-    }))
-    .filter((entry) => entry.owed >= recipe.minSetsPerSlot)
-    /*
-     * Frequency first, then need.
-     *
-     * An upper day is accountable for nine muscles and has room for six,
-     * so a purely need-ordered sort starves the same three every session
-     * — and the ones it starves are exactly those the strength work
-     * already paid, which is how chest ends up trained once a week on a
-     * split built to train it twice. Splitting a weekly target across
-     * fewer sessions than planned makes each one less recoverable, which
-     * is the whole reason the target was split.
-     */
-    .sort((a, b) => (a.behind !== b.behind ? b.behind - a.behind : b.owed - a.owed))
+      .sort((a, b) => (a.behind !== b.behind ? b.behind - a.behind : b.owed - a.owed))
 
-  for (const { muscle, owed } of debts) {
-    if (slots.length >= recipe.maxHypertrophySlotsPerDay) break
-    // Out of time. What this day does not spend stays in the weekly
-    // budget and is picked up by the sessions that follow.
-    if (minutes >= recipe.targetSessionMinutes) break
+    for (const { muscle, owed } of debts) {
+      if (slots.length >= recipe.maxHypertrophySlotsPerDay) break
+      // Out of time. What this day does not spend stays in the weekly
+      // budget and is picked up by the sessions that follow.
+      if (minutes >= ceiling) break
 
-    const exercise = pickHypertrophyExercise(args, muscle, used, placed)
-    if (exercise === undefined) continue
+      const exercise = pickHypertrophyExercise(args, muscle, used, placed)
+      if (exercise === undefined) continue
 
-    const setCount = fittableSets(
-      exercise,
-      Math.min(recipe.maxSetsPerSlot, Math.round(owed)),
-      recipe,
-      addInto(committed, added),
-    )
-    if (setCount < recipe.minSetsPerSlot) continue
+      const setCount = fittableSets(
+        exercise,
+        Math.min(recipe.maxSetsPerSlot, Math.round(owed)),
+        recipe,
+        addInto(committed, added),
+      )
+      if (setCount < recipe.minSetsPerSlot) continue
 
-    const sets = hypertrophySets(exercise, setCount)
+      const sets = hypertrophySets(exercise, setCount)
 
-    const slot: Slot = {
-      id: asSlotId(deps.ids.next()),
-      role: exercise.isCompound ? 'hypertrophy' : 'assistance',
-      variant: exercise.isCompound ? 'Compound' : 'Isolation',
-      exercise: { kind: 'specific', exerciseId: exercise.id },
-      sets,
-      restSeconds: exercise.defaultRestSeconds ?? 120,
-      ...(exercise.safeToFail
-        ? { notes: 'Last set to failure; the rest at one rep in reserve.' }
-        : { notes: 'One rep in reserve on every set — not a lift to fail on.' }),
+      const slot: Slot = {
+        id: asSlotId(deps.ids.next()),
+        role: exercise.isCompound ? 'hypertrophy' : 'assistance',
+        variant: exercise.isCompound ? 'Compound' : 'Isolation',
+        exercise: { kind: 'specific', exerciseId: exercise.id },
+        sets,
+        restSeconds: exercise.defaultRestSeconds ?? 120,
+        ...(exercise.safeToFail
+          ? { notes: 'Last set to failure; the rest at one rep in reserve.' }
+          : { notes: 'One rep in reserve on every set — not a lift to fail on.' }),
+      }
+
+      // Projected, not retrospective. Checking only after adding lets a
+      // twelve-minute slot push a sixty-nine minute day to eighty-one.
+      const cost = slotMinutes(slot)
+      if (minutes + cost > ceiling && slots.length > 0) continue
+
+      used.add(exercise.id)
+      added = addInto(added, slotVolume(exercise, sets))
+      minutes += cost
+      placed.push(exercise)
+      slots.push(slot)
     }
-
-    // Projected, not retrospective. Checking only after adding lets a
-    // twelve-minute slot push a sixty-nine minute day to eighty-one.
-    const cost = slotMinutes(slot)
-    if (minutes + cost > recipe.targetSessionMinutes && slots.length > 0) continue
-
-    used.add(exercise.id)
-    added = addInto(added, slotVolume(exercise, sets))
-    minutes += cost
-    placed.push(exercise)
-    slots.push(slot)
   }
+
+  // What the day is *for* comes first and takes what it needs.
+  fillFor(splitDay.muscles, recipe.targetSessionMinutes)
+
+  /*
+   * Then, and only then, whatever the other days could not hold.
+   *
+   * A second pass rather than more entries in the first, because the
+   * ordering between the two is the whole point: a deadlift day fills
+   * its legs and core, and reaches for the arms with the time it has
+   * left. Merged into one list it was as entitled to a curl as Monday
+   * was, which is how a heavy pull ended up followed by an upright row.
+   *
+   * Both passes share `minutes` and the slot cap, so the overflow can
+   * only ever use room the day actually had.
+   */
+  fillFor(splitDay.overflowMuscles ?? [], recipe.targetSessionMinutes * OVERFLOW_CEILING)
 
   /*
    * Frequency backfill.
@@ -827,6 +863,18 @@ function trainedDirectly(
  * safely; at or below it, failing is a max attempt wearing a rep range.
  */
 const HEAVY_HYPERTROPHY_REPS = 6
+
+/**
+ * How much of a session borrowed work may fill.
+ *
+ * Three quarters, so a lower day that finishes its own legs in forty
+ * minutes can take a couple of cheap arm slots and still be a lower day.
+ * Left at the full target the overflow ran a squat day to seventy-nine
+ * minutes on an upright row, a skullcrusher, a wrist curl and a barbell
+ * curl — which is the arm workout stapled to a leg day that separating
+ * the two lists was supposed to prevent.
+ */
+const OVERFLOW_CEILING = 0.75
 
 /** Sessions in the whole week's split that are accountable for a muscle. */
 function daysAvailableFor(muscle: MuscleGroup, split: RpSplit): number {

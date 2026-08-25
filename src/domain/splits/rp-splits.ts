@@ -28,6 +28,25 @@ export interface RpDay {
   readonly label: string
   /** Muscles this day is accountable for filling toward their weekly target. */
   readonly muscles: readonly MuscleGroup[]
+  /**
+   * Muscles this day will take **only if the days that own them cannot**.
+   *
+   * Upper work on a lower day, and the reason it is a separate list
+   * rather than more entries in `muscles`. A five-day upper/lower/upper/
+   * lower/upper week has three sessions to spend the whole upper body in,
+   * and a specialised set of arms and side delts asks for more sets than
+   * three seventy-minute sessions hold. Something has to give: either the
+   * targets come down or the leftovers land somewhere.
+   *
+   * Listing them as ordinary accountability was the old answer, and it
+   * put curls and an upright row after a heavy deadlift because Thursday
+   * was as entitled to them as Monday. As overflow the deadlift day fills
+   * its own legs and core first, and only reaches for the arms with the
+   * time it has left over — which is the difference between a leg day
+   * that ends with a few cheap sets and a leg day with an arm workout
+   * stapled to it.
+   */
+  readonly overflowMuscles?: readonly MuscleGroup[]
   /** The competition lift that opens this day, if any. */
   readonly strengthLift?: StrengthLift
   /**
@@ -64,43 +83,53 @@ export interface RpSplit {
 }
 
 /**
- * Small muscles that appear on **every** day, upper and lower alike.
+ * Upper is upper and lower is lower.
  *
- * Two things fall out of this, and both are the point.
+ * The arms and side delts used to be accountable on **every** day, on
+ * the reasoning that they are the specialisation targets, they recover
+ * fast, and spreading their volume wide keeps each session recoverable.
+ * The frequency that argument was reaching for now comes from the volume
+ * itself (`domain/volume/frequency.ts`) rather than from the split, and
+ * with it gone what was left was the cost: a deadlift day carrying
+ * curls, an upright row and a wrist curl after a heavy pull, because the
+ * day was accountable for muscles it had no business finishing.
  *
- * Frequency: these are the tier-1 specialisation targets, they recover
- * fast, and spreading a high weekly target across four sessions rather
- * than two keeps each session recoverable — which is the whole reason a
- * weekly target gets split at all.
- *
- * Balance: with legs maintained and arms specialised, an upper/lower
- * split puts almost all the accessory work on two of the four days. Those
- * days run past seventy-five minutes while the lower days finish in
- * thirty, and the *average* then trips the frequency autoregulator into
- * recommending fewer sessions — which would be exactly the wrong move.
- * Curls and lateral raises cost almost nothing systemically, so they are
- * the right things to move.
+ * So the three upper days carry the whole upper body between them. A
+ * specialised muscle needs three sessions and there are exactly three to
+ * have; a maintained one needs two and takes two of the three. Nobody
+ * has to say which two — the fill orders by how far behind each muscle
+ * is against its own required frequency, and the answer falls out.
  */
-const SMALL_EVERY_DAY: readonly MuscleGroup[] = ['biceps', 'triceps', 'forearms', 'side-delts']
-
-/** Big upper muscles, which stay on upper days where the pressing is. */
 const UPPER: readonly MuscleGroup[] = [
   'chest',
   'front-delts',
   'rear-delts',
   'lats',
   'upper-back',
-  ...SMALL_EVERY_DAY,
+  'biceps',
+  'triceps',
+  'forearms',
+  'side-delts',
 ]
 
-const LOWER: readonly MuscleGroup[] = [
-  'quads',
-  'hamstrings',
-  'glutes',
-  'calves',
-  'core',
-  ...SMALL_EVERY_DAY,
-]
+/**
+ * Core lives here rather than on upper days.
+ *
+ * It is trained by the squat and the deadlift whether or not anything
+ * asks it to be, so the days it is already braced on are the days its
+ * direct work belongs on — and putting it upstairs would mean bracing
+ * hard on Tuesday and then again on Wednesday for no reason.
+ */
+const LOWER: readonly MuscleGroup[] = ['quads', 'hamstrings', 'glutes', 'calves', 'core']
+
+/**
+ * What a lower day picks up when the upper days run out of room.
+ *
+ * The small, cheap, fast-recovering ones only. A lateral raise or a curl
+ * at the end of a leg day costs nothing and is a real set; a row or a
+ * press there would be a second workout.
+ */
+const UPPER_OVERFLOW: readonly MuscleGroup[] = ['side-delts', 'biceps', 'triceps', 'forearms']
 
 const FULL_BODY_2: RpSplit = {
   id: 'rp-full-body-2',
@@ -193,6 +222,7 @@ const WEEK_5: RpSplit = {
       index: 1,
       label: 'Tuesday',
       muscles: LOWER,
+      overflowMuscles: UPPER_OVERFLOW,
       strengthLift: 'squat',
       warmUp: 'lower',
     },
@@ -208,6 +238,7 @@ const WEEK_5: RpSplit = {
       index: 3,
       label: 'Thursday',
       muscles: LOWER,
+      overflowMuscles: UPPER_OVERFLOW,
       strengthLift: 'deadlift',
       warmUp: 'lower',
     },

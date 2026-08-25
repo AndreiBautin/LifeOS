@@ -66,6 +66,17 @@ export type LoadSource =
       /** The top set this descends from, for the suggested number. */
       readonly topSetReps: number
       readonly topSetRpe: number
+      /**
+       * The reading that ends the block, derived from the fatigue target.
+       *
+       * The rule is a fatigue percentage — stop when a set implies a max
+       * some percent below the top set's — which is correct and not a
+       * thing anyone can evaluate between sets. Stated as an RPE it is
+       * the same rule and immediately actionable, and it is knowable in
+       * advance because the top set's weight cancels out of the
+       * comparison. See `backoffStopRpe`.
+       */
+      readonly stopRpe?: number
     }
   /**
    * No prescription — the lifter decides, and the app suggests based on
@@ -227,7 +238,9 @@ export function describePrescription(set: SetPrescription): string {
      * would be saying the answer before the question.
      */
     case 'rts-backoff':
-      return `${reps} at ${String(set.load.dropPercent)}% off the top set`
+      return set.load.stopRpe === undefined
+        ? `${reps} at ${String(set.load.dropPercent)}% off the top set`
+        : `${reps} at ${String(set.load.dropPercent)}% off the top set, until RPE ${String(set.load.stopRpe)}`
     case 'open':
       return reps
     // Enumerated rather than defaulted, so adding a load kind fails the

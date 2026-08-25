@@ -18,7 +18,8 @@ import {
   startWorkout,
   type StartWorkoutResult,
 } from '@/application/use-cases/training/start-workout'
-import { deriveProgram } from '@/application/use-cases/programs/current-program'
+import { deriveProgram, jumpToWeek } from '@/application/use-cases/programs/current-program'
+import type { ProgramTemplate } from '@/domain/programs/program'
 import { useServices, useSettings } from '@/app/context'
 import { logger } from '@/shared/logging/logger'
 
@@ -251,3 +252,24 @@ export function usePreviousSet(
 }
 
 export const trainingKeys = keys
+
+/**
+ * Moves the block to the start of a chosen week.
+ *
+ * The only way, other than training, to change where the lifter is — and
+ * necessary because someone arriving mid-block would otherwise have to
+ * skip their way to the right week.
+ */
+export function useJumpToWeek() {
+  const services = useServices()
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ program, weekIndex }: { program: ProgramTemplate; weekIndex: number }) =>
+      jumpToWeek(program, weekIndex, services),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['position'] })
+      void queryClient.invalidateQueries({ queryKey: keys.activeWorkout })
+    },
+  })
+}

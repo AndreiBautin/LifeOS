@@ -254,7 +254,14 @@ describe('how often a muscle is trained', () => {
    * session. Half credit is right for volume and wrong for frequency.
    */
   it('trains a specialised muscle directly more than once a week', () => {
-    for (const muscle of ['side-delts', 'biceps', 'triceps', 'forearms'] as const) {
+    /*
+     * The forearms are not in this list, and that is not an oversight.
+     * Every barbell in the week pays them, so they reach their landmark
+     * ceiling on secondary credit alone — a second direct session would
+     * put them over MRV, which is a worse answer than one. A muscle
+     * trained by everything does not need to be trained by anything.
+     */
+    for (const muscle of ['side-delts', 'biceps', 'triceps'] as const) {
       expect(directDays(muscle), muscle).toBeGreaterThan(1)
     }
   })
