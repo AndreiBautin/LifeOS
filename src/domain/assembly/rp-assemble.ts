@@ -609,22 +609,23 @@ function fillHypertrophy(args: FillArgs): BuiltSlots {
     }
   }
 
-  // What the day is *for* comes first and takes what it needs.
-  fillFor(splitDay.muscles, recipe.targetSessionMinutes)
-
   /*
-   * Then, and only then, whatever the other days could not hold.
+   * One pass, over the muscles the day is accountable for.
    *
-   * A second pass rather than more entries in the first, because the
-   * ordering between the two is the whole point: a deadlift day fills
-   * its legs and core, and reaches for the arms with the time it has
-   * left. Merged into one list it was as entitled to a curl as Monday
-   * was, which is how a heavy pull ended up followed by an upright row.
+   * There was a second pass here — an "overflow" list a leg day would
+   * pick up once its own work was done, so the upper volume the three
+   * upper days could not hold landed somewhere. It balanced the numbers
+   * and produced sessions nobody would write: a curl and an upright row
+   * after a heavy deadlift, present because the arithmetic needed a home
+   * for them.
    *
-   * Both passes share `minutes` and the slot cap, so the overflow can
-   * only ever use room the day actually had.
+   * A day either owns a muscle or it does not. The lopsidedness that
+   * motivated the overflow is answered in the split instead — the
+   * deadlift day is a pull day and the back belongs on it — and what
+   * still does not fit is reported on the Plan screen rather than tucked
+   * into whichever session had a gap.
    */
-  fillFor(splitDay.overflowMuscles ?? [], recipe.targetSessionMinutes * OVERFLOW_CEILING)
+  fillFor(splitDay.muscles, recipe.targetSessionMinutes)
 
   /*
    * Frequency backfill.
@@ -774,18 +775,6 @@ function trainedDirectly(
  * safely; at or below it, failing is a max attempt wearing a rep range.
  */
 const HEAVY_HYPERTROPHY_REPS = 6
-
-/**
- * How much of a session borrowed work may fill.
- *
- * Three quarters, so a lower day that finishes its own legs in forty
- * minutes can take a couple of cheap arm slots and still be a lower day.
- * Left at the full target the overflow ran a squat day to seventy-nine
- * minutes on an upright row, a skullcrusher, a wrist curl and a barbell
- * curl — which is the arm workout stapled to a leg day that separating
- * the two lists was supposed to prevent.
- */
-const OVERFLOW_CEILING = 0.75
 
 /** Sessions in the whole week's split that are accountable for a muscle. */
 function daysAvailableFor(muscle: MuscleGroup, split: RpSplit): number {

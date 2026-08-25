@@ -88,15 +88,26 @@ upper back read as trained five days a week off one barbell row while
 being trained directly once. **Frequency counts direct work only**
 (`trainedDirectly`); half credit is right for volume and wrong here.
 
-**Upper is upper; lower days take overflow only.** `rp-splits.ts`.
-`RpDay.overflowMuscles` is a second, lower-priority list the assembler
-fills _after_ the day's own muscles and against a lower time ceiling
-(`OVERFLOW_CEILING`). Arms used to be ordinary accountability on every
-day, which put curls and an upright row after a heavy deadlift because
-Thursday was as entitled to them as Monday. Removing them outright is
-also wrong — three upper days cannot hold a specialised upper body, and
-the side delts fell to 7.5 of 22 sets. Overflow is the shape that gives a
-lower day its own identity and still lands the volume.
+**A day owns its muscles or it does not.** `RpDay.muscles`, one list, one
+fill pass. The five-day week is lopsided by construction — with the legs
+on maintenance they ask for about twenty-three sets across two sessions
+while a specialised upper body asks for a hundred across three — and
+there have now been two wrong answers to that.
+
+Listing the arms on every day was the first: a deadlift day was as
+entitled to a curl as Monday was, so heavy pulls were followed by upright
+rows. A lower-priority `overflowMuscles` list filled after the day's own
+work was the second: better ordering, same output, and it produced
+sessions nobody would write.
+
+The resolution is in the split, not the assembler. **The deadlift day is
+a pull day** — `PULL` in `rp-splits.ts` puts the lats and upper back on
+it as ordinary accountability, because rowing and chinning after
+deadlifts is a session somebody would actually write. Tuesday stays legs
+and core and comes in around forty minutes, which is not a day that went
+wrong; it is a maintained lower body carrying a heavy squat. What still
+does not fit is reported on the Plan screen rather than tucked into
+whichever session had a gap.
 
 **A muscle's target depends on its own tier and nothing else.**
 `priorityPosition` maps rank onto a position between

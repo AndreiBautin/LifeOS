@@ -204,8 +204,8 @@ describe('naming a day after what is in it', () => {
     // The hardcoded "Monday — press and pull" was a claim, not a
     // description: move a tier and the fill changes underneath it.
     // Sentence-cased, so the leading muscle carries the capital.
-    expect(week.days[0]?.focus).toMatch(/^Lats,/)
-    expect(week.days[0]?.focus).toContain('biceps')
+    expect(week.days[0]?.focus).toMatch(/^Biceps,/)
+    expect(week.days[0]?.focus).toContain('lats')
     expect(week.days[1]?.focus).toContain('calves')
     expect(week.days[1]?.focus).toContain('hamstrings')
   })

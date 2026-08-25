@@ -28,25 +28,6 @@ export interface RpDay {
   readonly label: string
   /** Muscles this day is accountable for filling toward their weekly target. */
   readonly muscles: readonly MuscleGroup[]
-  /**
-   * Muscles this day will take **only if the days that own them cannot**.
-   *
-   * Upper work on a lower day, and the reason it is a separate list
-   * rather than more entries in `muscles`. A five-day upper/lower/upper/
-   * lower/upper week has three sessions to spend the whole upper body in,
-   * and a specialised set of arms and side delts asks for more sets than
-   * three seventy-minute sessions hold. Something has to give: either the
-   * targets come down or the leftovers land somewhere.
-   *
-   * Listing them as ordinary accountability was the old answer, and it
-   * put curls and an upright row after a heavy deadlift because Thursday
-   * was as entitled to them as Monday. As overflow the deadlift day fills
-   * its own legs and core first, and only reaches for the arms with the
-   * time it has left over — which is the difference between a leg day
-   * that ends with a few cheap sets and a leg day with an arm workout
-   * stapled to it.
-   */
-  readonly overflowMuscles?: readonly MuscleGroup[]
   /** The competition lift that opens this day, if any. */
   readonly strengthLift?: StrengthLift
   /**
@@ -111,13 +92,28 @@ const UPPER: readonly MuscleGroup[] = [
 const LOWER: readonly MuscleGroup[] = ['quads', 'hamstrings', 'glutes', 'calves', 'core']
 
 /**
- * What a lower day picks up when the upper days run out of room.
+ * The deadlift day is a pull day, and the back is on it by right.
  *
- * The small, cheap, fast-recovering ones only. A lateral raise or a curl
- * at the end of a leg day costs nothing and is a real set; a row or a
- * press there would be a second workout.
+ * The week is lopsided by construction: with the legs entirely on
+ * maintenance they ask for about twenty-three sets across two sessions,
+ * while a specialised upper body asks for a hundred across three. Two
+ * days for a fifth of the volume leaves the leg days short and the upper
+ * days over.
+ *
+ * The previous answer was an overflow list — the arms as a second-class
+ * claimant a leg day picked up once its own work was done. It balanced
+ * the numbers and produced sessions nobody would write: an upright row
+ * and a curl after a heavy deadlift, there because the arithmetic needed
+ * somewhere to put them.
+ *
+ * Rowing and chinning after deadlifts is a session somebody *would*
+ * write. The deadlift is a pull, it already pays the upper back more
+ * than any other lift in the program, and following it with more pulling
+ * is a coherent day rather than two half-days sharing a room. That is
+ * why the back is listed here as ordinary accountability and the arms
+ * are not listed at all.
  */
-const UPPER_OVERFLOW: readonly MuscleGroup[] = ['side-delts', 'biceps', 'triceps', 'forearms']
+const PULL: readonly MuscleGroup[] = ['lats', 'upper-back']
 
 const FULL_BODY_2: RpSplit = {
   id: 'rp-full-body-2',
@@ -222,8 +218,10 @@ const WEEK_5: RpSplit = {
     {
       index: 1,
       label: 'Tuesday',
+      // Legs and core only, and short because that is all they are owed.
+      // A forty-minute squat day is not a day that went wrong; it is a
+      // maintained lower body carrying a heavy competition lift.
       muscles: LOWER,
-      overflowMuscles: UPPER_OVERFLOW,
       strengthLift: 'squat',
       warmUp: 'lower',
     },
@@ -247,8 +245,9 @@ const WEEK_5: RpSplit = {
     {
       index: 3,
       label: 'Thursday',
-      muscles: LOWER,
-      overflowMuscles: UPPER_OVERFLOW,
+      // The pull day — see PULL. Rows and chin-ups after deadlifts,
+      // rather than curls after deadlifts.
+      muscles: [...LOWER, ...PULL],
       strengthLift: 'deadlift',
       warmUp: 'lower',
     },
