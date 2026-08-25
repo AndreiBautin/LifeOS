@@ -931,7 +931,7 @@ const HEAVY_HYPERTROPHY_REPS = 6
  * usually fires in three or four sets, and a cap far above where the
  * rule fires is a cap that only ever misleads the volume count.
  */
-const STRENGTH_BACKOFF_CAP = 4
+export const STRENGTH_BACKOFF_CAP = 4
 
 /** Which tier a muscle sits in; the bottom tier if it is unplaced. */
 function tierRankOf(tiers: MuscleTiers, muscle: MuscleGroup): number {

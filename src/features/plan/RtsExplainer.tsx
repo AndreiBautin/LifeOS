@@ -1,11 +1,12 @@
 import { useSettings } from '@/app/context'
 import { STRENGTH_LIFT_SLUGS } from '@/domain/exercises/catalogue'
 import { RPE_SCALE } from '@/domain/framework/rpe'
-import { DEFAULT_RTS, estimatedMaxFromSet, FATIGUE_TARGETS } from '@/domain/framework/rts'
+import { DEFAULT_RTS } from '@/domain/framework/rts'
 import { asExerciseId } from '@/domain/ids/ids'
-import { STRENGTH_LIFT_LABELS, STRENGTH_LIFTS } from '@/domain/priority/tiers'
+import { STRENGTH_LIFT_LABELS, STRENGTH_LIFTS, strengthSessionsFor } from '@/domain/priority/tiers'
 import { loadForRpe } from '@/domain/strength/one-rep-max'
 import { formatLoad, roundLoad } from '@/domain/units/weight'
+import { STRENGTH_BACKOFF_CAP } from '@/domain/assembly/rp-assemble'
 import { Badge, Card, Section } from '@/components/shared/primitives'
 
 /**
@@ -38,14 +39,13 @@ export function RtsExplainer() {
     const backoff =
       suggested === undefined ? undefined : suggested * (1 - (rts.loadDropPercent ?? 5) / 100)
 
-    // The target that decides when to stop: the harder the lift is being
-    // pushed, the further the estimated max is allowed to fall.
-    const target =
-      tier === 1
-        ? FATIGUE_TARGETS.high
-        : tier === 2
-          ? FATIGUE_TARGETS.moderate
-          : FATIGUE_TARGETS.minimal
+    /*
+     * The allowance is the same for every lift — it equals the load
+     * drop, which is what makes the stopping rule one sentence. What the
+     * tier buys is *sessions*.
+     */
+    const target = rts.loadDropPercent ?? 5
+    const sessions = strengthSessionsFor(settings.strengthTiers, lift)
 
     return {
       lift,
@@ -55,6 +55,7 @@ export function RtsExplainer() {
       suggested: suggested === undefined ? undefined : round(suggested),
       backoff: backoff === undefined ? undefined : round(backoff),
       target,
+      sessions,
     }
   })
 
@@ -62,11 +63,6 @@ export function RtsExplainer() {
   const example = worked.find((entry) => entry.suggested !== undefined)
   const stopAt =
     example?.max === undefined ? undefined : round(example.max * (1 - example.target / 100))
-
-  const droppedE1rm =
-    example?.backoff === undefined
-      ? undefined
-      : estimatedMaxFromSet({ load: example.backoff, reps: rts.topSetReps, rpe: 9 })
 
   return (
     <>
@@ -105,7 +101,7 @@ export function RtsExplainer() {
 
       <Section
         title="Your numbers today"
-        description={`Fatigue target by tier — ${String(FATIGUE_TARGETS.high)}% specialising, ${String(FATIGUE_TARGETS.moderate)}% building, ${String(FATIGUE_TARGETS.minimal)}% maintaining`}
+        description={`Every lift stops at the same ${String(rts.loadDropPercent ?? 5)}% — priority buys sessions a week, not a longer session`}
       >
         <Card>
           <ul className="space-y-3">
@@ -114,7 +110,7 @@ export function RtsExplainer() {
                 <div className="flex items-baseline justify-between gap-2">
                   <span className="text-ink-50 text-sm font-medium">{entry.label}</span>
                   <Badge tone={entry.tier === 1 ? 'accent' : 'neutral'}>
-                    {entry.target}% fatigue target
+                    {entry.sessions}× a week
                   </Badge>
                 </div>
 
@@ -139,19 +135,24 @@ export function RtsExplainer() {
           {example?.suggested !== undefined && stopAt !== undefined && (
             <div className="border-ink-800 mt-4 border-t pt-3">
               <p className="text-ink-300 text-sm font-medium">What stopping looks like</p>
+              {/*
+                Stated as an RPE rather than as two implied maxes.
+
+                The allowance equalling the drop is what buys this: at
+                matched reps and RPE an implied max is proportional to bar
+                weight, so falling by the drop you took *is* the moment
+                the lighter bar feels like the opener. The arithmetic
+                version — "until a set implies 290 lb or less" — is the
+                same rule and asks you to run the chart twice between
+                sets with chalk on your hands.
+              */}
               <p className="text-ink-500 mt-1 text-xs">
-                {example.label}: the top set at {formatLoad(example.suggested, settings.units)} says
-                your max is about {formatLoad(example.max ?? 0, settings.units)}. Keep taking
-                back-offs at {formatLoad(example.backoff ?? 0, settings.units)} until a set implies{' '}
-                {formatLoad(stopAt, settings.units)} or less — that is the {example.target}% drop.
-                {droppedE1rm !== undefined && (
-                  <>
-                    {' '}
-                    A back-off of {rts.topSetReps} at RPE 9 implies{' '}
-                    {formatLoad(round(droppedE1rm), settings.units)}, so it is
-                    {round(droppedE1rm) <= stopAt ? ' the last one' : ' not there yet'}.
-                  </>
-                )}
+                {example.label}: work up to {formatLoad(example.suggested, settings.units)} for{' '}
+                {rts.topSetReps} at RPE {rts.topSetRpe}. Drop to{' '}
+                {formatLoad(example.backoff ?? 0, settings.units)} and keep going until a set feels
+                like <span className="text-ink-100">RPE {rts.topSetRpe}</span> again — the same as
+                your opener. That is the {example.target}% drop, and it is the same sentence on
+                every lift.
               </p>
             </div>
           )}
@@ -160,7 +161,7 @@ export function RtsExplainer() {
             {DEFAULT_RTS.method === 'load-drop'
               ? `Back-offs drop ${String(rts.loadDropPercent ?? 5)}% from the top set and repeat at that weight.`
               : 'Back-offs repeat at the top-set weight.'}{' '}
-            At most {rts.maxBackoffSets}, so a day where the stopping rule is slow to fire still
+            At most {STRENGTH_BACKOFF_CAP}, so a day where the stopping rule is slow to fire still
             ends.
           </p>
         </Card>

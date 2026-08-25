@@ -3,6 +3,8 @@ import { AlertTriangle, Download, HardDrive, Upload } from 'lucide-react'
 import { useId, useRef, useState } from 'react'
 
 import { useServices, useSettings } from '@/app/context'
+import { tiersMatch } from '@/domain/priority/divergence'
+import { DEFAULT_MUSCLE_TIERS, DEFAULT_STRENGTH_TIERS } from '@/domain/priority/tiers'
 import { MUSCLE_GROUPS, MUSCLE_GROUP_LABELS } from '@/domain/exercises/taxonomy'
 import { DEFAULT_INCREMENT } from '@/domain/units/weight'
 import { Badge, Button, Card, Section } from '@/components/shared/primitives'
@@ -31,6 +33,11 @@ import {
  */
 export function SettingsPage() {
   const { settings, update } = useSettings()
+
+  const diverged = [
+    tiersMatch(settings.muscleTiers, DEFAULT_MUSCLE_TIERS) ? undefined : 'muscle',
+    tiersMatch(settings.strengthTiers, DEFAULT_STRENGTH_TIERS) ? undefined : 'lift',
+  ].filter((one): one is string => one !== undefined)
   const services = useServices()
   const backup = useBackup()
   const fileInput = useRef<HTMLInputElement>(null)
@@ -105,6 +112,41 @@ export function SettingsPage() {
             prescription it started with.
           </p>
         </Card>
+
+        {/*
+          Shown only when the two disagree, because that is the whole of
+          the missing information.
+
+          Priorities are the lifter's own and nothing overwrites them —
+          which quietly means a tier list saved months ago goes on being
+          used after the shipped defaults have moved underneath it. The
+          screen then reports "Squat, tier 2" perfectly truthfully about a
+          choice nobody remembers making. Naming the divergence is the
+          fix; resolving it stays a decision.
+        */}
+        {diverged.length > 0 && (
+          <Card className="border-warn-500/30 mt-4">
+            <p className="text-ink-300 text-sm">
+              Your {diverged.join(' and ')}{' '}
+              {diverged.length === 1 ? 'tiers differ' : 'tiers differ'} from the ones the app ships
+              with. That is not a problem — these are your priorities — but it does mean changes to
+              the defaults do not reach you.
+            </p>
+            <Button
+              variant="outline"
+              full
+              className="mt-3"
+              onClick={() => {
+                update({
+                  muscleTiers: DEFAULT_MUSCLE_TIERS,
+                  strengthTiers: DEFAULT_STRENGTH_TIERS,
+                })
+              }}
+            >
+              Use the shipped priorities instead
+            </Button>
+          </Card>
+        )}
       </Section>
 
       <Section
