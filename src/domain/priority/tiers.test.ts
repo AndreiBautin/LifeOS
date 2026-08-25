@@ -61,7 +61,7 @@ describe('the spread factor', () => {
 
 describe('priority position', () => {
   it('puts the top tier high and the bottom tier low', () => {
-    const top = priorityPosition(DEFAULT_MUSCLE_TIERS, 'biceps')
+    const top = priorityPosition(DEFAULT_MUSCLE_TIERS, 'triceps')
     const middle = priorityPosition(DEFAULT_MUSCLE_TIERS, 'chest')
     const bottom = priorityPosition(DEFAULT_MUSCLE_TIERS, 'calves')
 
@@ -72,9 +72,9 @@ describe('priority position', () => {
   })
 
   it('treats every member of a tier identically', () => {
-    // Arms are weighted equally by request: biceps, triceps and forearms
-    // share tier 1 and must come out the same.
-    const positions = (['biceps', 'triceps', 'forearms'] as const).map((muscle) =>
+    // Triceps, forearms and side delts share tier 1 and must come out
+    // the same. The biceps sit a tier below — see DEFAULT_MUSCLE_TIERS.
+    const positions = (['triceps', 'forearms', 'side-delts'] as const).map((muscle) =>
       priorityPosition(DEFAULT_MUSCLE_TIERS, muscle),
     )
 

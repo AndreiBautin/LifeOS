@@ -264,16 +264,33 @@ export const DEFAULT_STRENGTH_TIERS: StrengthTiers = [
 ]
 
 export const DEFAULT_MUSCLE_TIERS: MuscleTiers = [
+  /*
+   * Biceps sit in tier 2, not tier 1, and the reason is the equipment.
+   *
+   * Every lat movement in a barbell-and-dumbbell gym — pull-up, chin-up,
+   * row — pays the biceps as a secondary. At a tier-1 target of nineteen
+   * sets the biceps reached MRV by midweek, and from then on the
+   * assembler could not add lat work without breaching it: the lats
+   * finished on 7.5 of fourteen sets across a single direct session,
+   * while the biceps ran over on credit from the very pulling the lats
+   * were being denied.
+   *
+   * Nothing was wrong with the arithmetic. The two targets were simply
+   * not simultaneously satisfiable with these movements, and the biceps
+   * were winning by being counted first. Dropping them a tier lets the
+   * pulling happen — and they still receive most of a specialisation's
+   * volume indirectly, because that pulling is what trains them.
+   */
   {
     rank: 1,
-    members: ['biceps', 'triceps', 'forearms', 'side-delts'],
+    members: ['triceps', 'forearms', 'side-delts'],
     label: 'Specialising',
   },
   // Front delts sit here rather than in the bottom tier so the overhead
   // press keeps a real allocation. Its primary muscle is what decides how
   // many sets it gets, and at tier 3 a lift meant to stay in the rotation
   // was receiving maintenance volume.
-  { rank: 2, members: ['lats', 'upper-back', 'chest', 'front-delts'], label: 'Building' },
+  { rank: 2, members: ['biceps', 'lats', 'upper-back', 'chest', 'front-delts'], label: 'Building' },
   {
     rank: 3,
     members: ['rear-delts', 'quads', 'hamstrings', 'glutes', 'calves', 'core'],
