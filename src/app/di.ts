@@ -14,12 +14,6 @@ import {
   createPositionRepository,
   createWorkoutRepository,
 } from '@/infrastructure/db/repositories'
-import {
-  retireBuiltInExercises,
-  RETIRED_EXERCISE_SLUGS,
-  seedIfEmpty,
-  syncBuiltInExercises,
-} from '@/infrastructure/seed/seed'
 import { requestPersistence } from '@/infrastructure/storage/durability'
 import { logger } from '@/shared/logging/logger'
 
@@ -66,7 +60,8 @@ const cryptoIds: IdGenerator = {
 
 export interface BootstrapResult {
   readonly services: AppServices
-  readonly exercisesSeeded: number
+  /** How many exercises the library resolved to, for the startup log. */
+  readonly exerciseCount: number
 }
 
 export async function bootstrap(): Promise<BootstrapResult> {
@@ -82,21 +77,21 @@ export async function bootstrap(): Promise<BootstrapResult> {
     clock: systemClock,
   }
 
-  const seedDeps = {
-    exercises: services.exercises,
-    ids: services.ids,
-    now: services.clock.now(),
-  }
-
-  const exercisesSeeded = await seedIfEmpty(seedDeps)
-
-  // Additive, every start: an install predating an exercise would
-  // otherwise never receive it.
-  const added = await syncBuiltInExercises(seedDeps)
-
-  // And the reverse — an exercise withdrawn from the catalogue stays in
-  // an existing library and keeps being selected unless it is archived.
-  const archived = await retireBuiltInExercises(seedDeps, RETIRED_EXERCISE_SLUGS)
+  /*
+   * Nothing to seed, sync or retire.
+   *
+   * The library used to be copied into IndexedDB on first run and then
+   * kept up to date by two further passes — an additive sync for
+   * exercises that shipped later, and a hand-written retirement list for
+   * ones withdrawn. Three mechanisms, and none of them could deliver the
+   * change most likely to happen: an edit to an exercise that already
+   * existed. A device kept showing "Pull-Ups" and a 12–20 lateral raise
+   * long after the catalogue said otherwise.
+   *
+   * The catalogue is now read at every use, so a change to it is
+   * delivered by being made. See `domain/exercises/library.ts`.
+   */
+  const exerciseCount = await services.exercises.count()
 
   // Asks the browser to exempt this origin from eviction under disk
   // pressure. Best-effort by design: it cannot fail in a way that should
@@ -106,11 +101,7 @@ export async function bootstrap(): Promise<BootstrapResult> {
     logger.info('storage.persistence', { state })
   })
 
-  logger.info('app.bootstrap', {
-    exercisesSeeded,
-    exercisesAddedBySync: added,
-    exercisesArchived: archived.length,
-  })
+  logger.info('app.bootstrap', { exerciseCount })
 
-  return { services, exercisesSeeded }
+  return { services, exerciseCount }
 }

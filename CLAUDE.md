@@ -143,7 +143,24 @@ claim that goes stale the moment a tier moves. The `focus` line separates
 direct work from what the day only pays incidentally, ranked by share of
 each muscle's weekly target — merging the two named an upper day after
 the core, because pull-ups pay it a fraction and its target is small
-enough for that fraction to win.
+enough for that fraction to win. The _kind_ of work — strength,
+hypertrophy, conditioning — is the heading; the muscles are the sentence
+under it. **Every muscle with direct work is named**, uncapped: a reader
+who can see a curl in the session and no biceps in the description has
+found a bug whatever the arithmetic said.
+
+**Compound and isolation are sub-categories of hypertrophy.** The roles
+stay `hypertrophy` and `assistance` because they are written into every
+stored log, but they both _label_ as "Hypertrophy" with a separate
+sub-badge — the same relationship the competition lifts have to strength.
+Labelling them "Hypertrophy" and "Assistance" implied two different
+purposes when the only difference is what a set costs.
+
+**A heavy hypertrophy set is not taken to failure.** `safeToFail` covers
+"you would be pinned under it"; `HEAVY_HYPERTROPHY_REPS` covers the other
+case — failing a top-heavy triple costs what a max costs. The overhead
+press carried both the note "one rep in reserve, not a max" and a last
+set at RPE 10.
 
 **A low-rep set is worth less than a full one.** `hypertrophyCredit` in
 `domain/volume/accounting.ts` — linear below five reps, capped above.
@@ -170,9 +187,16 @@ hypertrophy picker. An anchor is a strong preference, never an override.
 not a completed set with no numbers in it. Volume accounting depends on
 the distinction.
 
-**Seeding and wiping are separate named operations.** `seedIfEmpty`
-cannot overwrite; `clearAllStores` always does. Never merge them behind a
-flag — one wrong boolean would be somebody's training history.
+**The exercise library is derived too.** `resolveLibrary` in
+`domain/exercises/library.ts`, called from the exercise repository. The
+catalogue is read at every use; the store holds only a lifter's own
+exercises and _retired built-ins_, which come back archived so old logs
+still resolve. This replaced three delivery mechanisms — seed on first
+run, additive sync, hand-written retirement list — which between them
+still could not deliver an edit to an exercise that already existed. A
+device went on showing "Pull-Ups" and a 12–20 lateral raise long after
+the catalogue said otherwise. **Editing the catalogue is now the whole
+delivery.** Do not reintroduce a store-of-record for shipped content.
 
 **No `console` outside the logger.** No `localStorage` outside
 `infrastructure/storage/`. No `indexedDB` outside `infrastructure/db/`.

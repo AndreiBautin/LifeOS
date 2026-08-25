@@ -4,7 +4,7 @@ import { useSettings } from '@/app/context'
 import type { Exercise } from '@/domain/exercises/exercise'
 import type { ExerciseId } from '@/domain/ids/ids'
 import type { Slot } from '@/domain/programs/program'
-import { slotRoleLabel, slotRoleTone } from '@/domain/programs/program'
+import { slotRoleLabel, slotRoleTone, slotRoleVariant } from '@/domain/programs/program'
 import { describeReps } from '@/domain/programs/prescription'
 import { resolveSets } from '@/domain/resolution/resolve'
 import { attributeWeek, type MuscleAttribution } from '@/domain/volume/attribution'
@@ -210,7 +210,16 @@ function SlotRow({
         </p>
         <p className="text-ink-500 numeric mt-0.5 text-xs">{line}</p>
       </div>
-      <Badge tone={slotRoleTone(slot.role)}>{slotRoleLabel(slot.role)}</Badge>
+      {/*
+        Bucket first, sub-category second. Compound and isolation are two
+        ways of doing hypertrophy, not two kinds of work.
+      */}
+      <span className="flex shrink-0 items-center gap-1.5">
+        <Badge tone={slotRoleTone(slot.role)}>{slotRoleLabel(slot.role)}</Badge>
+        {slotRoleVariant(slot.role) !== undefined && (
+          <Badge tone="sub">{slotRoleVariant(slot.role)}</Badge>
+        )}
+      </span>
     </div>
   )
 }

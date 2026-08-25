@@ -26,7 +26,11 @@ import type { SetPrescription } from './prescription'
  *
  * `hypertrophy` and `assistance` are both growth work, split by whether
  * the movement is compound: a chest-supported row and a rear-delt raise
- * belong to the same goal and cost very different amounts.
+ * belong to the same goal and cost very different amounts. Both therefore
+ * *label* as "Hypertrophy", with the compound/isolation split shown as a
+ * sub-category beside it — the same relationship the competition lifts
+ * have to strength. The role names are kept as they are because they are
+ * written into every stored log.
  *
  * `warmup` is its own role rather than borrowed from `conditioning`.
  * Shoulder dislocations are not conditioning, and labelling them as such
@@ -59,8 +63,28 @@ export const SLOT_ROLE_LABELS: Record<SlotRole, string> = {
   main: 'Main lift',
   strength: 'Strength',
   hypertrophy: 'Hypertrophy',
-  assistance: 'Assistance',
+  assistance: 'Hypertrophy',
   conditioning: 'Conditioning',
+}
+
+/**
+ * The sub-category, where the role has one.
+ *
+ * Compound and isolation are two ways of doing hypertrophy work, not two
+ * kinds of work — the same relationship the competition lifts have to
+ * strength. Labelling them "Hypertrophy" and "Assistance" put them in
+ * different buckets and implied different purposes; showing the bucket
+ * and the sub-category as separate marks says what is actually true,
+ * which is that a barbell row and a rear-delt raise share a goal and
+ * cost very different amounts.
+ */
+export function slotRoleVariant(role: string): string | undefined {
+  return (SLOT_ROLE_VARIANTS as Partial<Record<string, string>>)[role]
+}
+
+export const SLOT_ROLE_VARIANTS: Partial<Record<SlotRole, string>> = {
+  hypertrophy: 'Compound',
+  assistance: 'Isolation',
 }
 
 /**
@@ -71,16 +95,16 @@ export const SLOT_ROLE_LABELS: Record<SlotRole, string> = {
  * to get through. Every role having the same grey badge meant reading the
  * word every time.
  */
-export function slotRoleTone(role: string): 'neutral' | 'accent' | 'good' | 'warn' | 'bad' {
-  return (
-    (SLOT_ROLE_TONES as Partial<Record<string, 'neutral' | 'accent' | 'good' | 'warn' | 'bad'>>)[
-      role
-    ] ?? 'neutral'
-  )
+export type BadgeTone = 'neutral' | 'accent' | 'good' | 'warn' | 'bad' | 'cool'
+
+export function slotRoleTone(role: string): BadgeTone {
+  return (SLOT_ROLE_TONES as Partial<Record<string, BadgeTone>>)[role] ?? 'neutral'
 }
 
-export const SLOT_ROLE_TONES: Record<SlotRole, 'neutral' | 'accent' | 'good' | 'warn' | 'bad'> = {
-  warmup: 'neutral',
+export const SLOT_ROLE_TONES: Record<SlotRole, BadgeTone> = {
+  // Its own hue, on the same level as strength and conditioning. Grey now
+  // belongs to the sub-category badges, and a grey warm-up read as one.
+  warmup: 'cool',
   main: 'accent',
   strength: 'accent',
   hypertrophy: 'good',
@@ -134,11 +158,11 @@ export interface ProgramDay {
    * The second line: what kind of work it is, and what it trains.
    *
    * Separate from the label because they answer different questions and
-   * are read at different moments. "Tuesday — Low Bar Squat" is what you
-   * check on the way to the gym; "Strength and hypertrophy — Quads,
-   * Calves, Core · indirect: Hamstrings, Glutes" is what you check when
-   * deciding whether the week is balanced. Run together they make one
-   * unreadable heading, which is what they were.
+   * are read at different moments. "Tuesday — Strength and Hypertrophy"
+   * is what you check on the way to the gym; "Low Bar Squat, then quads,
+   * core, calves and hamstrings. Some glutes, forearms and upper back."
+   * is what you check when deciding whether the week is balanced. Run
+   * together they make one unreadable heading, which is what they were.
    */
   readonly focus?: string
   readonly slots: readonly Slot[]

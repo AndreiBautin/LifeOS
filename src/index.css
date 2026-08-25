@@ -24,6 +24,16 @@
   --color-warn-500: oklch(0.78 0.15 85);
   --color-bad-500: oklch(0.65 0.19 25);
 
+  /*
+   * Preparation rather than work: warm-ups and mobility.
+   *
+   * Its own hue because it is its own kind of session content, on the
+   * same level as strength and conditioning. It read as grey until the
+   * sub-category badges arrived and claimed grey, at which point a
+   * warm-up looked like a sub-heading of whatever preceded it.
+   */
+  --color-cool-500: oklch(0.72 0.11 235);
+
   --font-sans:
     ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   --font-mono: ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, Consolas, monospace;

@@ -517,7 +517,8 @@ function fillHypertrophy(args: FillArgs): BuiltSlots {
       exercise: { kind: 'specific', exerciseId: exercise.id },
       sets,
       restSeconds: exercise.defaultRestSeconds ?? 120,
-      ...(exercise.defaultRepRange !== undefined && exercise.defaultRepRange.high <= 6
+      ...(exercise.defaultRepRange !== undefined &&
+      exercise.defaultRepRange.high <= HEAVY_HYPERTROPHY_REPS
         ? { notes: 'Heavy hypertrophy — one rep in reserve, not a max.' }
         : {}),
     }
@@ -774,6 +775,12 @@ function trainedDirectly(
   return [...direct]
 }
 
+/**
+ * Above this rep ceiling a hypertrophy set is long enough to fail
+ * safely; at or below it, failing is a max attempt wearing a rep range.
+ */
+const HEAVY_HYPERTROPHY_REPS = 6
+
 /** Sessions in the whole week's split that are accountable for a muscle. */
 function daysAvailableFor(muscle: MuscleGroup, split: RpSplit): number {
   return split.days.filter((day) => day.muscles.includes(muscle)).length
@@ -789,14 +796,26 @@ function daysAvailableFor(muscle: MuscleGroup, split: RpSplit): number {
  * most sets.
  *
  * The exception is the last set, which goes to failure — but only where
- * failing is neither dangerous nor disproportionately expensive.
+ * failing is neither dangerous nor disproportionately expensive, and only
+ * where the set is long enough that failing it is not a max attempt.
  */
 function hypertrophySets(exercise: Exercise, count: number): readonly SetPrescription[] {
   const range = exercise.defaultRepRange ?? { low: 8, high: 12 }
 
+  /*
+   * A heavy set of three is a single by another name once you fail it.
+   *
+   * The overhead press ran 3–6 and carried both the note "one rep in
+   * reserve, not a max" and a last set prescribed at RPE 10 — two
+   * instructions that contradict each other on the same slot. Failing a
+   * top-heavy triple costs what a max costs and returns hypertrophy's
+   * worth of stimulus, which is the wrong side of that trade.
+   */
+  const tooHeavyToFail = range.high <= HEAVY_HYPERTROPHY_REPS
+
   return Array.from({ length: count }, (_unused, index) => {
     const isLast = index === count - 1
-    const toFailure = isLast && exercise.safeToFail
+    const toFailure = isLast && exercise.safeToFail && !tooHeavyToFail
 
     return {
       load: { kind: 'rpe' as const, target: toFailure ? 10 : HYPERTROPHY_RPE },
@@ -1077,57 +1096,81 @@ function describeDay(
       .sort((a, b) => volume[b] / Math.max(1, targets[b]) - volume[a] / Math.max(1, targets[a]))
       .slice(0, limit)
 
-  const primary = rank(direct, new Set(), 4)
-  // A muscle already named as trained directly is not also listed as an
-  // afterthought. Naming it twice reads as a mistake, which it would be.
-  const secondary = rank(indirect, new Set(primary), 3)
-
-  const label = (muscle: MuscleGroup): string => MUSCLE_GROUP_LABELS[muscle]
+  /*
+   * Every muscle with direct work is named — no cap.
+   *
+   * Capping at the top few dropped the biceps off a day containing
+   * pull-ups and curls, because the day gave them two sets out of a
+   * nineteen-set week and four other muscles had a larger share. Ranking
+   * by share is right and truncating by it is not: a reader who can see
+   * a curl in the session and no biceps in the description has found a
+   * bug, whether or not the arithmetic behind it was sound.
+   */
+  const primary = rank(direct, new Set(), Number.POSITIVE_INFINITY)
 
   /*
-   * The lift keeps its own capitalisation, and so now do the muscles.
-   *
-   * Lowercasing them was an attempt to signal that they are a different
-   * kind of thing from the lift — but the app writes "Side delts"
-   * everywhere else, so the label was the one place a muscle looked like
-   * a common noun. Separators do that job; case should just be
-   * consistent. The parenthetical variant is dropped: "Low Bar Squat",
-   * not "Low Bar Squat (competition)".
+   * The incidental list stays short. It is an aside, and every exercise
+   * pays something to three or four muscles — naming all of them would
+   * make the sentence a table again.
+   */
+  const secondary = rank(indirect, new Set(primary), 3)
+
+  /*
+   * The lift keeps its own capitalisation. The parenthetical variant is
+   * dropped: "Low Bar Squat", not "Low Bar Squat (competition)".
    */
   const lift = strengthName?.replace(/\s*\([^)]*\)\s*/g, '').trim()
 
-  // What kind of session it is, named from the roles actually present
-  // rather than from what the split intended to put there.
+  /*
+   * What kind of session it is — the headline, named from the roles
+   * actually present rather than from what the split meant to put there.
+   *
+   * This is the first thing worth knowing about a day and it used to be
+   * buried on the second line behind a list of muscles. "Is today a
+   * strength day" is answered by three words; which muscles those three
+   * words imply is a longer answer that belongs underneath.
+   *
+   * Each kind is capitalised and the conjunction is not: they are the
+   * names of the three sorts of work this app does, and "and" is not one
+   * of them.
+   */
   const kinds = [
     hasStrength ? 'Strength' : '',
-    hasHypertrophy ? (hasStrength ? 'hypertrophy' : 'Hypertrophy') : '',
-    hasConditioning ? (hasStrength || hasHypertrophy ? 'conditioning' : 'Conditioning') : '',
+    hasHypertrophy ? 'Hypertrophy' : '',
+    hasConditioning ? 'Conditioning' : '',
   ].filter((kind) => kind !== '')
 
   /*
-   * A day with no competition lift is named after its top two muscles,
-   * as a phrase rather than as a list.
+   * The detail line, written as sentences rather than as delimited
+   * fields.
    *
-   * "Front delts and Lats" has a capital in the middle of a sentence, and
-   * that is what makes it look generated. In the focus line below each
-   * muscle is its own item and keeps its own capital; here they are words
-   * in a title, so only the first one gets one.
+   * "Strength and hypertrophy · Quads, Core, Calves · indirect: Glutes"
+   * is a record laid out for a machine to have produced. Muscles keep
+   * ordinary sentence case here — they are common nouns, and the lift
+   * beside them is a proper one, so the capitals now mark a real
+   * distinction instead of being applied to everything equally.
    */
-  const headline =
-    lift ??
-    (primary.length > 0
-      ? sentenceCase(joinAnd(primary.slice(0, 2).map((muscle) => label(muscle).toLowerCase())))
-      : undefined)
+  const names = (muscles: readonly MuscleGroup[]): string =>
+    joinAnd(muscles.map((muscle) => MUSCLE_GROUP_LABELS[muscle].toLowerCase()))
 
-  const focus = [
-    kinds.length > 0 ? joinAnd(kinds) : undefined,
-    primary.length > 0 ? primary.map(label).join(', ') : undefined,
-    secondary.length > 0 ? `indirect: ${secondary.map(label).join(', ')}` : undefined,
-  ].filter((part): part is string => part !== undefined)
+  const trains = primary.length > 0 ? names(primary) : undefined
+
+  const opening =
+    lift !== undefined && trains !== undefined
+      ? `${lift}, then ${trains}.`
+      : lift !== undefined
+        ? `${lift}.`
+        : trains !== undefined
+          ? `${sentenceCase(trains)}.`
+          : undefined
+
+  const aside = secondary.length > 0 ? `Some ${names(secondary)}.` : undefined
+
+  const focus = [opening, aside].filter((part): part is string => part !== undefined).join(' ')
 
   return {
-    label: headline === undefined ? splitDay.label : `${splitDay.label} — ${headline}`,
-    ...(focus.length > 0 ? { focus: focus.join(' · ') } : {}),
+    label: kinds.length > 0 ? `${splitDay.label} — ${joinAnd(kinds)}` : splitDay.label,
+    ...(focus !== '' ? { focus } : {}),
   }
 }
 

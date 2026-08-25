@@ -16,7 +16,6 @@ import {
   createPositionRepository,
   createWorkoutRepository,
 } from '@/infrastructure/db/repositories'
-import { seedIfEmpty } from '@/infrastructure/seed/seed'
 import { DEFAULT_SETTINGS } from '@/domain/settings/settings'
 
 import { abandonWorkout } from './abandon-workout'
@@ -81,12 +80,6 @@ beforeEach(async () => {
   clock = { now: () => currentTime }
 
   db = await openLiftDatabase(TEST_DB)
-  await seedIfEmpty({
-    exercises: createExerciseRepository(db),
-    ids: counterIds(),
-    now: currentTime,
-  })
-
   // Derived from settings, exactly as the app derives it.
   program = deriveProgram(DEFAULT_SETTINGS, builtInExercises())
 })
@@ -118,16 +111,19 @@ describe('starting a session from a program', () => {
     const press = result.workout.entries.find((entry) => entry.exerciseId === 'overhead-press')
     expect(press).toBeDefined()
 
-    // Every hypertrophy set is held at 1 RIR except the last, which goes
-    // to failure — the overhead press being one of the movements it is
-    // safe to fail on. Asserted as a shape rather than a fixed count,
-    // because how many sets it gets is a volume decision that moves with
-    // the tiers and the day count.
+    /*
+     * Every set held at 1 RIR, the last one included.
+     *
+     * The press is safe to fail on and still does not, because it runs
+     * 3–6: failing a top-heavy triple costs what a max costs and returns
+     * hypertrophy's worth of stimulus. Asserted as a shape rather than a
+     * fixed count, because how many sets it gets is a volume decision
+     * that moves with the tiers and the day count.
+     */
     const loads = press?.sets.map((set) => set.prescription.load) ?? []
 
     expect(loads.length).toBeGreaterThan(1)
-    expect(loads.slice(0, -1)).toEqual(loads.slice(0, -1).map(() => ({ kind: 'rpe', target: 9 })))
-    expect(loads.at(-1)).toEqual({ kind: 'rpe', target: 10 })
+    expect(loads).toEqual(loads.map(() => ({ kind: 'rpe', target: 9 })))
 
     // 150 lb estimate, RPE 9 at the top of a 3–6 range.
     expect(press?.sets[0]?.plannedLoad).toBeGreaterThan(0)

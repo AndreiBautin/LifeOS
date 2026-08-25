@@ -1,6 +1,8 @@
 import type { CheckIn } from '@/domain/autoregulation/check-in'
 import type { ProgramPosition } from '@/domain/programs/position'
+import { builtInExercises } from '@/domain/exercises/catalogue'
 import type { Exercise } from '@/domain/exercises/exercise'
+import { resolveLibrary } from '@/domain/exercises/library'
 import type { CheckInId, ExerciseId, WorkoutId } from '@/domain/ids/ids'
 import type { WorkoutLog } from '@/domain/logging/workout-log'
 import type {
@@ -22,13 +24,24 @@ import { fromStored, toStored, type LiftDatabase } from './database'
  * swapped for an in-memory double in a test.
  */
 
+/**
+ * The exercise library: the shipped catalogue, plus whatever the store
+ * holds that the catalogue cannot know about.
+ *
+ * The one repository here that is not a straight pass-through, and the
+ * exception is deliberate — see {@link resolveLibrary}. Reading the
+ * catalogue at every use is what removed three delivery mechanisms that
+ * between them still could not deliver an edit to an exercise that
+ * already existed.
+ */
 export function createExerciseRepository(db: LiftDatabase): ExerciseRepository {
   return {
     async all() {
-      return db.getAll('exercises')
+      return resolveLibrary(builtInExercises(), await db.getAll('exercises'))
     },
     async byId(id: ExerciseId) {
-      return db.get('exercises', id)
+      const library = await this.all()
+      return library.find((exercise) => exercise.id === id)
     },
     async save(exercise: Exercise) {
       await db.put('exercises', exercise)
@@ -41,7 +54,7 @@ export function createExerciseRepository(db: LiftDatabase): ExerciseRepository {
       await db.delete('exercises', id)
     },
     async count() {
-      return db.count('exercises')
+      return (await this.all()).length
     },
   }
 }

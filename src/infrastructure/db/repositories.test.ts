@@ -3,12 +3,7 @@ import { deleteDB } from 'idb'
 
 import { builtInExercises } from '@/domain/exercises/catalogue'
 import type { Exercise } from '@/domain/exercises/exercise'
-import { asExerciseId, type IdGenerator } from '@/domain/ids/ids'
-import {
-  retireBuiltInExercises,
-  seedIfEmpty,
-  syncBuiltInExercises,
-} from '@/infrastructure/seed/seed'
+import { asExerciseId } from '@/domain/ids/ids'
 import { anEntry, aWorkout, BENCH, SQUAT } from '@/test/builders/workout'
 
 import { closeLiftDatabase, openLiftDatabase, type LiftDatabase } from './database'
@@ -21,16 +16,6 @@ import {
 const TEST_DB = 'lift-test'
 
 let db: LiftDatabase
-
-function counterIds(): IdGenerator {
-  let n = 0
-  return {
-    next: () => {
-      n += 1
-      return `id-${String(n)}`
-    },
-  }
-}
 
 beforeEach(async () => {
   db = await openLiftDatabase(TEST_DB)
@@ -137,69 +122,45 @@ describe('the workout repository', () => {
   })
 })
 
-describe('seeding the exercise library', () => {
-  const deps = () => ({
-    exercises: createExerciseRepository(db),
-    ids: counterIds(),
-    now: new Date('2026-08-24T00:00:00Z'),
-  })
-
-  it('fills an empty library with the built-in catalogue', async () => {
-    expect(await seedIfEmpty(deps())).toBe(builtInExercises().length)
-  })
-
-  it('cannot overwrite anything, however many times it runs', async () => {
-    // The property that matters most in the whole persistence layer. A
-    // seed that can overwrite is one wrong call away from deleting a
-    // lifter's training history.
+describe('the exercise library', () => {
+  /*
+   * Derived, not stored. The catalogue is read at every use, so a change
+   * to it is delivered by being made — there is no seed, no additive
+   * sync and no retirement list to keep in step.
+   */
+  it('resolves the whole catalogue with nothing stored at all', async () => {
     const exercises = createExerciseRepository(db)
 
-    await seedIfEmpty(deps())
+    expect(await exercises.count()).toBe(builtInExercises().length)
+    expect((await exercises.byId(asExerciseId('bench-press')))?.name).toBe('Bench Press')
+  })
+
+  it('prefers the catalogue over a stale copy on the device', async () => {
+    // The failure this replaces: a device went on showing 'Pull-Ups' and
+    // a 12-20 lateral raise long after the catalogue said otherwise,
+    // because every delivery mechanism was additive.
+    const exercises = createExerciseRepository(db)
+    await exercises.save(anExercise({ id: asExerciseId('bench-press'), name: 'Bench Presses' }))
+
+    expect((await exercises.byId(asExerciseId('bench-press')))?.name).toBe('Bench Press')
+  })
+
+  it('keeps a withdrawn built-in, archived, so history still resolves', async () => {
+    const exercises = createExerciseRepository(db)
     await exercises.save(
-      anExercise({
-        id: asExerciseId('bench-press'),
-        name: 'Bench Press (my cue: elbows tucked)',
-        isBuiltIn: false,
-      }),
+      anExercise({ id: asExerciseId('lunge'), isBuiltIn: true, isArchived: false }),
     )
 
-    await seedIfEmpty(deps())
-    await seedIfEmpty(deps())
-
-    expect((await exercises.byId(asExerciseId('bench-press')))?.name).toBe(
-      'Bench Press (my cue: elbows tucked)',
-    )
-  })
-
-  it('reports adding nothing on a second run', async () => {
-    await seedIfEmpty(deps())
-    expect(await seedIfEmpty(deps())).toBe(0)
-  })
-
-  it('adds exercises an older install never received', async () => {
-    const exercises = createExerciseRepository(db)
-    await exercises.saveMany(builtInExercises().slice(0, 5))
-
-    expect(await syncBuiltInExercises(deps())).toBe(builtInExercises().length - 5)
-  })
-
-  it('archives an exercise withdrawn from the catalogue', async () => {
-    const exercises = createExerciseRepository(db)
-    await seedIfEmpty(deps())
-    await exercises.save(anExercise({ id: asExerciseId('lunge'), isArchived: false }))
-
-    expect(await retireBuiltInExercises(deps(), ['lunge'])).toEqual(['lunge'])
-    // Archived, not deleted: workouts already logged still refer to it.
+    // Archived by construction rather than by a hand-written list: an
+    // exercise leaving the catalogue *is* its retirement.
     expect((await exercises.byId(asExerciseId('lunge')))?.isArchived).toBe(true)
   })
 
-  it('never archives an exercise that is not on the retired list', async () => {
-    // An  carries no origin, so "anything the catalogue no
-    // longer contains" would archive the lifter's entire custom library.
+  it('leaves a lifter’s own exercise alone', async () => {
     const exercises = createExerciseRepository(db)
-    await exercises.save(anExercise({ id: asExerciseId('my-own-movement'), isArchived: false }))
-
-    await retireBuiltInExercises(deps(), ['lunge'])
+    await exercises.save(
+      anExercise({ id: asExerciseId('my-own-movement'), isBuiltIn: false, isArchived: false }),
+    )
 
     expect((await exercises.byId(asExerciseId('my-own-movement')))?.isArchived).toBe(false)
   })

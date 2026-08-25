@@ -130,21 +130,32 @@ describe('the assembled block', () => {
 describe('naming a day after what is in it', () => {
   const week = weekAt(build(), 5)
 
-  it('names the competition lift first when the day has one', () => {
+  /*
+   * The kind of session goes in the heading, because it is the first
+   * thing worth knowing and it used to be buried on the second line
+   * behind a list of muscles.
+   */
+  it('says in the heading whether a day is strength, hypertrophy or both', () => {
+    expect(week.days[1]?.label).toBe('Tuesday — Strength and Hypertrophy')
+    expect(week.days[0]?.label).toBe('Monday — Hypertrophy and Conditioning')
+  })
+
+  it('names the competition lift first in the detail line', () => {
     const tuesday = week.days[1]
 
-    expect(tuesday?.label).toMatch(/^Tuesday — Low Bar Squat/)
+    expect(tuesday?.focus).toMatch(/^Low Bar Squat, then /)
     // Without the parenthetical variant, which is catalogue bookkeeping.
-    expect(tuesday?.label).not.toContain('(')
+    expect(tuesday?.focus).not.toContain('(')
   })
 
   it('names the muscles the day is actually for', () => {
     // The hardcoded "Monday — press and pull" was a claim, not a
     // description: move a tier and the fill changes underneath it.
-    expect(week.days[0]?.focus).toContain('Front delts')
-    expect(week.days[0]?.focus).toContain('Lats')
-    expect(week.days[1]?.focus).toContain('Calves')
-    expect(week.days[1]?.focus).toContain('Hamstrings')
+    // Sentence-cased, so the leading muscle carries the capital.
+    expect(week.days[0]?.focus).toMatch(/^Front delts,/)
+    expect(week.days[0]?.focus).toContain('lats')
+    expect(week.days[1]?.focus).toContain('calves')
+    expect(week.days[1]?.focus).toContain('hamstrings')
   })
 
   it('separates the direct work from what the day only pays incidentally', () => {
@@ -153,35 +164,19 @@ describe('naming a day after what is in it', () => {
      * a fraction, and the core's weekly target is small enough for that
      * fraction to outrank everything chosen on purpose. It is a real
      * contribution and it is not what the day is for — which is exactly
-     * the line the two halves draw.
+     * the line the two sentences draw.
      */
-    const monday = week.days[0]?.focus ?? ''
-    const [primary = '', indirect = ''] = monday.split(' · indirect: ')
+    const [trains = '', aside = ''] = (week.days[0]?.focus ?? '').split(' Some ')
 
-    expect(primary).not.toContain('Core')
-    expect(indirect).toContain('Core')
+    expect(trains).not.toContain('core')
+    expect(aside).toContain('core')
   })
 
-  it('says whether a day is strength, hypertrophy or both', () => {
-    // Tuesday carries the squat and its accessories; Monday has no
-    // competition lift in it at all.
-    expect(week.days[1]?.focus).toMatch(/^Strength and hypertrophy/)
-    expect(week.days[0]?.focus).toMatch(/^Hypertrophy/)
-    expect(week.days[0]?.focus).not.toContain('Strength')
-  })
-
-  it('capitalises muscles the way the rest of the app does', () => {
-    // Lowercasing them was meant to signal they were a different kind of
-    // thing from the lift. It only made the label the one place in the
-    // app where a muscle looked like a common noun.
-    expect(week.days[1]?.focus).not.toContain('calves')
-    expect(week.days[1]?.focus).toContain('Calves')
-  })
-
-  it('names a lift-less day after its top muscles instead', () => {
-    expect(week.days[0]?.label).toMatch(/^Monday — [A-Z]/)
-    // As a phrase, so there is no capital stranded mid-sentence.
-    expect(week.days[0]?.label).not.toMatch(/ and [A-Z]/)
+  it('reads as sentences rather than as delimited fields', () => {
+    for (const day of week.days) {
+      expect(day.focus, day.label).toMatch(/^[A-Z].*\.$/)
+      expect(day.focus, day.label).not.toContain(' · ')
+    }
   })
 })
 
@@ -417,10 +412,20 @@ describe('constant proximity to failure', () => {
       const exercise = lookup(slot.exercise.exerciseId)
       const last = slot.sets[slot.sets.length - 1]
 
-      if (exercise?.safeToFail === true) {
+      /*
+       * Two separate reasons not to fail a set, and both apply here. A
+       * skullcrusher over your face with no spotter is the first. The
+       * second is rep count: the overhead press runs 3–6, and a top-heavy
+       * triple taken to failure costs what a max costs — it also carried
+       * the note "one rep in reserve, not a max" while being prescribed
+       * at RPE 10, which is two instructions contradicting each other on
+       * one slot.
+       */
+      const heavy = (exercise?.defaultRepRange?.high ?? 12) <= 6
+
+      if (exercise?.safeToFail === true && !heavy) {
         expect(last?.load).toEqual({ kind: 'rpe', target: 10 })
       } else {
-        // A skullcrusher over your face with no spotter stays at 1 RIR.
         expect(last?.load).toEqual({ kind: 'rpe', target: 9 })
       }
     }

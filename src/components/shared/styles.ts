@@ -41,6 +41,14 @@ export const badgeStyles = cva(
         good: 'bg-good-500/15 text-good-500',
         warn: 'bg-warn-500/15 text-warn-500',
         bad: 'bg-bad-500/15 text-bad-500',
+        cool: 'bg-cool-500/15 text-cool-500',
+        /*
+         * A sub-category, not a category. Outlined rather than filled so
+         * it reads as subordinate to the badge beside it whatever the
+         * colours are doing — the hierarchy should survive being
+         * photographed in greyscale.
+         */
+        sub: 'border border-ink-700 text-ink-500',
       },
     },
     defaultVariants: { tone: 'neutral' },

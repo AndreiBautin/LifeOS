@@ -3,7 +3,6 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { canonicalJson, checksumOf } from '@/domain/backup/checksum'
 import { BACKUP_MAGIC, BACKUP_SCHEMA_VERSION } from '@/domain/backup/envelope'
-import type { IdGenerator } from '@/domain/ids/ids'
 import { DEFAULT_SETTINGS } from '@/domain/settings/settings'
 import {
   clearAllStores,
@@ -16,7 +15,6 @@ import {
   createExerciseRepository,
   createWorkoutRepository,
 } from '@/infrastructure/db/repositories'
-import { seedIfEmpty } from '@/infrastructure/seed/seed'
 import { anEntry, aPostCheckIn, aWorkout, SQUAT } from '@/test/builders/workout'
 
 import {
@@ -35,16 +33,6 @@ const NOW = new Date('2026-08-24T12:00:00.000Z')
 let db: LiftDatabase
 let repositories: BackupRepositories
 
-function counterIds(): IdGenerator {
-  let n = 0
-  return {
-    next: () => {
-      n += 1
-      return `id-${String(n)}`
-    },
-  }
-}
-
 beforeEach(async () => {
   db = await openLiftDatabase(TEST_DB)
   repositories = {
@@ -60,11 +48,6 @@ afterEach(async () => {
 })
 
 async function populate(): Promise<void> {
-  await seedIfEmpty({
-    exercises: repositories.exercises,
-    ids: counterIds(),
-    now: NOW,
-  })
   await repositories.workouts.save(
     aWorkout({ date: '2026-08-01', entries: [anEntry({ exerciseId: SQUAT })] }),
   )

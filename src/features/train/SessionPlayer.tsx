@@ -5,7 +5,7 @@ import type { Exercise } from '@/domain/exercises/exercise'
 import type { ExerciseId } from '@/domain/ids/ids'
 import type { WorkoutLog } from '@/domain/logging/workout-log'
 import { isEntryComplete, remainingSets, totalWorkingSets } from '@/domain/logging/workout-log'
-import { slotRoleLabel, slotRoleTone } from '@/domain/programs/program'
+import { slotRoleLabel, slotRoleTone, slotRoleVariant } from '@/domain/programs/program'
 import type { WeightUnit } from '@/domain/units/weight'
 import { Badge, Button, Card } from '@/components/shared/primitives'
 import { useKeepAwake } from '@/shared/hooks/useKeepAwake'
@@ -88,7 +88,12 @@ export function SessionPlayer({
               {nameOf(entry.exerciseId)}
             </h1>
           </div>
-          <Badge tone={slotRoleTone(entry.role)}>{slotRoleLabel(entry.role)}</Badge>
+          <span className="flex shrink-0 items-center gap-1.5">
+            <Badge tone={slotRoleTone(entry.role)}>{slotRoleLabel(entry.role)}</Badge>
+            {slotRoleVariant(entry.role) !== undefined && (
+              <Badge tone="sub">{slotRoleVariant(entry.role)}</Badge>
+            )}
+          </span>
         </div>
 
         <p className="text-ink-500 mt-1 text-sm">

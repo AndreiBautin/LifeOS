@@ -129,23 +129,6 @@ const ENTRIES: readonly CatalogueEntry[] = [
     defaultRepRange: { low: 6, high: 12 },
     defaultRestSeconds: REST,
   },
-  {
-    slug: 'incline-push-up',
-    name: 'Incline Push-Up',
-    primaryMuscle: 'chest',
-    secondaryMuscles: ['triceps', 'front-delts'],
-    equipment: 'bodyweight',
-    pattern: 'horizontal-push',
-    isCompound: true,
-    intent: 'hypertrophy',
-    sfr: 4,
-    systemicCost: 0.12,
-    safeToFail: true,
-    loadBasis: 'bodyweight',
-    defaultRepRange: { low: 10, high: 20 },
-    defaultRestSeconds: REST,
-    notes: 'Cheap chest volume. Useful late in a session when the systemic budget is spent.',
-  },
 
   /* ---- Back --------------------------------------------------------- */
   {
@@ -228,7 +211,16 @@ const ENTRIES: readonly CatalogueEntry[] = [
     sfr: 5,
     systemicCost: 0.05,
     safeToFail: true,
-    defaultRepRange: { low: 12, high: 20 },
+    /*
+     * Up to thirty, not twenty, because the dumbbells stop at 25 lb.
+     *
+     * Progressive overload has to come from somewhere, and with no
+     * heavier bells to move to the only direction left is reps. A side
+     * delt set at 25 lb for twenty-eight is still close to failure and
+     * still counts; capping the range at twenty would end the overload
+     * the week the top of it is reached.
+     */
+    defaultRepRange: { low: 12, high: 30 },
     defaultRestSeconds: REST,
     notes: 'The highest-SFR movement available here. Tier 1 side delts are built on this.',
   },
@@ -306,7 +298,9 @@ const ENTRIES: readonly CatalogueEntry[] = [
     sfr: 5,
     systemicCost: 0.08,
     safeToFail: true,
-    defaultRepRange: { low: 10, high: 15 },
+    // Wide, for the same reason as the lateral raise: the dumbbells stop
+    // at 25 lb, so reps are the only overload left.
+    defaultRepRange: { low: 10, high: 30 },
     defaultRestSeconds: REST,
   },
   {
