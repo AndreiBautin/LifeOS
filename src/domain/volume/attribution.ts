@@ -3,8 +3,9 @@ import type { MuscleGroup } from '@/domain/exercises/taxonomy'
 import { MUSCLE_GROUP_LABELS, MUSCLE_GROUPS } from '@/domain/exercises/taxonomy'
 import type { ExerciseId } from '@/domain/ids/ids'
 import type { ProgramWeek, SlotRole } from '@/domain/programs/program'
+import { nominalReps } from '@/domain/programs/prescription'
 import { SECONDARY_SET_FRACTION } from '@/domain/volume/landmarks'
-import { countsAsWorking } from '@/domain/volume/accounting'
+import { countsAsWorking, hypertrophyCredit } from '@/domain/volume/accounting'
 
 /**
  * Which exercises produced a muscle's weekly volume, and how much each
@@ -29,6 +30,8 @@ export interface Contribution {
   readonly role: SlotRole
   /** Working sets performed of this exercise across the week. */
   readonly sets: number
+  /** Reps per set, which is what decides how much each one is worth. */
+  readonly reps: number
   /** Sets counted toward this muscle — fractional for a secondary. */
   readonly counted: number
   readonly kind: ContributionKind
@@ -61,6 +64,7 @@ export function attributeWeek(
     exercise: Exercise,
     role: SlotRole,
     sets: number,
+    reps: number,
     counted: number,
     kind: ContributionKind,
   ): void => {
@@ -73,7 +77,8 @@ export function attributeWeek(
       name: exercise.name,
       role,
       sets: (existing?.sets ?? 0) + sets,
-      counted: (existing?.counted ?? 0) + counted,
+      reps,
+      counted: Number(((existing?.counted ?? 0) + counted).toFixed(2)),
       kind,
     })
 
@@ -87,14 +92,31 @@ export function attributeWeek(
       const exercise = lookup(slot.exercise.exerciseId)
       if (exercise === undefined) continue
 
-      const sets = slot.sets.filter(countsAsWorking).length
-      if (sets === 0) continue
+      const working = slot.sets.filter(countsAsWorking)
+      if (working.length === 0) continue
 
-      add(exercise.primaryMuscle, exercise, slot.role, sets, sets, 'primary')
+      // Credited exactly as slotVolume credits it: a low-rep set is worth
+      // less than a full one, so a heavy triple does not read as a set of
+      // ten. The reps are carried through so the breakdown can say why.
+      const credited = working.reduce(
+        (total, set) => total + hypertrophyCredit(nominalReps(set.reps)),
+        0,
+      )
+      const reps = nominalReps(working[0]?.reps ?? { kind: 'fixed', reps: 0 })
+
+      add(exercise.primaryMuscle, exercise, slot.role, working.length, reps, credited, 'primary')
 
       for (const secondary of exercise.secondaryMuscles) {
         if (secondary === exercise.primaryMuscle) continue
-        add(secondary, exercise, slot.role, sets, sets * SECONDARY_SET_FRACTION, 'secondary')
+        add(
+          secondary,
+          exercise,
+          slot.role,
+          working.length,
+          reps,
+          credited * SECONDARY_SET_FRACTION,
+          'secondary',
+        )
       }
     }
   }

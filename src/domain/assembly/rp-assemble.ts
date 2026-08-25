@@ -212,8 +212,9 @@ function buildWeek(
   ) as Record<MuscleGroup, number>
 
   const days: ProgramDay[] = []
-  // What the previous day contained, so today can avoid repeating it.
-  let yesterday: ReadonlySet<ExerciseId> = new Set()
+  // Everything the week has used so far, so a later day can reach for
+  // something else while anything else remains.
+  const usedThisWeek = new Set<ExerciseId>()
 
   for (const [dayIndex, splitDay] of split.days.entries()) {
     const strength = strengthByDay[dayIndex]
@@ -252,7 +253,7 @@ function buildWeek(
       ),
       daysTrained,
       existingSlots: [...slots, ...conditioning],
-      yesterday,
+      usedThisWeek,
     })
 
     committed = addInto(committed, filled.spent)
@@ -275,11 +276,9 @@ function buildWeek(
       slots: ordered,
     })
 
-    yesterday = new Set(
-      slots.flatMap((slot) =>
-        slot.exercise.kind === 'specific' ? [slot.exercise.exerciseId] : [],
-      ),
-    )
+    for (const slot of slots) {
+      if (slot.exercise.kind === 'specific') usedThisWeek.add(slot.exercise.exerciseId)
+    }
   }
 
   return {
@@ -427,14 +426,16 @@ interface FillArgs {
   /** Slots already placed today — warm-ups, strength, featured lift. */
   readonly existingSlots: readonly Slot[]
   /**
-   * Exercises that appeared in yesterday's session.
+   * Exercises already used earlier in this week.
    *
-   * Avoided where there is any alternative. Two consecutive days of
-   * upright rows is the same local fatigue twice with no recovery
-   * between — and it reads, correctly, as the generator having run out
-   * of ideas.
+   * Avoided where there is any alternative. Restricting this to
+   * *yesterday* was not enough: the same upright row kept turning up on
+   * Tuesday and Thursday, which reads — correctly — as the generator
+   * having run out of ideas. A week that names four different movements
+   * for the side delts is a better week than one that names the same one
+   * four times, even where the volume is identical.
    */
-  readonly yesterday: ReadonlySet<ExerciseId>
+  readonly usedThisWeek: ReadonlySet<ExerciseId>
 }
 
 function fillHypertrophy(args: FillArgs): BuiltSlots {
@@ -736,7 +737,7 @@ function pickHypertrophyExercise(
   if (candidates.length === 0) return undefined
 
   /*
-   * Yesterday's exercises go last rather than being removed.
+   * Exercises already used this week go last rather than being removed.
    *
    * A soft penalty, not a filter: for a muscle with one good option in a
    * garage gym, excluding it outright would drop the muscle from the day
@@ -744,9 +745,9 @@ function pickHypertrophyExercise(
    * the back means it is chosen only when nothing else can be.
    */
   const ordered = [...candidates].sort((a, b) => {
-    const aYesterday = args.yesterday.has(a.id) ? 1 : 0
-    const bYesterday = args.yesterday.has(b.id) ? 1 : 0
-    if (aYesterday !== bYesterday) return aYesterday - bYesterday
+    const aUsed = args.usedThisWeek.has(a.id) ? 1 : 0
+    const bUsed = args.usedThisWeek.has(b.id) ? 1 : 0
+    if (aUsed !== bUsed) return aUsed - bUsed
 
     if (a.sfr !== b.sfr) return b.sfr - a.sfr
     const aCost = a.systemicCost ?? 0.3
@@ -757,9 +758,9 @@ function pickHypertrophyExercise(
 
   // Rotate slightly by day so the same muscle does not get the identical
   // exercise every session of the week — but rotate only within the
-  // candidates that were not used yesterday, or the rotation would land
-  // back on one and undo the penalty above.
-  const fresh = ordered.filter((exercise) => !args.yesterday.has(exercise.id))
+  // candidates the week has not used, or the rotation would land back on
+  // one and undo the penalty above.
+  const fresh = ordered.filter((exercise) => !args.usedThisWeek.has(exercise.id))
   const pool = fresh.length > 0 ? fresh : ordered
 
   return pool[args.splitDay.index % pool.length] ?? pool[0]
@@ -954,19 +955,35 @@ function describeDay(
     .slice(0, 4)
     .map((entry) => MUSCLE_GROUP_LABELS[entry.muscle].toLowerCase())
 
-  // The competition lift is named without its parenthetical variant —
-  // "low bar squat", not "low bar squat (competition)".
-  const lift = strengthName?.replace(/\s*\([^)]*\)\s*/g, '').toLowerCase()
+  /*
+   * The lift keeps its own capitalisation and is separated from the
+   * muscles rather than listed alongside them.
+   *
+   * Run together and lowercased, "low bar squat, quads, calves and
+   * hamstrings" reads as four muscles, one of which is oddly specific.
+   * They are different kinds of thing — one names the lift the day is
+   * built on, the rest name what it grows — and the punctuation should
+   * say so. The parenthetical variant is dropped: "Low Bar Squat", not
+   * "Low Bar Squat (competition)".
+   */
+  const lift = strengthName?.replace(/\s*\([^)]*\)\s*/g, '').trim()
 
-  const parts = [...(lift === undefined ? [] : [lift]), ...top]
-  if (parts.length === 0) return splitDay.label
+  const muscles =
+    top.length === 0
+      ? undefined
+      : top.length === 1
+        ? top[0]
+        : `${top.slice(0, -1).join(', ')} and ${top[top.length - 1] ?? ''}`
 
-  const named =
-    parts.length === 1
-      ? (parts[0] ?? '')
-      : `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1] ?? ''}`
+  if (lift === undefined && muscles === undefined) return splitDay.label
+  if (lift === undefined) return `${splitDay.label} — ${sentenceCase(muscles ?? '')}`
+  if (muscles === undefined) return `${splitDay.label} — ${lift}`
 
-  return `${splitDay.label} — ${named}`
+  return `${splitDay.label} — ${lift} · ${muscles}`
+}
+
+function sentenceCase(value: string): string {
+  return value.charAt(0).toUpperCase() + value.slice(1)
 }
 
 /**

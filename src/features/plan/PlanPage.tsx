@@ -7,6 +7,7 @@ import { buttonStyles } from '@/components/shared/styles'
 import { cn } from '@/lib/cn'
 
 import { useProgram } from '@/features/train/hooks'
+import { RtsExplainer } from './RtsExplainer'
 
 /**
  * What the block is doing to you, and why.
@@ -117,6 +118,8 @@ export function PlanPage() {
           </Section>
         ),
       )}
+
+      <RtsExplainer />
 
       <Section title="Change any of it">
         <Card className="space-y-3">

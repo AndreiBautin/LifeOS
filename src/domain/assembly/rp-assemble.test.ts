@@ -133,7 +133,7 @@ describe('naming a day after what is in it', () => {
   it('names the competition lift first when the day has one', () => {
     const tuesday = week.days[1]
 
-    expect(tuesday?.label).toMatch(/^Tuesday — low bar squat/)
+    expect(tuesday?.label).toMatch(/^Tuesday — Low Bar Squat/)
     // Without the parenthetical variant, which is catalogue bookkeeping.
     expect(tuesday?.label).not.toContain('(')
   })
@@ -141,10 +141,17 @@ describe('naming a day after what is in it', () => {
   it('names the muscles the day is actually for', () => {
     // The hardcoded "Monday — press and pull" was a claim, not a
     // description: move a tier and the fill changes underneath it.
-    expect(week.days[0]?.label).toContain('front delts')
+    expect(week.days[0]?.label).toContain('Front delts')
     expect(week.days[0]?.label).toContain('lats')
     expect(week.days[1]?.label).toContain('calves')
     expect(week.days[1]?.label).toContain('hamstrings')
+  })
+
+  it('separates the lift from the muscles it grows', () => {
+    // Run together and lowercased, "low bar squat, quads, calves and
+    // hamstrings" reads as four muscles, one of them oddly specific.
+    expect(week.days[1]?.label).toContain(' · ')
+    expect(week.days[0]?.label).not.toContain(' · ')
   })
 
   it('does not name a day after a muscle it only trains incidentally', () => {

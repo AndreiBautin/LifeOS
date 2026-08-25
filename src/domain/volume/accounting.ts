@@ -2,6 +2,7 @@ import type { Exercise } from '@/domain/exercises/exercise'
 import type { MuscleGroup } from '@/domain/exercises/taxonomy'
 import type { ExerciseId } from '@/domain/ids/ids'
 import type { SetPrescription } from '@/domain/programs/prescription'
+import { nominalReps } from '@/domain/programs/prescription'
 
 import { emptyVolumeMap, SECONDARY_SET_FRACTION } from './landmarks'
 
@@ -32,24 +33,58 @@ export function countsAsWorking(set: SetPrescription): boolean {
 }
 
 /**
+ * Reps at which a set is worth a full one for hypertrophy.
+ *
+ * Below this a set still builds muscle, but less of it: the stimulus
+ * tracks the number of reps taken close to failure, and a heavy triple
+ * simply contains fewer of them than a set of eight. Counting a top-set
+ * single as one hard set is what let three competition lifts overshoot a
+ * maintained muscle's weekly target on their own, which is arithmetically
+ * true and physiologically misleading.
+ */
+export const FULL_CREDIT_REPS = 5
+
+/**
+ * How much of a hard set this many reps is worth.
+ *
+ * Linear below the threshold and capped above it. Linear because the
+ * alternative — a table of hand-chosen values per rep count — is a set of
+ * numbers nobody can justify individually, and the shape is what matters
+ * here rather than the second decimal place. Capped because a set of
+ * twenty is not four sets: past the threshold the limit is fatigue, not
+ * stimulus.
+ */
+export function hypertrophyCredit(reps: number): number {
+  if (reps <= 0) return 0
+  return Math.min(1, reps / FULL_CREDIT_REPS)
+}
+
+/**
  * What one slot's worth of sets contributes, per muscle.
  *
- * The primary muscle gets full credit; muscles the exercise trains
- * incidentally get a fraction. Counting secondaries at full value inflates
- * every total — five pressing days would show forty triceps sets and the
- * landmarks would become meaningless. Counting them at zero produces the
- * opposite error, where a lifter benching four times a week is told their
- * triceps need more direct work.
+ * Two fractions apply, for different reasons. The primary muscle gets
+ * full credit and muscles the exercise trains incidentally get half:
+ * counting secondaries at full value inflates every total until the
+ * landmarks are meaningless, and counting them at zero tells a lifter
+ * benching four times a week that their triceps need more direct work.
+ *
+ * On top of that, a low-rep set is worth less than a full one — see
+ * {@link hypertrophyCredit}. That is what stops a heavy triple counting
+ * the same as a set of ten toward a muscle's weekly growth target.
  */
 export function slotVolume(exercise: Exercise, sets: readonly SetPrescription[]): VolumeMap {
   const volume = emptyVolumeMap()
-  const workingSets = sets.filter(countsAsWorking).length
-  if (workingSets === 0) return volume
 
-  volume[exercise.primaryMuscle] += workingSets
+  const credited = sets
+    .filter(countsAsWorking)
+    .reduce((total, set) => total + hypertrophyCredit(nominalReps(set.reps)), 0)
+
+  if (credited === 0) return volume
+
+  volume[exercise.primaryMuscle] += credited
   for (const secondary of exercise.secondaryMuscles) {
     if (secondary === exercise.primaryMuscle) continue
-    volume[secondary] += workingSets * SECONDARY_SET_FRACTION
+    volume[secondary] += credited * SECONDARY_SET_FRACTION
   }
 
   return volume

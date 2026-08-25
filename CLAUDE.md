@@ -132,6 +132,18 @@ the weekly target. A hardcoded "Monday — press and pull" is a claim that
 goes stale the moment a tier moves, and counting secondaries named an
 upper day after the core.
 
+**A low-rep set is worth less than a full one.** in
+— linear below five reps, capped above.
+Counting a top-set single as one hard set let the three competition lifts
+overshoot a maintained muscle's weekly target on their own, which is
+arithmetically true and physiologically misleading. Changing it changes
+how much accessory work the assembler thinks the legs still need.
+
+**A repeat is penalised across the week, not just against yesterday.**
+The same upright row kept appearing on Tuesday and Thursday. It is a soft
+sort, never a filter: side delts have two hypertrophy options and calves
+have one, so banning a repeat would drop the muscle from the day instead.
+
 **A timed set is costed by its duration.** `setSeconds` in
 `domain/programs/program.ts`. Counting a twenty-minute walk as one
 thirty-second set made conditioning free to the planner, which then

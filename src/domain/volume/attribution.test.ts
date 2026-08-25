@@ -7,6 +7,8 @@ import type { ExerciseId } from '@/domain/ids/ids'
 import { DEFAULT_SETTINGS } from '@/domain/settings/settings'
 import { sumVolume, volumeForSlots } from '@/domain/volume/accounting'
 
+import { hypertrophyCredit } from '@/domain/volume/accounting'
+
 import { attributeWeek } from './attribution'
 
 /**
@@ -107,5 +109,38 @@ describe('attributing a week', () => {
 
     expect(everything.some((entry) => entry.exerciseId === 'shoulder-dislocation')).toBe(false)
     expect(everything.some((entry) => entry.exerciseId === 'foam-roll')).toBe(false)
+  })
+})
+
+describe('crediting low-rep work', () => {
+  it('counts a heavy triple as less than a set of ten', () => {
+    // A top-set single counting as one hard set is what let three
+    // competition lifts overshoot a maintained muscle's weekly target on
+    // their own — arithmetically true, physiologically misleading.
+    expect(hypertrophyCredit(1)).toBeLessThan(hypertrophyCredit(3))
+    expect(hypertrophyCredit(3)).toBeLessThan(hypertrophyCredit(5))
+  })
+
+  it('gives full credit at five reps and no more above it', () => {
+    // Past the threshold the limit is fatigue, not stimulus: a set of
+    // twenty is not four sets.
+    expect(hypertrophyCredit(5)).toBe(1)
+    expect(hypertrophyCredit(10)).toBe(1)
+    expect(hypertrophyCredit(20)).toBe(1)
+  })
+
+  it('leaves a set with no reps worth nothing', () => {
+    expect(hypertrophyCredit(0)).toBe(0)
+  })
+
+  it('discounts the competition lifts in the block that ships', () => {
+    // Five sets of five squats is five credited sets; the same five sets
+    // at a triple would be three. This is the number that decides how
+    // much accessory work the legs still need.
+    const quads = attribution.find((entry) => entry.muscle === 'quads')
+    const squat = quads?.contributions.find((entry) => entry.exerciseId === 'low-bar-squat')
+
+    expect(squat).toBeDefined()
+    expect(squat?.counted).toBeLessThanOrEqual(squat?.sets ?? 0)
   })
 })
