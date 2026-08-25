@@ -91,9 +91,16 @@ function mergeWithDefaults(parsed: unknown): AppSettings {
       typeof stored.roundingIncrement === 'number' && stored.roundingIncrement > 0
         ? stored.roundingIncrement
         : DEFAULT_SETTINGS.roundingIncrement,
-    ...(typeof stored.bodyweight === 'number' && stored.bodyweight > 0
-      ? { bodyweight: stored.bodyweight }
-      : {}),
+    /*
+     * Falls back to the default rather than being dropped.
+     *
+     * Written as a conditional spread, an absent stored value produced a
+     * settings object with no bodyweight at all — so the default could
+     * never apply, and every strength standard (all of which are
+     * multiples of bodyweight) reported "set your bodyweight" on an
+     * install that had one waiting in the defaults.
+     */
+    ...bodyweightOf(stored.bodyweight),
     // Spread over the defaults so a muscle group added since this blob was
     // written gets its default landmarks rather than being absent.
     landmarks: isRecord(stored.landmarks)
@@ -101,7 +108,12 @@ function mergeWithDefaults(parsed: unknown): AppSettings {
       : DEFAULT_SETTINGS.landmarks,
     // Every value is checked rather than the record being trusted whole: a
     // junk entry here becomes a suggested load on a bar.
-    estimatedMaxes: isRecord(stored.estimatedMaxes)
+    //
+    // An *empty* stored record falls back to the defaults rather than
+    // winning. It is indistinguishable from never having set one, and an
+    // earlier version wrote `{}` on first run — which then permanently
+    // shadowed the seeded maxes for anyone who had already opened the app.
+    estimatedMaxes: hasEntries(stored.estimatedMaxes)
       ? Object.fromEntries(
           Object.entries(stored.estimatedMaxes).filter(
             (entry): entry is [string, number] =>
@@ -148,6 +160,17 @@ function mergeWithDefaults(parsed: unknown): AppSettings {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function bodyweightOf(stored: unknown): { bodyweight?: number } {
+  if (typeof stored === 'number' && stored > 0) return { bodyweight: stored }
+  return DEFAULT_SETTINGS.bodyweight === undefined
+    ? {}
+    : { bodyweight: DEFAULT_SETTINGS.bodyweight }
+}
+
+function hasEntries(value: unknown): value is Record<string, unknown> {
+  return isRecord(value) && Object.keys(value).length > 0
 }
 
 /**

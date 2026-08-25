@@ -9,6 +9,9 @@ import type { ProgramInstance } from '@/domain/repositories/ports'
 import { STORAGE_KEYS } from '@/config/storage-keys'
 import { BUILT_IN_PROGRAM_COUNT, builtInPrograms } from '@/infrastructure/seed/built-in-programs'
 import {
+  refreshBuiltInPrograms,
+  resnapshotUntrainedInstance,
+  retireBuiltInExercises,
   retireBuiltInPrograms,
   seedIfEmpty,
   syncBuiltInExercises,
@@ -398,6 +401,177 @@ describe('keeping the built-in library current', () => {
     await syncBuiltInPrograms(deps(), new Set())
 
     expect((await programs.byId(asProgramId('built-in-rp-block')))?.name).toBe('My Block')
+  })
+
+  it('rewrites a stored built-in whose shipped content has changed', async () => {
+    // The blind spot in additive sync. A program the install has already
+    // been offered is never revisited, so every later improvement to the
+    // assembler reached new installs only — and the symptom was a block
+    // that still worked while describing a split the code no longer built.
+    const programs = createProgramRepository(db)
+    await seedIfEmpty(deps())
+
+    const before = await programs.byId(asProgramId('built-in-rp-block'))
+    if (before === undefined) throw new Error('expected the block to be seeded')
+
+    // An install carrying an older shape of the same built-in.
+    await programs.save({ ...before, blocks: [], tags: ['stale'] })
+
+    const refreshed = await refreshBuiltInPrograms(deps())
+
+    expect(refreshed).toEqual(['built-in-rp-block'])
+    const after = await programs.byId(asProgramId('built-in-rp-block'))
+    expect(after?.blocks.length).toBeGreaterThan(0)
+    // The creation date is the install's, not today's.
+    expect(after?.createdAt).toBe(before.createdAt)
+  })
+
+  it('can still refresh after it has already refreshed once', async () => {
+    // The regression that shipped with the first version of this: the
+    // refresh wrote a fresh `updatedAt`, which is the same signal used to
+    // detect a lifter's edit. One update landed and the install was then
+    // locked out of every update after it.
+    const programs = createProgramRepository(db)
+    await seedIfEmpty(deps())
+
+    const seeded = await programs.byId(asProgramId('built-in-rp-block'))
+    if (seeded === undefined) throw new Error('expected the block to be seeded')
+
+    await programs.save({ ...seeded, blocks: [] })
+    expect(await refreshBuiltInPrograms(deps())).toEqual(['built-in-rp-block'])
+
+    // Go stale a second time; it must still be repaired.
+    const afterFirst = await programs.byId(asProgramId('built-in-rp-block'))
+    if (afterFirst === undefined) throw new Error('expected the block to survive')
+    await programs.save({ ...afterFirst, blocks: [] })
+
+    expect(await refreshBuiltInPrograms(deps())).toEqual(['built-in-rp-block'])
+  })
+
+  it('rewrites nothing when the shipped content is unchanged', async () => {
+    // Runs on every start, so it must be a no-op in the common case —
+    // otherwise it rewrites the whole library on each launch.
+    await seedIfEmpty(deps())
+
+    expect(await refreshBuiltInPrograms(deps())).toEqual([])
+  })
+
+  it('leaves a built-in the lifter has edited alone', async () => {
+    // Their edit is theirs. Overwriting it to deliver a refinement is the
+    // app deciding it knows better than the person using it.
+    const programs = createProgramRepository(db)
+    await seedIfEmpty(deps())
+
+    const original = await programs.byId(asProgramId('built-in-rp-block'))
+    if (original === undefined) throw new Error('expected the block to be seeded')
+
+    await programs.save({
+      ...original,
+      name: 'My tweaked block',
+      blocks: [],
+      updatedAt: '2027-01-01T00:00:00.000Z',
+    })
+
+    expect(await refreshBuiltInPrograms(deps())).toEqual([])
+    expect((await programs.byId(asProgramId('built-in-rp-block')))?.name).toBe('My tweaked block')
+  })
+
+  it('re-snapshots a run nothing has been logged against', async () => {
+    // A run the app auto-started snapshots whatever template existed at
+    // first launch. Without this the lifter trains that block forever
+    // while the library quietly shows a newer one.
+    const programs = createProgramRepository(db)
+    const instances = createInstanceRepository(db)
+    const workouts = createWorkoutRepository(db)
+    await seedIfEmpty(deps())
+
+    const program = await programs.byId(asProgramId('built-in-rp-block'))
+    if (program === undefined) throw new Error('expected the block to be seeded')
+
+    await instances.save({
+      id: asInstanceId('auto'),
+      programId: program.id,
+      templateSnapshot: { ...program, name: 'An older shape', blocks: [] },
+      name: 'An older shape',
+      startedAt: '2026-08-01T00:00:00.000Z',
+      status: 'active',
+      cycleNumber: 1,
+      blockIndex: 0,
+      weekIndex: 0,
+      dayIndex: 0,
+    })
+
+    expect(await resnapshotUntrainedInstance({ ...deps(), instances, workouts })).toBe(true)
+
+    const after = await instances.active()
+    expect(after?.name).toBe(program.name)
+    expect(after?.templateSnapshot.blocks.length).toBeGreaterThan(0)
+  })
+
+  it('never re-snapshots a run that has been trained', async () => {
+    // The frozen snapshot is what stops editing a program from rewriting
+    // history. One logged set is enough to make it load-bearing.
+    const programs = createProgramRepository(db)
+    const instances = createInstanceRepository(db)
+    const workouts = createWorkoutRepository(db)
+    await seedIfEmpty(deps())
+
+    const program = await programs.byId(asProgramId('built-in-rp-block'))
+    if (program === undefined) throw new Error('expected the block to be seeded')
+
+    await instances.save({
+      id: asInstanceId('running'),
+      programId: program.id,
+      templateSnapshot: { ...program, name: 'Mid-cycle', blocks: [] },
+      name: 'Mid-cycle',
+      startedAt: '2026-08-01T00:00:00.000Z',
+      status: 'active',
+      cycleNumber: 1,
+      blockIndex: 0,
+      weekIndex: 0,
+      dayIndex: 0,
+    })
+
+    await workouts.save(
+      aWorkout({
+        position: {
+          instanceId: asInstanceId('running'),
+          blockIndex: 0,
+          cycleNumber: 1,
+          weekIndex: 0,
+          dayIndex: 0,
+        },
+      }),
+    )
+
+    expect(await resnapshotUntrainedInstance({ ...deps(), instances, workouts })).toBe(false)
+    expect((await instances.active())?.name).toBe('Mid-cycle')
+  })
+
+  it('archives an exercise withdrawn from the catalogue', async () => {
+    // `syncBuiltInExercises` is additive, so a withdrawn exercise stayed
+    // in the library and went on being selected — which is why the
+    // behind-the-back shrug kept appearing after it was deleted.
+    const exercises = createExerciseRepository(db)
+    await seedIfEmpty(deps())
+    await exercises.save(anExercise({ id: asExerciseId('behind-back-shrug'), isArchived: false }))
+
+    const archived = await retireBuiltInExercises(deps(), ['behind-back-shrug'])
+
+    expect(archived).toEqual(['behind-back-shrug'])
+    // Archived, not deleted: workouts already logged still refer to it.
+    expect((await exercises.byId(asExerciseId('behind-back-shrug')))?.isArchived).toBe(true)
+  })
+
+  it('never archives an exercise that is not on the retired list', async () => {
+    // An `Exercise` carries no origin, so "anything the catalogue no
+    // longer contains" would archive the lifter's entire custom library.
+    const exercises = createExerciseRepository(db)
+    await exercises.save(anExercise({ id: asExerciseId('my-own-movement'), isArchived: false }))
+
+    await retireBuiltInExercises(deps(), ['behind-back-shrug'])
+
+    expect((await exercises.byId(asExerciseId('my-own-movement')))?.isArchived).toBe(false)
   })
 
   it('removes a built-in the app no longer ships', async () => {

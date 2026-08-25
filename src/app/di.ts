@@ -19,8 +19,12 @@ import {
 import {
   DEFAULT_PROGRAM_ID,
   RETIRED_BUILT_IN_PROGRAM_IDS,
+  RETIRED_EXERCISE_SLUGS,
 } from '@/infrastructure/seed/built-in-programs'
 import {
+  refreshBuiltInPrograms,
+  resnapshotUntrainedInstance,
+  retireBuiltInExercises,
   retireBuiltInPrograms,
   seedIfEmpty,
   startDefaultProgram,
@@ -132,6 +136,13 @@ export async function bootstrap(): Promise<BootstrapResult> {
   // and then handed straight back on the next start.
   recordDeliveredBuiltIns([...programSync.allIds, ...RETIRED_BUILT_IN_PROGRAM_IDS])
 
+  // A built-in whose shipped content has changed is rewritten, and an
+  // exercise withdrawn from the catalogue is archived so it stops being
+  // selected. Both are additive-sync's blind spot: without them an
+  // existing install keeps the block and the library it was first given.
+  const refreshed = await refreshBuiltInPrograms(seedDeps)
+  const archivedExercises = await retireBuiltInExercises(seedDeps, RETIRED_EXERCISE_SLUGS)
+
   // One program ships, so there is nothing to choose between: open the app
   // on today's session rather than on a library with one entry.
   const autoStarted = await startDefaultProgram(
@@ -139,13 +150,25 @@ export async function bootstrap(): Promise<BootstrapResult> {
     DEFAULT_PROGRAM_ID,
   )
 
+  // A run the app started for the lifter snapshots whatever template
+  // existed at first launch, so a refresh would otherwise never reach it.
+  // Safe only while nothing has been logged against it.
+  const resnapshotted = await resnapshotUntrainedInstance({
+    ...seedDeps,
+    instances: services.instances,
+    workouts: services.workouts,
+  })
+
   logger.info('app.bootstrap', {
     exercisesSeeded: seeded.exercisesAdded,
     programsSeeded: seeded.programsAdded,
     exercisesAddedBySync: exercisesAdded,
     programsAddedBySync: programSync.added.length,
     programsRetired: retired.length,
+    programsRefreshed: refreshed.length,
+    exercisesArchived: archivedExercises.length,
     autoStarted,
+    resnapshotted,
   })
 
   return { services, seeded }

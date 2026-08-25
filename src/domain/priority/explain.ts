@@ -64,6 +64,88 @@ export interface VolumePlan {
   readonly totalWeeklySets: number
 }
 
+/**
+ * A name and a description generated from the tiers themselves.
+ *
+ * Written by hand, these went stale the first time a tier moved: the
+ * block still called itself "arms and side delts" after front delts were
+ * promoted, and claimed everything else was maintained after the squat
+ * and deadlift were moved up to building. A description that describes
+ * the wrong program is worse than none — it is the one thing in the app a
+ * lifter has no way to check.
+ */
+export function describeBlock(
+  muscleTiers: MuscleTiers,
+  strengthTiers: StrengthTiers,
+): { readonly name: string; readonly description: string } {
+  const list = (values: readonly string[]): string => {
+    if (values.length === 0) return 'nothing'
+    if (values.length === 1) return values[0] ?? ''
+    return `${values.slice(0, -1).join(', ')} and ${values[values.length - 1] ?? ''}`
+  }
+
+  /*
+   * Muscles that are always trained together read better as one word.
+   *
+   * "Biceps, triceps, forearms and side delts" is accurate and unusable
+   * as a title. Collapsing the set only when *all* of it is present keeps
+   * it honest — prioritising biceps alone still says biceps.
+   */
+  const GROUPS: readonly { readonly members: readonly MuscleGroup[]; readonly label: string }[] = [
+    { members: ['biceps', 'triceps', 'forearms'], label: 'arms' },
+    { members: ['quads', 'hamstrings', 'glutes', 'calves'], label: 'legs' },
+    { members: ['lats', 'upper-back'], label: 'back' },
+  ]
+
+  const musclesAt = (rank: number): string[] => {
+    const members = muscleTiers.find((tier) => tier.rank === rank)?.members ?? []
+    const remaining = new Set(members)
+    const named: string[] = []
+
+    for (const group of GROUPS) {
+      if (!group.members.every((muscle) => remaining.has(muscle))) continue
+      for (const muscle of group.members) remaining.delete(muscle)
+      named.push(group.label)
+    }
+
+    return [
+      ...named,
+      ...members
+        .filter((muscle) => remaining.has(muscle))
+        .map((muscle) => MUSCLE_GROUP_LABELS[muscle].toLowerCase()),
+    ]
+  }
+
+  const liftsAt = (rank: number): string[] =>
+    (strengthTiers.find((tier) => tier.rank === rank)?.members ?? []).map((lift) =>
+      STRENGTH_LIFT_LABELS[lift].toLowerCase(),
+    )
+
+  const top = musclesAt(1)
+  const middle = musclesAt(2)
+  const bottom = musclesAt(3)
+  const leadLifts = liftsAt(1)
+
+  const sentences = [
+    'Renaissance Periodization volume with RTS autoregulated strength on the three lifts.',
+    top.length > 0 ? `${sentenceCase(list(top))} specialised.` : '',
+    middle.length > 0 ? `${sentenceCase(list(middle))} building.` : '',
+    bottom.length > 0 ? `${sentenceCase(list(bottom))} maintained.` : '',
+    leadLifts.length > 0
+      ? `${sentenceCase(list(leadLifts))} ${leadLifts.length === 1 ? 'leads' : 'lead'} the strength work.`
+      : '',
+  ].filter((sentence) => sentence !== '')
+
+  return {
+    name: top.length > 0 ? `RP block — ${list(top)}` : 'RP block',
+    description: sentences.join(' '),
+  }
+}
+
+function sentenceCase(value: string): string {
+  return value.charAt(0).toUpperCase() + value.slice(1)
+}
+
 function bandFor(position: number): Band {
   if (position >= 0.6) return 'specialising'
   if (position >= 0.3) return 'building'
@@ -121,8 +203,10 @@ export function explainVolume(
       tier: rank,
       reason:
         rank === 1
-          ? 'Prioritised: a higher fatigue target, so more back-off volume after the top set.'
-          : 'Maintained: the top set and a short back-off, enough to hold the lift while something else grows.',
+          ? 'Specialising: the highest fatigue target, so the most back-off volume after the top set.'
+          : rank === 2
+            ? 'Building: a moderate fatigue target. Still progressing, just paying for the priority out of its rate.'
+            : 'Maintaining: the top set and little else — enough to hold the lift while something else grows.',
     }
   })
 

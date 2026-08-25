@@ -24,6 +24,7 @@ import {
   validateTiers,
   weeklyTargetForWeek,
 } from '@/domain/priority/tiers'
+import { describeBlock } from '@/domain/priority/explain'
 import type { RpDay, RpSplit } from '@/domain/splits/rp-splits'
 import { rpFrequency, rpSplitForDays } from '@/domain/splits/rp-splits'
 import { slotVolume, type VolumeMap } from '@/domain/volume/accounting'
@@ -85,12 +86,19 @@ export interface RpRecipe {
 }
 
 export function defaultRpRecipe(overrides: Partial<RpRecipe> = {}): RpRecipe {
+  const muscleTiers = overrides.muscleTiers ?? DEFAULT_MUSCLE_TIERS
+  const strengthTiers = overrides.strengthTiers ?? DEFAULT_STRENGTH_TIERS
+
+  // Named and described from the tiers rather than by hand, so the block
+  // cannot go on calling itself an arms specialisation after the arms
+  // have been moved down.
+  const described = describeBlock(muscleTiers, strengthTiers)
+
   return {
-    name: 'RP block — arms and side delts',
-    description:
-      'Renaissance Periodization volume with RTS autoregulated strength on the three lifts. Arms and side delts specialised; back and chest building; everything else maintained.',
-    strengthTiers: DEFAULT_STRENGTH_TIERS,
-    muscleTiers: DEFAULT_MUSCLE_TIERS,
+    name: described.name,
+    description: described.description,
+    strengthTiers,
+    muscleTiers,
     landmarks: DEFAULT_LANDMARKS,
     // Five, matching `DEFAULT_SETTINGS`. Four has to carry the week's
     // volume in four sittings and runs the upper days long; six divides

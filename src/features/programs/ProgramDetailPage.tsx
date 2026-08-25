@@ -8,8 +8,8 @@ import { useServices, useSettings } from '@/app/context'
 import { asProgramId, type ProgramId } from '@/domain/ids/ids'
 import { describePrescription } from '@/domain/programs/prescription'
 import {
-  SLOT_ROLE_LABELS,
-  SLOT_ROLE_TONES,
+  slotRoleLabel,
+  slotRoleTone,
   type ProgramTemplate,
   type ProgramWeek,
 } from '@/domain/programs/program'
@@ -300,9 +300,7 @@ function WeekView({
                             ? exerciseName(slot.exercise.exerciseId)
                             : slot.exercise.label}
                         </span>
-                        <Badge tone={SLOT_ROLE_TONES[slot.role]}>
-                          {SLOT_ROLE_LABELS[slot.role]}
-                        </Badge>
+                        <Badge tone={slotRoleTone(slot.role)}>{slotRoleLabel(slot.role)}</Badge>
                       </span>
                       <span className="text-ink-500 numeric mt-1 block text-xs">
                         {summariseSets(slot.sets)}

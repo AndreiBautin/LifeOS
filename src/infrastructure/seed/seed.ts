@@ -1,9 +1,11 @@
 import { builtInExercises } from '@/domain/exercises/catalogue'
+import type { ProgramTemplate } from '@/domain/programs/program'
 import { asInstanceId, asProgramId, type IdGenerator } from '@/domain/ids/ids'
 import type {
   ExerciseRepository,
   InstanceRepository,
   ProgramRepository,
+  WorkoutRepository,
 } from '@/domain/repositories/ports'
 
 import { builtInPrograms } from './built-in-programs'
@@ -117,6 +119,152 @@ export async function syncBuiltInPrograms(
   for (const program of missing) await deps.programs.save(program)
 
   return { added: missing.map((program) => program.id as string), allIds }
+}
+
+/**
+ * Rewrites a stored built-in whose shipped definition has changed.
+ *
+ * The gap that `syncBuiltInPrograms` leaves. That one adds programs an
+ * install has never been offered — but a program it *has* been offered
+ * and whose content has since changed is never touched, so an install
+ * keeps the block it was first given forever. Every improvement to the
+ * assembler reached new installs only, and the symptom was subtle: a
+ * block that still worked, still opened, and quietly described a
+ * different split from the one the code now builds.
+ *
+ * A built-in the lifter has **edited** is left alone. `updatedAt` moving
+ * past `createdAt` is the signal, which is exactly what `saveProgram`
+ * writes. Their edit is theirs; the app has no business overwriting it to
+ * deliver a refinement.
+ *
+ * The running instance is untouched either way — it holds a frozen
+ * snapshot, so a block in progress keeps prescribing what it started
+ * with, and the new shape applies to the next run.
+ */
+export async function refreshBuiltInPrograms(deps: SeedDeps): Promise<readonly string[]> {
+  const shipped = builtInPrograms(deps.ids, deps.now)
+  const refreshed: string[] = []
+
+  for (const program of shipped) {
+    const existing = await deps.programs.byId(program.id)
+    if (existing === undefined) continue
+    if (existing.origin !== 'built-in') continue
+
+    // Edited by the lifter: leave it.
+    if (existing.updatedAt !== existing.createdAt) continue
+
+    // Compared on content rather than on a version number nobody would
+    // remember to bump. Ids are regenerated on every assembly, so they
+    // are excluded — otherwise every start would look like a change.
+    if (contentOf(existing) === contentOf(program)) continue
+
+    /*
+     * Both timestamps are carried over from the stored copy, which keeps
+     * them equal.
+     *
+     * That equality is the "the lifter has not touched this" signal, and
+     * writing a fresh `updatedAt` here destroyed it: the first refresh
+     * made the program look edited, and every refresh after that skipped
+     * it. One update landed and the install was then stuck forever — the
+     * exact failure this function exists to prevent, reintroduced by the
+     * fix for it.
+     *
+     * The app restating its own template is not an edit.
+     */
+    await deps.programs.save({
+      ...program,
+      createdAt: existing.createdAt,
+      updatedAt: existing.createdAt,
+    })
+    refreshed.push(program.id)
+  }
+
+  return refreshed
+}
+
+/** A program's content, ignoring the ids regenerated on every assembly. */
+function contentOf(program: ProgramTemplate): string {
+  return JSON.stringify(program, (key, value) =>
+    key === 'id' || key === 'createdAt' || key === 'updatedAt' ? undefined : (value as unknown),
+  )
+}
+
+/**
+ * Re-snapshots a run that has not been trained yet.
+ *
+ * A `ProgramInstance` holds a frozen copy of its template on purpose: a
+ * cycle in progress must keep prescribing what it started with. That
+ * invariant is load-bearing and is not being weakened here.
+ *
+ * But it collides with a block the app starts *for* the lifter. The
+ * auto-started run snapshots whatever template existed at first launch,
+ * so every later refresh reaches the template and never the run — the
+ * lifter trains the old block indefinitely while the library shows the
+ * new one.
+ *
+ * The resolution is the one case where re-snapshotting can lose nothing:
+ * a run with no workouts logged against it has no history to protect. It
+ * is a plan nobody has acted on, and replacing it is not rewriting the
+ * past.
+ */
+export async function resnapshotUntrainedInstance(
+  deps: SeedDeps & { readonly instances: InstanceRepository; readonly workouts: WorkoutRepository },
+): Promise<boolean> {
+  const instance = await deps.instances.active()
+  if (instance === undefined) return false
+
+  const program = await deps.programs.byId(instance.programId)
+  if (program === undefined) return false
+  if (contentOf(program) === contentOf(instance.templateSnapshot)) return false
+
+  // Anything logged at all — including a session in progress — means the
+  // lifter has started acting on this plan.
+  const logged = await deps.workouts.recent(500)
+  if (logged.some((workout) => workout.position?.instanceId === instance.id)) return false
+
+  await deps.instances.save({
+    ...instance,
+    name: program.name,
+    templateSnapshot: program,
+  })
+
+  return true
+}
+
+/**
+ * Removes built-in exercises the app no longer ships.
+ *
+ * The mirror of {@link syncBuiltInExercises}, and needed for the same
+ * reason: that one is additive, so an exercise withdrawn from the
+ * catalogue stays in an existing library and keeps being selected. The
+ * behind-the-back shrug was removed from the code and went on appearing
+ * in generated blocks for exactly this reason.
+ *
+ * Archived rather than deleted. A withdrawn exercise may appear in
+ * workouts already logged, and deleting it would leave that history
+ * pointing at nothing — the assembler skips archived entries, which is
+ * all that is needed to keep it out of future blocks.
+ */
+export async function retireBuiltInExercises(
+  deps: SeedDeps,
+  retiredSlugs: readonly string[],
+): Promise<readonly string[]> {
+  // An explicit list rather than "everything the catalogue no longer
+  // contains". An `Exercise` carries no origin, so the broader rule would
+  // archive every exercise the lifter had created themselves — the whole
+  // custom library, silently, on the next start.
+  const retired = new Set(retiredSlugs)
+  const stored = await deps.exercises.all()
+
+  const withdrawn = stored.filter(
+    (exercise) => retired.has(exercise.id as string) && !exercise.isArchived,
+  )
+
+  for (const exercise of withdrawn) {
+    await deps.exercises.save({ ...exercise, isArchived: true })
+  }
+
+  return withdrawn.map((exercise) => exercise.id as string)
 }
 
 /**

@@ -85,6 +85,20 @@ MEV never moves from a soreness rating.
 **Readiness scales today, not the landmarks.** Sleep and stress adjust
 one session. They must never produce a landmark proposal.
 
+**A shipped change must reach an install that already exists.** Four
+mechanisms, each covering a different gap, all in `infrastructure/seed/`:
+`syncBuiltInExercises` and `syncBuiltInPrograms` add what is missing;
+`refreshBuiltInPrograms` rewrites a built-in whose content changed;
+`retireBuiltInExercises` and `retireBuiltInPrograms` withdraw what is
+gone; `resnapshotUntrainedInstance` carries a refresh into a run nobody
+has trained yet. Adding data to the app without one of these means new
+installs only — which looks like it works, because yours is new.
+
+**`createdAt === updatedAt` means "the lifter has not touched this".**
+The refresh preserves it deliberately. Writing a fresh `updatedAt` there
+made the first refresh look like a user edit and locked the install out
+of every refresh after it.
+
 **One block ships, and the app opens on it.** `startDefaultProgram` in
 `infrastructure/seed/seed.ts` starts it when there is no instance at all.
 There is no program picker — choosing is a step that existed only because

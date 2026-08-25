@@ -69,7 +69,7 @@ export function TierEditor({
     strengthTiers.find((tier) => tier.members.includes(lift))?.rank ?? 2
 
   const setStrengthRank = (lift: StrengthLift, rank: number): void => {
-    const next: StrengthTiers = Array.from({ length: 2 }, (_unused, index) => {
+    const next: StrengthTiers = Array.from({ length: TIER_COUNT }, (_unused, index) => {
       const tierRank = index + 1
       const existing = strengthTiers.find((tier) => tier.rank === tierRank)
       const members = (existing?.members ?? []).filter((member) => member !== lift)
@@ -96,7 +96,7 @@ export function TierEditor({
             <li key={lift} className="flex items-center justify-between gap-3">
               <span className="text-ink-300 text-sm">{STRENGTH_LIFT_LABELS[lift]}</span>
               <div className="flex gap-1">
-                {[1, 2].map((rank) => (
+                {[1, 2, 3].map((rank) => (
                   <TierButton
                     key={rank}
                     rank={rank}
@@ -112,8 +112,9 @@ export function TierEditor({
         </ul>
 
         <p className="text-ink-500 mt-3 text-xs">
-          A prioritised lift earns a higher fatigue target — more back-off volume after the top set
-          — while a maintained one gets the top set and little else.
+          Three tiers, as with the muscles. Tier 1 earns the highest fatigue target and so the most
+          back-off volume; tier 2 still progresses, just more slowly; tier 3 takes the top set and
+          little else.
         </p>
       </Card>
 

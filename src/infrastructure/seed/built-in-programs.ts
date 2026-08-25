@@ -53,6 +53,9 @@ export function builtInPrograms(ids: IdGenerator, now: Date): readonly ProgramTe
 
 export const BUILT_IN_PROGRAM_COUNT = DEFINITIONS.length
 
+/** Exercise slugs that shipped once and have since been withdrawn. */
+export const RETIRED_EXERCISE_SLUGS: readonly string[] = ['behind-back-shrug']
+
 /** Ids of built-ins that shipped once and have since been withdrawn. */
 export const RETIRED_BUILT_IN_PROGRAM_IDS: readonly string[] = [
   'built-in-rp-block-6day',

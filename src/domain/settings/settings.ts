@@ -78,7 +78,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   // From the same 5/3/1 export. Needed as well as the maxes: every
   // strength standard is a multiple of bodyweight, so without it the
   // character sheet can only say "set your bodyweight".
-  bodyweight: 183,
+  bodyweight: 200,
   landmarks: DEFAULT_LANDMARKS,
   // Read out of the 5/3/1 export, each from the best completed work set
   // in it: 260x5, 195x5, 315x5 and 130x5. A starting point for the RTS

@@ -245,9 +245,22 @@ export function validateTiers<T extends string>(tiers: readonly Tier<T>[]): void
  * else. A two-of-fourteen top tier is a concentrated structure, so the
  * spread factor comes out high and those muscles genuinely get pushed.
  */
+/**
+ * Three tiers for the lifts, not two.
+ *
+ * Two tiers only offered "grow this" and "hold that", and holding is not
+ * what anybody wants from a squat while they push a bench. Three lets the
+ * middle mean what it should: still progressing, just paying for the
+ * priority out of its rate rather than out of its existence.
+ *
+ * The bottom rank still exists and is still worth having — a lift coming
+ * back from a tweak, or one deliberately parked for a block — but nothing
+ * is put there by default.
+ */
 export const DEFAULT_STRENGTH_TIERS: StrengthTiers = [
-  { rank: 1, members: ['bench'], label: 'Priority' },
-  { rank: 2, members: ['squat', 'deadlift'], label: 'Maintain and build' },
+  { rank: 1, members: ['bench'], label: 'Specialising' },
+  { rank: 2, members: ['squat', 'deadlift'], label: 'Building' },
+  { rank: 3, members: [], label: 'Maintaining' },
 ]
 
 export const DEFAULT_MUSCLE_TIERS: MuscleTiers = [

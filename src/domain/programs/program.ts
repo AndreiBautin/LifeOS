@@ -43,6 +43,17 @@ export const SLOT_ROLES = [
 ] as const
 export type SlotRole = (typeof SLOT_ROLES)[number]
 
+/**
+ * A label for a role, tolerating one this build does not know.
+ *
+ * A stored program can carry a role from an older version — the badge
+ * rendered as a bare dash when it did, which reads as a bug rather than
+ * as "unlabelled".
+ */
+export function slotRoleLabel(role: string): string {
+  return (SLOT_ROLE_LABELS as Partial<Record<string, string>>)[role] ?? 'Work'
+}
+
 export const SLOT_ROLE_LABELS: Record<SlotRole, string> = {
   warmup: 'Warm-up',
   main: 'Main lift',
@@ -60,6 +71,14 @@ export const SLOT_ROLE_LABELS: Record<SlotRole, string> = {
  * to get through. Every role having the same grey badge meant reading the
  * word every time.
  */
+export function slotRoleTone(role: string): 'neutral' | 'accent' | 'good' | 'warn' | 'bad' {
+  return (
+    (SLOT_ROLE_TONES as Partial<Record<string, 'neutral' | 'accent' | 'good' | 'warn' | 'bad'>>)[
+      role
+    ] ?? 'neutral'
+  )
+}
+
 export const SLOT_ROLE_TONES: Record<SlotRole, 'neutral' | 'accent' | 'good' | 'warn' | 'bad'> = {
   warmup: 'neutral',
   main: 'accent',
