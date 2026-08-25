@@ -2,7 +2,7 @@ import type { Exercise } from '@/domain/exercises/exercise'
 import type { MuscleGroup } from '@/domain/exercises/taxonomy'
 import type { ExerciseId } from '@/domain/ids/ids'
 import type { SetPrescription } from '@/domain/programs/prescription'
-import { nominalReps } from '@/domain/programs/prescription'
+import { MAX_RPE, nominalReps } from '@/domain/programs/prescription'
 
 import { emptyVolumeMap, SECONDARY_SET_FRACTION } from './landmarks'
 
@@ -33,30 +33,82 @@ export function countsAsWorking(set: SetPrescription): boolean {
 }
 
 /**
- * Reps at which a set is worth a full one for hypertrophy.
+ * How close to failure a set has to be taken to be worth a full one.
  *
- * Below this a set still builds muscle, but less of it: the stimulus
- * tracks the number of reps taken close to failure, and a heavy triple
- * simply contains fewer of them than a set of eight. Counting a top-set
- * single as one hard set is what let three competition lifts overshoot a
- * maintained muscle's weekly target on their own, which is arithmetically
- * true and physiologically misleading.
+ * Five reps, and what is counted is the reps taken *within five of
+ * failure* rather than the reps performed. Those are the ones the
+ * stimulus tracks; a set that stops well short contains fewer of them
+ * whatever its rep count says.
  */
 export const FULL_CREDIT_REPS = 5
 
 /**
- * How much of a hard set this many reps is worth.
+ * Reps in reserve that cost a set nothing.
  *
- * Linear below the threshold and capped above it. Linear because the
- * alternative — a table of hand-chosen values per rep count — is a set of
- * numbers nobody can justify individually, and the shape is what matters
- * here rather than the second decimal place. Capped because a set of
- * twenty is not four sets: past the threshold the limit is fatigue, not
- * stimulus.
+ * The landmarks are published in *hard sets*, and a hard set in that
+ * literature means one taken to roughly a rep short of failure — not one
+ * taken to failure. So a set at RPE 9 has to keep full credit, or the
+ * unit the targets are expressed in quietly changes and every number in
+ * the app shifts underneath them.
+ *
+ * Discounting starts past that. It is the difference between saying "a
+ * set stopped well short of failure is worth less" and saying "every set
+ * anybody actually programs is worth less", and only the first is a
+ * claim about training.
  */
-export function hypertrophyCredit(reps: number): number {
+const FREE_RIR = 1
+
+/**
+ * How much of a hard set this is worth, from its reps and its RPE.
+ *
+ * Two things shorten a set's contribution and they are easy to conflate.
+ * **Reps** was already here: a heavy triple simply contains fewer
+ * stimulating reps than a set of eight. **Proximity to failure** was not,
+ * and it is what made a competition lift's volume read wrong — five reps
+ * at RPE 8 and five at RPE 10 both counted as one full set, so fifteen
+ * bench sets covered a chest target on their own and the assembler
+ * concluded the chest needed no direct work at all.
+ *
+ * The fix is not "strength work counts half". Half is a number with
+ * nothing behind it, and it would discount a heavy set of five taken to
+ * failure — which really is a full hypertrophy set — by the same amount
+ * as one stopped two reps short. What actually differs is where the set
+ * ends: at 2 RIR the last five reps span 6 to 2 away from failure, and
+ * only three of them are inside the window. That is 0.6, arrived at
+ * rather than chosen.
+ *
+ * Capped at one, because a set of twenty is not four sets: past the
+ * window the limit is fatigue, not stimulus.
+ */
+export function hypertrophyCredit(reps: number, rpe?: number): number {
   if (reps <= 0) return 0
-  return Math.min(1, reps / FULL_CREDIT_REPS)
+
+  const rir = rpe === undefined ? 0 : Math.max(0, MAX_RPE - rpe)
+  const stimulating = Math.min(reps, FULL_CREDIT_REPS - Math.max(0, rir - FREE_RIR))
+
+  return Math.max(0, Math.min(1, stimulating / FULL_CREDIT_REPS))
+}
+
+/**
+ * The RPE a set is expected to finish at, where that is knowable.
+ *
+ * A back-off block has no prescribed RPE — the whole point is that the
+ * reading is an output — but it does have a *stopping* RPE, which is
+ * where the last set lands and a fair stand-in for the block. Anything
+ * with no RPE at all is credited in full rather than guessed at.
+ */
+function expectedRpe(load: SetPrescription['load']): number | undefined {
+  switch (load.kind) {
+    case 'rpe':
+      return load.target
+    case 'rts-backoff':
+      return load.stopRpe
+    case 'percent-e1rm':
+    case 'bodyweight':
+    case 'absolute':
+    case 'open':
+      return undefined
+  }
 }
 
 /**
@@ -77,7 +129,10 @@ export function slotVolume(exercise: Exercise, sets: readonly SetPrescription[])
 
   const credited = sets
     .filter(countsAsWorking)
-    .reduce((total, set) => total + hypertrophyCredit(nominalReps(set.reps)), 0)
+    .reduce(
+      (total, set) => total + hypertrophyCredit(nominalReps(set.reps), expectedRpe(set.load)),
+      0,
+    )
 
   if (credited === 0) return volume
 

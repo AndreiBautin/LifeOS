@@ -57,11 +57,29 @@ describe('attributing a week', () => {
     const primary = triceps?.contributions.find((entry) => entry.kind === 'primary')
     const secondary = triceps?.contributions.filter((entry) => entry.kind === 'secondary') ?? []
 
-    expect(primary?.counted).toBe(primary?.sets)
+    expect(primary?.counted).toBeGreaterThan(0)
     expect(secondary.length).toBeGreaterThan(0)
 
+    /*
+     * Half of what the same exercise credits its own primary, rather
+     * than half of its raw set count.
+     *
+     * Those were the same number while every set was worth exactly one.
+     * They stopped being once credit started accounting for proximity to
+     * failure — a bench set at RPE 8 is worth 0.8 to the chest and
+     * therefore 0.4 to the triceps, not 0.5. The halving is the rule
+     * here; what it halves is somebody else's business.
+     */
     for (const contribution of secondary) {
-      expect(contribution.counted, contribution.name).toBe(contribution.sets * 0.5)
+      const ownPrimary = attribution
+        .flatMap((entry) => entry.contributions)
+        .find((entry) => entry.exerciseId === contribution.exerciseId && entry.kind === 'primary')
+
+      expect(ownPrimary, contribution.name).toBeDefined()
+      expect(contribution.counted, contribution.name).toBeCloseTo(
+        (ownPrimary?.counted ?? 0) * 0.5,
+        2,
+      )
     }
   })
 

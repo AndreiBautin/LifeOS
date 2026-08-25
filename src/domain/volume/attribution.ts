@@ -5,7 +5,7 @@ import type { ExerciseId } from '@/domain/ids/ids'
 import type { ProgramWeek, SlotRole } from '@/domain/programs/program'
 import { nominalReps } from '@/domain/programs/prescription'
 import { SECONDARY_SET_FRACTION } from '@/domain/volume/landmarks'
-import { countsAsWorking, hypertrophyCredit } from '@/domain/volume/accounting'
+import { countsAsWorking, slotVolume } from '@/domain/volume/accounting'
 
 /**
  * Which exercises produced a muscle's weekly volume, and how much each
@@ -95,13 +95,17 @@ export function attributeWeek(
       const working = slot.sets.filter(countsAsWorking)
       if (working.length === 0) continue
 
-      // Credited exactly as slotVolume credits it: a low-rep set is worth
-      // less than a full one, so a heavy triple does not read as a set of
-      // ten. The reps are carried through so the breakdown can say why.
-      const credited = working.reduce(
-        (total, set) => total + hypertrophyCredit(nominalReps(set.reps)),
-        0,
-      )
+      /*
+       * Credited by asking `slotVolume`, not by repeating it.
+       *
+       * This used to run its own copy of the arithmetic — same shape,
+       * same constants — and the copies drifted the moment credit
+       * started accounting for proximity to failure as well as reps. The
+       * program was built against one number and the breakdown explaining
+       * it printed another, which is the worst possible place for two
+       * implementations to disagree.
+       */
+      const credited = slotVolume(exercise, working)[exercise.primaryMuscle]
       const reps = nominalReps(working[0]?.reps ?? { kind: 'fixed', reps: 0 })
 
       add(exercise.primaryMuscle, exercise, slot.role, working.length, reps, credited, 'primary')

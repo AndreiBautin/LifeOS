@@ -264,12 +264,26 @@ case — failing a top-heavy triple costs what a max costs. The overhead
 press carried both the note "one rep in reserve, not a max" and a last
 set at RPE 10.
 
-**A low-rep set is worth less than a full one.** `hypertrophyCredit` in
-`domain/volume/accounting.ts` — linear below five reps, capped above.
-Counting a top-set single as one hard set let the three competition lifts
-overshoot a maintained muscle's weekly target on their own, which is
-arithmetically true and physiologically misleading. Changing it changes
-how much accessory work the assembler thinks the legs still need.
+**A set is credited by its reps _and_ by how close to failure it ends.**
+`hypertrophyCredit(reps, rpe)` in `domain/volume/accounting.ts`. Reps
+came first: counting a top-set single as one hard set let the
+competition lifts overshoot a maintained muscle on their own. RPE came
+second, for the same reason one level up — fifteen bench sets at RPE 8
+covered a twelve-set chest target, so the assembler concluded the chest
+needed no direct work at all.
+
+**`FREE_RIR` is why this does not rescale everything.** The landmarks
+are published in _hard sets_, and a hard set there means one taken to
+about a rep short — so RPE 9 keeps full credit and discounting starts
+past it. Without that the unit every target is expressed in changes
+silently and every number in the app shifts underneath it; the first
+attempt did exactly that and put six muscles under target at once.
+
+**Credit has one implementation.** `attributeWeek` asks `slotVolume`
+rather than repeating the arithmetic. It used to carry a copy — same
+shape, same constants — and the copies drifted the moment RPE entered
+the calculation, so the program was built against one number while the
+breakdown explaining it printed another.
 
 **A repeat is penalised across the week, not just against yesterday.**
 The same upright row kept appearing on Tuesday and Thursday. It is a soft
