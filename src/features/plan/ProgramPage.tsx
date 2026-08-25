@@ -193,11 +193,22 @@ function SlotRow({
     return rows
   }, [])
 
+  /*
+   * "Up to 5 ×", not "5 ×", where the count is a cap.
+   *
+   * A back-off block ends when accumulated fatigue says so, which is
+   * usually before the last row. Written the same way as a fixed
+   * prescription it reads as five sets you are expected to complete —
+   * and a lifter who grinds out all five because the page said five has
+   * had the stopping rule taken away from them.
+   */
+  const capped = shown.some((set) => set.prescription.load.kind === 'rts-backoff')
+
   const line = grouped
     .map((row) =>
       row.count === 1 && shown[0]?.reps.kind === 'time'
         ? row.label
-        : `${String(row.count)} × ${row.label}`,
+        : `${capped ? 'up to ' : ''}${String(row.count)} × ${row.label}`,
     )
     .join('  ·  ')
 

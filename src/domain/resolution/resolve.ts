@@ -157,6 +157,29 @@ function resolveLoad(
       return { load, display: `${formatLoad(load, athlete.units)} @ RPE ${String(source.target)}` }
     }
 
+    /*
+     * The top set's suggested weight, less the drop.
+     *
+     * Two chained suggestions rather than one, and both are corrigible:
+     * if the estimate is wrong the lifter loads what the top set actually
+     * came out at and takes the drop off *that*. What the app must not do
+     * is derive this from an RPE — that would quietly turn a fixed drop
+     * into "lighten it until it feels easy", and the number would stop
+     * matching the "load drop N%" the slot claims.
+     */
+    case 'rts-backoff': {
+      const basis = athlete.estimatedMaxes[exerciseId]
+      const display = `${String(source.dropPercent)}% off the top set`
+
+      if (basis === undefined) return { display, unresolved: 'no-estimated-max' }
+
+      const topSet = loadForRpe(basis, source.topSetReps, source.topSetRpe)
+      if (topSet === undefined) return { display, unresolved: 'rpe-outside-chart' }
+
+      const load = round(topSet * (1 - source.dropPercent / 100))
+      return { load, display: formatLoad(load, athlete.units) }
+    }
+
     case 'open':
       return { display: '—', unresolved: 'open-prescription' }
   }

@@ -40,6 +40,34 @@ export type LoadSource =
    */
   | { readonly kind: 'rpe'; readonly target: number }
   /**
+   * An RTS back-off: a fixed drop from *today's* top set.
+   *
+   * Its own kind because a back-off is the one set in the app whose RPE
+   * is an **output rather than an input**. You take the top-set weight
+   * minus a fixed percentage, do the same reps, and record what it felt
+   * like; the RPE climbs set over set as fatigue accumulates, and the
+   * session ends when the implied max has fallen by the day's fatigue
+   * target. Prescribing an RPE here inverts that — it says "reduce the
+   * weight until this feels like a 7.5", which is a different exercise.
+   *
+   * It was prescribed as `{ kind: 'rpe', target: topSetRpe - 0.5 }` for a
+   * while, and the tell was in the numbers: the slot claimed "Load drop
+   * 5%" while suggesting a weight about 2% below the top set, because the
+   * suggestion came from the RPE chart rather than from the drop. Half a
+   * point of RPE is also not a distinction anyone can feel.
+   *
+   * The percentages are carried on the set so it resolves without
+   * needing the slot: a log describes itself.
+   */
+  | {
+      readonly kind: 'rts-backoff'
+      /** How far below the top set, as a percentage of it. */
+      readonly dropPercent: number
+      /** The top set this descends from, for the suggested number. */
+      readonly topSetReps: number
+      readonly topSetRpe: number
+    }
+  /**
    * No prescription — the lifter decides, and the app suggests based on
    * last time. StrengthFlow's implicit default, made explicit.
    */
@@ -118,6 +146,18 @@ export function validateLoadSource(load: LoadSource): void {
         `A target RPE must be between ${String(MIN_RPE)} and ${String(MAX_RPE)}, received ${String(load.target)}.`,
       )
       return
+    case 'rts-backoff':
+      invariant(
+        Number.isFinite(load.dropPercent) && load.dropPercent >= 0 && load.dropPercent < 100,
+        'BACKOFF_DROP_OUT_OF_RANGE',
+        `A back-off drop must be between 0 and 100 percent, received ${String(load.dropPercent)}.`,
+      )
+      invariant(
+        Number.isFinite(load.topSetRpe) && load.topSetRpe >= MIN_RPE && load.topSetRpe <= MAX_RPE,
+        'RPE_OUT_OF_RANGE',
+        `A top-set RPE must be between ${String(MIN_RPE)} and ${String(MAX_RPE)}, received ${String(load.topSetRpe)}.`,
+      )
+      return
     case 'open':
       return
   }
@@ -181,6 +221,13 @@ export function describePrescription(set: SetPrescription): string {
   switch (set.load.kind) {
     case 'rpe':
       return `${reps} @ RPE ${String(set.load.target)}`
+    /*
+     * No RPE in the description, deliberately. Whatever this set feels
+     * like is the reading the stopping rule uses — saying it in advance
+     * would be saying the answer before the question.
+     */
+    case 'rts-backoff':
+      return `${reps} at ${String(set.load.dropPercent)}% off the top set`
     case 'open':
       return reps
     // Enumerated rather than defaulted, so adding a load kind fails the
@@ -204,6 +251,8 @@ export function describeLoad(load: LoadSource): string {
       return String(load.load)
     case 'rpe':
       return `RPE ${String(load.target)}`
+    case 'rts-backoff':
+      return `${String(load.dropPercent)}% off the top set`
     case 'open':
       return '—'
   }

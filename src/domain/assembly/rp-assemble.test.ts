@@ -71,6 +71,10 @@ describe('the assembled block', () => {
     // RTS asks for reps at an RPE and reads the load back off what was
     // done. A percentage-of-something set anywhere in the block would
     // mean a number the lifter has to maintain by hand.
+    //
+    // `rts-backoff` is a percentage of *today's top set*, which is the
+    // opposite case: it descends from a measurement taken minutes
+    // earlier rather than from a figure carried between sessions.
     const kinds = new Set(
       (block?.weeks ?? []).flatMap((week) =>
         week.days.flatMap((day) =>
@@ -83,7 +87,7 @@ describe('the assembled block', () => {
       ),
     )
 
-    expect([...kinds].sort()).toEqual(['rpe'])
+    expect([...kinds].sort()).toEqual(['rpe', 'rts-backoff'])
   })
 
   it('opens three of the five days with a competition lift', () => {
@@ -150,9 +154,11 @@ describe('the assembled block', () => {
    * The intensity domain, which is the one thing about a conditioning
    * slot you need before starting it and the thing neither its duration
    * nor its effort note says. A walk and a swing session read as
-   * interchangeable on a page and are nothing alike — and the walk and
-   * the run share an effort description while sitting in different
-   * places in the week, which is exactly why they need different names.
+   * interchangeable on a page and are nothing alike.
+   *
+   * Two domains, not three: LISS and Zone 2 are the same work under two
+   * names, so the walk and the easy run share a label. What separates
+   * them is systemic cost, which the exercise already carries.
    */
   it('names the intensity domain of each conditioning slot', () => {
     const styles = new Map<string, string>()
@@ -167,7 +173,7 @@ describe('the assembled block', () => {
       }
     }
 
-    expect(styles.get(asExerciseId('incline-walk'))).toBe('LISS')
+    expect(styles.get(asExerciseId('incline-walk'))).toBe('Zone 2')
     expect(styles.get(asExerciseId('running'))).toBe('Zone 2')
     expect(styles.get(asExerciseId('kb-swing'))).toBe('HIIT')
   })

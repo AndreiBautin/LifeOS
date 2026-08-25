@@ -87,11 +87,16 @@ export function RtsExplainer() {
           />
           <Step
             number={3}
-            title="Back-offs run until fatigue says stop"
-            body={`Each back-off implies its own max. When that number has fallen by the day's target percentage from the top set, the session's work on that lift is done — which is why the set count is a cap rather than a plan.`}
+            title="Back-offs are one weight, and you log how each felt"
+            body={`Take ${String(rts.loadDropPercent ?? 5)}% off the top set and keep the bar there. The RPE is not prescribed — it is what you record, and it climbs set over set as you tire. That reading is the measurement, the same as the top set's was.`}
           />
           <Step
             number={4}
+            title="Fatigue says when to stop, not a set count"
+            body={`Each back-off implies its own max. When that number has fallen by the day's target percentage from the top set, the session's work on that lift is done — which is why the count shown is a cap rather than a plan.`}
+          />
+          <Step
+            number={5}
             title="Tomorrow starts from today"
             body="The top set replaces the estimate, so the next suggestion is built from what you actually lifted. Nothing needs recalculating and no training max needs maintaining by hand."
           />

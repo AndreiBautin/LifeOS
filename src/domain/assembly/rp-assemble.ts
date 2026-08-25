@@ -389,12 +389,30 @@ function buildStrengthSlots(
     ? 1
     : Math.max(1, Math.min(recipe.rts.maxBackoffSets, Math.round(2 + position * 4)))
 
+  /*
+   * A fixed drop from today's top set, with no prescribed RPE.
+   *
+   * The RPE of a back-off is the *reading*, not the instruction: same
+   * weight, same reps, and the effort climbs set over set as fatigue
+   * accumulates until the implied max has fallen by the day's target.
+   * Prescribing "RPE 7.5" said the opposite — lighten it until it feels
+   * easy — and the number gave it away, suggesting a weight about 2%
+   * below the top set on a slot labelled "Load drop 5%", because the
+   * suggestion came from the RPE chart rather than from the drop.
+   */
   const backoffs: SetPrescription[] = Array.from({ length: backoffCap }, (_unused, index) => ({
-    load: { kind: 'rpe' as const, target: Math.max(6, topSetRpe - 0.5) },
+    load: {
+      kind: 'rts-backoff' as const,
+      dropPercent: recipe.rts.method === 'load-drop' ? (recipe.rts.loadDropPercent ?? 5) : 0,
+      topSetReps: recipe.rts.topSetReps,
+      topSetRpe,
+    },
     reps: { kind: 'fixed' as const, reps: recipe.rts.topSetReps },
     label: 'Back-off',
     ...(index === 0
-      ? { notes: `Stop when you are ${String(fatigueTarget)}% off the top set.` }
+      ? {
+          notes: `Log the RPE of each one. Stop when a set implies a max ${String(fatigueTarget)}% below the top set.`,
+        }
       : {}),
   }))
 
@@ -1024,11 +1042,17 @@ function conditioningSlots(
       {
         id: asSlotId(deps.ids.next()),
         role: 'conditioning',
-        // The intensity domain, which is the only thing about a
-        // conditioning slot you need to know before you start it — and
-        // the thing its duration and its effort note both fail to say. A
-        // twenty-minute walk and a twelve-minute swing session look
-        // interchangeable on a page and are nothing alike.
+        /*
+         * The intensity domain, which is the only thing about a
+         * conditioning slot you need before starting it and the thing
+         * neither its duration nor its effort note says.
+         *
+         * There are two of these, not three. LISS and Zone 2 are the
+         * same work under two names, so an incline walk and an easy run
+         * carry the same label — the walk costs less, but that is
+         * systemic cost, which the exercise already models separately,
+         * not a different intensity domain.
+         */
         variant: plan.style,
         exercise: { kind: 'specific', exerciseId: exercise.id },
         sets: [{ load: { kind: 'open' }, reps: { kind: 'time', seconds: minutes * 60 } }],
@@ -1052,18 +1076,11 @@ const CONDITIONING_PLANS: Readonly<
 > = {
   'incline-walk': {
     minutes: 20,
-    // LISS rather than Zone 2, and the distinction is not pedantry: a
-    // walk sits below the aerobic threshold, costs the next session
-    // nothing, and can go the day before a deadlift. That is what it is
-    // scheduled *for*.
-    style: 'LISS',
+    style: 'Zone 2',
     note: 'Steep incline, easy pace. You should be able to hold a conversation.',
   },
   running: {
     minutes: 25,
-    // Zone 2: conversational, but a real aerobic stimulus with a real
-    // cost. The same effort description as the walk and a different
-    // place in the week, which is exactly why they need different names.
     style: 'Zone 2',
     note: 'Steady aerobic pace — this is the base-building run, not a test.',
   },

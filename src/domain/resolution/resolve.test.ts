@@ -185,3 +185,48 @@ describe('warm-ups', () => {
     expect(sets.filter((set) => !set.isWarmup).map((set) => set.load)).toEqual([280])
   })
 })
+
+/*
+ * The one prescription in the app whose RPE is an output.
+ *
+ * A back-off is today's top set minus a fixed percentage, performed at
+ * the same reps, with the effort recorded rather than dictated. It was
+ * prescribed as `{ kind: 'rpe', target: topSetRpe - 0.5 }` for a while,
+ * which said the opposite — lighten it until it feels easy — and the tell
+ * was the number: a slot claiming "Load drop 5%" suggested a weight about
+ * 2% below the top set, because the suggestion came off the RPE chart.
+ */
+describe('an RTS back-off', () => {
+  const backoff: SetPrescription = {
+    load: { kind: 'rts-backoff', dropPercent: 5, topSetReps: 5, topSetRpe: 8 },
+    reps: { kind: 'fixed', reps: 5 },
+  }
+
+  it('suggests the top-set load less the drop', () => {
+    const top = resolveSet(
+      { load: { kind: 'rpe', target: 8 }, reps: { kind: 'fixed', reps: 5 } },
+      context,
+    )
+    const set = resolveSet(backoff, context)
+
+    expect(top.load).toBeDefined()
+    expect(set.load).toBeDefined()
+
+    // Within a rounding increment of five per cent below the top set.
+    const drop = 1 - (set.load ?? 0) / (top.load ?? 1)
+    expect(drop).toBeGreaterThan(0.03)
+    expect(drop).toBeLessThan(0.07)
+  })
+
+  it('shows a weight, never an RPE', () => {
+    expect(resolveSet(backoff, context).loadDisplay).not.toMatch(/RPE/)
+  })
+
+  it('names the drop when there is no estimate to work from', () => {
+    const set = resolveSet(backoff, { ...context, athlete: { ...athlete, estimatedMaxes: {} } })
+
+    expect(set.load).toBeUndefined()
+    expect(set.loadDisplay).toBe('5% off the top set')
+    expect(set.unresolved).toBe('no-estimated-max')
+  })
+})
