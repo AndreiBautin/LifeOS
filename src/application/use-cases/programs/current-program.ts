@@ -60,7 +60,6 @@ export function recipeFromSettings(
     landmarks: settings.landmarks,
     daysPerWeek: settings.daysPerWeek,
     weeksBeforeDeload: settings.weeksBeforeDeload,
-    targetSessionMinutes: settings.targetSessionMinutes,
     excludedExercises: settings.excludedExercises,
     settings: {
       units: settings.units,

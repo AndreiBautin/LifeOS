@@ -162,42 +162,41 @@ function justUnder(landmarks: VolumeLandmarks): number {
 }
 
 /* -------------------------------------------------------------------- */
-/* Ramping into position                                                 */
+/* The target, week by week                                              */
 /* -------------------------------------------------------------------- */
 
 /**
  * The target for a specific week of a block.
  *
- * A prioritised muscle does not start at its ceiling — it climbs to it.
- * Starting at the top wastes the block's most productive weeks on volume
- * you were already adapted to, and leaves nowhere to go when progress
- * stalls. So week one opens near MEV and the target is approached over
- * the working weeks, arriving at it in the last week before the deload.
+ * Flat across the working weeks, and maintenance on the deload. There is
+ * no ramp and no overreach week.
  *
- * The deload week itself drops to maintenance.
+ * There was: week one opened near MEV, the target climbed across the
+ * block, and the last working week touched MRV because a deload followed
+ * it. That is defensible periodisation and it cost more than it paid
+ * here. Every measurement of the program had to name a week to mean
+ * anything, every screen showing volume had to pick one, and the Program
+ * page carried a tab per week for six weeks that differed only by a
+ * gradient nobody had asked to see. A block whose weeks are the same is a
+ * block you can describe in one screen.
+ *
+ * What the ramp was for has not gone away — it is autoregulated instead.
+ * RTS moves the strength loads set by set, and the check-ins move the
+ * landmarks on evidence. Progression comes from those, not from a curve
+ * laid down before the block started.
+ *
+ * The week index and the block length went with it. They were the whole
+ * reason this took five arguments, and keeping them as ignored
+ * parameters would have left every call site claiming a dependency that
+ * no longer exists.
  */
 export function weeklyTargetForWeek(
   landmarks: VolumeLandmarks,
   position: number,
-  weekIndex: number,
-  workingWeeks: number,
   isDeload: boolean,
 ): number {
   if (isDeload) return Math.max(0, Math.round(landmarks.mv))
-
-  const peak = weeklyTargetFor(landmarks, position, {
-    // The final working week is the overreach: the one week where
-    // touching MRV is deliberate, because a deload follows it.
-    overreach: workingWeeks > 1 && weekIndex === workingWeeks - 1,
-  })
-
-  // Open at MEV, or at the peak itself when the peak is below MEV — a
-  // deprioritised muscle should not start above where it is going.
-  const start = Math.min(peak, landmarks.mev)
-  if (workingWeeks <= 1) return Math.round(peak)
-
-  const progress = clamp01(weekIndex / (workingWeeks - 1))
-  return Math.max(0, Math.round(lerp(start, peak, progress)))
+  return weeklyTargetFor(landmarks, position)
 }
 
 /* -------------------------------------------------------------------- */

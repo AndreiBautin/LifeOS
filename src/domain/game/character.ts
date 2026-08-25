@@ -107,44 +107,6 @@ export function placeOnLadder(
   return { level: 'Untrained', progress: 0 }
 }
 
-/**
- * The same ladder for a quantity where lower is better — a mile time.
- *
- * Written as its own function rather than by negating the input into
- * {@link placeOnLadder}. The arithmetic that inverts a descending scale
- * is short, unreadable, and wrong in a way no test would obviously catch:
- * it produces plausible levels for every input while silently reversing
- * the progress bar.
- */
-export function placeDescending(
-  value: number,
-  thresholds: readonly number[],
-): { level: Level; progress: number } {
-  const top = thresholds.length - 1
-  const slowest = thresholds[0] ?? 0
-
-  if (value > slowest) {
-    return { level: 'Untrained', progress: 0 }
-  }
-
-  for (let index = top; index >= 0; index -= 1) {
-    const ceiling = thresholds[index]
-    if (ceiling === undefined || value > ceiling) continue
-
-    if (index === top) return { level: LEVELS[top] ?? 'Elite', progress: 1 }
-
-    const floor = thresholds[index + 1] ?? ceiling
-    const span = ceiling - floor
-
-    return {
-      level: LEVELS[index] ?? 'Untrained',
-      progress: span > 0 ? Math.min(1, (ceiling - value) / span) : 1,
-    }
-  }
-
-  return { level: 'Untrained', progress: 0 }
-}
-
 export interface CharacterInputs {
   readonly estimatedMaxes: Readonly<Partial<Record<ExerciseId, number>>>
   readonly bodyweight?: number
@@ -152,18 +114,12 @@ export interface CharacterInputs {
   readonly sessions: number
   /** Completed working sets, ever. */
   readonly workingSets: number
-  /** Sessions completed in the last seven days. */
-  readonly sessionsThisWeek: number
-  /** Best recorded mile time in seconds, if any. */
-  readonly mileSeconds?: number
 }
 
 export interface Character {
   readonly total?: number
   readonly totalAttribute: Attribute
   readonly lifts: readonly Attribute[]
-  readonly conditioning: Attribute
-  readonly consistency: Attribute
   readonly xp: number
   readonly xpLevel: number
   readonly xpIntoLevel: number
@@ -199,9 +155,6 @@ export function levelFromXp(xp: number): { level: number; into: number; needed: 
 
   return { level, into: xp - floor, needed: ceiling - floor }
 }
-
-/** Mile times in seconds, fastest-last, matching the level ladder. */
-const MILE_STANDARDS: readonly number[] = [12 * 60, 10 * 60, 8 * 60, 6.5 * 60, 5.5 * 60]
 
 export function buildCharacter(inputs: CharacterInputs): Character {
   const { estimatedMaxes, bodyweight } = inputs
@@ -280,32 +233,19 @@ export function buildCharacter(inputs: CharacterInputs): Character {
         : 'Needs all three maxes and your bodyweight.',
   }
 
-  const milePlaced =
-    inputs.mileSeconds !== undefined
-      ? placeDescending(inputs.mileSeconds, MILE_STANDARDS)
-      : undefined
-
-  const conditioning: Attribute = {
-    name: 'Conditioning',
-    ...(inputs.mileSeconds !== undefined ? { value: inputs.mileSeconds } : {}),
-    unit: 'mile',
-    level: milePlaced?.level ?? 'Untrained',
-    progress: milePlaced?.progress ?? 0,
-    detail:
-      inputs.mileSeconds === undefined
-        ? 'Log a timed mile to place this.'
-        : `${String(Math.floor(inputs.mileSeconds / 60))}:${String(inputs.mileSeconds % 60).padStart(2, '0')} mile`,
-  }
-
-  const consistency: Attribute = {
-    name: 'Consistency',
-    value: inputs.sessionsThisWeek,
-    unit: 'sessions this week',
-    level: placeOnLadder(inputs.sessions, [5, 25, 75, 200, 500]).level,
-    progress: placeOnLadder(inputs.sessions, [5, 25, 75, 200, 500]).progress,
-    detail: `${String(inputs.sessions)} sessions logged, all time`,
-  }
-
+  /*
+   * Strength, and nothing pretending to be strength.
+   *
+   * There were two more attributes here. Conditioning was a mile time,
+   * which nobody was running and which therefore sat at Untrained
+   * forever — a permanent zero on a sheet whose whole job is to show
+   * movement. Consistency counted sessions, which the app already knows
+   * and already spends on XP; levelling the same input twice does not
+   * make it two achievements.
+   *
+   * Conditioning is still programmed. It is just not scored, because
+   * there is no measurement of it being taken.
+   */
   const xp = inputs.sessions * XP_PER_SESSION + inputs.workingSets * XP_PER_SET
   const { level, into, needed } = levelFromXp(xp)
 
@@ -313,8 +253,6 @@ export function buildCharacter(inputs: CharacterInputs): Character {
     ...(total !== undefined ? { total } : {}),
     totalAttribute,
     lifts,
-    conditioning,
-    consistency,
     xp,
     xpLevel: level,
     xpIntoLevel: into,

@@ -81,13 +81,22 @@ export interface RpRecipe {
    * built first, and the last day of the week gets the leftovers. Capping
    * the fill by projected duration is what makes the *week* balanced
    * rather than just the totals.
+   *
+   * Not a setting any more. It was one, and it read as a dial for how
+   * long you wanted to train — which it never was: raising it does not
+   * make a session longer, it only stops holding the first day back
+   * from spending the last day's budget. A number whose apparent
+   * meaning is the opposite of its real one is worse in the UI than
+   * out of it.
    */
-  readonly targetSessionMinutes: number
   readonly minSetsPerSlot: number
   readonly maxSetsPerSlot: number
   readonly excludedExercises: readonly ExerciseId[]
   readonly settings: ProgramSettings
 }
+
+/** The ceiling a day's fill is costed against. See {@link RpRecipe}. */
+export const SESSION_MINUTES_CAP = 70
 
 export function defaultRpRecipe(overrides: Partial<RpRecipe> = {}): RpRecipe {
   const muscleTiers = overrides.muscleTiers ?? DEFAULT_MUSCLE_TIERS
@@ -112,7 +121,6 @@ export function defaultRpRecipe(overrides: Partial<RpRecipe> = {}): RpRecipe {
     rts: DEFAULT_RTS,
     includeWarmUps: true,
     maxHypertrophySlotsPerDay: 6,
-    targetSessionMinutes: 70,
     minSetsPerSlot: 2,
     maxSetsPerSlot: 5,
     excludedExercises: [],
@@ -147,7 +155,7 @@ export function assembleRpProgram(
   const weeks: ProgramWeek[] = []
   for (let weekIndex = 0; weekIndex <= workingWeeks; weekIndex += 1) {
     const isDeload = weekIndex === workingWeeks
-    weeks.push(buildWeek(recipe, deps, split, weekIndex, workingWeeks, isDeload))
+    weeks.push(buildWeek(recipe, deps, split, weekIndex, isDeload))
   }
 
   return {
@@ -181,7 +189,6 @@ function buildWeek(
   deps: RpAssembleDeps,
   split: RpSplit,
   weekIndex: number,
-  workingWeeks: number,
   isDeload: boolean,
 ): ProgramWeek {
   /*
@@ -206,7 +213,7 @@ function buildWeek(
     emptyVolumeMap(),
   )
 
-  const targets = weeklyTargets(recipe, weekIndex, workingWeeks, isDeload)
+  const targets = weeklyTargets(recipe, isDeload)
 
   let committed = strengthWeekSpend
 
@@ -320,24 +327,13 @@ function buildWeek(
   }
 }
 
-/** Each muscle's weekly set target for this week of the block. */
-function weeklyTargets(
-  recipe: RpRecipe,
-  weekIndex: number,
-  workingWeeks: number,
-  isDeload: boolean,
-): Record<MuscleGroup, number> {
+/** Each muscle's weekly set target: the same one every working week. */
+function weeklyTargets(recipe: RpRecipe, isDeload: boolean): Record<MuscleGroup, number> {
   const targets = {} as Record<MuscleGroup, number>
 
   for (const muscle of Object.keys(recipe.landmarks) as MuscleGroup[]) {
     const position = priorityPosition(recipe.muscleTiers, muscle)
-    targets[muscle] = weeklyTargetForWeek(
-      recipe.landmarks[muscle],
-      position,
-      weekIndex,
-      workingWeeks,
-      isDeload,
-    )
+    targets[muscle] = weeklyTargetForWeek(recipe.landmarks[muscle], position, isDeload)
   }
 
   return targets
@@ -709,7 +705,7 @@ function fillHypertrophy(args: FillArgs): BuiltSlots {
    * still does not fit is reported on the Plan screen rather than tucked
    * into whichever session had a gap.
    */
-  fillFor(splitDay.muscles, recipe.targetSessionMinutes)
+  fillFor(splitDay.muscles, SESSION_MINUTES_CAP)
 
   /*
    * Frequency backfill.
@@ -818,7 +814,7 @@ function fillHypertrophy(args: FillArgs): BuiltSlots {
      * recovery problem for another.
      */
     const cost = slotMinutes(slot)
-    if (minutes + cost > recipe.targetSessionMinutes * BACKFILL_TIME_GRACE) continue
+    if (minutes + cost > SESSION_MINUTES_CAP * BACKFILL_TIME_GRACE) continue
 
     used.add(exercise.id)
     added = addInto(added, slotVolume(exercise, sets))

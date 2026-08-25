@@ -135,44 +135,39 @@ describe('turning a position into a weekly target', () => {
   })
 })
 
-describe('ramping into position across a block', () => {
+describe('the target, week by week', () => {
   const biceps = DEFAULT_LANDMARKS.biceps
   const position = priorityPosition(DEFAULT_MUSCLE_TIERS, 'biceps')
 
-  it('starts near the minimum effective volume rather than at the ceiling', () => {
-    const week1 = weeklyTargetForWeek(biceps, position, 0, 6, false)
+  it('is the same in every working week', () => {
+    const weeks = [0, 1, 2, 3, 4, 5].map(() => weeklyTargetForWeek(biceps, position, false))
 
-    // Starting at the top wastes the block's most productive weeks on
-    // volume you were already adapted to.
-    expect(week1).toBeLessThanOrEqual(biceps.mev)
+    expect(new Set(weeks).size).toBe(1)
   })
 
-  it('climbs monotonically to the peak in the last working week', () => {
-    const weeks = [0, 1, 2, 3, 4, 5].map((week) =>
-      weeklyTargetForWeek(biceps, position, week, 6, false),
-    )
-
-    expect(weeks).toEqual([...weeks].sort((a, b) => a - b))
-    expect(weeks[5]).toBeGreaterThan(weeks[0] ?? 0)
+  it('is the target the priority asked for, with no week-dependent discount', () => {
+    expect(weeklyTargetForWeek(biceps, position, false)).toBe(weeklyTargetFor(biceps, position))
   })
 
-  it('touches maximum recoverable volume only in the final week before a deload', () => {
-    const overreach = weeklyTargetForWeek(biceps, 1, 5, 6, false)
-    const earlier = weeklyTargetForWeek(biceps, 1, 4, 6, false)
+  it('never overreaches past maximum recoverable volume', () => {
+    const peak = weeklyTargetForWeek(biceps, 1, false)
 
-    expect(overreach).toBe(biceps.mrv)
-    expect(earlier).toBeLessThan(biceps.mrv)
+    // The ramp used to spend its last working week above MAV and touch
+    // MRV exactly once. Flat means the ceiling is the ceiling: the top
+    // of the band is where a specialised muscle sits all block, and
+    // nothing is left to climb into.
+    expect(peak).toBeLessThanOrEqual(biceps.mrv)
   })
 
   it('drops to maintenance on the deload', () => {
-    expect(weeklyTargetForWeek(biceps, position, 6, 6, true)).toBe(biceps.mv)
+    expect(weeklyTargetForWeek(biceps, position, true)).toBe(biceps.mv)
   })
 
-  it('keeps a deprioritised muscle near maintenance throughout', () => {
+  it('keeps a deprioritised muscle near maintenance', () => {
     const calves = DEFAULT_LANDMARKS.calves
     const low = priorityPosition(DEFAULT_MUSCLE_TIERS, 'calves')
 
-    const weeks = [0, 2, 5].map((week) => weeklyTargetForWeek(calves, low, week, 6, false))
+    const weeks = [0, 2, 5].map(() => weeklyTargetForWeek(calves, low, false))
 
     for (const target of weeks) {
       expect(target).toBeLessThan(calves.mav)

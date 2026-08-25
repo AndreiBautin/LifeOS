@@ -137,12 +137,6 @@ function mergeWithDefaults(parsed: unknown): AppSettings {
       8,
       DEFAULT_SETTINGS.weeksBeforeDeload,
     ),
-    targetSessionMinutes: asBoundedNumber(
-      stored.targetSessionMinutes,
-      20,
-      180,
-      DEFAULT_SETTINGS.targetSessionMinutes,
-    ),
     e1rmFormula:
       stored.e1rmFormula === 'epley' ||
       stored.e1rmFormula === 'brzycki' ||

@@ -57,14 +57,13 @@ export interface AppSettings {
   /**
    * Days per week and weeks per block.
    *
-   * Both are autoregulated — session length moves the first, block
-   * performance the second — so these are the *current* values rather
-   * than fixed preferences, and the app writes back to them.
+   * Set by the lifter and left alone. Both used to be described as
+   * autoregulated, which stopped being true when the schedule
+   * autoregulation was removed — nothing has written back to either
+   * since.
    */
   readonly daysPerWeek: number
   readonly weeksBeforeDeload: number
-  /** Roughly how long a session should run, in minutes. */
-  readonly targetSessionMinutes: number
   readonly e1rmFormula: E1rmFormula
   readonly restTimerEnabled: boolean
   readonly keepScreenAwake: boolean
@@ -104,7 +103,6 @@ export const DEFAULT_SETTINGS: AppSettings = {
   strengthTiers: DEFAULT_STRENGTH_TIERS,
   daysPerWeek: DEFAULT_DAYS_PER_WEEK,
   weeksBeforeDeload: DEFAULT_WEEKS_BEFORE_DELOAD,
-  targetSessionMinutes: 70,
   e1rmFormula: 'epley',
   restTimerEnabled: true,
   keepScreenAwake: true,

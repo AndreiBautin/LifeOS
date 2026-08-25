@@ -127,8 +127,35 @@ to be reasoned about again every time anything else moved.
 A short day is information. A deadlift day with the legs on maintenance
 runs twenty-five minutes because that is what the tiers asked for, and
 the Plan screen already reports what the week does and does not deliver.
-`targetSessionMinutes` stays as a **ceiling** — without it one day claims
-the whole week — but nothing pads upward.
+The ceiling stays — without it one day claims the whole week — but it is
+`SESSION_MINUTES_CAP` in `domain/assembly/rp-assemble.ts`, not a setting.
+As a setting it read as a dial for how long you wanted to train, which it
+never was: raising it does not lengthen a session, it only stops the
+first day being held back from spending the last day's budget.
+
+**Every working week is identical.** `weeklyTargetForWeek` returns the
+target the priority asked for, and MV on the deload. There is no ramp.
+
+There was: week one opened near MEV, the target climbed across the block,
+and the last working week touched MRV. That is defensible periodisation
+and it cost more than it paid. Every measurement of the program had to
+name a week to mean anything, every screen showing volume had to pick
+one, and the Program page carried a tab per week that differed only by a
+gradient nobody had asked to see. What the ramp was for is autoregulated
+instead — RTS moves the loads set by set, the check-ins move the
+landmarks on evidence.
+
+The consequence the UI depends on: the Program page shows **one** working
+week and the deload, and says that is the whole block. If the weeks ever
+diverge again that screen becomes a lie, which is what
+`rp-assemble.test.ts` → "gives every working week the same volume" is
+guarding.
+
+**The character sheet scores strength only.** Conditioning was a mile
+time nobody was running, so it sat at Untrained permanently — a fixed
+zero on a screen whose job is to show movement. Consistency levelled the
+session count, which XP already spends. Conditioning is still
+_programmed_; it is not scored, because nothing measures it.
 **Upper, lower, upper, lower, upper — and no borrowing.** `RpDay.muscles`,
 one list, one fill pass. Two earlier attempts at balancing the week are
 in the git history and both were wrong: listing the arms on every day

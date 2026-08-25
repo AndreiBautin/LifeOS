@@ -160,7 +160,7 @@ export function SettingsPage() {
         is checkable against a session, and a claim about behaviour that
         does not happen cannot be checked at all.
       */}
-      <Section title="Block" description="Three numbers you set. Nothing moves them for you.">
+      <Section title="Block" description="Two numbers you set. Nothing moves them for you.">
         <Card className="space-y-3">
           <NumberSetting
             label="Days per week"
@@ -183,21 +183,6 @@ export function SettingsPage() {
               }
             }}
           />
-          <NumberSetting
-            label="Session length cap"
-            suffix="min"
-            value={settings.targetSessionMinutes}
-            onChange={(targetSessionMinutes) => {
-              update({ targetSessionMinutes })
-            }}
-          />
-          <p className="text-ink-500 text-xs">
-            The session length is a <span className="text-ink-300">ceiling</span>, not a target. It
-            is what stops one day taking the whole week&rsquo;s accessory work — the first day built
-            would otherwise claim every shared muscle and leave the last one with the leftovers.
-            Nothing pads a day upward, so a squat day with maintained legs finishing in forty
-            minutes is the plan rather than a gap.
-          </p>
           <p className="text-ink-500 text-xs">
             Days per week stays between {MIN_DAYS_PER_WEEK} and {MAX_DAYS_PER_WEEK}, and the block
             between {MIN_WEEKS_BEFORE_DELOAD} and {MAX_WEEKS_BEFORE_DELOAD} weeks. Wanting to go

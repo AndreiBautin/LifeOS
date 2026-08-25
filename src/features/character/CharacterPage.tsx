@@ -39,23 +39,11 @@ export function CharacterPage() {
 
   const completed = (workouts.data ?? []).filter((log) => log.status === 'completed')
 
-  // The clock comes from services rather than being read here: reading it
-  // during render makes the component impossible to test at a fixed date,
-  // which for anything that reasons about "this week" is the only way to
-  // test it at all.
-  const weekAgo = useQuery({
-    queryKey: ['character', 'week-start'],
-    queryFn: () =>
-      new Date(services.clock.now().getTime() - 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
-  })
-
   const character = buildCharacter({
     estimatedMaxes: settings.estimatedMaxes,
     ...(settings.bodyweight !== undefined ? { bodyweight: settings.bodyweight } : {}),
     sessions: completed.length,
     workingSets: completed.reduce((total, log) => total + totalWorkingSets(log), 0),
-    sessionsThisWeek:
-      weekAgo.data === undefined ? 0 : completed.filter((log) => log.date >= weekAgo.data).length,
   })
 
   const xpFill = Math.round((character.xpIntoLevel / Math.max(1, character.xpForNextLevel)) * 100)
@@ -97,13 +85,6 @@ export function CharacterPage() {
           {character.lifts.map((lift) => (
             <AttributeRow key={lift.name} attribute={lift} />
           ))}
-        </Card>
-      </Section>
-
-      <Section title="Everything else">
-        <Card className="space-y-4">
-          <AttributeRow attribute={character.conditioning} />
-          <AttributeRow attribute={character.consistency} />
         </Card>
       </Section>
 
@@ -149,9 +130,7 @@ function AttributeRow({
         <div className="flex items-center gap-2">
           {attribute.value !== undefined && (
             <span className="numeric text-ink-50 text-sm font-semibold">
-              {attribute.name === 'Conditioning' || attribute.name === 'Consistency'
-                ? ''
-                : `${String(Math.round(attribute.value))} lb`}
+              {String(Math.round(attribute.value))} lb
             </span>
           )}
           <Badge tone={LEVEL_TONE[attribute.level] ?? 'neutral'}>{attribute.level}</Badge>

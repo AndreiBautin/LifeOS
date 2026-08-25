@@ -34,7 +34,7 @@ export function ProgramPage() {
   const exercises = useExercises()
   const jumpToWeek = useJumpToWeek()
 
-  const [weekIndex, setWeekIndex] = useState<number | undefined>(undefined)
+  const [deloadView, setDeloadView] = useState<boolean | undefined>(undefined)
   const [openMuscle, setOpenMuscle] = useState<string | undefined>(undefined)
 
   const block = program.data?.blocks[0]
@@ -53,8 +53,25 @@ export function ProgramPage() {
    * position; it must not also be an unchangeable one.
    */
   const currentWeek = position.data?.weekIndex ?? 0
-  const current = weekIndex ?? currentWeek
-  const week = weeks[Math.min(current, Math.max(0, weeks.length - 1))]
+
+  /*
+   * Two views, not one per week.
+   *
+   * Volume is flat across the working weeks now, so they are byte
+   * identical — a tab strip of six was six ways to look at the same
+   * screen, and the one difference that matters, the deload, was the
+   * seventh tab where nobody looked for it.
+   *
+   * The week you are *on* still matters and has not moved: it is on the
+   * header, because counting down to the deload is the reason to know
+   * it.
+   */
+  const deloadIndex = weeks.findIndex((candidate) => candidate.isDeload)
+  const workingIndex = weeks.findIndex((candidate) => !candidate.isDeload)
+
+  const showingDeload = deloadView ?? weeks[currentWeek]?.isDeload ?? false
+  const current = showingDeload ? deloadIndex : workingIndex
+  const week = weeks[Math.max(0, current)]
 
   const library = exercises.data ?? []
   const lookup = (id: ExerciseId): Exercise | undefined =>
@@ -100,51 +117,29 @@ export function ProgramPage() {
         </p>
       </header>
 
-      <div className="mb-5 flex gap-1.5 overflow-x-auto pb-1" role="tablist" aria-label="Week">
-        {weeks.map((candidate, index) => {
-          const label = candidate.isDeload ? 'Deload' : `Wk ${String(index + 1)}`
-          /*
-           * Two different things were both signalled by "this tab is
-           * highlighted": the week being *looked at* and the week being
-           * *trained*. They are the same until you tap another tab, and
-           * then there is no way to tell where you actually are — which
-           * makes a page opened on week three indistinguishable from one
-           * opened on week one and browsed forward.
-           */
-          const isHere = index === currentWeek
-
-          return (
-            <button
-              key={index}
-              type="button"
-              role="tab"
-              aria-selected={index === current}
-              aria-label={isHere ? `${label}, the week you are on` : label}
-              onClick={() => {
-                setWeekIndex(index)
-              }}
-              className={cn(
-                'tap-target flex shrink-0 items-center gap-1.5 rounded-lg border px-3 text-xs font-semibold transition-colors',
-                index === current
-                  ? 'border-accent-500 bg-accent-500 text-black'
-                  : isHere
-                    ? 'border-accent-500/50 bg-ink-850 text-ink-100'
-                    : 'border-ink-800 bg-ink-850 text-ink-500 hover:border-ink-700',
-              )}
-            >
-              {label}
-              {isHere && (
-                <span
-                  aria-hidden
-                  className={cn(
-                    'size-1.5 rounded-full',
-                    index === current ? 'bg-black/50' : 'bg-accent-500',
-                  )}
-                />
-              )}
-            </button>
-          )
-        })}
+      <div className="mb-5 flex gap-1.5" role="tablist" aria-label="Week">
+        {[
+          { label: 'Working week', deload: false },
+          { label: 'Deload', deload: true },
+        ].map((tab) => (
+          <button
+            key={tab.label}
+            type="button"
+            role="tab"
+            aria-selected={tab.deload === showingDeload}
+            onClick={() => {
+              setDeloadView(tab.deload)
+            }}
+            className={cn(
+              'tap-target flex-1 rounded-lg border px-3 text-xs font-semibold transition-colors',
+              tab.deload === showingDeload
+                ? 'border-accent-500 bg-accent-500 text-black'
+                : 'border-ink-800 bg-ink-850 text-ink-500 hover:border-ink-700',
+            )}
+          >
+            {tab.label}
+          </button>
+        ))}
       </div>
 
       {/*
@@ -155,27 +150,39 @@ export function ProgramPage() {
         what a calendar says. But a lifter arriving mid-block would have
         to skip their way to the right week, and until they did the app
         would be counting the block from the wrong place.
+
+        This used to hang off the week tabs: browse to week three, press
+        "start from here". With the tabs down to two that reading is
+        gone — a tab now says *what kind of week*, not which one — so the
+        week has to be pickable in its own right. It is the only reason
+        the week number is still a number the lifter touches.
       */}
-      {current !== currentWeek && (
-        <Card className="mb-5 flex items-center justify-between gap-3">
-          <p className="text-ink-500 text-xs">
-            You are on{' '}
-            {weeks[currentWeek]?.isDeload === true
-              ? 'the deload'
-              : `week ${String(currentWeek + 1)}`}
-            .
-          </p>
-          <Button
-            variant="outline"
-            onClick={() => {
-              jumpToWeek.mutate({ program: program.data, weekIndex: current })
-            }}
-            disabled={jumpToWeek.isPending}
-          >
-            Start from here
-          </Button>
-        </Card>
-      )}
+      <Section
+        title="Which week are you on?"
+        description="Only the deload differs; this is what the app counts down from."
+      >
+        <div className="flex flex-wrap gap-1.5">
+          {weeks.map((candidate, index) => (
+            <button
+              key={candidate.index}
+              type="button"
+              aria-pressed={index === currentWeek}
+              onClick={() => {
+                jumpToWeek.mutate({ program: program.data, weekIndex: index })
+              }}
+              disabled={jumpToWeek.isPending}
+              className={cn(
+                'tap-target numeric min-w-11 rounded-lg border px-3 text-xs font-semibold transition-colors',
+                index === currentWeek
+                  ? 'border-accent-500 text-accent-400 bg-accent-500/10'
+                  : 'border-ink-800 bg-ink-850 text-ink-500 hover:border-ink-700',
+              )}
+            >
+              {candidate.isDeload ? 'Deload' : index + 1}
+            </button>
+          ))}
+        </div>
+      </Section>
 
       {week.days.map((day) => (
         <Section

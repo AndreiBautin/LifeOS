@@ -5,7 +5,6 @@ import { asExerciseId } from '@/domain/ids/ids'
 import {
   buildCharacter,
   levelFromXp,
-  placeDescending,
   placeOnLadder,
   TOTAL_STANDARDS,
   xpForLevel,
@@ -44,26 +43,6 @@ describe('placing a value on a ladder', () => {
   })
 })
 
-describe('a ladder where lower is better', () => {
-  // 12:00, 10:00, 8:00, 6:30, 5:30.
-  const mile = [720, 600, 480, 390, 330]
-
-  it('treats a faster time as a higher level', () => {
-    expect(placeDescending(700, mile).level).toBe('Untrained')
-    expect(placeDescending(500, mile).level).toBe('Novice')
-    expect(placeDescending(400, mile).level).toBe('Intermediate')
-    expect(placeDescending(300, mile).level).toBe('Elite')
-  })
-
-  it('runs its progress bar the right way round', () => {
-    // Getting faster inside a level must move progress up, not down.
-    const slower = placeDescending(590, mile).progress
-    const faster = placeDescending(490, mile).progress
-
-    expect(faster).toBeGreaterThan(slower)
-  })
-})
-
 describe('XP', () => {
   it('grows quadratically, so later levels cost a block of training', () => {
     expect(xpForLevel(2) - xpForLevel(1)).toBeLessThan(xpForLevel(10) - xpForLevel(9))
@@ -88,7 +67,6 @@ describe('the character sheet', () => {
     bodyweight: 183,
     sessions: 64,
     workingSets: 900,
-    sessionsThisWeek: 3,
   }
 
   it('totals the three competition lifts and nothing else', () => {

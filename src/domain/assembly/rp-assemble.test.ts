@@ -598,11 +598,18 @@ describe('tiers driving volume', () => {
     expect(new Set(positions).size).toBe(1)
   })
 
-  it('ramps volume into position rather than opening at the ceiling', () => {
-    const first = weeklyVolume(weekAt(program, 0))
-    const last = weeklyVolume(weekAt(program, 5))
+  it('gives every working week the same volume', () => {
+    /*
+     * The block used to open below the target and climb into it. Flat
+     * replaced that: a week is a week, and the only one that differs is
+     * the deload. This is the property that makes a single "working
+     * week" view on the Program page honest — if the weeks diverged
+     * again, that screen would be showing one of six and saying it was
+     * all of them.
+     */
+    const totals = [0, 1, 2, 3, 4, 5].map((index) => weeklyVolume(weekAt(program, index)).biceps)
 
-    expect(last.biceps).toBeGreaterThan(first.biceps)
+    expect(new Set(totals).size).toBe(1)
   })
 
   it('never exceeds maximum recoverable volume in any week', () => {
