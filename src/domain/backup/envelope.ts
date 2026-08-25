@@ -2,6 +2,7 @@ import type { CheckIn } from '@/domain/autoregulation/check-in'
 import type { Exercise } from '@/domain/exercises/exercise'
 import type { WorkoutLog } from '@/domain/logging/workout-log'
 import type { AppSettings } from '@/domain/settings/settings'
+import type { Tombstone } from '@/domain/sync/tombstone'
 
 /**
  * The backup file format.
@@ -26,7 +27,15 @@ import type { AppSettings } from '@/domain/settings/settings'
  *     because it is trusted.
  */
 
-export const BACKUP_SCHEMA_VERSION = 1
+/**
+ * Version 2 adds `tombstones`.
+ *
+ * A version 1 file has no record of what was deleted, so importing one
+ * still resurrects anything removed since it was written — there is no
+ * fixing that from this side, and the reader treats a missing section as
+ * an empty one rather than refusing the file.
+ */
+export const BACKUP_SCHEMA_VERSION = 2
 
 export const BACKUP_MAGIC = 'lift.backup'
 
@@ -53,6 +62,12 @@ export interface BackupData {
   readonly exercises: readonly Exercise[]
   readonly workouts: readonly WorkoutLog[]
   readonly checkIns: readonly CheckIn[]
+  /**
+   * What was deleted, so a merge does not undo it.
+   *
+   * Optional on read for version 1 files. Always written.
+   */
+  readonly tombstones?: readonly Tombstone[]
 }
 
 export function countsFor(data: BackupData): BackupCounts {
@@ -174,6 +189,22 @@ export function validateEnvelope(candidate: unknown): ImportPreview {
         message: `The backup's "${key}" section is missing or malformed.`,
       })
     }
+  }
+
+  /*
+   * Absent is fine; present and wrong is not.
+   *
+   * Every version 1 file lacks this section, and refusing those would
+   * make a schema bump a data-loss event for anyone holding an older
+   * backup. A section that exists but is not a list is a different claim
+   * — that is a corrupt file, and saying so is more useful than quietly
+   * reading it as empty.
+   */
+  if (bag.tombstones !== undefined && !Array.isArray(bag.tombstones)) {
+    problems.push({
+      severity: 'error',
+      message: `The backup's "tombstones" section is malformed.`,
+    })
   }
 
   const { settings, workouts: rawWorkouts } = bag

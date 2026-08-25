@@ -68,6 +68,19 @@ export interface PreWorkoutCheckIn {
   readonly recovery: Readonly<Partial<Record<MuscleGroup, RecoveryState>>>
   readonly readiness: ReadinessFactors
   readonly notes?: string
+  /**
+   * When this record last changed, ISO.
+   *
+   * Optional because records written before it existed do not have one,
+   * and a migration cannot invent a truthful value for them. Everything
+   * that compares it treats "absent" as "older than anything that can
+   * name a time", which is the only safe reading: a record that cannot
+   * prove it is newer must not win a merge.
+   *
+   * Stamped by the repository on save rather than by callers, so it
+   * cannot be forgotten on one write path out of five.
+   */
+  readonly updatedAt?: string
 }
 
 export interface PostWorkoutCheckIn {
@@ -79,6 +92,19 @@ export interface PostWorkoutCheckIn {
   /** Overall session RPE, 1–10. Optional; the per-muscle answers matter more. */
   readonly sessionRpe?: number
   readonly notes?: string
+  /**
+   * When this record last changed, ISO.
+   *
+   * Optional because records written before it existed do not have one,
+   * and a migration cannot invent a truthful value for them. Everything
+   * that compares it treats "absent" as "older than anything that can
+   * name a time", which is the only safe reading: a record that cannot
+   * prove it is newer must not win a merge.
+   *
+   * Stamped by the repository on save rather than by callers, so it
+   * cannot be forgotten on one write path out of five.
+   */
+  readonly updatedAt?: string
 }
 
 export type CheckIn = PreWorkoutCheckIn | PostWorkoutCheckIn

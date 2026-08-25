@@ -4,6 +4,7 @@ import type {
   Clock,
   ExerciseRepository,
   PositionRepository,
+  TombstoneRepository,
   WorkoutRepository,
 } from '@/domain/repositories/ports'
 import { DATABASE_NAME } from '@/config/storage-keys'
@@ -12,6 +13,7 @@ import {
   createCheckInRepository,
   createExerciseRepository,
   createPositionRepository,
+  createTombstoneRepository,
   createWorkoutRepository,
 } from '@/infrastructure/db/repositories'
 import { requestPersistence } from '@/infrastructure/storage/durability'
@@ -41,6 +43,7 @@ export interface AppServices {
   readonly position: PositionRepository
   readonly workouts: WorkoutRepository
   readonly checkIns: CheckInRepository
+  readonly tombstones: TombstoneRepository
   readonly ids: IdGenerator
   readonly clock: Clock
 }
@@ -69,10 +72,11 @@ export async function bootstrap(): Promise<BootstrapResult> {
 
   const services: AppServices = {
     db,
-    exercises: createExerciseRepository(db),
+    exercises: createExerciseRepository(db, systemClock),
     position: createPositionRepository(db),
-    workouts: createWorkoutRepository(db),
-    checkIns: createCheckInRepository(db),
+    workouts: createWorkoutRepository(db, systemClock),
+    checkIns: createCheckInRepository(db, systemClock),
+    tombstones: createTombstoneRepository(db),
     ids: cryptoIds,
     clock: systemClock,
   }

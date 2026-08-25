@@ -14,9 +14,15 @@ import {
 } from '@/domain/backup/envelope'
 import { checksumOf, verifyChecksum } from '@/domain/backup/checksum'
 import type { AppSettings } from '@/domain/settings/settings'
+import type { Exercise } from '@/domain/exercises/exercise'
+import type { CheckIn } from '@/domain/autoregulation/check-in'
+import type { WorkoutLog } from '@/domain/logging/workout-log'
+import type { Tombstone } from '@/domain/sync/tombstone'
+import { indexTombstones, shouldAccept } from '@/domain/sync/tombstone'
 import type {
   CheckInRepository,
   ExerciseRepository,
+  TombstoneRepository,
   WorkoutRepository,
 } from '@/domain/repositories/ports'
 
@@ -35,6 +41,7 @@ export interface BackupRepositories {
   readonly exercises: ExerciseRepository
   readonly workouts: WorkoutRepository
   readonly checkIns: CheckInRepository
+  readonly tombstones: TombstoneRepository
 }
 
 export interface ExportOptions {
@@ -47,10 +54,11 @@ export async function buildBackup(
   repositories: BackupRepositories,
   options: ExportOptions,
 ): Promise<BackupEnvelope> {
-  const [exercises, workouts, checkIns] = await Promise.all([
+  const [exercises, workouts, checkIns, tombstones] = await Promise.all([
     repositories.exercises.all(),
     repositories.workouts.all(),
     repositories.checkIns.all(),
+    repositories.tombstones.all(),
   ])
 
   const data: BackupData = {
@@ -58,6 +66,7 @@ export async function buildBackup(
     exercises,
     workouts,
     checkIns,
+    tombstones,
   }
 
   return {
@@ -143,11 +152,16 @@ export async function previewMerge(
   envelope: BackupEnvelope,
   repositories: BackupRepositories,
 ): Promise<MergeEffect> {
-  const [exercises, workouts, checkIns] = await Promise.all([
+  const [exercises, workouts, checkIns, localTombstones] = await Promise.all([
     repositories.exercises.all(),
     repositories.workouts.all(),
     repositories.checkIns.all(),
+    repositories.tombstones.all(),
   ])
+
+  // Counted the way it will be applied, or the preview is a different
+  // answer to the one the button gives.
+  const accepted = acceptable(envelope, localTombstones)
 
   const existing = {
     exercises: new Set(exercises.map((item) => item.id as string)),
@@ -171,15 +185,15 @@ export async function previewMerge(
 
   tally(
     'exercises',
-    envelope.data.exercises.map((item) => item.id),
+    accepted.exercises.map((item) => item.id),
   )
   tally(
     'workouts',
-    envelope.data.workouts.map((item) => item.id),
+    accepted.workouts.map((item) => item.id),
   )
   tally(
     'checkIns',
-    envelope.data.checkIns.map((item) => item.id),
+    accepted.checkIns.map((item) => item.id),
   )
 
   const unchanged: BackupCounts = {
@@ -212,16 +226,56 @@ export async function applyBackup(
 ): Promise<ImportResult> {
   const { data } = envelope
 
-  await repositories.exercises.saveMany(data.exercises)
+  /*
+   * The file's deletions are adopted before its records are written.
+   *
+   * Both directions matter. A record this device deleted must not come
+   * back because the file predates the deletion, and a record the *file*
+   * deleted must not survive here because this device never saw it
+   * happen. Recording the incoming tombstones first is what makes the
+   * second true on the next merge in either direction.
+   */
+  const localTombstones = await repositories.tombstones.all()
+  if (data.tombstones !== undefined && data.tombstones.length > 0) {
+    await repositories.tombstones.record(data.tombstones)
+  }
 
-  for (const workout of data.workouts) await repositories.workouts.save(workout)
-  for (const checkIn of data.checkIns) await repositories.checkIns.save(checkIn)
+  const accepted = acceptable(envelope, localTombstones)
+
+  await repositories.exercises.restoreMany(accepted.exercises)
+  await repositories.workouts.restoreMany(accepted.workouts)
+  await repositories.checkIns.restoreMany(accepted.checkIns)
 
   return {
-    imported: countsFor(data),
+    imported: countsFor({ ...data, ...accepted }),
     // Settings are only adopted on a full replace. Merging someone else's
     // training maxes into a live setup would silently rewrite every
     // percentage the program prescribes.
     ...(mode === 'replace' ? { settings: data.settings } : {}),
+  }
+}
+
+/**
+ * The subset of a backup that survives this device's deletions.
+ *
+ * Shared by the preview and the apply so the count shown on the button
+ * is the count the button produces. They were separate walks over the
+ * same data once, which is exactly the shape of thing that drifts.
+ */
+function acceptable(
+  envelope: BackupEnvelope,
+  localTombstones: readonly Tombstone[],
+): {
+  readonly exercises: readonly Exercise[]
+  readonly workouts: readonly WorkoutLog[]
+  readonly checkIns: readonly CheckIn[]
+} {
+  const index = indexTombstones(localTombstones)
+  const { data } = envelope
+
+  return {
+    exercises: data.exercises.filter((item) => shouldAccept(item, 'exercises', item.id, index)),
+    workouts: data.workouts.filter((item) => shouldAccept(item, 'workouts', item.id, index)),
+    checkIns: data.checkIns.filter((item) => shouldAccept(item, 'checkIns', item.id, index)),
   }
 }

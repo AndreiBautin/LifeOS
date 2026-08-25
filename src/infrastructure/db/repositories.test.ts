@@ -10,8 +10,12 @@ import { closeLiftDatabase, openLiftDatabase, type LiftDatabase } from './databa
 import {
   createExerciseRepository,
   createPositionRepository,
+  createTombstoneRepository,
   createWorkoutRepository,
 } from './repositories'
+
+/** Fixed, so a stamped updatedAt is reproducible. */
+const testClock = { now: () => new Date('2026-08-25T09:00:00.000Z') }
 
 const TEST_DB = 'lift-test'
 
@@ -32,6 +36,7 @@ describe('the schema', () => {
       'checkIns',
       'exercises',
       'position',
+      'tombstones',
       'workouts',
     ])
   })
@@ -40,7 +45,7 @@ describe('the schema', () => {
     // The multi-entry index is what turns "what did I do on this lift last
     // time" into a lookup. StrengthFlow answered that question by
     // downloading every workout document and scanning it — on every set.
-    const workouts = createWorkoutRepository(db)
+    const workouts = createWorkoutRepository(db, testClock)
 
     await workouts.save(
       aWorkout({ entries: [anEntry({ exerciseId: SQUAT }), anEntry({ exerciseId: BENCH })] }),
@@ -55,7 +60,7 @@ describe('the schema', () => {
 
 describe('the workout repository', () => {
   it('returns recent workouts newest first', async () => {
-    const workouts = createWorkoutRepository(db)
+    const workouts = createWorkoutRepository(db, testClock)
 
     await workouts.save(aWorkout({ date: '2026-08-01' }))
     await workouts.save(aWorkout({ date: '2026-08-20' }))
@@ -69,7 +74,7 @@ describe('the workout repository', () => {
   })
 
   it('stops at the requested limit rather than loading everything', async () => {
-    const workouts = createWorkoutRepository(db)
+    const workouts = createWorkoutRepository(db, testClock)
     for (let day = 1; day <= 30; day += 1) {
       await workouts.save(aWorkout({ date: `2026-08-${String(day).padStart(2, '0')}` }))
     }
@@ -80,7 +85,7 @@ describe('the workout repository', () => {
   })
 
   it('filters by date range', async () => {
-    const workouts = createWorkoutRepository(db)
+    const workouts = createWorkoutRepository(db, testClock)
 
     await workouts.save(aWorkout({ date: '2026-07-15' }))
     await workouts.save(aWorkout({ date: '2026-08-05' }))
@@ -91,7 +96,7 @@ describe('the workout repository', () => {
   })
 
   it('finds the single workout still in progress', async () => {
-    const workouts = createWorkoutRepository(db)
+    const workouts = createWorkoutRepository(db, testClock)
 
     await workouts.save(aWorkout({ status: 'completed' }))
     await workouts.save(aWorkout({ status: 'in-progress', title: 'Today' }))
@@ -100,14 +105,14 @@ describe('the workout repository', () => {
   })
 
   it('returns undefined when nothing is in progress', async () => {
-    const workouts = createWorkoutRepository(db)
+    const workouts = createWorkoutRepository(db, testClock)
     await workouts.save(aWorkout({ status: 'completed' }))
 
     expect(await workouts.inProgress()).toBeUndefined()
   })
 
   it('round-trips a workout without losing a field', async () => {
-    const workouts = createWorkoutRepository(db)
+    const workouts = createWorkoutRepository(db, testClock)
     const original = aWorkout({
       notes: 'Felt strong',
       bodyweight: 183.5,
@@ -116,9 +121,39 @@ describe('the workout repository', () => {
 
     await workouts.save(original)
 
+    const stored = await workouts.byId(original.id)
+
     // Structured clone rather than a JSON round-trip, so nothing is
-    // silently coerced on the way in or out.
-    expect(await workouts.byId(original.id)).toEqual(original)
+    // silently coerced on the way in or out. `updatedAt` is added by the
+    // save and is therefore the one field the input cannot carry.
+    expect(stored).toEqual({ ...original, updatedAt: '2026-08-25T09:00:00.000Z' })
+  })
+
+  it('stamps when a record changed, so a merge can order two copies of it', async () => {
+    const workouts = createWorkoutRepository(db, testClock)
+    const original = aWorkout()
+
+    await workouts.save(original)
+
+    // Stamped by the repository rather than by the caller: there are
+    // several paths that write a workout and a rule living in any of them
+    // is a rule the next one will miss.
+    expect(original.updatedAt).toBeUndefined()
+    expect((await workouts.byId(original.id))?.updatedAt).toBe('2026-08-25T09:00:00.000Z')
+  })
+
+  it('records a tombstone when a workout is deleted', async () => {
+    const workouts = createWorkoutRepository(db, testClock)
+    const tombstones = createTombstoneRepository(db)
+    const original = aWorkout()
+
+    await workouts.save(original)
+    await workouts.remove(original.id)
+
+    expect(await workouts.byId(original.id)).toBeUndefined()
+    expect(await tombstones.all()).toEqual([
+      { id: original.id, collection: 'workouts', deletedAt: '2026-08-25T09:00:00.000Z' },
+    ])
   })
 })
 
@@ -129,7 +164,7 @@ describe('the exercise library', () => {
    * sync and no retirement list to keep in step.
    */
   it('resolves the whole catalogue with nothing stored at all', async () => {
-    const exercises = createExerciseRepository(db)
+    const exercises = createExerciseRepository(db, testClock)
 
     expect(await exercises.count()).toBe(builtInExercises().length)
     expect((await exercises.byId(asExerciseId('bench-press')))?.name).toBe('Bench Press')
@@ -139,14 +174,14 @@ describe('the exercise library', () => {
     // The failure this replaces: a device went on showing 'Pull-Ups' and
     // a 12-20 lateral raise long after the catalogue said otherwise,
     // because every delivery mechanism was additive.
-    const exercises = createExerciseRepository(db)
+    const exercises = createExerciseRepository(db, testClock)
     await exercises.save(anExercise({ id: asExerciseId('bench-press'), name: 'Bench Presses' }))
 
     expect((await exercises.byId(asExerciseId('bench-press')))?.name).toBe('Bench Press')
   })
 
   it('keeps a withdrawn built-in, archived, so history still resolves', async () => {
-    const exercises = createExerciseRepository(db)
+    const exercises = createExerciseRepository(db, testClock)
     await exercises.save(
       anExercise({ id: asExerciseId('lunge'), isBuiltIn: true, isArchived: false }),
     )
@@ -157,7 +192,7 @@ describe('the exercise library', () => {
   })
 
   it('leaves a lifter’s own exercise alone', async () => {
-    const exercises = createExerciseRepository(db)
+    const exercises = createExerciseRepository(db, testClock)
     await exercises.save(
       anExercise({ id: asExerciseId('my-own-movement'), isBuiltIn: false, isArchived: false }),
     )

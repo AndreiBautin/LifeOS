@@ -7,11 +7,15 @@ import type { CheckInId, ExerciseId, WorkoutId } from '@/domain/ids/ids'
 import type { WorkoutLog } from '@/domain/logging/workout-log'
 import type {
   CheckInRepository,
+  Clock,
   ExerciseRepository,
   PositionRepository,
+  TombstoneRepository,
   WorkoutQuery,
   WorkoutRepository,
 } from '@/domain/repositories/ports'
+import type { Tombstone, TombstonedCollection } from '@/domain/sync/tombstone'
+import { tombstoneKey } from '@/domain/sync/tombstone'
 
 import { fromStored, toStored, type LiftDatabase } from './database'
 
@@ -25,6 +29,51 @@ import { fromStored, toStored, type LiftDatabase } from './database'
  */
 
 /**
+ * Stamping and tombstoning, in one place each.
+ *
+ * Both are the kind of bookkeeping that is a guarantee when the storage
+ * layer does it and a habit when call sites are asked to. There are five
+ * paths that write a workout and three that write an exercise; a rule
+ * living in any of them is a rule that will be missed by the sixth.
+ */
+function stamp<T>(record: T, clock: Clock): T & { readonly updatedAt: string } {
+  return { ...record, updatedAt: clock.now().toISOString() }
+}
+
+async function bury(
+  db: LiftDatabase,
+  clock: Clock,
+  collection: TombstonedCollection,
+  id: string,
+): Promise<void> {
+  const tombstone: Tombstone = { id, collection, deletedAt: clock.now().toISOString() }
+  await db.put('tombstones', tombstone, tombstoneKey(collection, id))
+}
+
+/**
+ * What has been deleted. See `domain/sync/tombstone.ts`.
+ */
+export function createTombstoneRepository(db: LiftDatabase): TombstoneRepository {
+  return {
+    async all() {
+      return db.getAll('tombstones')
+    },
+    async since(deletedAt: string) {
+      return db.getAllFromIndex('tombstones', 'by-deleted', IDBKeyRange.lowerBound(deletedAt, true))
+    },
+    async record(tombstones: readonly Tombstone[]) {
+      const tx = db.transaction('tombstones', 'readwrite')
+      await Promise.all([
+        ...tombstones.map((tombstone) =>
+          tx.store.put(tombstone, tombstoneKey(tombstone.collection, tombstone.id)),
+        ),
+        tx.done,
+      ])
+    },
+  }
+}
+
+/**
  * The exercise library: the shipped catalogue, plus whatever the store
  * holds that the catalogue cannot know about.
  *
@@ -34,7 +83,7 @@ import { fromStored, toStored, type LiftDatabase } from './database'
  * between them still could not deliver an edit to an exercise that
  * already existed.
  */
-export function createExerciseRepository(db: LiftDatabase): ExerciseRepository {
+export function createExerciseRepository(db: LiftDatabase, clock: Clock): ExerciseRepository {
   return {
     async all() {
       return resolveLibrary(builtInExercises(), await db.getAll('exercises'))
@@ -44,14 +93,15 @@ export function createExerciseRepository(db: LiftDatabase): ExerciseRepository {
       return library.find((exercise) => exercise.id === id)
     },
     async save(exercise: Exercise) {
-      await db.put('exercises', exercise)
+      await db.put('exercises', stamp(exercise, clock))
     },
-    async saveMany(exercises: readonly Exercise[]) {
+    async restoreMany(exercises: readonly Exercise[]) {
       const tx = db.transaction('exercises', 'readwrite')
       await Promise.all([...exercises.map((exercise) => tx.store.put(exercise)), tx.done])
     },
     async remove(id: ExerciseId) {
       await db.delete('exercises', id)
+      await bury(db, clock, 'exercises', id)
     },
     async count() {
       return (await this.all()).length
@@ -82,7 +132,7 @@ export function createPositionRepository(db: LiftDatabase): PositionRepository {
   }
 }
 
-export function createWorkoutRepository(db: LiftDatabase): WorkoutRepository {
+export function createWorkoutRepository(db: LiftDatabase, clock: Clock): WorkoutRepository {
   const newestFirst = (a: WorkoutLog, b: WorkoutLog): number => b.date.localeCompare(a.date)
 
   return {
@@ -142,11 +192,17 @@ export function createWorkoutRepository(db: LiftDatabase): WorkoutRepository {
     async save(log: WorkoutLog) {
       // The index field is derived here and nowhere else, so it cannot
       // drift from the entries it summarises.
-      await db.put('workouts', toStored(log))
+      await db.put('workouts', toStored(stamp(log, clock)))
+    },
+
+    async restoreMany(logs: readonly WorkoutLog[]) {
+      const tx = db.transaction('workouts', 'readwrite')
+      await Promise.all([...logs.map((log) => tx.store.put(toStored(log))), tx.done])
     },
 
     async remove(id: WorkoutId) {
       await db.delete('workouts', id)
+      await bury(db, clock, 'workouts', id)
     },
 
     async count() {
@@ -159,7 +215,7 @@ export function createWorkoutRepository(db: LiftDatabase): WorkoutRepository {
   }
 }
 
-export function createCheckInRepository(db: LiftDatabase): CheckInRepository {
+export function createCheckInRepository(db: LiftDatabase, clock: Clock): CheckInRepository {
   return {
     async byId(id: CheckInId) {
       return db.get('checkIns', id)
@@ -182,10 +238,15 @@ export function createCheckInRepository(db: LiftDatabase): CheckInRepository {
       return results
     },
     async save(checkIn: CheckIn) {
-      await db.put('checkIns', checkIn)
+      await db.put('checkIns', stamp(checkIn, clock))
+    },
+    async restoreMany(checkIns: readonly CheckIn[]) {
+      const tx = db.transaction('checkIns', 'readwrite')
+      await Promise.all([...checkIns.map((checkIn) => tx.store.put(checkIn)), tx.done])
     },
     async remove(id: CheckInId) {
       await db.delete('checkIns', id)
+      await bury(db, clock, 'checkIns', id)
     },
     async all() {
       return db.getAll('checkIns')

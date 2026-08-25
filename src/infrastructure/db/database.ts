@@ -2,6 +2,7 @@ import type { DBSchema, IDBPDatabase } from 'idb'
 import { openDB } from 'idb'
 
 import type { CheckIn } from '@/domain/autoregulation/check-in'
+import type { Tombstone } from '@/domain/sync/tombstone'
 import type { Exercise } from '@/domain/exercises/exercise'
 import type { WorkoutLog } from '@/domain/logging/workout-log'
 import type { ProgramPosition } from '@/domain/programs/position'
@@ -39,7 +40,7 @@ export const DB_NAME = 'lift'
  * a device that already ran it will not run it again, so changing one
  * leaves two devices with different schemas and no way to tell.
  */
-export const DB_VERSION = 2
+export const DB_VERSION = 3
 
 /**
  * A workout as it is stored, which is not quite a workout as the domain
@@ -107,6 +108,25 @@ export interface LiftDB extends DBSchema {
     value: CheckIn
     indexes: { 'by-workout': string; 'by-recorded': string }
   }
+  /**
+   * What has been deleted, and when.
+   *
+   * Keyed by `collection:id` rather than by id alone, because ids are
+   * only unique within a collection and a single store holds all three.
+   * Indexed by `deletedAt` so a sync can ask for deletions since it last
+   * ran without reading the whole store.
+   *
+   * This grows forever, which is acceptable at this size — a tombstone is
+   * three short strings, and a lifter who deleted one session a week for
+   * a decade would accumulate about thirty kilobytes. Pruning them is
+   * only safe once every device is known to have seen them, which is a
+   * question this app cannot currently answer, so it does not try.
+   */
+  tombstones: {
+    key: string
+    value: Tombstone
+    indexes: { 'by-deleted': string }
+  }
 }
 
 export type LiftDatabase = IDBPDatabase<LiftDB>
@@ -156,6 +176,23 @@ export function openLiftDatabase(name = DB_NAME): Promise<LiftDatabase> {
         }
 
         if (!names.contains('position')) db.createObjectStore('position')
+      }
+
+      /*
+       * Version 3 records deletions.
+       *
+       * Until now a deleted row simply stopped existing, which reads to
+       * any merge as a record the other copy knows about and this one
+       * does not — so it comes back. See `domain/sync/tombstone.ts`.
+       *
+       * Nothing is backfilled. Records already in the database have no
+       * `updatedAt`, and a tombstone store starting empty is correct:
+       * nothing has been deleted *since deletions started being
+       * recorded*, which is precisely the claim it should be making.
+       */
+      if (oldVersion < 3) {
+        const tombstones = db.createObjectStore('tombstones')
+        tombstones.createIndex('by-deleted', 'deletedAt')
       }
     },
 

@@ -12,6 +12,7 @@ import {
 } from '@/infrastructure/db/database'
 import {
   createCheckInRepository,
+  createTombstoneRepository,
   createExerciseRepository,
   createWorkoutRepository,
 } from '@/infrastructure/db/repositories'
@@ -27,6 +28,9 @@ import {
   type BackupRepositories,
 } from './backup-service'
 
+/** Fixed, so a stamped updatedAt is reproducible. */
+const testClock = { now: () => new Date('2026-08-25T09:00:00.000Z') }
+
 const TEST_DB = 'lift-backup-test'
 const NOW = new Date('2026-08-24T12:00:00.000Z')
 
@@ -36,9 +40,10 @@ let repositories: BackupRepositories
 beforeEach(async () => {
   db = await openLiftDatabase(TEST_DB)
   repositories = {
-    exercises: createExerciseRepository(db),
-    workouts: createWorkoutRepository(db),
-    checkIns: createCheckInRepository(db),
+    exercises: createExerciseRepository(db, testClock),
+    workouts: createWorkoutRepository(db, testClock),
+    checkIns: createCheckInRepository(db, testClock),
+    tombstones: createTombstoneRepository(db),
   }
 })
 
@@ -181,18 +186,42 @@ describe('the preview shown before importing', () => {
 
   it('distinguishes records that would be added from those overwritten', async () => {
     await populate()
+
+    // Recorded before the export, so the file carries it and the local
+    // database does not — an addition with no deletion involved.
+    const extra = aWorkout({ date: '2026-08-20', title: 'Only in the file' })
+    await repositories.workouts.save(extra)
+
+    const envelope = await buildBackup(repositories, exportOptions)
+    await repositories.workouts.restoreMany([])
+
+    const effect = await previewMerge(envelope, repositories)
+
+    expect(effect.updated.workouts).toBe(3)
+    expect(effect.added.workouts).toBe(0)
+  })
+
+  /*
+   * This case used to assert the opposite, in as many words: "re-importing
+   * should add exactly that one back". It described what the code did
+   * rather than what anyone wanted, and what the code did was undo
+   * deletions — silently, and reported as an *addition*, which is the
+   * word a merge uses for a record it is restoring.
+   */
+  it('does not restore a session that was deleted after the backup was written', async () => {
+    await populate()
     const envelope = await buildBackup(repositories, exportOptions)
 
-    // Drop one workout locally; re-importing should add exactly that one
-    // back and leave the rest as updates.
     const [first] = await repositories.workouts.recent(1)
     if (!first) throw new Error('expected a workout')
     await repositories.workouts.remove(first.id)
 
     const effect = await previewMerge(envelope, repositories)
+    expect(effect.added.workouts).toBe(0)
 
-    expect(effect.added.workouts).toBe(1)
-    expect(effect.updated.workouts).toBe(1)
+    await applyBackup(envelope, repositories, 'merge')
+
+    expect(await repositories.workouts.byId(first.id)).toBeUndefined()
   })
 })
 

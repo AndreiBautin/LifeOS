@@ -24,6 +24,9 @@ import { logSet } from './log-set'
 import { skipSession } from './skip-session'
 import { startWorkout } from './start-workout'
 
+/** Fixed, so a stamped updatedAt is reproducible. */
+const testClock = { now: () => new Date('2026-08-25T09:00:00.000Z') }
+
 /**
  * The whole loop, end to end.
  *
@@ -69,9 +72,9 @@ let program: ReturnType<typeof deriveProgram>
 function services() {
   return {
     db,
-    exercises: createExerciseRepository(db),
+    exercises: createExerciseRepository(db, testClock),
     position: createPositionRepository(db),
-    workouts: createWorkoutRepository(db),
+    workouts: createWorkoutRepository(db, testClock),
     ids: counterIds(),
     roundingIncrement: 5,
     clock,

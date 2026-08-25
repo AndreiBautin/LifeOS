@@ -381,6 +381,39 @@ then fail the build at every consumer until each is handled. That is
 working as intended — silently falling through to a default is how a
 prescription becomes a wrong number.
 
+**A deletion is a fact, not an absence.** `domain/sync/tombstone.ts`.
+Removing a row leaves nothing behind, and nothing is indistinguishable
+from "never existed" — so any merge reads it as a record the other copy
+knows about and puts it back. This was reachable before any sync existed:
+export a backup, delete a session, import in merge mode, and it returned,
+counted as an _addition_, because that is genuinely what the merge
+thought it was doing. `repositories.remove` now writes a tombstone, and
+`acceptable()` in the backup service filters incoming records through
+them.
+
+The comparison is against the record's own `updatedAt`, not absolute, so
+a deletion is a statement about the record as it stood rather than a
+claim on every future version. A record with **no** `updatedAt` loses to
+any tombstone: it cannot prove it is newer, and assuming otherwise
+resurrects exactly what the tombstone was added to prevent.
+
+**`save` stamps, `restoreMany` does not.** Two names, because they are
+two operations. `save` sets `updatedAt` to now; `restoreMany` writes
+records exactly as given, and is what the import path uses. Stamping on
+restore would make every incoming record the newest thing in the
+database, which is the one comparison a merge depends on. Stamping lives
+in the repository rather than in callers: five paths write a workout, and
+a rule living in any of them is a rule the sixth will miss.
+
+**Position is deliberately not synced and not backed up.** It is absent
+from the backup envelope, and that was decided before any of this. It is
+also the only record with no correct last-write-wins answer — two devices
+both advancing a single cursor cannot be reconciled by timestamp — so
+leaving it device-local is what makes every _other_ record safely
+mergeable. Deriving it from history instead does not work: skipping
+advances the position and deliberately writes nothing, so the log cannot
+reconstruct it.
+
 **Never edit an existing IndexedDB migration step.** Bump `DB_VERSION`
 and add a new guarded block. A device that already ran a step will not
 run it again, so editing one leaves two devices with different schemas
