@@ -99,12 +99,51 @@ function buildFrameworkBlock(recipe: ProgramRecipe, deps: AssembleDeps): Program
   const { framework, assistance } = recipe
   const workingWeeks = framework.weeks.filter((week) => !week.isDeload).length
 
-  const weeks: ProgramWeek[] = framework.weeks.map((frameworkWeek, weekIndex) => ({
-    index: weekIndex,
-    label: frameworkWeek.label,
-    isDeload: frameworkWeek.isDeload,
-    days: daysForWeek(deps.split, weekIndex).map((splitDay, dayIndex) =>
-      buildDay({
+  const weeks: ProgramWeek[] = framework.weeks.map((frameworkWeek, weekIndex) => {
+    /*
+     * Days are built in order, threading a running weekly total through
+     * them.
+     *
+     * Building each day independently and dividing the weekly budget by
+     * frequency looks equivalent and is not: the day carrying both the
+     * main lift and its supplemental work can spend far more than its
+     * even share on one muscle, and a later day dividing the *original*
+     * target by frequency would then add more on top. That is how a
+     * four-day 5/3/1 ends up prescribing fourteen front-delt sets against
+     * a ceiling of twelve.
+     */
+    const splitDays = daysForWeek(deps.split, weekIndex)
+
+    /*
+     * Two passes.
+     *
+     * The framework's work is fixed and known for the whole week before
+     * any assistance is chosen, so it is totalled first. Filling day by
+     * day instead lets Monday's accessories spend a budget that Thursday's
+     * main lift is going to need — a bench day's own pressing pays the
+     * front delts, and an accessory chosen on the press day two days
+     * earlier cannot know that.
+     *
+     * Assistance is the remainder after the framework, not a co-equal
+     * claimant on the budget.
+     */
+    const frameworkByDay = splitDays.map((splitDay) =>
+      buildFrameworkSlots({ recipe, deps, frameworkWeek, splitDay }),
+    )
+    const frameworkWeekSpend = frameworkByDay.reduce<VolumeMap>(
+      (total, built) => addInto(total, built.spent),
+      emptyVolumeMap(),
+    )
+
+    let assistanceSpent = emptyVolumeMap()
+
+    const days = splitDays.map((splitDay, dayIndex) => {
+      const framework = frameworkByDay[dayIndex]
+      if (framework === undefined) {
+        return { index: dayIndex, label: splitDay.label, slots: [] }
+      }
+
+      const built = buildDay({
         recipe,
         deps,
         frameworkWeek,
@@ -113,9 +152,25 @@ function buildFrameworkBlock(recipe: ProgramRecipe, deps: AssembleDeps): Program
         weekIndex,
         workingWeeks,
         assistance,
-      }),
-    ),
-  }))
+        frameworkSlots: framework.slots,
+        frameworkDaySpend: framework.spent,
+        // Everything the week has already committed: all framework work,
+        // plus assistance chosen on earlier days.
+        weekSpent: addInto(frameworkWeekSpend, assistanceSpent),
+        remainingDays: splitDays.slice(dayIndex + 1),
+      })
+
+      assistanceSpent = addInto(assistanceSpent, built.spent)
+      return built.day
+    })
+
+    return {
+      index: weekIndex,
+      label: frameworkWeek.label,
+      isDeload: frameworkWeek.isDeload,
+      days,
+    }
+  })
 
   return {
     index: 0,
@@ -127,6 +182,80 @@ function buildFrameworkBlock(recipe: ProgramRecipe, deps: AssembleDeps): Program
   }
 }
 
+interface FrameworkArgs {
+  readonly recipe: ProgramRecipe
+  readonly deps: AssembleDeps
+  readonly frameworkWeek: FiveThreeOneWeek
+  readonly splitDay: SplitDay
+}
+
+interface BuiltSlots {
+  readonly slots: readonly Slot[]
+  readonly spent: VolumeMap
+}
+
+/**
+ * The main and supplemental work for one day — everything the framework
+ * dictates, with no reference to volume targets.
+ *
+ * Separated out so a whole week of it can be totalled before any
+ * accessory is chosen. The framework is not negotiable; assistance is.
+ */
+function buildFrameworkSlots({ recipe, deps, frameworkWeek, splitDay }: FrameworkArgs): BuiltSlots {
+  const slots: Slot[] = []
+  let spent: VolumeMap = emptyVolumeMap()
+
+  const record = (exerciseId: ExerciseId, sets: readonly SetPrescription[]): void => {
+    const exercise = findExercise(deps.exercises, exerciseId)
+    if (exercise !== undefined) spent = addInto(spent, slotVolume(exercise, sets))
+  }
+
+  if (splitDay.mainLift === undefined) return { slots, spent }
+
+  const exerciseId = recipe.framework.mainLifts[splitDay.mainLift]
+  const mainSets = mainSetPrescriptions(frameworkWeek, {
+    includeWarmups: recipe.framework.includeWarmups,
+  })
+
+  slots.push({
+    id: asSlotId(deps.ids.next()),
+    role: 'main',
+    exercise: { kind: 'specific', exerciseId },
+    sets: mainSets,
+    restSeconds: recipe.framework.mainRestSeconds,
+    notes: `${MAIN_LIFT_LABELS[splitDay.mainLift]} — ${frameworkWeek.label}`,
+  })
+  record(exerciseId, mainSets)
+
+  const targetLift: MainLiftSlot =
+    recipe.framework.supplemental.lift === 'same'
+      ? splitDay.mainLift
+      : OPPOSITE_LIFT[splitDay.mainLift]
+
+  // Cycle 1 percentages are baked in; the climb across cycles is a
+  // progression rule, so the template shows where it starts and the rule
+  // shows where it goes.
+  const supplementalSets = supplementalPrescriptions(
+    recipe.framework.supplemental,
+    frameworkWeek,
+    1,
+  )
+
+  if (supplementalSets.length > 0) {
+    const supplementalId = recipe.framework.mainLifts[targetLift]
+    slots.push({
+      id: asSlotId(deps.ids.next()),
+      role: 'supplemental',
+      exercise: { kind: 'specific', exerciseId: supplementalId },
+      sets: supplementalSets,
+      restSeconds: recipe.framework.supplementalRestSeconds,
+    })
+    record(supplementalId, supplementalSets)
+  }
+
+  return { slots, spent }
+}
+
 interface BuildDayArgs {
   readonly recipe: ProgramRecipe
   readonly deps: AssembleDeps
@@ -136,70 +265,43 @@ interface BuildDayArgs {
   readonly weekIndex: number
   readonly workingWeeks: number
   readonly assistance: AssistanceConfig
+  readonly frameworkSlots: readonly Slot[]
+  /** What the framework spends on this day specifically. */
+  readonly frameworkDaySpend: VolumeMap
+  /** Everything the week has committed: all framework, plus earlier assistance. */
+  readonly weekSpent: VolumeMap
+  /** Days still to come this week, so the budget can be shared with them. */
+  readonly remainingDays: readonly SplitDay[]
 }
 
-function buildDay(args: BuildDayArgs): ProgramDay {
-  const { recipe, deps, frameworkWeek, splitDay, dayIndex } = args
-  const slots: Slot[] = []
-  let spent: VolumeMap = emptyVolumeMap()
+interface BuiltDay {
+  readonly day: ProgramDay
+  /** Assistance volume only — the framework is already counted weekly. */
+  readonly spent: VolumeMap
+}
 
-  const record = (exerciseId: ExerciseId, sets: readonly SetPrescription[]): void => {
-    const exercise = findExercise(deps.exercises, exerciseId)
-    if (exercise !== undefined) spent = addInto(spent, slotVolume(exercise, sets))
-  }
+function buildDay(args: BuildDayArgs): BuiltDay {
+  const { deps, splitDay, dayIndex } = args
+  const slots: Slot[] = [...args.frameworkSlots]
+  let assistanceSpend = emptyVolumeMap()
 
-  /* 1. Main lift ----------------------------------------------------- */
-  if (splitDay.mainLift !== undefined) {
-    const exerciseId = recipe.framework.mainLifts[splitDay.mainLift]
-    const sets = mainSetPrescriptions(frameworkWeek, {
-      includeWarmups: recipe.framework.includeWarmups,
-    })
-
-    slots.push({
-      id: asSlotId(deps.ids.next()),
-      role: 'main',
-      exercise: { kind: 'specific', exerciseId },
-      sets,
-      restSeconds: recipe.framework.mainRestSeconds,
-      notes: `${MAIN_LIFT_LABELS[splitDay.mainLift]} — ${frameworkWeek.label}`,
-    })
-    record(exerciseId, sets)
-  }
-
-  /* 2. Supplemental --------------------------------------------------- */
-  if (splitDay.mainLift !== undefined) {
-    const targetLift: MainLiftSlot =
-      recipe.framework.supplemental.lift === 'same'
-        ? splitDay.mainLift
-        : OPPOSITE_LIFT[splitDay.mainLift]
-
-    // Cycle 1 percentages are baked in; the climb across cycles is a
-    // progression rule, so the template shows where it starts and the
-    // rule shows where it goes.
-    const sets = supplementalPrescriptions(recipe.framework.supplemental, frameworkWeek, 1)
-
-    if (sets.length > 0) {
-      const exerciseId = recipe.framework.mainLifts[targetLift]
-      slots.push({
-        id: asSlotId(deps.ids.next()),
-        role: 'supplemental',
-        exercise: { kind: 'specific', exerciseId },
-        sets,
-        restSeconds: recipe.framework.supplementalRestSeconds,
-      })
-      record(exerciseId, sets)
-    }
-  }
-
-  /* 3. Assistance, filling the remainder ------------------------------ */
   if (args.assistance.policy === 'rp-landmarks') {
-    slots.push(...buildAssistanceSlots(args, spent, slots))
+    const assistanceSlots = buildAssistanceSlots(args, slots)
+
+    for (const slot of assistanceSlots) {
+      if (slot.exercise.kind !== 'specific') continue
+      const exercise = findExercise(deps.exercises, slot.exercise.exerciseId)
+      if (exercise !== undefined) {
+        assistanceSpend = addInto(assistanceSpend, slotVolume(exercise, slot.sets))
+      }
+    }
+
+    slots.push(...assistanceSlots)
   }
 
   return {
-    index: dayIndex,
-    label: splitDay.label,
-    slots,
+    day: { index: dayIndex, label: splitDay.label, slots },
+    spent: assistanceSpend,
   }
 }
 
@@ -210,11 +312,7 @@ function buildDay(args: BuildDayArgs): ProgramDay {
  * can only fit five accessory slots spends them on what is furthest from
  * target rather than on whatever happens to come first alphabetically.
  */
-function buildAssistanceSlots(
-  args: BuildDayArgs,
-  spent: VolumeMap,
-  existingSlots: readonly Slot[],
-): readonly Slot[] {
+function buildAssistanceSlots(args: BuildDayArgs, existingSlots: readonly Slot[]): readonly Slot[] {
   const { deps, splitDay, weekIndex, workingWeeks, assistance, frameworkWeek } = args
 
   const used = new Set<ExerciseId>(
@@ -226,7 +324,7 @@ function buildAssistanceSlots(
   const debts = splitDay.muscles
     .map((muscle) => ({
       muscle,
-      owed: remainingSetsFor(muscle, args, spent),
+      owed: remainingSetsFor(muscle, args),
     }))
     .filter((entry) => entry.owed >= assistance.minSetsPerSlot)
     .sort((a, b) => b.owed - a.owed)
@@ -234,15 +332,46 @@ function buildAssistanceSlots(
   const rpe = rpeForWeek(assistance, weekIndex, workingWeeks, frameworkWeek.isDeload)
   const slots: Slot[] = []
 
+  // Tracks what this day's accessories have added, so each choice is
+  // checked against the ceilings the previous ones moved.
+  let added = emptyVolumeMap()
+
   for (const { muscle, owed } of debts) {
     if (slots.length >= assistance.maxSlotsPerDay) break
 
     const exercise = pickAssistanceExercise(deps.exercises, muscle, assistance, used, args)
     if (exercise === undefined) continue
 
-    used.add(exercise.id)
+    /*
+     * An exercise is chosen to satisfy one muscle and pays several.
+     *
+     * Dips are picked for the chest and hand half a set each to the front
+     * delts and triceps. Checking only the muscle we chose *for* lets
+     * those secondary contributions push a different muscle past its
+     * ceiling — which is precisely how a press day whose main and
+     * supplemental work already spent the front-delt budget still ends up
+     * over it. So the whole contribution is checked, and the set count is
+     * trimmed until all of it fits.
+     */
+    const setCount = fittableSets(
+      exercise,
+      Math.min(assistance.maxSetsPerSlot, Math.round(owed)),
+      assistance,
+      args,
+      added,
+    )
 
-    const setCount = Math.min(assistance.maxSetsPerSlot, Math.round(owed))
+    if (setCount < assistance.minSetsPerSlot) continue
+
+    used.add(exercise.id)
+    added = addInto(
+      added,
+      slotVolume(
+        exercise,
+        Array.from({ length: setCount }, () => STUB_SET),
+      ),
+    )
+
     const range = exercise.defaultRepRange ?? defaultRangeFor(exercise.isCompound)
 
     slots.push({
@@ -261,7 +390,7 @@ function buildAssistanceSlots(
 }
 
 /** A muscle's share of its weekly target for this session, minus what is spent. */
-function remainingSetsFor(muscle: MuscleGroup, args: BuildDayArgs, spent: VolumeMap): number {
+function remainingSetsFor(muscle: MuscleGroup, args: BuildDayArgs): number {
   const landmarks = args.assistance.landmarks[muscle]
   const weeklyTarget = targetSetsForWeek(
     landmarks,
@@ -273,8 +402,27 @@ function remainingSetsFor(muscle: MuscleGroup, args: BuildDayArgs, spent: Volume
   const frequency = weeklyFrequency(args.deps.split, muscle)
   if (frequency <= 0) return 0
 
-  const perSessionTarget = weeklyTarget / frequency
-  return Math.max(0, perSessionTarget - spent[muscle])
+  // Everything below is reasoned in *weekly* terms, then divided among
+  // the sessions that are left. Reasoning per-session against the
+  // original target lets each day spend a share the earlier days already
+  // used.
+  // weekSpent already includes every day's framework work, this one
+  // included, so the day spend must not be added again.
+  const committed = args.weekSpent[muscle]
+
+  const sessionsLeft = 1 + args.remainingDays.filter((day) => day.muscles.includes(muscle)).length
+
+  const share = Math.max(0, (weeklyTarget - committed) / Math.max(1, sessionsLeft))
+
+  /*
+   * Maximum recoverable volume is a hard ceiling, not a target the filler
+   * may aim past. Without this, a day whose main lift and supplemental
+   * work both hit the same muscle would still receive accessories on top
+   * of an already-full weekly budget.
+   */
+  const headroom = Math.max(0, landmarks.mrv - committed)
+
+  return Math.min(share, headroom)
 }
 
 /**
@@ -581,4 +729,44 @@ function validateRecipe(recipe: ProgramRecipe, deps: AssembleDeps): void {
     'RECIPE_SET_BOUNDS',
     'The minimum sets per accessory cannot exceed the maximum.',
   )
+}
+
+/**
+ * A placeholder working set, used only to measure what a slot of N sets
+ * would contribute. Its prescription is irrelevant — `slotVolume` counts
+ * sets, and only cares that this is not a warm-up.
+ */
+const STUB_SET: SetPrescription = {
+  load: { kind: 'rpe', target: 8 },
+  reps: { kind: 'range', low: 8, high: 12 },
+}
+
+/**
+ * The largest number of sets of this exercise that fits under every
+ * affected muscle's ceiling — including the ones it only pays a fraction
+ * to.
+ */
+function fittableSets(
+  exercise: Exercise,
+  desired: number,
+  assistance: AssistanceConfig,
+  args: BuildDayArgs,
+  added: VolumeMap,
+): number {
+  for (let count = desired; count >= 1; count -= 1) {
+    const contribution = slotVolume(
+      exercise,
+      Array.from({ length: count }, () => STUB_SET),
+    )
+
+    const fits = (Object.keys(contribution) as MuscleGroup[]).every((muscle) => {
+      if (contribution[muscle] <= 0) return true
+      const committed = args.weekSpent[muscle] + added[muscle]
+      return committed + contribution[muscle] <= assistance.landmarks[muscle].mrv
+    })
+
+    if (fits) return count
+  }
+
+  return 0
 }

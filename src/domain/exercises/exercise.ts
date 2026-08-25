@@ -1,5 +1,7 @@
 import type { ExerciseId } from '@/domain/ids/ids'
 
+import type { FailureSafety, Sfr, SystemicCost, TrainingIntent } from './loading'
+
 import type { Equipment, MovementPattern, MuscleGroup } from './taxonomy'
 
 export interface Exercise {
@@ -26,6 +28,34 @@ export interface Exercise {
   readonly isCompetition: boolean
   /** Where the load comes from when a set prescribes a percentage. */
   readonly loadBasis: LoadBasis
+
+  /**
+   * Whether this is one of the three lifts the total is made of, a
+   * hypertrophy exercise, or conditioning. Not the same as its rep range:
+   * a heavy overhead press at three to six reps is hypertrophy work that
+   * happens to be heavy.
+   */
+  readonly intent: TrainingIntent
+
+  /**
+   * Stimulus-to-fatigue ratio, 1–5. Governs how affordable it is to push
+   * a muscle toward the top of its band using this exercise.
+   */
+  readonly sfr: Sfr
+
+  /**
+   * Whole-body cost per working set. Omitted falls back to the equipment
+   * default, which is usually close enough for an exercise nobody has
+   * thought about yet.
+   */
+  readonly systemicCost?: SystemicCost
+
+  /**
+   * Whether the last work set should be taken to failure — covering both
+   * "you would be pinned under it" and "the fatigue is not worth it".
+   */
+  readonly safeToFail: FailureSafety
+
   readonly defaultRepRange?: { readonly low: number; readonly high: number }
   readonly defaultRestSeconds?: number
   readonly notes?: string

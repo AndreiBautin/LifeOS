@@ -104,6 +104,8 @@ export const MOVEMENT_PATTERNS = [
   'carry',
   'isolation',
   'core',
+  /** Running, walking, swings — anything trained for conditioning. */
+  'conditioning',
 ] as const
 
 export type MovementPattern = (typeof MOVEMENT_PATTERNS)[number]

@@ -5,7 +5,7 @@ import type { MuscleGroup } from '@/domain/exercises/taxonomy'
 import { asExerciseId, asProgramId, type IdGenerator } from '@/domain/ids/ids'
 import type { ProgramTemplate, Slot } from '@/domain/programs/program'
 import { findSplit, type SplitDefinition } from '@/domain/splits/split'
-import { volumeForSlots } from '@/domain/volume/accounting'
+import { sumVolume, volumeForSlots } from '@/domain/volume/accounting'
 import { DEFAULT_LANDMARKS } from '@/domain/volume/landmarks'
 
 import { assembleProgram, rpeForWeek, type AssembleDeps } from './assemble'
@@ -129,16 +129,6 @@ describe('the assistance layer accounting for what the framework spent', () => {
 
   const slotsFor = (dayIndex: number): readonly Slot[] => week?.days[dayIndex]?.slots ?? []
 
-  const volumeFor = (dayIndex: number): Record<MuscleGroup, number> =>
-    volumeForSlots(
-      slotsFor(dayIndex).flatMap((slot) =>
-        slot.exercise.kind === 'specific'
-          ? [{ exerciseId: slot.exercise.exerciseId, sets: slot.sets }]
-          : [],
-      ),
-      (id) => lookup(id),
-    )
-
   it('adds little or no chest work to a bench day already carrying eight chest sets', () => {
     // Bench day: 3 main working sets + 5 BBB sets = 8 chest sets before
     // any accessory exists. Chest is trained twice a week on this split
@@ -155,8 +145,29 @@ describe('the assistance layer accounting for what the framework spent', () => {
     expect(chestAccessories).toHaveLength(0)
   })
 
-  it('still gives rear delts work on that day, because the framework spent none there', () => {
-    expect(volumeFor(2)['rear-delts']).toBeGreaterThan(0)
+  it('still gives rear delts work somewhere in the week, because the framework spends none there', () => {
+    // Deliberately a weekly assertion, not a per-day one. Which upper day
+    // a muscle's accessories land on depends on how much of the weekly
+    // budget the framework has already claimed by the time that day is
+    // filled, and that ordering is an implementation detail. What must
+    // hold is that a muscle the framework never touches does not end up
+    // with nothing.
+    const week = program.blocks[0]?.weeks[0]
+    const weekly = sumVolume(
+      (week?.days ?? []).map((day) =>
+        volumeForSlots(
+          day.slots.flatMap((slot) =>
+            slot.exercise.kind === 'specific'
+              ? [{ exerciseId: slot.exercise.exerciseId, sets: slot.sets }]
+              : [],
+          ),
+          (id) => lookup(id),
+        ),
+      ),
+    )
+
+    expect(weekly['rear-delts']).toBeGreaterThan(0)
+    expect(weekly['side-delts']).toBeGreaterThan(0)
   })
 
   it('never drives a muscle past its maximum recoverable volume in a week', () => {
