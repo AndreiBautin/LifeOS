@@ -9,35 +9,43 @@ Coverage is not the target. Chasing a number produces tests written to
 raise it, which are exactly the tests that do not catch bugs. What is
 tested is what would be **silently wrong** rather than loudly broken.
 
-That distinction matters unusually much here. If a refactor changed 85%
-to 80% in the 5/3/1 scheme, nothing would error. No type would complain,
-no screen would break, no integration test would notice. The app would
-keep working and would simply prescribe the wrong training, for months,
-to somebody who trusted it.
+That distinction matters unusually much here. If a refactor moved a
+hypertrophy set from RPE 9 to RPE 8, nothing would error. No type would
+complain, no screen would break, no integration test would notice. The
+app would keep working and would simply prescribe the wrong training, for
+months, to somebody who trusted it.
 
-So the percentages are asserted literally, week by week:
+So the values that carry meaning are asserted literally rather than
+recomputed. The RTS fatigue targets, the RPE chart's percentages, the
+landmark bands, and the RPE of every set the assembler emits:
 
 ```ts
-it.each([
-  [0, 'Week 1 — 5s', [65, 75, 85], [5, 5, 5]],
-  [1, 'Week 2 — 3s', [70, 80, 90], [3, 3, 3]],
-  [2, 'Week 3 — 5/3/1', [75, 85, 95], [5, 3, 1]],
-  [3, 'Week 4 — Deload', [40, 50, 60], [5, 5, 5]],
+expect(press.sets.map((set) => set.prescription.load)).toEqual([
+  { kind: 'rpe', target: 9 },
+  { kind: 'rpe', target: 9 },
+  { kind: 'rpe', target: 9 },
+  { kind: 'rpe', target: 10 }, // last set to failure, where safe
 ])
 ```
 
-And so are the loads they resolve to against a 315 lb training max —
-205/235/270, 220/250/285, 235/270/300, 125/160/190 — written out rather
-than computed, so a change to either the percentages or the rounding
-shows up as a diff in the expected values.
+Writing the numbers out rather than deriving them means a change to
+either the rule or the rounding shows up as a diff in the expected
+values, which is the whole point.
+
+The legacy-import decoder is tested against the **real export file**
+rather than a synthetic fixture. Its decoding table was derived from that
+file, so a hand-written sample would only prove the parser agrees with
+the assumptions used to write it. The file carries independent ground
+truth — the training maxes each cycle records — and that is what the
+assertions check.
 
 ## By layer
 
-| Layer             | How                                      | What it protects                                                                                                                                                |
-| ----------------- | ---------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `domain/`         | Pure unit tests, table-driven            | The programming itself: percentages, rounding, rep targets, volume mathematics, progression conditions, landmark bounds                                         |
-| `application/`    | Against a real (fake-indexeddb) database | Behaviours that span layers: a training max becoming a prescription, a logged set landing in the log rather than the program, a program advancing on completion |
-| `infrastructure/` | Against a real (fake-indexeddb) database | Schema, indexes, migrations, seeding, export/import round-trip                                                                                                  |
+| Layer             | How                                      | What it protects                                                                                                                                                            |
+| ----------------- | ---------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `domain/`         | Pure unit tests, table-driven            | The programming itself: RPE targets, fatigue percentages, rounding, rep targets, volume mathematics, landmark bounds                                                        |
+| `application/`    | Against a real (fake-indexeddb) database | Behaviours that span layers: an estimate becoming a suggested load, a logged set landing in the log rather than the program, a program advancing on completion or on a skip |
+| `infrastructure/` | Against a real (fake-indexeddb) database | Schema, indexes, migrations, seeding, export/import round-trip                                                                                                              |
 
 Application tests use a real database rather than mocks on purpose. The
 bugs worth catching there are integration bugs; a mocked repository would
@@ -67,10 +75,15 @@ every week of an assembled program, for every muscle. This is the
 invariant that makes the three composed layers one program rather than
 three programs stacked.
 
-**Assistance subtracts what the framework spent.** A bench day under
-Boring But Big receives no chest accessories, and the same day's rear
-delts do receive work. If this breaks, the app quietly doubles chest
-volume and nothing else notices.
+**Hypertrophy volume subtracts what the strength work spent.** A bench
+day receives fewer chest accessories than a day that pressed nothing,
+and the same day's rear delts do receive full work. If this breaks, the
+app quietly doubles chest volume and nothing else notices.
+
+**Every muscle is trained at least twice a week.** Asserted across the
+assembled week. Landing a muscle's whole weekly allocation in one session
+satisfies the volume target and still trains it badly, and nothing about
+the set count reveals it.
 
 **Landmarks stay ordered under sustained pressure.** Twenty rounds of
 "too much" applied in a loop, then `MV ≤ MEV ≤ MAV ≤ MRV` still holds.
@@ -87,8 +100,7 @@ actuals must be cleared. A skipped set retaining a load reads as
 performed work to the volume totals.
 
 **Assembly is deterministic.** The same recipe produces a byte-identical
-program twice. A lifter's program must not change under them when they
-reopen the builder.
+program twice. A lifter's block must not change under them when they rebuild it from unchanged settings.
 
 ## Deliberately not tested
 

@@ -67,9 +67,9 @@ without deciding to carry two of everything again.
 
 **A suggested load is never the prescription.** `estimatedMaxes` (in
 settings) is the basis for every suggestion, and an estimate is
-acceptable *because* RTS asks for reps at an RPE: get the number wrong
+acceptable _because_ RTS asks for reps at an RPE: get the number wrong
 and the lifter corrects it by loading the bar they were going to load
-anyway. This was the opposite under 5/3/1, where the percentage *was*
+anyway. This was the opposite under 5/3/1, where the percentage _was_
 the prescription and an estimate would have silently changed what a cycle
 meant — which is why training maxes existed and why they went with it.
 
@@ -127,9 +127,16 @@ and no way to tell.
 across devices and readable in an export file. Do not "fix" this.
 
 **The built-in programs are not privileged.** Every one is produced by
-`assembleProgram` from an ordinary recipe. If a built-in ever needs a
+`assembleRpProgram` from an ordinary recipe. If a built-in ever needs a
 special code path, the builder cannot express it either — fix the
 builder, not the built-in.
+
+**A built-in withdrawn from the code is not gone from a device.** Add its
+id to `RETIRED_BUILT_IN_PROGRAM_IDS`; `retireBuiltInPrograms` removes it
+on the next start, sparing forks and anything a run still points at. The
+mirror of this is `syncBuiltInPrograms`, which offers each built-in
+exactly once — "missing" and "deleted on purpose" look identical in the
+database, so delivery is recorded separately in `localStorage`.
 
 **Icons are generated**, not hand-placed: `node scripts/generate-icons.mjs`.
 CI fails if `public/icons` and the script disagree.

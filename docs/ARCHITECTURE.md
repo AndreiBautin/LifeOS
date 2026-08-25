@@ -43,21 +43,25 @@ file allowed to name a concrete implementation.
 **A prescription is not a number.** It is a rule for producing one.
 
 ```
-LoadSource = percent-training-max | percent-e1rm | bodyweight
-           | absolute | rpe | open
+LoadSource = percent-e1rm | bodyweight | absolute | rpe | open
 
 RepTarget  = fixed | range | amrap | time
 ```
 
-That pair is what lets one program builder express both 5/3/1 and
-Renaissance-Periodization-style hypertrophy work:
+That pair is what lets one builder express RTS strength work and
+Renaissance-Periodization hypertrophy volume in the same template:
 
-| Prescription                           | Reads as       |
-| -------------------------------------- | -------------- |
-| `percent-training-max(85) × amrap(5)`  | `85% TM × 5+`  |
-| `percent-training-max(50) × fixed(10)` | BBB 5 × 10     |
-| `rpe(8) × range(10, 15)`               | RP accessory   |
-| `bodyweight(+25) × range(6, 12)`       | Weighted chins |
+| Prescription                     | Reads as             |
+| -------------------------------- | -------------------- |
+| `rpe(8) × fixed(5)`              | RTS top set, 5 @ 8   |
+| `rpe(9) × range(3, 6)`           | Hypertrophy at 1 RIR |
+| `rpe(10) × range(10, 15)`        | Last set, to failure |
+| `bodyweight(+25) × range(6, 12)` | Weighted chins       |
+
+There is no `percent-training-max`. It existed for 5/3/1, where the
+percentage _was_ the prescription and resolving it against an estimate
+would have silently changed what a cycle meant. It went with the
+framework.
 
 **Resolution** turns a prescription into a number, on demand, against the
 lifter's state _right now_:
@@ -67,30 +71,32 @@ resolveSet(prescription, { athlete, exerciseId, roundingIncrement }): ResolvedSe
 ```
 
 Pure. No I/O, no clock, no database. It is where almost all the tests
-live, and it is why changing a training max changes tomorrow's session
-without rewriting yesterday's.
+live, and it is why updating an estimated max changes tomorrow's
+suggestion without rewriting yesterday's record.
 
 ## The three layers of a program
 
 A program is composed, not picked. Three layers stack, and the third
 subtracts what the first two spent:
 
-1. **Framework** — 5/3/1 places a main lift on each day that the split
-   assigns one, at percentages of a training max, plus its supplemental
-   work (`domain/framework/`).
+1. **Strength** — the three competition lifts, run by RTS: a top set at
+   reps × RPE, then back-off work sized by measured fatigue percentages
+   (`domain/framework/rts.ts`).
 2. **Split** — how many days, which lift lands where, which muscles each
-   day is accountable for (`domain/splits/`).
-3. **Assistance** — fills each day up to its share of every muscle's
-   weekly volume target, _after subtracting what layers 1 and 2 already
-   spent_ (`domain/assembly/`, `domain/volume/`).
+   day is accountable for (`domain/splits/rp-splits.ts`). The day count
+   follows session length rather than preference.
+3. **Hypertrophy volume** — fills each day up to its share of every
+   muscle's weekly target, _after subtracting what layers 1 and 2 already
+   spent_ (`domain/assembly/`, `domain/volume/`). Where inside each
+   landmark band that target sits is decided by the muscle's tier
+   (`domain/priority/tiers.ts`).
 
-Step 3 is what makes this one program rather than 5/3/1 with an unrelated
-bodybuilding routine bolted on. A bench day under Boring But Big has
-already spent eight chest sets before assistance is considered, so it
-receives no chest accessories; the same day's rear delts have spent none,
-so they get their full share.
+Step 3 is what makes this one program rather than a powerlifting block
+with an unrelated bodybuilding routine bolted on. A bench day has already
+spent chest sets before accessories are considered, so it receives fewer;
+the same day's rear delts have spent none, so they get their full share.
 
-`assembleProgram(recipe, id, deps)` emits an ordinary, fully editable
+`assembleRpProgram(recipe, id, deps)` emits an ordinary, fully editable
 `ProgramTemplate`. Every built-in program goes through it. Nothing
 downstream knows a program was assembled — which is the test that the
 builder is genuinely general.
@@ -124,16 +130,18 @@ Starting a session and logging the top set:
 3. **`application/use-cases/training/start-workout.ts`** finds the active
    `ProgramInstance`, locates the day at its position, and for each slot
    calls…
-4. **`domain/resolution/resolve.ts`** — pure — which reads the training
-   max out of `AthleteState`, applies the percentage, and rounds via
-   **`domain/units/weight.ts`** to the gym's increment. `85%` of a 135 lb
-   training max becomes `115 lb`.
+4. **`domain/resolution/resolve.ts`** — pure — which reads the estimated
+   max out of `AthleteState`, works back from the RPE chart, and rounds
+   via **`domain/units/weight.ts`** to the gym's increment. `RPE 9` for
+   3–6 reps against a 152 lb estimate becomes `125 lb`. The suggestion is
+   a convenience: the set is `3–6 @ RPE 9` whether or not a number can be
+   produced, so a missing estimate costs a suggestion and nothing else.
 5. The resolved numbers are copied into a new `WorkoutLog` as
-   `plannedLoad`, so a training max changed next month does not
+   `plannedLoad`, so an estimate revised next month does not
    retroactively alter what this session says it asked for.
 6. **`infrastructure/db/repositories.ts`** writes it, deriving the
    `exerciseIds` index field on the way in.
-7. The lifter taps the set. **`SetRow.tsx`** opens prefilled with 115 × 5.
+7. The lifter taps the set. **`SetRow.tsx`** opens prefilled with 125 × 6.
 8. **`application/use-cases/training/log-set.ts`** writes `actualLoad`,
    `actualReps`, `actualRpe` and `completedAt` beside the planned values.
 9. On finish, **`finish-workout.ts`** computes the report, then advances

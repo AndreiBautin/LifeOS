@@ -24,11 +24,11 @@ survives all of it, and the app will nag you to take one.
 
 ## What is stored where
 
-| Store             | Holds                                                          | Why there                                                                                                            |
-| ----------------- | -------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| **IndexedDB**     | Exercises, programs, program runs, workout history, check-ins  | Unbounded, indexed, asynchronous. See below.                                                                         |
-| **localStorage**  | Units, rounding, training maxes, volume landmarks, preferences | Small, read synchronously at startup, and — crucially — a _separate_ store, so a rebuilt IndexedDB does not take it. |
-| **Cache Storage** | The app's own HTML, JavaScript, CSS and icons                  | Managed by the service worker. Versioned and swept on update. Contains nothing of yours.                             |
+| Store             | Holds                                                                  | Why there                                                                                                            |
+| ----------------- | ---------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| **IndexedDB**     | Exercises, programs, program runs, workout history, check-ins          | Unbounded, indexed, asynchronous. See below.                                                                         |
+| **localStorage**  | Units, rounding, estimated maxes, volume landmarks, tiers, preferences | Small, read synchronously at startup, and — crucially — a _separate_ store, so a rebuilt IndexedDB does not take it. |
+| **Cache Storage** | The app's own HTML, JavaScript, CSS and icons                          | Managed by the service worker. Versioned and swept on update. Contains nothing of yours.                             |
 
 ### Why IndexedDB and not localStorage
 
@@ -209,7 +209,7 @@ Then two named operations, never one function with a flag:
 
 - **Merge** writes every record by id. Anything in both is overwritten by
   the file's version; anything only on the device survives. Settings are
-  _not_ adopted — merging someone else's training maxes into a live setup
+  _not_ adopted — merging someone else's estimated maxes into a live setup
   would silently rewrite every percentage the program prescribes.
 - **Replace** clears everything first and requires typing `replace` to
   confirm.
