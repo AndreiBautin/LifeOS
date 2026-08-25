@@ -1,6 +1,10 @@
 import { builtInExercises } from '@/domain/exercises/catalogue'
 import type { IdGenerator } from '@/domain/ids/ids'
-import type { ExerciseRepository, ProgramRepository } from '@/domain/repositories/ports'
+import type {
+  ExerciseRepository,
+  InstanceRepository,
+  ProgramRepository,
+} from '@/domain/repositories/ports'
 
 import { builtInPrograms } from './built-in-programs'
 
@@ -113,6 +117,41 @@ export async function syncBuiltInPrograms(
   for (const program of missing) await deps.programs.save(program)
 
   return { added: missing.map((program) => program.id as string), allIds }
+}
+
+/**
+ * Removes built-in programs the app no longer ships.
+ *
+ * Withdrawing a built-in from the code only stops new installs receiving
+ * it. An existing lifter keeps their copy forever, which is how an app
+ * accumulates a library of things its author has already decided against
+ * — the 5/3/1 templates being exactly that case.
+ *
+ * Two things are never removed. A program the lifter created themselves,
+ * because `origin` is checked; and any program an instance refers to,
+ * because deleting the template a run points at would leave a workout
+ * history hanging off nothing. A run in progress is unaffected either
+ * way — it holds a frozen snapshot — but the template is what its
+ * history is filed under.
+ */
+export async function retireBuiltInPrograms(
+  deps: SeedDeps & { readonly instances: InstanceRepository },
+  retiredIds: readonly string[],
+): Promise<readonly string[]> {
+  const retired = new Set(retiredIds)
+  const inUse = new Set(
+    (await deps.instances.all()).map((instance) => instance.programId as string),
+  )
+
+  const doomed = (await deps.programs.all()).filter(
+    (program) =>
+      retired.has(program.id as string) &&
+      program.origin === 'built-in' &&
+      !inUse.has(program.id as string),
+  )
+
+  for (const program of doomed) await deps.programs.remove(program.id)
+  return doomed.map((program) => program.id as string)
 }
 
 /**

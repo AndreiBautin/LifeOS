@@ -31,7 +31,7 @@ export function resetIdCounter(): void {
 
 export function aSet(overrides: Partial<LoggedSet> = {}): LoggedSet {
   const prescription: SetPrescription = overrides.prescription ?? {
-    load: { kind: 'percent-training-max', percent: 85 },
+    load: { kind: 'rpe', target: 8 },
     reps: { kind: 'fixed', reps: 5 },
   }
 
@@ -52,7 +52,7 @@ export function aSet(overrides: Partial<LoggedSet> = {}): LoggedSet {
 export function anAmrapSet(minimum: number, achieved: number, load = 270): LoggedSet {
   return aSet({
     prescription: {
-      load: { kind: 'percent-training-max', percent: 95 },
+      load: { kind: 'rpe', target: 9 },
       reps: { kind: 'amrap', minimum },
     },
     plannedLoad: load,

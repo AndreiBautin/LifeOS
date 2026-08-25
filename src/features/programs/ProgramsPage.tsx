@@ -3,7 +3,7 @@ import { Play, Plus } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
 import { startProgram } from '@/application/use-cases/programs/manage-programs'
-import { useServices, useSettings } from '@/app/context'
+import { useServices } from '@/app/context'
 import type { ProgramId } from '@/domain/ids/ids'
 import { daysPerWeek, totalWeeks, type ProgramTemplate } from '@/domain/programs/program'
 import { Badge, Button, Card, Empty, Section } from '@/components/shared/primitives'
@@ -21,7 +21,6 @@ import { logger } from '@/shared/logging/logger'
  */
 export function ProgramsPage() {
   const services = useServices()
-  const { athlete } = useSettings()
   const client = useQueryClient()
 
   const programs = useQuery({
@@ -52,9 +51,9 @@ export function ProgramsPage() {
   })
 
   const start = useMutation({
-    mutationFn: (programId: ProgramId) => startProgram(programId, athlete, services),
-    onSuccess: (result) => {
-      logger.info('program.start', { missingMaxes: result.missingTrainingMaxes.length })
+    mutationFn: (programId: ProgramId) => startProgram(programId, services),
+    onSuccess: () => {
+      logger.info('program.start', {})
       void client.invalidateQueries({ queryKey: ['instance'] })
     },
   })
@@ -70,7 +69,13 @@ export function ProgramsPage() {
             {programs.data?.length ?? 0} available · edit any of them
           </p>
         </div>
-        <Link to="/programs/new" className={cn(buttonStyles({ variant: 'primary', size: 'sm' }))}>
+        {/*
+          A block is built from tiers, landmarks and a day count rather
+          than assembled slot by slot, and all of those live in Settings.
+          Sending the lifter there beats duplicating them behind a second
+          form that could disagree with the first.
+        */}
+        <Link to="/settings" className={cn(buttonStyles({ variant: 'primary', size: 'sm' }))}>
           <Plus size={16} aria-hidden />
           Build
         </Link>
@@ -155,9 +160,6 @@ function ProgramCard({ program, isRunning, onStart, starting }: CardProps) {
         <span>
           {days} day{days === 1 ? '' : 's'} per week
         </span>
-        {program.requiredTrainingMaxes.length > 0 && (
-          <span>{program.requiredTrainingMaxes.length} training maxes</span>
-        )}
       </div>
 
       <div className="mt-4 flex gap-2">

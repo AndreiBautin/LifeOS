@@ -49,11 +49,7 @@ export function AppProviders({ services, children }: Props) {
 
   const value = useMemo<SettingsContextValue>(() => {
     const athlete: AthleteState = {
-      trainingMaxes: settings.trainingMaxes,
-      // Estimated maxes are derived from history on demand rather than
-      // cached here; a stale estimate silently changing a prescription is
-      // worse than not having one.
-      estimatedMaxes: {},
+      estimatedMaxes: settings.estimatedMaxes,
       ...(settings.bodyweight !== undefined ? { bodyweight: settings.bodyweight } : {}),
       units: settings.units,
     }

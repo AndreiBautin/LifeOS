@@ -2,12 +2,14 @@ import { MUSCLE_GROUPS, MUSCLE_GROUP_LABELS, type MuscleGroup } from '@/domain/e
 import {
   priorityPosition,
   spreadFactor,
+  STRENGTH_LIFT_LABELS,
+  STRENGTH_LIFTS,
   weeklyTargetFor,
   type MuscleTiers,
   type StrengthLift,
   type StrengthTiers,
 } from '@/domain/priority/tiers'
-import { MAIN_LIFT_LABELS } from '@/domain/splits/split'
+
 import type { LandmarkSet } from '@/domain/volume/landmarks'
 import { Badge, Card } from '@/components/shared/primitives'
 import { cn } from '@/lib/cn'
@@ -90,9 +92,9 @@ export function TierEditor({
         </div>
 
         <ul className="space-y-2">
-          {(['squat', 'bench', 'deadlift'] as const).map((lift) => (
+          {STRENGTH_LIFTS.map((lift) => (
             <li key={lift} className="flex items-center justify-between gap-3">
-              <span className="text-ink-300 text-sm">{MAIN_LIFT_LABELS[lift]}</span>
+              <span className="text-ink-300 text-sm">{STRENGTH_LIFT_LABELS[lift]}</span>
               <div className="flex gap-1">
                 {[1, 2].map((rank) => (
                   <TierButton

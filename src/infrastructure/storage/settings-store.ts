@@ -94,14 +94,21 @@ function mergeWithDefaults(parsed: unknown): AppSettings {
     ...(typeof stored.bodyweight === 'number' && stored.bodyweight > 0
       ? { bodyweight: stored.bodyweight }
       : {}),
-    trainingMaxes: isRecord(stored.trainingMaxes)
-      ? (stored.trainingMaxes as AppSettings['trainingMaxes'])
-      : DEFAULT_SETTINGS.trainingMaxes,
     // Spread over the defaults so a muscle group added since this blob was
     // written gets its default landmarks rather than being absent.
     landmarks: isRecord(stored.landmarks)
       ? { ...DEFAULT_SETTINGS.landmarks, ...(stored.landmarks as AppSettings['landmarks']) }
       : DEFAULT_SETTINGS.landmarks,
+    // Every value is checked rather than the record being trusted whole: a
+    // junk entry here becomes a suggested load on a bar.
+    estimatedMaxes: isRecord(stored.estimatedMaxes)
+      ? Object.fromEntries(
+          Object.entries(stored.estimatedMaxes).filter(
+            (entry): entry is [string, number] =>
+              typeof entry[1] === 'number' && Number.isFinite(entry[1]) && entry[1] > 0,
+          ),
+        )
+      : DEFAULT_SETTINGS.estimatedMaxes,
     muscleTiers: Array.isArray(stored.muscleTiers)
       ? (stored.muscleTiers as AppSettings['muscleTiers'])
       : DEFAULT_SETTINGS.muscleTiers,

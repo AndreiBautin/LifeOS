@@ -16,13 +16,13 @@ import { invariant } from '@/domain/errors/domain-error'
  */
 export type LoadSource =
   /**
-   * A percentage of the lifter's training max for this lift. The whole of
-   * 5/3/1 is expressed with this one variant.
-   */
-  | { readonly kind: 'percent-training-max'; readonly percent: number }
-  /**
-   * A percentage of the *estimated* 1RM derived from logged history, for
-   * lifts that carry no explicit training max.
+   * A percentage of the 1RM estimated from logged history.
+   *
+   * There used to be a `percent-training-max` variant beside this one,
+   * because the whole of 5/3/1 was expressed with it and resolving it
+   * against an estimate instead would have silently changed what a cycle
+   * meant. Nothing prescribes against a training max now that strength is
+   * run by RTS, so the variant went with the framework.
    */
   | { readonly kind: 'percent-e1rm'; readonly percent: number }
   /**
@@ -80,7 +80,6 @@ export const MAX_RPE = 10
 
 export function validateLoadSource(load: LoadSource): void {
   switch (load.kind) {
-    case 'percent-training-max':
     case 'percent-e1rm':
       invariant(
         Number.isFinite(load.percent) && load.percent > 0 && load.percent <= MAX_PERCENT,
@@ -164,8 +163,6 @@ export function describePrescription(set: SetPrescription): string {
 
 export function describeLoad(load: LoadSource): string {
   switch (load.kind) {
-    case 'percent-training-max':
-      return `${String(load.percent)}% TM`
     case 'percent-e1rm':
       return `${String(load.percent)}% e1RM`
     case 'bodyweight':

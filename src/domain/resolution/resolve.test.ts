@@ -1,11 +1,5 @@
 import { describe, expect, it } from 'vitest'
 
-import {
-  CANONICAL_531_WEEKS,
-  DEFAULT_BBB,
-  mainSetPrescriptions,
-  supplementalPrescriptions,
-} from '@/domain/framework/five-three-one'
 import { asExerciseId } from '@/domain/ids/ids'
 import type { SetPrescription } from '@/domain/programs/prescription'
 
@@ -14,115 +8,58 @@ import { missingRequirements, resolveSet, resolveSets, type AthleteState } from 
 const SQUAT = asExerciseId('squat')
 const CURL = asExerciseId('curl')
 
-/** A 350 lb squat at the default 90% training max. */
 const athlete: AthleteState = {
-  trainingMaxes: { [SQUAT]: 315 },
-  estimatedMaxes: { [CURL]: 100 },
+  estimatedMaxes: { [SQUAT]: 350, [CURL]: 100 },
   bodyweight: 180,
   units: 'lb',
 }
 
 const context = { athlete, exerciseId: SQUAT, roundingIncrement: 5 }
 
-describe('resolving a full 5/3/1 cycle against a 315 lb training max', () => {
-  const loadsForWeek = (weekIndex: number): (number | undefined)[] => {
-    const week = CANONICAL_531_WEEKS[weekIndex]
-    if (!week) throw new Error(`missing week ${String(weekIndex)}`)
-    return resolveSets(mainSetPrescriptions(week, { includeWarmups: false }), context).map(
-      (set) => set.load,
+describe('resolving against an estimated max', () => {
+  it('multiplies and rounds to the gym increment', () => {
+    const set = resolveSet(
+      { load: { kind: 'percent-e1rm', percent: 85 }, reps: { kind: 'fixed', reps: 5 } },
+      context,
     )
-  }
 
-  // Every number here is 315 × percent, rounded to the nearest 5 lb. They
-  // are written out rather than computed so that a change to either the
-  // percentages or the rounding shows up as a diff in the expected values.
-  it.each([
-    [0, 'Week 1 — 5s', [205, 235, 270]],
-    [1, 'Week 2 — 3s', [220, 250, 285]],
-    [2, 'Week 3 — 5/3/1', [235, 270, 300]],
-    [3, 'Week 4 — Deload', [125, 160, 190]],
-  ])('%s prescribes %j', (index, _label, expected) => {
-    expect(loadsForWeek(index)).toEqual(expected)
+    // 350 × 0.85 = 297.5, to the nearest 5 — halves round up.
+    expect(set.load).toBe(300)
+    expect(set.loadDisplay).toBe('300 lb')
   })
 
-  it('rounds every load to something a barbell can actually be loaded to', () => {
-    const allLoads = [0, 1, 2, 3].flatMap(loadsForWeek)
-    for (const load of allLoads) {
-      expect(load).toBeDefined()
-      expect((load ?? 0) % 5).toBe(0)
-    }
-  })
-
-  it('puts Boring But Big at 160 lb for five sets of ten', () => {
-    const week = CANONICAL_531_WEEKS[0]
-    if (!week) throw new Error('missing week')
-
-    const sets = resolveSets(supplementalPrescriptions(DEFAULT_BBB, week, 1), context)
-
-    expect(sets).toHaveLength(5)
-    expect(sets.map((set) => set.load)).toEqual([160, 160, 160, 160, 160])
-    expect(sets[0]?.repsDisplay).toBe('10')
-  })
-
-  it('keeps the AMRAP set legible as an AMRAP after resolution', () => {
-    const week = CANONICAL_531_WEEKS[2]
-    if (!week) throw new Error('missing week')
-
-    const sets = resolveSets(mainSetPrescriptions(week, { includeWarmups: false }), context)
-    const top = sets[2]
-
-    expect(top?.load).toBe(300)
-    expect(top?.repsDisplay).toBe('1+')
-    expect(top?.reps).toEqual({ kind: 'amrap', minimum: 1 })
-  })
-
-  it('adapts to a 2.5 kg gym without changing the program', () => {
-    const week = CANONICAL_531_WEEKS[0]
-    if (!week) throw new Error('missing week')
-
+  it('adapts to a 2.5 kg gym without changing the prescription', () => {
     const metric = {
-      athlete: { ...athlete, trainingMaxes: { [SQUAT]: 142.5 }, units: 'kg' as const },
+      athlete: { ...athlete, estimatedMaxes: { [SQUAT]: 158 }, units: 'kg' as const },
       exerciseId: SQUAT,
       roundingIncrement: 2.5,
     }
 
-    const loads = resolveSets(mainSetPrescriptions(week, { includeWarmups: false }), metric).map(
-      (set) => set.load,
+    const set = resolveSet(
+      { load: { kind: 'percent-e1rm', percent: 75 }, reps: { kind: 'fixed', reps: 5 } },
+      metric,
     )
 
-    // 142.5 × 65/75/85%, to the nearest 2.5 kg.
-    expect(loads).toEqual([92.5, 107.5, 120])
+    // 158 × 0.75 = 118.5, to the nearest 2.5 kg.
+    expect(set.load).toBe(117.5)
   })
 })
 
 describe('when a number cannot be produced', () => {
-  it('reports a missing training max rather than prescribing zero', () => {
+  it('reports the missing estimate rather than prescribing zero', () => {
+    // A `0 lb` placeholder is the worst of the options because it looks
+    // like an answer. The intent still renders so the lifter can see what
+    // is being asked and load the bar themselves.
     const prescription: SetPrescription = {
-      load: { kind: 'percent-training-max', percent: 85 },
+      load: { kind: 'percent-e1rm', percent: 85 },
       reps: { kind: 'fixed', reps: 5 },
     }
 
     const set = resolveSet(prescription, { ...context, exerciseId: asExerciseId('unknown') })
 
     expect(set.load).toBeUndefined()
-    expect(set.unresolved).toBe('no-training-max')
-    // The intent still renders, so the lifter sees what is being asked.
-    expect(set.loadDisplay).toBe('85% TM')
-  })
-
-  it('never falls back from a training max to an estimate', () => {
-    // Silently swapping the basis would change what the program means
-    // without saying so — a 5/3/1 cycle run off an estimated max is a
-    // different, harder program.
-    const prescription: SetPrescription = {
-      load: { kind: 'percent-training-max', percent: 85 },
-      reps: { kind: 'fixed', reps: 5 },
-    }
-
-    const set = resolveSet(prescription, { ...context, exerciseId: CURL })
-
-    expect(set.load).toBeUndefined()
-    expect(set.unresolved).toBe('no-training-max')
+    expect(set.unresolved).toBe('no-estimated-max')
+    expect(set.loadDisplay).toBe('85% e1RM')
   })
 
   it('treats an open prescription as a choice, not a gap', () => {
@@ -137,16 +74,16 @@ describe('when a number cannot be produced', () => {
   })
 
   it('reports missing requirements once, not once per set', () => {
-    const week = CANONICAL_531_WEEKS[0]
-    if (!week) throw new Error('missing week')
+    const sets = resolveSets(
+      Array.from({ length: 5 }, () => ({
+        load: { kind: 'percent-e1rm' as const, percent: 70 },
+        reps: { kind: 'fixed' as const, reps: 5 },
+      })),
+      { ...context, exerciseId: asExerciseId('unknown') },
+    )
 
-    const sets = resolveSets(mainSetPrescriptions(week, { includeWarmups: true }), {
-      ...context,
-      exerciseId: asExerciseId('unknown'),
-    })
-
-    expect(sets).toHaveLength(6)
-    expect(missingRequirements(sets)).toEqual(['no-training-max'])
+    expect(sets).toHaveLength(5)
+    expect(missingRequirements(sets)).toEqual(['no-estimated-max'])
   })
 })
 
@@ -215,7 +152,7 @@ describe('non-percentage prescriptions', () => {
     const set = resolveSet(
       { load: { kind: 'absolute', load: 137.4 }, reps: { kind: 'fixed', reps: 12 } },
       {
-        athlete: { trainingMaxes: {}, estimatedMaxes: {}, units: 'lb' },
+        athlete: { estimatedMaxes: {}, units: 'lb' },
         exerciseId: CURL,
         roundingIncrement: 5,
       },
@@ -227,12 +164,24 @@ describe('non-percentage prescriptions', () => {
 
 describe('warm-ups', () => {
   it('are marked so volume accounting can exclude them', () => {
-    const week = CANONICAL_531_WEEKS[0]
-    if (!week) throw new Error('missing week')
+    const sets = resolveSets(
+      [
+        {
+          load: { kind: 'percent-e1rm', percent: 40 },
+          reps: { kind: 'fixed', reps: 5 },
+          isWarmup: true,
+        },
+        {
+          load: { kind: 'percent-e1rm', percent: 60 },
+          reps: { kind: 'fixed', reps: 3 },
+          isWarmup: true,
+        },
+        { load: { kind: 'percent-e1rm', percent: 80 }, reps: { kind: 'fixed', reps: 5 } },
+      ],
+      context,
+    )
 
-    const sets = resolveSets(mainSetPrescriptions(week, { includeWarmups: true }), context)
-
-    expect(sets.filter((set) => set.isWarmup).map((set) => set.load)).toEqual([125, 160, 190])
-    expect(sets.filter((set) => !set.isWarmup).map((set) => set.load)).toEqual([205, 235, 270])
+    expect(sets.filter((set) => set.isWarmup).map((set) => set.load)).toEqual([140, 210])
+    expect(sets.filter((set) => !set.isWarmup).map((set) => set.load)).toEqual([280])
   })
 })

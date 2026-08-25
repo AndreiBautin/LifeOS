@@ -3,11 +3,8 @@ import { AlertTriangle, Download, HardDrive, RefreshCw, Upload } from 'lucide-re
 import { useId, useRef, useState } from 'react'
 
 import { useServices, useSettings } from '@/app/context'
-import { builtInExercises } from '@/domain/exercises/catalogue'
 import { MUSCLE_GROUPS, MUSCLE_GROUP_LABELS } from '@/domain/exercises/taxonomy'
-import { asExerciseId } from '@/domain/ids/ids'
-import { trainingMaxFrom } from '@/domain/strength/one-rep-max'
-import { DEFAULT_INCREMENT, type WeightUnit } from '@/domain/units/weight'
+import { DEFAULT_INCREMENT } from '@/domain/units/weight'
 import { Badge, Button, Card, Section } from '@/components/shared/primitives'
 import { buildRpBlock } from '@/application/use-cases/programs/build-rp-block'
 import {
@@ -17,6 +14,7 @@ import {
   MIN_WEEKS_BEFORE_DELOAD,
 } from '@/domain/autoregulation/schedule'
 import { useBackup } from '@/features/backup/useBackup'
+import { MaxesEditor } from './MaxesEditor'
 import { TierEditor } from './TierEditor'
 import {
   describePersistence,
@@ -50,8 +48,6 @@ export function SettingsPage() {
 
   const storage = useQuery({ queryKey: ['storage-status'], queryFn: storageStatus })
   const exercises = useQuery({ queryKey: ['exercises'], queryFn: () => services.exercises.all() })
-
-  const mainLifts = builtInExercises().filter((exercise) => exercise.isCompetition)
 
   return (
     <div>
@@ -93,52 +89,6 @@ export function SettingsPage() {
               update({ bodyweight })
             }}
           />
-        </Card>
-      </Section>
-
-      <Section
-        title="Training maxes"
-        description="Percentage-based sets are taken from these, not from your true max"
-      >
-        <Card className="space-y-3">
-          {mainLifts.map((lift) => (
-            <TrainingMaxRow
-              key={lift.id}
-              name={lift.name}
-              units={settings.units}
-              value={settings.trainingMaxes[lift.id]}
-              onChange={(value) => {
-                update({
-                  trainingMaxes: { ...settings.trainingMaxes, [lift.id]: value },
-                })
-              }}
-            />
-          ))}
-
-          <p className="text-ink-500 text-xs">
-            A training max is a deliberately conservative number — the point is that the prescribed
-            work stays submaximal on a bad day. If you know a true one-rep max, 90% of it is the
-            usual starting point ({' '}
-            <button
-              type="button"
-              className="text-accent-400 underline"
-              onClick={() => {
-                const answer = window.prompt('True one-rep max for the squat?')
-                const parsed = Number(answer)
-                if (Number.isFinite(parsed) && parsed > 0) {
-                  update({
-                    trainingMaxes: {
-                      ...settings.trainingMaxes,
-                      [asExerciseId('back-squat')]: Math.round(trainingMaxFrom(parsed, 90)),
-                    },
-                  })
-                }
-              }}
-            >
-              calculate from a 1RM
-            </button>
-            ).
-          </p>
         </Card>
       </Section>
 
@@ -284,6 +234,13 @@ export function SettingsPage() {
       </Section>
 
       {/* ---------------------------------------------------------------- */}
+
+      <MaxesEditor
+        settings={settings}
+        onChange={(estimatedMaxes) => {
+          update({ estimatedMaxes })
+        }}
+      />
 
       <Section title="Your data" description="All of it is on this device and nowhere else">
         <Card className="space-y-4">
@@ -500,43 +457,6 @@ function ImportPanel({
       <Button variant="ghost" full onClick={onCancel}>
         Cancel
       </Button>
-    </div>
-  )
-}
-
-function TrainingMaxRow({
-  name,
-  units,
-  value,
-  onChange,
-}: {
-  readonly name: string
-  readonly units: WeightUnit
-  readonly value: number | undefined
-  readonly onChange: (value: number) => void
-}) {
-  const id = `tm-${name.toLowerCase().replace(/\s+/g, '-')}`
-
-  return (
-    <div className="flex items-center justify-between gap-3">
-      <label htmlFor={id} className="text-ink-300 text-sm">
-        {name}
-      </label>
-      <div className="flex items-center gap-1.5">
-        <input
-          id={id}
-          type="number"
-          inputMode="decimal"
-          value={value ?? ''}
-          placeholder="—"
-          onChange={(event) => {
-            const next = Number(event.target.value)
-            if (Number.isFinite(next)) onChange(next)
-          }}
-          className="numeric bg-ink-850 border-ink-800 text-ink-50 tap-target w-24 rounded-lg border px-2 text-center"
-        />
-        <span className="text-ink-500 text-xs">{units}</span>
-      </div>
     </div>
   )
 }

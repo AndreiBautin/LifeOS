@@ -150,8 +150,6 @@ export function assembleRpProgram(
       },
     ],
     settings: recipe.settings,
-    // RTS finds the load by feel; nothing here needs a training max.
-    requiredTrainingMaxes: [],
     tags: ['rp', 'rts', split.id],
     createdAt: timestamp,
     updatedAt: timestamp,

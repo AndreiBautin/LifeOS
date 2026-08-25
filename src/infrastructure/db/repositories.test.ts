@@ -4,10 +4,16 @@ import { deleteDB } from 'idb'
 import { builtInExercises } from '@/domain/exercises/catalogue'
 import type { Exercise } from '@/domain/exercises/exercise'
 import { asExerciseId, asInstanceId, asProgramId, type IdGenerator } from '@/domain/ids/ids'
+import type { ProgramTemplate } from '@/domain/programs/program'
 import type { ProgramInstance } from '@/domain/repositories/ports'
 import { STORAGE_KEYS } from '@/config/storage-keys'
 import { BUILT_IN_PROGRAM_COUNT, builtInPrograms } from '@/infrastructure/seed/built-in-programs'
-import { seedIfEmpty, syncBuiltInExercises, syncBuiltInPrograms } from '@/infrastructure/seed/seed'
+import {
+  retireBuiltInPrograms,
+  seedIfEmpty,
+  syncBuiltInExercises,
+  syncBuiltInPrograms,
+} from '@/infrastructure/seed/seed'
 import {
   readDeliveredBuiltIns,
   recordDeliveredBuiltIns,
@@ -156,10 +162,8 @@ describe('the instance repository', () => {
         settings: {
           units: 'lb',
           roundingIncrement: 5,
-          trainingMaxPercent: 90,
           defaultRestSeconds: 120,
         },
-        requiredTrainingMaxes: [],
         tags: [],
         createdAt: '2026-08-01T00:00:00.000Z',
         updatedAt: '2026-08-01T00:00:00.000Z',
@@ -171,7 +175,6 @@ describe('the instance repository', () => {
       blockIndex: 0,
       weekIndex: 0,
       dayIndex: 0,
-      trainingMaxesAtStart: {},
       ...overrides,
     }) satisfies ProgramInstance
 
@@ -295,6 +298,21 @@ function anExercise(overrides: Partial<Exercise>): Exercise {
   return { ...base, ...overrides }
 }
 
+/** A minimal template, for tests about storage rather than about content. */
+function aProgram(): ProgramTemplate {
+  return {
+    id: asProgramId('p-test'),
+    name: 'Test program',
+    description: '',
+    origin: 'custom',
+    blocks: [],
+    settings: { units: 'lb', roundingIncrement: 5, defaultRestSeconds: 120 },
+    tags: [],
+    createdAt: '2026-08-01T00:00:00.000Z',
+    updatedAt: '2026-08-01T00:00:00.000Z',
+  }
+}
+
 describe('keeping the built-in library current', () => {
   const deps = () => ({
     exercises: createExerciseRepository(db),
@@ -380,6 +398,69 @@ describe('keeping the built-in library current', () => {
     await syncBuiltInPrograms(deps(), new Set())
 
     expect((await programs.byId(asProgramId('built-in-rp-block')))?.name).toBe('My Block')
+  })
+
+  it('removes a built-in the app no longer ships', async () => {
+    const programs = createProgramRepository(db)
+    await seedIfEmpty(deps())
+    await programs.save({
+      ...aProgram(),
+      id: asProgramId('built-in-531-bbb'),
+      origin: 'built-in',
+    })
+
+    const removed = await retireBuiltInPrograms(
+      { ...deps(), instances: createInstanceRepository(db) },
+      ['built-in-531-bbb'],
+    )
+
+    expect(removed).toEqual(['built-in-531-bbb'])
+    expect(await programs.byId(asProgramId('built-in-531-bbb'))).toBeUndefined()
+  })
+
+  it('never retires a program the lifter made their own', async () => {
+    // Retirement withdraws the app's own templates. A fork carries the
+    // lifter's edits and is theirs to delete.
+    const programs = createProgramRepository(db)
+    await programs.save({ ...aProgram(), id: asProgramId('built-in-531-bbb'), origin: 'fork' })
+
+    const removed = await retireBuiltInPrograms(
+      { ...deps(), instances: createInstanceRepository(db) },
+      ['built-in-531-bbb'],
+    )
+
+    expect(removed).toEqual([])
+    expect(await programs.byId(asProgramId('built-in-531-bbb'))).toBeDefined()
+  })
+
+  it('never retires a program an instance still points at', async () => {
+    // Deleting the template a run refers to would leave that run's logged
+    // history filed under nothing.
+    const programs = createProgramRepository(db)
+    const instances = createInstanceRepository(db)
+
+    await programs.save({
+      ...aProgram(),
+      id: asProgramId('built-in-531-bbb'),
+      origin: 'built-in',
+    })
+    await instances.save({
+      id: asInstanceId('running'),
+      programId: asProgramId('built-in-531-bbb'),
+      templateSnapshot: { ...aProgram(), id: asProgramId('built-in-531-bbb') },
+      name: 'Mid-cycle',
+      startedAt: '2026-08-01T00:00:00.000Z',
+      status: 'active',
+      cycleNumber: 1,
+      blockIndex: 0,
+      weekIndex: 0,
+      dayIndex: 0,
+    })
+
+    const removed = await retireBuiltInPrograms({ ...deps(), instances }, ['built-in-531-bbb'])
+
+    expect(removed).toEqual([])
+    expect(await programs.byId(asProgramId('built-in-531-bbb'))).toBeDefined()
   })
 
   it('reports every built-in id so delivery can be recorded', async () => {

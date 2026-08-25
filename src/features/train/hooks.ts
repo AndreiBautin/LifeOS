@@ -9,6 +9,7 @@ import {
   type PreviousSet,
   type SetResult,
 } from '@/application/use-cases/training/log-set'
+import { skipSession, type SkipResult } from '@/application/use-cases/training/skip-session'
 import {
   startWorkout,
   type StartWorkoutResult,
@@ -135,6 +136,26 @@ export function useFinishWorkout() {
       void client.invalidateQueries({ queryKey: keys.activeWorkout })
       void client.invalidateQueries({ queryKey: keys.activeInstance })
       void client.invalidateQueries({ queryKey: ['workouts'] })
+    },
+  })
+}
+
+/**
+ * Moves past a session without logging one.
+ *
+ * Deliberately writes nothing to the history: a skipped day did not
+ * happen, and an empty workout in the log would count as a training day
+ * against every frequency and volume figure.
+ */
+export function useSkipSession() {
+  const services = useServices()
+  const client = useQueryClient()
+
+  return useMutation<SkipResult>({
+    mutationFn: () => skipSession(services),
+    onSuccess: (result) => {
+      logger.info('session.skip', { outcome: result.kind })
+      void client.invalidateQueries({ queryKey: keys.activeInstance })
     },
   })
 }

@@ -1,4 +1,4 @@
-import { Play, Plus } from 'lucide-react'
+import { Play, Plus, SkipForward } from 'lucide-react'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 
@@ -15,6 +15,7 @@ import {
   useActiveWorkout,
   useExercises,
   useFinishWorkout,
+  useSkipSession,
   useStartWorkout,
 } from './hooks'
 import { SessionPlayer } from './SessionPlayer'
@@ -29,11 +30,12 @@ import { SessionReport } from './SessionReport'
  * burying it behind a dashboard is how half-logged sessions get lost.
  */
 export function TrainPage() {
-  const { settings, athlete } = useSettings()
+  const { settings } = useSettings()
   const activeWorkout = useActiveWorkout()
   const activeInstance = useActiveInstance()
   const exercises = useExercises()
   const startWorkout = useStartWorkout()
+  const skipSession = useSkipSession()
   const finishWorkout = useFinishWorkout()
 
   const [report, setReport] = useState<WorkoutReport | undefined>(undefined)
@@ -75,13 +77,6 @@ export function TrainPage() {
         ]
   const week = instance?.templateSnapshot.blocks[instance.blockIndex]?.weeks[instance.weekIndex]
 
-  const missingMaxes =
-    instance == null
-      ? []
-      : instance.templateSnapshot.requiredTrainingMaxes.filter(
-          (id) => athlete.trainingMaxes[id] === undefined,
-        )
-
   return (
     <div>
       <header className="mb-6">
@@ -90,22 +85,6 @@ export function TrainPage() {
           {instance == null ? 'No program running' : instance.name}
         </p>
       </header>
-
-      {missingMaxes.length > 0 && (
-        <Card className="border-warn-500/40 bg-warn-500/10 mb-4">
-          <p className="text-ink-50 text-sm font-medium">
-            {missingMaxes.length} lift{missingMaxes.length === 1 ? '' : 's'} still need a training
-            max
-          </p>
-          <p className="text-ink-300 mt-1 text-sm">
-            Percentage-based sets cannot be given a weight until you set one. The session will still
-            open; those sets will show the percentage instead of a number.
-          </p>
-          <Link to="/settings" className={cn(buttonStyles({ variant: 'outline' }), 'mt-3')}>
-            Set training maxes
-          </Link>
-        </Card>
-      )}
 
       {instance != null && nextDay !== undefined ? (
         <Section title="Next session" description={week?.label}>
@@ -148,6 +127,25 @@ export function TrainPage() {
             >
               <Play size={20} aria-hidden />
               Start session
+            </Button>
+
+            {/*
+              Skipping writes no log. A day trained elsewhere or simply
+              missed still has to be got past, and an empty workout in the
+              history would count as a training day against every
+              frequency and volume figure.
+            */}
+            <Button
+              variant="ghost"
+              full
+              className="mt-2"
+              disabled={skipSession.isPending}
+              onClick={() => {
+                skipSession.mutate()
+              }}
+            >
+              <SkipForward size={16} aria-hidden />
+              {skipSession.isPending ? 'Skipping…' : 'Skip this one'}
             </Button>
           </Card>
         </Section>

@@ -128,20 +128,12 @@ export interface ProgramSettings {
   readonly units: WeightUnit
   /** Bar/plate granularity. See domain/units/weight.ts for why this is programmable. */
   readonly roundingIncrement: number
-  /**
-   * Percentage of a true 1RM to treat as the training max. Wendler's
-   * original 5/3/1 used 90%; his later recommendation is 85% for most
-   * lifters. Editable because it is the single biggest lever on how hard
-   * the program feels.
-   */
-  readonly trainingMaxPercent: number
   readonly defaultRestSeconds: number
 }
 
 export const DEFAULT_PROGRAM_SETTINGS: ProgramSettings = {
   units: 'lb',
   roundingIncrement: 5,
-  trainingMaxPercent: 90,
   defaultRestSeconds: 120,
 }
 
@@ -157,12 +149,6 @@ export interface ProgramTemplate {
   readonly author?: string
   readonly blocks: readonly ProgramBlock[]
   readonly settings: ProgramSettings
-  /**
-   * Lifts this program expects a training max for. The UI uses it to ask
-   * for the right numbers up front instead of failing at resolution time
-   * with a blank load.
-   */
-  readonly requiredTrainingMaxes: readonly ExerciseId[]
   readonly tags: readonly string[]
   readonly createdAt: string
   readonly updatedAt: string

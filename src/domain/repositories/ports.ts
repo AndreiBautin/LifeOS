@@ -53,7 +53,6 @@ export interface ProgramInstance {
   readonly blockIndex: number
   readonly weekIndex: number
   readonly dayIndex: number
-  readonly trainingMaxesAtStart: Readonly<Partial<Record<ExerciseId, number>>>
   readonly completedAt?: string
 }
 

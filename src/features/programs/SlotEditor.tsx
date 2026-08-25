@@ -157,7 +157,6 @@ export function SlotEditor({ slot, exercises, onSave, onCancel }: Props) {
 }
 
 const LOAD_KINDS = [
-  { kind: 'percent-training-max', label: '% of training max' },
   { kind: 'rpe', label: 'RPE' },
   { kind: 'absolute', label: 'Fixed weight' },
   { kind: 'bodyweight', label: 'Bodyweight' },
@@ -277,7 +276,6 @@ function LoadValue({
   )
 
   switch (load.kind) {
-    case 'percent-training-max':
     case 'percent-e1rm':
       return input(load.percent, 'Percentage', (percent) => ({ ...load, percent }))
     case 'rpe':
@@ -334,8 +332,6 @@ function RepsValue({
 
 function defaultLoad(kind: string): LoadSource {
   switch (kind) {
-    case 'percent-training-max':
-      return { kind: 'percent-training-max', percent: 70 }
     case 'percent-e1rm':
       return { kind: 'percent-e1rm', percent: 70 }
     case 'rpe':

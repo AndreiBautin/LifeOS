@@ -14,6 +14,7 @@ import type {
   InstanceRepository,
   WorkoutRepository,
 } from '@/domain/repositories/ports'
+import { nextPosition } from '@/domain/programs/advance'
 import type { E1rmEstimate } from '@/domain/strength/one-rep-max'
 import { displaySets, trainedMuscles } from '@/domain/volume/accounting'
 import type { MuscleGroup } from '@/domain/exercises/taxonomy'
@@ -92,54 +93,22 @@ async function advanceInstance(workout: WorkoutLog, deps: FinishWorkoutDeps): Pr
   const instance = await deps.instances.byId(position.instanceId)
   if (instance === undefined) return
 
-  const program = instance.templateSnapshot
-  const block = program.blocks[instance.blockIndex]
-  if (block === undefined) return
+  const result = nextPosition(instance.templateSnapshot, instance)
 
-  const week = block.weeks[instance.weekIndex]
-  if (week === undefined) return
-
-  const nextDay = instance.dayIndex + 1
-  if (nextDay < week.days.length) {
-    await deps.instances.save({ ...instance, dayIndex: nextDay })
-    return
+  switch (result.kind) {
+    case 'invalid':
+      return
+    case 'moved':
+      await deps.instances.save({ ...instance, ...result.position })
+      return
+    case 'finished':
+      await deps.instances.save({
+        ...instance,
+        status: 'completed',
+        completedAt: deps.clock.now().toISOString(),
+      })
+      return
   }
-
-  const nextWeek = instance.weekIndex + 1
-  if (nextWeek < block.weeks.length) {
-    await deps.instances.save({ ...instance, weekIndex: nextWeek, dayIndex: 0 })
-    return
-  }
-
-  // The block is finished. Repeat it, or move on to the next.
-  const repeats = block.repeat === 'indefinite' ? Number.POSITIVE_INFINITY : block.repeat
-  if (instance.cycleNumber < repeats) {
-    await deps.instances.save({
-      ...instance,
-      cycleNumber: instance.cycleNumber + 1,
-      weekIndex: 0,
-      dayIndex: 0,
-    })
-    return
-  }
-
-  const nextBlock = instance.blockIndex + 1
-  if (nextBlock < program.blocks.length) {
-    await deps.instances.save({
-      ...instance,
-      blockIndex: nextBlock,
-      cycleNumber: 1,
-      weekIndex: 0,
-      dayIndex: 0,
-    })
-    return
-  }
-
-  await deps.instances.save({
-    ...instance,
-    status: 'completed',
-    completedAt: deps.clock.now().toISOString(),
-  })
 }
 
 async function buildReport(

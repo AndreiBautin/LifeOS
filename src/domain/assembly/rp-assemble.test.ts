@@ -67,8 +67,21 @@ describe('the assembled block', () => {
     expect(block?.weeks.filter((week) => week.isDeload)).toHaveLength(1)
   })
 
-  it('needs no training maxes, because RTS finds the load by feel', () => {
-    expect(program.requiredTrainingMaxes).toEqual([])
+  it('prescribes every working set by feel rather than by a percentage', () => {
+    // RTS asks for reps at an RPE and reads the load back off what was
+    // done. A percentage-of-something set anywhere in the block would
+    // mean a number the lifter has to maintain by hand.
+    const kinds = new Set(
+      (block?.weeks ?? []).flatMap((week) =>
+        week.days.flatMap((day) =>
+          day.slots.flatMap((slot) =>
+            slot.sets.filter((set) => set.isWarmup !== true).map((set) => set.load.kind),
+          ),
+        ),
+      ),
+    )
+
+    expect([...kinds].sort()).toEqual(['rpe'])
   })
 
   it('opens three of four days with a competition lift', () => {

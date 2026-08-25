@@ -2,7 +2,6 @@ import { createBrowserRouter, Navigate } from 'react-router-dom'
 
 import { HistoryPage } from '@/features/history/HistoryPage'
 import { NotFoundPage } from '@/features/not-found/NotFoundPage'
-import { ProgramBuilderPage } from '@/features/programs/ProgramBuilderPage'
 import { ProgramDetailPage } from '@/features/programs/ProgramDetailPage'
 import { ProgramsPage } from '@/features/programs/ProgramsPage'
 import { SettingsPage } from '@/features/settings/SettingsPage'
@@ -27,7 +26,6 @@ export const router = createBrowserRouter(
         { index: true, element: <Navigate to="/train" replace /> },
         { path: 'train', element: <TrainPage /> },
         { path: 'programs', element: <ProgramsPage /> },
-        { path: 'programs/new', element: <ProgramBuilderPage /> },
         { path: 'programs/:programId', element: <ProgramDetailPage /> },
         { path: 'history', element: <HistoryPage /> },
         { path: 'settings', element: <SettingsPage /> },

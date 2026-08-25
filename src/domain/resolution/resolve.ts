@@ -22,9 +22,16 @@ import { formatLoad, roundLoad } from '@/domain/units/weight'
  */
 
 export interface AthleteState {
-  /** Explicit training maxes, per exercise. The basis for every percentage. */
-  readonly trainingMaxes: Readonly<Partial<Record<ExerciseId, number>>>
-  /** Estimated maxes derived from logged history, used when no TM exists. */
+  /**
+   * Maxes estimated from logged history — the only basis for a suggested
+   * load now that strength is run by RTS.
+   *
+   * Explicit training maxes used to sit alongside these, because 5/3/1
+   * expressed every set as a percentage of one and an estimate would have
+   * silently changed what the program meant. RTS asks for reps at an RPE
+   * instead, so the number is a suggestion rather than the prescription,
+   * and an estimate is exactly the right basis for it.
+   */
   readonly estimatedMaxes: Readonly<Partial<Record<ExerciseId, number>>>
   readonly bodyweight?: number
   readonly units: WeightUnit
@@ -46,11 +53,7 @@ export interface ResolutionContext {
  * is the worst of the three options, because it looks like an answer.
  */
 export type UnresolvedReason =
-  | 'no-training-max'
-  | 'no-estimated-max'
-  | 'no-bodyweight'
-  | 'rpe-outside-chart'
-  | 'open-prescription'
+  'no-estimated-max' | 'no-bodyweight' | 'rpe-outside-chart' | 'open-prescription'
 
 export interface ResolvedSet {
   /** The prescribed load, rounded to the gym's increment. Undefined if unresolved. */
@@ -103,18 +106,6 @@ function resolveLoad(
   const round = (value: number): number => roundLoad(value, roundingIncrement, roundingMode)
 
   switch (source.kind) {
-    case 'percent-training-max': {
-      const trainingMax = athlete.trainingMaxes[exerciseId]
-      if (trainingMax === undefined) {
-        // Falling back to an estimate here would silently change what the
-        // program means, so it does not happen. The UI asks for the
-        // training max instead.
-        return { display: `${String(source.percent)}% TM`, unresolved: 'no-training-max' }
-      }
-      const load = round(trainingMax * (source.percent / 100))
-      return { load, display: formatLoad(load, athlete.units) }
-    }
-
     case 'percent-e1rm': {
       const estimate = athlete.estimatedMaxes[exerciseId]
       if (estimate === undefined) {
@@ -151,7 +142,7 @@ function resolveLoad(
       // An RPE prescription is satisfied by feel, not by a number, so an
       // unresolvable suggestion is not a failure — the set is still fully
       // performable. The suggestion is a convenience on top.
-      const basis = athlete.trainingMaxes[exerciseId] ?? athlete.estimatedMaxes[exerciseId]
+      const basis = athlete.estimatedMaxes[exerciseId]
       const display = `RPE ${String(source.target)}`
 
       if (basis === undefined) return { display, unresolved: 'no-estimated-max' }

@@ -21,8 +21,19 @@ export interface AppSettings {
   readonly units: WeightUnit
   readonly roundingIncrement: number
   readonly bodyweight?: number
-  readonly trainingMaxes: Readonly<Partial<Record<ExerciseId, number>>>
   readonly landmarks: LandmarkSet
+
+  /**
+   * What the lifter can do for one rep, per exercise.
+   *
+   * The basis for every suggested load. RTS prescribes reps at an RPE
+   * rather than a percentage, so this number never decides what the set
+   * *is* — get it wrong and the suggestion is wrong, which the lifter
+   * corrects by loading the bar they were going to load anyway. That is
+   * why an estimate is an acceptable basis here where it would not have
+   * been under a percentage-driven program.
+   */
+  readonly estimatedMaxes: Readonly<Partial<Record<ExerciseId, number>>>
 
   /**
    * What the lifter is prioritising, which drives where inside each
@@ -61,8 +72,8 @@ export const SETTINGS_SCHEMA_VERSION = 1
 export const DEFAULT_SETTINGS: AppSettings = {
   units: 'lb',
   roundingIncrement: 5,
-  trainingMaxes: {},
   landmarks: DEFAULT_LANDMARKS,
+  estimatedMaxes: {},
   muscleTiers: DEFAULT_MUSCLE_TIERS,
   strengthTiers: DEFAULT_STRENGTH_TIERS,
   daysPerWeek: 4,

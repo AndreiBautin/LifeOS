@@ -51,18 +51,6 @@ export const STRENGTH_LIFT_SLUGS = {
   deadlift: 'sumo-deadlift',
 } as const
 
-/**
- * Retained for the legacy 5/3/1 framework, which stays available as a
- * selectable option. The overhead press appears here because 5/3/1 needs
- * four lifts; under the RP/RTS default it is hypertrophy work.
- */
-export const MAIN_LIFT_SLUGS = {
-  squat: 'low-bar-squat',
-  bench: 'bench-press',
-  deadlift: 'sumo-deadlift',
-  press: 'overhead-press',
-} as const
-
 /** Two minutes on everything, as actually trained. */
 const REST = 120
 const REST_HEAVY = 180

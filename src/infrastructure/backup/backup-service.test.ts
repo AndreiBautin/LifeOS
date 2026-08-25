@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { canonicalJson, checksumOf } from '@/domain/backup/checksum'
 import { BACKUP_MAGIC, BACKUP_SCHEMA_VERSION } from '@/domain/backup/envelope'
-import { asExerciseId, type IdGenerator } from '@/domain/ids/ids'
+import type { IdGenerator } from '@/domain/ids/ids'
 import { DEFAULT_SETTINGS } from '@/domain/settings/settings'
 import {
   clearAllStores,
@@ -237,14 +237,14 @@ describe('merge versus replace', () => {
     await populate()
     const envelope = await buildBackup(repositories, {
       ...exportOptions,
-      settings: { ...DEFAULT_SETTINGS, trainingMaxes: { [asExerciseId('back-squat')]: 405 } },
+      settings: { ...DEFAULT_SETTINGS, bodyweight: 205 },
     })
 
     const merged = await applyBackup(envelope, repositories, 'merge')
     expect(merged.settings).toBeUndefined()
 
     const replaced = await applyBackup(envelope, repositories, 'replace')
-    expect(replaced.settings?.trainingMaxes).toEqual({ 'back-squat': 405 })
+    expect(replaced.settings?.bodyweight).toBe(205)
   })
 })
 

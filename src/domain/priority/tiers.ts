@@ -28,9 +28,22 @@ export interface Tier<T extends string> {
 
 export type MuscleTiers = readonly Tier<MuscleGroup>[]
 
-/** The three lifts that make up the powerlifting total. */
+/**
+ * The three lifts that make up the powerlifting total.
+ *
+ * Three, not four. The overhead press was a main lift only because 5/3/1
+ * needed a fourth one to fill a four-day week; it contributes nothing to
+ * a total and is trained here as hypertrophy work in the 3–6 range like
+ * any other pressing movement.
+ */
 export const STRENGTH_LIFTS = ['squat', 'bench', 'deadlift'] as const
 export type StrengthLift = (typeof STRENGTH_LIFTS)[number]
+
+export const STRENGTH_LIFT_LABELS: Record<StrengthLift, string> = {
+  squat: 'Squat',
+  bench: 'Bench press',
+  deadlift: 'Deadlift',
+}
 
 export type StrengthTiers = readonly Tier<StrengthLift>[]
 

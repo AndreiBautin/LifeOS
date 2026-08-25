@@ -53,16 +53,30 @@ one of them.
 prescription into a number with no I/O and no clock. Keep it that way; it
 is where nearly all the tests live.
 
-**Percentages resolve against a training max, never an estimate.** If no
-training max is set, the set resolves to _no number_ with a stated
-reason. Falling back to an estimated max would silently change what the
-program means — a 5/3/1 cycle run off an e1RM is a different, harder
-program.
+**Strength is RTS, and only RTS.** The three lifts are run by reps at an
+RPE, with back-off work driven by measured fatigue percentages
+(`domain/framework/rts.ts`). The overhead press is **not** a strength
+lift — it was a main lift under 5/3/1 only because that framework wanted
+a fourth one, and it contributes nothing to a total. It is hypertrophy
+work in the 3–6 range.
+
+5/3/1 was removed wholesale — framework, assembler, recipes, splits,
+progression, `percent-training-max`, training maxes. It is in the git
+history if it is ever wanted back. Do not reintroduce a second framework
+without deciding to carry two of everything again.
+
+**A suggested load is never the prescription.** `estimatedMaxes` (in
+settings) is the basis for every suggestion, and an estimate is
+acceptable *because* RTS asks for reps at an RPE: get the number wrong
+and the lifter corrects it by loading the bar they were going to load
+anyway. This was the opposite under 5/3/1, where the percentage *was*
+the prescription and an estimate would have silently changed what a cycle
+meant — which is why training maxes existed and why they went with it.
 
 **Assistance subtracts what the framework spent.** `domain/assembly/`
-counts the volume the main and supplemental work already contributed
-before filling anything. Removing that subtraction turns one coherent
-program into 5/3/1 with a bodybuilding routine stapled to it.
+counts the volume the strength work already contributed before filling
+anything. Removing that subtraction turns one coherent program into a
+powerlifting block with a bodybuilding routine stapled to it.
 
 **Landmarks stay ordered.** `MV ≤ MEV ≤ MAV ≤ MRV`, always. Check-ins
 move MAV only, within bounds, and only with three sessions of evidence.

@@ -28,9 +28,6 @@ export function recipeFromSettings(
     settings: {
       units: settings.units,
       roundingIncrement: settings.roundingIncrement,
-      // RTS finds the load by feel, so the training-max percentage is
-      // carried only for the legacy 5/3/1 framework.
-      trainingMaxPercent: 90,
       defaultRestSeconds: 120,
     },
     ...overrides,

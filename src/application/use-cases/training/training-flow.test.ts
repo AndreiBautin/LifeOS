@@ -1,7 +1,7 @@
 import { deleteDB } from 'idb'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
-import { builtInExercises, MAIN_LIFT_SLUGS } from '@/domain/exercises/catalogue'
+import { builtInExercises, STRENGTH_LIFT_SLUGS } from '@/domain/exercises/catalogue'
 import { asExerciseId, asProgramId, type IdGenerator } from '@/domain/ids/ids'
 import type { Clock } from '@/domain/repositories/ports'
 import type { AthleteState } from '@/domain/resolution/resolve'
@@ -21,6 +21,7 @@ import { seedIfEmpty } from '@/infrastructure/seed/seed'
 
 import { finishWorkout } from './finish-workout'
 import { logSet } from './log-set'
+import { skipSession } from './skip-session'
 import { startWorkout } from './start-workout'
 
 /**
@@ -50,13 +51,12 @@ function counterIds(): IdGenerator {
 }
 
 const athlete: AthleteState = {
-  trainingMaxes: {
-    [asExerciseId(MAIN_LIFT_SLUGS.squat)]: 315,
-    [asExerciseId(MAIN_LIFT_SLUGS.bench)]: 225,
-    [asExerciseId(MAIN_LIFT_SLUGS.deadlift)]: 405,
-    [asExerciseId(MAIN_LIFT_SLUGS.press)]: 135,
+  estimatedMaxes: {
+    [asExerciseId(STRENGTH_LIFT_SLUGS.squat)]: 350,
+    [asExerciseId(STRENGTH_LIFT_SLUGS.bench)]: 250,
+    [asExerciseId(STRENGTH_LIFT_SLUGS.deadlift)]: 450,
+    [asExerciseId('overhead-press')]: 150,
   },
-  estimatedMaxes: {},
   bodyweight: 180,
   units: 'lb',
 }
@@ -91,11 +91,11 @@ afterEach(async () => {
   await deleteDB(TEST_DB)
 })
 
-const BBB_PROGRAM = asProgramId('built-in-531-bbb')
+const RP_PROGRAM = asProgramId('built-in-rp-block')
 
 async function beginProgram() {
   const deps = services()
-  await startProgram(BBB_PROGRAM, athlete, deps)
+  await startProgram(RP_PROGRAM, deps)
   return deps
 }
 
@@ -107,29 +107,36 @@ describe('starting a session from a program', () => {
     expect(result.kind).toBe('started')
     if (result.kind !== 'started') throw new Error('expected a started workout')
 
-    const main = result.workout.entries[0]
-    expect(main?.role).toBe('main')
-    expect(main?.exerciseId).toBe(MAIN_LIFT_SLUGS.press)
+    const press = result.workout.entries.find((entry) => entry.exerciseId === 'overhead-press')
+    expect(press).toBeDefined()
 
-    // 135 lb training max, week 1: 40/50/60% warm-ups then 65/75/85%.
-    expect(main?.sets.map((set) => set.plannedLoad)).toEqual([55, 70, 80, 90, 100, 115])
-    expect(main?.sets.filter((set) => set.isWarmup)).toHaveLength(3)
+    // Every hypertrophy set is held at 1 RIR except the last, which goes
+    // to failure — the overhead press being one of the movements it is
+    // safe to fail on.
+    expect(press?.sets.map((set) => set.prescription.load)).toEqual([
+      { kind: 'rpe', target: 9 },
+      { kind: 'rpe', target: 9 },
+      { kind: 'rpe', target: 9 },
+      { kind: 'rpe', target: 10 },
+    ])
+
+    // 150 lb estimate, RPE 9 at the top of a 3–6 range.
+    expect(press?.sets[0]?.plannedLoad).toBeGreaterThan(0)
   })
 
-  it('leaves a percentage set without a number when the training max is missing', async () => {
+  it('leaves an RPE set performable when no estimate exists', async () => {
+    // An RPE prescription is satisfied by feel, so a missing estimate
+    // costs the lifter a suggested number and nothing else. Under 5/3/1
+    // the same gap left the set with no load at all.
     const deps = await beginProgram()
-    const bare: AthleteState = { ...athlete, trainingMaxes: {} }
+    const bare: AthleteState = { ...athlete, estimatedMaxes: {} }
 
     const result = await startWorkout({ athlete: bare, roundingIncrement: 5 }, deps)
     if (result.kind !== 'started') throw new Error('expected a started workout')
 
-    const main = result.workout.entries[0]
-    expect(main?.sets.every((set) => set.plannedLoad === undefined)).toBe(true)
-    // The prescription survives, so the UI can still say what was asked for.
-    expect(main?.sets[3]?.prescription.load).toEqual({
-      kind: 'percent-training-max',
-      percent: 65,
-    })
+    const press = result.workout.entries.find((entry) => entry.exerciseId === 'overhead-press')
+    expect(press?.sets.every((set) => set.plannedLoad === undefined)).toBe(true)
+    expect(press?.sets[0]?.prescription.load).toEqual({ kind: 'rpe', target: 9 })
   })
 
   it('resumes an unfinished session rather than starting a second', async () => {
@@ -174,28 +181,34 @@ describe('logging', () => {
     const started = await startWorkout({ athlete, roundingIncrement: 5 }, deps)
     if (started.kind !== 'started') throw new Error('expected a started workout')
 
+    const pressIndex = started.workout.entries.findIndex(
+      (entry) => entry.exerciseId === 'overhead-press',
+    )
+    const plannedLoad = started.workout.entries[pressIndex]?.sets[0]?.plannedLoad
+
     await logSet(
       {
         workoutId: started.workout.id,
-        entryIndex: 0,
-        setIndex: 5,
-        result: { load: 115, reps: 9, rpe: 9, outcome: 'completed' },
+        entryIndex: pressIndex,
+        setIndex: 0,
+        result: { load: 135, reps: 5, rpe: 9, outcome: 'completed' },
       },
       deps,
     )
 
     const saved = await deps.workouts.byId(started.workout.id)
-    const topSet = saved?.entries[0]?.sets[5]
+    const topSet = saved?.entries[pressIndex]?.sets[0]
 
-    expect(topSet?.plannedLoad).toBe(115)
-    expect(topSet?.actualReps).toBe(9)
+    expect(topSet?.plannedLoad).toBe(plannedLoad)
+    expect(topSet?.actualLoad).toBe(135)
+    expect(topSet?.actualReps).toBe(5)
     expect(topSet?.outcome).toBe('completed')
 
     // The template is untouched. In LiftTracker this same action wrote
     // into the rows the program was made of.
-    const program = await deps.programs.byId(BBB_PROGRAM)
-    const slot = program?.blocks[0]?.weeks[0]?.days[0]?.slots[0]
-    expect(slot?.sets[5]?.reps).toEqual({ kind: 'amrap', minimum: 5 })
+    const program = await deps.programs.byId(RP_PROGRAM)
+    const slot = program?.blocks[0]?.weeks[0]?.days[0]?.slots[pressIndex]
+    expect(slot?.sets[0]?.load).toEqual({ kind: 'rpe', target: 9 })
   })
 
   it('clears the numbers off a skipped set', async () => {
@@ -203,29 +216,37 @@ describe('logging', () => {
     const started = await startWorkout({ athlete, roundingIncrement: 5 }, deps)
     if (started.kind !== 'started') throw new Error('expected a started workout')
 
+    const pressIndex = started.workout.entries.findIndex(
+      (entry) => entry.exerciseId === 'overhead-press',
+    )
+
     await logSet(
       {
         workoutId: started.workout.id,
-        entryIndex: 0,
-        setIndex: 3,
+        entryIndex: pressIndex,
+        setIndex: 1,
         result: { load: 90, reps: 5, outcome: 'completed' },
       },
       deps,
     )
     await logSet(
-      { workoutId: started.workout.id, entryIndex: 0, setIndex: 3, result: { outcome: 'skipped' } },
+      {
+        workoutId: started.workout.id,
+        entryIndex: pressIndex,
+        setIndex: 1,
+        result: { outcome: 'skipped' },
+      },
       deps,
     )
 
     const saved = await deps.workouts.byId(started.workout.id)
-    const set = saved?.entries[0]?.sets[3]
+    const set = saved?.entries[pressIndex]?.sets[1]
 
     expect(set?.outcome).toBe('skipped')
     // A skipped set must not leave a partial record that later reads as
     // work performed — the volume totals depend on it.
     expect(set?.actualReps).toBeUndefined()
     expect(set?.actualLoad).toBeUndefined()
-    expect(set?.plannedLoad).toBe(90)
   })
 })
 
@@ -280,11 +301,15 @@ describe('finishing a session', () => {
     const started = await startWorkout({ athlete, roundingIncrement: 5 }, deps)
     if (started.kind !== 'started') throw new Error('expected a started workout')
 
-    for (let setIndex = 3; setIndex <= 5; setIndex += 1) {
+    const pressIndex = started.workout.entries.findIndex(
+      (entry) => entry.exerciseId === 'overhead-press',
+    )
+
+    for (let setIndex = 0; setIndex <= 2; setIndex += 1) {
       await logSet(
         {
           workoutId: started.workout.id,
-          entryIndex: 0,
+          entryIndex: pressIndex,
           setIndex,
           result: { load: 100, reps: 5, outcome: 'completed' },
         },
@@ -307,13 +332,17 @@ describe('finishing a session', () => {
     const started = await startWorkout({ athlete, roundingIncrement: 5 }, deps)
     if (started.kind !== 'started') throw new Error('expected a started workout')
 
-    // Only one working set logged; three warm-ups and everything else
-    // left untouched.
+    // One working set logged; the mobility warm-ups that open the day and
+    // everything else left untouched.
+    const pressIndex = started.workout.entries.findIndex(
+      (entry) => entry.exerciseId === 'overhead-press',
+    )
+
     await logSet(
       {
         workoutId: started.workout.id,
-        entryIndex: 0,
-        setIndex: 4,
+        entryIndex: pressIndex,
+        setIndex: 0,
         result: { load: 100, reps: 5, outcome: 'completed' },
       },
       deps,
@@ -324,11 +353,53 @@ describe('finishing a session', () => {
   })
 })
 
+describe('skipping a session', () => {
+  it('moves the program on without writing a workout', async () => {
+    // A day trained elsewhere, or simply missed. Logging an empty session
+    // would advance the program *and* put a workout with no sets into the
+    // history, where it counts as a training day and drags every
+    // frequency and volume figure down.
+    const deps = await beginProgram()
+
+    const result = await skipSession(deps)
+
+    expect(result.kind).toBe('skipped')
+    expect((await deps.instances.active())?.dayIndex).toBe(1)
+    expect(await deps.workouts.count()).toBe(0)
+  })
+
+  it('rolls into the next week like finishing does', async () => {
+    const deps = await beginProgram()
+    for (let day = 0; day < 4; day += 1) await skipSession(deps)
+
+    const instance = await deps.instances.active()
+    expect(instance?.weekIndex).toBe(1)
+    expect(instance?.dayIndex).toBe(0)
+  })
+
+  it('refuses while a session is open', async () => {
+    // Skipping past an in-progress workout would strand it: still open,
+    // but attached to a day the program has already moved off.
+    const deps = await beginProgram()
+    const started = await startWorkout({ athlete, roundingIncrement: 5 }, deps)
+    if (started.kind !== 'started') throw new Error('expected a started workout')
+
+    const result = await skipSession(deps)
+
+    expect(result.kind).toBe('session-in-progress')
+    expect((await deps.instances.active())?.dayIndex).toBe(0)
+  })
+
+  it('reports having no program rather than failing', async () => {
+    expect((await skipSession(services())).kind).toBe('no-program')
+  })
+})
+
 describe('the built-in exercise library', () => {
   it('contains every lift the built-in programs reference', () => {
     const library = new Set(builtInExercises().map((exercise) => exercise.id as string))
 
-    for (const slug of Object.values(MAIN_LIFT_SLUGS)) {
+    for (const slug of Object.values(STRENGTH_LIFT_SLUGS)) {
       expect(library.has(slug), `${slug} is missing from the catalogue`).toBe(true)
     }
   })

@@ -16,7 +16,13 @@ import {
   createProgramRepository,
   createWorkoutRepository,
 } from '@/infrastructure/db/repositories'
-import { seedIfEmpty, syncBuiltInExercises, syncBuiltInPrograms } from '@/infrastructure/seed/seed'
+import { RETIRED_BUILT_IN_PROGRAM_IDS } from '@/infrastructure/seed/built-in-programs'
+import {
+  retireBuiltInPrograms,
+  seedIfEmpty,
+  syncBuiltInExercises,
+  syncBuiltInPrograms,
+} from '@/infrastructure/seed/seed'
 import {
   readDeliveredBuiltIns,
   recordDeliveredBuiltIns,
@@ -109,13 +115,25 @@ export async function bootstrap(): Promise<BootstrapResult> {
   // on purpose — so this offers each built-in exactly once and records
   // that it did.
   const programSync = await syncBuiltInPrograms(seedDeps, readDeliveredBuiltIns())
-  recordDeliveredBuiltIns(programSync.allIds)
+
+  // And the reverse: a built-in the app has stopped shipping stays in an
+  // existing lifter's library forever unless it is actively removed.
+  const retired = await retireBuiltInPrograms(
+    { ...seedDeps, instances: services.instances },
+    RETIRED_BUILT_IN_PROGRAM_IDS,
+  )
+
+  // Retired ids are recorded as delivered too, so a lifter still running
+  // one — which retirement deliberately spares — does not have it removed
+  // and then handed straight back on the next start.
+  recordDeliveredBuiltIns([...programSync.allIds, ...RETIRED_BUILT_IN_PROGRAM_IDS])
 
   logger.info('app.bootstrap', {
     exercisesSeeded: seeded.exercisesAdded,
     programsSeeded: seeded.programsAdded,
     exercisesAddedBySync: exercisesAdded,
     programsAddedBySync: programSync.added.length,
+    programsRetired: retired.length,
   })
 
   return { services, seeded }

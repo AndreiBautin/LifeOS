@@ -1,5 +1,3 @@
-import { assembleProgram } from '@/domain/assembly/assemble'
-import type { ProgramRecipe } from '@/domain/assembly/recipe'
 import type { IdGenerator, InstanceId, ProgramId } from '@/domain/ids/ids'
 import { asInstanceId, asProgramId } from '@/domain/ids/ids'
 import type { ProgramTemplate } from '@/domain/programs/program'
@@ -10,8 +8,6 @@ import type {
   ProgramInstance,
   ProgramRepository,
 } from '@/domain/repositories/ports'
-import type { AthleteState } from '@/domain/resolution/resolve'
-import { findSplit } from '@/domain/splits/split'
 
 export interface ProgramDeps {
   readonly programs: ProgramRepository
@@ -19,27 +15,6 @@ export interface ProgramDeps {
   readonly exercises: ExerciseRepository
   readonly ids: IdGenerator
   readonly clock: Clock
-}
-
-/** Builds a program from a recipe and stores it as an ordinary template. */
-export async function createProgramFromRecipe(
-  recipe: ProgramRecipe,
-  deps: ProgramDeps,
-): Promise<ProgramTemplate> {
-  const split = findSplit(recipe.splitId)
-  if (split === undefined) {
-    throw new Error(`Unknown split "${recipe.splitId}".`)
-  }
-
-  const program = assembleProgram(recipe, asProgramId(deps.ids.next()), {
-    exercises: await deps.exercises.all(),
-    split,
-    ids: deps.ids,
-    now: deps.clock.now(),
-  })
-
-  await deps.programs.save(program)
-  return program
 }
 
 /**
@@ -87,8 +62,6 @@ export async function saveProgram(
 
 export interface StartProgramResult {
   readonly instance: ProgramInstance
-  /** Lifts the program needs a training max for that the lifter has not set. */
-  readonly missingTrainingMaxes: readonly string[]
 }
 
 /**
@@ -102,7 +75,6 @@ export interface StartProgramResult {
  */
 export async function startProgram(
   programId: ProgramId,
-  athlete: AthleteState,
   deps: ProgramDeps,
 ): Promise<StartProgramResult> {
   const program = await deps.programs.byId(programId)
@@ -126,17 +98,10 @@ export async function startProgram(
     blockIndex: 0,
     weekIndex: 0,
     dayIndex: 0,
-    trainingMaxesAtStart: athlete.trainingMaxes,
   }
 
   await deps.instances.save(instance)
-
-  const library = await deps.exercises.all()
-  const missingTrainingMaxes = program.requiredTrainingMaxes
-    .filter((id) => athlete.trainingMaxes[id] === undefined)
-    .map((id) => library.find((exercise) => exercise.id === id)?.name ?? id)
-
-  return { instance, missingTrainingMaxes }
+  return { instance }
 }
 
 export async function pauseProgram(instanceId: InstanceId, deps: ProgramDeps): Promise<void> {
