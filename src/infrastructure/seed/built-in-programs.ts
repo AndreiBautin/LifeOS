@@ -1,4 +1,5 @@
 import { assembleProgram } from '@/domain/assembly/assemble'
+import { assembleRpProgram, defaultRpRecipe, type RpRecipe } from '@/domain/assembly/rp-assemble'
 import type { ProgramRecipe } from '@/domain/assembly/recipe'
 import { defaultRecipe, DEFAULT_ASSISTANCE } from '@/domain/assembly/recipe'
 import { builtInExercises, MAIN_LIFT_SLUGS } from '@/domain/exercises/catalogue'
@@ -110,10 +111,43 @@ const DEFINITIONS: readonly BuiltInDefinition[] = [
   },
 ]
 
+/**
+ * The RP blocks, which are the default methodology.
+ *
+ * Listed before the 5/3/1 definitions so they sort to the top of the
+ * library, and built by the same assembler a lifter's own block goes
+ * through — a built-in that needed its own code path would be a built-in
+ * the builder could not express.
+ */
+const RP_DEFINITIONS: readonly { readonly id: string; readonly recipe: RpRecipe }[] = [
+  {
+    id: 'built-in-rp-block',
+    recipe: defaultRpRecipe(),
+  },
+  {
+    id: 'built-in-rp-block-6day',
+    recipe: defaultRpRecipe({
+      name: 'RP block — 6-day push / pull / legs',
+      description:
+        'The same tiers and landmarks spread across six sessions. More room for a specialisation block, and shorter days.',
+      daysPerWeek: 6,
+    }),
+  },
+]
+
 export function builtInPrograms(ids: IdGenerator, now: Date): readonly ProgramTemplate[] {
   const exercises = builtInExercises()
 
-  return DEFINITIONS.flatMap((definition) => {
+  const rpPrograms = RP_DEFINITIONS.map((definition) => ({
+    ...assembleRpProgram(definition.recipe, asProgramId(definition.id), {
+      exercises,
+      ids,
+      now,
+    }),
+    origin: 'built-in' as const,
+  }))
+
+  const fiveThreeOne = DEFINITIONS.flatMap((definition) => {
     const split = findSplit(definition.recipe.splitId)
     if (split === undefined) return []
 
@@ -126,6 +160,8 @@ export function builtInPrograms(ids: IdGenerator, now: Date): readonly ProgramTe
 
     return [{ ...assembled, origin: 'built-in' as const }]
   })
+
+  return [...rpPrograms, ...fiveThreeOne]
 }
 
-export const BUILT_IN_PROGRAM_COUNT = DEFINITIONS.length
+export const BUILT_IN_PROGRAM_COUNT = RP_DEFINITIONS.length + DEFINITIONS.length

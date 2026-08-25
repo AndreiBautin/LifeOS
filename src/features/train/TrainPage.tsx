@@ -131,8 +131,7 @@ export function TrainPage() {
                       : slot.exercise.label}
                   </span>
                   <span className="text-ink-500 numeric shrink-0">
-                    {slot.sets.filter((set) => set.isWarmup !== true).length} ×{' '}
-                    {workingRepsLabel(slot.sets)}
+                    {countedSets(slot.sets)} × {workingRepsLabel(slot.sets)}
                   </span>
                 </li>
               ))}
@@ -180,6 +179,19 @@ export function TrainPage() {
       </Section>
     </div>
   )
+}
+
+/**
+ * Sets to show for a slot.
+ *
+ * Working sets, except where a slot is *entirely* warm-up — a mobility
+ * drill or a foam-rolling block — in which case counting only working
+ * sets renders it as "0 ×", which reads as an error rather than as a
+ * warm-up.
+ */
+function countedSets(sets: readonly SetPrescription[]): number {
+  const working = sets.filter((set) => set.isWarmup !== true).length
+  return working > 0 ? working : sets.length
 }
 
 /** The rep target of a slot's first working set, for a one-line preview. */

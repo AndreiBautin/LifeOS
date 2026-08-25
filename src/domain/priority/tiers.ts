@@ -243,10 +243,14 @@ export const DEFAULT_MUSCLE_TIERS: MuscleTiers = [
     members: ['biceps', 'triceps', 'forearms', 'side-delts'],
     label: 'Specialising',
   },
-  { rank: 2, members: ['lats', 'upper-back', 'chest'], label: 'Building' },
+  // Front delts sit here rather than in the bottom tier so the overhead
+  // press keeps a real allocation. Its primary muscle is what decides how
+  // many sets it gets, and at tier 3 a lift meant to stay in the rotation
+  // was receiving maintenance volume.
+  { rank: 2, members: ['lats', 'upper-back', 'chest', 'front-delts'], label: 'Building' },
   {
     rank: 3,
-    members: ['front-delts', 'rear-delts', 'quads', 'hamstrings', 'glutes', 'calves', 'core'],
+    members: ['rear-delts', 'quads', 'hamstrings', 'glutes', 'calves', 'core'],
     label: 'Maintaining',
   },
 ]

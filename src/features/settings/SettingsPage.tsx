@@ -1,5 +1,5 @@
-import { useQuery } from '@tanstack/react-query'
-import { AlertTriangle, Download, HardDrive, Upload } from 'lucide-react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { AlertTriangle, Download, HardDrive, RefreshCw, Upload } from 'lucide-react'
 import { useId, useRef, useState } from 'react'
 
 import { useServices, useSettings } from '@/app/context'
@@ -9,7 +9,15 @@ import { asExerciseId } from '@/domain/ids/ids'
 import { trainingMaxFrom } from '@/domain/strength/one-rep-max'
 import { DEFAULT_INCREMENT, type WeightUnit } from '@/domain/units/weight'
 import { Badge, Button, Card, Section } from '@/components/shared/primitives'
+import { buildRpBlock } from '@/application/use-cases/programs/build-rp-block'
+import {
+  MAX_DAYS_PER_WEEK,
+  MAX_WEEKS_BEFORE_DELOAD,
+  MIN_DAYS_PER_WEEK,
+  MIN_WEEKS_BEFORE_DELOAD,
+} from '@/domain/autoregulation/schedule'
 import { useBackup } from '@/features/backup/useBackup'
+import { TierEditor } from './TierEditor'
 import {
   describePersistence,
   formatBytes,
@@ -30,6 +38,15 @@ export function SettingsPage() {
   const backup = useBackup()
   const fileInput = useRef<HTMLInputElement>(null)
   const [confirmReplace, setConfirmReplace] = useState('')
+
+  const client = useQueryClient()
+
+  const rebuild = useMutation({
+    mutationFn: () => buildRpBlock(settings, services),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: ['programs'] })
+    },
+  })
 
   const storage = useQuery({ queryKey: ['storage-status'], queryFn: storageStatus })
   const exercises = useQuery({ queryKey: ['exercises'], queryFn: () => services.exercises.all() })
@@ -121,6 +138,96 @@ export function SettingsPage() {
               calculate from a 1RM
             </button>
             ).
+          </p>
+        </Card>
+      </Section>
+
+      <Section
+        title="Priorities"
+        description="Tier 1 is highest. What you prioritise decides where inside each landmark band a muscle's weekly target lands."
+      >
+        <TierEditor
+          muscleTiers={settings.muscleTiers}
+          strengthTiers={settings.strengthTiers}
+          landmarks={settings.landmarks}
+          onMuscleTiers={(muscleTiers) => {
+            update({ muscleTiers })
+          }}
+          onStrengthTiers={(strengthTiers) => {
+            update({ strengthTiers })
+          }}
+        />
+
+        <Card className="mt-4">
+          <p className="text-ink-300 text-sm">
+            Changing a tier does not touch a block you are already running — that keeps a frozen
+            copy of what it started with, so a cycle in progress stays coherent. Build a new one to
+            train off these priorities.
+          </p>
+          <Button
+            variant="primary"
+            full
+            className="mt-3"
+            disabled={rebuild.isPending}
+            onClick={() => {
+              rebuild.mutate()
+            }}
+          >
+            <RefreshCw size={16} aria-hidden />
+            {rebuild.isPending ? 'Building…' : 'Build a block from these priorities'}
+          </Button>
+          {rebuild.isSuccess && (
+            <p className="text-good-500 mt-2 text-xs" role="status">
+              Built. Start it from Programs.
+            </p>
+          )}
+          {rebuild.isError && (
+            <p className="text-bad-500 mt-2 text-xs" role="alert">
+              {rebuild.error.message}
+            </p>
+          )}
+        </Card>
+      </Section>
+
+      <Section
+        title="Block"
+        description="Both of these autoregulate — session length moves the day count, performance moves the block length. Set a starting point."
+      >
+        <Card className="space-y-3">
+          <NumberSetting
+            label="Days per week"
+            value={settings.daysPerWeek}
+            onChange={(daysPerWeek) => {
+              if (daysPerWeek >= MIN_DAYS_PER_WEEK && daysPerWeek <= MAX_DAYS_PER_WEEK) {
+                update({ daysPerWeek })
+              }
+            }}
+          />
+          <NumberSetting
+            label="Weeks before a deload"
+            value={settings.weeksBeforeDeload}
+            onChange={(weeksBeforeDeload) => {
+              if (
+                weeksBeforeDeload >= MIN_WEEKS_BEFORE_DELOAD &&
+                weeksBeforeDeload <= MAX_WEEKS_BEFORE_DELOAD
+              ) {
+                update({ weeksBeforeDeload })
+              }
+            }}
+          />
+          <NumberSetting
+            label="Target session length"
+            suffix="min"
+            value={settings.targetSessionMinutes}
+            onChange={(targetSessionMinutes) => {
+              update({ targetSessionMinutes })
+            }}
+          />
+          <p className="text-ink-500 text-xs">
+            Days per week stays between {MIN_DAYS_PER_WEEK} and {MAX_DAYS_PER_WEEK}, and the block
+            between {MIN_WEEKS_BEFORE_DELOAD} and {MAX_WEEKS_BEFORE_DELOAD} weeks. Wanting to go
+            outside either range is a sign the volume is wrong rather than the schedule, and the app
+            will say so rather than adjusting.
           </p>
         </Card>
       </Section>

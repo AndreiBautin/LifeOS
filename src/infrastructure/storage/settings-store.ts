@@ -102,6 +102,25 @@ function mergeWithDefaults(parsed: unknown): AppSettings {
     landmarks: isRecord(stored.landmarks)
       ? { ...DEFAULT_SETTINGS.landmarks, ...(stored.landmarks as AppSettings['landmarks']) }
       : DEFAULT_SETTINGS.landmarks,
+    muscleTiers: Array.isArray(stored.muscleTiers)
+      ? (stored.muscleTiers as AppSettings['muscleTiers'])
+      : DEFAULT_SETTINGS.muscleTiers,
+    strengthTiers: Array.isArray(stored.strengthTiers)
+      ? (stored.strengthTiers as AppSettings['strengthTiers'])
+      : DEFAULT_SETTINGS.strengthTiers,
+    daysPerWeek: asBoundedNumber(stored.daysPerWeek, 2, 6, DEFAULT_SETTINGS.daysPerWeek),
+    weeksBeforeDeload: asBoundedNumber(
+      stored.weeksBeforeDeload,
+      4,
+      8,
+      DEFAULT_SETTINGS.weeksBeforeDeload,
+    ),
+    targetSessionMinutes: asBoundedNumber(
+      stored.targetSessionMinutes,
+      20,
+      180,
+      DEFAULT_SETTINGS.targetSessionMinutes,
+    ),
     e1rmFormula:
       stored.e1rmFormula === 'epley' ||
       stored.e1rmFormula === 'brzycki' ||
@@ -122,6 +141,19 @@ function mergeWithDefaults(parsed: unknown): AppSettings {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+/**
+ * A number that must fall inside a range, or the default.
+ *
+ * Clamping rather than rejecting would silently accept a nonsensical
+ * stored value as a boundary one — a days-per-week of 40 becoming 6 looks
+ * like a preference rather than the corruption it is.
+ */
+function asBoundedNumber(value: unknown, min: number, max: number, fallback: number): number {
+  return typeof value === 'number' && Number.isFinite(value) && value >= min && value <= max
+    ? value
+    : fallback
 }
 
 function asBoolean(value: unknown, fallback: boolean): boolean {

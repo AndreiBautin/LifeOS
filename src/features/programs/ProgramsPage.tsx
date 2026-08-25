@@ -24,7 +24,28 @@ export function ProgramsPage() {
   const { athlete } = useSettings()
   const client = useQueryClient()
 
-  const programs = useQuery({ queryKey: ['programs'], queryFn: () => services.programs.all() })
+  const programs = useQuery({
+    queryKey: ['programs'],
+    queryFn: async () => {
+      const all = await services.programs.all()
+
+      /*
+       * Renaissance Periodization blocks first.
+       *
+       * The repository sorts by when a program was last touched, which
+       * cannot distinguish between built-ins seeded in the same
+       * millisecond — so the shipped 5/3/1 programs, which are kept as an
+       * option rather than the default, were burying the ones a lifter is
+       * meant to start from.
+       */
+      return [...all].sort((a, b) => {
+        const aDefault = a.tags.includes('rp')
+        const bDefault = b.tags.includes('rp')
+        if (aDefault !== bDefault) return aDefault ? -1 : 1
+        return b.updatedAt.localeCompare(a.updatedAt)
+      })
+    },
+  })
   const activeInstance = useQuery({
     queryKey: ['instance', 'active'],
     queryFn: () => services.instances.active().then((instance) => instance ?? null),

@@ -5,7 +5,7 @@ import { builtInExercises } from '@/domain/exercises/catalogue'
 import type { Exercise } from '@/domain/exercises/exercise'
 import { asExerciseId, asInstanceId, asProgramId, type IdGenerator } from '@/domain/ids/ids'
 import type { ProgramInstance } from '@/domain/repositories/ports'
-import { seedIfEmpty } from '@/infrastructure/seed/seed'
+import { seedIfEmpty, syncBuiltInExercises } from '@/infrastructure/seed/seed'
 import { anEntry, aWorkout, BENCH, SQUAT } from '@/test/builders/workout'
 
 import { closeLiftDatabase, openLiftDatabase, type LiftDatabase } from './database'
@@ -288,3 +288,43 @@ function anExercise(overrides: Partial<Exercise>): Exercise {
   if (base === undefined) throw new Error('the built-in catalogue is empty')
   return { ...base, ...overrides }
 }
+
+describe('keeping the built-in library current', () => {
+  const deps = () => ({
+    exercises: createExerciseRepository(db),
+    programs: createProgramRepository(db),
+    ids: counterIds(),
+    now: new Date('2026-08-24T00:00:00Z'),
+  })
+
+  it('adds exercises an older install never received', async () => {
+    const exercises = createExerciseRepository(db)
+
+    // An install created before half the catalogue shipped.
+    const partial = builtInExercises().slice(0, 5)
+    await exercises.saveMany(partial)
+    expect(await exercises.count()).toBe(5)
+
+    const added = await syncBuiltInExercises(deps())
+
+    expect(added).toBe(builtInExercises().length - 5)
+    expect(await exercises.count()).toBe(builtInExercises().length)
+  })
+
+  it('leaves an edited built-in alone', async () => {
+    // Additive only. The lifter's version of an exercise they have
+    // customised must survive an app update that touches the catalogue.
+    const exercises = createExerciseRepository(db)
+    await seedIfEmpty(deps())
+
+    await exercises.save(anExercise({ id: asExerciseId('bench-press'), name: 'My Bench Cue' }))
+    await syncBuiltInExercises(deps())
+
+    expect((await exercises.byId(asExerciseId('bench-press')))?.name).toBe('My Bench Cue')
+  })
+
+  it('adds nothing when the library is already current', async () => {
+    await seedIfEmpty(deps())
+    expect(await syncBuiltInExercises(deps())).toBe(0)
+  })
+})

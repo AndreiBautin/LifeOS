@@ -27,7 +27,7 @@ import {
 import type { RpDay, RpSplit } from '@/domain/splits/rp-splits'
 import { rpFrequency, rpSplitForDays } from '@/domain/splits/rp-splits'
 import { slotVolume, type VolumeMap } from '@/domain/volume/accounting'
-import { emptyVolumeMap } from '@/domain/volume/landmarks'
+import { emptyVolumeMap, SECONDARY_SET_FRACTION } from '@/domain/volume/landmarks'
 import type { LandmarkSet } from '@/domain/volume/landmarks'
 import { DEFAULT_LANDMARKS } from '@/domain/volume/landmarks'
 
@@ -417,7 +417,7 @@ function fillHypertrophy(args: FillArgs): BuiltSlots {
      * still climbing. The floor keeps the anchor present even in week
      * one, because a day pinned to an exercise should contain it.
      */
-    const owed = shareOwed(exercise.primaryMuscle, args, addInto(committed, added))
+    const owed = anchorDemand(exercise, args, addInto(committed, added))
     const wanted = Math.max(
       recipe.minSetsPerSlot,
       Math.min(recipe.maxSetsPerSlot, Math.round(owed)),
@@ -558,6 +558,38 @@ function fillHypertrophy(args: FillArgs): BuiltSlots {
   }
 
   return { slots, spent: added }
+}
+
+/**
+ * How many sets of an anchored exercise the day actually wants.
+ *
+ * Judged across **every** muscle the movement trains, not just the one it
+ * is filed under. An overhead press is filed under front delts, whose
+ * published landmarks top out around six sets a week on the reasoning
+ * that pressing covers them — so scoring it on that muscle alone caps a
+ * featured lift at two sets, no matter what tier it is placed in.
+ *
+ * The press also pays the triceps and side delts, both specialisation
+ * targets here, and a set that feeds three hungry muscles is worth more
+ * than a set that feeds one. So the demand is the largest number of sets
+ * any single muscle would need from *this* movement, which for a
+ * secondary contribution means scaling by how much of a set it receives.
+ *
+ * `fittableSets` still caps the result against every affected muscle's
+ * MRV, so this raises the ask without letting it overrun.
+ */
+function anchorDemand(exercise: Exercise, args: FillArgs, committed: VolumeMap): number {
+  const contributions: readonly { muscle: MuscleGroup; perSet: number }[] = [
+    { muscle: exercise.primaryMuscle, perSet: 1 },
+    ...exercise.secondaryMuscles
+      .filter((muscle) => muscle !== exercise.primaryMuscle)
+      .map((muscle) => ({ muscle, perSet: SECONDARY_SET_FRACTION })),
+  ]
+
+  return contributions.reduce((best, { muscle, perSet }) => {
+    if (!args.splitDay.muscles.includes(muscle)) return best
+    return Math.max(best, shareOwed(muscle, args, committed) / perSet)
+  }, 0)
 }
 
 /**
