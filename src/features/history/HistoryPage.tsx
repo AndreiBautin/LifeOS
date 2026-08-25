@@ -49,7 +49,32 @@ export function HistoryPage() {
     library.find((exercise) => exercise.id === id)
 
   const completed = (workouts.data ?? []).filter((workout) => workout.status === 'completed')
-  const thisWeek = completed.filter((workout) => isWithinDays(workout.date, 7))
+
+  /*
+   * Abandoned sessions are listed too, and that is a correction.
+   *
+   * Walking away from a session mid-way keeps the record precisely
+   * because the work in it was real — three sets before the gym closed
+   * are three sets, and everything that reads history already treats
+   * them that way. The "last time" suggestion on the Train screen offers
+   * them as the number to beat, and the e1RM estimate counts them.
+   *
+   * This screen was the exception, and it made the app look broken in a
+   * specific way: a lifter who logged a top set and abandoned the rest
+   * was shown 305 lb as their last squat and an empty history in the same
+   * breath. Worse, a record nothing lists is a record nothing can delete.
+   *
+   * They are marked rather than blended in — an abandoned session is not
+   * a session you finished, and the badge is what stops the list implying
+   * otherwise.
+   */
+  const sessions = (workouts.data ?? []).filter(
+    (workout) => workout.status === 'completed' || workout.status === 'abandoned',
+  )
+
+  const abandoned = (workouts.data ?? []).filter((workout) => workout.status === 'abandoned')
+
+  const thisWeek = sessions.filter((workout) => isWithinDays(workout.date, 7))
 
   const weekVolume: VolumeMap | undefined =
     thisWeek.length > 0
@@ -60,8 +85,16 @@ export function HistoryPage() {
     <div>
       <header className="mb-6">
         <h1 className="text-ink-50 text-2xl font-semibold tracking-tight">History</h1>
+        {/*
+          Counted separately, because they are different claims. A
+          finished session is one you completed; an abandoned one is work
+          that happened inside a session you walked away from. Adding them
+          into a single total would overstate the first, and leaving the
+          second out entirely is what made this screen look empty.
+        */}
         <p className="text-ink-500 mt-0.5 text-sm">
           {completed.length} session{completed.length === 1 ? '' : 's'} logged
+          {abandoned.length > 0 && ` · ${String(abandoned.length)} abandoned`}
         </p>
       </header>
 
@@ -106,13 +139,13 @@ export function HistoryPage() {
           <Card>
             <p className="text-ink-500 text-sm">Loading…</p>
           </Card>
-        ) : completed.length === 0 ? (
+        ) : sessions.length === 0 ? (
           <Empty title="Nothing logged yet">
             <p>Finish a session and it will appear here.</p>
           </Empty>
         ) : (
           <ul className="space-y-2">
-            {completed.map((workout) => (
+            {sessions.map((workout) => (
               <li key={workout.id}>
                 <SessionRow
                   workout={workout}
@@ -187,6 +220,12 @@ function SessionRow({
         </div>
 
         <div className="flex shrink-0 items-center gap-2">
+          {/*
+            Said in a word rather than left to the set count. "Abandoned"
+            is why the session is short, and without it a two-set squat day
+            reads as a bad session rather than an interrupted one.
+          */}
+          {workout.status === 'abandoned' && <Badge tone="warn">Abandoned</Badge>}
           {workout.position !== undefined && (
             <Badge>
               C{workout.position.cycleNumber} W{workout.position.weekIndex + 1}
