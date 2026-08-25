@@ -40,9 +40,20 @@ export function ProgramPage() {
   const block = program.data?.blocks[0]
   const weeks = block?.weeks ?? []
 
-  // Opens on the week the lifter is actually in, not on week one.
-  const here = position.data ?? undefined
-  const current = weekIndex ?? here?.weekIndex ?? 0
+  /*
+   * The week the lifter is on, whether or not one has been recorded yet.
+   *
+   * A position is only written once a session is started, skipped or
+   * jumped to, so a fresh install has none — and gating on
+   * `position.data` being present meant the jump control was hidden from
+   * exactly the person who needs it. Someone arriving three weeks into a
+   * block, on a device that has never opened a session, had no way to say
+   * so: no dot on any tab, and no "start from here" however far they
+   * browsed. Week one by default is the right *reading* of an absent
+   * position; it must not also be an unchangeable one.
+   */
+  const currentWeek = position.data?.weekIndex ?? 0
+  const current = weekIndex ?? currentWeek
   const week = weeks[Math.min(current, Math.max(0, weeks.length - 1))]
 
   const library = exercises.data ?? []
@@ -85,7 +96,7 @@ export function ProgramPage() {
            * makes a page opened on week three indistinguishable from one
            * opened on week one and browsed forward.
            */
-          const isHere = index === here?.weekIndex
+          const isHere = index === currentWeek
 
           return (
             <button
@@ -130,13 +141,13 @@ export function ProgramPage() {
         to skip their way to the right week, and until they did the app
         would be counting the block from the wrong place.
       */}
-      {here !== undefined && current !== here.weekIndex && (
+      {current !== currentWeek && (
         <Card className="mb-5 flex items-center justify-between gap-3">
           <p className="text-ink-500 text-xs">
             You are on{' '}
-            {weeks[here.weekIndex]?.isDeload === true
+            {weeks[currentWeek]?.isDeload === true
               ? 'the deload'
-              : `week ${String(here.weekIndex + 1)}`}
+              : `week ${String(currentWeek + 1)}`}
             .
           </p>
           <Button
