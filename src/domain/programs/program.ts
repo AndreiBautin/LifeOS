@@ -128,7 +128,19 @@ export interface Slot {
  */
 export interface ProgramDay {
   readonly index: number
+  /** The day's name: the weekday and what it is built around. */
   readonly label: string
+  /**
+   * The second line: what kind of work it is, and what it trains.
+   *
+   * Separate from the label because they answer different questions and
+   * are read at different moments. "Tuesday — Low Bar Squat" is what you
+   * check on the way to the gym; "Strength and hypertrophy — Quads,
+   * Calves, Core · indirect: Hamstrings, Glutes" is what you check when
+   * deciding whether the week is balanced. Run together they make one
+   * unreadable heading, which is what they were.
+   */
+  readonly focus?: string
   readonly slots: readonly Slot[]
   readonly notes?: string
 }

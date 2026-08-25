@@ -1,5 +1,6 @@
 import { useSettings } from '@/app/context'
 import { STRENGTH_LIFT_SLUGS } from '@/domain/exercises/catalogue'
+import { RPE_SCALE } from '@/domain/framework/rpe'
 import { DEFAULT_RTS, estimatedMaxFromSet, FATIGUE_TARGETS } from '@/domain/framework/rts'
 import { asExerciseId } from '@/domain/ids/ids'
 import { STRENGTH_LIFT_LABELS, STRENGTH_LIFTS } from '@/domain/priority/tiers'
@@ -157,6 +158,34 @@ export function RtsExplainer() {
             At most {rts.maxBackoffSets}, so a day where the stopping rule is slow to fire still
             ends.
           </p>
+        </Card>
+      </Section>
+
+      <Section title="Reading the RPE" description="The one judgement the whole system rests on">
+        <Card>
+          <p className="text-ink-500 mb-3 text-xs">
+            Every load in this program descends from an RPE you typed, so a rating that is
+            consistently one point generous is a program running one point heavier than the one on
+            screen — and nothing downstream can tell. The question to answer is not how hard it
+            felt. It is how many more you could have done.
+          </p>
+
+          <ul className="space-y-2">
+            {RPE_SCALE.map((entry) => (
+              <li key={entry.rpe} className="flex gap-3">
+                <span className="text-ink-100 numeric w-8 shrink-0 text-sm font-semibold">
+                  {entry.rpe}
+                </span>
+                <div className="min-w-0">
+                  <p className="text-ink-300 text-sm">
+                    {entry.feel}
+                    <span className="text-ink-500 numeric"> · {entry.rir} in reserve</span>
+                  </p>
+                  <p className="text-ink-500 mt-0.5 text-xs">{entry.cue}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
         </Card>
       </Section>
     </>

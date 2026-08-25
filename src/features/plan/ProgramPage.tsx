@@ -95,7 +95,11 @@ export function ProgramPage() {
       </div>
 
       {week.days.map((day) => (
-        <Section key={day.index} title={day.label}>
+        <Section
+          key={day.index}
+          title={day.label}
+          {...(day.focus ? { description: day.focus } : {})}
+        >
           <Card className="space-y-2">
             {day.slots.map((slot) => (
               <SlotRow

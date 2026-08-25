@@ -48,7 +48,7 @@ describe('deriving the program', () => {
     )
 
     expect(after).not.toEqual(before)
-    expect(after.name).toBe('Chest')
+    expect(after.name).toBe('Chest · Bench press strength')
   })
 
   it('honours an exclusion made in settings', () => {

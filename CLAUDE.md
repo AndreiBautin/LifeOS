@@ -78,6 +78,16 @@ counts the volume the strength work already contributed before filling
 anything. Removing that subtraction turns one coherent program into a
 powerlifting block with a bodybuilding routine stapled to it.
 
+**Frequency comes from the volume, not from a floor.**
+`domain/volume/frequency.ts`. A muscle owed twenty-two sets a week cannot
+take them in two sittings; one owed four can. `requiredFrequency` divides
+the weekly target by a per-session ceiling and the assembler backfills
+against that. The flat floor it replaced was satisfied by _any_
+contribution, including the half-credit a row pays the biceps — so the
+upper back read as trained five days a week off one barbell row while
+being trained directly once. **Frequency counts direct work only**
+(`trainedDirectly`); half credit is right for volume and wrong here.
+
 **Landmarks stay ordered.** `MV ≤ MEV ≤ MAV ≤ MRV`, always. Check-ins
 move MAV only, within bounds, and only with three sessions of evidence.
 MEV never moves from a soreness rating.
@@ -126,11 +136,14 @@ warm-ups, the competition lift, compounds heaviest-first, isolation,
 conditioning. Without it a day opened with a maximal deadlift, went to a
 calf raise, and came back to a squat.
 
-**A day is named after what is in it.** `describeDay` reads the label off
-the finished slots, counting primary muscles only and ranking by share of
-the weekly target. A hardcoded "Monday — press and pull" is a claim that
-goes stale the moment a tier moves, and counting secondaries named an
-upper day after the core.
+**Names are derived, never written.** `describeDay` reads a day's `label`
+and `focus` off its finished slots; `describeBlock` reads the block's name
+and description off the tiers. A hardcoded "Monday — press and pull" is a
+claim that goes stale the moment a tier moves. The `focus` line separates
+direct work from what the day only pays incidentally, ranked by share of
+each muscle's weekly target — merging the two named an upper day after
+the core, because pull-ups pay it a fraction and its target is small
+enough for that fraction to win.
 
 **A low-rep set is worth less than a full one.** `hypertrophyCredit` in
 `domain/volume/accounting.ts` — linear below five reps, capped above.

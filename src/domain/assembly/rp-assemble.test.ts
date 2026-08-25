@@ -141,24 +141,106 @@ describe('naming a day after what is in it', () => {
   it('names the muscles the day is actually for', () => {
     // The hardcoded "Monday — press and pull" was a claim, not a
     // description: move a tier and the fill changes underneath it.
-    expect(week.days[0]?.label).toContain('Front delts')
-    expect(week.days[0]?.label).toContain('lats')
-    expect(week.days[1]?.label).toContain('calves')
-    expect(week.days[1]?.label).toContain('hamstrings')
+    expect(week.days[0]?.focus).toContain('Front delts')
+    expect(week.days[0]?.focus).toContain('Lats')
+    expect(week.days[1]?.focus).toContain('Calves')
+    expect(week.days[1]?.focus).toContain('Hamstrings')
   })
 
-  it('separates the lift from the muscles it grows', () => {
-    // Run together and lowercased, "low bar squat, quads, calves and
-    // hamstrings" reads as four muscles, one of them oddly specific.
-    expect(week.days[1]?.label).toContain(' · ')
-    expect(week.days[0]?.label).not.toContain(' · ')
+  it('separates the direct work from what the day only pays incidentally', () => {
+    /*
+     * Merged, the two named an upper day after the core: pull-ups pay it
+     * a fraction, and the core's weekly target is small enough for that
+     * fraction to outrank everything chosen on purpose. It is a real
+     * contribution and it is not what the day is for — which is exactly
+     * the line the two halves draw.
+     */
+    const monday = week.days[0]?.focus ?? ''
+    const [primary = '', indirect = ''] = monday.split(' · indirect: ')
+
+    expect(primary).not.toContain('Core')
+    expect(indirect).toContain('Core')
   })
 
-  it('does not name a day after a muscle it only trains incidentally', () => {
-    // Counting secondaries named an upper day after the core: pull-ups
-    // pay it a fraction, and the core's weekly target is small enough for
-    // that fraction to outrank everything chosen on purpose.
-    expect(week.days[0]?.label).not.toContain('core')
+  it('says whether a day is strength, hypertrophy or both', () => {
+    // Tuesday carries the squat and its accessories; Monday has no
+    // competition lift in it at all.
+    expect(week.days[1]?.focus).toMatch(/^Strength and hypertrophy/)
+    expect(week.days[0]?.focus).toMatch(/^Hypertrophy/)
+    expect(week.days[0]?.focus).not.toContain('Strength')
+  })
+
+  it('capitalises muscles the way the rest of the app does', () => {
+    // Lowercasing them was meant to signal they were a different kind of
+    // thing from the lift. It only made the label the one place in the
+    // app where a muscle looked like a common noun.
+    expect(week.days[1]?.focus).not.toContain('calves')
+    expect(week.days[1]?.focus).toContain('Calves')
+  })
+
+  it('names a lift-less day after its top muscles instead', () => {
+    expect(week.days[0]?.label).toMatch(/^Monday — [A-Z]/)
+    // As a phrase, so there is no capital stranded mid-sentence.
+    expect(week.days[0]?.label).not.toMatch(/ and [A-Z]/)
+  })
+})
+
+describe('how often a muscle is trained', () => {
+  const week = weekAt(build(), 5)
+
+  /** Days on which a muscle was the *primary* of some working slot. */
+  const directDays = (muscle: MuscleGroup): number =>
+    week.days.filter((day) =>
+      day.slots.some((slot) => {
+        if (slot.role === 'warmup' || slot.role === 'conditioning') return false
+        if (slot.exercise.kind !== 'specific') return false
+        if (!slot.sets.some((set) => set.isWarmup !== true)) return false
+        return lookup(slot.exercise.exerciseId)?.primaryMuscle === muscle
+      }),
+    ).length
+
+  /*
+   * The bug this pins down. The old floor counted *any* contribution —
+   * including the half-credit a row pays the biceps — so the upper back
+   * could read as trained five days a week off one barbell row, and the
+   * forearms could carry a thirteen-set target on a single direct
+   * session. Half credit is right for volume and wrong for frequency.
+   */
+  it('trains a specialised muscle directly more than once a week', () => {
+    for (const muscle of ['side-delts', 'biceps', 'triceps', 'forearms'] as const) {
+      expect(directDays(muscle), muscle).toBeGreaterThan(1)
+    }
+  })
+
+  it('trains a high-volume muscle more often than a low-volume one', () => {
+    // Side delts are owed roughly three times what the calves are. Equal
+    // frequency would mean tripling the size of each side-delt session.
+    expect(directDays('side-delts')).toBeGreaterThan(directDays('calves'))
+  })
+
+  it('does not let one session swallow a muscle`s whole week', () => {
+    for (const day of week.days) {
+      const perMuscle = new Map<MuscleGroup, number>()
+
+      for (const slot of day.slots) {
+        if (slot.role === 'warmup' || slot.role === 'conditioning') continue
+        if (slot.exercise.kind !== 'specific') continue
+        const exercise = lookup(slot.exercise.exerciseId)
+        if (exercise === undefined) continue
+
+        const working = slot.sets.filter((set) => set.isWarmup !== true).length
+        perMuscle.set(
+          exercise.primaryMuscle,
+          (perMuscle.get(exercise.primaryMuscle) ?? 0) + working,
+        )
+      }
+
+      for (const [muscle, sets] of perMuscle) {
+        // One slot may run to `maxSetsPerSlot`; the guard is against a day
+        // stacking several slots of the same muscle into a junk block.
+        expect(sets, `${day.label}: ${muscle}`).toBeLessThanOrEqual(10)
+      }
+    }
   })
 })
 

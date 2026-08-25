@@ -1,6 +1,7 @@
 import { Check, Minus, SkipForward } from 'lucide-react'
 import { useState } from 'react'
 
+import { coachRpe, describeRpe } from '@/domain/framework/rpe'
 import type { ExerciseId, WorkoutId } from '@/domain/ids/ids'
 import type { LoggedSet } from '@/domain/logging/workout-log'
 import { describePrescription } from '@/domain/programs/prescription'
@@ -162,6 +163,22 @@ function SetEditorPanel({
     return value.trim() === '' || !Number.isFinite(parsed) ? undefined : parsed
   }
 
+  /*
+   * Two different pieces of coaching, and they are not interchangeable.
+   *
+   * The target is an instruction read *before* the set — what to aim for.
+   * The entered value is a check read *after* it — what you just claimed,
+   * spelled out, so a mis-tapped 9 is caught while the set is still fresh
+   * enough to remember. Showing only the target would leave the reading
+   * uncalibrated, which is the whole failure mode: every load in an RTS
+   * program descends from a number the lifter typed, and nothing
+   * downstream can tell a wrong one from a right one.
+   */
+  const targetRpe = set.prescription.load.kind === 'rpe' ? set.prescription.load.target : undefined
+  const coaching = targetRpe === undefined || set.isWarmup ? undefined : coachRpe(targetRpe)
+
+  const entered = describeRpe(asNumber(rpe) ?? Number.NaN)
+
   return (
     <div className="border-accent-500/40 bg-ink-850 rounded-xl border p-3">
       <div className="mb-3 flex items-center justify-between">
@@ -202,9 +219,29 @@ function SetEditorPanel({
           onChange={(event) => {
             setRpe(event.target.value)
           }}
-          hint="—"
+          hint={targetRpe === undefined ? '—' : String(targetRpe)}
         />
       </div>
+
+      {/*
+        One line, under the field, replaced by the reading once there is
+        one. Stacking both would push the Log button off a phone screen,
+        and the target has done its job by the time a number is entered.
+      */}
+      {entered !== undefined ? (
+        <p className="text-ink-300 mt-2 text-xs">
+          <span className="text-ink-100 font-medium">
+            RPE {entered.rpe} · {entered.rir} in reserve
+          </span>{' '}
+          — {entered.cue}
+        </p>
+      ) : (
+        coaching !== undefined && (
+          <p className="text-ink-500 mt-2 text-xs">
+            <span className="text-ink-300 font-medium">Aim for RPE {targetRpe}.</span> {coaching}
+          </p>
+        )
+      )}
 
       <div className="mt-3 flex gap-2">
         <Button

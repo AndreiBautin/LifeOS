@@ -100,9 +100,14 @@ export function TrainPage() {
       {nextDay !== undefined ? (
         <Section title="Next session" description={week?.label}>
           <Card>
-            <div className="mb-3 flex items-center justify-between gap-2">
-              <h3 className="text-ink-50 text-lg font-semibold">{nextDay.label}</h3>
-              <div className="flex gap-1.5">
+            <div className="mb-3 flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <h3 className="text-ink-50 text-lg font-semibold">{nextDay.label}</h3>
+                {nextDay.focus !== undefined && (
+                  <p className="text-ink-500 mt-0.5 text-xs">{nextDay.focus}</p>
+                )}
+              </div>
+              <div className="flex shrink-0 gap-1.5">
                 {week?.isDeload === true && <Badge tone="warn">deload</Badge>}
                 <Badge>cycle {here?.cycleNumber ?? 1}</Badge>
               </div>

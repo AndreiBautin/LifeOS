@@ -17,7 +17,7 @@ describe('naming a block from its tiers', () => {
   it('names it after what is actually specialised', () => {
     const described = describeBlock(DEFAULT_MUSCLE_TIERS, DEFAULT_STRENGTH_TIERS)
 
-    expect(described.name).toBe('Arms and side delts')
+    expect(described.name).toBe('Arms and side delts · Bench press strength')
   })
 
   it('follows a tier when it moves', () => {
@@ -32,7 +32,7 @@ describe('naming a block from its tiers', () => {
       DEFAULT_STRENGTH_TIERS,
     )
 
-    expect(chestFocus.name).toBe('Chest')
+    expect(chestFocus.name).toBe('Chest · Bench press strength')
     expect(chestFocus.description).toContain('Chest specialised.')
     expect(chestFocus.description).toContain('Triceps building.')
     expect(chestFocus.description).toContain('Biceps maintained.')
@@ -44,7 +44,7 @@ describe('naming a block from its tiers', () => {
       DEFAULT_STRENGTH_TIERS,
     )
 
-    expect(armsAndLegs.name).toBe('Arms')
+    expect(armsAndLegs.name).toBe('Arms · Bench press strength')
   })
 
   it('does not collapse a partial group', () => {
@@ -55,13 +55,44 @@ describe('naming a block from its tiers', () => {
       DEFAULT_STRENGTH_TIERS,
     )
 
-    expect(bicepsOnly.name).toBe('Biceps and triceps')
+    expect(bicepsOnly.name).toBe('Biceps and triceps · Bench press strength')
   })
 
   it('names the lift leading the strength work', () => {
     const described = describeBlock(DEFAULT_MUSCLE_TIERS, DEFAULT_STRENGTH_TIERS)
 
     expect(described.description).toContain('Bench press leads the strength work.')
+  })
+
+  /*
+   * A block has two focuses and the title used to carry one. Two blocks
+   * with identical volume tiers, one leading with the bench and one with
+   * the deadlift, are different blocks and were indistinguishable by name.
+   */
+  it('carries the strength focus in the title, not only the volume focus', () => {
+    const deadliftLed = describeBlock(DEFAULT_MUSCLE_TIERS, [
+      { rank: 1, members: ['deadlift'], label: 'Specialising' },
+      { rank: 2, members: ['squat', 'bench'], label: 'Building' },
+    ])
+
+    expect(deadliftLed.name).toBe('Arms and side delts · Deadlift strength')
+  })
+
+  it('names every lead lift when more than one leads', () => {
+    const twoLifts = describeBlock(DEFAULT_MUSCLE_TIERS, [
+      { rank: 1, members: ['squat', 'deadlift'], label: 'Specialising' },
+      { rank: 2, members: ['bench'], label: 'Building' },
+    ])
+
+    expect(twoLifts.name).toContain('Squat and deadlift strength')
+  })
+
+  it('falls back to the volume focus alone when no lift leads', () => {
+    const flat = describeBlock(DEFAULT_MUSCLE_TIERS, [
+      { rank: 2, members: ['squat', 'bench', 'deadlift'], label: 'Building' },
+    ])
+
+    expect(flat.name).toBe('Arms and side delts')
   })
 })
 

@@ -136,10 +136,22 @@ export function describeBlock(
       : '',
   ].filter((sentence) => sentence !== '')
 
+  /*
+   * The title carries both focuses, because a block has two.
+   *
+   * "Arms and side delts" describes where the volume went and says
+   * nothing about where the strength went — and the strength tiers are a
+   * separate decision the lifter made, on a separate screen, that changes
+   * how the week actually feels. A block leading with the bench and one
+   * leading with the deadlift are different blocks under the same name.
+   */
+  const muscleFocus = top.length > 0 ? sentenceCase(list(top)) : 'General'
+  const liftFocus = leadLifts.length > 0 ? `${sentenceCase(list(leadLifts))} strength` : undefined
+
   return {
     // No 'RP block' prefix. Everything here is RP volume with RTS
     // strength, so naming it that distinguishes the block from nothing.
-    name: top.length > 0 ? sentenceCase(list(top)) : 'General',
+    name: liftFocus === undefined ? muscleFocus : `${muscleFocus} · ${liftFocus}`,
     description: sentences.join(' '),
   }
 }

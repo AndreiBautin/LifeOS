@@ -28,7 +28,8 @@ import {
 import { describeBlock } from '@/domain/priority/explain'
 import type { RpDay, RpSplit } from '@/domain/splits/rp-splits'
 import { rpFrequency, rpSplitForDays } from '@/domain/splits/rp-splits'
-import { slotVolume, type VolumeMap } from '@/domain/volume/accounting'
+import { countsAsWorking, slotVolume, type VolumeMap } from '@/domain/volume/accounting'
+import { requiredFrequency, setsPerSession } from '@/domain/volume/frequency'
 import { emptyVolumeMap, SECONDARY_SET_FRACTION } from '@/domain/volume/landmarks'
 import type { LandmarkSet } from '@/domain/volume/landmarks'
 import { DEFAULT_LANDMARKS } from '@/domain/volume/landmarks'
@@ -211,6 +212,20 @@ function buildWeek(
     (Object.keys(recipe.landmarks) as MuscleGroup[]).map((muscle) => [muscle, 0]),
   ) as Record<MuscleGroup, number>
 
+  /*
+   * Days on which a muscle was trained *directly*, counted apart from
+   * days it merely received a fraction from something else.
+   *
+   * The frequency floor used to count any contribution at all, so the
+   * upper back could read as trained five days a week — half a set at a
+   * time from rows and chin-ups — while a barbell row appeared once. Half
+   * credit is right for volume and wrong for frequency: a muscle is
+   * trained on a day when something trained it.
+   */
+  const directDays = Object.fromEntries(
+    (Object.keys(recipe.landmarks) as MuscleGroup[]).map((muscle) => [muscle, 0]),
+  ) as Record<MuscleGroup, number>
+
   const days: ProgramDay[] = []
   // Everything the week has used so far, so a later day can reach for
   // something else while anything else remains.
@@ -252,6 +267,7 @@ function buildWeek(
         ),
       ),
       daysTrained,
+      directDays,
       existingSlots: [...slots, ...conditioning],
       usedThisWeek,
     })
@@ -265,6 +281,10 @@ function buildWeek(
       if (dayTotal[muscle] > 0) daysTrained[muscle] += 1
     }
 
+    for (const muscle of trainedDirectly([...slots, ...filled.slots], deps.exercises)) {
+      directDays[muscle] += 1
+    }
+
     slots.push(...filled.slots)
     slots.push(...conditioning)
 
@@ -272,7 +292,7 @@ function buildWeek(
 
     days.push({
       index: dayIndex,
-      label: describeDay(splitDay, ordered, deps.exercises, targets),
+      ...describeDay(splitDay, ordered, deps.exercises, targets),
       slots: ordered,
     })
 
@@ -423,6 +443,8 @@ interface FillArgs {
   readonly alreadyUsed: ReadonlySet<ExerciseId>
   /** Days so far this week on which each muscle has received any work. */
   readonly daysTrained: Record<MuscleGroup, number>
+  /** Days so far on which each muscle was the *primary* muscle of a slot. */
+  readonly directDays: Record<MuscleGroup, number>
   /** Slots already placed today — warm-ups, strength, featured lift. */
   readonly existingSlots: readonly Slot[]
   /**
@@ -509,7 +531,18 @@ function fillHypertrophy(args: FillArgs): BuiltSlots {
     .map((muscle) => ({
       muscle,
       owed: shareOwed(muscle, args, addInto(committed, added)),
-      daysTrained: args.daysTrained[muscle],
+      /*
+       * How far behind its *own* required frequency this muscle is.
+       *
+       * Not the raw day count. Comparing side delts on two direct days
+       * against calves on two says they are equally served, when the
+       * first is owed twenty-two sets and needs four sessions and the
+       * second is owed seven and needs two. The deficit puts them in the
+       * order the volume actually implies.
+       */
+      behind:
+        requiredFrequency(args.targets[muscle], daysAvailableFor(muscle, args.split)) -
+        args.directDays[muscle],
     }))
     .filter((entry) => entry.owed >= recipe.minSetsPerSlot)
     /*
@@ -523,9 +556,7 @@ function fillHypertrophy(args: FillArgs): BuiltSlots {
      * fewer sessions than planned makes each one less recoverable, which
      * is the whole reason the target was split.
      */
-    .sort((a, b) =>
-      a.daysTrained !== b.daysTrained ? a.daysTrained - b.daysTrained : b.owed - a.owed,
-    )
+    .sort((a, b) => (a.behind !== b.behind ? b.behind - a.behind : b.owed - a.owed))
 
   for (const { muscle, owed } of debts) {
     if (slots.length >= recipe.maxHypertrophySlotsPerDay) break
@@ -582,18 +613,27 @@ function fillHypertrophy(args: FillArgs): BuiltSlots {
    * Splitting a weekly target across fewer sessions than planned makes
    * each session less recoverable, which is the reason the target was
    * split in the first place. So after the budget is spent, any muscle
-   * this day is accountable for that would otherwise end the week below
-   * twice-weekly gets one cheap slot.
+   * this day is accountable for that would otherwise end the week short
+   * of its required frequency gets one cheap slot.
+   *
+   * How short is "short" comes from the volume rather than a flat two —
+   * see `domain/volume/frequency.ts`. A muscle owed four sets a week is
+   * fine seeing them twice; one owed twenty-two is not, and the old floor
+   * could not tell them apart.
    */
+  const directToday = new Set(trainedDirectly(slots, deps.exercises))
+
   for (const muscle of splitDay.muscles) {
-    const trainedSoFar = args.daysTrained[muscle]
-    const gotWorkToday = added[muscle] > 0
+    if (directToday.has(muscle)) continue
+
+    const needed = requiredFrequency(args.targets[muscle], daysAvailableFor(muscle, args.split))
     const daysLeftTrainingIt = args.remainingDays.filter((day) =>
       day.muscles.includes(muscle),
     ).length
 
-    const projected = trainedSoFar + (gotWorkToday ? 1 : 0) + daysLeftTrainingIt
-    if (projected >= MINIMUM_WEEKLY_FREQUENCY || gotWorkToday) continue
+    // Every session left could train it and it would still fall short, so
+    // this one has to be one of them.
+    if (args.directDays[muscle] + daysLeftTrainingIt >= needed) continue
 
     const exercise = pickHypertrophyExercise(args, muscle, used, placed)
     if (exercise === undefined) continue
@@ -601,19 +641,34 @@ function fillHypertrophy(args: FillArgs): BuiltSlots {
     const count = fittableSets(exercise, recipe.minSetsPerSlot, recipe, addInto(committed, added))
     if (count < recipe.minSetsPerSlot) continue
 
-    used.add(exercise.id)
     const sets = hypertrophySets(exercise, count)
-    added = addInto(added, slotVolume(exercise, sets))
-    placed.push(exercise)
-
-    slots.push({
+    const slot: Slot = {
       id: asSlotId(deps.ids.next()),
       role: exercise.isCompound ? 'hypertrophy' : 'assistance',
       exercise: { kind: 'specific', exerciseId: exercise.id },
       sets,
       restSeconds: exercise.defaultRestSeconds ?? 120,
-      notes: 'Keeps this muscle at twice-weekly frequency.',
-    })
+      notes: `Frequency slot — this muscle needs ${String(needed)} sessions a week.`,
+    }
+
+    /*
+     * The backfill may run a session over, but not without limit.
+     *
+     * It used to ignore the clock entirely, which was survivable while
+     * the floor was two and it fired once or twice a week. Driven by
+     * volume it fires often enough to matter, and a frequency floor that
+     * turns a seventy-minute session into a hundred has traded one
+     * recovery problem for another.
+     */
+    const cost = slotMinutes(slot)
+    if (minutes + cost > recipe.targetSessionMinutes * BACKFILL_TIME_GRACE) continue
+
+    used.add(exercise.id)
+    added = addInto(added, slotVolume(exercise, sets))
+    minutes += cost
+    placed.push(exercise)
+    directToday.add(exercise.primaryMuscle)
+    slots.push(slot)
   }
 
   return { slots, spent: added }
@@ -655,12 +710,25 @@ function anchorDemand(exercise: Exercise, args: FillArgs, committed: VolumeMap):
  * This day's share of what a muscle still owes for the week.
  *
  * The remaining weekly target divided by the sessions left that train it,
- * so no single day claims a budget the rest of the week needs.
+ * so no single day claims a budget the rest of the week needs — then
+ * capped at the per-session dose the muscle's frequency implies.
+ *
+ * The cap is what stops the last accountable day of the week from
+ * sweeping up whatever the earlier ones left. Without it a muscle that
+ * was starved on Monday and Wednesday is handed nine sets on Friday, and
+ * a week that reads as hitting its total is really one session of junk
+ * volume wearing the total's clothes.
  */
 function shareOwed(muscle: MuscleGroup, args: FillArgs, committed: VolumeMap): number {
   const sessionsLeft = 1 + args.remainingDays.filter((day) => day.muscles.includes(muscle)).length
+  const share = Math.max(0, args.targets[muscle] - committed[muscle]) / Math.max(1, sessionsLeft)
 
-  return Math.max(0, args.targets[muscle] - committed[muscle]) / Math.max(1, sessionsLeft)
+  const dose = setsPerSession(
+    args.targets[muscle],
+    requiredFrequency(args.targets[muscle], daysAvailableFor(muscle, args.split)),
+  )
+
+  return Math.min(share, dose)
 }
 
 /** Minutes one slot costs: work plus rest, warm-ups rested through. */
@@ -669,8 +737,47 @@ function slotMinutes(slot: Slot): number {
   return slot.sets.reduce((total, set) => total + setSeconds(set, rest), 0) / 60
 }
 
-/** The floor every split here is built to satisfy. */
-const MINIMUM_WEEKLY_FREQUENCY = 2
+/**
+ * How far past its target session a frequency slot may push a day.
+ *
+ * Fifteen per cent: about one more accessory on a seventy-minute day.
+ */
+const BACKFILL_TIME_GRACE = 1.15
+
+/**
+ * Muscles a day trained *directly* — as the primary of some working slot.
+ *
+ * The distinction the frequency floor turns on. Half credit is the right
+ * answer for volume and the wrong one for frequency: a row paying the
+ * biceps half a set is real growth stimulus, and it is not a biceps
+ * session. Counting it as one is how the upper back could read as trained
+ * five days a week off a single barbell row.
+ */
+function trainedDirectly(
+  slots: readonly Slot[],
+  exercises: readonly Exercise[],
+): readonly MuscleGroup[] {
+  const direct = new Set<MuscleGroup>()
+
+  for (const slot of slots) {
+    // Warm-ups and conditioning are not what "trained today" means, and
+    // neither earns volume credit anywhere else either.
+    if (slot.role === 'warmup' || slot.role === 'conditioning') continue
+    const ref = slot.exercise
+    if (ref.kind !== 'specific') continue
+    if (!slot.sets.some(countsAsWorking)) continue
+
+    const exercise = exercises.find((candidate) => candidate.id === ref.exerciseId)
+    if (exercise !== undefined) direct.add(exercise.primaryMuscle)
+  }
+
+  return [...direct]
+}
+
+/** Sessions in the whole week's split that are accountable for a muscle. */
+function daysAvailableFor(muscle: MuscleGroup, split: RpSplit): number {
+  return split.days.filter((day) => day.muscles.includes(muscle)).length
+}
 
 /**
  * Every work set at one rep in reserve, held constant.
@@ -899,43 +1006,59 @@ const CONDITIONING_PLANS: Readonly<Record<string, { minutes: number; note: strin
  * "Monday — press and pull" was written into the split, which made it a
  * claim rather than a description: move a tier and the fill changes
  * underneath the label, and the session on screen stops matching the
- * words above it. Reading the label off the finished slots means it
- * cannot be wrong.
+ * words above it. Reading the name off the finished slots means it cannot
+ * be wrong.
  *
- * Built from the muscles that received the most work, capped at three so
- * the result is a name rather than an inventory. The competition lift is
- * named first when there is one, because it is what the day is organised
- * around even when the volume sits elsewhere.
+ * Two lines, because a session has two things worth knowing and they are
+ * wanted at different moments — see {@link ProgramDay.focus}.
  */
 function describeDay(
   splitDay: RpDay,
   slots: readonly Slot[],
   library: readonly Exercise[],
   targets: Record<MuscleGroup, number>,
-): string {
+): { readonly label: string; readonly focus?: string } {
   const lookup = (id: ExerciseId): Exercise | undefined =>
     library.find((exercise) => exercise.id === id)
 
-  const worked = emptyVolumeMap()
+  /*
+   * Direct and indirect work counted apart, because they are what the
+   * two halves of the name distinguish.
+   *
+   * Merging them named an upper day after the core: pull-ups pay it a
+   * fraction, and the core's weekly target is small enough for that
+   * fraction to dominate. It is a real contribution and it is not what
+   * the day is for, which is exactly the distinction being drawn.
+   */
+  const direct = emptyVolumeMap()
+  const indirect = emptyVolumeMap()
+
   let strengthName: string | undefined
+  let hasStrength = false
+  let hasHypertrophy = false
+  let hasConditioning = false
 
   for (const slot of slots) {
+    if (slot.role === 'conditioning') hasConditioning = true
     if (slot.exercise.kind !== 'specific') continue
     const exercise = lookup(slot.exercise.exerciseId)
     if (exercise === undefined) continue
 
-    if (slot.role === 'strength') strengthName = exercise.name
+    if (slot.role === 'strength') {
+      strengthName = exercise.name
+      hasStrength = true
+    }
+    if (slot.role === 'hypertrophy' || slot.role === 'assistance') hasHypertrophy = true
     if (slot.role === 'warmup' || slot.role === 'conditioning') continue
 
-    /*
-     * Primary muscles only, deliberately.
-     *
-     * Counting secondaries as well named an upper day after the core,
-     * because pull-ups pay it a fraction and the core's weekly target is
-     * small enough for that fraction to dominate. A lifter naming a
-     * session names what they chose the exercises *for*.
-     */
-    worked[exercise.primaryMuscle] += slot.sets.filter((set) => set.isWarmup !== true).length
+    const working = slot.sets.filter(countsAsWorking).length
+    if (working === 0) continue
+
+    direct[exercise.primaryMuscle] += working
+    for (const muscle of exercise.secondaryMuscles) {
+      if (muscle === exercise.primaryMuscle) continue
+      indirect[muscle] += working * SECONDARY_SET_FRACTION
+    }
   }
 
   /*
@@ -948,42 +1071,74 @@ function describeDay(
    * Share asks the question that actually distinguishes a session: of
    * everything this muscle gets in a week, how much is here?
    */
-  const top = (Object.keys(worked) as MuscleGroup[])
-    .filter((muscle) => worked[muscle] > 0)
-    .map((muscle) => ({ muscle, share: worked[muscle] / Math.max(1, targets[muscle]) }))
-    .sort((a, b) => b.share - a.share)
-    .slice(0, 4)
-    .map((entry) => MUSCLE_GROUP_LABELS[entry.muscle].toLowerCase())
+  const rank = (volume: VolumeMap, exclude: ReadonlySet<MuscleGroup>, limit: number) =>
+    (Object.keys(volume) as MuscleGroup[])
+      .filter((muscle) => volume[muscle] > 0 && !exclude.has(muscle))
+      .sort((a, b) => volume[b] / Math.max(1, targets[b]) - volume[a] / Math.max(1, targets[a]))
+      .slice(0, limit)
+
+  const primary = rank(direct, new Set(), 4)
+  // A muscle already named as trained directly is not also listed as an
+  // afterthought. Naming it twice reads as a mistake, which it would be.
+  const secondary = rank(indirect, new Set(primary), 3)
+
+  const label = (muscle: MuscleGroup): string => MUSCLE_GROUP_LABELS[muscle]
 
   /*
-   * The lift keeps its own capitalisation and is separated from the
-   * muscles rather than listed alongside them.
+   * The lift keeps its own capitalisation, and so now do the muscles.
    *
-   * Run together and lowercased, "low bar squat, quads, calves and
-   * hamstrings" reads as four muscles, one of which is oddly specific.
-   * They are different kinds of thing — one names the lift the day is
-   * built on, the rest name what it grows — and the punctuation should
-   * say so. The parenthetical variant is dropped: "Low Bar Squat", not
-   * "Low Bar Squat (competition)".
+   * Lowercasing them was an attempt to signal that they are a different
+   * kind of thing from the lift — but the app writes "Side delts"
+   * everywhere else, so the label was the one place a muscle looked like
+   * a common noun. Separators do that job; case should just be
+   * consistent. The parenthetical variant is dropped: "Low Bar Squat",
+   * not "Low Bar Squat (competition)".
    */
   const lift = strengthName?.replace(/\s*\([^)]*\)\s*/g, '').trim()
 
-  const muscles =
-    top.length === 0
-      ? undefined
-      : top.length === 1
-        ? top[0]
-        : `${top.slice(0, -1).join(', ')} and ${top[top.length - 1] ?? ''}`
+  // What kind of session it is, named from the roles actually present
+  // rather than from what the split intended to put there.
+  const kinds = [
+    hasStrength ? 'Strength' : '',
+    hasHypertrophy ? (hasStrength ? 'hypertrophy' : 'Hypertrophy') : '',
+    hasConditioning ? (hasStrength || hasHypertrophy ? 'conditioning' : 'Conditioning') : '',
+  ].filter((kind) => kind !== '')
 
-  if (lift === undefined && muscles === undefined) return splitDay.label
-  if (lift === undefined) return `${splitDay.label} — ${sentenceCase(muscles ?? '')}`
-  if (muscles === undefined) return `${splitDay.label} — ${lift}`
+  /*
+   * A day with no competition lift is named after its top two muscles,
+   * as a phrase rather than as a list.
+   *
+   * "Front delts and Lats" has a capital in the middle of a sentence, and
+   * that is what makes it look generated. In the focus line below each
+   * muscle is its own item and keeps its own capital; here they are words
+   * in a title, so only the first one gets one.
+   */
+  const headline =
+    lift ??
+    (primary.length > 0
+      ? sentenceCase(joinAnd(primary.slice(0, 2).map((muscle) => label(muscle).toLowerCase())))
+      : undefined)
 
-  return `${splitDay.label} — ${lift} · ${muscles}`
+  const focus = [
+    kinds.length > 0 ? joinAnd(kinds) : undefined,
+    primary.length > 0 ? primary.map(label).join(', ') : undefined,
+    secondary.length > 0 ? `indirect: ${secondary.map(label).join(', ')}` : undefined,
+  ].filter((part): part is string => part !== undefined)
+
+  return {
+    label: headline === undefined ? splitDay.label : `${splitDay.label} — ${headline}`,
+    ...(focus.length > 0 ? { focus: focus.join(' · ') } : {}),
+  }
 }
 
 function sentenceCase(value: string): string {
   return value.charAt(0).toUpperCase() + value.slice(1)
+}
+
+/** "a", "a and b", "a, b and c" — an Oxford-comma-free list. */
+function joinAnd(values: readonly string[]): string {
+  if (values.length <= 1) return values[0] ?? ''
+  return `${values.slice(0, -1).join(', ')} and ${values[values.length - 1] ?? ''}`
 }
 
 /**
