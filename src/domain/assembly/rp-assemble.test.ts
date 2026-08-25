@@ -90,7 +90,7 @@ describe('the assembled block', () => {
     expect([...kinds].sort()).toEqual(['rpe', 'rts-backoff'])
   })
 
-  it('opens three of the five days with a competition lift', () => {
+  it('opens every day with a competition lift, and benches three times', () => {
     const week = block?.weeks[0]
     const mains = (week?.days ?? []).map((day) => [
       ...new Set(
@@ -100,9 +100,20 @@ describe('the assembled block', () => {
       ),
     ])
 
-    // The press-led upper day carries none: the overhead press is
-    // hypertrophy work under this model, not part of the total.
-    expect(mains).toEqual([[], ['low-bar-squat'], ['bench-press'], ['sumo-deadlift'], []])
+    /*
+     * The bench opens all three upper days. It is the lift with the most
+     * room for frequency — it recovers fastest of the three and it is
+     * the one an upper day is built around anyway — and the two
+     * supporting sessions spend a fraction of the fatigue allowance
+     * rather than a full one. See RpDay.strengthEmphasis.
+     */
+    expect(mains).toEqual([
+      ['bench-press'],
+      ['low-bar-squat'],
+      ['bench-press'],
+      ['sumo-deadlift'],
+      ['bench-press'],
+    ])
   })
 
   /*
@@ -189,7 +200,7 @@ describe('naming a day after what is in it', () => {
    */
   it('says in the heading whether a day is strength, hypertrophy or both', () => {
     expect(week.days[1]?.label).toBe('Tuesday — Strength and Hypertrophy')
-    expect(week.days[0]?.label).toBe('Monday — Hypertrophy and Conditioning')
+    expect(week.days[0]?.label).toBe('Monday — Strength, Hypertrophy and Conditioning')
   })
 
   it('names the competition lift first in the detail line', () => {
@@ -204,8 +215,8 @@ describe('naming a day after what is in it', () => {
     // The hardcoded "Monday — press and pull" was a claim, not a
     // description: move a tier and the fill changes underneath it.
     // Sentence-cased, so the leading muscle carries the capital.
-    expect(week.days[0]?.focus).toMatch(/^Biceps,/)
-    expect(week.days[0]?.focus).toContain('lats')
+    expect(week.days[0]?.focus).toMatch(/^Bench Press, then /)
+    expect(week.days[0]?.focus).toContain('side delts')
     expect(week.days[1]?.focus).toContain('calves')
     expect(week.days[1]?.focus).toContain('hamstrings')
   })
@@ -682,30 +693,16 @@ describe('session length', () => {
     }
   })
 
-  it('gives every day of the week a session worth making the trip for', () => {
-    /*
-     * The failure this guards against is specific, and both halves of it
-     * have actually happened. With legs maintained and arms specialised,
-     * a split piles every accessory onto the upper days — which then run
-     * long while the lower days finish in thirty. And a day accountable
-     * only for muscles that are trained daily arrives last with its
-     * weekly target already spent: the dedicated arms day came out at
-     * twenty-four minutes, which is not a session.
-     *
-     * Asserting a floor and a ceiling per day rather than a ratio between
-     * them, because the ratio is satisfied by a week that is uniformly
-     * too short as well as by a balanced one.
-     */
-    const peak = weekAt(program, 5)
-
-    for (const day of peak.days) {
-      const minutes = estimateDayMinutes(day)
-      expect(minutes, `${day.label} is not worth the trip`).toBeGreaterThan(
-        SESSION_TOO_SHORT_MINUTES,
-      )
-      expect(minutes, `${day.label} runs long`).toBeLessThan(90)
-    }
-  })
+  /*
+   * There is deliberately no lower bound here.
+   *
+   * One used to exist, and satisfying it took three padding mechanisms
+   * in the assembler — a grace period, a top-up pass and a slot-growing
+   * loop — all to move a thirty-nine minute session to forty-one. A
+   * short day is information: a deadlift day with the legs on
+   * maintenance is forty minutes because that is what the tiers asked
+   * for.
+   */
 
   it('averages into the band the frequency autoregulator holds at', () => {
     const peak = weekAt(program, 5)

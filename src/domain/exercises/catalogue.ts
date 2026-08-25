@@ -508,22 +508,6 @@ const ENTRIES: readonly CatalogueEntry[] = [
     defaultRepRange: { low: 5, high: 30 },
     defaultRestSeconds: REST,
   },
-  {
-    slug: 'kb-single-leg-rdl',
-    name: 'Kettlebell Single Leg RDL',
-    primaryMuscle: 'hamstrings',
-    secondaryMuscles: ['glutes', 'core'],
-    equipment: 'kettlebell',
-    pattern: 'hinge',
-    isCompound: true,
-    intent: 'hypertrophy',
-    sfr: 3,
-    systemicCost: 0.25,
-    safeToFail: true,
-    isUnilateral: true,
-    defaultRepRange: { low: 5, high: 30 },
-    defaultRestSeconds: REST,
-  },
 
   /* ---- Core --------------------------------------------------------- */
   {

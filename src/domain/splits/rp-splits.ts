@@ -31,6 +31,28 @@ export interface RpDay {
   /** The competition lift that opens this day, if any. */
   readonly strengthLift?: StrengthLift
   /**
+   * How much fatigue this day is willing to spend on that lift.
+   *
+   * Needed the moment a lift appears more than once a week, and it is
+   * the half of the problem RTS does *not* solve on its own. The load
+   * autoregulates perfectly: the third bench session of the week asks
+   * for reps at an RPE, you are tired, and the weight that feels like
+   * that RPE is simply lighter. Nobody has to prescribe the reduction.
+   *
+   * The **fatigue allowance** does not autoregulate, because it is not a
+   * reading — it is a decision. `fatigueTargetPercent` says "keep taking
+   * back-offs until your estimated max has fallen this far", and left at
+   * the same value it asks for a full session's fatigue three times a
+   * week off a lift that only has one week to recover. That is how a
+   * chest target of twelve sets came out at eighteen.
+   *
+   * So one day carries the lift and the others support it. A `secondary`
+   * day scales the allowance down, which shortens the back-off block
+   * without touching the top set — the measurement still happens, and
+   * the estimate it feeds is still today's.
+   */
+  readonly strengthEmphasis?: 'primary' | 'secondary'
+  /**
    * Conditioning to close the day, as exercise slugs.
    *
    * Placed on days rather than left to the lifter because conditioning
@@ -90,30 +112,6 @@ const UPPER: readonly MuscleGroup[] = [
  * hard on Tuesday and then again on Wednesday for no reason.
  */
 const LOWER: readonly MuscleGroup[] = ['quads', 'hamstrings', 'glutes', 'calves', 'core']
-
-/**
- * The deadlift day is a pull day, and the back is on it by right.
- *
- * The week is lopsided by construction: with the legs entirely on
- * maintenance they ask for about twenty-three sets across two sessions,
- * while a specialised upper body asks for a hundred across three. Two
- * days for a fifth of the volume leaves the leg days short and the upper
- * days over.
- *
- * The previous answer was an overflow list — the arms as a second-class
- * claimant a leg day picked up once its own work was done. It balanced
- * the numbers and produced sessions nobody would write: an upright row
- * and a curl after a heavy deadlift, there because the arithmetic needed
- * somewhere to put them.
- *
- * Rowing and chinning after deadlifts is a session somebody *would*
- * write. The deadlift is a pull, it already pays the upper back more
- * than any other lift in the program, and following it with more pulling
- * is a coherent day rather than two half-days sharing a room. That is
- * why the back is listed here as ordinary accountability and the arms
- * are not listed at all.
- */
-const PULL: readonly MuscleGroup[] = ['lats', 'upper-back']
 
 const FULL_BODY_2: RpSplit = {
   id: 'rp-full-body-2',
@@ -210,6 +208,10 @@ const WEEK_5: RpSplit = {
       index: 0,
       label: 'Monday',
       muscles: UPPER,
+      // Opens the week on the bench, and supports it rather than carrying
+      // it — Wednesday is the day the lift is actually pushed.
+      strengthLift: 'bench',
+      strengthEmphasis: 'secondary',
       // The easiest conditioning after two rest days, and the cheapest
       // to place: a walk costs the week nothing wherever it lands.
       conditioning: ['incline-walk'],
@@ -229,6 +231,8 @@ const WEEK_5: RpSplit = {
       index: 2,
       label: 'Wednesday',
       muscles: UPPER,
+      // The heavy bench day. Mid-week, furthest from both leg days, and
+      // the one that spends the full fatigue allowance.
       strengthLift: 'bench',
       /*
        * The run goes here rather than on a lower day.
@@ -245,15 +249,15 @@ const WEEK_5: RpSplit = {
     {
       index: 3,
       label: 'Thursday',
-      // The pull day — see PULL. Rows and chin-ups after deadlifts,
-      // rather than curls after deadlifts.
-      muscles: [...LOWER, ...PULL],
+      muscles: LOWER,
       strengthLift: 'deadlift',
       warmUp: 'lower',
     },
     {
       index: 4,
       label: 'Friday',
+      strengthLift: 'bench',
+      strengthEmphasis: 'secondary',
       /*
        * Accountable for the whole upper body, not only for arms.
        *

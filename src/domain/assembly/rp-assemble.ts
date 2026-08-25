@@ -37,7 +37,6 @@ import { DEFAULT_LANDMARKS } from '@/domain/volume/landmarks'
 import {
   DEFAULT_DAYS_PER_WEEK,
   DEFAULT_WEEKS_BEFORE_DELOAD,
-  SESSION_TOO_SHORT_MINUTES,
 } from '@/domain/autoregulation/schedule'
 
 /**
@@ -375,7 +374,18 @@ function buildStrengthSlots(
 
   // A prioritised lift earns a higher fatigue target — more back-off
   // volume — while a maintained one gets the top set and little else.
-  const fatigueTarget = isDeload ? 0 : Math.round((2 + position * 5) * 10) / 10
+  /*
+   * A supporting day spends a fraction of the allowance, not all of it.
+   *
+   * The top set is untouched: it is a measurement, it costs one set, and
+   * the estimate it produces is what every later suggestion is built
+   * from — a lift benched three times a week should be measured three
+   * times a week. What shortens is the back-off block behind it.
+   */
+  const emphasis = day.strengthEmphasis ?? 'primary'
+  const allowance = emphasis === 'secondary' ? SECONDARY_STRENGTH_ALLOWANCE : 1
+
+  const fatigueTarget = isDeload ? 0 : Math.round((2 + position * 5 * allowance) * 10) / 10
 
   const topSetRpe = isDeload ? 6 : recipe.rts.topSetRpe
 
@@ -386,9 +396,21 @@ function buildStrengthSlots(
     notes: `Work up until this feels like RPE ${String(topSetRpe)}.`,
   }
 
+  /*
+   * The cap moves with the allowance, and it has to.
+   *
+   * The stopping rule already shortens a tired session on its own — a
+   * beaten-up lifter reaches the fatigue percentage in fewer sets — so
+   * one might argue the cap could stay. It cannot, because the app
+   * *materialises* the cap as slots and the volume accounting counts
+   * them. Leave it at six and the plan claims eighteen chest sets for a
+   * twelve-set target, then quietly delivers fourteen when the lifter
+   * stops early. A program that is only correct if you ignore it is not
+   * correct.
+   */
   const backoffCap = isDeload
     ? 1
-    : Math.max(1, Math.min(recipe.rts.maxBackoffSets, Math.round(2 + position * 4)))
+    : Math.max(1, Math.min(recipe.rts.maxBackoffSets, Math.round((2 + position * 4) * allowance)))
 
   /*
    * A fixed drop from today's top set, with no prescribed RPE.
@@ -741,50 +763,21 @@ function fillHypertrophy(args: FillArgs): BuiltSlots {
   }
 
   /*
-   * A day still not worth the trip takes work it does not strictly need.
+   * No padding pass, and deliberately none.
    *
-   * The passes above will not schedule a muscle that already has its
-   * weekly volume, which is right — that is how an overhead press stopped
-   * appearing every Friday for front delts sitting at twice their target.
-   * Applied to a squat day whose legs are all on maintenance it leaves
-   * twenty-five minutes: the competition lift, a calf raise, and a drive
-   * home.
+   * A minimum session length used to be enforced here, and satisfying it
+   * took three separate mechanisms: a grace period letting the frequency
+   * backfill overrun, a top-up pass that scheduled muscles already at
+   * their weekly target, and a loop that lengthened existing slots one
+   * set at a time. All of it existed to move a thirty-nine minute
+   * session to forty-one, and each piece had to be reasoned about again
+   * every time anything else moved.
    *
-   * Two or three sets past target on a maintained muscle is a smaller
-   * cost than a session nobody would bother attending, so a day under the
-   * floor is allowed to top itself up. The distinction from the frequency
-   * pass matters: that one padded days that were *already full enough*,
-   * which is the version worth refusing.
+   * A short day is information, not a defect. A deadlift session with
+   * the legs on maintenance runs forty minutes because that is what the
+   * tiers asked for, and the Plan screen already reports what the week
+   * does and does not deliver.
    */
-  if (minutes < SESSION_TOO_SHORT_MINUTES) {
-    for (const muscle of backfillOrder) {
-      if (minutes >= SESSION_TOO_SHORT_MINUTES) break
-
-      const exercise = pickHypertrophyExercise(args, muscle, used, placed)
-      if (exercise === undefined) continue
-
-      const count = fittableSets(exercise, recipe.minSetsPerSlot, recipe, addInto(committed, added))
-      if (count < recipe.minSetsPerSlot) continue
-
-      const sets = hypertrophySets(exercise, count)
-      const slot: Slot = {
-        id: asSlotId(deps.ids.next()),
-        role: exercise.isCompound ? 'hypertrophy' : 'assistance',
-        variant: exercise.isCompound ? 'Compound' : 'Isolation',
-        exercise: { kind: 'specific', exerciseId: exercise.id },
-        sets,
-        restSeconds: exercise.defaultRestSeconds ?? 120,
-        notes: 'Rounds the session out — this muscle is already at its weekly target.',
-      }
-
-      used.add(exercise.id)
-      added = addInto(added, slotVolume(exercise, sets))
-      minutes += slotMinutes(slot)
-      placed.push(exercise)
-      slots.push(slot)
-    }
-  }
-
   return { slots, spent: added }
 }
 
@@ -861,6 +854,18 @@ function trainedDirectly(
  * safely; at or below it, failing is a max attempt wearing a rep range.
  */
 const HEAVY_HYPERTROPHY_REPS = 6
+
+/**
+ * What share of the fatigue allowance a supporting session spends.
+ *
+ * Two fifths: enough that the day is real work on the lift rather than a
+ * token appearance, little enough that three sessions in a week cost
+ * roughly what one heavy one and a bit does. The number is arguable; the
+ * shape is not, because a lift trained three times a week cannot afford
+ * a full allowance on each without borrowing the recovery from whatever
+ * else the week was for.
+ */
+const SECONDARY_STRENGTH_ALLOWANCE = 0.4
 
 /** Sessions in the whole week's split that are accountable for a muscle. */
 function daysAvailableFor(muscle: MuscleGroup, split: RpSplit): number {

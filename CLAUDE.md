@@ -98,35 +98,38 @@ by deficit, not by the order muscles happen to appear in `RpDay.muscles`;
 that array is grouped by region, and walking it verbatim left the side
 delts last in `UPPER` and finishing blocks ten sets short.
 
-**A day under `SESSION_TOO_SHORT_MINUTES` may take work it does not
-need.** The one place at-target muscles are still scheduled, and the
-rationale is attendance rather than stimulus: a squat day whose legs are
-all on maintenance otherwise comes out at twenty-five minutes. Two sets
-past target on a maintained muscle beats a trip nobody makes. Do not
-widen this into general padding — padding days that were _already full
-enough_ is the behaviour the guard above exists to refuse.
+**There is no minimum session length.** Deliberately, after there was.
+Enforcing one took three mechanisms in the assembler — a grace period
+letting the frequency backfill overrun, a top-up pass scheduling muscles
+already at their target, and a loop lengthening existing slots one set at
+a time — all to move a thirty-nine minute session to forty-one. Each had
+to be reasoned about again every time anything else moved.
 
-**A day owns its muscles or it does not.** `RpDay.muscles`, one list, one
-fill pass. The five-day week is lopsided by construction — with the legs
-on maintenance they ask for about twenty-three sets across two sessions
-while a specialised upper body asks for a hundred across three — and
-there have now been two wrong answers to that.
+A short day is information. A deadlift day with the legs on maintenance
+runs twenty-five minutes because that is what the tiers asked for, and
+the Plan screen already reports what the week does and does not deliver.
+`targetSessionMinutes` stays as a **ceiling** — without it one day claims
+the whole week — but nothing pads upward.
+**Upper, lower, upper, lower, upper — and no borrowing.** `RpDay.muscles`,
+one list, one fill pass. Two earlier attempts at balancing the week are
+in the git history and both were wrong: listing the arms on every day
+(heavy pulls followed by upright rows) and an `overflowMuscles` list a
+leg day picked up once its own work was done (better ordering, same
+output). A deadlift day briefly owned the back as well, which was
+coherent while the lats were prioritised and stopped being so when they
+were not. What does not fit is reported on the Plan screen rather than
+tucked into whichever session had a gap.
 
-Listing the arms on every day was the first: a deadlift day was as
-entitled to a curl as Monday was, so heavy pulls were followed by upright
-rows. A lower-priority `overflowMuscles` list filled after the day's own
-work was the second: better ordering, same output, and it produced
-sessions nobody would write.
-
-The resolution is in the split, not the assembler. **The deadlift day is
-a pull day** — `PULL` in `rp-splits.ts` puts the lats and upper back on
-it as ordinary accountability, because rowing and chinning after
-deadlifts is a session somebody would actually write. Tuesday stays legs
-and core and comes in around forty minutes, which is not a day that went
-wrong; it is a maintained lower body carrying a heavy squat. What still
-does not fit is reported on the Plan screen rather than tucked into
-whichever session had a gap.
-
+**A lift trained more than once a week needs .** RTS
+autoregulates the _load_ on a third bench session — you are tired, the
+weight that feels like RPE 8 is lighter, nobody prescribes that. It does
+not autoregulate the **fatigue allowance**, because that is a decision,
+not a reading: left at the same value it asks for a full session of
+fatigue three times a week and a twelve-set chest target came out at
+eighteen. A day spends of it.
+The cap moves with the allowance too — the app materialises the cap as
+slots and counts them as volume, so a plan that is only correct if you
+stop early is not correct.
 **A muscle's target depends on its own tier and nothing else.**
 `priorityPosition` maps rank onto a position between
 `BOTTOM_TIER_POSITION` and `TOP_TIER_POSITION` and stops there. There

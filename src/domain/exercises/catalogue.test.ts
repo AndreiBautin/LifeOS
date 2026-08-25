@@ -66,6 +66,7 @@ describe('what the catalogue no longer ships', () => {
   const withdrawn: readonly (readonly [string, string])[] = [
     ['db-curl', 'the EZ bar version is easier to load'],
     ['upright-row', 'the lateral raise covers the side delts'],
+    ['kb-single-leg-rdl', 'hard to load'],
     ['incline-push-up', 'hard to load without an adjustable bench'],
     ['lunge', 'withdrawn earlier'],
     ['bulgarian-split-squat', 'withdrawn earlier'],
