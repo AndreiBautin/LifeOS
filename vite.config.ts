@@ -48,6 +48,22 @@ export default defineConfig(({ mode }) => {
         // is why there is no runtimeCaching block here.
         workbox: {
           globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+
+          /*
+           * The Firebase SDK is not part of the shell.
+           *
+           * Precaching it undoes the code splitting: every install would
+           * download it on first load whether or not sync is configured,
+           * which for a phone opened in a gym is a third of a megabyte
+           * bought for a feature most sessions never touch.
+           *
+           * Leaving it out costs nothing that matters. Sync needs a
+           * network by definition, so the one situation where a missing
+           * cache entry would hurt — offline — is a situation where the
+           * feature could not run anyway. Everything the app does without
+           * a network is still precached in full.
+           */
+          globIgnores: ['**/firebase-*.js', '**/firebase-*.js.map'],
           cleanupOutdatedCaches: true,
           // A client-side route requested cold must return the shell
           // rather than a 404 from the static host.
@@ -97,6 +113,23 @@ export default defineConfig(({ mode }) => {
     },
 
     build: {
+      rollupOptions: {
+        output: {
+          /*
+           * Firebase into one predictably named chunk.
+           *
+           * Rollup would otherwise name these after whatever module
+           * happened to be the entry point — `index.esm-<hash>.js` for
+           * the Firestore SDK — and a precache rule cannot exclude a name
+           * that generic without risking excluding something of ours.
+           * Naming it here is what lets the rule above be specific.
+           */
+          manualChunks: (id: string) =>
+            id.includes('node_modules/@firebase') || id.includes('node_modules/firebase')
+              ? 'firebase-sdk'
+              : undefined,
+        },
+      },
       target: 'es2022',
       sourcemap: true,
     },

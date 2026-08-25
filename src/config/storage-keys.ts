@@ -33,6 +33,14 @@ export const STORAGE_KEYS = {
    * longer holds.
    */
   syncState: `${PREFIX}.sync-state`,
+  /**
+   * A stable id for this device, not this account.
+   *
+   * Two devices share an account, and the whole point is that each can
+   * tell its own writes apart from the other one's. Regenerating it per
+   * load would make a device collect back everything it had ever sent.
+   */
+  deviceId: `${PREFIX}.device-id`,
 } as const
 
 /** The IndexedDB database name, kept in the same namespace as the keys. */

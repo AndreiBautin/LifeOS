@@ -1,0 +1,249 @@
+import {
+  collection,
+  doc,
+  getDocs,
+  limit as limitTo,
+  orderBy,
+  query,
+  serverTimestamp,
+  Timestamp,
+  where,
+  writeBatch,
+  type Firestore,
+  type QueryDocumentSnapshot,
+} from 'firebase/firestore'
+
+import type { CheckIn } from '@/domain/autoregulation/check-in'
+import type { Exercise } from '@/domain/exercises/exercise'
+import type { WorkoutLog } from '@/domain/logging/workout-log'
+import type { SyncTarget } from '@/domain/repositories/ports'
+import { CURSOR_START, decodeCursor, encodeCursor, laterCursor } from '@/domain/sync/cursor'
+import type { SyncPayload } from '@/domain/sync/payload'
+import { tombstoneKey, type Tombstone } from '@/domain/sync/tombstone'
+
+/**
+ * Firestore as a place to leave changes for another device to collect.
+ *
+ * One document per record, under `users/{uid}`, rather than one document
+ * per batch. Two reasons, and the second is the load-bearing one:
+ *
+ *   - A Firestore document caps at 1 MiB. A batch document would work
+ *     until the day a lifter with two years of history first synced, and
+ *     then fail permanently.
+ *   - A record keyed by its own id is *idempotent*. Pushing the same
+ *     workout twice leaves one workout. A log of batches accumulates
+ *     forever and makes a first sync replay every change ever made.
+ *
+ * Every document carries `syncedAt: serverTimestamp()`, and that field —
+ * not the record's own `updatedAt` — is what pulls are ordered and
+ * filtered by. The distinction is the whole reason this works across two
+ * devices: `updatedAt` is written by whichever phone or laptop touched
+ * the record, and two clocks disagree. A device four minutes fast would
+ * otherwise write records that appear four minutes in the future, and the
+ * other device would skip everything it did in that window.
+ */
+
+/** Kept short: it is repeated on every document. */
+const COLLECTIONS = {
+  exercises: 'exercises',
+  workouts: 'workouts',
+  checkIns: 'checkIns',
+  tombstones: 'tombstones',
+} as const
+
+/**
+ * How many documents one pull will take.
+ *
+ * A pull that returned everything would, on a first sync against a long
+ * history, build one enormous in-memory payload and write it in one
+ * transaction. Bounded instead: the cursor advances to the last document
+ * actually read, so the next exchange continues from there. A first sync
+ * takes several rounds and each one is small enough to survive a phone
+ * losing signal halfway through.
+ */
+export const PULL_PAGE_SIZE = 300
+
+interface StoredRecord {
+  readonly writtenBy: string
+  readonly syncedAt: Timestamp | null
+  readonly record: unknown
+}
+
+export interface FirestoreTargetOptions {
+  readonly db: Firestore
+  /** The signed-in account. Every document lives under it. */
+  readonly uid: string
+  /** This device, so it does not collect its own writes. */
+  readonly clientId: string
+}
+
+export function createFirestoreSyncTarget(options: FirestoreTargetOptions): SyncTarget {
+  const { db, uid, clientId } = options
+  const root = (name: string) => collection(db, 'users', uid, name)
+
+  return {
+    name: 'Firestore',
+
+    async pull(cursor: string | undefined) {
+      const from = decodeCursor(cursor)
+      const after = new Timestamp(from.seconds, from.nanoseconds)
+
+      const [exercises, workouts, checkIns, tombstones] = await Promise.all([
+        readSince(root(COLLECTIONS.exercises), after),
+        readSince(root(COLLECTIONS.workouts), after),
+        readSince(root(COLLECTIONS.checkIns), after),
+        readSince(root(COLLECTIONS.tombstones), after),
+      ])
+
+      const pages = [exercises, workouts, checkIns, tombstones]
+
+      /*
+       * The cursor advances to the newest document actually read, and no
+       * further.
+       *
+       * Not "now", and not the newest document that exists. Each
+       * collection is paged independently, so one of them may have
+       * stopped short of the others — advancing past what was read would
+       * skip the remainder permanently. Stopping at the high-water mark
+       * of what came back means the next pull re-reads a little and loses
+       * nothing.
+       */
+      const reached = pages.reduce((latest, page) => laterCursor(latest, page.reached), from)
+
+      return {
+        payload: {
+          exercises: exercises.records as readonly Exercise[],
+          workouts: workouts.records as readonly WorkoutLog[],
+          checkIns: checkIns.records as readonly CheckIn[],
+          tombstones: tombstones.records as readonly Tombstone[],
+        },
+        cursor: encodeCursor(reached),
+      }
+    },
+
+    async push(payload: SyncPayload) {
+      /*
+       * Written in chunks, because a Firestore batch holds at most 500
+       * operations and a first push carries a whole history.
+       *
+       * Not atomic across chunks, deliberately: a push interrupted
+       * halfway leaves some records written and the local watermark
+       * unmoved, so the next exchange sends the whole batch again. Writes
+       * are keyed by id, so re-sending is a no-op rather than a
+       * duplicate. Atomicity would buy nothing and cap the payload at 500
+       * records forever.
+       */
+      const operations = [
+        ...payload.exercises.map((record) => ({
+          path: COLLECTIONS.exercises,
+          id: record.id,
+          record,
+        })),
+        ...payload.workouts.map((record) => ({
+          path: COLLECTIONS.workouts,
+          id: record.id,
+          record,
+        })),
+        ...payload.checkIns.map((record) => ({
+          path: COLLECTIONS.checkIns,
+          id: record.id,
+          record,
+        })),
+        ...payload.tombstones.map((record) => ({
+          path: COLLECTIONS.tombstones,
+          id: tombstoneKey(record.collection, record.id),
+          record,
+        })),
+      ]
+
+      for (let index = 0; index < operations.length; index += BATCH_LIMIT) {
+        const batch = writeBatch(db)
+
+        for (const operation of operations.slice(index, index + BATCH_LIMIT)) {
+          batch.set(doc(root(operation.path), operation.id), {
+            writtenBy: clientId,
+            syncedAt: serverTimestamp(),
+            record: stripUndefined(operation.record),
+          })
+        }
+
+        await batch.commit()
+      }
+    },
+  }
+
+  async function readSince(
+    ref: ReturnType<typeof root>,
+    after: Timestamp,
+  ): Promise<{ records: readonly unknown[]; reached: { seconds: number; nanoseconds: number } }> {
+    const snapshot = await getDocs(
+      query(ref, where('syncedAt', '>', after), orderBy('syncedAt'), limitTo(PULL_PAGE_SIZE)),
+    )
+
+    const records: unknown[] = []
+    let reached = CURSOR_START
+
+    for (const document of snapshot.docs) {
+      const stored = document.data() as StoredRecord
+
+      /*
+       * A document whose server timestamp has not landed yet is skipped.
+       *
+       * `serverTimestamp()` reads as null locally between the write and
+       * the server's acknowledgement. Such a document has no position in
+       * the ordering, so taking it now would mean taking it again later
+       * from the same cursor — and, worse, could move the cursor past
+       * documents that do have one.
+       */
+      if (stored.syncedAt === null) continue
+
+      // This device's own writes. Collecting them would rewrite records
+      // over themselves and report work that never moved.
+      if (stored.writtenBy === clientId) {
+        reached = laterCursor(reached, toPosition(document))
+        continue
+      }
+
+      records.push(stored.record)
+      reached = laterCursor(reached, toPosition(document))
+    }
+
+    return { records, reached }
+  }
+}
+
+/** Firestore's cap on operations in one batched write. */
+const BATCH_LIMIT = 500
+
+function toPosition(document: QueryDocumentSnapshot): { seconds: number; nanoseconds: number } {
+  const stored = document.data() as StoredRecord
+  const at = stored.syncedAt
+
+  return at === null ? CURSOR_START : { seconds: at.seconds, nanoseconds: at.nanoseconds }
+}
+
+/**
+ * Firestore rejects `undefined` as a field value; the domain uses it
+ * throughout for "this record has no note / no bodyweight / no RPE".
+ *
+ * Dropping the key rather than writing null keeps the round trip exact:
+ * an absent optional field reads back as absent, which is what it was.
+ * Writing null would turn every unanswered RPE into an answered one whose
+ * answer is null, and `exactOptionalPropertyTypes` means the domain can
+ * tell the difference even when JavaScript cannot.
+ */
+export function stripUndefined<T>(value: T): T {
+  if (Array.isArray(value)) return value.map((item: unknown) => stripUndefined(item)) as T
+  if (value === null || typeof value !== 'object') return value
+  if (value instanceof Date) return value
+
+  const source = value as Record<string, unknown>
+  const result: Record<string, unknown> = {}
+
+  for (const [key, item] of Object.entries(source)) {
+    if (item === undefined) continue
+    result[key] = stripUndefined(item)
+  }
+
+  return result as T
+}

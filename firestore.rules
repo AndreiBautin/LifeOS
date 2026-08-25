@@ -1,0 +1,31 @@
+rules_version = '2';
+
+/*
+ * Every document belongs to exactly one account, and only that account
+ * can touch it.
+ *
+ * This file is the entire access control story. The Firebase config in
+ * the bundle is public by design — the API key identifies the project,
+ * it does not authorise anything — so these rules, and not the key, are
+ * what stand between a lifter's training history and the internet. A
+ * project left on the default "allow read, write: if true" test rules is
+ * world-readable regardless of what the client does.
+ */
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /users/{userId}/{collection}/{document} {
+      // Signed in, and asking for their own data. `request.auth` is null
+      // for an unauthenticated caller, so the null check is not
+      // redundant with the comparison.
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Anything not matched above is denied. Stated rather than left
+    // implicit, because a rules file that only ever grants is one edit
+    // away from granting something nobody meant to.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

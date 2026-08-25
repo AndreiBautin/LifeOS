@@ -62,6 +62,34 @@ The full account — what happens on install, on uninstall, on update, on
 storage cleanup, and what the app does about each — is in
 **[docs/PERSISTENCE.md](docs/PERSISTENCE.md)**.
 
+### Syncing two devices
+
+Optional, off unless configured, and off by default. Configure a Firebase
+project and a phone and a desktop can share one history; configure
+nothing and the app is exactly what it was — local, offline, and
+unaware a network exists.
+
+1. Create a Firebase project, enable **Google** as a sign-in provider,
+   and create a **Firestore** database.
+2. Copy the four values into `.env.local` (see `.env.example`).
+3. Publish `firestore.rules`. **Do not skip this** — a Firestore left on
+   the default test rules is readable by anyone who finds the project id.
+4. Settings → Sync → sign in, then **Sync now** on each device.
+
+Three things worth knowing before relying on it:
+
+- **Nothing syncs on its own.** There is no background loop and no timer,
+  deliberately: a sync that fires while a set is being logged is a
+  surprise in the middle of a working set. You press the button.
+- **The Firebase config in the bundle is public**, and that is not a
+  leak. A web config identifies a project; it authorises nothing. Access
+  is decided entirely by `firestore.rules`, which pins every document to
+  the account that owns it.
+- **Your position in the block does not sync.** It is the one record two
+  devices cannot reconcile by comparing timestamps — both advance the
+  same cursor and neither is wrong — so each device keeps its own. Train
+  on the phone and it stays right there.
+
 ## Running it
 
 Double-click `start-app.bat`, or:

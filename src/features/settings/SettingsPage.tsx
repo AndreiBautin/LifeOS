@@ -15,6 +15,8 @@ import {
   MIN_WEEKS_BEFORE_DELOAD,
 } from '@/domain/autoregulation/schedule'
 import { useBackup } from '@/features/backup/useBackup'
+import { SyncSection } from '@/features/sync/SyncSection'
+import { useSyncConfig } from '@/features/sync/useSync'
 import { MaxesEditor } from './MaxesEditor'
 import { TierEditor } from './TierEditor'
 import {
@@ -45,6 +47,12 @@ export function SettingsPage() {
 
   const storage = useQuery({ queryKey: ['storage-status'], queryFn: storageStatus })
   const exercises = useQuery({ queryKey: ['exercises'], queryFn: () => services.exercises.all() })
+
+  const syncConfig = useSyncConfig()
+  const dataLocation =
+    syncConfig.kind === 'configured'
+      ? 'On this device, and in your project if you have signed in'
+      : 'All of it is on this device and nowhere else'
 
   return (
     <div>
@@ -251,7 +259,15 @@ export function SettingsPage() {
         }}
       />
 
-      <Section title="Your data" description="All of it is on this device and nowhere else">
+      <SyncSection />
+
+      {/*
+        The description is computed, because the old one — "on this device
+        and nowhere else" — becomes a lie the moment a project is
+        configured, and a reassurance that is quietly false is worse than
+        none. It reports where the data is, not where it used to be.
+      */}
+      <Section title="Your data" description={dataLocation}>
         <Card className="space-y-4">
           <div className="flex items-start gap-3">
             <HardDrive size={18} className="text-ink-500 mt-0.5 shrink-0" aria-hidden />
