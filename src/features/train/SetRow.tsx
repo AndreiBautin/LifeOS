@@ -86,10 +86,25 @@ export function SetRow(props: Props) {
           >
             {done ? <Check size={14} /> : skipped ? <Minus size={14} /> : index + 1}
           </span>
-          <span
-            className={cn('numeric text-sm font-semibold', done ? 'text-good-500' : 'text-ink-100')}
-          >
-            {skipped ? 'Skipped' : summary}
+          <span className="flex flex-col">
+            <span
+              className={cn(
+                'numeric text-sm font-semibold',
+                done ? 'text-good-500' : 'text-ink-100',
+              )}
+            >
+              {skipped ? 'Skipped' : summary}
+            </span>
+            {/*
+              "Top set" and "Back-off" are the same exercise at the same
+              rack but are not interchangeable — the top set is the reading
+              everything after it is loaded from.
+            */}
+            {set.prescription.label !== undefined && (
+              <span className="text-ink-500 text-[11px] leading-tight">
+                {set.prescription.label}
+              </span>
+            )}
           </span>
         </span>
 
@@ -151,7 +166,7 @@ function SetEditorPanel({
     <div className="border-accent-500/40 bg-ink-850 rounded-xl border p-3">
       <div className="mb-3 flex items-center justify-between">
         <p className="text-ink-300 text-sm font-medium">
-          Set {index + 1}
+          {set.prescription.label ?? `Set ${String(index + 1)}`}
           <span className="text-ink-500"> · {describePrescription(set.prescription)}</span>
         </p>
         {previousLoad !== undefined && (

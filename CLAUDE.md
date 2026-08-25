@@ -85,6 +85,12 @@ MEV never moves from a soreness rating.
 **Readiness scales today, not the landmarks.** Sleep and stress adjust
 one session. They must never produce a landmark proposal.
 
+**One block ships, and the app opens on it.** `startDefaultProgram` in
+`infrastructure/seed/seed.ts` starts it when there is no instance at all.
+There is no program picker — choosing is a step that existed only because
+there was once something to choose between. Adding a second built-in
+means reintroducing that, so decide deliberately.
+
 **Skipping, abandoning and finishing are three different things.**
 Finishing advances the program and files a log. Skipping advances it and
 writes _nothing_ — a day trained elsewhere did not happen here.

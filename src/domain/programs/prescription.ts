@@ -71,6 +71,16 @@ export interface SetPrescription {
    * working sets; the ramp before them is not.
    */
   readonly isWarmup?: boolean
+  /**
+   * What this set is for, when that differs from the sets around it.
+   *
+   * "Top set" and "Back-off" are the same exercise at the same rack, so
+   * they belong in one slot — but they are not interchangeable, and the
+   * lifter needs to know which one they are standing under. The
+   * distinction lives on the set rather than on the slot for exactly that
+   * reason.
+   */
+  readonly label?: string
   readonly notes?: string
 }
 
@@ -156,9 +166,30 @@ export function validateSetPrescription(set: SetPrescription): void {
   validateRepTarget(set.reps)
 }
 
-/** Renders a prescription the way a lifter would read it: "85% × 5+". */
+/**
+ * Renders a prescription the way a lifter would read it: "5 @ RPE 8".
+ *
+ * Reps first, effort as a qualifier. Rendering it load-first produced
+ * "RPE 9 × 3–8", which reads as a multiplication of two unrelated
+ * quantities and put the number the lifter has to *do* at the end. An
+ * RPE is not a weight, so it does not belong in the "weight × reps"
+ * position that every training log has used for a century.
+ */
 export function describePrescription(set: SetPrescription): string {
-  return `${describeLoad(set.load)} × ${describeReps(set.reps)}`
+  const reps = describeReps(set.reps)
+
+  switch (set.load.kind) {
+    case 'rpe':
+      return `${reps} @ RPE ${String(set.load.target)}`
+    case 'open':
+      return reps
+    // Enumerated rather than defaulted, so adding a load kind fails the
+    // build here and someone decides how it should read.
+    case 'percent-e1rm':
+    case 'bodyweight':
+    case 'absolute':
+      return `${describeLoad(set.load)} × ${reps}`
+  }
 }
 
 export function describeLoad(load: LoadSource): string {

@@ -90,7 +90,7 @@ describe('the assembled block', () => {
     const week = block?.weeks[0]
     const mains = (week?.days ?? []).map((day) =>
       day.slots
-        .filter((slot) => slot.role === 'main')
+        .filter((slot) => slot.role === 'strength')
         .flatMap((slot) => (slot.exercise.kind === 'specific' ? [slot.exercise.exerciseId] : [])),
     )
 
@@ -99,21 +99,21 @@ describe('the assembled block', () => {
     expect(mains).toEqual([[], ['low-bar-squat'], ['bench-press'], ['sumo-deadlift'], []])
   })
 
-  it('separates the top set from the back-off work', () => {
-    // Two slots, not one. The top set is the measurement the rest of the
-    // session is loaded from, and burying it in a block of six identical
-    // rows leaves nowhere to stop and take the reading.
+  it('labels the top set and the back-offs inside one exercise', () => {
+    // One slot, not two. The top set and its back-offs are the same
+    // exercise in the same trip to the rack, so splitting them into two
+    // rows made a lifter scroll past the lift to find the rest of it.
+    // What needed distinguishing was the sets, and they carry labels.
     const benchDay = block?.weeks[0]?.days[2]
-    const main = benchDay?.slots.find((slot) => slot.role === 'main')
-    const backoff = benchDay?.slots.find((slot) => slot.role === 'strength')
+    const bench = benchDay?.slots.filter((slot) => slot.role === 'strength') ?? []
 
-    expect(main?.sets).toHaveLength(1)
-    expect(main?.sets[0]?.load.kind).toBe('rpe')
-    expect(main?.sets[0]?.notes).toMatch(/work up until this feels like/i)
+    expect(bench).toHaveLength(1)
 
-    expect(backoff?.sets.length).toBeGreaterThan(0)
-    expect(backoff?.notes).toMatch(/fatigue target/)
-    expect(backoff?.exercise).toEqual(main?.exercise)
+    const sets = bench[0]?.sets ?? []
+    expect(sets[0]?.label).toBe('Top set')
+    expect(sets[0]?.notes).toMatch(/work up until this feels like/i)
+    expect(sets.slice(1).every((set) => set.label === 'Back-off')).toBe(true)
+    expect(bench[0]?.notes).toMatch(/fatigue target/)
   })
 
   it('gives the prioritised lift more back-off volume than the maintained ones', () => {
@@ -313,7 +313,7 @@ describe('the split', () => {
     }
   })
 
-  it.each([2, 3, 4, 5, 6])('supports a %i-day week', (days) => {
+  it.each([2, 3, 5])('supports a %i-day week', (days) => {
     const program = build({ daysPerWeek: days })
     expect(program.blocks[0]?.weeks[0]?.days).toHaveLength(days)
   })

@@ -1,5 +1,5 @@
 import { builtInExercises } from '@/domain/exercises/catalogue'
-import type { IdGenerator } from '@/domain/ids/ids'
+import { asInstanceId, asProgramId, type IdGenerator } from '@/domain/ids/ids'
 import type {
   ExerciseRepository,
   InstanceRepository,
@@ -117,6 +117,45 @@ export async function syncBuiltInPrograms(
   for (const program of missing) await deps.programs.save(program)
 
   return { added: missing.map((program) => program.id as string), allIds }
+}
+
+/**
+ * Starts the default block when nothing is running.
+ *
+ * The app ships one program, and a lifter opening it should be looking at
+ * today's session rather than at a library with one thing in it and a
+ * button to press. Picking is a step that exists only because there was
+ * once something to pick between.
+ *
+ * Runs only when there is no instance at all — not merely no *active*
+ * one. A paused or completed run means the lifter has made a decision
+ * about what they are doing, and silently starting a fresh cycle over the
+ * top of it would lose their position.
+ */
+export async function startDefaultProgram(
+  deps: SeedDeps & { readonly instances: InstanceRepository },
+  programId: string,
+): Promise<boolean> {
+  const existing = await deps.instances.all()
+  if (existing.length > 0) return false
+
+  const program = await deps.programs.byId(asProgramId(programId))
+  if (program === undefined) return false
+
+  await deps.instances.save({
+    id: asInstanceId(deps.ids.next()),
+    programId: program.id,
+    templateSnapshot: program,
+    name: program.name,
+    startedAt: deps.now.toISOString(),
+    status: 'active',
+    cycleNumber: 1,
+    blockIndex: 0,
+    weekIndex: 0,
+    dayIndex: 0,
+  })
+
+  return true
 }
 
 /**

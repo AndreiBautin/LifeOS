@@ -1,5 +1,5 @@
 import { invariant } from '@/domain/errors/domain-error'
-import { WARM_UP_SLUGS } from '@/domain/exercises/catalogue'
+import { WARM_UPS } from '@/domain/exercises/catalogue'
 import type { Exercise } from '@/domain/exercises/exercise'
 import { HYPERTROPHY_RPE } from '@/domain/exercises/loading'
 import type { MuscleGroup } from '@/domain/exercises/taxonomy'
@@ -203,6 +203,8 @@ function buildWeek(
   ) as Record<MuscleGroup, number>
 
   const days: ProgramDay[] = []
+  // What the previous day contained, so today can avoid repeating it.
+  let yesterday: ReadonlySet<ExerciseId> = new Set()
 
   for (const [dayIndex, splitDay] of split.days.entries()) {
     const strength = strengthByDay[dayIndex]
@@ -241,6 +243,7 @@ function buildWeek(
       ),
       daysTrained,
       existingSlots: [...slots, ...conditioning],
+      yesterday,
     })
 
     committed = addInto(committed, filled.spent)
@@ -256,6 +259,12 @@ function buildWeek(
     slots.push(...conditioning)
 
     days.push({ index: dayIndex, label: splitDay.label, slots })
+
+    yesterday = new Set(
+      slots.flatMap((slot) =>
+        slot.exercise.kind === 'specific' ? [slot.exercise.exerciseId] : [],
+      ),
+    )
   }
 
   return {
@@ -338,7 +347,8 @@ function buildStrengthSlots(
   const topSet: SetPrescription = {
     load: { kind: 'rpe', target: topSetRpe },
     reps: { kind: 'fixed', reps: recipe.rts.topSetReps },
-    notes: `Top set — work up until this feels like RPE ${String(topSetRpe)}.`,
+    label: 'Top set',
+    notes: `Work up until this feels like RPE ${String(topSetRpe)}.`,
   }
 
   const backoffCap = isDeload
@@ -348,40 +358,29 @@ function buildStrengthSlots(
   const backoffs: SetPrescription[] = Array.from({ length: backoffCap }, (_unused, index) => ({
     load: { kind: 'rpe' as const, target: Math.max(6, topSetRpe - 0.5) },
     reps: { kind: 'fixed' as const, reps: recipe.rts.topSetReps },
+    label: 'Back-off',
     ...(index === 0
       ? { notes: `Stop when you are ${String(fatigueTarget)}% off the top set.` }
       : {}),
   }))
 
-  // Two slots, not one. The top set is the thing being measured — the
-  // whole session's loading is read off how it felt — and the back-off
-  // work is volume at a known distance from it. Presenting them as one
-  // block of six sets made a back-off look like six attempts at a max,
-  // and gave the lifter nowhere to stop and take the reading.
-  const slots: Slot[] = [
-    {
-      id: asSlotId(deps.ids.next()),
-      role: 'main',
-      exercise: { kind: 'specific', exerciseId },
-      sets: [topSet],
-      restSeconds: exercise.defaultRestSeconds ?? 180,
-      notes: isDeload
-        ? 'Deload — keep it easy.'
-        : `Work up to one set at RPE ${String(topSetRpe)}.`,
-    },
-    {
-      id: asSlotId(deps.ids.next()),
-      role: 'strength',
-      exercise: { kind: 'specific', exerciseId },
-      sets: backoffs,
-      restSeconds: exercise.defaultRestSeconds ?? 180,
-      notes: isDeload
-        ? 'Deload — one back-off, and keep it easy.'
-        : `${describeMethod(recipe.rts)} · ${String(fatigueTarget)}% fatigue target`,
-    },
-  ]
+  // One slot, with the sets labelled. The top set and its back-offs are
+  // the same exercise in the same trip to the rack; splitting them into
+  // two rows made a lifter scroll past the lift to find the rest of it.
+  // What actually needed distinguishing was the *sets*, and they carry
+  // their own labels.
+  const slot: Slot = {
+    id: asSlotId(deps.ids.next()),
+    role: 'strength',
+    exercise: { kind: 'specific', exerciseId },
+    sets: [topSet, ...backoffs],
+    restSeconds: exercise.defaultRestSeconds ?? 180,
+    notes: isDeload
+      ? 'Deload — top set and one back-off, both easy.'
+      : `${describeMethod(recipe.rts)} · ${String(fatigueTarget)}% fatigue target`,
+  }
 
-  return { slots, spent: slotVolume(exercise, [topSet, ...backoffs]) }
+  return { slots: [slot], spent: slotVolume(exercise, slot.sets) }
 }
 
 function describeMethod(rts: RtsPrescription): string {
@@ -412,6 +411,15 @@ interface FillArgs {
   readonly daysTrained: Record<MuscleGroup, number>
   /** Slots already placed today — warm-ups, strength, featured lift. */
   readonly existingSlots: readonly Slot[]
+  /**
+   * Exercises that appeared in yesterday's session.
+   *
+   * Avoided where there is any alternative. Two consecutive days of
+   * upright rows is the same local fatigue twice with no recovery
+   * between — and it reads, correctly, as the generator having run out
+   * of ideas.
+   */
+  readonly yesterday: ReadonlySet<ExerciseId>
 }
 
 function fillHypertrophy(args: FillArgs): BuiltSlots {
@@ -712,7 +720,19 @@ function pickHypertrophyExercise(
 
   if (candidates.length === 0) return undefined
 
+  /*
+   * Yesterday's exercises go last rather than being removed.
+   *
+   * A soft penalty, not a filter: for a muscle with one good option in a
+   * garage gym, excluding it outright would drop the muscle from the day
+   * entirely, which is a worse outcome than repeating it. Sorting it to
+   * the back means it is chosen only when nothing else can be.
+   */
   const ordered = [...candidates].sort((a, b) => {
+    const aYesterday = args.yesterday.has(a.id) ? 1 : 0
+    const bYesterday = args.yesterday.has(b.id) ? 1 : 0
+    if (aYesterday !== bYesterday) return aYesterday - bYesterday
+
     if (a.sfr !== b.sfr) return b.sfr - a.sfr
     const aCost = a.systemicCost ?? 0.3
     const bCost = b.systemicCost ?? 0.3
@@ -721,9 +741,13 @@ function pickHypertrophyExercise(
   })
 
   // Rotate slightly by day so the same muscle does not get the identical
-  // exercise every session of the week.
-  const offset = args.splitDay.index % ordered.length
-  return ordered[offset] ?? ordered[0]
+  // exercise every session of the week — but rotate only within the
+  // candidates that were not used yesterday, or the rotation would land
+  // back on one and undo the penalty above.
+  const fresh = ordered.filter((exercise) => !args.yesterday.has(exercise.id))
+  const pool = fresh.length > 0 ? fresh : ordered
+
+  return pool[args.splitDay.index % pool.length] ?? pool[0]
 }
 
 const STUB: SetPrescription = {
@@ -766,25 +790,21 @@ function warmUpSlots(
   day: RpDay,
   excluded: ReadonlySet<ExerciseId>,
 ): readonly Slot[] {
-  return WARM_UP_SLUGS[day.warmUp].flatMap((slug): Slot[] => {
-    const exercise = deps.exercises.find((candidate) => candidate.id === asExerciseId(slug))
+  return WARM_UPS[day.warmUp].flatMap((plan): Slot[] => {
+    const exercise = deps.exercises.find((candidate) => candidate.id === asExerciseId(plan.slug))
     if (exercise === undefined || excluded.has(exercise.id)) return []
-
-    const range = exercise.defaultRepRange ?? { low: 10, high: 15 }
 
     return [
       {
         id: asSlotId(deps.ids.next()),
         role: 'warmup',
         exercise: { kind: 'specific', exerciseId: exercise.id },
-        sets: [
-          {
-            load: { kind: 'open' },
-            reps: { kind: 'range', low: range.low, high: range.high },
-            // Warm-ups are flagged so nothing counts them as volume.
-            isWarmup: true,
-          },
-        ],
+        sets: Array.from({ length: plan.sets }, () => ({
+          load: { kind: 'open' as const },
+          reps: { kind: 'fixed' as const, reps: plan.reps },
+          // Warm-ups are flagged so nothing counts them as volume.
+          isWarmup: true,
+        })),
         restSeconds: 0,
         notes: 'Warm-up. Not counted toward volume.',
       },

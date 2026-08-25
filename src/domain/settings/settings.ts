@@ -1,4 +1,4 @@
-import type { ExerciseId } from '@/domain/ids/ids'
+import { asExerciseId, type ExerciseId } from '@/domain/ids/ids'
 import type { E1rmFormula } from '@/domain/strength/one-rep-max'
 import type { WeightUnit } from '@/domain/units/weight'
 import type { MuscleTiers, StrengthTiers } from '@/domain/priority/tiers'
@@ -75,8 +75,21 @@ export const SETTINGS_SCHEMA_VERSION = 1
 export const DEFAULT_SETTINGS: AppSettings = {
   units: 'lb',
   roundingIncrement: 5,
+  // From the same 5/3/1 export. Needed as well as the maxes: every
+  // strength standard is a multiple of bodyweight, so without it the
+  // character sheet can only say "set your bodyweight".
+  bodyweight: 183,
   landmarks: DEFAULT_LANDMARKS,
-  estimatedMaxes: {},
+  // Read out of the 5/3/1 export, each from the best completed work set
+  // in it: 260x5, 195x5, 315x5 and 130x5. A starting point for the RTS
+  // suggestions, not a claim — the top set corrects them the first time
+  // each lift is trained.
+  estimatedMaxes: {
+    [asExerciseId('low-bar-squat')]: 303,
+    [asExerciseId('bench-press')]: 228,
+    [asExerciseId('sumo-deadlift')]: 368,
+    [asExerciseId('overhead-press')]: 152,
+  },
   muscleTiers: DEFAULT_MUSCLE_TIERS,
   strengthTiers: DEFAULT_STRENGTH_TIERS,
   daysPerWeek: DEFAULT_DAYS_PER_WEEK,

@@ -53,6 +53,23 @@ export const SLOT_ROLE_LABELS: Record<SlotRole, string> = {
 }
 
 /**
+ * The badge tone each role reads in.
+ *
+ * Colour-coded because the role is the fastest way to tell, mid-session,
+ * whether the thing on screen is the lift the day is about or something
+ * to get through. Every role having the same grey badge meant reading the
+ * word every time.
+ */
+export const SLOT_ROLE_TONES: Record<SlotRole, 'neutral' | 'accent' | 'good' | 'warn' | 'bad'> = {
+  warmup: 'neutral',
+  main: 'accent',
+  strength: 'accent',
+  hypertrophy: 'good',
+  assistance: 'good',
+  conditioning: 'warn',
+}
+
+/**
  * Which exercise a slot is for.
  *
  * A slot may name one exercise, or describe the shape of an acceptable

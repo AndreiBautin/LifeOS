@@ -363,7 +363,7 @@ describe('keeping the built-in library current', () => {
 
     const result = await syncBuiltInPrograms(deps(), new Set())
 
-    expect(result.added).toEqual(['built-in-rp-block', 'built-in-rp-block-6day'])
+    expect(result.added).toEqual(['built-in-rp-block'])
     expect(await programs.count()).toBe(all.length)
   })
 

@@ -1,6 +1,8 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom'
 
+import { CharacterPage } from '@/features/character/CharacterPage'
 import { HistoryPage } from '@/features/history/HistoryPage'
+import { PlanPage } from '@/features/plan/PlanPage'
 import { NotFoundPage } from '@/features/not-found/NotFoundPage'
 import { ProgramDetailPage } from '@/features/programs/ProgramDetailPage'
 import { ProgramsPage } from '@/features/programs/ProgramsPage'
@@ -25,6 +27,8 @@ export const router = createBrowserRouter(
       children: [
         { index: true, element: <Navigate to="/train" replace /> },
         { path: 'train', element: <TrainPage /> },
+        { path: 'plan', element: <PlanPage /> },
+        { path: 'character', element: <CharacterPage /> },
         { path: 'programs', element: <ProgramsPage /> },
         { path: 'programs/:programId', element: <ProgramDetailPage /> },
         { path: 'history', element: <HistoryPage /> },

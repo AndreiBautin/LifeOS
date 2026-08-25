@@ -449,21 +449,6 @@ const ENTRIES: readonly CatalogueEntry[] = [
     defaultRepRange: { low: 10, high: 20 },
     defaultRestSeconds: REST,
   },
-  {
-    slug: 'behind-back-shrug',
-    name: 'Barbell Shrug (behind the back)',
-    primaryMuscle: 'upper-back',
-    secondaryMuscles: ['forearms'],
-    equipment: 'barbell',
-    pattern: 'isolation',
-    isCompound: false,
-    intent: 'hypertrophy',
-    sfr: 4,
-    systemicCost: 0.18,
-    safeToFail: true,
-    defaultRepRange: { low: 10, high: 20 },
-    defaultRestSeconds: REST,
-  },
 
   /* ---- Calves ------------------------------------------------------- */
   {
@@ -786,6 +771,23 @@ export function hypertrophyExercises(): readonly Exercise[] {
 export function conditioningExercises(): readonly Exercise[] {
   return builtInExercises().filter((exercise) => exercise.intent === 'conditioning')
 }
+
+/**
+ * The warm-up before each kind of day, with the reps actually prescribed.
+ *
+ * A range is right for work sets, where the lifter decides inside it. It
+ * is wrong here: "10–20" on a mobility drill is a question rather than an
+ * instruction, and the answer a lifter picks between sets is whichever
+ * number gets them to the bar soonest. A warm-up is done properly or not
+ * at all, so it says how many.
+ */
+export const WARM_UPS = {
+  upper: [
+    { slug: 'shoulder-dislocation', sets: 2, reps: 10 },
+    { slug: 'rotator-cuff-plate', sets: 2, reps: 12 },
+  ],
+  lower: [{ slug: 'foam-roll', sets: 1, reps: 10 }],
+} as const
 
 export const WARM_UP_SLUGS = {
   upper: ['shoulder-dislocation', 'rotator-cuff-plate'],

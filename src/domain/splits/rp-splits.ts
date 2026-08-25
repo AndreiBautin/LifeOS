@@ -93,47 +93,6 @@ const LOWER: readonly MuscleGroup[] = [
   ...SMALL_EVERY_DAY,
 ]
 
-const PUSH: readonly MuscleGroup[] = ['chest', 'front-delts', 'side-delts', 'triceps']
-const PULL: readonly MuscleGroup[] = ['lats', 'upper-back', 'rear-delts', 'biceps', 'forearms']
-
-/**
- * The default, and the one that fits the training already logged.
- *
- * Four days, upper/lower, every muscle twice. Only three of the four days
- * carry a competition lift — Upper A is led by the overhead press, which
- * under this model is heavy hypertrophy rather than part of the total.
- * That is also, conveniently, the day already trained this week.
- */
-const UPPER_LOWER_4: RpSplit = {
-  id: 'rp-upper-lower-4',
-  name: '4-day upper / lower',
-  description:
-    'Every muscle twice a week. Bench and squat lead the two middle days, the deadlift closes the week, and the press-led upper day carries no competition lift.',
-  daysPerWeek: 4,
-  days: [
-    {
-      index: 0,
-      label: 'Upper — press',
-      muscles: UPPER,
-      // Pinned to the session already trained this week: press, pull-ups,
-      // curls, lateral raises. Anchoring it keeps the block continuous
-      // with what was actually done, and keeps this day short enough that
-      // the accessory budget reaches the lower days.
-      anchors: ['overhead-press', 'pull-up', 'db-curl', 'db-lateral-raise'],
-      warmUp: 'upper',
-    },
-    { index: 1, label: 'Lower — squat', muscles: LOWER, strengthLift: 'squat', warmUp: 'lower' },
-    { index: 2, label: 'Upper — bench', muscles: UPPER, strengthLift: 'bench', warmUp: 'upper' },
-    {
-      index: 3,
-      label: 'Lower — deadlift',
-      muscles: LOWER,
-      strengthLift: 'deadlift',
-      warmUp: 'lower',
-    },
-  ],
-}
-
 const FULL_BODY_2: RpSplit = {
   id: 'rp-full-body-2',
   name: '2-day full body',
@@ -277,35 +236,7 @@ const WEEK_5: RpSplit = {
   ],
 }
 
-const PPL_6: RpSplit = {
-  id: 'rp-ppl-6',
-  name: '6-day push / pull / legs',
-  description:
-    'Two rotations of push, pull and legs. The highest frequency the schedule allows, and the most room for a specialisation block.',
-  daysPerWeek: 6,
-  days: [
-    { index: 0, label: 'Push — bench', muscles: PUSH, strengthLift: 'bench', warmUp: 'upper' },
-    { index: 1, label: 'Pull', muscles: PULL, warmUp: 'upper' },
-    { index: 2, label: 'Legs — squat', muscles: LOWER, strengthLift: 'squat', warmUp: 'lower' },
-    { index: 3, label: 'Push', muscles: PUSH, warmUp: 'upper' },
-    { index: 4, label: 'Pull', muscles: PULL, warmUp: 'upper' },
-    {
-      index: 5,
-      label: 'Legs — deadlift',
-      muscles: LOWER,
-      strengthLift: 'deadlift',
-      warmUp: 'lower',
-    },
-  ],
-}
-
-export const RP_SPLITS: readonly RpSplit[] = [
-  FULL_BODY_2,
-  FULL_BODY_3,
-  UPPER_LOWER_4,
-  WEEK_5,
-  PPL_6,
-]
+export const RP_SPLITS: readonly RpSplit[] = [FULL_BODY_2, FULL_BODY_3, WEEK_5]
 
 export function rpSplitForDays(daysPerWeek: number): RpSplit {
   const found = RP_SPLITS.find((split) => split.daysPerWeek === daysPerWeek)

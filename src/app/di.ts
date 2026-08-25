@@ -16,10 +16,14 @@ import {
   createProgramRepository,
   createWorkoutRepository,
 } from '@/infrastructure/db/repositories'
-import { RETIRED_BUILT_IN_PROGRAM_IDS } from '@/infrastructure/seed/built-in-programs'
+import {
+  DEFAULT_PROGRAM_ID,
+  RETIRED_BUILT_IN_PROGRAM_IDS,
+} from '@/infrastructure/seed/built-in-programs'
 import {
   retireBuiltInPrograms,
   seedIfEmpty,
+  startDefaultProgram,
   syncBuiltInExercises,
   syncBuiltInPrograms,
 } from '@/infrastructure/seed/seed'
@@ -128,12 +132,20 @@ export async function bootstrap(): Promise<BootstrapResult> {
   // and then handed straight back on the next start.
   recordDeliveredBuiltIns([...programSync.allIds, ...RETIRED_BUILT_IN_PROGRAM_IDS])
 
+  // One program ships, so there is nothing to choose between: open the app
+  // on today's session rather than on a library with one entry.
+  const autoStarted = await startDefaultProgram(
+    { ...seedDeps, instances: services.instances },
+    DEFAULT_PROGRAM_ID,
+  )
+
   logger.info('app.bootstrap', {
     exercisesSeeded: seeded.exercisesAdded,
     programsSeeded: seeded.programsAdded,
     exercisesAddedBySync: exercisesAdded,
     programsAddedBySync: programSync.added.length,
     programsRetired: retired.length,
+    autoStarted,
   })
 
   return { services, seeded }

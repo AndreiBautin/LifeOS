@@ -28,19 +28,13 @@ interface BuiltInDefinition {
   readonly recipe: RpRecipe
 }
 
+/** The one block the app ships, and opens on. */
+export const DEFAULT_PROGRAM_ID = 'built-in-rp-block'
+
 const DEFINITIONS: readonly BuiltInDefinition[] = [
   {
-    id: 'built-in-rp-block',
+    id: DEFAULT_PROGRAM_ID,
     recipe: defaultRpRecipe(),
-  },
-  {
-    id: 'built-in-rp-block-6day',
-    recipe: defaultRpRecipe({
-      name: 'RP block — 6-day push / pull / legs',
-      description:
-        'The same tiers and landmarks spread across six sessions. More room for a specialisation block, and shorter days.',
-      daysPerWeek: 6,
-    }),
   },
 ]
 
@@ -61,6 +55,7 @@ export const BUILT_IN_PROGRAM_COUNT = DEFINITIONS.length
 
 /** Ids of built-ins that shipped once and have since been withdrawn. */
 export const RETIRED_BUILT_IN_PROGRAM_IDS: readonly string[] = [
+  'built-in-rp-block-6day',
   'built-in-531-bbb',
   'built-in-531-bbb-ul',
   'built-in-531-ppl',

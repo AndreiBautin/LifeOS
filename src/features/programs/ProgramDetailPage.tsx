@@ -7,7 +7,12 @@ import { forkProgram, saveProgram } from '@/application/use-cases/programs/manag
 import { useServices, useSettings } from '@/app/context'
 import { asProgramId, type ProgramId } from '@/domain/ids/ids'
 import { describePrescription } from '@/domain/programs/prescription'
-import { SLOT_ROLE_LABELS, type ProgramTemplate, type ProgramWeek } from '@/domain/programs/program'
+import {
+  SLOT_ROLE_LABELS,
+  SLOT_ROLE_TONES,
+  type ProgramTemplate,
+  type ProgramWeek,
+} from '@/domain/programs/program'
 import { Badge, Button, Card, Section } from '@/components/shared/primitives'
 import { buttonStyles } from '@/components/shared/styles'
 import { cn } from '@/lib/cn'
@@ -295,7 +300,7 @@ function WeekView({
                             ? exerciseName(slot.exercise.exerciseId)
                             : slot.exercise.label}
                         </span>
-                        <Badge tone={slot.role === 'main' ? 'accent' : 'neutral'}>
+                        <Badge tone={SLOT_ROLE_TONES[slot.role]}>
                           {SLOT_ROLE_LABELS[slot.role]}
                         </Badge>
                       </span>
