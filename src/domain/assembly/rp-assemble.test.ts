@@ -218,12 +218,23 @@ describe('naming a day after what is in it', () => {
      * contribution and it is not what the day is for — which is exactly
      * the line the two sentences draw.
      */
-    const [trains = '', aside = ''] = (week.days[2]?.focus ?? '').split(' Some ')
+    /*
+     * Asserted as disjointness across every day rather than by naming a
+     * muscle on a particular one. Which muscle a session pays only
+     * incidentally moves whenever the fill moves, and a test that names
+     * one is a test that fails for reasons unrelated to the rule.
+     */
+    for (const day of week.days) {
+      const [trains = '', aside = ''] = (day.focus ?? '').split(' Some ')
+      if (aside === '') continue
 
-    // Wednesday benches and chins. Both pay the triceps a fraction and
-    // neither is chosen for them.
-    expect(trains).not.toContain('triceps')
-    expect(aside).toContain('triceps')
+      const incidental = aside.replace(/\.$/, '').split(/,\s*|\s+and\s+/)
+      expect(incidental.length).toBeGreaterThan(0)
+
+      for (const muscle of incidental) {
+        expect(trains, `${day.label}: ${muscle} named twice`).not.toContain(muscle)
+      }
+    }
   })
 
   it('reads as sentences rather than as delimited fields', () => {

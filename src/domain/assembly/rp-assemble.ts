@@ -37,6 +37,7 @@ import { DEFAULT_LANDMARKS } from '@/domain/volume/landmarks'
 import {
   DEFAULT_DAYS_PER_WEEK,
   DEFAULT_WEEKS_BEFORE_DELOAD,
+  SESSION_TOO_SHORT_MINUTES,
 } from '@/domain/autoregulation/schedule'
 
 /**
@@ -650,8 +651,48 @@ function fillHypertrophy(args: FillArgs): BuiltSlots {
    */
   const directToday = new Set(trainedDirectly(slots, deps.exercises))
 
-  for (const muscle of splitDay.muscles) {
+  /*
+   * Neediest first, not declaration order.
+   *
+   * This loop used to walk `splitDay.muscles` in the order the array was
+   * written, and the array is grouped by region — the side delts sit last
+   * in `UPPER` because that is a tidy way to write a list, not because
+   * they matter least. So the one muscle with the largest target in the
+   * whole program was the last one the backfill considered, and on a day
+   * with a bench press in it the grace period was gone by the time its
+   * turn came. It finished a block on ten of twenty sets while a
+   * maintained chest was collecting a second session.
+   *
+   * Ordered by the same deficit the main fill uses, so the two passes
+   * cannot disagree about who needs the work most.
+   */
+  const backfillOrder = [...splitDay.muscles].sort((a, b) => {
+    const behind = (muscle: MuscleGroup): number =>
+      requiredFrequency(args.targets[muscle], daysAvailableFor(muscle, args.split)) -
+      args.directDays[muscle]
+
+    if (behind(a) !== behind(b)) return behind(b) - behind(a)
+    return args.targets[b] - args.targets[a]
+  })
+
+  for (const muscle of backfillOrder) {
     if (directToday.has(muscle)) continue
+
+    /*
+     * Frequency is how a target gets spread, not a target of its own.
+     *
+     * A muscle already at its weekly volume has nothing left to spread,
+     * and scheduling it anyway buys fatigue and no stimulus. The floor
+     * of two sessions was being applied to the front delts — asking for
+     * three sets a week while the bench press and dips paid them ten —
+     * so every Friday got an overhead press to satisfy an arithmetic
+     * minimum for a muscle that was already at three times its target.
+     *
+     * Checked against what the week has *committed*, secondary credit
+     * included, because that is what the muscle actually receives.
+     */
+    const stillOwed = args.targets[muscle] - addInto(committed, added)[muscle]
+    if (stillOwed <= 0) continue
 
     const needed = requiredFrequency(args.targets[muscle], daysAvailableFor(muscle, args.split))
     const daysLeftTrainingIt = args.remainingDays.filter((day) =>
@@ -697,6 +738,51 @@ function fillHypertrophy(args: FillArgs): BuiltSlots {
     placed.push(exercise)
     directToday.add(exercise.primaryMuscle)
     slots.push(slot)
+  }
+
+  /*
+   * A day still not worth the trip takes work it does not strictly need.
+   *
+   * The passes above will not schedule a muscle that already has its
+   * weekly volume, which is right — that is how an overhead press stopped
+   * appearing every Friday for front delts sitting at twice their target.
+   * Applied to a squat day whose legs are all on maintenance it leaves
+   * twenty-five minutes: the competition lift, a calf raise, and a drive
+   * home.
+   *
+   * Two or three sets past target on a maintained muscle is a smaller
+   * cost than a session nobody would bother attending, so a day under the
+   * floor is allowed to top itself up. The distinction from the frequency
+   * pass matters: that one padded days that were *already full enough*,
+   * which is the version worth refusing.
+   */
+  if (minutes < SESSION_TOO_SHORT_MINUTES) {
+    for (const muscle of backfillOrder) {
+      if (minutes >= SESSION_TOO_SHORT_MINUTES) break
+
+      const exercise = pickHypertrophyExercise(args, muscle, used, placed)
+      if (exercise === undefined) continue
+
+      const count = fittableSets(exercise, recipe.minSetsPerSlot, recipe, addInto(committed, added))
+      if (count < recipe.minSetsPerSlot) continue
+
+      const sets = hypertrophySets(exercise, count)
+      const slot: Slot = {
+        id: asSlotId(deps.ids.next()),
+        role: exercise.isCompound ? 'hypertrophy' : 'assistance',
+        variant: exercise.isCompound ? 'Compound' : 'Isolation',
+        exercise: { kind: 'specific', exerciseId: exercise.id },
+        sets,
+        restSeconds: exercise.defaultRestSeconds ?? 120,
+        notes: 'Rounds the session out — this muscle is already at its weekly target.',
+      }
+
+      used.add(exercise.id)
+      added = addInto(added, slotVolume(exercise, sets))
+      minutes += slotMinutes(slot)
+      placed.push(exercise)
+      slots.push(slot)
+    }
   }
 
   return { slots, spent: added }

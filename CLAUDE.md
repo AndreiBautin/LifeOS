@@ -88,6 +88,24 @@ upper back read as trained five days a week off one barbell row while
 being trained directly once. **Frequency counts direct work only**
 (`trainedDirectly`); half credit is right for volume and wrong here.
 
+**Frequency is a means to volume, never a goal.** The backfill will not
+schedule a muscle already at its weekly target, secondary credit
+included. Without that guard the two-session floor applied to the front
+delts — asking for three sets while the bench press and dips paid them
+ten — and put an overhead press on every Friday to satisfy an arithmetic
+minimum for a muscle at three times its target. The backfill also orders
+by deficit, not by the order muscles happen to appear in `RpDay.muscles`;
+that array is grouped by region, and walking it verbatim left the side
+delts last in `UPPER` and finishing blocks ten sets short.
+
+**A day under `SESSION_TOO_SHORT_MINUTES` may take work it does not
+need.** The one place at-target muscles are still scheduled, and the
+rationale is attendance rather than stimulus: a squat day whose legs are
+all on maintenance otherwise comes out at twenty-five minutes. Two sets
+past target on a maintained muscle beats a trip nobody makes. Do not
+widen this into general padding — padding days that were _already full
+enough_ is the behaviour the guard above exists to refuse.
+
 **A day owns its muscles or it does not.** `RpDay.muscles`, one list, one
 fill pass. The five-day week is lopsided by construction — with the legs
 on maintenance they ask for about twenty-three sets across two sessions
