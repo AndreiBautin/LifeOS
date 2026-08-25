@@ -280,3 +280,39 @@ function clamp01(value: number): number {
 function lerp(from: number, to: number, t: number): number {
   return from + (to - from) * t
 }
+
+/* -------------------------------------------------------------------- */
+/* Priority as frequency                                                 */
+/* -------------------------------------------------------------------- */
+
+/**
+ * Weekly sessions a competition lift gets, by tier.
+ *
+ * Priority buys **frequency** for the strength lifts, not a bigger
+ * fatigue allowance. The two are alternative ways to spend a
+ * prioritisation and only one of them keeps the RTS stopping rule
+ * intelligible.
+ *
+ * Spending it on fatigue was the old answer: a tier-1 lift was allowed
+ * to accumulate 7% while a tier-3 lift stopped at 2%. It works, and it
+ * quietly detaches the stopping rule from the thing a lifter can
+ * remember — with the load drop fixed at 5% and the allowance varying by
+ * tier, "stop when the lighter bar feels like your top set" is true for
+ * exactly one tier and off by half an RPE for the others.
+ *
+ * Spending it on frequency keeps every session identical in shape and
+ * puts the difference where it is visible on the calendar: the bench is
+ * prioritised, so it is benched three times a week. That is also how
+ * anyone would describe the program out loud.
+ */
+export const STRENGTH_SESSIONS_BY_TIER: Readonly<Record<number, number>> = {
+  1: 3,
+  2: 2,
+  3: 1,
+}
+
+/** How many sessions a week this lift should be trained. */
+export function strengthSessionsFor(tiers: StrengthTiers, lift: StrengthLift): number {
+  const rank = tiers.find((tier) => tier.members.includes(lift))?.rank ?? 3
+  return STRENGTH_SESSIONS_BY_TIER[rank] ?? 1
+}

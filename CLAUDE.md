@@ -78,16 +78,33 @@ counts the volume the strength work already contributed before filling
 anything. Removing that subtraction turns one coherent program into a
 powerlifting block with a bodybuilding routine stapled to it.
 
-**Frequency comes from the volume, not from a floor.**
-`domain/volume/frequency.ts`. A muscle owed twenty-two sets a week cannot
-take them in two sittings; one owed four can. `requiredFrequency` divides
-the weekly target by a per-session ceiling and the assembler backfills
-against that. The flat floor it replaced was satisfied by _any_
-contribution, including the half-credit a row pays the biceps — so the
-upper back read as trained five days a week off one barbell row while
-being trained directly once. **Frequency counts direct work only**
+**Priority decides frequency; volume decides how much per session.**
+`domain/volume/frequency.ts`. Tier 1 is trained on every day accountable
+for it, tier 2 on two thirds of them, tier 3 once. `setsPerSession` then
+divides the weekly target across those sessions and caps it at
+`MAX_DIRECT_SETS_PER_SESSION`.
+
+It used to be the other way round — divide the target by the ceiling and
+take the answer — which produced a frequency table nobody could predict
+from their own tier list: forearms on two sessions, lats on three, so a
+tier-1 muscle was trained less often than a tier-2 one. Correct
+arithmetic, unquotable rule. **Frequency counts direct work only**
 (`trainedDirectly`); half credit is right for volume and wrong here.
 
+**Priority buys strength frequency too, not a bigger fatigue
+allowance.** `strengthSessionsFor` — tier 1 three sessions a week, tier 2
+two, tier 3 one — and `assignStrengthLifts` places them on the days whose
+`carries` matches the lift. The split no longer names a lift per day, so
+promoting the bench changes how often it is benched without editing a
+day.
+
+**The fatigue allowance equals the load drop, always.** Both 5%. That
+equality is what makes the stopping rule sayable: at matched reps and
+RPE an implied max is proportional to bar weight, so stopping at a 5%
+drop in implied max _is_ the moment the 5%-lighter bar feels like the
+top set did. One sentence, no arithmetic, true on every lift. Varying
+the allowance by tier (2% to 7%) was coherent and made that sentence
+false for every tier but one.
 **Frequency is a means to volume, never a goal.** The backfill will not
 schedule a muscle already at its weekly target, secondary credit
 included. Without that guard the two-session floor applied to the front

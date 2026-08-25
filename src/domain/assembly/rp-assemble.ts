@@ -22,6 +22,8 @@ import {
   DEFAULT_MUSCLE_TIERS,
   DEFAULT_STRENGTH_TIERS,
   priorityPosition,
+  strengthSessionsFor,
+  STRENGTH_LIFTS,
   validateTiers,
   weeklyTargetForWeek,
 } from '@/domain/priority/tiers'
@@ -189,7 +191,16 @@ function buildWeek(
    * day by day would let Monday's accessories spend a budget Thursday's
    * deadlift is going to need.
    */
-  const strengthByDay = split.days.map((day) => buildStrengthSlots(recipe, deps, day, isDeload))
+  const liftsByDay = assignStrengthLifts(split, recipe.strengthTiers)
+  const strengthByDay = split.days.map((_day, index) => {
+    const built = (liftsByDay[index] ?? []).map((lift) =>
+      buildStrengthSlots(recipe, deps, lift, isDeload),
+    )
+    return {
+      slots: built.flatMap((one) => one.slots),
+      spent: built.reduce<VolumeMap>((total, one) => addInto(total, one.spent), emptyVolumeMap()),
+    }
+  })
   const strengthWeekSpend = strengthByDay.reduce<VolumeMap>(
     (total, built) => addInto(total, built.spent),
     emptyVolumeMap(),
@@ -347,6 +358,50 @@ const STRENGTH_SLUG: Record<StrengthLift, string> = {
   deadlift: 'sumo-deadlift',
 }
 
+/** Which half of the body a competition lift belongs to. */
+const STRENGTH_REGION: Record<StrengthLift, 'upper' | 'lower'> = {
+  squat: 'lower',
+  bench: 'upper',
+  deadlift: 'lower',
+}
+
+/**
+ * Which competition lifts open each day of the week.
+ *
+ * Derived from the tiers rather than written into the split, so
+ * promoting a lift changes how often it is trained without anyone
+ * editing a day. A prioritised bench is benched three times a week
+ * because that is what tier 1 means — see `strengthSessionsFor`.
+ *
+ * Sessions are spread across the eligible days rather than crowded into
+ * the first ones: two squat sessions in a five-day week want Tuesday and
+ * Thursday, not Tuesday and Tuesday-again.
+ */
+function assignStrengthLifts(
+  split: RpSplit,
+  strengthTiers: StrengthTiers,
+): readonly (readonly StrengthLift[])[] {
+  const perDay: StrengthLift[][] = split.days.map(() => [])
+
+  for (const lift of STRENGTH_LIFTS) {
+    const region = STRENGTH_REGION[lift]
+    const eligible = split.days.flatMap((day, index) =>
+      (day.carries ?? []).includes(region) ? [index] : [],
+    )
+    if (eligible.length === 0) continue
+
+    const wanted = Math.min(eligible.length, strengthSessionsFor(strengthTiers, lift))
+
+    for (let session = 0; session < wanted; session += 1) {
+      // Evenly spaced across the eligible days.
+      const at = eligible[Math.round((session * (eligible.length - 1)) / Math.max(1, wanted - 1))]
+      if (at !== undefined && !perDay[at]?.includes(lift)) perDay[at]?.push(lift)
+    }
+  }
+
+  return perDay
+}
+
 /**
  * The RTS work for a day: a top set at a target reps and RPE, then
  * back-off sets governed by a fatigue percent.
@@ -360,32 +415,29 @@ const STRENGTH_SLUG: Record<StrengthLift, string> = {
 function buildStrengthSlots(
   recipe: RpRecipe,
   deps: RpAssembleDeps,
-  day: RpDay,
+  lift: StrengthLift,
   isDeload: boolean,
 ): BuiltSlots {
-  const lift = day.strengthLift
-  if (lift === undefined) return { slots: [], spent: emptyVolumeMap() }
-
   const exerciseId = asExerciseId(STRENGTH_SLUG[lift])
   const exercise = deps.exercises.find((candidate) => candidate.id === exerciseId)
   if (exercise === undefined) return { slots: [], spent: emptyVolumeMap() }
 
-  const position = priorityPosition(recipe.strengthTiers, lift)
-
-  // A prioritised lift earns a higher fatigue target — more back-off
-  // volume — while a maintained one gets the top set and little else.
   /*
-   * A supporting day spends a fraction of the allowance, not all of it.
+   * The allowance equals the load drop, for every lift, every session.
    *
-   * The top set is untouched: it is a measurement, it costs one set, and
-   * the estimate it produces is what every later suggestion is built
-   * from — a lift benched three times a week should be measured three
-   * times a week. What shortens is the back-off block behind it.
+   * That equality is the whole point. Stop when the implied max has
+   * fallen by the drop you took, and — because at matched reps and RPE
+   * an implied max is proportional to bar weight — that is exactly the
+   * moment the lighter bar feels like the top set did. One sentence, no
+   * arithmetic, true on every lift: *drop five per cent and keep going
+   * until it feels like your opener again.*
+   *
+   * It used to vary by tier, 2% up to 7%, which is a coherent way to
+   * spend a prioritisation and made that sentence false for every tier
+   * but one. Priority now buys **frequency** instead, which is visible on
+   * the calendar rather than buried in a stopping rule.
    */
-  const emphasis = day.strengthEmphasis ?? 'primary'
-  const allowance = emphasis === 'secondary' ? SECONDARY_STRENGTH_ALLOWANCE : 1
-
-  const fatigueTarget = isDeload ? 0 : Math.round((2 + position * 5 * allowance) * 10) / 10
+  const fatigueTarget = isDeload ? 0 : (recipe.rts.loadDropPercent ?? 5)
 
   const topSetRpe = isDeload ? 6 : recipe.rts.topSetRpe
 
@@ -397,20 +449,14 @@ function buildStrengthSlots(
   }
 
   /*
-   * The cap moves with the allowance, and it has to.
+   * A flat cap, because every session now has the same shape.
    *
-   * The stopping rule already shortens a tired session on its own — a
-   * beaten-up lifter reaches the fatigue percentage in fewer sets — so
-   * one might argue the cap could stay. It cannot, because the app
-   * *materialises* the cap as slots and the volume accounting counts
-   * them. Leave it at six and the plan claims eighteen chest sets for a
-   * twelve-set target, then quietly delivers fourteen when the lifter
-   * stops early. A program that is only correct if you ignore it is not
-   * correct.
+   * The stopping rule is what ends the block; this only stops a session
+   * running away when the opener was called too light. It is
+   * materialised as slots and counted as volume, so it should sit near
+   * where the rule usually fires rather than at the theoretical maximum.
    */
-  const backoffCap = isDeload
-    ? 1
-    : Math.max(1, Math.min(recipe.rts.maxBackoffSets, Math.round((2 + position * 4) * allowance)))
+  const backoffCap = isDeload ? 1 : Math.min(recipe.rts.maxBackoffSets, STRENGTH_BACKOFF_CAP)
 
   /*
    * A fixed drop from today's top set, with no prescribed RPE.
@@ -571,8 +617,10 @@ function fillHypertrophy(args: FillArgs): BuiltSlots {
          * the order the volume actually implies.
          */
         behind:
-          requiredFrequency(args.targets[muscle], daysAvailableFor(muscle, args.split)) -
-          args.directDays[muscle],
+          requiredFrequency(
+            tierRankOf(args.recipe.muscleTiers, muscle),
+            daysAvailableFor(muscle, args.split),
+          ) - args.directDays[muscle],
       }))
       .filter((entry) => entry.owed >= recipe.minSetsPerSlot)
       /*
@@ -690,8 +738,10 @@ function fillHypertrophy(args: FillArgs): BuiltSlots {
    */
   const backfillOrder = [...splitDay.muscles].sort((a, b) => {
     const behind = (muscle: MuscleGroup): number =>
-      requiredFrequency(args.targets[muscle], daysAvailableFor(muscle, args.split)) -
-      args.directDays[muscle]
+      requiredFrequency(
+        tierRankOf(args.recipe.muscleTiers, muscle),
+        daysAvailableFor(muscle, args.split),
+      ) - args.directDays[muscle]
 
     if (behind(a) !== behind(b)) return behind(b) - behind(a)
     return args.targets[b] - args.targets[a]
@@ -716,7 +766,10 @@ function fillHypertrophy(args: FillArgs): BuiltSlots {
     const stillOwed = args.targets[muscle] - addInto(committed, added)[muscle]
     if (stillOwed <= 0) continue
 
-    const needed = requiredFrequency(args.targets[muscle], daysAvailableFor(muscle, args.split))
+    const needed = requiredFrequency(
+      tierRankOf(args.recipe.muscleTiers, muscle),
+      daysAvailableFor(muscle, args.split),
+    )
     const daysLeftTrainingIt = args.remainingDays.filter((day) =>
       day.muscles.includes(muscle),
     ).length
@@ -800,7 +853,10 @@ function shareOwed(muscle: MuscleGroup, args: FillArgs, committed: VolumeMap): n
 
   const dose = setsPerSession(
     args.targets[muscle],
-    requiredFrequency(args.targets[muscle], daysAvailableFor(muscle, args.split)),
+    requiredFrequency(
+      tierRankOf(args.recipe.muscleTiers, muscle),
+      daysAvailableFor(muscle, args.split),
+    ),
   )
 
   return Math.min(share, dose)
@@ -856,16 +912,18 @@ function trainedDirectly(
 const HEAVY_HYPERTROPHY_REPS = 6
 
 /**
- * What share of the fatigue allowance a supporting session spends.
+ * How many back-off sets a competition lift is capped at.
  *
- * Two fifths: enough that the day is real work on the lift rather than a
- * token appearance, little enough that three sessions in a week cost
- * roughly what one heavy one and a bit does. The number is arguable; the
- * shape is not, because a lift trained three times a week cannot afford
- * a full allowance on each without borrowing the recovery from whatever
- * else the week was for.
+ * Four, because with the drop and the allowance equal the stopping rule
+ * usually fires in three or four sets, and a cap far above where the
+ * rule fires is a cap that only ever misleads the volume count.
  */
-const SECONDARY_STRENGTH_ALLOWANCE = 0.4
+const STRENGTH_BACKOFF_CAP = 4
+
+/** Which tier a muscle sits in; the bottom tier if it is unplaced. */
+function tierRankOf(tiers: MuscleTiers, muscle: MuscleGroup): number {
+  return tiers.find((tier) => tier.members.includes(muscle))?.rank ?? tiers.length
+}
 
 /** Sessions in the whole week's split that are accountable for a muscle. */
 function daysAvailableFor(muscle: MuscleGroup, split: RpSplit): number {

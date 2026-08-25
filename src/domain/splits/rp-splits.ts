@@ -1,5 +1,4 @@
 import type { MuscleGroup } from '@/domain/exercises/taxonomy'
-import type { StrengthLift } from '@/domain/priority/tiers'
 
 /**
  * Splits for the RP/RTS model.
@@ -28,30 +27,21 @@ export interface RpDay {
   readonly label: string
   /** Muscles this day is accountable for filling toward their weekly target. */
   readonly muscles: readonly MuscleGroup[]
-  /** The competition lift that opens this day, if any. */
-  readonly strengthLift?: StrengthLift
   /**
-   * How much fatigue this day is willing to spend on that lift.
+   * Which half of the body's competition lifts this day can open.
    *
-   * Needed the moment a lift appears more than once a week, and it is
-   * the half of the problem RTS does *not* solve on its own. The load
-   * autoregulates perfectly: the third bench session of the week asks
-   * for reps at an RPE, you are tired, and the weight that feels like
-   * that RPE is simply lighter. Nobody has to prescribe the reduction.
+   * The day says what it is *able* to host; which lifts actually land on
+   * it is derived from the strength tiers — a prioritised lift gets more
+   * sessions and therefore appears on more of the eligible days. See
+   * `strengthSessionsFor`.
    *
-   * The **fatigue allowance** does not autoregulate, because it is not a
-   * reading — it is a decision. `fatigueTargetPercent` says "keep taking
-   * back-offs until your estimated max has fallen this far", and left at
-   * the same value it asks for a full session's fatigue three times a
-   * week off a lift that only has one week to recover. That is how a
-   * chest target of twelve sets came out at eighteen.
-   *
-   * So one day carries the lift and the others support it. A `secondary`
-   * day scales the allowance down, which shortens the back-off block
-   * without touching the top set — the measurement still happens, and
-   * the estimate it feeds is still today's.
+   * Naming a single lift per day was the old shape, and it made the
+   * split the place where "how often do I bench" was decided. That is a
+   * priority question, and priority already lives in the tiers. Now
+   * promoting the bench changes how often it is benched without anyone
+   * editing a day.
    */
-  readonly strengthEmphasis?: 'primary' | 'secondary'
+  readonly carries?: readonly ('upper' | 'lower')[]
   /**
    * Conditioning to close the day, as exercise slugs.
    *
@@ -123,14 +113,14 @@ const FULL_BODY_2: RpSplit = {
       index: 0,
       label: 'Full body — squat',
       muscles: [...UPPER, ...LOWER],
-      strengthLift: 'squat',
+      carries: ['upper', 'lower'],
       warmUp: 'lower',
     },
     {
       index: 1,
       label: 'Full body — bench and deadlift',
       muscles: [...UPPER, ...LOWER],
-      strengthLift: 'bench',
+      carries: ['upper', 'lower'],
       warmUp: 'lower',
     },
   ],
@@ -146,21 +136,21 @@ const FULL_BODY_3: RpSplit = {
       index: 0,
       label: 'Full body — squat',
       muscles: [...UPPER, ...LOWER],
-      strengthLift: 'squat',
+      carries: ['upper', 'lower'],
       warmUp: 'lower',
     },
     {
       index: 1,
       label: 'Full body — bench',
       muscles: [...UPPER, ...LOWER],
-      strengthLift: 'bench',
+      carries: ['upper', 'lower'],
       warmUp: 'upper',
     },
     {
       index: 2,
       label: 'Full body — deadlift',
       muscles: [...UPPER, ...LOWER],
-      strengthLift: 'deadlift',
+      carries: ['upper', 'lower'],
       warmUp: 'lower',
     },
   ],
@@ -185,33 +175,14 @@ const WEEK_5: RpSplit = {
   id: 'rp-week-5',
   name: '5-day Monday to Friday',
   description:
-    'Upper, lower, upper, lower, upper. A competition lift opens three of the five; the other two are pure hypertrophy. Weekends off.',
+    'Upper, lower, upper, lower, upper. Every day opens with competition lifting; how much of it depends on what is prioritised. Weekends off.',
   daysPerWeek: 5,
   days: [
-    /*
-     * Monday and Friday are the two days with no competition lift, and
-     * they are what makes the upper-body volume reachable: three upper
-     * sessions have to carry the whole upper body, and one of them has a
-     * bench press and its back-offs in it already.
-     *
-     * Neither is pinned to an exercise list any more. They used to be —
-     * Monday to a press, pull-ups, lateral raises and curls, Friday to
-     * dips, rows and a curl — which made them a transcript of a session
-     * actually trained rather than a shape derived from the tiers. Two
-     * things were wrong with that. The exercises stopped matching the
-     * tiers the moment a tier moved, which is the failure the whole app
-     * is built to avoid. And an overhead press pinned to Monday survived
-     * the front delts falling to maintenance, so a day was spending its
-     * most expensive slot on a muscle asking for nothing.
-     */
     {
       index: 0,
       label: 'Monday',
       muscles: UPPER,
-      // Opens the week on the bench, and supports it rather than carrying
-      // it — Wednesday is the day the lift is actually pushed.
-      strengthLift: 'bench',
-      strengthEmphasis: 'secondary',
+      carries: ['upper'],
       // The easiest conditioning after two rest days, and the cheapest
       // to place: a walk costs the week nothing wherever it lands.
       conditioning: ['incline-walk'],
@@ -220,20 +191,15 @@ const WEEK_5: RpSplit = {
     {
       index: 1,
       label: 'Tuesday',
-      // Legs and core only, and short because that is all they are owed.
-      // A forty-minute squat day is not a day that went wrong; it is a
-      // maintained lower body carrying a heavy competition lift.
       muscles: LOWER,
-      strengthLift: 'squat',
+      carries: ['lower'],
       warmUp: 'lower',
     },
     {
       index: 2,
       label: 'Wednesday',
       muscles: UPPER,
-      // The heavy bench day. Mid-week, furthest from both leg days, and
-      // the one that spends the full fatigue allowance.
-      strengthLift: 'bench',
+      carries: ['upper'],
       /*
        * The run goes here rather than on a lower day.
        *
@@ -250,14 +216,12 @@ const WEEK_5: RpSplit = {
       index: 3,
       label: 'Thursday',
       muscles: LOWER,
-      strengthLift: 'deadlift',
+      carries: ['lower'],
       warmUp: 'lower',
     },
     {
       index: 4,
       label: 'Friday',
-      strengthLift: 'bench',
-      strengthEmphasis: 'secondary',
       /*
        * Accountable for the whole upper body, not only for arms.
        *
@@ -266,10 +230,10 @@ const WEEK_5: RpSplit = {
        * arms are trained across the week, so by Friday their target is
        * nearly spent and a day that can *only* draw on them has nothing
        * left to do. Opening it to the upper body gives it somewhere to
-       * put the time — the arms still lead it, because they are owed the
-       * most, and the back and chest fill in behind them.
+       * put the time.
        */
       muscles: UPPER,
+      carries: ['upper'],
       // The hardest conditioning goes here: it is the last session before
       // two rest days, so there is nothing left in the week for it to
       // compromise. Swings on a Wednesday would be paid for on Thursday's

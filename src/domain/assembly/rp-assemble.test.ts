@@ -109,9 +109,9 @@ describe('the assembled block', () => {
      */
     expect(mains).toEqual([
       ['bench-press'],
-      ['low-bar-squat'],
+      ['low-bar-squat', 'sumo-deadlift'],
       ['bench-press'],
-      ['sumo-deadlift'],
+      ['low-bar-squat', 'sumo-deadlift'],
       ['bench-press'],
     ])
   })
@@ -141,14 +141,48 @@ describe('the assembled block', () => {
     expect(bench[1]?.notes).toMatch(/fatigue target/)
   })
 
-  it('gives the prioritised lift more back-off volume than the maintained ones', () => {
+  /*
+   * Priority buys sessions, not longer ones.
+   *
+   * It used to buy a bigger fatigue allowance — tier 1 stopped at 7%,
+   * tier 3 at 2% — which is a coherent way to spend it and made the
+   * stopping rule unquotable: with the load drop fixed at 5%, "stop when
+   * the lighter bar feels like your top set" was true for exactly one
+   * tier. Every session is now the same shape and the bench simply
+   * happens three times.
+   */
+  it('spends priority on frequency, leaving every session the same shape', () => {
     const week = block?.weeks[0]
-    const backoffsOn = (dayIndex: number): number =>
-      week?.days[dayIndex]?.slots.find((slot) => slot.variant === 'Back-off')?.sets.length ?? 0
+
+    const backoffSets = (week?.days ?? []).flatMap((day) =>
+      day.slots.filter((slot) => slot.variant === 'Back-off').map((slot) => slot.sets.length),
+    )
+
+    expect(new Set(backoffSets).size).toBe(1)
+
+    const sessions = (lift: string): number =>
+      (week?.days ?? []).filter((day) =>
+        day.slots.some(
+          (slot) => slot.exercise.kind === 'specific' && slot.exercise.exerciseId === lift,
+        ),
+      ).length
 
     // Bench is tier 1, squat and deadlift tier 2.
-    expect(backoffsOn(2)).toBeGreaterThan(backoffsOn(1))
-    expect(backoffsOn(3)).toBeGreaterThan(0)
+    expect(sessions('bench-press')).toBe(3)
+    expect(sessions('low-bar-squat')).toBe(2)
+    expect(sessions('sumo-deadlift')).toBe(2)
+  })
+
+  /*
+   * The equality that makes the stopping rule sayable: drop five per
+   * cent, keep going until the lighter bar feels like the opener.
+   */
+  it('sets the fatigue allowance equal to the load drop', () => {
+    const backoff = (block?.weeks[0]?.days ?? [])
+      .flatMap((day) => day.slots)
+      .find((slot) => slot.variant === 'Back-off')
+
+    expect(backoff?.notes).toMatch(/Load drop 5% · 5% fatigue target/)
   })
 
   it('gives every slot a sub-category, so the badge pair is one shape', () => {
@@ -206,7 +240,7 @@ describe('naming a day after what is in it', () => {
   it('names the competition lift first in the detail line', () => {
     const tuesday = week.days[1]
 
-    expect(tuesday?.focus).toMatch(/^Low Bar Squat, then /)
+    expect(tuesday?.focus).toMatch(/^Sumo Deadlift, then /)
     // Without the parenthetical variant, which is catalogue bookkeeping.
     expect(tuesday?.focus).not.toContain('(')
   })
