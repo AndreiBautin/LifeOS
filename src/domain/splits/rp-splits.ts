@@ -50,18 +50,6 @@ export interface RpDay {
   /** The competition lift that opens this day, if any. */
   readonly strengthLift?: StrengthLift
   /**
-   * Exercises this day is built around, placed in order before the debt
-   * ordering gets a say.
-   *
-   * Two jobs. The overhead press needs one because it is heavy
-   * hypertrophy whose primary muscle sits in the bottom tier — pure
-   * need-ordering would never select it, leaving a day called "upper,
-   * press" with no press in it. And a day can be pinned to what a lifter
-   * actually trains, so a generated block continues the session they just
-   * did rather than proposing a different one.
-   */
-  readonly anchors?: readonly string[]
-  /**
    * Conditioning to close the day, as exercise slugs.
    *
    * Placed on days rather than left to the lifter because conditioning
@@ -203,18 +191,31 @@ const WEEK_5: RpSplit = {
   id: 'rp-week-5',
   name: '5-day Monday to Friday',
   description:
-    'The default. Press and pull to open the week, squat and bench mid-week, deadlift Thursday, arms and delts to finish. Every muscle at least twice, weekends off.',
+    'Upper, lower, upper, lower, upper. A competition lift opens three of the five; the other two are pure hypertrophy. Weekends off.',
   daysPerWeek: 5,
   days: [
+    /*
+     * Monday and Friday are the two days with no competition lift, and
+     * they are what makes the upper-body volume reachable: three upper
+     * sessions have to carry the whole upper body, and one of them has a
+     * bench press and its back-offs in it already.
+     *
+     * Neither is pinned to an exercise list any more. They used to be —
+     * Monday to a press, pull-ups, lateral raises and curls, Friday to
+     * dips, rows and a curl — which made them a transcript of a session
+     * actually trained rather than a shape derived from the tiers. Two
+     * things were wrong with that. The exercises stopped matching the
+     * tiers the moment a tier moved, which is the failure the whole app
+     * is built to avoid. And an overhead press pinned to Monday survived
+     * the front delts falling to maintenance, so a day was spending its
+     * most expensive slot on a muscle asking for nothing.
+     */
     {
       index: 0,
       label: 'Monday',
       muscles: UPPER,
-      // Pinned to the session actually trained: press, pull-ups, lateral
-      // raises, curls. Other work is added around these, but these four
-      // are what Monday is. Without the anchor, need-ordering would drop
-      // the press entirely — its primary muscle sits in the bottom tier.
-      anchors: ['overhead-press', 'pull-up', 'db-lateral-raise', 'db-curl'],
+      // The easiest conditioning after two rest days, and the cheapest
+      // to place: a walk costs the week nothing wherever it lands.
       conditioning: ['incline-walk'],
       warmUp: 'upper',
     },
@@ -231,6 +232,15 @@ const WEEK_5: RpSplit = {
       label: 'Wednesday',
       muscles: UPPER,
       strengthLift: 'bench',
+      /*
+       * The run goes here rather than on a lower day.
+       *
+       * It has to go on an upper day — a run stacked onto squats or
+       * deadlifts is leg volume the planner did not budget for — and of
+       * the three, Wednesday is the one whose own work is upper-body
+       * pressing. Monday already has the walk, and Friday takes the
+       * swings.
+       */
       conditioning: ['running'],
       warmUp: 'upper',
     },
@@ -249,23 +259,14 @@ const WEEK_5: RpSplit = {
        * Accountable for the whole upper body, not only for arms.
        *
        * A dedicated arms day sounds right for an arm specialisation and
-       * is the reason this day came out at twenty-four minutes: the small
-       * muscles are trained on every day of the week, so by Friday their
-       * weekly target is nearly spent and a day that can *only* draw on
-       * them has nothing left to do. Opening it to the upper body gives
-       * it somewhere to put the time. Arms still lead it — they are owed
-       * the most — but chest and back can fill behind them.
+       * is the reason this day once came out at twenty-four minutes: the
+       * arms are trained across the week, so by Friday their target is
+       * nearly spent and a day that can *only* draw on them has nothing
+       * left to do. Opening it to the upper body gives it somewhere to
+       * put the time — the arms still lead it, because they are owed the
+       * most, and the back and chest fill in behind them.
        */
       muscles: UPPER,
-      /*
-       * Anchored, for the same reason the day was opened to the whole
-       * upper body: arriving last, it finds most of the week's target
-       * already committed and fills with whatever scraps remain. Pinning
-       * two compounds guarantees it a spine — and both pay arms as
-       * secondary muscles, so they serve the specialisation rather than
-       * competing with it.
-       */
-      anchors: ['dips', 'barbell-row', 'ez-bar-curl'],
       // The hardest conditioning goes here: it is the last session before
       // two rest days, so there is nothing left in the week for it to
       // compromise. Swings on a Wednesday would be paid for on Thursday's

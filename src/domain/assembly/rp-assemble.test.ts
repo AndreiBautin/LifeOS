@@ -204,8 +204,8 @@ describe('naming a day after what is in it', () => {
     // The hardcoded "Monday — press and pull" was a claim, not a
     // description: move a tier and the fill changes underneath it.
     // Sentence-cased, so the leading muscle carries the capital.
-    expect(week.days[0]?.focus).toMatch(/^Front delts,/)
-    expect(week.days[0]?.focus).toContain('lats')
+    expect(week.days[0]?.focus).toMatch(/^Lats,/)
+    expect(week.days[0]?.focus).toContain('biceps')
     expect(week.days[1]?.focus).toContain('calves')
     expect(week.days[1]?.focus).toContain('hamstrings')
   })
@@ -218,10 +218,12 @@ describe('naming a day after what is in it', () => {
      * contribution and it is not what the day is for — which is exactly
      * the line the two sentences draw.
      */
-    const [trains = '', aside = ''] = (week.days[0]?.focus ?? '').split(' Some ')
+    const [trains = '', aside = ''] = (week.days[2]?.focus ?? '').split(' Some ')
 
-    expect(trains).not.toContain('core')
-    expect(aside).toContain('core')
+    // Wednesday benches and chins. Both pay the triceps a fraction and
+    // neither is chosen for them.
+    expect(trains).not.toContain('triceps')
+    expect(aside).toContain('triceps')
   })
 
   it('reads as sentences rather than as delimited fields', () => {
@@ -579,14 +581,33 @@ describe('the split', () => {
     }
   })
 
+  /*
+   * Asserted on the warm-up sets themselves, not by diffing two programs.
+   *
+   * The whole-program comparison this replaced was a stronger claim than
+   * the invariant: warm-ups earn no volume, but they do cost minutes, so
+   * building without them leaves room the fill spends on something else.
+   * That comparison held only while the days were pinned to fixed
+   * exercise lists and had little room to differ. It is not what the rule
+   * says, and it broke the moment the pins came off.
+   */
   it('counts no volume for warm-ups', () => {
     const program = build()
-    const withWarmUps = weeklyVolume(weekAt(program, 0))
 
-    const without = build({ includeWarmUps: false })
-    const withoutWarmUps = weeklyVolume(weekAt(without, 0))
+    const warmUpSets = (program.blocks[0]?.weeks ?? [])
+      .flatMap((week) => week.days)
+      .flatMap((day) => day.slots)
+      .filter((slot) => slot.role === 'warmup')
+      .flatMap((slot) =>
+        slot.exercise.kind === 'specific'
+          ? [{ exerciseId: slot.exercise.exerciseId, sets: slot.sets }]
+          : [],
+      )
 
-    expect(withWarmUps).toEqual(withoutWarmUps)
+    expect(warmUpSets.length).toBeGreaterThan(0)
+
+    const volume = volumeForSlots(warmUpSets, (id) => lookup(id))
+    expect(Object.values(volume).every((sets) => sets === 0)).toBe(true)
   })
 })
 
@@ -708,53 +729,21 @@ describe('session length', () => {
   })
 })
 
-describe('day one continues the session already trained', () => {
+/*
+ * Nothing is pinned to a day any more.
+ *
+ * Monday used to be anchored to the session actually trained — overhead
+ * press, pull-ups, lateral raises, curls — so a generated block picked
+ * up where training was rather than proposing something different for a
+ * day already done. That was worth having while history was being
+ * imported. It stopped being worth having once the split settled and the
+ * import went away, and it had a cost: the exercises were a transcript,
+ * not a derivation, so they went on being scheduled after the tiers that
+ * justified them had moved. An overhead press outlived the front delts
+ * falling to maintenance by three tier edits.
+ */
+describe('what a day contains', () => {
   const program = build()
-
-  it('opens the week with exactly the exercises last performed', () => {
-    // The press session logged on the 24th: overhead press, pull-ups,
-    // dumbbell curls, lateral raises. Anchoring the day to it means the
-    // block picks up where training actually is rather than proposing
-    // something different for a day that is already done.
-    const day = weekAt(program, 0).days[0]
-    const names = (day?.slots ?? [])
-      .filter((slot) => slot.role !== 'warmup' && slot.role !== 'conditioning')
-      .flatMap((slot) =>
-        slot.exercise.kind === 'specific' ? [lookup(slot.exercise.exerciseId)?.name ?? ''] : [],
-      )
-
-    expect(names.slice(0, 4)).toEqual([
-      'Overhead Press',
-      'Pull-Up',
-      'Dumbbell Lateral Raise',
-      'Dumbbell Curl',
-    ])
-  })
-
-  it('keeps the anchors in every week of the block', () => {
-    for (const [index, week] of (program.blocks[0]?.weeks ?? []).entries()) {
-      if (week.isDeload) continue
-
-      const ids = (week.days[0]?.slots ?? []).flatMap((slot) =>
-        slot.exercise.kind === 'specific' ? [slot.exercise.exerciseId as string] : [],
-      )
-
-      for (const anchor of ['overhead-press', 'pull-up', 'db-curl', 'db-lateral-raise']) {
-        expect(ids, `${anchor} missing from week ${String(index + 1)}`).toContain(anchor)
-      }
-    }
-  })
-
-  it('ramps the anchors rather than opening them at the ceiling', () => {
-    const setsIn = (weekIndex: number, slug: string): number =>
-      weekAt(program, weekIndex).days[0]?.slots.find(
-        (slot) => slot.exercise.kind === 'specific' && slot.exercise.exerciseId === slug,
-      )?.sets.length ?? 0
-
-    // Anchoring a day must not exempt it from the block's ramp, or the
-    // days a lifter cares most about are the ones that open maxed out.
-    expect(setsIn(5, 'db-lateral-raise')).toBeGreaterThan(setsIn(0, 'db-lateral-raise'))
-  })
 
   it('never programmes two exercises for the same muscle and pattern in one day', () => {
     // Pull-ups followed by chin-ups is not extra stimulus, just extra time.

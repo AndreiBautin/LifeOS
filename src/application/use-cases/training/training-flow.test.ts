@@ -55,7 +55,9 @@ const athlete: AthleteState = {
     [asExerciseId(STRENGTH_LIFT_SLUGS.squat)]: 350,
     [asExerciseId(STRENGTH_LIFT_SLUGS.bench)]: 250,
     [asExerciseId(STRENGTH_LIFT_SLUGS.deadlift)]: 450,
-    [asExerciseId('overhead-press')]: 150,
+    // Monday is arms and delts, so the curl is the day-one exercise a
+    // suggested load can be checked against.
+    [asExerciseId('db-curl')]: 60,
   },
   bodyweight: 180,
   units: 'lb',
@@ -108,27 +110,26 @@ describe('starting a session from a program', () => {
     expect(result.kind).toBe('started')
     if (result.kind !== 'started') throw new Error('expected a started workout')
 
-    const press = result.workout.entries.find((entry) => entry.exerciseId === 'overhead-press')
-    expect(press).toBeDefined()
+    const curl = result.workout.entries.find((entry) => entry.exerciseId === 'db-curl')
+    expect(curl).toBeDefined()
 
     /*
      * Every set at 1 RIR except the last, which goes to failure.
      *
-     * The press is safe to fail on, and now runs 5–30 like every other
-     * hypertrophy movement, so the heavy-set exemption no longer applies
-     * to it — failing a set of twelve presses is not a max attempt.
+     * The curl is safe to fail on and runs 5–30 like every other
+     * hypertrophy movement, so the heavy-set exemption does not apply.
      * Asserted as a shape rather than a fixed count, because how many
      * sets it gets is a volume decision that moves with the tiers and the
      * day count.
      */
-    const loads = press?.sets.map((set) => set.prescription.load) ?? []
+    const loads = curl?.sets.map((set) => set.prescription.load) ?? []
 
     expect(loads.length).toBeGreaterThan(1)
     expect(loads.slice(0, -1)).toEqual(loads.slice(0, -1).map(() => ({ kind: 'rpe', target: 9 })))
     expect(loads.at(-1)).toEqual({ kind: 'rpe', target: 10 })
 
-    // 150 lb estimate, RPE 9 at the top of a 3–6 range.
-    expect(press?.sets[0]?.plannedLoad).toBeGreaterThan(0)
+    // A 60 lb estimate resolves to a suggested weight through the chart.
+    expect(curl?.sets[0]?.plannedLoad).toBeGreaterThan(0)
   })
 
   it('leaves an RPE set performable when no estimate exists', async () => {
@@ -141,9 +142,9 @@ describe('starting a session from a program', () => {
     const result = await startWorkout({ athlete: bare, program, roundingIncrement: 5 }, deps)
     if (result.kind !== 'started') throw new Error('expected a started workout')
 
-    const press = result.workout.entries.find((entry) => entry.exerciseId === 'overhead-press')
-    expect(press?.sets.every((set) => set.plannedLoad === undefined)).toBe(true)
-    expect(press?.sets[0]?.prescription.load).toEqual({ kind: 'rpe', target: 9 })
+    const curl = result.workout.entries.find((entry) => entry.exerciseId === 'db-curl')
+    expect(curl?.sets.every((set) => set.plannedLoad === undefined)).toBe(true)
+    expect(curl?.sets[0]?.prescription.load).toEqual({ kind: 'rpe', target: 9 })
   })
 
   it('resumes an unfinished session rather than starting a second', async () => {
@@ -191,15 +192,13 @@ describe('logging', () => {
     const started = await startWorkout({ athlete, program, roundingIncrement: 5 }, deps)
     if (started.kind !== 'started') throw new Error('expected a started workout')
 
-    const pressIndex = started.workout.entries.findIndex(
-      (entry) => entry.exerciseId === 'overhead-press',
-    )
-    const plannedLoad = started.workout.entries[pressIndex]?.sets[0]?.plannedLoad
+    const curlIndex = started.workout.entries.findIndex((entry) => entry.exerciseId === 'db-curl')
+    const plannedLoad = started.workout.entries[curlIndex]?.sets[0]?.plannedLoad
 
     await logSet(
       {
         workoutId: started.workout.id,
-        entryIndex: pressIndex,
+        entryIndex: curlIndex,
         setIndex: 0,
         result: { load: 135, reps: 5, rpe: 9, outcome: 'completed' },
       },
@@ -207,7 +206,7 @@ describe('logging', () => {
     )
 
     const saved = await deps.workouts.byId(started.workout.id)
-    const topSet = saved?.entries[pressIndex]?.sets[0]
+    const topSet = saved?.entries[curlIndex]?.sets[0]
 
     expect(topSet?.plannedLoad).toBe(plannedLoad)
     expect(topSet?.actualLoad).toBe(135)
@@ -226,14 +225,12 @@ describe('logging', () => {
     const started = await startWorkout({ athlete, program, roundingIncrement: 5 }, deps)
     if (started.kind !== 'started') throw new Error('expected a started workout')
 
-    const pressIndex = started.workout.entries.findIndex(
-      (entry) => entry.exerciseId === 'overhead-press',
-    )
+    const curlIndex = started.workout.entries.findIndex((entry) => entry.exerciseId === 'db-curl')
 
     await logSet(
       {
         workoutId: started.workout.id,
-        entryIndex: pressIndex,
+        entryIndex: curlIndex,
         setIndex: 1,
         result: { load: 90, reps: 5, outcome: 'completed' },
       },
@@ -242,7 +239,7 @@ describe('logging', () => {
     await logSet(
       {
         workoutId: started.workout.id,
-        entryIndex: pressIndex,
+        entryIndex: curlIndex,
         setIndex: 1,
         result: { outcome: 'skipped' },
       },
@@ -250,7 +247,7 @@ describe('logging', () => {
     )
 
     const saved = await deps.workouts.byId(started.workout.id)
-    const set = saved?.entries[pressIndex]?.sets[1]
+    const set = saved?.entries[curlIndex]?.sets[1]
 
     expect(set?.outcome).toBe('skipped')
     // A skipped set must not leave a partial record that later reads as
@@ -311,15 +308,13 @@ describe('finishing a session', () => {
     const started = await startWorkout({ athlete, program, roundingIncrement: 5 }, deps)
     if (started.kind !== 'started') throw new Error('expected a started workout')
 
-    const pressIndex = started.workout.entries.findIndex(
-      (entry) => entry.exerciseId === 'overhead-press',
-    )
+    const curlIndex = started.workout.entries.findIndex((entry) => entry.exerciseId === 'db-curl')
 
     for (let setIndex = 0; setIndex <= 2; setIndex += 1) {
       await logSet(
         {
           workoutId: started.workout.id,
-          entryIndex: pressIndex,
+          entryIndex: curlIndex,
           setIndex,
           result: { load: 100, reps: 5, outcome: 'completed' },
         },
@@ -334,7 +329,8 @@ describe('finishing a session', () => {
     expect(report.tonnage).toBe(1500)
     expect(report.durationMinutes).toBe(80)
     expect(report.progress[0]?.verdict).toBe('new')
-    expect(report.volumeByMuscle.map((entry) => entry.muscle)).toContain('front-delts')
+    // The curl is filed under biceps and pays the forearms a fraction.
+    expect(report.volumeByMuscle.map((entry) => entry.muscle)).toContain('biceps')
   })
 
   it('excludes warm-ups and unperformed sets from the volume it reports', async () => {
@@ -344,14 +340,12 @@ describe('finishing a session', () => {
 
     // One working set logged; the mobility warm-ups that open the day and
     // everything else left untouched.
-    const pressIndex = started.workout.entries.findIndex(
-      (entry) => entry.exerciseId === 'overhead-press',
-    )
+    const curlIndex = started.workout.entries.findIndex((entry) => entry.exerciseId === 'db-curl')
 
     await logSet(
       {
         workoutId: started.workout.id,
-        entryIndex: pressIndex,
+        entryIndex: curlIndex,
         setIndex: 0,
         result: { load: 100, reps: 5, outcome: 'completed' },
       },
@@ -436,13 +430,11 @@ describe('abandoning a session', () => {
     const started = await startWorkout({ athlete, program, roundingIncrement: 5 }, deps)
     if (started.kind !== 'started') throw new Error('expected a started workout')
 
-    const pressIndex = started.workout.entries.findIndex(
-      (entry) => entry.exerciseId === 'overhead-press',
-    )
+    const curlIndex = started.workout.entries.findIndex((entry) => entry.exerciseId === 'db-curl')
     await logSet(
       {
         workoutId: started.workout.id,
-        entryIndex: pressIndex,
+        entryIndex: curlIndex,
         setIndex: 0,
         result: { load: 135, reps: 5, outcome: 'completed' },
       },

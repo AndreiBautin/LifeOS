@@ -231,8 +231,23 @@ thirty-second set made conditioning free to the planner, which then
 stacked a run onto the longest day of the week and still believed it fit.
 
 **Exclusions are absolute.** A lifter who cannot do an exercise means it
-everywhere — anchors, warm-ups and conditioning included, not only the
-hypertrophy picker. An anchor is a strong preference, never an override.
+everywhere — warm-ups and conditioning included, not only the hypertrophy
+picker.
+
+**No day is pinned to an exercise.** `RpDay` used to carry `anchors`, a
+list of slugs a day was built around: Monday to an overhead press,
+pull-ups, lateral raises and curls, Friday to dips and rows. It existed
+to make a generated block continue the session a lifter had actually
+trained, which was worth having while history was being imported.
+
+It is gone, and the reason it had to go is the reason everything else
+here is derived: an anchor is a transcript, not a derivation. The pinned
+exercises went on being scheduled after the tiers that justified them had
+moved, and an overhead press outlived the front delts falling to
+maintenance. **Do not reintroduce a slug list on a day.** If a movement
+pattern is worth guaranteeing, guarantee the _pattern_ and let the picker
+choose — and know that a muscle whose target is zero will receive no
+direct work at all, which is the model behaving correctly.
 
 **`pending` is a real set outcome.** A set that has not been performed is
 not a completed set with no numbers in it. Volume accounting depends on
