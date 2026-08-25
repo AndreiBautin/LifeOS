@@ -3,6 +3,7 @@ import type { Exercise } from '@/domain/exercises/exercise'
 import type { CheckInId, ExerciseId, WorkoutId } from '@/domain/ids/ids'
 import type { WorkoutLog } from '@/domain/logging/workout-log'
 import type { ProgramPosition } from '@/domain/programs/position'
+import type { SyncPayload } from '@/domain/sync/payload'
 import type { Tombstone } from '@/domain/sync/tombstone'
 
 /**
@@ -34,6 +35,21 @@ export interface ExerciseRepository {
    */
   restoreMany(exercises: readonly Exercise[]): Promise<void>
   remove(id: ExerciseId): Promise<void>
+  /**
+   * Deletes without recording a tombstone.
+   *
+   * The receiving half of a sync. When another device's deletion arrives,
+   * the tombstone is already known — it came in the batch — and the local
+   * copy has to go with it. Routing that through `remove` would mint a
+   * *second* tombstone stamped with this device's clock, which is both
+   * redundant and, if the two clocks disagree, capable of overwriting the
+   * original deletion with an earlier time and letting an intervening
+   * edit resurrect the record.
+   *
+   * Named apart from `remove` so no call site can ask to delete and
+   * silently skip recording that it did.
+   */
+  purge(id: ExerciseId): Promise<void>
   count(): Promise<number>
 }
 
@@ -84,6 +100,21 @@ export interface WorkoutRepository {
    */
   restoreMany(logs: readonly WorkoutLog[]): Promise<void>
   remove(id: WorkoutId): Promise<void>
+  /**
+   * Deletes without recording a tombstone.
+   *
+   * The receiving half of a sync. When another device's deletion arrives,
+   * the tombstone is already known — it came in the batch — and the local
+   * copy has to go with it. Routing that through `remove` would mint a
+   * *second* tombstone stamped with this device's clock, which is both
+   * redundant and, if the two clocks disagree, capable of overwriting the
+   * original deletion with an earlier time and letting an intervening
+   * edit resurrect the record.
+   *
+   * Named apart from `remove` so no call site can ask to delete and
+   * silently skip recording that it did.
+   */
+  purge(id: WorkoutId): Promise<void>
   count(): Promise<number>
   all(): Promise<readonly WorkoutLog[]>
 }
@@ -105,6 +136,21 @@ export interface CheckInRepository {
    */
   restoreMany(checkIns: readonly CheckIn[]): Promise<void>
   remove(id: CheckInId): Promise<void>
+  /**
+   * Deletes without recording a tombstone.
+   *
+   * The receiving half of a sync. When another device's deletion arrives,
+   * the tombstone is already known — it came in the batch — and the local
+   * copy has to go with it. Routing that through `remove` would mint a
+   * *second* tombstone stamped with this device's clock, which is both
+   * redundant and, if the two clocks disagree, capable of overwriting the
+   * original deletion with an earlier time and letting an intervening
+   * edit resurrect the record.
+   *
+   * Named apart from `remove` so no call site can ask to delete and
+   * silently skip recording that it did.
+   */
+  purge(id: CheckInId): Promise<void>
   all(): Promise<readonly CheckIn[]>
 }
 
@@ -125,6 +171,55 @@ export interface TombstoneRepository {
    * repository's `remove`, which writes its own.
    */
   record(tombstones: readonly Tombstone[]): Promise<void>
+}
+
+/**
+ * Where this device is in its conversation with a sync target.
+ *
+ * Device-local and never synced — it describes the relationship, not the
+ * training, and two devices necessarily hold different values.
+ */
+export interface SyncState {
+  /**
+   * Opaque, issued by the target, handed back on the next pull.
+   *
+   * Deliberately not a timestamp this app can read or construct. Only the
+   * target knows what its own ordering means, and inventing one from the
+   * local clock is how a device whose clock runs fast silently skips the
+   * other device's most recent work.
+   */
+  readonly cursor?: string
+  /**
+   * Local watermark for what has already been sent. Compared against
+   * `updatedAt` values this device wrote, so the local clock is the right
+   * one to use here and the wrong one to use for `cursor`.
+   */
+  readonly pushedThrough?: string
+  readonly lastSyncedAt?: string
+}
+
+export interface SyncStateRepository {
+  get(): Promise<SyncState | undefined>
+  save(state: SyncState): Promise<void>
+}
+
+/**
+ * Somewhere changes can be sent and collected — a hosted database, an
+ * endpoint, a file on a drive.
+ *
+ * As thin as it can be on purpose. Everything that makes syncing
+ * difficult — what to send, what to accept, how deletions beat edits —
+ * is decided in `application/use-cases/sync` against ordinary data, so
+ * choosing a backend later cannot drag that logic with it. An
+ * implementation of this interface moves bytes and issues cursors, and
+ * has no opinions.
+ */
+export interface SyncTarget {
+  /** A name for logs and for the settings screen. */
+  readonly name: string
+  /** Everything the target has taken since `cursor`, and the next cursor. */
+  pull(cursor: string | undefined): Promise<{ payload: SyncPayload; cursor: string }>
+  push(payload: SyncPayload): Promise<void>
 }
 
 /** A clock, injected so progression and scheduling are reproducible in a test. */

@@ -4,6 +4,8 @@ import type {
   Clock,
   ExerciseRepository,
   PositionRepository,
+  SyncStateRepository,
+  SyncTarget,
   TombstoneRepository,
   WorkoutRepository,
 } from '@/domain/repositories/ports'
@@ -16,6 +18,8 @@ import {
   createTombstoneRepository,
   createWorkoutRepository,
 } from '@/infrastructure/db/repositories'
+import { createSyncStateStore } from '@/infrastructure/storage/sync-state-store'
+import { createNullSyncTarget } from '@/infrastructure/sync/targets'
 import { requestPersistence } from '@/infrastructure/storage/durability'
 import { logger } from '@/shared/logging/logger'
 
@@ -44,6 +48,15 @@ export interface AppServices {
   readonly workouts: WorkoutRepository
   readonly checkIns: CheckInRepository
   readonly tombstones: TombstoneRepository
+  readonly syncState: SyncStateRepository
+  /**
+   * Where changes go, if anywhere.
+   *
+   * The null target until a backend is chosen — syncing against it is a
+   * no-op, so the path is wired end to end and demonstrably does nothing
+   * rather than sitting behind a branch nobody has run.
+   */
+  readonly syncTarget: SyncTarget
   readonly ids: IdGenerator
   readonly clock: Clock
 }
@@ -77,6 +90,8 @@ export async function bootstrap(): Promise<BootstrapResult> {
     workouts: createWorkoutRepository(db, systemClock),
     checkIns: createCheckInRepository(db, systemClock),
     tombstones: createTombstoneRepository(db),
+    syncState: createSyncStateStore(),
+    syncTarget: createNullSyncTarget(),
     ids: cryptoIds,
     clock: systemClock,
   }

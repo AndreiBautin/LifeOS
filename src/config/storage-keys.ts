@@ -25,6 +25,14 @@ export const STORAGE_KEYS = {
    * update can add new ones without resurrecting deleted ones.
    */
   deliveredBuiltIns: `${PREFIX}.delivered-built-ins`,
+  /**
+   * Where this device is in its conversation with a sync target.
+   *
+   * Alongside settings rather than in IndexedDB so that a rebuilt
+   * database does not leave a cursor pointing past records the device no
+   * longer holds.
+   */
+  syncState: `${PREFIX}.sync-state`,
 } as const
 
 /** The IndexedDB database name, kept in the same namespace as the keys. */

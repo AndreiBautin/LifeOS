@@ -103,6 +103,9 @@ export function createExerciseRepository(db: LiftDatabase, clock: Clock): Exerci
       await db.delete('exercises', id)
       await bury(db, clock, 'exercises', id)
     },
+    async purge(id: ExerciseId) {
+      await db.delete('exercises', id)
+    },
     async count() {
       return (await this.all()).length
     },
@@ -205,6 +208,10 @@ export function createWorkoutRepository(db: LiftDatabase, clock: Clock): Workout
       await bury(db, clock, 'workouts', id)
     },
 
+    async purge(id: WorkoutId) {
+      await db.delete('workouts', id)
+    },
+
     async count() {
       return db.count('workouts')
     },
@@ -247,6 +254,9 @@ export function createCheckInRepository(db: LiftDatabase, clock: Clock): CheckIn
     async remove(id: CheckInId) {
       await db.delete('checkIns', id)
       await bury(db, clock, 'checkIns', id)
+    },
+    async purge(id: CheckInId) {
+      await db.delete('checkIns', id)
     },
     async all() {
       return db.getAll('checkIns')
