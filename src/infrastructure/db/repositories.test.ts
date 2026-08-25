@@ -3,33 +3,18 @@ import { deleteDB } from 'idb'
 
 import { builtInExercises } from '@/domain/exercises/catalogue'
 import type { Exercise } from '@/domain/exercises/exercise'
-import { asExerciseId, asInstanceId, asProgramId, type IdGenerator } from '@/domain/ids/ids'
-import type { ProgramTemplate } from '@/domain/programs/program'
-import type { ProgramInstance } from '@/domain/repositories/ports'
-import { buildRpBlock } from '@/application/use-cases/programs/build-rp-block'
-import { DEFAULT_SETTINGS } from '@/domain/settings/settings'
-import { STORAGE_KEYS } from '@/config/storage-keys'
-import { BUILT_IN_PROGRAM_COUNT, builtInPrograms } from '@/infrastructure/seed/built-in-programs'
+import { asExerciseId, type IdGenerator } from '@/domain/ids/ids'
 import {
-  refreshBuiltInPrograms,
-  resnapshotUntrainedInstance,
   retireBuiltInExercises,
-  retireBuiltInPrograms,
   seedIfEmpty,
   syncBuiltInExercises,
-  syncBuiltInPrograms,
 } from '@/infrastructure/seed/seed'
-import {
-  readDeliveredBuiltIns,
-  recordDeliveredBuiltIns,
-} from '@/infrastructure/storage/built-in-delivery'
 import { anEntry, aWorkout, BENCH, SQUAT } from '@/test/builders/workout'
 
 import { closeLiftDatabase, openLiftDatabase, type LiftDatabase } from './database'
 import {
   createExerciseRepository,
-  createInstanceRepository,
-  createProgramRepository,
+  createPositionRepository,
   createWorkoutRepository,
 } from './repositories'
 
@@ -61,8 +46,7 @@ describe('the schema', () => {
     expect([...db.objectStoreNames].sort()).toEqual([
       'checkIns',
       'exercises',
-      'instances',
-      'programs',
+      'position',
       'workouts',
     ])
   })
@@ -153,72 +137,15 @@ describe('the workout repository', () => {
   })
 })
 
-describe('the instance repository', () => {
-  const instance = (overrides: Partial<ProgramInstance>): ProgramInstance =>
-    ({
-      id: asInstanceId('i1'),
-      programId: asProgramId('p1'),
-      templateSnapshot: {
-        id: asProgramId('p1'),
-        name: 'Snapshot',
-        description: '',
-        origin: 'custom',
-        blocks: [],
-        settings: {
-          units: 'lb',
-          roundingIncrement: 5,
-          defaultRestSeconds: 120,
-        },
-        tags: [],
-        createdAt: '2026-08-01T00:00:00.000Z',
-        updatedAt: '2026-08-01T00:00:00.000Z',
-      },
-      name: 'Run 1',
-      startedAt: '2026-08-01T00:00:00.000Z',
-      status: 'active',
-      cycleNumber: 1,
-      blockIndex: 0,
-      weekIndex: 0,
-      dayIndex: 0,
-      ...overrides,
-    }) satisfies ProgramInstance
-
-  it('finds the active run', async () => {
-    const instances = createInstanceRepository(db)
-
-    await instances.save(instance({ id: asInstanceId('old'), status: 'completed' }))
-    await instances.save(instance({ id: asInstanceId('current'), status: 'active' }))
-
-    expect((await instances.active())?.id).toBe('current')
-  })
-
-  it('prefers the most recently started when a backup left two active', async () => {
-    const instances = createInstanceRepository(db)
-
-    await instances.save(
-      instance({ id: asInstanceId('a'), status: 'active', startedAt: '2026-01-01T00:00:00.000Z' }),
-    )
-    await instances.save(
-      instance({ id: asInstanceId('b'), status: 'active', startedAt: '2026-08-01T00:00:00.000Z' }),
-    )
-
-    expect((await instances.active())?.id).toBe('b')
-  })
-})
-
-describe('seeding', () => {
+describe('seeding the exercise library', () => {
   const deps = () => ({
     exercises: createExerciseRepository(db),
-    programs: createProgramRepository(db),
     ids: counterIds(),
     now: new Date('2026-08-24T00:00:00Z'),
   })
 
-  it('fills an empty database with the built-in library and programs', async () => {
-    const result = await seedIfEmpty(deps())
-
-    expect(result.exercisesAdded).toBe(builtInExercises().length)
-    expect(result.programsAdded).toBeGreaterThan(0)
+  it('fills an empty library with the built-in catalogue', async () => {
+    expect(await seedIfEmpty(deps())).toBe(builtInExercises().length)
   })
 
   it('cannot overwrite anything, however many times it runs', async () => {
@@ -228,12 +155,13 @@ describe('seeding', () => {
     const exercises = createExerciseRepository(db)
 
     await seedIfEmpty(deps())
-    const mine = anExercise({
-      id: asExerciseId('bench-press'),
-      name: 'Bench Press (my cue: elbows tucked)',
-      isBuiltIn: false,
-    })
-    await exercises.save(mine)
+    await exercises.save(
+      anExercise({
+        id: asExerciseId('bench-press'),
+        name: 'Bench Press (my cue: elbows tucked)',
+        isBuiltIn: false,
+      }),
+    )
 
     await seedIfEmpty(deps())
     await seedIfEmpty(deps())
@@ -245,54 +173,82 @@ describe('seeding', () => {
 
   it('reports adding nothing on a second run', async () => {
     await seedIfEmpty(deps())
-    const second = await seedIfEmpty(deps())
-
-    expect(second).toEqual({ exercisesAdded: 0, programsAdded: 0 })
+    expect(await seedIfEmpty(deps())).toBe(0)
   })
 
-  it('restores programs without touching a customised exercise library', async () => {
+  it('adds exercises an older install never received', async () => {
     const exercises = createExerciseRepository(db)
-    const programs = createProgramRepository(db)
+    await exercises.saveMany(builtInExercises().slice(0, 5))
 
-    await seedIfEmpty(deps())
-    await programs.remove(asProgramId('built-in-531-bbb'))
-    await exercises.save(
-      anExercise({
-        id: asExerciseId('my-own-lift'),
-        name: 'Zercher Squat',
-        isBuiltIn: false,
-      }),
-    )
-
-    const before = await exercises.count()
-    await seedIfEmpty(deps())
-
-    // Programs were empty of nothing — one was removed but others remain,
-    // so the program store is not empty and is left alone.
-    expect(await exercises.count()).toBe(before)
-    expect(await exercises.byId(asExerciseId('my-own-lift'))).toBeDefined()
+    expect(await syncBuiltInExercises(deps())).toBe(builtInExercises().length - 5)
   })
 
-  it('produces programs whose main lifts exist in the seeded library', async () => {
-    // A built-in referencing an exercise that is not in the catalogue
-    // would render as a blank row in the UI, which is exactly the failure
-    // LiftTracker's exercise query produced when nothing matched.
-    const { exercises, programs } = deps()
+  it('archives an exercise withdrawn from the catalogue', async () => {
+    const exercises = createExerciseRepository(db)
     await seedIfEmpty(deps())
+    await exercises.save(anExercise({ id: asExerciseId('lunge'), isArchived: false }))
 
-    const library = new Set((await exercises.all()).map((exercise) => exercise.id as string))
+    expect(await retireBuiltInExercises(deps(), ['lunge'])).toEqual(['lunge'])
+    // Archived, not deleted: workouts already logged still refer to it.
+    expect((await exercises.byId(asExerciseId('lunge')))?.isArchived).toBe(true)
+  })
 
-    for (const program of await programs.all()) {
-      const referenced = program.blocks
-        .flatMap((block) => block.weeks)
-        .flatMap((week) => week.days)
-        .flatMap((day) => day.slots)
-        .flatMap((slot) => (slot.exercise.kind === 'specific' ? [slot.exercise.exerciseId] : []))
+  it('never archives an exercise that is not on the retired list', async () => {
+    // An  carries no origin, so "anything the catalogue no
+    // longer contains" would archive the lifter's entire custom library.
+    const exercises = createExerciseRepository(db)
+    await exercises.save(anExercise({ id: asExerciseId('my-own-movement'), isArchived: false }))
 
-      for (const id of referenced) {
-        expect(library.has(id), `${program.name} references missing exercise ${id}`).toBe(true)
-      }
-    }
+    await retireBuiltInExercises(deps(), ['lunge'])
+
+    expect((await exercises.byId(asExerciseId('my-own-movement')))?.isArchived).toBe(false)
+  })
+})
+
+describe('where the lifter is', () => {
+  it('stores one position and reads it back', async () => {
+    // A single record under a fixed key, because there is exactly one
+    // position and never a list of them. Modelling it as a collection is
+    // what invited a program library in the first place.
+    const position = createPositionRepository(db)
+
+    expect(await position.get()).toBeUndefined()
+
+    await position.save({
+      cycleNumber: 2,
+      blockIndex: 0,
+      weekIndex: 3,
+      dayIndex: 1,
+      startedAt: '2026-08-01T00:00:00.000Z',
+    })
+
+    expect((await position.get())?.weekIndex).toBe(3)
+
+    await position.save({
+      cycleNumber: 2,
+      blockIndex: 0,
+      weekIndex: 4,
+      dayIndex: 0,
+      startedAt: '2026-08-01T00:00:00.000Z',
+    })
+
+    // Saved again, not appended.
+    expect((await position.get())?.weekIndex).toBe(4)
+  })
+
+  it('clears back to having none', async () => {
+    const position = createPositionRepository(db)
+    await position.save({
+      cycleNumber: 1,
+      blockIndex: 0,
+      weekIndex: 0,
+      dayIndex: 0,
+      startedAt: '2026-08-01T00:00:00.000Z',
+    })
+
+    await position.clear()
+
+    expect(await position.get()).toBeUndefined()
   })
 })
 
@@ -302,429 +258,3 @@ function anExercise(overrides: Partial<Exercise>): Exercise {
   if (base === undefined) throw new Error('the built-in catalogue is empty')
   return { ...base, ...overrides }
 }
-
-/** A minimal template, for tests about storage rather than about content. */
-function aProgram(): ProgramTemplate {
-  return {
-    id: asProgramId('p-test'),
-    name: 'Test program',
-    description: '',
-    origin: 'custom',
-    blocks: [],
-    settings: { units: 'lb', roundingIncrement: 5, defaultRestSeconds: 120 },
-    tags: [],
-    createdAt: '2026-08-01T00:00:00.000Z',
-    updatedAt: '2026-08-01T00:00:00.000Z',
-  }
-}
-
-describe('keeping the built-in library current', () => {
-  const deps = () => ({
-    exercises: createExerciseRepository(db),
-    programs: createProgramRepository(db),
-    ids: counterIds(),
-    now: new Date('2026-08-24T00:00:00Z'),
-  })
-
-  it('adds exercises an older install never received', async () => {
-    const exercises = createExerciseRepository(db)
-
-    // An install created before half the catalogue shipped.
-    const partial = builtInExercises().slice(0, 5)
-    await exercises.saveMany(partial)
-    expect(await exercises.count()).toBe(5)
-
-    const added = await syncBuiltInExercises(deps())
-
-    expect(added).toBe(builtInExercises().length - 5)
-    expect(await exercises.count()).toBe(builtInExercises().length)
-  })
-
-  it('leaves an edited built-in alone', async () => {
-    // Additive only. The lifter's version of an exercise they have
-    // customised must survive an app update that touches the catalogue.
-    const exercises = createExerciseRepository(db)
-    await seedIfEmpty(deps())
-
-    await exercises.save(anExercise({ id: asExerciseId('bench-press'), name: 'My Bench Cue' }))
-    await syncBuiltInExercises(deps())
-
-    expect((await exercises.byId(asExerciseId('bench-press')))?.name).toBe('My Bench Cue')
-  })
-
-  it('adds nothing when the library is already current', async () => {
-    await seedIfEmpty(deps())
-    expect(await syncBuiltInExercises(deps())).toBe(0)
-  })
-
-  it('adds programs an older install never received', async () => {
-    // The upgrade path that was broken: `seedIfEmpty` skips a non-empty
-    // program store entirely, so an install holding the older built-ins
-    // would never have seen the RP blocks.
-    const programs = createProgramRepository(db)
-    const all = builtInPrograms(counterIds(), new Date('2026-08-24T00:00:00Z'))
-    const older = all.filter((program) => !(program.id as string).startsWith('built-in-rp'))
-    for (const program of older) await programs.save(program)
-
-    const result = await syncBuiltInPrograms(deps(), new Set())
-
-    expect(result.added).toEqual(['built-in-rp-block'])
-    expect(await programs.count()).toBe(all.length)
-  })
-
-  it('does not resurrect a built-in program the lifter deleted', async () => {
-    // "Missing" and "deleted" look identical in the database, so delivery
-    // is recorded separately. Getting this wrong would put a deleted
-    // program back on every single app start.
-    const programs = createProgramRepository(db)
-    await seedIfEmpty(deps())
-
-    const delivered = new Set(
-      builtInPrograms(counterIds(), new Date('2026-08-24T00:00:00Z')).map(
-        (program) => program.id as string,
-      ),
-    )
-
-    await programs.remove(asProgramId('built-in-rp-block'))
-    const result = await syncBuiltInPrograms(deps(), delivered)
-
-    expect(result.added).toEqual([])
-    expect(await programs.byId(asProgramId('built-in-rp-block'))).toBeUndefined()
-  })
-
-  it('leaves an edited built-in program alone', async () => {
-    const programs = createProgramRepository(db)
-    await seedIfEmpty(deps())
-
-    const original = await programs.byId(asProgramId('built-in-rp-block'))
-    if (original === undefined) throw new Error('expected the built-in block to be seeded')
-    await programs.save({ ...original, name: 'My Block' })
-
-    await syncBuiltInPrograms(deps(), new Set())
-
-    expect((await programs.byId(asProgramId('built-in-rp-block')))?.name).toBe('My Block')
-  })
-
-  it('rewrites a stored built-in whose shipped content has changed', async () => {
-    // The blind spot in additive sync. A program the install has already
-    // been offered is never revisited, so every later improvement to the
-    // assembler reached new installs only — and the symptom was a block
-    // that still worked while describing a split the code no longer built.
-    const programs = createProgramRepository(db)
-    await seedIfEmpty(deps())
-
-    const before = await programs.byId(asProgramId('built-in-rp-block'))
-    if (before === undefined) throw new Error('expected the block to be seeded')
-
-    // An install carrying an older shape of the same built-in.
-    await programs.save({ ...before, blocks: [], tags: ['stale'] })
-
-    const refreshed = await refreshBuiltInPrograms(deps())
-
-    expect(refreshed).toEqual(['built-in-rp-block'])
-    const after = await programs.byId(asProgramId('built-in-rp-block'))
-    expect(after?.blocks.length).toBeGreaterThan(0)
-    // The creation date is the install's, not today's.
-    expect(after?.createdAt).toBe(before.createdAt)
-  })
-
-  it('can still refresh after it has already refreshed once', async () => {
-    // The regression that shipped with the first version of this: the
-    // refresh wrote a fresh `updatedAt`, which is the same signal used to
-    // detect a lifter's edit. One update landed and the install was then
-    // locked out of every update after it.
-    const programs = createProgramRepository(db)
-    await seedIfEmpty(deps())
-
-    const seeded = await programs.byId(asProgramId('built-in-rp-block'))
-    if (seeded === undefined) throw new Error('expected the block to be seeded')
-
-    await programs.save({ ...seeded, blocks: [] })
-    expect(await refreshBuiltInPrograms(deps())).toEqual(['built-in-rp-block'])
-
-    // Go stale a second time; it must still be repaired.
-    const afterFirst = await programs.byId(asProgramId('built-in-rp-block'))
-    if (afterFirst === undefined) throw new Error('expected the block to survive')
-    await programs.save({ ...afterFirst, blocks: [] })
-
-    expect(await refreshBuiltInPrograms(deps())).toEqual(['built-in-rp-block'])
-  })
-
-  it('rewrites nothing when the shipped content is unchanged', async () => {
-    // Runs on every start, so it must be a no-op in the common case —
-    // otherwise it rewrites the whole library on each launch.
-    await seedIfEmpty(deps())
-
-    expect(await refreshBuiltInPrograms(deps())).toEqual([])
-  })
-
-  it('leaves a built-in the lifter has edited alone', async () => {
-    // Their edit is theirs. Overwriting it to deliver a refinement is the
-    // app deciding it knows better than the person using it.
-    const programs = createProgramRepository(db)
-    await seedIfEmpty(deps())
-
-    const original = await programs.byId(asProgramId('built-in-rp-block'))
-    if (original === undefined) throw new Error('expected the block to be seeded')
-
-    await programs.save({
-      ...original,
-      name: 'My tweaked block',
-      blocks: [],
-      updatedAt: '2027-01-01T00:00:00.000Z',
-    })
-
-    expect(await refreshBuiltInPrograms(deps())).toEqual([])
-    expect((await programs.byId(asProgramId('built-in-rp-block')))?.name).toBe('My tweaked block')
-  })
-
-  it('replaces the built block rather than accumulating one per press', async () => {
-    // A generated id left another near-identical template behind on every
-    // press of Build — precisely the library of things-to-choose-between
-    // this app does not have.
-    const programs = createProgramRepository(db)
-    await seedIfEmpty(deps())
-
-    const buildDeps = {
-      programs,
-      instances: createInstanceRepository(db),
-      exercises: createExerciseRepository(db),
-      ids: counterIds(),
-      clock: { now: () => new Date('2026-08-24T00:00:00Z') },
-    }
-
-    const before = await programs.count()
-    await buildRpBlock(DEFAULT_SETTINGS, buildDeps)
-    const afterFirst = await programs.count()
-    await buildRpBlock(DEFAULT_SETTINGS, buildDeps)
-
-    expect(afterFirst).toBe(before + 1)
-    expect(await programs.count()).toBe(afterFirst)
-  })
-
-  it('re-snapshots a run nothing has been logged against', async () => {
-    // A run the app auto-started snapshots whatever template existed at
-    // first launch. Without this the lifter trains that block forever
-    // while the library quietly shows a newer one.
-    const programs = createProgramRepository(db)
-    const instances = createInstanceRepository(db)
-    const workouts = createWorkoutRepository(db)
-    await seedIfEmpty(deps())
-
-    const program = await programs.byId(asProgramId('built-in-rp-block'))
-    if (program === undefined) throw new Error('expected the block to be seeded')
-
-    await instances.save({
-      id: asInstanceId('auto'),
-      programId: program.id,
-      templateSnapshot: { ...program, name: 'An older shape', blocks: [] },
-      name: 'An older shape',
-      startedAt: '2026-08-01T00:00:00.000Z',
-      status: 'active',
-      cycleNumber: 1,
-      blockIndex: 0,
-      weekIndex: 0,
-      dayIndex: 0,
-    })
-
-    expect(await resnapshotUntrainedInstance({ ...deps(), instances, workouts })).toBe(true)
-
-    const after = await instances.active()
-    expect(after?.name).toBe(program.name)
-    expect(after?.templateSnapshot.blocks.length).toBeGreaterThan(0)
-  })
-
-  it('never re-snapshots a run that has been trained', async () => {
-    // The frozen snapshot is what stops editing a program from rewriting
-    // history. One logged set is enough to make it load-bearing.
-    const programs = createProgramRepository(db)
-    const instances = createInstanceRepository(db)
-    const workouts = createWorkoutRepository(db)
-    await seedIfEmpty(deps())
-
-    const program = await programs.byId(asProgramId('built-in-rp-block'))
-    if (program === undefined) throw new Error('expected the block to be seeded')
-
-    await instances.save({
-      id: asInstanceId('running'),
-      programId: program.id,
-      templateSnapshot: { ...program, name: 'Mid-cycle', blocks: [] },
-      name: 'Mid-cycle',
-      startedAt: '2026-08-01T00:00:00.000Z',
-      status: 'active',
-      cycleNumber: 1,
-      blockIndex: 0,
-      weekIndex: 0,
-      dayIndex: 0,
-    })
-
-    await workouts.save(
-      aWorkout({
-        position: {
-          instanceId: asInstanceId('running'),
-          blockIndex: 0,
-          cycleNumber: 1,
-          weekIndex: 0,
-          dayIndex: 0,
-        },
-      }),
-    )
-
-    expect(await resnapshotUntrainedInstance({ ...deps(), instances, workouts })).toBe(false)
-    expect((await instances.active())?.name).toBe('Mid-cycle')
-  })
-
-  it('archives an exercise withdrawn from the catalogue', async () => {
-    // `syncBuiltInExercises` is additive, so a withdrawn exercise stayed
-    // in the library and went on being selected — which is why the
-    // behind-the-back shrug kept appearing after it was deleted.
-    const exercises = createExerciseRepository(db)
-    await seedIfEmpty(deps())
-    await exercises.save(anExercise({ id: asExerciseId('behind-back-shrug'), isArchived: false }))
-
-    const archived = await retireBuiltInExercises(deps(), ['behind-back-shrug'])
-
-    expect(archived).toEqual(['behind-back-shrug'])
-    // Archived, not deleted: workouts already logged still refer to it.
-    expect((await exercises.byId(asExerciseId('behind-back-shrug')))?.isArchived).toBe(true)
-  })
-
-  it('never archives an exercise that is not on the retired list', async () => {
-    // An `Exercise` carries no origin, so "anything the catalogue no
-    // longer contains" would archive the lifter's entire custom library.
-    const exercises = createExerciseRepository(db)
-    await exercises.save(anExercise({ id: asExerciseId('my-own-movement'), isArchived: false }))
-
-    await retireBuiltInExercises(deps(), ['behind-back-shrug'])
-
-    expect((await exercises.byId(asExerciseId('my-own-movement')))?.isArchived).toBe(false)
-  })
-
-  it('removes a built-in the app no longer ships', async () => {
-    const programs = createProgramRepository(db)
-    await seedIfEmpty(deps())
-    await programs.save({
-      ...aProgram(),
-      id: asProgramId('built-in-531-bbb'),
-      origin: 'built-in',
-    })
-
-    const removed = await retireBuiltInPrograms(
-      { ...deps(), instances: createInstanceRepository(db) },
-      ['built-in-531-bbb'],
-    )
-
-    expect(removed).toEqual(['built-in-531-bbb'])
-    expect(await programs.byId(asProgramId('built-in-531-bbb'))).toBeUndefined()
-  })
-
-  it('never retires a program the lifter made their own', async () => {
-    // Retirement withdraws the app's own templates. A fork carries the
-    // lifter's edits and is theirs to delete.
-    const programs = createProgramRepository(db)
-    await programs.save({ ...aProgram(), id: asProgramId('built-in-531-bbb'), origin: 'fork' })
-
-    const removed = await retireBuiltInPrograms(
-      { ...deps(), instances: createInstanceRepository(db) },
-      ['built-in-531-bbb'],
-    )
-
-    expect(removed).toEqual([])
-    expect(await programs.byId(asProgramId('built-in-531-bbb'))).toBeDefined()
-  })
-
-  it('never retires a program an instance still points at', async () => {
-    // Deleting the template a run refers to would leave that run's logged
-    // history filed under nothing.
-    const programs = createProgramRepository(db)
-    const instances = createInstanceRepository(db)
-
-    await programs.save({
-      ...aProgram(),
-      id: asProgramId('built-in-531-bbb'),
-      origin: 'built-in',
-    })
-    await instances.save({
-      id: asInstanceId('running'),
-      programId: asProgramId('built-in-531-bbb'),
-      templateSnapshot: { ...aProgram(), id: asProgramId('built-in-531-bbb') },
-      name: 'Mid-cycle',
-      startedAt: '2026-08-01T00:00:00.000Z',
-      status: 'active',
-      cycleNumber: 1,
-      blockIndex: 0,
-      weekIndex: 0,
-      dayIndex: 0,
-    })
-
-    const removed = await retireBuiltInPrograms({ ...deps(), instances }, ['built-in-531-bbb'])
-
-    expect(removed).toEqual([])
-    expect(await programs.byId(asProgramId('built-in-531-bbb'))).toBeDefined()
-  })
-
-  it('reports every built-in id so delivery can be recorded', async () => {
-    // The caller records `allIds`, not `added` — otherwise a program that
-    // was present but never explicitly delivered stays unrecorded, and
-    // deleting it later would bring it back.
-    const result = await syncBuiltInPrograms(deps(), new Set())
-
-    expect(result.allIds).toContain('built-in-rp-block')
-    expect(result.allIds.length).toBe(BUILT_IN_PROGRAM_COUNT)
-  })
-})
-
-describe('recording which built-ins were delivered', () => {
-  const memoryStorage = (): Storage => {
-    const map = new Map<string, string>()
-    return {
-      getItem: (key) => map.get(key) ?? null,
-      setItem: (key, value) => void map.set(key, value),
-      removeItem: (key) => void map.delete(key),
-      clear: () => {
-        map.clear()
-      },
-      key: (index) => [...map.keys()][index] ?? null,
-      get length() {
-        return map.size
-      },
-    }
-  }
-
-  it('round-trips ids', () => {
-    const storage = memoryStorage()
-    recordDeliveredBuiltIns(['a', 'b'], storage)
-
-    expect([...readDeliveredBuiltIns(storage)]).toEqual(['a', 'b'])
-  })
-
-  it('merges rather than replaces', () => {
-    // A later app version ships a new built-in. Recording it must not
-    // forget that the earlier ones were already offered, or deleting one
-    // of those would undo the delete.
-    const storage = memoryStorage()
-    recordDeliveredBuiltIns(['a'], storage)
-    recordDeliveredBuiltIns(['b'], storage)
-
-    expect([...readDeliveredBuiltIns(storage)]).toEqual(['a', 'b'])
-  })
-
-  it('treats a corrupt record as nothing delivered', () => {
-    const storage = memoryStorage()
-    storage.setItem(STORAGE_KEYS.deliveredBuiltIns, '{not json')
-
-    expect(readDeliveredBuiltIns(storage).size).toBe(0)
-  })
-
-  it('survives storage that throws', () => {
-    const base = memoryStorage()
-    const throwing: Storage = Object.assign(base, {
-      setItem: () => {
-        throw new Error('quota')
-      },
-    })
-
-    // Private-mode Safari. Startup must not depend on this succeeding.
-    expect(recordDeliveredBuiltIns(['a'], throwing)).toBe(false)
-  })
-})

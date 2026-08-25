@@ -1,19 +1,19 @@
 import { Play, Plus, SkipForward } from 'lucide-react'
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
 
 import type { WorkoutReport } from '@/application/use-cases/training/finish-workout'
 import { useSettings } from '@/app/context'
 import type { SetPrescription } from '@/domain/programs/prescription'
 import { describeReps } from '@/domain/programs/prescription'
+import { clampPosition, dayAt, weekAt } from '@/application/use-cases/programs/current-program'
+import { STARTING_POSITION } from '@/domain/programs/position'
 import { Badge, Button, Card, Empty, Section } from '@/components/shared/primitives'
-import { buttonStyles } from '@/components/shared/styles'
-import { cn } from '@/lib/cn'
 
 import {
-  useActiveInstance,
   useActiveWorkout,
   useExercises,
+  usePosition,
+  useProgram,
   useAbandonWorkout,
   useFinishWorkout,
   useSkipSession,
@@ -33,7 +33,8 @@ import { SessionReport } from './SessionReport'
 export function TrainPage() {
   const { settings } = useSettings()
   const activeWorkout = useActiveWorkout()
-  const activeInstance = useActiveInstance()
+  const program = useProgram()
+  const position = usePosition()
   const exercises = useExercises()
   const startWorkout = useStartWorkout()
   const skipSession = useSkipSession()
@@ -73,32 +74,37 @@ export function TrainPage() {
     )
   }
 
-  const instance = activeInstance.data
-  const nextDay =
-    instance == null
+  /*
+   * The program is derived and the position is stored, so "where am I"
+   * is a lookup rather than a snapshot. A lifter who has never trained
+   * has no stored position yet and starts at the beginning — there is no
+   * program to pick and nothing to start.
+   */
+  const here =
+    program.data === undefined
       ? undefined
-      : instance.templateSnapshot.blocks[instance.blockIndex]?.weeks[instance.weekIndex]?.days[
-          instance.dayIndex
-        ]
-  const week = instance?.templateSnapshot.blocks[instance.blockIndex]?.weeks[instance.weekIndex]
+      : clampPosition(program.data, position.data ?? { ...STARTING_POSITION, startedAt: '' })
+
+  const nextDay =
+    program.data === undefined || here === undefined ? undefined : dayAt(program.data, here)
+  const week =
+    program.data === undefined || here === undefined ? undefined : weekAt(program.data, here)
 
   return (
     <div>
       <header className="mb-6">
         <h1 className="text-ink-50 text-2xl font-semibold tracking-tight">Train</h1>
-        <p className="text-ink-500 mt-0.5 text-sm">
-          {instance == null ? 'No program running' : instance.name}
-        </p>
+        <p className="text-ink-500 mt-0.5 text-sm">{program.data?.name ?? 'Loading…'}</p>
       </header>
 
-      {instance != null && nextDay !== undefined ? (
+      {nextDay !== undefined ? (
         <Section title="Next session" description={week?.label}>
           <Card>
             <div className="mb-3 flex items-center justify-between gap-2">
               <h3 className="text-ink-50 text-lg font-semibold">{nextDay.label}</h3>
               <div className="flex gap-1.5">
                 {week?.isDeload === true && <Badge tone="warn">deload</Badge>}
-                <Badge>cycle {instance.cycleNumber}</Badge>
+                <Badge>cycle {here?.cycleNumber ?? 1}</Badge>
               </div>
             </div>
 
@@ -153,15 +159,8 @@ export function TrainPage() {
           </Card>
         </Section>
       ) : (
-        <Empty title={instance == null ? 'No program running' : 'This program is finished'}>
-          <p>
-            {instance == null
-              ? 'Pick a program to follow, or log a session on its own.'
-              : 'Start another program, or log sessions on their own.'}
-          </p>
-          <Link to="/programs" className={cn(buttonStyles({ variant: 'primary' }), 'mt-4')}>
-            Browse programs
-          </Link>
+        <Empty title="Building your session">
+          <p>One moment — the block is put together from your priorities each time.</p>
         </Empty>
       )}
 

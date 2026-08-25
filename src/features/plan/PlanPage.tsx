@@ -6,7 +6,7 @@ import { Badge, Card, Section } from '@/components/shared/primitives'
 import { buttonStyles } from '@/components/shared/styles'
 import { cn } from '@/lib/cn'
 
-import { useActiveInstance } from '@/features/train/hooks'
+import { useProgram } from '@/features/train/hooks'
 
 /**
  * What the block is doing to you, and why.
@@ -30,7 +30,7 @@ const BAND_TONE: Record<Band, 'accent' | 'good' | 'neutral'> = {
 
 export function PlanPage() {
   const { settings } = useSettings()
-  const instance = useActiveInstance()
+  const program = useProgram()
 
   const plan = explainVolume(settings.muscleTiers, settings.strengthTiers, settings.landmarks)
 
@@ -42,15 +42,13 @@ export function PlanPage() {
       .sort((a, b) => b.weeklySets - a.weeklySets),
   }))
 
-  const running = instance.data
+  const running = program.data
 
   return (
     <div>
       <header className="mb-6">
         <h1 className="text-ink-50 text-2xl font-semibold tracking-tight">Plan</h1>
-        <p className="text-ink-500 mt-0.5 text-sm">
-          {running == null ? 'No block running' : running.name}
-        </p>
+        <p className="text-ink-500 mt-0.5 text-sm">{running?.name ?? 'Loading…'}</p>
       </header>
 
       <Section title="How the week is shaped">
@@ -122,23 +120,6 @@ export function PlanPage() {
           </p>
           <Link to="/settings" className={cn(buttonStyles({ variant: 'outline' }), 'w-full')}>
             Edit priorities and landmarks
-          </Link>
-          {running != null && (
-            <Link
-              to={`/programs/${running.programId}`}
-              className={cn(buttonStyles({ variant: 'ghost' }), 'w-full')}
-            >
-              See the block itself
-            </Link>
-          )}
-          {/*
-            Not a picker — the app starts and replaces blocks on its own.
-            It is here because the page exists and was otherwise
-            unreachable once Programs left the navigation, which is how a
-            lifter ends up with templates they cannot delete.
-          */}
-          <Link to="/programs" className={cn(buttonStyles({ variant: 'ghost' }), 'w-full')}>
-            Every block you have built
           </Link>
         </Card>
       </Section>

@@ -1,5 +1,6 @@
-import { nextPosition } from '@/domain/programs/advance'
-import type { Clock, InstanceRepository, WorkoutRepository } from '@/domain/repositories/ports'
+import { nextPosition, STARTING_POSITION } from '@/domain/programs/position'
+import type { ProgramTemplate } from '@/domain/programs/program'
+import type { Clock, PositionRepository, WorkoutRepository } from '@/domain/repositories/ports'
 
 /**
  * Moving past a session without pretending it was trained.
@@ -16,14 +17,15 @@ import type { Clock, InstanceRepository, WorkoutRepository } from '@/domain/repo
  */
 
 export interface SkipSessionDeps {
-  readonly instances: InstanceRepository
+  readonly position: PositionRepository
   readonly workouts: WorkoutRepository
+  /** The program, derived by the caller from the lifter's settings. */
+  readonly program: ProgramTemplate
   readonly clock: Clock
 }
 
 export type SkipResult =
   | { readonly kind: 'skipped' }
-  | { readonly kind: 'finished' }
   | { readonly kind: 'no-program' }
   /** A session is already open. Finishing or abandoning it comes first. */
   | { readonly kind: 'session-in-progress' }
@@ -32,23 +34,21 @@ export async function skipSession(deps: SkipSessionDeps): Promise<SkipResult> {
   const open = await deps.workouts.inProgress()
   if (open !== undefined) return { kind: 'session-in-progress' }
 
-  const instance = await deps.instances.active()
-  if (instance === undefined) return { kind: 'no-program' }
-
-  const result = nextPosition(instance.templateSnapshot, instance)
-
-  switch (result.kind) {
-    case 'invalid':
-      return { kind: 'no-program' }
-    case 'moved':
-      await deps.instances.save({ ...instance, ...result.position })
-      return { kind: 'skipped' }
-    case 'finished':
-      await deps.instances.save({
-        ...instance,
-        status: 'completed',
-        completedAt: deps.clock.now().toISOString(),
-      })
-      return { kind: 'finished' }
+  /*
+   * A lifter who has never opened a session has no stored position, and
+   * skipping is a perfectly reasonable first action — a week starting on
+   * a Wednesday, say. Defaulting to the beginning means the skip lands on
+   * day two rather than reporting that there is no program, which under a
+   * derived program is never true.
+   */
+  const current = (await deps.position.get()) ?? {
+    ...STARTING_POSITION,
+    startedAt: deps.clock.now().toISOString(),
   }
+
+  const result = nextPosition(deps.program, current)
+  if (result.kind === 'invalid') return { kind: 'no-program' }
+
+  await deps.position.save(result.position)
+  return { kind: 'skipped' }
 }

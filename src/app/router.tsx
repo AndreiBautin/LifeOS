@@ -4,8 +4,6 @@ import { CharacterPage } from '@/features/character/CharacterPage'
 import { HistoryPage } from '@/features/history/HistoryPage'
 import { PlanPage } from '@/features/plan/PlanPage'
 import { NotFoundPage } from '@/features/not-found/NotFoundPage'
-import { ProgramDetailPage } from '@/features/programs/ProgramDetailPage'
-import { ProgramsPage } from '@/features/programs/ProgramsPage'
 import { SettingsPage } from '@/features/settings/SettingsPage'
 import { TrainPage } from '@/features/train/TrainPage'
 
@@ -29,8 +27,6 @@ export const router = createBrowserRouter(
         { path: 'train', element: <TrainPage /> },
         { path: 'plan', element: <PlanPage /> },
         { path: 'character', element: <CharacterPage /> },
-        { path: 'programs', element: <ProgramsPage /> },
-        { path: 'programs/:programId', element: <ProgramDetailPage /> },
         { path: 'history', element: <HistoryPage /> },
         { path: 'settings', element: <SettingsPage /> },
         { path: '*', element: <NotFoundPage /> },

@@ -14,8 +14,6 @@ import {
 import {
   createCheckInRepository,
   createExerciseRepository,
-  createInstanceRepository,
-  createProgramRepository,
   createWorkoutRepository,
 } from '@/infrastructure/db/repositories'
 import { seedIfEmpty } from '@/infrastructure/seed/seed'
@@ -51,8 +49,6 @@ beforeEach(async () => {
   db = await openLiftDatabase(TEST_DB)
   repositories = {
     exercises: createExerciseRepository(db),
-    programs: createProgramRepository(db),
-    instances: createInstanceRepository(db),
     workouts: createWorkoutRepository(db),
     checkIns: createCheckInRepository(db),
   }
@@ -66,7 +62,6 @@ afterEach(async () => {
 async function populate(): Promise<void> {
   await seedIfEmpty({
     exercises: repositories.exercises,
-    programs: repositories.programs,
     ids: counterIds(),
     now: NOW,
   })
@@ -197,7 +192,6 @@ describe('the preview shown before importing', () => {
     const { preview } = parseBackup(file)
 
     expect(preview.counts?.workouts).toBe(2)
-    expect(preview.counts?.programs).toBeGreaterThan(0)
     expect(preview.dateRange).toEqual({ from: '2026-08-01', to: '2026-08-20' })
     expect(preview.exportedAt).toBe(NOW.toISOString())
   })

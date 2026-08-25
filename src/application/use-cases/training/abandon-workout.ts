@@ -1,6 +1,6 @@
 import type { WorkoutId } from '@/domain/ids/ids'
 import { totalWorkingSets, type WorkoutLog } from '@/domain/logging/workout-log'
-import type { Clock, InstanceRepository, WorkoutRepository } from '@/domain/repositories/ports'
+import type { Clock, WorkoutRepository } from '@/domain/repositories/ports'
 
 /**
  * Walking away from a session that was started and not trained.
@@ -26,7 +26,6 @@ import type { Clock, InstanceRepository, WorkoutRepository } from '@/domain/repo
 
 export interface AbandonWorkoutDeps {
   readonly workouts: WorkoutRepository
-  readonly instances: InstanceRepository
   readonly clock: Clock
 }
 

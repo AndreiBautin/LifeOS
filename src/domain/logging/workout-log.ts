@@ -1,5 +1,5 @@
 import type { Exercise } from '@/domain/exercises/exercise'
-import type { CheckInId, ExerciseId, InstanceId, SlotId, WorkoutId } from '@/domain/ids/ids'
+import type { CheckInId, ExerciseId, SlotId, WorkoutId } from '@/domain/ids/ids'
 import type { SetPrescription } from '@/domain/programs/prescription'
 import type { SlotRole } from '@/domain/programs/program'
 import { bestEstimate, type E1rmEstimate } from '@/domain/strength/one-rep-max'
@@ -76,8 +76,7 @@ export interface LogEntry {
 export type WorkoutStatus = 'in-progress' | 'completed' | 'abandoned'
 
 /** Where in a program this workout sits. Absent for a freestyle session. */
-export interface ProgramPosition {
-  readonly instanceId: InstanceId
+export interface LoggedPosition {
   readonly blockIndex: number
   readonly cycleNumber: number
   readonly weekIndex: number
@@ -91,7 +90,7 @@ export interface WorkoutLog {
    * without a program is a first-class path, not a degenerate case —
    * both old apps made it impossible.
    */
-  readonly position?: ProgramPosition
+  readonly position?: LoggedPosition
   readonly date: string
   readonly startedAt: string
   readonly completedAt?: string

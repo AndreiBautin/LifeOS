@@ -17,8 +17,6 @@ import type { AppSettings } from '@/domain/settings/settings'
 import type {
   CheckInRepository,
   ExerciseRepository,
-  InstanceRepository,
-  ProgramRepository,
   WorkoutRepository,
 } from '@/domain/repositories/ports'
 
@@ -35,8 +33,6 @@ import type {
 
 export interface BackupRepositories {
   readonly exercises: ExerciseRepository
-  readonly programs: ProgramRepository
-  readonly instances: InstanceRepository
   readonly workouts: WorkoutRepository
   readonly checkIns: CheckInRepository
 }
@@ -51,10 +47,8 @@ export async function buildBackup(
   repositories: BackupRepositories,
   options: ExportOptions,
 ): Promise<BackupEnvelope> {
-  const [exercises, programs, instances, workouts, checkIns] = await Promise.all([
+  const [exercises, workouts, checkIns] = await Promise.all([
     repositories.exercises.all(),
-    repositories.programs.all(),
-    repositories.instances.all(),
     repositories.workouts.all(),
     repositories.checkIns.all(),
   ])
@@ -62,8 +56,6 @@ export async function buildBackup(
   const data: BackupData = {
     settings: options.settings,
     exercises,
-    programs,
-    instances,
     workouts,
     checkIns,
   }
@@ -151,26 +143,20 @@ export async function previewMerge(
   envelope: BackupEnvelope,
   repositories: BackupRepositories,
 ): Promise<MergeEffect> {
-  const [exercises, programs, instances, workouts, checkIns] = await Promise.all([
+  const [exercises, workouts, checkIns] = await Promise.all([
     repositories.exercises.all(),
-    repositories.programs.all(),
-    repositories.instances.all(),
     repositories.workouts.all(),
     repositories.checkIns.all(),
   ])
 
   const existing = {
     exercises: new Set(exercises.map((item) => item.id as string)),
-    programs: new Set(programs.map((item) => item.id as string)),
-    instances: new Set(instances.map((item) => item.id as string)),
     workouts: new Set(workouts.map((item) => item.id as string)),
     checkIns: new Set(checkIns.map((item) => item.id as string)),
   }
 
   const added: Record<keyof BackupCounts, number> = {
     exercises: 0,
-    programs: 0,
-    instances: 0,
     workouts: 0,
     checkIns: 0,
   }
@@ -188,14 +174,6 @@ export async function previewMerge(
     envelope.data.exercises.map((item) => item.id),
   )
   tally(
-    'programs',
-    envelope.data.programs.map((item) => item.id),
-  )
-  tally(
-    'instances',
-    envelope.data.instances.map((item) => item.id),
-  )
-  tally(
     'workouts',
     envelope.data.workouts.map((item) => item.id),
   )
@@ -206,8 +184,6 @@ export async function previewMerge(
 
   const unchanged: BackupCounts = {
     exercises: existing.exercises.size - updated.exercises,
-    programs: existing.programs.size - updated.programs,
-    instances: existing.instances.size - updated.instances,
     workouts: existing.workouts.size - updated.workouts,
     checkIns: existing.checkIns.size - updated.checkIns,
   }
@@ -238,8 +214,6 @@ export async function applyBackup(
 
   await repositories.exercises.saveMany(data.exercises)
 
-  for (const program of data.programs) await repositories.programs.save(program)
-  for (const instance of data.instances) await repositories.instances.save(instance)
   for (const workout of data.workouts) await repositories.workouts.save(workout)
   for (const checkIn of data.checkIns) await repositories.checkIns.save(checkIn)
 

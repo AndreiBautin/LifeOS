@@ -121,6 +121,9 @@ function mergeWithDefaults(parsed: unknown): AppSettings {
           ),
         )
       : DEFAULT_SETTINGS.estimatedMaxes,
+    excludedExercises: Array.isArray(stored.excludedExercises)
+      ? (stored.excludedExercises as AppSettings['excludedExercises'])
+      : DEFAULT_SETTINGS.excludedExercises,
     muscleTiers: Array.isArray(stored.muscleTiers)
       ? (stored.muscleTiers as AppSettings['muscleTiers'])
       : DEFAULT_SETTINGS.muscleTiers,

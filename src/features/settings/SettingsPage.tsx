@@ -1,14 +1,11 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { AlertTriangle, Download, HardDrive, Play, RefreshCw, Upload } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
+import { AlertTriangle, Download, HardDrive, Upload } from 'lucide-react'
 import { useId, useRef, useState } from 'react'
 
 import { useServices, useSettings } from '@/app/context'
 import { MUSCLE_GROUPS, MUSCLE_GROUP_LABELS } from '@/domain/exercises/taxonomy'
 import { DEFAULT_INCREMENT } from '@/domain/units/weight'
 import { Badge, Button, Card, Section } from '@/components/shared/primitives'
-import { buildRpBlock, CUSTOM_BLOCK_ID } from '@/application/use-cases/programs/build-rp-block'
-import { startProgram } from '@/application/use-cases/programs/manage-programs'
-import { asProgramId } from '@/domain/ids/ids'
 import {
   MAX_DAYS_PER_WEEK,
   MAX_WEEKS_BEFORE_DELOAD,
@@ -38,32 +35,6 @@ export function SettingsPage() {
   const backup = useBackup()
   const fileInput = useRef<HTMLInputElement>(null)
   const [confirmReplace, setConfirmReplace] = useState('')
-
-  const client = useQueryClient()
-
-  const rebuild = useMutation({
-    mutationFn: () => buildRpBlock(settings, services),
-    onSuccess: () => {
-      void client.invalidateQueries({ queryKey: ['programs'] })
-    },
-  })
-
-  /*
-   * Starting the block is offered here rather than sent elsewhere.
-   *
-   * "Built. Start it from Programs" was a dead end: Programs left the
-   * navigation when the picker did, so the sentence named a screen with
-   * no way to reach it. Building a block and running it are one
-   * intention, and splitting them across two screens was an artefact of
-   * there once being a library to choose from.
-   */
-  const startBuilt = useMutation({
-    mutationFn: () => startProgram(asProgramId(CUSTOM_BLOCK_ID), services),
-    onSuccess: () => {
-      void client.invalidateQueries({ queryKey: ['instance'] })
-      void client.invalidateQueries({ queryKey: ['programs'] })
-    },
-  })
 
   const storage = useQuery({ queryKey: ['storage-status'], queryFn: storageStatus })
   const exercises = useQuery({ queryKey: ['exercises'], queryFn: () => services.exercises.all() })
@@ -129,59 +100,10 @@ export function SettingsPage() {
 
         <Card className="mt-4">
           <p className="text-ink-300 text-sm">
-            Changing a tier does not touch a block you are already running — that keeps a frozen
-            copy of what it started with, so a cycle in progress stays coherent. Build a new one to
-            train off these priorities.
+            Nothing to press. The block is built from these priorities every time it is read, so a
+            tier moved here is in tomorrow's session — and a session already open keeps the
+            prescription it started with.
           </p>
-          <Button
-            variant="primary"
-            full
-            className="mt-3"
-            disabled={rebuild.isPending}
-            onClick={() => {
-              rebuild.mutate()
-            }}
-          >
-            <RefreshCw size={16} aria-hidden />
-            {rebuild.isPending ? 'Building…' : 'Build a block from these priorities'}
-          </Button>
-          {rebuild.isSuccess && !startBuilt.isSuccess && (
-            <div className="border-ink-800 mt-3 border-t pt-3">
-              <p className="text-ink-50 text-sm font-medium">{rebuild.data.name}</p>
-              <p className="text-ink-500 mt-0.5 text-xs">{rebuild.data.description}</p>
-              <Button
-                variant="primary"
-                full
-                className="mt-3"
-                disabled={startBuilt.isPending}
-                onClick={() => {
-                  startBuilt.mutate()
-                }}
-              >
-                <Play size={16} aria-hidden />
-                {startBuilt.isPending ? 'Starting…' : 'Train this block'}
-              </Button>
-              <p className="text-ink-500 mt-2 text-xs">
-                Starts it from week one. Anything you are part-way through is paused rather than
-                lost, and its logged sessions stay in your history.
-              </p>
-            </div>
-          )}
-          {startBuilt.isSuccess && (
-            <p className="text-good-500 mt-2 text-xs" role="status">
-              Running. Today’s session is on the Train screen.
-            </p>
-          )}
-          {rebuild.isError && (
-            <p className="text-bad-500 mt-2 text-xs" role="alert">
-              {rebuild.error.message}
-            </p>
-          )}
-          {startBuilt.isError && (
-            <p className="text-bad-500 mt-2 text-xs" role="alert">
-              {startBuilt.error.message}
-            </p>
-          )}
         </Card>
       </Section>
 
@@ -459,7 +381,6 @@ function ImportPanel({
           <p className="text-ink-50 text-sm font-medium">Ready to import</p>
           <ul className="text-ink-300 numeric space-y-0.5 text-xs">
             <li>{preview.counts?.workouts ?? 0} workouts</li>
-            <li>{preview.counts?.programs ?? 0} programs</li>
             <li>{preview.counts?.exercises ?? 0} exercises</li>
             <li>{preview.counts?.checkIns ?? 0} check-ins</li>
             {preview.dateRange !== undefined && (

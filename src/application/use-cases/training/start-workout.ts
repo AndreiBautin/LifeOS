@@ -6,10 +6,12 @@ import type { ProgramDay, ProgramTemplate, Slot } from '@/domain/programs/progra
 import type {
   Clock,
   ExerciseRepository,
-  InstanceRepository,
-  ProgramInstance,
+  PositionRepository,
   WorkoutRepository,
 } from '@/domain/repositories/ports'
+import type { ProgramPosition } from '@/domain/programs/position'
+import { clampPosition, dayAt } from '@/application/use-cases/programs/current-program'
+import { STARTING_POSITION } from '@/domain/programs/position'
 import type { AthleteState } from '@/domain/resolution/resolve'
 import { resolveSets } from '@/domain/resolution/resolve'
 import { matchesQuery } from '@/domain/exercises/exercise'
@@ -26,7 +28,7 @@ import { matchesQuery } from '@/domain/exercises/exercise'
 
 export interface StartWorkoutDeps {
   readonly workouts: WorkoutRepository
-  readonly instances: InstanceRepository
+  readonly position: PositionRepository
   readonly exercises: ExerciseRepository
   readonly ids: IdGenerator
   readonly clock: Clock
@@ -35,6 +37,8 @@ export interface StartWorkoutDeps {
 export interface StartWorkoutRequest {
   readonly athlete: AthleteState
   readonly roundingIncrement: number
+  /** The program, derived by the caller from the lifter's settings. */
+  readonly program: ProgramTemplate
   /** Omit to start the active program's next day. */
   readonly freestyleTitle?: string
 }
@@ -61,21 +65,21 @@ export async function startWorkout(
     return { kind: 'started', workout }
   }
 
-  const instance = await deps.instances.active()
-  if (instance === undefined) {
-    return {
-      kind: 'no-program',
-      message: 'No program is running. Pick one from Programs, or log a workout without one.',
-    }
+  const stored = await deps.position.get()
+  const position = stored ?? { ...STARTING_POSITION, startedAt: deps.clock.now().toISOString() }
+
+  // The program can change shape underneath a position — five days a week
+  // becoming three — so the position is pulled back inside it first.
+  const safe = clampPosition(request.program, position)
+  const day = dayAt(request.program, safe)
+  if (day === undefined) {
+    return { kind: 'program-finished', message: 'This program has no scheduled days.' }
   }
 
-  const day = dayAt(instance.templateSnapshot, instance)
-  if (day === undefined) {
-    return { kind: 'program-finished', message: 'This program has no more scheduled days.' }
-  }
+  if (stored === undefined) await deps.position.save(safe)
 
   const library = await deps.exercises.all()
-  const workout = buildFromDay(day, instance, request, library, deps)
+  const workout = buildFromDay(day, safe, request, library, deps)
   await deps.workouts.save(workout)
 
   return { kind: 'started', workout }
@@ -93,13 +97,9 @@ function emptyWorkout(title: string, deps: StartWorkoutDeps): WorkoutLog {
   }
 }
 
-function dayAt(program: ProgramTemplate, position: ProgramInstance): ProgramDay | undefined {
-  return program.blocks[position.blockIndex]?.weeks[position.weekIndex]?.days[position.dayIndex]
-}
-
 function buildFromDay(
   day: ProgramDay,
-  instance: ProgramInstance,
+  position: ProgramPosition,
   request: StartWorkoutRequest,
   library: readonly Exercise[],
   deps: StartWorkoutDeps,
@@ -149,11 +149,10 @@ function buildFromDay(
   return {
     id: asWorkoutId(deps.ids.next()),
     position: {
-      instanceId: instance.id,
-      blockIndex: instance.blockIndex,
-      cycleNumber: instance.cycleNumber,
-      weekIndex: instance.weekIndex,
-      dayIndex: instance.dayIndex,
+      blockIndex: position.blockIndex,
+      cycleNumber: position.cycleNumber,
+      weekIndex: position.weekIndex,
+      dayIndex: position.dayIndex,
     },
     date: isoDate(now),
     startedAt: now.toISOString(),

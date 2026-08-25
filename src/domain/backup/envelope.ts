@@ -1,8 +1,6 @@
 import type { CheckIn } from '@/domain/autoregulation/check-in'
 import type { Exercise } from '@/domain/exercises/exercise'
 import type { WorkoutLog } from '@/domain/logging/workout-log'
-import type { ProgramTemplate } from '@/domain/programs/program'
-import type { ProgramInstance } from '@/domain/repositories/ports'
 import type { AppSettings } from '@/domain/settings/settings'
 
 /**
@@ -46,8 +44,6 @@ export interface BackupEnvelope {
 
 export interface BackupCounts {
   readonly exercises: number
-  readonly programs: number
-  readonly instances: number
   readonly workouts: number
   readonly checkIns: number
 }
@@ -55,8 +51,6 @@ export interface BackupCounts {
 export interface BackupData {
   readonly settings: AppSettings
   readonly exercises: readonly Exercise[]
-  readonly programs: readonly ProgramTemplate[]
-  readonly instances: readonly ProgramInstance[]
   readonly workouts: readonly WorkoutLog[]
   readonly checkIns: readonly CheckIn[]
 }
@@ -64,8 +58,6 @@ export interface BackupData {
 export function countsFor(data: BackupData): BackupCounts {
   return {
     exercises: data.exercises.length,
-    programs: data.programs.length,
-    instances: data.instances.length,
     workouts: data.workouts.length,
     checkIns: data.checkIns.length,
   }
@@ -175,7 +167,7 @@ export function validateEnvelope(candidate: unknown): ImportPreview {
 
   const bag = data as Record<string, unknown>
 
-  for (const key of ['exercises', 'programs', 'instances', 'workouts', 'checkIns'] as const) {
+  for (const key of ['exercises', 'workouts', 'checkIns'] as const) {
     if (!Array.isArray(bag[key])) {
       problems.push({
         severity: 'error',

@@ -85,25 +85,30 @@ MEV never moves from a soreness rating.
 **Readiness scales today, not the landmarks.** Sleep and stress adjust
 one session. They must never produce a landmark proposal.
 
-**A shipped change must reach an install that already exists.** Four
-mechanisms, each covering a different gap, all in `infrastructure/seed/`:
-`syncBuiltInExercises` and `syncBuiltInPrograms` add what is missing;
-`refreshBuiltInPrograms` rewrites a built-in whose content changed;
-`retireBuiltInExercises` and `retireBuiltInPrograms` withdraw what is
-gone; `resnapshotUntrainedInstance` carries a refresh into a run nobody
-has trained yet. Adding data to the app without one of these means new
-installs only — which looks like it works, because yours is new.
+**The program is derived, never stored.** `deriveProgram(settings,
+library)` in `application/use-cases/programs/current-program.ts`. Only the
+_position_ persists. Storing the program produced the same bug four times
+— a change reaching the code and not the copy on the device — and each
+fix patched one delivery route while leaving the others open: additive
+sync, then content refresh, then retirement, then re-snapshotting. All of
+it is gone. There is no library, no built-in program, no instance, no
+frozen snapshot, and nothing to press to pick up a change.
 
-**`createdAt === updatedAt` means "the lifter has not touched this".**
-The refresh preserves it deliberately. Writing a fresh `updatedAt` there
-made the first refresh look like a user edit and locked the install out
-of every refresh after it.
+**Derivation must be deterministic.** Same settings in, byte-identical
+program out, slot ids included. A workout in progress refers to its day
+by position and its sets by index; a program that differed between reads
+would make every one of those a guess. That is why assembly takes an id
+generator as a parameter — `current-program.ts` passes a counter, not
+`crypto.randomUUID`.
 
-**One block ships, and the app opens on it.** `startDefaultProgram` in
-`infrastructure/seed/seed.ts` starts it when there is no instance at all.
-There is no program picker — choosing is a step that existed only because
-there was once something to choose between. Adding a second built-in
-means reintroducing that, so decide deliberately.
+**A log describes itself.** A `WorkoutLog` embeds the prescription,
+planned load and planned reps of every set. That is what made the frozen
+snapshot unnecessary: history never needed the template to interpret it.
+Do not "normalise" this by referencing a program instead.
+
+**A position is clamped, not reset.** The program can get shorter under a
+lifter — five days a week to three. `clampPosition` pulls them back
+inside it. Resetting to week one instead would cost them a block.
 
 **Skipping, abandoning and finishing are three different things.**
 Finishing advances the program and files a log. Skipping advances it and
@@ -176,18 +181,6 @@ and no way to tell.
 
 **Exercise ids are slugs, not UUIDs** (`bench-press`). They are stable
 across devices and readable in an export file. Do not "fix" this.
-
-**The built-in programs are not privileged.** Every one is produced by
-`assembleRpProgram` from an ordinary recipe. If a built-in ever needs a
-special code path, the builder cannot express it either — fix the
-builder, not the built-in.
-
-**A built-in withdrawn from the code is not gone from a device.** Add its
-id to `RETIRED_BUILT_IN_PROGRAM_IDS`; `retireBuiltInPrograms` removes it
-on the next start, sparing forks and anything a run still points at. The
-mirror of this is `syncBuiltInPrograms`, which offers each built-in
-exactly once — "missing" and "deleted on purpose" look identical in the
-database, so delivery is recorded separately in `localStorage`.
 
 **Icons are generated**, not hand-placed: `node scripts/generate-icons.mjs`.
 CI fails if `public/icons` and the script disagree.

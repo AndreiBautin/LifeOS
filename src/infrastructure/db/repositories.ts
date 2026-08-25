@@ -1,14 +1,12 @@
 import type { CheckIn } from '@/domain/autoregulation/check-in'
+import type { ProgramPosition } from '@/domain/programs/position'
 import type { Exercise } from '@/domain/exercises/exercise'
-import type { CheckInId, ExerciseId, InstanceId, ProgramId, WorkoutId } from '@/domain/ids/ids'
+import type { CheckInId, ExerciseId, WorkoutId } from '@/domain/ids/ids'
 import type { WorkoutLog } from '@/domain/logging/workout-log'
-import type { ProgramTemplate } from '@/domain/programs/program'
 import type {
   CheckInRepository,
   ExerciseRepository,
-  InstanceRepository,
-  ProgramInstance,
-  ProgramRepository,
+  PositionRepository,
   WorkoutQuery,
   WorkoutRepository,
 } from '@/domain/repositories/ports'
@@ -48,47 +46,25 @@ export function createExerciseRepository(db: LiftDatabase): ExerciseRepository {
   }
 }
 
-export function createProgramRepository(db: LiftDatabase): ProgramRepository {
-  return {
-    async all() {
-      const programs = await db.getAll('programs')
-      return programs.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
-    },
-    async byId(id: ProgramId) {
-      return db.get('programs', id)
-    },
-    async save(program: ProgramTemplate) {
-      await db.put('programs', program)
-    },
-    async remove(id: ProgramId) {
-      await db.delete('programs', id)
-    },
-    async count() {
-      return db.count('programs')
-    },
-  }
-}
+/**
+ * Where the lifter is, under one fixed key.
+ *
+ * A single-record store rather than a keyed collection, because there is
+ * exactly one position and never a list of them. Modelling it as a
+ * collection is what invited a library in the first place.
+ */
+const POSITION_KEY = 'current'
 
-export function createInstanceRepository(db: LiftDatabase): InstanceRepository {
+export function createPositionRepository(db: LiftDatabase): PositionRepository {
   return {
-    async all() {
-      return db.getAll('instances')
+    async get() {
+      return db.get('position', POSITION_KEY)
     },
-    async byId(id: InstanceId) {
-      return db.get('instances', id)
+    async save(position: ProgramPosition) {
+      await db.put('position', position, POSITION_KEY)
     },
-    async active() {
-      const active = await db.getAllFromIndex('instances', 'by-status', 'active')
-      // More than one active instance is not a state the app creates, but
-      // an imported backup could carry one. The most recently started
-      // wins rather than an arbitrary index order.
-      return active.sort((a, b) => b.startedAt.localeCompare(a.startedAt))[0]
-    },
-    async save(instance: ProgramInstance) {
-      await db.put('instances', instance)
-    },
-    async remove(id: InstanceId) {
-      await db.delete('instances', id)
+    async clear() {
+      await db.delete('position', POSITION_KEY)
     },
   }
 }
@@ -128,12 +104,7 @@ export function createWorkoutRepository(db: LiftDatabase): WorkoutRepository {
               : null
 
       const all = (await db.getAllFromIndex('workouts', 'by-date', range)).map(fromStored)
-      const filtered =
-        query.instanceId === undefined
-          ? all
-          : all.filter((workout) => workout.position?.instanceId === query.instanceId)
-
-      const ordered = filtered.sort(newestFirst)
+      const ordered = all.sort(newestFirst)
       return query.limit === undefined ? ordered : ordered.slice(0, query.limit)
     },
 

@@ -1,6 +1,7 @@
 import type { Exercise } from '@/domain/exercises/exercise'
 import type { ExerciseId, WorkoutId } from '@/domain/ids/ids'
 import type { WorkoutLog } from '@/domain/logging/workout-log'
+import type { ProgramTemplate } from '@/domain/programs/program'
 import {
   estimateFromWorkout,
   loggedVolume,
@@ -11,10 +12,10 @@ import {
 import type {
   Clock,
   ExerciseRepository,
-  InstanceRepository,
+  PositionRepository,
   WorkoutRepository,
 } from '@/domain/repositories/ports'
-import { nextPosition } from '@/domain/programs/advance'
+import { nextPosition } from '@/domain/programs/position'
 import type { E1rmEstimate } from '@/domain/strength/one-rep-max'
 import { displaySets, trainedMuscles } from '@/domain/volume/accounting'
 import type { MuscleGroup } from '@/domain/exercises/taxonomy'
@@ -31,8 +32,10 @@ import type { MuscleGroup } from '@/domain/exercises/taxonomy'
 
 export interface FinishWorkoutDeps {
   readonly workouts: WorkoutRepository
-  readonly instances: InstanceRepository
+  readonly position: PositionRepository
   readonly exercises: ExerciseRepository
+  /** The program, derived by the caller from the lifter's settings. */
+  readonly program: ProgramTemplate
   readonly clock: Clock
 }
 
@@ -72,7 +75,7 @@ export async function finishWorkout(
   }
 
   await deps.workouts.save(completed)
-  await advanceInstance(completed, deps)
+  await advancePosition(completed, deps)
 
   return buildReport(completed, await deps.exercises.all(), deps)
 }
@@ -86,29 +89,17 @@ export async function finishWorkout(
  * permanently out of step the first time a lifter missed a Tuesday. A
  * program here is a queue, not a calendar.
  */
-async function advanceInstance(workout: WorkoutLog, deps: FinishWorkoutDeps): Promise<void> {
-  const position = workout.position
-  if (position === undefined) return
+async function advancePosition(workout: WorkoutLog, deps: FinishWorkoutDeps): Promise<void> {
+  // A freestyle session is not part of the program and moves nothing.
+  if (workout.position === undefined) return
 
-  const instance = await deps.instances.byId(position.instanceId)
-  if (instance === undefined) return
+  const current = await deps.position.get()
+  if (current === undefined) return
 
-  const result = nextPosition(instance.templateSnapshot, instance)
+  const result = nextPosition(deps.program, current)
+  if (result.kind === 'invalid') return
 
-  switch (result.kind) {
-    case 'invalid':
-      return
-    case 'moved':
-      await deps.instances.save({ ...instance, ...result.position })
-      return
-    case 'finished':
-      await deps.instances.save({
-        ...instance,
-        status: 'completed',
-        completedAt: deps.clock.now().toISOString(),
-      })
-      return
-  }
+  await deps.position.save(result.position)
 }
 
 async function buildReport(

@@ -1,8 +1,8 @@
 import type { CheckIn } from '@/domain/autoregulation/check-in'
 import type { Exercise } from '@/domain/exercises/exercise'
-import type { CheckInId, ExerciseId, InstanceId, ProgramId, WorkoutId } from '@/domain/ids/ids'
+import type { CheckInId, ExerciseId, WorkoutId } from '@/domain/ids/ids'
 import type { WorkoutLog } from '@/domain/logging/workout-log'
-import type { ProgramTemplate } from '@/domain/programs/program'
+import type { ProgramPosition } from '@/domain/programs/position'
 
 /**
  * The ports the application layer talks to.
@@ -26,48 +26,23 @@ export interface ExerciseRepository {
   count(): Promise<number>
 }
 
-export interface ProgramRepository {
-  all(): Promise<readonly ProgramTemplate[]>
-  byId(id: ProgramId): Promise<ProgramTemplate | undefined>
-  save(program: ProgramTemplate): Promise<void>
-  remove(id: ProgramId): Promise<void>
-  count(): Promise<number>
-}
-
 /**
- * A program being run, as distinct from the program itself.
+ * Where the lifter is in the program.
  *
- * Holds the frozen snapshot of the template it started from, so editing
- * the template afterwards cannot rewrite what an in-flight cycle
- * prescribes — the single sharpest edge in LiftTracker's model, where the
- * program and the log were the same rows.
+ * The only thing about a program that persists. The program itself is
+ * derived from settings on demand — see  for
+ * why storing it turned out to be the source of every staleness bug
+ * rather than protection against one.
  */
-export interface ProgramInstance {
-  readonly id: InstanceId
-  readonly programId: ProgramId
-  readonly templateSnapshot: ProgramTemplate
-  readonly name: string
-  readonly startedAt: string
-  readonly status: 'active' | 'paused' | 'completed' | 'abandoned'
-  readonly cycleNumber: number
-  readonly blockIndex: number
-  readonly weekIndex: number
-  readonly dayIndex: number
-  readonly completedAt?: string
-}
-
-export interface InstanceRepository {
-  all(): Promise<readonly ProgramInstance[]>
-  byId(id: InstanceId): Promise<ProgramInstance | undefined>
-  active(): Promise<ProgramInstance | undefined>
-  save(instance: ProgramInstance): Promise<void>
-  remove(id: InstanceId): Promise<void>
+export interface PositionRepository {
+  get(): Promise<ProgramPosition | undefined>
+  save(position: ProgramPosition): Promise<void>
+  clear(): Promise<void>
 }
 
 export interface WorkoutQuery {
   readonly from?: string
   readonly to?: string
-  readonly instanceId?: InstanceId
   readonly limit?: number
 }
 

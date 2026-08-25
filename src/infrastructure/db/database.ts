@@ -4,8 +4,7 @@ import { openDB } from 'idb'
 import type { CheckIn } from '@/domain/autoregulation/check-in'
 import type { Exercise } from '@/domain/exercises/exercise'
 import type { WorkoutLog } from '@/domain/logging/workout-log'
-import type { ProgramTemplate } from '@/domain/programs/program'
-import type { ProgramInstance } from '@/domain/repositories/ports'
+import type { ProgramPosition } from '@/domain/programs/position'
 
 /**
  * The one place a database connection is opened.
@@ -40,7 +39,7 @@ export const DB_NAME = 'lift'
  * a device that already ran it will not run it again, so changing one
  * leaves two devices with different schemas and no way to tell.
  */
-export const DB_VERSION = 1
+export const DB_VERSION = 2
 
 /**
  * A workout as it is stored, which is not quite a workout as the domain
@@ -72,15 +71,17 @@ export interface LiftDB extends DBSchema {
     value: Exercise
     indexes: { 'by-muscle': string; 'by-name': string }
   }
-  programs: {
+  /**
+   * Where the lifter is in the program — a single record under a fixed
+   * key, because there is only ever one.
+   *
+   * The program itself is not stored. It is derived from settings on
+   * demand, which is what removed a whole class of staleness: a stored
+   * copy cannot go out of date if there is no stored copy.
+   */
+  position: {
     key: string
-    value: ProgramTemplate
-    indexes: { 'by-updated': string }
-  }
-  instances: {
-    key: string
-    value: ProgramInstance
-    indexes: { 'by-status': string }
+    value: ProgramPosition
   }
   workouts: {
     key: string
@@ -123,21 +124,38 @@ export function openLiftDatabase(name = DB_NAME): Promise<LiftDatabase> {
         exercises.createIndex('by-muscle', 'primaryMuscle')
         exercises.createIndex('by-name', 'name')
 
-        const programs = db.createObjectStore('programs', { keyPath: 'id' })
-        programs.createIndex('by-updated', 'updatedAt')
-
-        const instances = db.createObjectStore('instances', { keyPath: 'id' })
-        instances.createIndex('by-status', 'status')
-
         const workouts = db.createObjectStore('workouts', { keyPath: 'id' })
         workouts.createIndex('by-date', 'date')
         workouts.createIndex('by-status', 'status')
-        workouts.createIndex('by-instance', 'position.instanceId')
         workouts.createIndex('by-exercise', 'exerciseIds', { multiEntry: true })
 
         const checkIns = db.createObjectStore('checkIns', { keyPath: 'id' })
         checkIns.createIndex('by-workout', 'workoutId')
         checkIns.createIndex('by-recorded', 'recordedAt')
+      }
+
+      /*
+       * Version 2 drops the program library.
+       *
+       * Programs are derived from settings now, so a stored template can
+       * only be a stale copy of one. The stores are removed rather than
+       * left behind: an unused store that still holds plausible data is
+       * how the next person to read this concludes programs are stored
+       * after all.
+       *
+       * Nothing in a lifter's history goes with them. A workout log
+       * embeds the prescription of every set it contains, so it describes
+       * itself without reference to any template.
+       */
+      if (oldVersion < 2) {
+        // Cast because the current schema type no longer knows these
+        // stores — which is the point: they are being removed.
+        const names = db.objectStoreNames as unknown as DOMStringList
+        for (const name of ['programs', 'instances']) {
+          if (names.contains(name)) db.deleteObjectStore(name as never)
+        }
+
+        if (!names.contains('position')) db.createObjectStore('position')
       }
     },
 
@@ -180,15 +198,11 @@ export async function closeLiftDatabase(): Promise<void> {
  * receive a wipe instead.
  */
 export async function clearAllStores(db: LiftDatabase): Promise<void> {
-  const tx = db.transaction(
-    ['exercises', 'programs', 'instances', 'workouts', 'checkIns'],
-    'readwrite',
-  )
+  const tx = db.transaction(['exercises', 'position', 'workouts', 'checkIns'], 'readwrite')
 
   await Promise.all([
     tx.objectStore('exercises').clear(),
-    tx.objectStore('programs').clear(),
-    tx.objectStore('instances').clear(),
+    tx.objectStore('position').clear(),
     tx.objectStore('workouts').clear(),
     tx.objectStore('checkIns').clear(),
     tx.done,

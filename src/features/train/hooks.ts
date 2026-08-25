@@ -18,6 +18,7 @@ import {
   startWorkout,
   type StartWorkoutResult,
 } from '@/application/use-cases/training/start-workout'
+import { deriveProgram } from '@/application/use-cases/programs/current-program'
 import { useServices, useSettings } from '@/app/context'
 import { logger } from '@/shared/logging/logger'
 
@@ -31,11 +32,37 @@ import { logger } from '@/shared/logging/logger'
  * IndexedDB read.
  */
 
+/**
+ * The program, derived from settings.
+ *
+ * Memoised per settings object rather than stored. Assembly is a few
+ * milliseconds of pure computation over a fixed catalogue, and paying it
+ * on render is what buys the guarantee that nothing can be stale.
+ */
+export function useProgram() {
+  const services = useServices()
+  const { settings } = useSettings()
+
+  return useQuery({
+    queryKey: ['program', settings],
+    queryFn: async () => deriveProgram(settings, await services.exercises.all()),
+    staleTime: Infinity,
+  })
+}
+
+export function usePosition() {
+  const services = useServices()
+
+  return useQuery({
+    queryKey: ['position'],
+    queryFn: () => services.position.get().then((position) => position ?? null),
+  })
+}
+
 const keys = {
   activeWorkout: ['workout', 'active'] as const,
   workout: (id: WorkoutId) => ['workout', id] as const,
   recent: (limit: number) => ['workouts', 'recent', limit] as const,
-  activeInstance: ['instance', 'active'] as const,
   exercises: ['exercises'] as const,
   programs: ['programs'] as const,
   previousSet: (exerciseId: ExerciseId, setIndex: number) =>
@@ -48,15 +75,6 @@ export function useActiveWorkout() {
   return useQuery({
     queryKey: keys.activeWorkout,
     queryFn: () => services.workouts.inProgress().then((workout) => workout ?? null),
-  })
-}
-
-export function useActiveInstance() {
-  const services = useServices()
-
-  return useQuery({
-    queryKey: keys.activeInstance,
-    queryFn: () => services.instances.active().then((instance) => instance ?? null),
   })
 }
 
@@ -75,20 +93,25 @@ export function useRecentWorkouts(limit = 20) {
 export function useStartWorkout() {
   const services = useServices()
   const { athlete, settings } = useSettings()
+  const program = useProgram()
   const client = useQueryClient()
 
   return useMutation<StartWorkoutResult, Error, { freestyleTitle?: string } | undefined>({
-    mutationFn: (options) =>
-      startWorkout(
+    mutationFn: (options) => {
+      if (program.data === undefined) throw new Error('The program is still loading.')
+
+      return startWorkout(
         {
           athlete,
+          program: program.data,
           roundingIncrement: settings.roundingIncrement,
           ...(options?.freestyleTitle !== undefined
             ? { freestyleTitle: options.freestyleTitle }
             : {}),
         },
         services,
-      ),
+      )
+    },
     onSuccess: (result) => {
       logger.info('workout.start', { kind: result.kind })
       void client.invalidateQueries({ queryKey: keys.activeWorkout })
@@ -128,17 +151,21 @@ export function useClearSet(workoutId: WorkoutId | undefined) {
 
 export function useFinishWorkout() {
   const services = useServices()
+  const program = useProgram()
   const client = useQueryClient()
 
   return useMutation<WorkoutReport, Error, WorkoutId>({
-    mutationFn: (workoutId) => finishWorkout(workoutId, services),
+    mutationFn: (workoutId) => {
+      if (program.data === undefined) throw new Error('The program is still loading.')
+      return finishWorkout(workoutId, { ...services, program: program.data })
+    },
     onSuccess: (report) => {
       logger.info('workout.finish', {
         workingSets: report.workingSets,
         durationMinutes: report.durationMinutes,
       })
       void client.invalidateQueries({ queryKey: keys.activeWorkout })
-      void client.invalidateQueries({ queryKey: keys.activeInstance })
+      void client.invalidateQueries({ queryKey: ['position'] })
       void client.invalidateQueries({ queryKey: ['workouts'] })
     },
   })
@@ -174,13 +201,17 @@ export function useAbandonWorkout() {
  */
 export function useSkipSession() {
   const services = useServices()
+  const program = useProgram()
   const client = useQueryClient()
 
   return useMutation<SkipResult>({
-    mutationFn: () => skipSession(services),
+    mutationFn: () => {
+      if (program.data === undefined) throw new Error('The program is still loading.')
+      return skipSession({ ...services, program: program.data })
+    },
     onSuccess: (result) => {
       logger.info('session.skip', { outcome: result.kind })
-      void client.invalidateQueries({ queryKey: keys.activeInstance })
+      void client.invalidateQueries({ queryKey: ['position'] })
     },
   })
 }

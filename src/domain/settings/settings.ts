@@ -39,6 +39,15 @@ export interface AppSettings {
   readonly estimatedMaxes: Readonly<Partial<Record<ExerciseId, number>>>
 
   /**
+   * Exercises the lifter cannot or will not do.
+   *
+   * Absolute, and checked everywhere the assembler picks something —
+   * anchors, warm-ups and conditioning included, not only the hypertrophy
+   * picker.
+   */
+  readonly excludedExercises: readonly ExerciseId[]
+
+  /**
    * What the lifter is prioritising, which drives where inside each
    * landmark band a muscle's weekly target lands.
    */
@@ -90,6 +99,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
     [asExerciseId('sumo-deadlift')]: 368,
     [asExerciseId('overhead-press')]: 152,
   },
+  excludedExercises: [],
   muscleTiers: DEFAULT_MUSCLE_TIERS,
   strengthTiers: DEFAULT_STRENGTH_TIERS,
   daysPerWeek: DEFAULT_DAYS_PER_WEEK,

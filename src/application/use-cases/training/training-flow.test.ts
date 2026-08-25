@@ -2,10 +2,10 @@ import { deleteDB } from 'idb'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { builtInExercises, STRENGTH_LIFT_SLUGS } from '@/domain/exercises/catalogue'
-import { asExerciseId, asProgramId, type IdGenerator } from '@/domain/ids/ids'
+import { asExerciseId, type IdGenerator } from '@/domain/ids/ids'
 import type { Clock } from '@/domain/repositories/ports'
 import type { AthleteState } from '@/domain/resolution/resolve'
-import { startProgram } from '@/application/use-cases/programs/manage-programs'
+import { deriveProgram } from '@/application/use-cases/programs/current-program'
 import {
   closeLiftDatabase,
   openLiftDatabase,
@@ -13,11 +13,11 @@ import {
 } from '@/infrastructure/db/database'
 import {
   createExerciseRepository,
-  createInstanceRepository,
-  createProgramRepository,
+  createPositionRepository,
   createWorkoutRepository,
 } from '@/infrastructure/db/repositories'
 import { seedIfEmpty } from '@/infrastructure/seed/seed'
+import { DEFAULT_SETTINGS } from '@/domain/settings/settings'
 
 import { abandonWorkout } from './abandon-workout'
 import { finishWorkout } from './finish-workout'
@@ -62,15 +62,17 @@ const athlete: AthleteState = {
   units: 'lb',
 }
 
+let program: ReturnType<typeof deriveProgram>
+
 function services() {
   return {
     db,
     exercises: createExerciseRepository(db),
-    programs: createProgramRepository(db),
-    instances: createInstanceRepository(db),
+    position: createPositionRepository(db),
     workouts: createWorkoutRepository(db),
     ids: counterIds(),
     clock,
+    program,
   }
 }
 
@@ -81,10 +83,12 @@ beforeEach(async () => {
   db = await openLiftDatabase(TEST_DB)
   await seedIfEmpty({
     exercises: createExerciseRepository(db),
-    programs: createProgramRepository(db),
     ids: counterIds(),
     now: currentTime,
   })
+
+  // Derived from settings, exactly as the app derives it.
+  program = deriveProgram(DEFAULT_SETTINGS, builtInExercises())
 })
 
 afterEach(async () => {
@@ -92,19 +96,22 @@ afterEach(async () => {
   await deleteDB(TEST_DB)
 })
 
-const RP_PROGRAM = asProgramId('built-in-rp-block')
-
-async function beginProgram() {
-  const deps = services()
-  await startProgram(RP_PROGRAM, deps)
-  return deps
+/**
+ * There is nothing to begin.
+ *
+ * The program is derived from settings, so a lifter simply has one. The
+ * position starts at the beginning and is written the first time a
+ * session is opened.
+ */
+function beginProgram() {
+  return services()
 }
 
 describe('starting a session from a program', () => {
   it('resolves the day’s prescriptions into concrete numbers', async () => {
-    const deps = await beginProgram()
+    const deps = beginProgram()
 
-    const result = await startWorkout({ athlete, roundingIncrement: 5 }, deps)
+    const result = await startWorkout({ athlete, program, roundingIncrement: 5 }, deps)
     expect(result.kind).toBe('started')
     if (result.kind !== 'started') throw new Error('expected a started workout')
 
@@ -130,10 +137,10 @@ describe('starting a session from a program', () => {
     // An RPE prescription is satisfied by feel, so a missing estimate
     // costs the lifter a suggested number and nothing else. Under 5/3/1
     // the same gap left the set with no load at all.
-    const deps = await beginProgram()
+    const deps = beginProgram()
     const bare: AthleteState = { ...athlete, estimatedMaxes: {} }
 
-    const result = await startWorkout({ athlete: bare, roundingIncrement: 5 }, deps)
+    const result = await startWorkout({ athlete: bare, program, roundingIncrement: 5 }, deps)
     if (result.kind !== 'started') throw new Error('expected a started workout')
 
     const press = result.workout.entries.find((entry) => entry.exerciseId === 'overhead-press')
@@ -144,12 +151,12 @@ describe('starting a session from a program', () => {
   it('resumes an unfinished session rather than starting a second', async () => {
     // The most common way a training app loses real data: a half-logged
     // session orphaned by a fresh start.
-    const deps = await beginProgram()
+    const deps = beginProgram()
 
-    const first = await startWorkout({ athlete, roundingIncrement: 5 }, deps)
+    const first = await startWorkout({ athlete, program, roundingIncrement: 5 }, deps)
     if (first.kind !== 'started') throw new Error('expected a started workout')
 
-    const second = await startWorkout({ athlete, roundingIncrement: 5 }, deps)
+    const second = await startWorkout({ athlete, program, roundingIncrement: 5 }, deps)
 
     expect(second.kind).toBe('resumed')
     if (second.kind !== 'resumed') throw new Error('expected a resumed workout')
@@ -157,16 +164,19 @@ describe('starting a session from a program', () => {
     expect(await deps.workouts.count()).toBe(1)
   })
 
-  it('reports having no program rather than failing', async () => {
-    const result = await startWorkout({ athlete, roundingIncrement: 5 }, services())
+  it('always has a program, because it is derived rather than chosen', async () => {
+    // There is no "no program running" state any more. A lifter who has
+    // never opened the app still has settings, and settings are a
+    // program — which is the whole point of deriving it.
+    const result = await startWorkout({ athlete, program, roundingIncrement: 5 }, services())
 
-    expect(result.kind).toBe('no-program')
+    expect(result.kind).toBe('started')
   })
 
   it('logs a session with no program attached', async () => {
     const deps = services()
     const result = await startWorkout(
-      { athlete, roundingIncrement: 5, freestyleTitle: 'Open session' },
+      { athlete, program, roundingIncrement: 5, freestyleTitle: 'Open session' },
       deps,
     )
 
@@ -179,8 +189,8 @@ describe('starting a session from a program', () => {
 
 describe('logging', () => {
   it('records the actual alongside the planned, without touching the program', async () => {
-    const deps = await beginProgram()
-    const started = await startWorkout({ athlete, roundingIncrement: 5 }, deps)
+    const deps = beginProgram()
+    const started = await startWorkout({ athlete, program, roundingIncrement: 5 }, deps)
     if (started.kind !== 'started') throw new Error('expected a started workout')
 
     const pressIndex = started.workout.entries.findIndex(
@@ -206,16 +216,16 @@ describe('logging', () => {
     expect(topSet?.actualReps).toBe(5)
     expect(topSet?.outcome).toBe('completed')
 
-    // The template is untouched. In LiftTracker this same action wrote
-    // into the rows the program was made of.
-    const program = await deps.programs.byId(RP_PROGRAM)
-    const slot = program?.blocks[0]?.weeks[0]?.days[0]?.slots[pressIndex]
-    expect(slot?.sets[0]?.load).toEqual({ kind: 'rpe', target: 9 })
+    // Logging cannot touch the program, because there is no stored
+    // program to touch — re-deriving from the same settings gives back
+    // exactly the same thing. In LiftTracker this same action wrote into
+    // the rows the program was made of.
+    expect(deriveProgram(DEFAULT_SETTINGS, builtInExercises())).toEqual(program)
   })
 
   it('clears the numbers off a skipped set', async () => {
-    const deps = await beginProgram()
-    const started = await startWorkout({ athlete, roundingIncrement: 5 }, deps)
+    const deps = beginProgram()
+    const started = await startWorkout({ athlete, program, roundingIncrement: 5 }, deps)
     if (started.kind !== 'started') throw new Error('expected a started workout')
 
     const pressIndex = started.workout.entries.findIndex(
@@ -254,32 +264,32 @@ describe('logging', () => {
 
 describe('finishing a session', () => {
   it('advances the program by one day', async () => {
-    const deps = await beginProgram()
-    const started = await startWorkout({ athlete, roundingIncrement: 5 }, deps)
+    const deps = beginProgram()
+    const started = await startWorkout({ athlete, program, roundingIncrement: 5 }, deps)
     if (started.kind !== 'started') throw new Error('expected a started workout')
 
-    expect((await deps.instances.active())?.dayIndex).toBe(0)
+    expect((await deps.position.get())?.dayIndex).toBe(0)
 
     currentTime = new Date('2026-08-24T10:15:00.000Z')
     await finishWorkout(started.workout.id, deps)
 
-    const instance = await deps.instances.active()
+    const instance = await deps.position.get()
     expect(instance?.dayIndex).toBe(1)
     expect(instance?.weekIndex).toBe(0)
   })
 
   it('rolls into the next week after the last day', async () => {
-    const deps = await beginProgram()
+    const deps = beginProgram()
 
     // Five training days in this split, so five finished sessions should
     // land on week 2 day 1.
     for (let day = 0; day < 5; day += 1) {
-      const started = await startWorkout({ athlete, roundingIncrement: 5 }, deps)
+      const started = await startWorkout({ athlete, program, roundingIncrement: 5 }, deps)
       if (started.kind !== 'started') throw new Error('expected a started workout')
       await finishWorkout(started.workout.id, deps)
     }
 
-    const instance = await deps.instances.active()
+    const instance = await deps.position.get()
     expect(instance?.weekIndex).toBe(1)
     expect(instance?.dayIndex).toBe(0)
   })
@@ -288,19 +298,19 @@ describe('finishing a session', () => {
     // Both source apps derived the current day from elapsed time, so a
     // missed Tuesday put the program permanently out of step. A program
     // here is a queue.
-    const deps = await beginProgram()
-    const started = await startWorkout({ athlete, roundingIncrement: 5 }, deps)
+    const deps = beginProgram()
+    const started = await startWorkout({ athlete, program, roundingIncrement: 5 }, deps)
     if (started.kind !== 'started') throw new Error('expected a started workout')
 
     currentTime = new Date('2026-09-30T18:00:00.000Z')
     await finishWorkout(started.workout.id, deps)
 
-    expect((await deps.instances.active())?.dayIndex).toBe(1)
+    expect((await deps.position.get())?.dayIndex).toBe(1)
   })
 
   it('reports volume by muscle and progress against last time', async () => {
-    const deps = await beginProgram()
-    const started = await startWorkout({ athlete, roundingIncrement: 5 }, deps)
+    const deps = beginProgram()
+    const started = await startWorkout({ athlete, program, roundingIncrement: 5 }, deps)
     if (started.kind !== 'started') throw new Error('expected a started workout')
 
     const pressIndex = started.workout.entries.findIndex(
@@ -330,8 +340,8 @@ describe('finishing a session', () => {
   })
 
   it('excludes warm-ups and unperformed sets from the volume it reports', async () => {
-    const deps = await beginProgram()
-    const started = await startWorkout({ athlete, roundingIncrement: 5 }, deps)
+    const deps = beginProgram()
+    const started = await startWorkout({ athlete, program, roundingIncrement: 5 }, deps)
     if (started.kind !== 'started') throw new Error('expected a started workout')
 
     // One working set logged; the mobility warm-ups that open the day and
@@ -361,20 +371,20 @@ describe('skipping a session', () => {
     // would advance the program *and* put a workout with no sets into the
     // history, where it counts as a training day and drags every
     // frequency and volume figure down.
-    const deps = await beginProgram()
+    const deps = beginProgram()
 
     const result = await skipSession(deps)
 
     expect(result.kind).toBe('skipped')
-    expect((await deps.instances.active())?.dayIndex).toBe(1)
+    expect((await deps.position.get())?.dayIndex).toBe(1)
     expect(await deps.workouts.count()).toBe(0)
   })
 
   it('rolls into the next week like finishing does', async () => {
-    const deps = await beginProgram()
+    const deps = beginProgram()
     for (let day = 0; day < 5; day += 1) await skipSession(deps)
 
-    const instance = await deps.instances.active()
+    const instance = await deps.position.get()
     expect(instance?.weekIndex).toBe(1)
     expect(instance?.dayIndex).toBe(0)
   })
@@ -382,18 +392,24 @@ describe('skipping a session', () => {
   it('refuses while a session is open', async () => {
     // Skipping past an in-progress workout would strand it: still open,
     // but attached to a day the program has already moved off.
-    const deps = await beginProgram()
-    const started = await startWorkout({ athlete, roundingIncrement: 5 }, deps)
+    const deps = beginProgram()
+    const started = await startWorkout({ athlete, program, roundingIncrement: 5 }, deps)
     if (started.kind !== 'started') throw new Error('expected a started workout')
 
     const result = await skipSession(deps)
 
     expect(result.kind).toBe('session-in-progress')
-    expect((await deps.instances.active())?.dayIndex).toBe(0)
+    expect((await deps.position.get())?.dayIndex).toBe(0)
   })
 
-  it('reports having no program rather than failing', async () => {
-    expect((await skipSession(services())).kind).toBe('no-program')
+  it('skips from the beginning when nothing has been trained yet', async () => {
+    // A week that starts on a Wednesday. There is no stored position and
+    // no program to be missing, so this lands on day two rather than
+    // reporting a state that cannot occur under a derived program.
+    const deps = services()
+
+    expect((await skipSession(deps)).kind).toBe('skipped')
+    expect((await deps.position.get())?.dayIndex).toBe(1)
   })
 })
 
@@ -403,8 +419,8 @@ describe('abandoning a session', () => {
     // happen, and keeping it would leave an empty session in the history
     // to be explained forever.
     return (async () => {
-      const deps = await beginProgram()
-      const started = await startWorkout({ athlete, roundingIncrement: 5 }, deps)
+      const deps = beginProgram()
+      const started = await startWorkout({ athlete, program, roundingIncrement: 5 }, deps)
       if (started.kind !== 'started') throw new Error('expected a started workout')
 
       const result = await abandonWorkout(started.workout.id, deps)
@@ -418,8 +434,8 @@ describe('abandoning a session', () => {
   it('keeps the work when some was logged', async () => {
     // Three sets before the gym closed are still three sets. Deleting
     // them to tidy up the history would throw away training.
-    const deps = await beginProgram()
-    const started = await startWorkout({ athlete, roundingIncrement: 5 }, deps)
+    const deps = beginProgram()
+    const started = await startWorkout({ athlete, program, roundingIncrement: 5 }, deps)
     if (started.kind !== 'started') throw new Error('expected a started workout')
 
     const pressIndex = started.workout.entries.findIndex(
@@ -445,22 +461,22 @@ describe('abandoning a session', () => {
   it('leaves the program on the same day either way', async () => {
     // The day was not finished. Advancing would silently cost the lifter
     // a session out of the block.
-    const deps = await beginProgram()
-    const started = await startWorkout({ athlete, roundingIncrement: 5 }, deps)
+    const deps = beginProgram()
+    const started = await startWorkout({ athlete, program, roundingIncrement: 5 }, deps)
     if (started.kind !== 'started') throw new Error('expected a started workout')
 
     await abandonWorkout(started.workout.id, deps)
 
-    expect((await deps.instances.active())?.dayIndex).toBe(0)
+    expect((await deps.position.get())?.dayIndex).toBe(0)
   })
 
   it('frees the lifter to start the session again', async () => {
-    const deps = await beginProgram()
-    const first = await startWorkout({ athlete, roundingIncrement: 5 }, deps)
+    const deps = beginProgram()
+    const first = await startWorkout({ athlete, program, roundingIncrement: 5 }, deps)
     if (first.kind !== 'started') throw new Error('expected a started workout')
 
     await abandonWorkout(first.workout.id, deps)
-    const second = await startWorkout({ athlete, roundingIncrement: 5 }, deps)
+    const second = await startWorkout({ athlete, program, roundingIncrement: 5 }, deps)
 
     // A fresh session, not a resume of the abandoned one.
     expect(second.kind).toBe('started')
