@@ -1,10 +1,10 @@
-import { CheckCircle2, ChevronLeft, ChevronRight } from 'lucide-react'
+import { CheckCircle2, ChevronLeft, ChevronRight, XCircle } from 'lucide-react'
 import { useState } from 'react'
 
 import type { Exercise } from '@/domain/exercises/exercise'
 import type { ExerciseId } from '@/domain/ids/ids'
 import type { WorkoutLog } from '@/domain/logging/workout-log'
-import { isEntryComplete, remainingSets } from '@/domain/logging/workout-log'
+import { isEntryComplete, remainingSets, totalWorkingSets } from '@/domain/logging/workout-log'
 import { SLOT_ROLE_LABELS } from '@/domain/programs/program'
 import type { WeightUnit } from '@/domain/units/weight'
 import { Badge, Button, Card } from '@/components/shared/primitives'
@@ -33,6 +33,7 @@ interface Props {
   readonly restSeconds: number
   readonly keepAwake: boolean
   readonly onFinish: () => void
+  readonly onAbandon: () => void
 }
 
 export function SessionPlayer({
@@ -42,10 +43,12 @@ export function SessionPlayer({
   restSeconds,
   keepAwake,
   onFinish,
+  onAbandon,
 }: Props) {
   const [index, setIndex] = useState(() => firstIncompleteIndex(workout))
   const [openSet, setOpenSet] = useState<number | undefined>(undefined)
   const [restStartedAt, setRestStartedAt] = useState<number | undefined>(undefined)
+  const [confirmingAbandon, setConfirmingAbandon] = useState(false)
 
   const logSet = useLogSet(workout.id)
   const clearSet = useClearSet(workout.id)
@@ -57,6 +60,7 @@ export function SessionPlayer({
     exercises.find((exercise) => exercise.id === id)?.name ?? id
 
   const outstanding = remainingSets(workout)
+  const loggedSets = totalWorkingSets(workout)
 
   if (entry === undefined) {
     return (
@@ -208,6 +212,59 @@ export function SessionPlayer({
         <CheckCircle2 size={20} aria-hidden />
         {outstanding === 0 ? 'Finish session' : `Finish (${String(outstanding)} sets unlogged)`}
       </Button>
+
+      {/*
+        The way out of a session opened by mistake. Confirmed inline
+        rather than through a dialog, because the wording has to change
+        with what is at stake: with nothing logged this throws away
+        nothing, and with sets logged it keeps them.
+      */}
+      {confirmingAbandon ? (
+        <div className="border-bad-500/40 bg-bad-500/10 mt-3 rounded-lg border p-3">
+          <p className="text-ink-50 text-sm font-medium">
+            {loggedSets === 0
+              ? 'Discard this session?'
+              : `Abandon, keeping ${String(loggedSets)} logged set${loggedSets === 1 ? '' : 's'}?`}
+          </p>
+          <p className="text-ink-300 mt-1 text-sm">
+            {loggedSets === 0
+              ? 'Nothing has been logged, so nothing is lost. The program stays on this day.'
+              : 'The sets you logged are kept and still count toward your volume. The program stays on this day, so you can run it again or skip it.'}
+          </p>
+          <div className="mt-3 flex gap-2">
+            <Button
+              variant="danger"
+              className="flex-1"
+              onClick={() => {
+                onAbandon()
+              }}
+            >
+              {loggedSets === 0 ? 'Discard' : 'Abandon'}
+            </Button>
+            <Button
+              variant="outline"
+              className="flex-1"
+              onClick={() => {
+                setConfirmingAbandon(false)
+              }}
+            >
+              Keep training
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <Button
+          variant="ghost"
+          full
+          className="mt-2"
+          onClick={() => {
+            setConfirmingAbandon(true)
+          }}
+        >
+          <XCircle size={16} aria-hidden />
+          Abandon session
+        </Button>
+      )}
 
       {restStartedAt !== undefined && (
         <RestTimer

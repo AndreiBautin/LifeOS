@@ -14,6 +14,7 @@ import {
   useActiveInstance,
   useActiveWorkout,
   useExercises,
+  useAbandonWorkout,
   useFinishWorkout,
   useSkipSession,
   useStartWorkout,
@@ -37,6 +38,7 @@ export function TrainPage() {
   const startWorkout = useStartWorkout()
   const skipSession = useSkipSession()
   const finishWorkout = useFinishWorkout()
+  const abandonWorkout = useAbandonWorkout()
 
   const [report, setReport] = useState<WorkoutReport | undefined>(undefined)
 
@@ -63,6 +65,9 @@ export function TrainPage() {
         keepAwake={settings.keepScreenAwake}
         onFinish={() => {
           finishWorkout.mutate(workout.id, { onSuccess: setReport })
+        }}
+        onAbandon={() => {
+          abandonWorkout.mutate(workout.id)
         }}
       />
     )
@@ -109,9 +114,7 @@ export function TrainPage() {
                         )?.name ?? 'Unknown exercise')
                       : slot.exercise.label}
                   </span>
-                  <span className="text-ink-500 numeric shrink-0">
-                    {countedSets(slot.sets)} × {workingRepsLabel(slot.sets)}
-                  </span>
+                  <span className="text-ink-500 numeric shrink-0">{describeSlot(slot.sets)}</span>
                 </li>
               ))}
             </ul>
@@ -180,6 +183,22 @@ export function TrainPage() {
 }
 
 /**
+ * A slot summarised in one line: "4 × 3–6", or "20 min".
+ *
+ * A single timed set drops the count, because "1 × 20 min" invites the
+ * reader to work out what one of a twenty-minute walk is.
+ */
+function describeSlot(sets: readonly SetPrescription[]): string {
+  const first = sets.find((set) => set.isWarmup !== true) ?? sets[0]
+  if (first === undefined) return '—'
+
+  const label = describeReps(first.reps)
+  if (sets.length === 1 && first.reps.kind === 'time') return label
+
+  return `${String(countedSets(sets))} × ${label}`
+}
+
+/**
  * Sets to show for a slot.
  *
  * Working sets, except where a slot is *entirely* warm-up — a mobility
@@ -190,10 +209,4 @@ export function TrainPage() {
 function countedSets(sets: readonly SetPrescription[]): number {
   const working = sets.filter((set) => set.isWarmup !== true).length
   return working > 0 ? working : sets.length
-}
-
-/** The rep target of a slot's first working set, for a one-line preview. */
-function workingRepsLabel(sets: readonly SetPrescription[]): string {
-  const first = sets.find((set) => set.isWarmup !== true) ?? sets[0]
-  return first === undefined ? '—' : describeReps(first.reps)
 }

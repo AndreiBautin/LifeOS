@@ -15,10 +15,38 @@ import type { WorkoutLog } from '@/domain/logging/workout-log'
 export const MIN_DAYS_PER_WEEK = 2
 export const MAX_DAYS_PER_WEEK = 6
 
+/**
+ * Five days, Monday to Friday.
+ *
+ * Chosen from what the session lengths do at the extremes rather than
+ * from preference. Four days carries the week's volume in four sittings
+ * and, with arms specialised, runs the upper days past seventy-five
+ * minutes while the lower days finish in thirty. Six divides the same
+ * volume so finely that several sessions are barely worth the trip.
+ *
+ * Defined once because the settings default and the recipe default are
+ * the same decision — when they were written separately they disagreed,
+ * and a block built from settings quietly came out a different shape from
+ * the built-in of the same name.
+ */
+export const DEFAULT_DAYS_PER_WEEK = 5
+
 /** Sessions running past this are a sign there are too few of them. */
 export const SESSION_TOO_LONG_MINUTES = 120
-/** Sessions this short mean the week could be consolidated. */
-export const SESSION_TOO_SHORT_MINUTES = 60
+
+/**
+ * Sessions this short mean the week could be consolidated.
+ *
+ * Forty, not sixty. Sixty was calibrated when four days was the default,
+ * and it does not survive the move to five: the same weekly volume spread
+ * over five sittings averages the middle fifties, so a sixty-minute floor
+ * would have the app recommend consolidating back to four the moment the
+ * default block was run — recommending against its own default.
+ *
+ * What the floor is for is catching sessions not worth the trip. A
+ * twenty-five minute day is that; a tight fifty-five minute day is not.
+ */
+export const SESSION_TOO_SHORT_MINUTES = 40
 
 /** How many recent sessions the average is taken over. */
 export const DURATION_SAMPLE_SIZE = 6

@@ -5,7 +5,10 @@ import type { MuscleTiers, StrengthTiers } from '@/domain/priority/tiers'
 import { DEFAULT_MUSCLE_TIERS, DEFAULT_STRENGTH_TIERS } from '@/domain/priority/tiers'
 import type { LandmarkSet } from '@/domain/volume/landmarks'
 import { DEFAULT_LANDMARKS } from '@/domain/volume/landmarks'
-import { DEFAULT_WEEKS_BEFORE_DELOAD } from '@/domain/autoregulation/schedule'
+import {
+  DEFAULT_DAYS_PER_WEEK,
+  DEFAULT_WEEKS_BEFORE_DELOAD,
+} from '@/domain/autoregulation/schedule'
 
 /**
  * Everything about the lifter that is not a program or a workout.
@@ -76,7 +79,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   estimatedMaxes: {},
   muscleTiers: DEFAULT_MUSCLE_TIERS,
   strengthTiers: DEFAULT_STRENGTH_TIERS,
-  daysPerWeek: 4,
+  daysPerWeek: DEFAULT_DAYS_PER_WEEK,
   weeksBeforeDeload: DEFAULT_WEEKS_BEFORE_DELOAD,
   targetSessionMinutes: 70,
   e1rmFormula: 'epley',

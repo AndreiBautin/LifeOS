@@ -33,6 +33,15 @@ export interface RpDay {
    * did rather than proposing a different one.
    */
   readonly anchors?: readonly string[]
+  /**
+   * Conditioning to close the day, as exercise slugs.
+   *
+   * Placed on days rather than left to the lifter because conditioning
+   * that is not programmed does not happen, and because *which* day it
+   * lands on is the entire question — a hard interval session the day
+   * before a deadlift is paid for out of the deadlift.
+   */
+  readonly conditioning?: readonly string[]
   /** Which warm-up routine precedes it. */
   readonly warmUp: 'upper' | 'lower'
 }
@@ -178,33 +187,91 @@ const FULL_BODY_3: RpSplit = {
   ],
 }
 
-const UPPER_LOWER_5: RpSplit = {
-  id: 'rp-upper-lower-5',
-  name: '5-day upper / lower / arms',
+/**
+ * The default: five days, Monday to Friday, weekends off.
+ *
+ * Five rather than four or six because of what the session lengths do at
+ * either end. Four days has to carry the whole week's volume in four
+ * sittings, and with arms specialised the upper days ran past seventy-five
+ * minutes while the lower days finished in thirty. Six days divides the
+ * same volume so finely that several sessions are barely worth the trip.
+ * Five splits the difference and lands every day near the target.
+ *
+ * The weekday labels are deliberate. The program is still a queue rather
+ * than a calendar — nothing advances until a session is finished or
+ * skipped — but naming the days is what makes a five-day week legible as
+ * a working week, and it is how the schedule is actually lived.
+ */
+const WEEK_5: RpSplit = {
+  id: 'rp-week-5',
+  name: '5-day Monday to Friday',
   description:
-    'Upper, lower, upper, lower, then a dedicated arms and delts day — which is where a tier-1 arm specialisation earns its keep.',
+    'The default. Press and pull to open the week, squat and bench mid-week, deadlift Thursday, arms and delts to finish. Every muscle at least twice, weekends off.',
   daysPerWeek: 5,
   days: [
     {
       index: 0,
-      label: 'Upper — press',
+      label: 'Monday — press and pull',
       muscles: UPPER,
-      anchors: ['overhead-press', 'pull-up'],
+      // Pinned to the session actually trained: press, pull-ups, lateral
+      // raises, curls. Other work is added around these, but these four
+      // are what Monday is. Without the anchor, need-ordering would drop
+      // the press entirely — its primary muscle sits in the bottom tier.
+      anchors: ['overhead-press', 'pull-up', 'db-lateral-raise', 'db-curl'],
+      conditioning: ['incline-walk'],
       warmUp: 'upper',
     },
-    { index: 1, label: 'Lower — squat', muscles: LOWER, strengthLift: 'squat', warmUp: 'lower' },
-    { index: 2, label: 'Upper — bench', muscles: UPPER, strengthLift: 'bench', warmUp: 'upper' },
+    {
+      index: 1,
+      label: 'Tuesday — squat',
+      muscles: LOWER,
+      strengthLift: 'squat',
+      warmUp: 'lower',
+    },
+    {
+      index: 2,
+      label: 'Wednesday — bench',
+      muscles: UPPER,
+      strengthLift: 'bench',
+      conditioning: ['running'],
+      warmUp: 'upper',
+    },
     {
       index: 3,
-      label: 'Lower — deadlift',
+      label: 'Thursday — deadlift',
       muscles: LOWER,
       strengthLift: 'deadlift',
       warmUp: 'lower',
     },
     {
       index: 4,
-      label: 'Arms and delts',
-      muscles: ['biceps', 'triceps', 'forearms', 'side-delts', 'rear-delts'],
+      label: 'Friday — arms and upper',
+      /*
+       * Accountable for the whole upper body, not only for arms.
+       *
+       * A dedicated arms day sounds right for an arm specialisation and
+       * is the reason this day came out at twenty-four minutes: the small
+       * muscles are trained on every day of the week, so by Friday their
+       * weekly target is nearly spent and a day that can *only* draw on
+       * them has nothing left to do. Opening it to the upper body gives
+       * it somewhere to put the time. Arms still lead it — they are owed
+       * the most — but chest and back can fill behind them.
+       */
+      muscles: UPPER,
+      /*
+       * Anchored, for the same reason the day was opened to the whole
+       * upper body: arriving last, it finds most of the week's target
+       * already committed and fills with whatever scraps remain. Pinning
+       * two compounds guarantees it a spine — and both pay arms as
+       * secondary muscles, so they serve the specialisation rather than
+       * competing with it.
+       */
+      anchors: ['dips', 'barbell-row', 'ez-bar-curl'],
+      // The hardest conditioning goes here: it is the last session before
+      // two rest days, so there is nothing left in the week for it to
+      // compromise. Swings on a Wednesday would be paid for on Thursday's
+      // deadlift.
+      conditioning: ['kb-swing'],
       warmUp: 'upper',
     },
   ],
@@ -236,15 +303,15 @@ export const RP_SPLITS: readonly RpSplit[] = [
   FULL_BODY_2,
   FULL_BODY_3,
   UPPER_LOWER_4,
-  UPPER_LOWER_5,
+  WEEK_5,
   PPL_6,
 ]
 
 export function rpSplitForDays(daysPerWeek: number): RpSplit {
   const found = RP_SPLITS.find((split) => split.daysPerWeek === daysPerWeek)
-  // The four-day upper/lower is the fallback because it is the shape that
-  // satisfies twice-weekly frequency with the least scheduling friction.
-  return found ?? UPPER_LOWER_4
+  // The five-day week is the fallback because it is the shape whose
+  // sessions come out closest to the target length at both ends.
+  return found ?? WEEK_5
 }
 
 /** How many of a week's sessions train a given muscle. */

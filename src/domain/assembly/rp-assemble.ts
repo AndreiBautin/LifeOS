@@ -15,7 +15,7 @@ import type {
   ProgramWeek,
   Slot,
 } from '@/domain/programs/program'
-import { DEFAULT_PROGRAM_SETTINGS, SECONDS_PER_SET } from '@/domain/programs/program'
+import { DEFAULT_PROGRAM_SETTINGS, setSeconds } from '@/domain/programs/program'
 import type { MuscleTiers, StrengthLift, StrengthTiers } from '@/domain/priority/tiers'
 import {
   DEFAULT_MUSCLE_TIERS,
@@ -31,7 +31,10 @@ import { emptyVolumeMap, SECONDARY_SET_FRACTION } from '@/domain/volume/landmark
 import type { LandmarkSet } from '@/domain/volume/landmarks'
 import { DEFAULT_LANDMARKS } from '@/domain/volume/landmarks'
 
-import { DEFAULT_WEEKS_BEFORE_DELOAD } from '@/domain/autoregulation/schedule'
+import {
+  DEFAULT_DAYS_PER_WEEK,
+  DEFAULT_WEEKS_BEFORE_DELOAD,
+} from '@/domain/autoregulation/schedule'
 
 /**
  * Assembling an RP block with RTS strength work.
@@ -89,7 +92,10 @@ export function defaultRpRecipe(overrides: Partial<RpRecipe> = {}): RpRecipe {
     strengthTiers: DEFAULT_STRENGTH_TIERS,
     muscleTiers: DEFAULT_MUSCLE_TIERS,
     landmarks: DEFAULT_LANDMARKS,
-    daysPerWeek: 4,
+    // Five, matching `DEFAULT_SETTINGS`. Four has to carry the week's
+    // volume in four sittings and runs the upper days long; six divides
+    // it so finely that several sessions are not worth the trip.
+    daysPerWeek: DEFAULT_DAYS_PER_WEEK,
     weeksBeforeDeload: DEFAULT_WEEKS_BEFORE_DELOAD,
     rts: DEFAULT_RTS,
     includeWarmUps: true,
@@ -203,10 +209,21 @@ function buildWeek(
     const slots: Slot[] = []
 
     if (recipe.includeWarmUps) {
-      slots.push(...warmUpSlots(deps, splitDay))
+      slots.push(...warmUpSlots(deps, splitDay, new Set(recipe.excludedExercises)))
     }
 
     slots.push(...(strength?.slots ?? []))
+
+    // Costed before the fill and appended after it. Conditioning is done
+    // last but is not free: a twenty-five minute run has to come out of
+    // the session budget, or the accessory work is chosen as though the
+    // day ends thirty minutes before it does.
+    const conditioning = conditioningSlots(
+      deps,
+      splitDay,
+      isDeload,
+      new Set(recipe.excludedExercises),
+    )
 
     const remainingDays = split.days.slice(dayIndex + 1)
     const filled = fillHypertrophy({
@@ -223,7 +240,7 @@ function buildWeek(
         ),
       ),
       daysTrained,
-      existingSlots: slots,
+      existingSlots: [...slots, ...conditioning],
     })
 
     committed = addInto(committed, filled.spent)
@@ -236,6 +253,7 @@ function buildWeek(
     }
 
     slots.push(...filled.slots)
+    slots.push(...conditioning)
 
     days.push({ index: dayIndex, label: splitDay.label, slots })
   }
@@ -317,40 +335,53 @@ function buildStrengthSlots(
 
   const topSetRpe = isDeload ? 6 : recipe.rts.topSetRpe
 
-  const sets: SetPrescription[] = [
-    {
-      load: { kind: 'rpe', target: topSetRpe },
-      reps: { kind: 'fixed', reps: recipe.rts.topSetReps },
-      notes: `Top set — work up until this feels like RPE ${String(topSetRpe)}.`,
-    },
-  ]
+  const topSet: SetPrescription = {
+    load: { kind: 'rpe', target: topSetRpe },
+    reps: { kind: 'fixed', reps: recipe.rts.topSetReps },
+    notes: `Top set — work up until this feels like RPE ${String(topSetRpe)}.`,
+  }
 
   const backoffCap = isDeload
     ? 1
     : Math.max(1, Math.min(recipe.rts.maxBackoffSets, Math.round(2 + position * 4)))
 
-  for (let index = 0; index < backoffCap; index += 1) {
-    sets.push({
-      load: { kind: 'rpe', target: Math.max(6, topSetRpe - 0.5) },
-      reps: { kind: 'fixed', reps: recipe.rts.topSetReps },
-      ...(index === 0
-        ? { notes: `Back-off. Stop when you are ${String(fatigueTarget)}% off the top set.` }
-        : {}),
-    })
-  }
+  const backoffs: SetPrescription[] = Array.from({ length: backoffCap }, (_unused, index) => ({
+    load: { kind: 'rpe' as const, target: Math.max(6, topSetRpe - 0.5) },
+    reps: { kind: 'fixed' as const, reps: recipe.rts.topSetReps },
+    ...(index === 0
+      ? { notes: `Stop when you are ${String(fatigueTarget)}% off the top set.` }
+      : {}),
+  }))
 
-  const slot: Slot = {
-    id: asSlotId(deps.ids.next()),
-    role: 'main',
-    exercise: { kind: 'specific', exerciseId },
-    sets,
-    restSeconds: exercise.defaultRestSeconds ?? 180,
-    notes: isDeload
-      ? 'Deload — top set only, and keep it easy.'
-      : `${describeMethod(recipe.rts)} · ${String(fatigueTarget)}% fatigue target`,
-  }
+  // Two slots, not one. The top set is the thing being measured — the
+  // whole session's loading is read off how it felt — and the back-off
+  // work is volume at a known distance from it. Presenting them as one
+  // block of six sets made a back-off look like six attempts at a max,
+  // and gave the lifter nowhere to stop and take the reading.
+  const slots: Slot[] = [
+    {
+      id: asSlotId(deps.ids.next()),
+      role: 'main',
+      exercise: { kind: 'specific', exerciseId },
+      sets: [topSet],
+      restSeconds: exercise.defaultRestSeconds ?? 180,
+      notes: isDeload
+        ? 'Deload — keep it easy.'
+        : `Work up to one set at RPE ${String(topSetRpe)}.`,
+    },
+    {
+      id: asSlotId(deps.ids.next()),
+      role: 'strength',
+      exercise: { kind: 'specific', exerciseId },
+      sets: backoffs,
+      restSeconds: exercise.defaultRestSeconds ?? 180,
+      notes: isDeload
+        ? 'Deload — one back-off, and keep it easy.'
+        : `${describeMethod(recipe.rts)} · ${String(fatigueTarget)}% fatigue target`,
+    },
+  ]
 
-  return { slots: [slot], spent: slotVolume(exercise, sets) }
+  return { slots, spent: slotVolume(exercise, [topSet, ...backoffs]) }
 }
 
 function describeMethod(rts: RtsPrescription): string {
@@ -399,11 +430,17 @@ function fillHypertrophy(args: FillArgs): BuiltSlots {
    * debt ordering would choose. They come first because they are the
    * reason the day has the shape it does.
    */
+  const excludedFromRecipe = new Set(recipe.excludedExercises)
+
   for (const slug of splitDay.anchors ?? []) {
     const exercise = deps.exercises.find(
       (candidate) => candidate.id === asExerciseId(slug) && !candidate.isArchived,
     )
     if (exercise === undefined || used.has(exercise.id)) continue
+    // An anchor is a strong preference, not an override. A lifter who has
+    // said they cannot do an exercise — no dip station, no bar — means it
+    // whether or not the split is built around it.
+    if (excludedFromRecipe.has(exercise.id)) continue
 
     /*
      * An anchor ramps like anything else.
@@ -430,7 +467,7 @@ function fillHypertrophy(args: FillArgs): BuiltSlots {
 
     const slot: Slot = {
       id: asSlotId(deps.ids.next()),
-      role: exercise.isCompound ? 'accessory' : 'assistance',
+      role: exercise.isCompound ? 'hypertrophy' : 'assistance',
       exercise: { kind: 'specific', exerciseId: exercise.id },
       sets,
       restSeconds: exercise.defaultRestSeconds ?? 120,
@@ -487,7 +524,7 @@ function fillHypertrophy(args: FillArgs): BuiltSlots {
 
     const slot: Slot = {
       id: asSlotId(deps.ids.next()),
-      role: exercise.isCompound ? 'accessory' : 'assistance',
+      role: exercise.isCompound ? 'hypertrophy' : 'assistance',
       exercise: { kind: 'specific', exerciseId: exercise.id },
       sets,
       restSeconds: exercise.defaultRestSeconds ?? 120,
@@ -547,7 +584,7 @@ function fillHypertrophy(args: FillArgs): BuiltSlots {
 
     slots.push({
       id: asSlotId(deps.ids.next()),
-      role: exercise.isCompound ? 'accessory' : 'assistance',
+      role: exercise.isCompound ? 'hypertrophy' : 'assistance',
       exercise: { kind: 'specific', exerciseId: exercise.id },
       sets,
       restSeconds: exercise.defaultRestSeconds ?? 120,
@@ -605,11 +642,7 @@ function shareOwed(muscle: MuscleGroup, args: FillArgs, committed: VolumeMap): n
 /** Minutes one slot costs: work plus rest, warm-ups rested through. */
 function slotMinutes(slot: Slot): number {
   const rest = slot.restSeconds ?? 120
-  const seconds = slot.sets.reduce(
-    (total, set) => total + (set.isWarmup === true ? SECONDS_PER_SET : SECONDS_PER_SET + rest),
-    0,
-  )
-  return seconds / 60
+  return slot.sets.reduce((total, set) => total + setSeconds(set, rest), 0) / 60
 }
 
 /** The floor every split here is built to satisfy. */
@@ -728,17 +761,21 @@ function fittableSets(
 
 /* -------------------------------------------------------------------- */
 
-function warmUpSlots(deps: RpAssembleDeps, day: RpDay): readonly Slot[] {
+function warmUpSlots(
+  deps: RpAssembleDeps,
+  day: RpDay,
+  excluded: ReadonlySet<ExerciseId>,
+): readonly Slot[] {
   return WARM_UP_SLUGS[day.warmUp].flatMap((slug): Slot[] => {
     const exercise = deps.exercises.find((candidate) => candidate.id === asExerciseId(slug))
-    if (exercise === undefined) return []
+    if (exercise === undefined || excluded.has(exercise.id)) return []
 
     const range = exercise.defaultRepRange ?? { low: 10, high: 15 }
 
     return [
       {
         id: asSlotId(deps.ids.next()),
-        role: 'conditioning',
+        role: 'warmup',
         exercise: { kind: 'specific', exerciseId: exercise.id },
         sets: [
           {
@@ -753,6 +790,71 @@ function warmUpSlots(deps: RpAssembleDeps, day: RpDay): readonly Slot[] {
       },
     ]
   })
+}
+
+/**
+ * Conditioning to close a day.
+ *
+ * Prescribed by time rather than by reps, and given no RPE target: the
+ * point of an easy incline walk is that it is easy, and attaching a
+ * proximity-to-failure number to it would invite the lifter to race it.
+ * Effort is carried in the note instead, where it belongs.
+ *
+ * Contributes no volume. Conditioning has a systemic cost — which the
+ * fatigue model accounts for separately — but counting a run as sets
+ * against a muscle's weekly target would displace the growth work the
+ * target exists to schedule.
+ */
+function conditioningSlots(
+  deps: RpAssembleDeps,
+  day: RpDay,
+  isDeload: boolean,
+  excluded: ReadonlySet<ExerciseId>,
+): readonly Slot[] {
+  return (day.conditioning ?? []).flatMap((slug): Slot[] => {
+    const exercise = deps.exercises.find((candidate) => candidate.id === asExerciseId(slug))
+    if (exercise === undefined || excluded.has(exercise.id)) return []
+
+    const plan = CONDITIONING_PLANS[slug] ?? { minutes: 15, note: 'Easy, conversational pace.' }
+    // A deload cuts conditioning the same way it cuts everything else.
+    // Leaving it at full duration would make the deload week the hardest
+    // conditioning week of the block.
+    const minutes = isDeload ? Math.max(10, Math.round(plan.minutes / 2)) : plan.minutes
+
+    return [
+      {
+        id: asSlotId(deps.ids.next()),
+        role: 'conditioning',
+        exercise: { kind: 'specific', exerciseId: exercise.id },
+        sets: [{ load: { kind: 'open' }, reps: { kind: 'time', seconds: minutes * 60 } }],
+        restSeconds: 0,
+        notes: plan.note,
+      },
+    ]
+  })
+}
+
+/**
+ * How each conditioning modality is actually run.
+ *
+ * Written down rather than derived because the three are not
+ * interchangeable: swings are intervals with a real systemic cost, a run
+ * is steady aerobic work, and an incline walk is deliberately low enough
+ * to cost nothing at all.
+ */
+const CONDITIONING_PLANS: Readonly<Record<string, { minutes: number; note: string }>> = {
+  'incline-walk': {
+    minutes: 20,
+    note: 'Steep incline, easy pace. You should be able to hold a conversation.',
+  },
+  running: {
+    minutes: 25,
+    note: 'Steady aerobic pace — this is the base-building run, not a test.',
+  },
+  'kb-swing': {
+    minutes: 12,
+    note: 'Intervals: 30 seconds hard, 30 seconds rest. Hips, not arms.',
+  },
 }
 
 function addInto(target: VolumeMap, addition: VolumeMap): VolumeMap {

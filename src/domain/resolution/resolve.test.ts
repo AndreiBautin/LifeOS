@@ -145,7 +145,7 @@ describe('non-percentage prescriptions', () => {
 
     expect(set.load).toBeUndefined()
     expect(set.loadDisplay).toBe('RPE 8')
-    expect(set.repsDisplay).toBe('60s')
+    expect(set.repsDisplay).toBe('1 min')
   })
 
   it('resolves an absolute load without needing any athlete data', () => {

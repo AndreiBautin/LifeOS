@@ -1,6 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import type { ExerciseId, WorkoutId } from '@/domain/ids/ids'
+import {
+  abandonWorkout,
+  type AbandonResult,
+} from '@/application/use-cases/training/abandon-workout'
 import { finishWorkout, type WorkoutReport } from '@/application/use-cases/training/finish-workout'
 import {
   clearSet,
@@ -135,6 +139,27 @@ export function useFinishWorkout() {
       })
       void client.invalidateQueries({ queryKey: keys.activeWorkout })
       void client.invalidateQueries({ queryKey: keys.activeInstance })
+      void client.invalidateQueries({ queryKey: ['workouts'] })
+    },
+  })
+}
+
+/**
+ * Walks away from an open session.
+ *
+ * Discards it outright when nothing was logged, and keeps it marked
+ * `abandoned` when something was. Either way the program stays on the
+ * day, because the day was not finished.
+ */
+export function useAbandonWorkout() {
+  const services = useServices()
+  const client = useQueryClient()
+
+  return useMutation<AbandonResult, Error, WorkoutId>({
+    mutationFn: (workoutId) => abandonWorkout(workoutId, services),
+    onSuccess: (result) => {
+      logger.info('workout.abandon', { outcome: result.kind })
+      void client.invalidateQueries({ queryKey: keys.activeWorkout })
       void client.invalidateQueries({ queryKey: ['workouts'] })
     },
   })

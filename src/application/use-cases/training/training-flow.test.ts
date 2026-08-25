@@ -19,6 +19,7 @@ import {
 } from '@/infrastructure/db/repositories'
 import { seedIfEmpty } from '@/infrastructure/seed/seed'
 
+import { abandonWorkout } from './abandon-workout'
 import { finishWorkout } from './finish-workout'
 import { logSet } from './log-set'
 import { skipSession } from './skip-session'
@@ -112,13 +113,14 @@ describe('starting a session from a program', () => {
 
     // Every hypertrophy set is held at 1 RIR except the last, which goes
     // to failure — the overhead press being one of the movements it is
-    // safe to fail on.
-    expect(press?.sets.map((set) => set.prescription.load)).toEqual([
-      { kind: 'rpe', target: 9 },
-      { kind: 'rpe', target: 9 },
-      { kind: 'rpe', target: 9 },
-      { kind: 'rpe', target: 10 },
-    ])
+    // safe to fail on. Asserted as a shape rather than a fixed count,
+    // because how many sets it gets is a volume decision that moves with
+    // the tiers and the day count.
+    const loads = press?.sets.map((set) => set.prescription.load) ?? []
+
+    expect(loads.length).toBeGreaterThan(1)
+    expect(loads.slice(0, -1)).toEqual(loads.slice(0, -1).map(() => ({ kind: 'rpe', target: 9 })))
+    expect(loads.at(-1)).toEqual({ kind: 'rpe', target: 10 })
 
     // 150 lb estimate, RPE 9 at the top of a 3–6 range.
     expect(press?.sets[0]?.plannedLoad).toBeGreaterThan(0)
@@ -269,9 +271,9 @@ describe('finishing a session', () => {
   it('rolls into the next week after the last day', async () => {
     const deps = await beginProgram()
 
-    // Four training days in this split, so four finished sessions should
+    // Five training days in this split, so five finished sessions should
     // land on week 2 day 1.
-    for (let day = 0; day < 4; day += 1) {
+    for (let day = 0; day < 5; day += 1) {
       const started = await startWorkout({ athlete, roundingIncrement: 5 }, deps)
       if (started.kind !== 'started') throw new Error('expected a started workout')
       await finishWorkout(started.workout.id, deps)
@@ -370,7 +372,7 @@ describe('skipping a session', () => {
 
   it('rolls into the next week like finishing does', async () => {
     const deps = await beginProgram()
-    for (let day = 0; day < 4; day += 1) await skipSession(deps)
+    for (let day = 0; day < 5; day += 1) await skipSession(deps)
 
     const instance = await deps.instances.active()
     expect(instance?.weekIndex).toBe(1)
@@ -392,6 +394,76 @@ describe('skipping a session', () => {
 
   it('reports having no program rather than failing', async () => {
     expect((await skipSession(services())).kind).toBe('no-program')
+  })
+})
+
+describe('abandoning a session', () => {
+  it('discards a session nothing was logged against', () => {
+    // Opened by accident. The record describes an event that did not
+    // happen, and keeping it would leave an empty session in the history
+    // to be explained forever.
+    return (async () => {
+      const deps = await beginProgram()
+      const started = await startWorkout({ athlete, roundingIncrement: 5 }, deps)
+      if (started.kind !== 'started') throw new Error('expected a started workout')
+
+      const result = await abandonWorkout(started.workout.id, deps)
+
+      expect(result.kind).toBe('discarded')
+      expect(await deps.workouts.count()).toBe(0)
+      expect(await deps.workouts.inProgress()).toBeUndefined()
+    })()
+  })
+
+  it('keeps the work when some was logged', async () => {
+    // Three sets before the gym closed are still three sets. Deleting
+    // them to tidy up the history would throw away training.
+    const deps = await beginProgram()
+    const started = await startWorkout({ athlete, roundingIncrement: 5 }, deps)
+    if (started.kind !== 'started') throw new Error('expected a started workout')
+
+    const pressIndex = started.workout.entries.findIndex(
+      (entry) => entry.exerciseId === 'overhead-press',
+    )
+    await logSet(
+      {
+        workoutId: started.workout.id,
+        entryIndex: pressIndex,
+        setIndex: 0,
+        result: { load: 135, reps: 5, outcome: 'completed' },
+      },
+      deps,
+    )
+
+    const result = await abandonWorkout(started.workout.id, deps)
+
+    expect(result.kind).toBe('kept')
+    expect(await deps.workouts.count()).toBe(1)
+    expect((await deps.workouts.byId(started.workout.id))?.status).toBe('abandoned')
+  })
+
+  it('leaves the program on the same day either way', async () => {
+    // The day was not finished. Advancing would silently cost the lifter
+    // a session out of the block.
+    const deps = await beginProgram()
+    const started = await startWorkout({ athlete, roundingIncrement: 5 }, deps)
+    if (started.kind !== 'started') throw new Error('expected a started workout')
+
+    await abandonWorkout(started.workout.id, deps)
+
+    expect((await deps.instances.active())?.dayIndex).toBe(0)
+  })
+
+  it('frees the lifter to start the session again', async () => {
+    const deps = await beginProgram()
+    const first = await startWorkout({ athlete, roundingIncrement: 5 }, deps)
+    if (first.kind !== 'started') throw new Error('expected a started workout')
+
+    await abandonWorkout(first.workout.id, deps)
+    const second = await startWorkout({ athlete, roundingIncrement: 5 }, deps)
+
+    // A fresh session, not a resume of the abandoned one.
+    expect(second.kind).toBe('started')
   })
 })
 

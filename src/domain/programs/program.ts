@@ -14,19 +14,40 @@ import type { SetPrescription } from './prescription'
  * can vary independently: a main lift is a main lift whether it is
  * prescribed at 5 reps or at 3.
  */
+/**
+ * What a slot is doing in the session.
+ *
+ * The distinctions that matter are the ones a lifter reads differently.
+ * `main` is the competition lift itself — the RTS top set the session is
+ * built around; `strength` is the back-off work that follows it on the
+ * same lift, which is heavy but is not the thing being tested. Grouping
+ * both under one label made a five-set back-off look like five attempts
+ * at a max.
+ *
+ * `hypertrophy` and `assistance` are both growth work, split by whether
+ * the movement is compound: a chest-supported row and a rear-delt raise
+ * belong to the same goal and cost very different amounts.
+ *
+ * `warmup` is its own role rather than borrowed from `conditioning`.
+ * Shoulder dislocations are not conditioning, and labelling them as such
+ * made a mobility drill and a twenty-minute run read as the same kind of
+ * thing.
+ */
 export const SLOT_ROLES = [
+  'warmup',
   'main',
-  'supplemental',
-  'accessory',
+  'strength',
+  'hypertrophy',
   'assistance',
   'conditioning',
 ] as const
 export type SlotRole = (typeof SLOT_ROLES)[number]
 
 export const SLOT_ROLE_LABELS: Record<SlotRole, string> = {
+  warmup: 'Warm-up',
   main: 'Main lift',
-  supplemental: 'Supplemental',
-  accessory: 'Accessory',
+  strength: 'Strength',
+  hypertrophy: 'Hypertrophy',
   assistance: 'Assistance',
   conditioning: 'Conditioning',
 }
@@ -224,13 +245,27 @@ export function estimateDayMinutes(day: ProgramDay, defaultRestSeconds = 120): n
   for (const slot of day.slots) {
     const rest = slot.restSeconds ?? defaultRestSeconds
     for (const set of slot.sets) {
-      // Warm-ups are quick and rested through, so they cost the work but
-      // not the full interval.
-      seconds += set.isWarmup === true ? SECONDS_PER_SET : SECONDS_PER_SET + rest
+      seconds += setSeconds(set, rest)
     }
   }
 
   return Math.round(seconds / 60)
+}
+
+/**
+ * What one prescribed set costs in wall-clock seconds.
+ *
+ * A timed set is costed by its actual duration. Counting a twenty-minute
+ * incline walk as one thirty-second set made conditioning free to the
+ * planner: it could stack a run onto the longest day of the week and
+ * still believe the day fit inside the target.
+ */
+export function setSeconds(set: SetPrescription, restSeconds: number): number {
+  const work = set.reps.kind === 'time' ? set.reps.seconds : SECONDS_PER_SET
+
+  // Warm-ups are quick and rested through, so they cost the work but not
+  // the full interval.
+  return set.isWarmup === true ? work : work + restSeconds
 }
 
 /** Estimated minutes for each day of a week, in order. */

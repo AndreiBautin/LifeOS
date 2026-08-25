@@ -476,7 +476,9 @@ const ENTRIES: readonly CatalogueEntry[] = [
     intent: 'hypertrophy',
     sfr: 4,
     systemicCost: 0.15,
-    safeToFail: true,
+    // A loaded bar on your back with your heels at full stretch is not a
+    // position to reach failure in.
+    safeToFail: false,
     defaultRepRange: { low: 10, high: 20 },
     defaultRestSeconds: REST,
   },

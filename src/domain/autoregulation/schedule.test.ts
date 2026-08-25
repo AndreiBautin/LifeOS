@@ -43,10 +43,19 @@ describe('frequency from session length', () => {
   })
 
   it('removes a day when sessions are consistently short', () => {
-    const proposal = proposeFrequency([session(42), session(38), session(45)], 5)
+    const proposal = proposeFrequency([session(28), session(24), session(31)], 5)
 
     expect(proposal.adjustment).toBe('remove-day')
     expect(proposal.proposedDays).toBe(4)
+  })
+
+  it('holds at a tight session rather than consolidating it away', () => {
+    // Fifty-five minutes is what the default five-day week averages. A
+    // floor that recommended consolidating it would have the app argue
+    // against its own default every week.
+    const proposal = proposeFrequency([session(52), session(58), session(55)], 5)
+
+    expect(proposal.adjustment).toBe('hold')
   })
 
   it('refuses to exceed six days and says the volume is the problem', () => {

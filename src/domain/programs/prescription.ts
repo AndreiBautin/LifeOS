@@ -187,8 +187,24 @@ export function describeReps(reps: RepTarget): string {
     case 'amrap':
       return `${String(reps.minimum)}+`
     case 'time':
-      return `${String(reps.seconds)}s`
+      return describeSeconds(reps.seconds)
   }
+}
+
+/**
+ * A duration a lifter reads at a glance.
+ *
+ * Seconds below a minute, because that is how a plank or a carry is
+ * counted; minutes above it, because "1200s" is a number to be converted
+ * rather than read, and conditioning is prescribed in minutes.
+ */
+function describeSeconds(seconds: number): string {
+  if (seconds < 60) return `${String(seconds)}s`
+
+  const minutes = seconds / 60
+  return Number.isInteger(minutes)
+    ? `${String(minutes)} min`
+    : `${String(Math.floor(minutes))}:${String(seconds % 60).padStart(2, '0')}`
 }
 
 /**

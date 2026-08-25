@@ -85,6 +85,24 @@ MEV never moves from a soreness rating.
 **Readiness scales today, not the landmarks.** Sleep and stress adjust
 one session. They must never produce a landmark proposal.
 
+**Skipping, abandoning and finishing are three different things.**
+Finishing advances the program and files a log. Skipping advances it and
+writes _nothing_ — a day trained elsewhere did not happen here.
+Abandoning does not advance it at all: with nothing logged the record is
+deleted, and with sets logged it is kept as `abandoned`. Every one of the
+alternatives puts an empty workout in the history, where it counts as a
+training day and drags every frequency and volume figure down. Finishing
+and skipping share `nextPosition` so they cannot drift.
+
+**A timed set is costed by its duration.** `setSeconds` in
+`domain/programs/program.ts`. Counting a twenty-minute walk as one
+thirty-second set made conditioning free to the planner, which then
+stacked a run onto the longest day of the week and still believed it fit.
+
+**Exclusions are absolute.** A lifter who cannot do an exercise means it
+everywhere — anchors, warm-ups and conditioning included, not only the
+hypertrophy picker. An anchor is a strong preference, never an override.
+
 **`pending` is a real set outcome.** A set that has not been performed is
 not a completed set with no numbers in it. Volume accounting depends on
 the distinction.
