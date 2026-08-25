@@ -113,10 +113,25 @@ describe('explaining the volume', () => {
     }
   })
 
+  /*
+   * Three tiers exist so the middle one can say "still progressing, just
+   * not the priority". Nothing sits there by default any more — the
+   * bench is specialised and the other two are maintained while it is —
+   * but the band has to keep describing itself correctly for whoever
+   * moves a lift into it.
+   */
   it('describes a middle-tier lift as building rather than maintained', () => {
-    // Two tiers only offered "grow this" and "hold that", and holding is
-    // not what anybody wants from a squat.
-    const squat = plan.lifts.find((lift) => lift.lift === 'squat')
+    const middle = explainVolume(
+      DEFAULT_MUSCLE_TIERS,
+      [
+        { rank: 1, members: ['bench'], label: 'Specialising' },
+        { rank: 2, members: ['squat'], label: 'Building' },
+        { rank: 3, members: ['deadlift'], label: 'Maintaining' },
+      ],
+      DEFAULT_LANDMARKS,
+    )
+
+    const squat = middle.lifts.find((lift) => lift.lift === 'squat')
 
     expect(squat?.tier).toBe(2)
     expect(squat?.reason).toMatch(/^Building/)

@@ -94,9 +94,11 @@ arithmetic, unquotable rule. **Frequency counts direct work only**
 **Priority buys strength frequency too, not a bigger fatigue
 allowance.** `strengthSessionsFor` — tier 1 three sessions a week, tier 2
 two, tier 3 one — and `assignStrengthLifts` places them on the days whose
-`carries` matches the lift. The split no longer names a lift per day, so
-promoting the bench changes how often it is benched without editing a
-day.
+`carries` matches the lift, choosing the **emptiest** eligible day each
+time. Spacing each lift across its own eligible days is the obvious
+implementation and is wrong the moment two lifts share a pool: a squat
+and a deadlift wanting one session each from the same two lower days both
+computed the same index and landed on Tuesday.
 
 **The fatigue allowance equals the load drop, always.** Both 5%. That
 equality is what makes the stopping rule sayable: at matched reps and

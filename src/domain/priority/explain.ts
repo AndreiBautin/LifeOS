@@ -3,6 +3,7 @@ import { MUSCLE_GROUP_LABELS, MUSCLE_GROUPS } from '@/domain/exercises/taxonomy'
 import type { MuscleTiers, StrengthLift, StrengthTiers } from '@/domain/priority/tiers'
 import {
   priorityPosition,
+  strengthSessionsFor,
   STRENGTH_LIFT_LABELS,
   STRENGTH_LIFTS,
   weeklyTargetFor,
@@ -206,17 +207,24 @@ export function explainVolume(
   const lifts = STRENGTH_LIFTS.map((lift): StrengthAllocation => {
     const tier = strengthTiers.find((candidate) => candidate.members.includes(lift))
     const rank = tier?.rank ?? 2
+    const sessions = strengthSessionsFor(strengthTiers, lift)
 
     return {
       lift,
       label: STRENGTH_LIFT_LABELS[lift],
       tier: rank,
-      reason:
-        rank === 1
-          ? 'Specialising: the highest fatigue target, so the most back-off volume after the top set.'
-          : rank === 2
-            ? 'Building: a moderate fatigue target. Still progressing, just paying for the priority out of its rate.'
-            : 'Maintaining: the top set and little else — enough to hold the lift while something else grows.',
+      /*
+       * Frequency, not fatigue.
+       *
+       * These sentences used to describe a tier-dependent fatigue
+       * allowance — "the highest fatigue target, so the most back-off
+       * volume" — which stopped being true when the allowance was
+       * flattened to match the load drop. Every session is now the same
+       * shape and priority is spent on how many there are.
+       */
+      reason: `${
+        rank === 1 ? 'Specialising' : rank === 2 ? 'Building' : 'Maintaining'
+      }: ${String(sessions)} session${sessions === 1 ? '' : 's'} a week. Every one is the same shape — a top set, then back-offs until the lighter bar feels like it did.`,
     }
   })
 

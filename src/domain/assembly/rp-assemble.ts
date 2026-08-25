@@ -393,9 +393,22 @@ function assignStrengthLifts(
     const wanted = Math.min(eligible.length, strengthSessionsFor(strengthTiers, lift))
 
     for (let session = 0; session < wanted; session += 1) {
-      // Evenly spaced across the eligible days.
-      const at = eligible[Math.round((session * (eligible.length - 1)) / Math.max(1, wanted - 1))]
-      if (at !== undefined && !perDay[at]?.includes(lift)) perDay[at]?.push(lift)
+      /*
+       * The emptiest eligible day, not an evenly spaced index.
+       *
+       * Spacing each lift's own sessions across its own eligible days
+       * reads as the obvious thing and is wrong as soon as two lifts
+       * share a pool: a squat and a deadlift wanting one session each
+       * from the same two lower days both computed index zero and landed
+       * on Tuesday, leaving Thursday with no competition lift at all.
+       * Choosing by how loaded a day already is spreads *lifts* rather
+       * than spreading each lift independently.
+       */
+      const at = eligible
+        .filter((index) => !perDay[index]?.includes(lift))
+        .sort((a, b) => (perDay[a]?.length ?? 0) - (perDay[b]?.length ?? 0) || a - b)[0]
+
+      if (at !== undefined) perDay[at]?.push(lift)
     }
   }
 
@@ -1175,11 +1188,6 @@ const CONDITIONING_PLANS: Readonly<
     minutes: 20,
     style: 'Zone 2',
     note: 'Steep incline, easy pace. You should be able to hold a conversation.',
-  },
-  running: {
-    minutes: 25,
-    style: 'Zone 2',
-    note: 'Steady aerobic pace — this is the base-building run, not a test.',
   },
   'kb-swing': {
     minutes: 12,

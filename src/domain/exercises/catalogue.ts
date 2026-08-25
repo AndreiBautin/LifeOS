@@ -544,25 +544,6 @@ const ENTRIES: readonly CatalogueEntry[] = [
 
   /* ---- Conditioning -------------------------------------------------- */
   {
-    slug: 'running',
-    name: 'Running',
-    primaryMuscle: 'quads',
-    secondaryMuscles: ['hamstrings', 'calves'],
-    equipment: 'bodyweight',
-    pattern: 'conditioning',
-    isCompound: true,
-    intent: 'conditioning',
-    sfr: 2,
-    // Impact and the eccentric load make running expensive for a lifter,
-    // and it competes directly with lower-body recovery.
-    systemicCost: 0.5,
-    safeToFail: true,
-    loadBasis: 'bodyweight',
-    defaultRestSeconds: 0,
-    notes:
-      'Ease in. The main driver of VO2max and mile time, and the cardio that most interferes with squatting.',
-  },
-  {
     slug: 'incline-walk',
     name: 'Incline Walking',
     primaryMuscle: 'calves',

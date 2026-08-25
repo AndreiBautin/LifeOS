@@ -90,7 +90,7 @@ describe('the assembled block', () => {
     expect([...kinds].sort()).toEqual(['rpe', 'rts-backoff'])
   })
 
-  it('opens every day with a competition lift, and benches three times', () => {
+  it('gives every day exactly one competition lift, and benches three times', () => {
     const week = block?.weeks[0]
     const mains = (week?.days ?? []).map((day) => [
       ...new Set(
@@ -107,11 +107,17 @@ describe('the assembled block', () => {
      * supporting sessions spend a fraction of the fatigue allowance
      * rather than a full one. See RpDay.strengthEmphasis.
      */
+    /*
+     * Five sessions across five days, one each. That tidiness falls out
+     * of the tiers rather than being arranged: the bench is specialised
+     * and gets three, the squat and the deadlift are maintained and get
+     * one apiece.
+     */
     expect(mains).toEqual([
       ['bench-press'],
-      ['low-bar-squat', 'sumo-deadlift'],
+      ['low-bar-squat'],
       ['bench-press'],
-      ['low-bar-squat', 'sumo-deadlift'],
+      ['sumo-deadlift'],
       ['bench-press'],
     ])
   })
@@ -167,10 +173,10 @@ describe('the assembled block', () => {
         ),
       ).length
 
-    // Bench is tier 1, squat and deadlift tier 2.
+    // Bench is tier 1; squat and deadlift are maintained.
     expect(sessions('bench-press')).toBe(3)
-    expect(sessions('low-bar-squat')).toBe(2)
-    expect(sessions('sumo-deadlift')).toBe(2)
+    expect(sessions('low-bar-squat')).toBe(1)
+    expect(sessions('sumo-deadlift')).toBe(1)
   })
 
   /*
@@ -219,7 +225,6 @@ describe('the assembled block', () => {
     }
 
     expect(styles.get(asExerciseId('incline-walk'))).toBe('Zone 2')
-    expect(styles.get(asExerciseId('running'))).toBe('Zone 2')
     expect(styles.get(asExerciseId('kb-swing'))).toBe('HIIT')
   })
 })
@@ -233,14 +238,14 @@ describe('naming a day after what is in it', () => {
    * behind a list of muscles.
    */
   it('says in the heading whether a day is strength, hypertrophy or both', () => {
-    expect(week.days[1]?.label).toBe('Tuesday — Strength and Hypertrophy')
-    expect(week.days[0]?.label).toBe('Monday — Strength, Hypertrophy and Conditioning')
+    expect(week.days[0]?.label).toBe('Monday — Strength and Hypertrophy')
+    expect(week.days[1]?.label).toBe('Tuesday — Strength, Hypertrophy and Conditioning')
   })
 
   it('names the competition lift first in the detail line', () => {
     const tuesday = week.days[1]
 
-    expect(tuesday?.focus).toMatch(/^Sumo Deadlift, then /)
+    expect(tuesday?.focus).toMatch(/^Low Bar Squat, then /)
     // Without the parenthetical variant, which is catalogue bookkeeping.
     expect(tuesday?.focus).not.toContain('(')
   })
@@ -441,15 +446,35 @@ describe('conditioning', () => {
         .flatMap((slot) => (slot.exercise.kind === 'specific' ? [slot.exercise.exerciseId] : [])),
     )
 
-    expect(all).toEqual(['incline-walk', 'running', 'kb-swing'])
+    expect(all).toEqual(['kb-swing', 'incline-walk'])
   })
 
-  it('keeps the hardest session away from the lower days', () => {
-    // Swings are intervals with a real systemic cost. On Wednesday they
-    // would be paid for out of Thursday's deadlift; on Friday there is
-    // nothing left in the week for them to compromise.
-    expect(conditioningIn(1)).toEqual([])
-    expect(conditioningIn(3)).toEqual([])
+  /*
+   * Conditioning sits on the lower days now, and the reason is the
+   * clock rather than the training: the upper days carry the whole
+   * upper body and run to seventy minutes, the lower days carry a
+   * maintained lower body and finish in forty. Twenty minutes of
+   * walking on an upper day makes the long day longer.
+   */
+  it('puts conditioning on the lower days, where there is room for it', () => {
+    expect(conditioningIn(0)).toEqual([])
+    expect(conditioningIn(2)).toEqual([])
+    expect(conditioningIn(4)).toEqual([])
+
+    expect(conditioningIn(1)).toHaveLength(1)
+    expect(conditioningIn(3)).toHaveLength(1)
+  })
+
+  it('follows the squat with the swings, not the deadlift', () => {
+    // Swings are a hinge. Stacking a hinge on the heaviest hinge of the
+    // week is the one pairing worth avoiding.
+    const on = (dayIndex: number) =>
+      conditioningIn(dayIndex).flatMap((slot) =>
+        slot.exercise.kind === 'specific' ? [slot.exercise.exerciseId as string] : [],
+      )
+
+    expect(on(1)).toEqual(['kb-swing'])
+    expect(on(3)).toEqual(['incline-walk'])
   })
 
   it('is prescribed by time, not by reps', () => {
@@ -461,11 +486,11 @@ describe('conditioning', () => {
   })
 
   it('counts toward the session budget rather than riding along free', () => {
-    // A twenty-five minute run costed as one thirty-second set let the
+    // A twenty-minute walk costed as one thirty-second set let the
     // planner stack conditioning onto the longest day and still believe
     // the day fitted inside the target.
-    const withRun = estimateDayMinutes(week.days[2] as never)
-    const conditioningMinutes = conditioningIn(2).reduce(
+    const withWalk = estimateDayMinutes(week.days[3] as never)
+    const conditioningMinutes = conditioningIn(3).reduce(
       (total, slot) =>
         total +
         slot.sets.reduce((sum, set) => sum + (set.reps.kind === 'time' ? set.reps.seconds : 0), 0) /
@@ -473,17 +498,21 @@ describe('conditioning', () => {
       0,
     )
 
-    expect(conditioningMinutes).toBeGreaterThan(20)
-    expect(withRun).toBeGreaterThan(conditioningMinutes)
+    expect(conditioningMinutes).toBeGreaterThanOrEqual(20)
+    expect(withWalk).toBeGreaterThan(conditioningMinutes)
   })
 
   it('is cut on the deload like everything else', () => {
     const deloadRun = weekAt(program, 6)
       .days.flatMap((day) => day.slots)
-      .find((slot) => slot.exercise.kind === 'specific' && slot.exercise.exerciseId === 'running')
+      .find(
+        (slot) => slot.exercise.kind === 'specific' && slot.exercise.exerciseId === 'incline-walk',
+      )
     const workingRun = week.days
       .flatMap((day) => day.slots)
-      .find((slot) => slot.exercise.kind === 'specific' && slot.exercise.exerciseId === 'running')
+      .find(
+        (slot) => slot.exercise.kind === 'specific' && slot.exercise.exerciseId === 'incline-walk',
+      )
 
     const seconds = (slot: typeof deloadRun): number => {
       const set = slot?.sets[0]

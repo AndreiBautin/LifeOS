@@ -183,9 +183,6 @@ const WEEK_5: RpSplit = {
       label: 'Monday',
       muscles: UPPER,
       carries: ['upper'],
-      // The easiest conditioning after two rest days, and the cheapest
-      // to place: a walk costs the week nothing wherever it lands.
-      conditioning: ['incline-walk'],
       warmUp: 'upper',
     },
     {
@@ -193,6 +190,20 @@ const WEEK_5: RpSplit = {
       label: 'Tuesday',
       muscles: LOWER,
       carries: ['lower'],
+      /*
+       * Conditioning lives on the lower days, and this is the balancing
+       * decision rather than a training one.
+       *
+       * The upper days carry the whole upper body and run to eighty
+       * minutes; the lower days carry a maintained lower body and finish
+       * in forty. Twenty minutes of conditioning on an upper day makes
+       * the long day longer. Moved down, it evens the week out.
+       *
+       * Swings follow the squat rather than the deadlift: they are a
+       * hinge, and stacking a hinge on the heaviest hinge of the week is
+       * the one pairing worth avoiding.
+       */
+      conditioning: ['kb-swing'],
       warmUp: 'lower',
     },
     {
@@ -200,16 +211,6 @@ const WEEK_5: RpSplit = {
       label: 'Wednesday',
       muscles: UPPER,
       carries: ['upper'],
-      /*
-       * The run goes here rather than on a lower day.
-       *
-       * It has to go on an upper day — a run stacked onto squats or
-       * deadlifts is leg volume the planner did not budget for — and of
-       * the three, Wednesday is the one whose own work is upper-body
-       * pressing. Monday already has the walk, and Friday takes the
-       * swings.
-       */
-      conditioning: ['running'],
       warmUp: 'upper',
     },
     {
@@ -217,6 +218,9 @@ const WEEK_5: RpSplit = {
       label: 'Thursday',
       muscles: LOWER,
       carries: ['lower'],
+      // The walk costs nothing and asks nothing, which is what belongs
+      // after the heaviest pull of the week.
+      conditioning: ['incline-walk'],
       warmUp: 'lower',
     },
     {
@@ -234,11 +238,6 @@ const WEEK_5: RpSplit = {
        */
       muscles: UPPER,
       carries: ['upper'],
-      // The hardest conditioning goes here: it is the last session before
-      // two rest days, so there is nothing left in the week for it to
-      // compromise. Swings on a Wednesday would be paid for on Thursday's
-      // deadlift.
-      conditioning: ['kb-swing'],
       warmUp: 'upper',
     },
   ],

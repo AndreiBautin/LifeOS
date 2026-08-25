@@ -2,12 +2,11 @@ import { Link } from 'react-router-dom'
 
 import { useSettings } from '@/app/context'
 import { explainVolume, type Band, type MuscleAllocation } from '@/domain/priority/explain'
-import { attributeWeek } from '@/domain/volume/attribution'
 import { Badge, Card, Section } from '@/components/shared/primitives'
 import { buttonStyles } from '@/components/shared/styles'
 import { cn } from '@/lib/cn'
 
-import { useExercises, useProgram } from '@/features/train/hooks'
+import { useProgram } from '@/features/train/hooks'
 import { RtsExplainer } from './RtsExplainer'
 
 /**
@@ -33,7 +32,6 @@ const BAND_TONE: Record<Band, 'accent' | 'good' | 'neutral'> = {
 export function PlanPage() {
   const { settings } = useSettings()
   const program = useProgram()
-  const exercises = useExercises()
 
   const plan = explainVolume(settings.muscleTiers, settings.strengthTiers, settings.landmarks)
 
@@ -47,39 +45,6 @@ export function PlanPage() {
 
   const running = program.data
 
-  /*
-   * Measured off the built program, not modelled.
-   *
-   * The hardest week is the last working one — the block ramps into it —
-   * so it is the honest place to ask whether the ask fits. Modelling
-   * capacity from minutes and set counts would be a second theory to
-   * keep in step with the assembler; reading it off what the assembler
-   * produced cannot drift.
-   *
-   * Counted per muscle rather than in aggregate. Totals compare badly:
-   * every set pays two or three muscles, so the delivered total runs
-   * well above the asked total even when individual muscles are starved,
-   * and a green headline would be hiding the only thing worth knowing.
-   */
-  const weeks = running?.blocks[0]?.weeks ?? []
-  const hardest = weeks.filter((week) => !week.isDeload).at(-1)
-
-  const attributed =
-    hardest === undefined
-      ? []
-      : attributeWeek(hardest, (id) => exercises.data?.find((exercise) => exercise.id === id))
-
-  const short = plan.muscles
-    .filter((muscle) => muscle.weeklySets > 0)
-    .map((muscle) => ({
-      label: muscle.label,
-      target: muscle.weeklySets,
-      got: attributed.find((entry) => entry.muscle === muscle.muscle)?.total ?? 0,
-    }))
-    // Half a set of slack: a target of fourteen met with 13.5 is met.
-    .filter((entry) => entry.got < entry.target - 0.5)
-    .sort((a, b) => b.target - b.got - (a.target - a.got))
-
   return (
     <div>
       <header className="mb-6">
@@ -91,60 +56,6 @@ export function PlanPage() {
         <Link to="/program" className={cn(buttonStyles({ variant: 'primary' }), 'w-full')}>
           See every week, with the weights it would give you
         </Link>
-      </Section>
-
-      {/*
-        Where "you cannot prioritise everything" now lives.
-
-        This replaced a "priority spread: focused / diluted" verdict that
-        graded the tier structure and then quietly scaled every target by
-        that grade — so adding one muscle to tier 1 lowered the other
-        three, and the panel explaining it was explaining a rule that
-        should not have existed. The constraint is real; it is a limit on
-        what a week holds, not a reason to renegotiate the ask. So the
-        tiers now say what they say, and this reports what the assembler
-        could actually fit.
-      */}
-      <Section title="Does it fit in your week?">
-        <Card>
-          <div className="mb-3 flex items-baseline justify-between gap-2">
-            <span className="text-ink-300 text-sm">
-              {plan.prioritisedCount} muscles prioritised, asking
-            </span>
-            <span className="numeric text-ink-50 text-lg font-semibold">
-              {plan.totalWeeklySets} sets
-            </span>
-          </div>
-
-          {short.length === 0 ? (
-            <p className="text-ink-500 text-sm">
-              <span className="text-good-500 font-medium">Every target is met</span> in the hardest
-              week of the block. Prioritising another muscle raises that muscle&rsquo;s number and
-              changes no other — if the schedule runs out of room, this is where it will say so.
-            </p>
-          ) : (
-            <>
-              <p className="text-ink-500 mb-2 text-sm">
-                <span className="text-warn-500 font-medium">
-                  {short.length} {short.length === 1 ? 'muscle falls' : 'muscles fall'} short
-                </span>{' '}
-                in the hardest week. Nothing is being quietly scaled down — the sessions fill up and
-                the rest is not trained. Fewer muscles in tier 1, more days, or longer sessions are
-                the three ways out.
-              </p>
-              <ul className="space-y-1">
-                {short.map((entry) => (
-                  <li key={entry.label} className="flex items-baseline justify-between gap-2">
-                    <span className="text-ink-300 text-sm">{entry.label}</span>
-                    <span className="numeric text-ink-500 text-sm">
-                      <span className="text-warn-500">{entry.got}</span> / {entry.target}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </>
-          )}
-        </Card>
       </Section>
 
       <Section title="The three lifts" description="Strength work, run by RTS">

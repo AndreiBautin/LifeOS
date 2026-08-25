@@ -248,9 +248,20 @@ export function validateTiers<T extends string>(tiers: readonly Tier<T>[]): void
  * is put there by default.
  */
 export const DEFAULT_STRENGTH_TIERS: StrengthTiers = [
+  /*
+   * One session each for the squat and the deadlift, three for the
+   * bench, which is five strength sessions across five days — exactly
+   * one per day.
+   *
+   * That tidiness is a consequence rather than the goal. The tiers say
+   * the legs are maintained, and squatting and deadlifting twice a week
+   * each contradicted that: the quads came out at fifteen sets against a
+   * seven-set target and the glutes at fifteen against two. Strength
+   * frequency and muscle priority now say the same thing.
+   */
   { rank: 1, members: ['bench'], label: 'Specialising' },
-  { rank: 2, members: ['squat', 'deadlift'], label: 'Building' },
-  { rank: 3, members: [], label: 'Maintaining' },
+  { rank: 2, members: [], label: 'Building' },
+  { rank: 3, members: ['squat', 'deadlift'], label: 'Maintaining' },
 ]
 
 export const DEFAULT_MUSCLE_TIERS: MuscleTiers = [
