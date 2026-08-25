@@ -17,7 +17,7 @@ describe('naming a block from its tiers', () => {
   it('names it after what is actually specialised', () => {
     const described = describeBlock(DEFAULT_MUSCLE_TIERS, DEFAULT_STRENGTH_TIERS)
 
-    expect(described.name).toBe('Arms and side delts · Bench press strength')
+    expect(described.name).toBe('Arms, side delts and chest · Bench press strength')
   })
 
   it('follows a tier when it moves', () => {
@@ -75,7 +75,7 @@ describe('naming a block from its tiers', () => {
       { rank: 2, members: ['squat', 'bench'], label: 'Building' },
     ])
 
-    expect(deadliftLed.name).toBe('Arms and side delts · Deadlift strength')
+    expect(deadliftLed.name).toBe('Arms, side delts and chest · Deadlift strength')
   })
 
   it('names every lead lift when more than one leads', () => {
@@ -92,7 +92,7 @@ describe('naming a block from its tiers', () => {
       { rank: 2, members: ['squat', 'bench', 'deadlift'], label: 'Building' },
     ])
 
-    expect(flat.name).toBe('Arms and side delts')
+    expect(flat.name).toBe('Arms, side delts and chest')
   })
 })
 

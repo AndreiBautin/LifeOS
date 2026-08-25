@@ -267,7 +267,7 @@ export const DEFAULT_STRENGTH_TIERS: StrengthTiers = [
 export const DEFAULT_MUSCLE_TIERS: MuscleTiers = [
   {
     rank: 1,
-    members: ['biceps', 'triceps', 'forearms', 'side-delts'],
+    members: ['biceps', 'triceps', 'forearms', 'side-delts', 'chest'],
     label: 'Specialising',
   },
   // Front delts sit here rather than in the bottom tier so the overhead
@@ -283,7 +283,7 @@ export const DEFAULT_MUSCLE_TIERS: MuscleTiers = [
    * the room, and abs are the one thing a maintained lower body should
    * still be working directly.
    */
-  { rank: 2, members: ['lats', 'upper-back', 'chest', 'front-delts', 'core'], label: 'Building' },
+  { rank: 2, members: ['lats', 'upper-back', 'front-delts', 'core'], label: 'Building' },
   {
     rank: 3,
     members: ['rear-delts', 'quads', 'hamstrings', 'glutes', 'calves'],

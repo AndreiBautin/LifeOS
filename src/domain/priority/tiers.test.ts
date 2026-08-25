@@ -72,7 +72,7 @@ describe('a muscle tier changes that muscle and nothing else', () => {
 describe('priority position', () => {
   it('puts the top tier high and the bottom tier low', () => {
     const top = priorityPosition(DEFAULT_MUSCLE_TIERS, 'triceps')
-    const middle = priorityPosition(DEFAULT_MUSCLE_TIERS, 'chest')
+    const middle = priorityPosition(DEFAULT_MUSCLE_TIERS, 'lats')
     const bottom = priorityPosition(DEFAULT_MUSCLE_TIERS, 'calves')
 
     expect(top).toBeGreaterThan(middle)
