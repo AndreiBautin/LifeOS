@@ -6,12 +6,7 @@ import { MUSCLE_GROUP_LABELS, type MuscleGroup } from '@/domain/exercises/taxono
 import type { Exercise } from '@/domain/exercises/exercise'
 import type { ExerciseId } from '@/domain/ids/ids'
 import { attributeWeek } from '@/domain/volume/attribution'
-import {
-  describeBlock,
-  explainVolume,
-  type Band,
-  type MuscleAllocation,
-} from '@/domain/priority/explain'
+import { explainVolume, type Band, type MuscleAllocation } from '@/domain/priority/explain'
 import { Badge, Card, Section } from '@/components/shared/primitives'
 import { buttonStyles } from '@/components/shared/styles'
 import { cn } from '@/lib/cn'
@@ -55,7 +50,6 @@ export function PlanPage() {
   }))
 
   const running = program.data
-  const block = describeBlock(settings.muscleTiers, settings.strengthTiers)
 
   /*
    * Measured off the built week, not predicted from the tiers.
@@ -94,52 +88,43 @@ export function PlanPage() {
   return (
     <div>
       {/*
-        The subtitle says what the page is for, not what the block is
-        called.
+        No subtitle, after three attempts at one.
 
-        It used to be the block's name — a derived string like "Biceps,
-        side delts, lats and chest · Bench press strength" — set in small
-        grey type under a one-word heading. Two problems. It wrapped to
-        three lines on a phone, and it answered a question nobody had:
-        arriving on a screen called Plan, you want to know what the screen
-        tells you, and the block's identity is a thing to *read*, not a
-        caption.
+        It began as the block's derived name — "Biceps, side delts, lats
+        and chest · Bench press strength" — in small grey type under a
+        one-word heading, where it wrapped to three lines on a phone. That
+        moved into a card with room for it. What replaced it were two
+        goes at saying what the page is for, and both were throat-clearing
+        above sections that already say it: "This block", "Can the week
+        deliver it?", "Tier 1 — Specialising".
 
-        So the name moved down into a card with room for it, split into
-        the two facets it always had, with the description that was being
-        computed and thrown away.
+        A heading needs a subtitle when the sections under it are not
+        self-describing. These are. The other screens carry one because
+        theirs earns its place — Program reports which week you are on,
+        History how many sessions exist — and neither is a description of
+        the page.
       */}
       <header className="mb-6">
         <h1 className="text-ink-50 text-2xl font-semibold tracking-tight">Plan</h1>
-        <p className="text-ink-500 mt-0.5 text-sm">Your priorities, and what they cost</p>
       </header>
 
-      <Section title="This block">
-        <Card className="space-y-3">
-          <dl className="space-y-2">
-            {/*
-              "Hypertrophy", not "Volume".
+      {/*
+        The block's identity is not on this page any more.
 
-              Volume is the *unit* — every slot in the app is measured in
-              sets, strength work included — so labelling one half of the
-              block "Volume" and the other "Strength" pairs a measure
-              against a goal. The app already names the three kinds of
-              work Strength, Hypertrophy and Conditioning on every slot;
-              the block's facets should use the same words.
-            */}
-            <Facet term="Hypertrophy" detail={block.focus.muscles} />
-            {block.focus.lifts !== undefined && (
-              <Facet term="Strength" detail={block.focus.lifts} />
-            )}
-          </dl>
+        It was a card naming the two focuses and repeating a derived
+        sentence — "Chest, side delts and biceps specialised. Front delts,
+        rear delts, triceps... building." Every clause of that is restated
+        below as an actual tier with actual numbers, and the name itself
+        is already in the Train screen's header, which is where someone
+        checks what block they are running.
 
-          <p className="text-ink-500 border-ink-800 border-t pt-3 text-xs">{block.description}</p>
-        </Card>
-
-        <Link to="/program" className={cn(buttonStyles({ variant: 'primary' }), 'mt-3 w-full')}>
-          See every week, with the weights it would give you
-        </Link>
-      </Section>
+        What survives is the link, because it is the only route to the
+        Program page and it answers the question the page ends on: fine,
+        so what does the week look like.
+      */}
+      <Link to="/program" className={cn(buttonStyles({ variant: 'primary' }), 'mb-6 w-full')}>
+        See every week, with the weights it would give you
+      </Link>
 
       <CapacityReport missing={missing} known={running !== undefined && library.length > 0} />
 
@@ -260,16 +245,6 @@ function MuscleRow({ allocation }: { readonly allocation: MuscleAllocation }) {
   )
 }
 
-/** One half of the block's focus, as a term and its detail. */
-function Facet({ term, detail }: { readonly term: string; readonly detail: string }) {
-  return (
-    <div className="flex items-baseline justify-between gap-3">
-      <dt className="text-ink-500 shrink-0 text-xs tracking-wide uppercase">{term}</dt>
-      <dd className="text-ink-50 text-right text-sm font-medium">{detail}</dd>
-    </div>
-  )
-}
-
 /**
  * "You cannot prioritise everything", as a report rather than a rule.
  *
@@ -279,10 +254,11 @@ function Facet({ term, detail }: { readonly term: string; readonly detail: strin
  * What replaced it is this: build the program, then say plainly what the
  * week could not fit.
  *
- * Silence when everything fits is deliberate. A section permanently
- * present, reading "0 muscles short", trains the eye to skip it — and
- * this is precisely the thing that must be noticed on the one week it has
- * something to say.
+ * Silence when everything fits is deliberate, and stronger than it was:
+ * the section used to render "every muscle's weekly target is met" and now
+ * renders nothing at all. A section permanently present is furniture, and
+ * furniture teaches the eye to skip it — which is precisely wrong for the
+ * one week it has something to say.
  */
 function CapacityReport({
   missing,
@@ -293,23 +269,11 @@ function CapacityReport({
 }) {
   if (!known) return null
 
-  if (missing.length === 0) {
-    return (
-      <Section title="Can the week deliver it?">
-        <Card>
-          <p className="text-ink-300 text-sm">
-            Yes — every muscle&rsquo;s weekly target is met by the program as built.
-          </p>
-        </Card>
-      </Section>
-    )
-  }
+  // Nothing to report is reported as nothing. See above.
+  if (missing.length === 0) return null
 
   return (
-    <Section
-      title="Can the week deliver it?"
-      description="Measured off the program as built, not predicted from the tiers"
-    >
+    <Section title="Short of target">
       <Card>
         <ul className="space-y-3">
           {missing.map((entry) => (
@@ -327,19 +291,6 @@ function CapacityReport({
             </li>
           ))}
         </ul>
-
-        {/*
-          Counted per muscle and never summed. Every set pays two or three
-          muscles, so a total delivered would exceed a total asked even in
-          a week that starves a prioritised muscle — a surplus reported
-          over a shortfall.
-        */}
-        <p className="text-ink-500 border-ink-800 mt-3 border-t pt-3 text-xs">
-          Nothing has been scaled down to hide this. The targets above are exactly what your tiers
-          ask for; these are the ones the week has no room for. Fewer muscles in tier 1, another
-          training day, or accepting the gap are all reasonable answers — the app will not pick one
-          for you.
-        </p>
       </Card>
     </Section>
   )
