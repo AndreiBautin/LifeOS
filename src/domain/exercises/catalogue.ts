@@ -390,6 +390,53 @@ const ENTRIES: readonly CatalogueEntry[] = [
     defaultRepRange: { low: 8, high: 12 },
     defaultRestSeconds: REST,
   },
+  /*
+   * Two dumbbell curls, and the second one is not padding.
+   *
+   * The biceps are trained three times a week and had exactly two direct
+   * options — a barbell curl and an EZ bar curl — so the picker's repeat
+   * penalty had nothing to reach for and the same movement came up twice
+   * most weeks. Four options is what lets "do not repeat within the
+   * week" actually mean something for this muscle.
+   *
+   * The hammer earns its place on top of that: a neutral grip shifts work
+   * onto the brachialis and brachioradialis, which is why its forearm
+   * credit is the point rather than a side effect.
+   */
+  {
+    slug: 'db-curl',
+    name: 'Dumbbell Curl',
+    primaryMuscle: 'biceps',
+    secondaryMuscles: ['forearms'],
+    equipment: 'dumbbell',
+    pattern: 'isolation',
+    isCompound: false,
+    intent: 'hypertrophy',
+    // One arm at a time if you like; the credit is the same either way,
+    // and `isUnilateral` is about how a set is counted, not how it is
+    // performed. A pair of dumbbells curled together is one set.
+    sfr: 5,
+    systemicCost: 0.08,
+    safeToFail: true,
+    defaultRepRange: { low: 8, high: 12 },
+    defaultRestSeconds: REST,
+  },
+  {
+    slug: 'hammer-curl',
+    name: 'Hammer Curl',
+    primaryMuscle: 'biceps',
+    secondaryMuscles: ['forearms'],
+    equipment: 'dumbbell',
+    pattern: 'isolation',
+    isCompound: false,
+    intent: 'hypertrophy',
+    sfr: 5,
+    systemicCost: 0.08,
+    safeToFail: true,
+    defaultRepRange: { low: 10, high: 15 },
+    defaultRestSeconds: REST,
+    notes: 'Neutral grip throughout — brachialis and brachioradialis, not just biceps.',
+  },
   {
     slug: 'reverse-curl',
     name: 'Reverse Curl',

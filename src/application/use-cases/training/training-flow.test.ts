@@ -58,14 +58,39 @@ const athlete: AthleteState = {
     [asExerciseId(STRENGTH_LIFT_SLUGS.squat)]: 350,
     [asExerciseId(STRENGTH_LIFT_SLUGS.bench)]: 250,
     [asExerciseId(STRENGTH_LIFT_SLUGS.deadlift)]: 450,
-    // Monday is arms and delts, so the curl is the day-one exercise a
-    // suggested load can be checked against. The dumbbell version was
-    // withdrawn from the catalogue — an EZ bar is easier to load.
+    /*
+     * Monday trains the biceps, so a curl is the day-one exercise a
+     * suggested load can be checked against — but *which* curl is the
+     * fill's business, not this test's. There are four now and the
+     * picker rotates them, so every variant carries a max and the tests
+     * below find whichever one turned up.
+     *
+     * Naming one was how these tests failed the day the catalogue
+     * gained a dumbbell curl: a suite about resolution and logging,
+     * broken by a change to exercise selection it has no opinion on.
+     */
     [asExerciseId('ez-bar-curl')]: 60,
+    [asExerciseId('barbell-curl')]: 60,
+    [asExerciseId('db-curl')]: 60,
+    [asExerciseId('hammer-curl')]: 60,
   },
   bodyweight: 180,
   units: 'lb',
 }
+
+/**
+ * Whichever curl the fill happened to pick.
+ *
+ * Read off the catalogue rather than listed here, so adding a fifth
+ * curl does not break a suite that has no opinion about curls.
+ */
+const CURLS = new Set(
+  builtInExercises()
+    .filter((exercise) => exercise.primaryMuscle === 'biceps' && !exercise.isCompound)
+    .map((exercise) => exercise.id as string),
+)
+
+const isCurl = (id: ExerciseId): boolean => CURLS.has(id)
 
 let program: ReturnType<typeof deriveProgram>
 
@@ -116,7 +141,7 @@ describe('starting a session from a program', () => {
     expect(result.kind).toBe('started')
     if (result.kind !== 'started') throw new Error('expected a started workout')
 
-    const curl = result.workout.entries.find((entry) => entry.exerciseId === 'ez-bar-curl')
+    const curl = result.workout.entries.find((entry) => isCurl(entry.exerciseId))
     expect(curl).toBeDefined()
 
     /*
@@ -148,7 +173,7 @@ describe('starting a session from a program', () => {
     const result = await startWorkout({ athlete: bare, program, roundingIncrement: 5 }, deps)
     if (result.kind !== 'started') throw new Error('expected a started workout')
 
-    const curl = result.workout.entries.find((entry) => entry.exerciseId === 'ez-bar-curl')
+    const curl = result.workout.entries.find((entry) => isCurl(entry.exerciseId))
     expect(curl?.sets.every((set) => set.plannedLoad === undefined)).toBe(true)
     expect(curl?.sets[0]?.prescription.load).toEqual({ kind: 'rpe', target: 9 })
   })
@@ -198,9 +223,7 @@ describe('logging', () => {
     const started = await startWorkout({ athlete, program, roundingIncrement: 5 }, deps)
     if (started.kind !== 'started') throw new Error('expected a started workout')
 
-    const curlIndex = started.workout.entries.findIndex(
-      (entry) => entry.exerciseId === 'ez-bar-curl',
-    )
+    const curlIndex = started.workout.entries.findIndex((entry) => isCurl(entry.exerciseId))
     const plannedLoad = started.workout.entries[curlIndex]?.sets[0]?.plannedLoad
 
     await logSet(
@@ -233,9 +256,7 @@ describe('logging', () => {
     const started = await startWorkout({ athlete, program, roundingIncrement: 5 }, deps)
     if (started.kind !== 'started') throw new Error('expected a started workout')
 
-    const curlIndex = started.workout.entries.findIndex(
-      (entry) => entry.exerciseId === 'ez-bar-curl',
-    )
+    const curlIndex = started.workout.entries.findIndex((entry) => isCurl(entry.exerciseId))
 
     await logSet(
       {
@@ -318,9 +339,7 @@ describe('finishing a session', () => {
     const started = await startWorkout({ athlete, program, roundingIncrement: 5 }, deps)
     if (started.kind !== 'started') throw new Error('expected a started workout')
 
-    const curlIndex = started.workout.entries.findIndex(
-      (entry) => entry.exerciseId === 'ez-bar-curl',
-    )
+    const curlIndex = started.workout.entries.findIndex((entry) => isCurl(entry.exerciseId))
 
     for (let setIndex = 0; setIndex <= 2; setIndex += 1) {
       await logSet(
@@ -352,9 +371,7 @@ describe('finishing a session', () => {
 
     // One working set logged; the mobility warm-ups that open the day and
     // everything else left untouched.
-    const curlIndex = started.workout.entries.findIndex(
-      (entry) => entry.exerciseId === 'ez-bar-curl',
-    )
+    const curlIndex = started.workout.entries.findIndex((entry) => isCurl(entry.exerciseId))
 
     await logSet(
       {
@@ -444,9 +461,7 @@ describe('abandoning a session', () => {
     const started = await startWorkout({ athlete, program, roundingIncrement: 5 }, deps)
     if (started.kind !== 'started') throw new Error('expected a started workout')
 
-    const curlIndex = started.workout.entries.findIndex(
-      (entry) => entry.exerciseId === 'ez-bar-curl',
-    )
+    const curlIndex = started.workout.entries.findIndex((entry) => isCurl(entry.exerciseId))
     await logSet(
       {
         workoutId: started.workout.id,

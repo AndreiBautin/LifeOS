@@ -63,8 +63,21 @@ describe('what the catalogue no longer ships', () => {
    * already had it, archived, so old logs still resolve — but nothing
    * will program it again.
    */
+  /*
+   * `db-curl` was on this list and is not any more.
+   *
+   * It was withdrawn because "the EZ bar version is easier to load",
+   * which is a preference rather than a fault, and the lifter has since
+   * preferred otherwise. Worth recording that the list did its job: the
+   * restore had to come through here rather than appearing quietly in
+   * the catalogue.
+   *
+   * The reverse is the case worth being careful about. Something
+   * withdrawn for a *reason that still holds* — hard to load, covered by
+   * something better — should stay withdrawn, and the fix for wanting it
+   * is to change the reason, not to delete the line.
+   */
   const withdrawn: readonly (readonly [string, string])[] = [
-    ['db-curl', 'the EZ bar version is easier to load'],
     ['upright-row', 'the lateral raise covers the side delts'],
     ['kb-single-leg-rdl', 'hard to load'],
     ['running', 'conditioning belongs on the lower days, and a run is not what they need'],
