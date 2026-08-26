@@ -229,6 +229,18 @@ neither device having heard from the other, loses Monday entirely. Do not
 "simplify" this back to a record-level winner; `synchronise.test.ts` fails
 in two places if you do.
 
+**The quest log is the hub's front page, and two of its rules used to be
+the database's job.** `/next` is what `/` redirects to. Cycle detection
+(`validateBlockers`) was enforced in the schema as well as in code and is
+now the only guard there is; cascade delete is `withoutBlocker`, called by
+hand, because a dangling blocker id would otherwise sit in the record,
+travel over sync, and come back if a later project reused the id.
+
+**The bottom navigation is full at six.** Adding an area means taking one
+out, not adding a seventh — History moved to a link on the Train page for
+exactly that reason. Phase 7 owns the proper rethink; until then, a new
+area displaces something rather than squeezing in beside it.
+
 **Logging progress is serialised per item, by hand.** `serialise` in
 `features/backlog/hooks.ts`. It is a read-modify-write, so two in flight
 at once count two taps as one. React Query's `scope` does exactly this job
@@ -607,6 +619,16 @@ reconstruct it.
 and add a new guarded block. A device that already ran a step will not
 run it again, so editing one leaves two devices with different schemas
 and no way to tell.
+
+**Bump the version and write the step in the same edit.** The trap has a
+sharper edge than it reads: with `pnpm dev` running and a browser open,
+saving a `DB_VERSION` bump _before_ the `if (oldVersion < n)` block exists
+means the tab reloads, opens the database at the new version, and runs no
+new step. The version is now spent — that device is at version _n_ with
+the store missing, and adding the block afterwards cannot reach it,
+because it already ran _n_. It cost a development database here, which was
+empty; on a real device it would cost a repair migration in the chain
+forever.
 
 **Exercise ids are slugs, not UUIDs** (`bench-press`). They are stable
 across devices and readable in an export file. Do not "fix" this.

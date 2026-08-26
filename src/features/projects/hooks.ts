@@ -1,0 +1,108 @@
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+
+import { useServices } from '@/app/context'
+import {
+  addAction,
+  addProject,
+  deleteProject,
+  listProjects,
+  recommendation,
+  setActionStatus,
+  setBlockers,
+  updateProject,
+  type NewProject,
+  type ProjectChanges,
+} from '@/application/use-cases/projects/projects'
+import type { ActionId, ProjectId } from '@/domain/ids/ids'
+import { logger } from '@/shared/logging/logger'
+
+/**
+ * The quest log's queries and mutations.
+ *
+ * Everything invalidates the whole `['projects']` key. Almost every write
+ * here can move records other than the one it names — completing a project
+ * un-blocks the ones waiting on it — so a narrower invalidation would
+ * leave the list showing a project as blocked by something already
+ * finished.
+ */
+
+const PROJECTS = ['projects'] as const
+
+export function useProjects() {
+  const services = useServices()
+
+  return useQuery({ queryKey: [...PROJECTS, 'all'], queryFn: () => listProjects(services) })
+}
+
+export function useRecommendation() {
+  const services = useServices()
+
+  return useQuery({
+    queryKey: [...PROJECTS, 'recommendation'],
+    queryFn: () => recommendation(services),
+  })
+}
+
+function useProjectMutation<TVariables, TResult>(
+  event: string,
+  run: (variables: TVariables, services: ReturnType<typeof useServices>) => Promise<TResult>,
+) {
+  const services = useServices()
+  const client = useQueryClient()
+
+  return useMutation<TResult, Error, TVariables>({
+    mutationFn: (variables) => run(variables, services),
+    onSuccess: () => {
+      logger.info(event, {})
+      void client.invalidateQueries({ queryKey: PROJECTS })
+    },
+  })
+}
+
+export function useAddProject() {
+  return useProjectMutation<NewProject, unknown>('projects.add', (input, services) =>
+    addProject(input, services),
+  )
+}
+
+export function useUpdateProject() {
+  return useProjectMutation<{ id: ProjectId; changes: ProjectChanges }, unknown>(
+    'projects.update',
+    ({ id, changes }, services) => updateProject(id, changes, services),
+  )
+}
+
+export function useDeleteProject() {
+  return useProjectMutation<ProjectId, unknown>('projects.delete', (id, services) =>
+    deleteProject(id, services),
+  )
+}
+
+export function useAddAction() {
+  return useProjectMutation<
+    { id: ProjectId; description: string; availableFrom?: string },
+    unknown
+  >('projects.action-added', ({ id, description, availableFrom }, services) =>
+    addAction(id, description, availableFrom, services),
+  )
+}
+
+export function useSetActionStatus() {
+  return useProjectMutation<{ id: ProjectId; actionId: ActionId; done: boolean }, unknown>(
+    'projects.action-closed',
+    ({ id, actionId, done }, services) => setActionStatus(id, actionId, done, services),
+  )
+}
+
+/**
+ * Setting blockers is the one mutation whose failure is expected.
+ *
+ * A cycle is refused with a message rather than thrown, so the result —
+ * not the error — is what the screen reads.
+ */
+export function useSetBlockers() {
+  return useProjectMutation<
+    { id: ProjectId; blockerIds: readonly ProjectId[] },
+    { readonly error?: string }
+  >('projects.blockers', ({ id, blockerIds }, services) => setBlockers(id, blockerIds, services))
+}

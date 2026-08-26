@@ -3,6 +3,7 @@ import { openDB } from 'idb'
 
 import type { CheckIn } from '@/domain/autoregulation/check-in'
 import type { Item } from '@/domain/backlog/item'
+import type { Project } from '@/domain/projects/project'
 import type { Tombstone } from '@/domain/sync/tombstone'
 import type { Exercise } from '@/domain/exercises/exercise'
 import type { WorkoutLog } from '@/domain/logging/workout-log'
@@ -41,7 +42,7 @@ export const DB_NAME = 'lift'
  * a device that already ran it will not run it again, so changing one
  * leaves two devices with different schemas and no way to tell.
  */
-export const DB_VERSION = 4
+export const DB_VERSION = 5
 
 /**
  * A workout as it is stored, which is not quite a workout as the domain
@@ -146,6 +147,23 @@ export interface LiftDB extends DBSchema {
     value: Item
     indexes: { 'by-status': string; 'by-category': string; 'by-added': string }
   }
+  /**
+   * The quest log — projects, and the checklist inside each one.
+   *
+   * Actions are embedded in the project record rather than stored beside
+   * it. They are always read with their project and never queried on their
+   * own, so a second store would buy an index nothing would use and a
+   * transaction spanning two stores on every write.
+   *
+   * One index, on status, because that is the only filter the screen
+   * applies. Ranking is a computation over the whole list and cannot be
+   * an index — it depends on today's date.
+   */
+  projects: {
+    key: string
+    value: Project
+    indexes: { 'by-status': string }
+  }
 }
 
 export type LiftDatabase = IDBPDatabase<LiftDB>
@@ -228,6 +246,18 @@ export function openLiftDatabase(name = DB_NAME): Promise<LiftDatabase> {
         items.createIndex('by-category', 'category')
         items.createIndex('by-added', 'dateAdded')
       }
+
+      /*
+       * Version 5 brings the quest log in.
+       *
+       * The second absorbed app, and the first that was a .NET service.
+       * Nothing migrates automatically here either — its data arrives
+       * through an export file, once, along the import path.
+       */
+      if (oldVersion < 5) {
+        const projects = db.createObjectStore('projects', { keyPath: 'id' })
+        projects.createIndex('by-status', 'status')
+      }
     },
 
     blocked() {
@@ -269,7 +299,10 @@ export async function closeLiftDatabase(): Promise<void> {
  * receive a wipe instead.
  */
 export async function clearAllStores(db: LiftDatabase): Promise<void> {
-  const tx = db.transaction(['exercises', 'position', 'workouts', 'checkIns', 'items'], 'readwrite')
+  const tx = db.transaction(
+    ['exercises', 'position', 'workouts', 'checkIns', 'items', 'projects'],
+    'readwrite',
+  )
 
   await Promise.all([
     tx.objectStore('exercises').clear(),
@@ -277,6 +310,7 @@ export async function clearAllStores(db: LiftDatabase): Promise<void> {
     tx.objectStore('workouts').clear(),
     tx.objectStore('checkIns').clear(),
     tx.objectStore('items').clear(),
+    tx.objectStore('projects').clear(),
     tx.done,
   ])
 }

@@ -2,6 +2,7 @@ import type { IdGenerator } from '@/domain/ids/ids'
 import type {
   BacklogItemRepository,
   BacklogSettingsRepository,
+  ProjectRepository,
   CheckInRepository,
   Clock,
   ExerciseRepository,
@@ -16,6 +17,7 @@ import { DATABASE_NAME } from '@/config/storage-keys'
 import { openLiftDatabase, type LiftDatabase } from '@/infrastructure/db/database'
 import {
   createBacklogItemRepository,
+  createProjectRepository,
   createCheckInRepository,
   createExerciseRepository,
   createPositionRepository,
@@ -54,6 +56,7 @@ export interface AppServices {
   readonly workouts: WorkoutRepository
   readonly checkIns: CheckInRepository
   readonly items: BacklogItemRepository
+  readonly projects: ProjectRepository
   readonly backlogSettings: BacklogSettingsRepository
   readonly tombstones: TombstoneRepository
   readonly settings: SettingsRepository
@@ -99,6 +102,7 @@ export async function bootstrap(): Promise<BootstrapResult> {
     workouts: createWorkoutRepository(db, systemClock),
     checkIns: createCheckInRepository(db, systemClock),
     items: createBacklogItemRepository(db, systemClock),
+    projects: createProjectRepository(db, systemClock),
     backlogSettings: createBacklogSettingsStore(),
     tombstones: createTombstoneRepository(db),
     settings: createSettingsStore(),

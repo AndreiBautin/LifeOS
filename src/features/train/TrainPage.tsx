@@ -1,5 +1,6 @@
-import { Play, Plus, SkipForward } from 'lucide-react'
+import { History, Play, Plus, SkipForward } from 'lucide-react'
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 
 import type { WorkoutReport } from '@/application/use-cases/training/finish-workout'
 import { useSettings } from '@/app/context'
@@ -11,6 +12,7 @@ import { describeReps } from '@/domain/programs/prescription'
 import { clampPosition, dayAt, weekAt } from '@/application/use-cases/programs/current-program'
 import { STARTING_POSITION } from '@/domain/programs/position'
 import { Badge, Button, Card, Empty, Section } from '@/components/shared/primitives'
+import { buttonStyles } from '@/components/shared/styles'
 
 import {
   useActiveWorkout,
@@ -26,7 +28,7 @@ import { SessionPlayer } from './SessionPlayer'
 import { SessionReport } from './SessionReport'
 
 /**
- * The screen the app opens on.
+ * The training screen.
  *
  * One question answered immediately: what am I doing today? If a session
  * is already open it takes over the screen entirely — an unfinished
@@ -95,9 +97,21 @@ export function TrainPage() {
 
   return (
     <div>
-      <header className="mb-6">
-        <h1 className="text-ink-50 text-2xl font-semibold tracking-tight">Train</h1>
-        <p className="text-ink-500 mt-0.5 text-sm">{program.data?.name ?? 'Loading…'}</p>
+      {/*
+        History lives here rather than in the navigation. The bottom bar
+        holds six destinations on a phone and the hub now needs a slot for
+        every absorbed app — so the tabs are for the things opened daily,
+        and past sessions are reached from the screen they belong to.
+      */}
+      <header className="mb-6 flex items-end justify-between gap-3">
+        <div>
+          <h1 className="text-ink-50 text-2xl font-semibold tracking-tight">Train</h1>
+          <p className="text-ink-500 mt-0.5 text-sm">{program.data?.name ?? 'Loading…'}</p>
+        </div>
+        <Link to="/history" className={buttonStyles({ variant: 'ghost', size: 'sm' })}>
+          <History size={16} aria-hidden />
+          History
+        </Link>
       </header>
 
       {nextDay !== undefined ? (

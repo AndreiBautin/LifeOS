@@ -172,6 +172,31 @@ capacity, the backlog's is how much you want to get to something. The
 directory is what keeps the two apart, and `BacklogSettings` and
 `BacklogItemId` are named for their area for the same reason.
 
+## The quest log, and the two things a database was doing for it
+
+The second absorbed app, at `/next` — which is also where the hub opens,
+because "what should I do right now, and what is the exact next step" is
+the most valuable thing on a screen you open every morning.
+
+`domain/projects/priority.ts` is the engine, ported whole with its tests.
+`domain/projects/blocking.ts` is what used to be a service over SQLite,
+and the two halves of it worth knowing about are the ones the database was
+quietly providing:
+
+**Cycle detection is now the only guard.** It was enforced in the schema
+_and_ in the code; only the code half survives IndexedDB, so
+`validateBlockers` is the whole of it.
+
+**Cascade delete is written by hand.** `withoutBlocker` strips a deleted
+project out of everyone waiting on it. Without it the reference sits in
+each dependent's record, travels over sync, and comes back to life if a
+later project is ever created with the same id.
+
+Actions are embedded in the project record rather than stored beside it —
+they are always read with it and never queried alone. Blockers are a list
+of ids on the project rather than a join table, because the whole graph is
+a few dozen records in memory whenever anything asks a question about it.
+
 ## Autoregulation
 
 Check-ins are **recorded events**, and adjusting a volume landmark is a

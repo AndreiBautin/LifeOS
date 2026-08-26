@@ -21,7 +21,13 @@
  */
 
 /** The collections a tombstone can refer to. */
-export const TOMBSTONED_COLLECTIONS = ['exercises', 'workouts', 'checkIns', 'items'] as const
+export const TOMBSTONED_COLLECTIONS = [
+  'exercises',
+  'workouts',
+  'checkIns',
+  'items',
+  'projects',
+] as const
 
 export type TombstonedCollection = (typeof TOMBSTONED_COLLECTIONS)[number]
 

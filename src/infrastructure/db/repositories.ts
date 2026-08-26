@@ -1,10 +1,11 @@
 import type { CheckIn } from '@/domain/autoregulation/check-in'
 import type { Item } from '@/domain/backlog/item'
+import type { Project } from '@/domain/projects/project'
 import type { ProgramPosition } from '@/domain/programs/position'
 import { builtInExercises } from '@/domain/exercises/catalogue'
 import type { Exercise } from '@/domain/exercises/exercise'
 import { resolveLibrary } from '@/domain/exercises/library'
-import type { BacklogItemId, CheckInId, ExerciseId, WorkoutId } from '@/domain/ids/ids'
+import type { BacklogItemId, CheckInId, ExerciseId, ProjectId, WorkoutId } from '@/domain/ids/ids'
 import type { WorkoutLog } from '@/domain/logging/workout-log'
 import type {
   BacklogItemRepository,
@@ -12,6 +13,7 @@ import type {
   Clock,
   ExerciseRepository,
   PositionRepository,
+  ProjectRepository,
   TombstoneRepository,
   WorkoutQuery,
   WorkoutRepository,
@@ -261,6 +263,53 @@ export function createBacklogItemRepository(db: LiftDatabase, clock: Clock): Bac
     },
     async count() {
       return db.count('items')
+    },
+  }
+}
+
+/**
+ * The quest log.
+ *
+ * `saveMany` exists because completing one project can un-block others,
+ * and those have to land with it — a partial write leaves the graph saying
+ * a project is blocked by something already finished. One transaction, and
+ * every record in it stamped, which is what separates it from
+ * `restoreMany`.
+ */
+export function createProjectRepository(db: LiftDatabase, clock: Clock): ProjectRepository {
+  return {
+    async all() {
+      return db.getAll('projects')
+    },
+    async byId(id: ProjectId) {
+      return db.get('projects', id)
+    },
+    async save(project: Project) {
+      await db.put('projects', stamp(project, clock))
+    },
+    async saveMany(projects: readonly Project[]) {
+      const tx = db.transaction('projects', 'readwrite')
+      await Promise.all([
+        ...projects.map((project) => tx.store.put(stamp(project, clock))),
+        tx.done,
+      ])
+    },
+    async restoreMany(projects: readonly Project[]) {
+      const tx = db.transaction('projects', 'readwrite')
+      await Promise.all([...projects.map((project) => tx.store.put(project)), tx.done])
+    },
+    async remove(id: ProjectId) {
+      await db.delete('projects', id)
+      await bury(db, clock, 'projects', id)
+    },
+    async purge(id: ProjectId) {
+      await db.delete('projects', id)
+    },
+    async clear() {
+      await db.clear('projects')
+    },
+    async count() {
+      return db.count('projects')
     },
   }
 }

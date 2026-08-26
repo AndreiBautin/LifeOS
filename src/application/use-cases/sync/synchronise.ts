@@ -1,7 +1,14 @@
-import { asBacklogItemId, asCheckInId, asExerciseId, asWorkoutId } from '@/domain/ids/ids'
+import {
+  asBacklogItemId,
+  asCheckInId,
+  asExerciseId,
+  asProjectId,
+  asWorkoutId,
+} from '@/domain/ids/ids'
 import type {
   BacklogItemRepository,
   CheckInRepository,
+  ProjectRepository,
   Clock,
   ExerciseRepository,
   SettingsRepository,
@@ -50,6 +57,7 @@ export interface SynchroniseDeps {
   readonly workouts: WorkoutRepository
   readonly checkIns: CheckInRepository
   readonly items: BacklogItemRepository
+  readonly projects: ProjectRepository
   readonly tombstones: TombstoneRepository
   readonly syncState: SyncStateRepository
   readonly settings: SettingsRepository
@@ -110,6 +118,7 @@ export async function synchronise(target: SyncTarget, deps: SynchroniseDeps): Pr
   await deps.workouts.restoreMany(accepted.workouts)
   await deps.checkIns.restoreMany(accepted.checkIns)
   await deps.items.restoreMany(accepted.items)
+  await deps.projects.restoreMany(accepted.projects)
 
   /*
    * Settings last, and only if they are newer.
@@ -155,6 +164,7 @@ export async function synchronise(target: SyncTarget, deps: SynchroniseDeps): Pr
     accepted.workouts.length +
     accepted.checkIns.length +
     accepted.items.length +
+    accepted.projects.length +
     (settingsMoved ? 1 : 0)
 
   const offered =
@@ -162,6 +172,7 @@ export async function synchronise(target: SyncTarget, deps: SynchroniseDeps): Pr
     incoming.workouts.length +
     incoming.checkIns.length +
     incoming.items.length +
+    incoming.projects.length +
     (accepted.settings === undefined ? 0 : 1)
 
   return {
@@ -177,11 +188,12 @@ async function collectLocal(
   watermark: string | undefined,
   settingsSynced: string | undefined,
 ): Promise<SyncPayload> {
-  const [exercises, workouts, checkIns, items, tombstones, settings] = await Promise.all([
+  const [exercises, workouts, checkIns, items, projects, tombstones, settings] = await Promise.all([
     deps.exercises.all(),
     deps.workouts.all(),
     deps.checkIns.all(),
     deps.items.all(),
+    deps.projects.all(),
     deps.tombstones.all(),
     deps.settings.get(),
   ])
@@ -217,6 +229,7 @@ async function collectLocal(
     workouts: changedSince(workouts, watermark),
     checkIns: changedSince(checkIns, watermark),
     items: changedSince(items, watermark),
+    projects: changedSince(projects, watermark),
     tombstones: deletedSince(tombstones, watermark),
     ...(settingsChanged ? { settings: projectForSync(settings) } : {}),
   }
@@ -264,6 +277,13 @@ async function applyDeletions(
         const local = await deps.checkIns.byId(asCheckInId(tombstone.id))
         if (local !== undefined && !survives(local, tombstone)) {
           await deps.checkIns.purge(asCheckInId(tombstone.id))
+        }
+        break
+      }
+      case 'projects': {
+        const local = await deps.projects.byId(asProjectId(tombstone.id))
+        if (local !== undefined && !survives(local, tombstone)) {
+          await deps.projects.purge(asProjectId(tombstone.id))
         }
         break
       }

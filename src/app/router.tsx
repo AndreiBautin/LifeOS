@@ -1,6 +1,7 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom'
 
 import { BacklogPage } from '@/features/backlog/BacklogPage'
+import { ProjectsPage } from '@/features/projects/ProjectsPage'
 import { CharacterPage } from '@/features/character/CharacterPage'
 import { HistoryPage } from '@/features/history/HistoryPage'
 import { PlanPage } from '@/features/plan/PlanPage'
@@ -25,7 +26,11 @@ export const router = createBrowserRouter(
       element: <AppShell />,
       errorElement: <RouteError />,
       children: [
-        { index: true, element: <Navigate to="/train" replace /> },
+        // The hub opens on what to do next, not on the training screen. That
+        // is the change from a training app to a hub: the first thing on the
+        // first screen should be the answer to "what now".
+        { index: true, element: <Navigate to="/next" replace /> },
+        { path: 'next', element: <ProjectsPage /> },
         { path: 'train', element: <TrainPage /> },
         { path: 'plan', element: <PlanPage /> },
         { path: 'program', element: <ProgramPage /> },

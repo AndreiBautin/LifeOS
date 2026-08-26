@@ -7,6 +7,7 @@ import type { BacklogItemId, WorkoutId } from '@/domain/ids/ids'
 import type { WorkoutLog } from '@/domain/logging/workout-log'
 import type {
   BacklogItemRepository,
+  ProjectRepository,
   CheckInRepository,
   Clock,
   ExerciseRepository,
@@ -158,6 +159,24 @@ function device(clock: Clock): Device {
     count: () => Promise.resolve(backlog.size),
   }
 
+  /*
+   * A stub, unlike the backlog above. Nothing in these tests exercises
+   * project records, and a double that pretended to would be testing
+   * itself — the quest log's own exchange is covered where the graph
+   * rules it depends on live.
+   */
+  const projects: ProjectRepository = {
+    all: () => Promise.resolve([]),
+    byId: () => Promise.resolve(undefined),
+    save: () => Promise.resolve(),
+    saveMany: () => Promise.resolve(),
+    restoreMany: () => Promise.resolve(),
+    remove: () => Promise.resolve(),
+    purge: () => Promise.resolve(),
+    clear: () => Promise.resolve(),
+    count: () => Promise.resolve(0),
+  }
+
   const tombstones: TombstoneRepository = {
     all: () => Promise.resolve([...graves.values()]),
     since: (deletedAt) =>
@@ -196,6 +215,7 @@ function device(clock: Clock): Device {
     workouts,
     checkIns,
     items,
+    projects,
     tombstones,
     syncState,
     settings,

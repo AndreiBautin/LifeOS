@@ -1,8 +1,9 @@
 import type { CheckIn } from '@/domain/autoregulation/check-in'
 import type { Item } from '@/domain/backlog/item'
+import type { Project } from '@/domain/projects/project'
 import type { BacklogSettings } from '@/domain/backlog/settings'
 import type { Exercise } from '@/domain/exercises/exercise'
-import type { BacklogItemId, CheckInId, ExerciseId, WorkoutId } from '@/domain/ids/ids'
+import type { BacklogItemId, CheckInId, ExerciseId, ProjectId, WorkoutId } from '@/domain/ids/ids'
 import type { WorkoutLog } from '@/domain/logging/workout-log'
 import type { ProgramPosition } from '@/domain/programs/position'
 import type { AppSettings } from '@/domain/settings/settings'
@@ -178,6 +179,34 @@ export interface BacklogItemRepository {
   /** Deletes without recording a tombstone — the receiving half of a sync. */
   purge(id: BacklogItemId): Promise<void>
   /** Empties the store. Never "restore into an empty store" behind one name. */
+  clear(): Promise<void>
+  count(): Promise<number>
+}
+
+/**
+ * The quest log.
+ *
+ * Actions live inside their project, so there is no action repository —
+ * closing one is a save of the project that holds it.
+ */
+export interface ProjectRepository {
+  all(): Promise<readonly Project[]>
+  byId(id: ProjectId): Promise<Project | undefined>
+  save(project: Project): Promise<void>
+  /**
+   * Saves several as one transaction, stamping each.
+   *
+   * Completing a project can un-block others, and those others have to
+   * land with it: a partial write leaves the graph saying a project is
+   * blocked by something already finished. Distinct from `restoreMany`,
+   * which deliberately does not stamp.
+   */
+  saveMany(projects: readonly Project[]): Promise<void>
+  /** Writes records exactly as given, without stamping `updatedAt`. */
+  restoreMany(projects: readonly Project[]): Promise<void>
+  remove(id: ProjectId): Promise<void>
+  /** Deletes without recording a tombstone — the receiving half of a sync. */
+  purge(id: ProjectId): Promise<void>
   clear(): Promise<void>
   count(): Promise<number>
 }
