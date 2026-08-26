@@ -32,14 +32,27 @@ export interface Shortfall {
 }
 
 /**
- * Ignored below this, in sets.
+ * A shortfall has to clear both of these to be worth saying.
  *
  * Credit is fractional — a secondary muscle earns half a set, an RPE 8
- * set earns four fifths — so a muscle can land a tenth of a set below its
- * target through arithmetic alone. Reporting that as a shortfall would
- * bury the muscles genuinely missing five sets in a list of rounding.
+ * set earns four fifths — so a muscle can land a fraction below its
+ * target through arithmetic alone, and reporting that would bury the
+ * muscles genuinely missing five sets in a list of rounding.
+ *
+ * The proportional test is the one that matters. Volume landmarks are
+ * approximate by construction: they are a band a lifter moves within on
+ * evidence, not a measurement, and the difference between eleven sets and
+ * ten is inside the error of the model that produced the eleven. The same
+ * single set against a target of four is not. Reporting one and not the
+ * other needs the *share*, which is why an absolute threshold alone was
+ * wrong — it called a nine percent gap a finding.
+ *
+ * The absolute floor stops sub-set arithmetic surfacing at all. "0.9 sets
+ * short" is true, unactionable, and reads as false precision about a
+ * number that was always a band.
  */
-export const SHORTFALL_THRESHOLD = 0.5
+export const SHORTFALL_MIN_SETS = 1
+export const SHORTFALL_MIN_SHARE = 0.1
 
 export interface Delivered {
   readonly muscle: MuscleGroup
@@ -70,7 +83,8 @@ export function shortfalls(
     if (target <= 0) continue
 
     const short = target - entry.total
-    if (short <= SHORTFALL_THRESHOLD) continue
+    if (short <= SHORTFALL_MIN_SETS) continue
+    if (short / target <= SHORTFALL_MIN_SHARE) continue
 
     found.push({
       muscle: entry.muscle,

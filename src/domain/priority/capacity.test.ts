@@ -29,11 +29,34 @@ describe('what the week could not fit', () => {
     expect(shortfalls(delivered({ chest: 18 }), asked({ chest: 17 }))).toEqual([])
   })
 
-  it('ignores a shortfall too small to act on', () => {
+  it('ignores a fraction of a set, which is arithmetic rather than a gap', () => {
     // Credit is fractional — half a set for a secondary muscle, four
-    // fifths for an RPE 8 set — so a tenth of a set below target is
-    // arithmetic, not a problem. Listing it would bury the real ones.
+    // fifths for an RPE 8 set — so landing just below target is rounding.
+    // "0.1 sets short" is true, unactionable, and false precision about a
+    // number that was always a band.
     expect(shortfalls(delivered({ lats: 13.9 }), asked({ lats: 14 }))).toEqual([])
+  })
+
+  it('ignores one set against a large target, and reports it against a small one', () => {
+    /*
+     * The proportional rule, and the reason an absolute threshold alone
+     * was wrong. Volume landmarks are a band a lifter moves within on
+     * evidence, not a measurement — the difference between eleven sets
+     * and ten is inside the error of the model that produced the eleven.
+     * The same single set against a target of four is a quarter of the
+     * muscle's week.
+     */
+    expect(shortfalls(delivered({ 'rear-delts': 10 }), asked({ 'rear-delts': 11 }))).toEqual([])
+
+    expect(shortfalls(delivered({ 'rear-delts': 2.5 }), asked({ 'rear-delts': 4 }))).toEqual([
+      { muscle: 'rear-delts', label: 'rear-delts', asked: 4, delivered: 2.5, short: 1.5 },
+    ])
+  })
+
+  it('needs more than a set however small the target', () => {
+    // A tenth of two sets is a fifth of a set. Without the absolute
+    // floor, sub-set arithmetic would surface on every maintained muscle.
+    expect(shortfalls(delivered({ glutes: 1.2 }), asked({ glutes: 2 }))).toEqual([])
   })
 
   it('says nothing about a muscle nobody asked for', () => {
@@ -44,11 +67,11 @@ describe('what the week could not fit', () => {
 
   it('puts the worst first, because that is the one to act on', () => {
     const result = shortfalls(
-      delivered({ lats: 12.5, 'side-delts': 15, quads: 6 }),
-      asked({ lats: 14, 'side-delts': 20, quads: 7 }),
+      delivered({ lats: 11, 'side-delts': 15, calves: 9 }),
+      asked({ lats: 14, 'side-delts': 20, calves: 12 }),
     )
 
-    expect(result.map((entry) => entry.muscle)).toEqual(['side-delts', 'lats', 'quads'])
+    expect(result.map((entry) => entry.muscle)).toEqual(['side-delts', 'lats', 'calves'])
   })
 
   it('never aggregates, because the total would reassure in the wrong direction', () => {
