@@ -126,9 +126,16 @@ export interface Character {
   readonly xpForNextLevel: number
 }
 
-/** XP for one completed session, plus one per working set. */
-const XP_PER_SESSION = 50
-const XP_PER_SET = 5
+/**
+ * XP for one completed session, plus one per working set.
+ *
+ * Exported so `xp.ts` can state training's acts in the same numbers rather
+ * than in a copy of them. Two constants with the same name and different
+ * values is how the character sheet and the hub start disagreeing about
+ * what a session is worth.
+ */
+export const XP_PER_SESSION = 50
+export const XP_PER_SET = 5
 
 /**
  * XP needed to reach a given level, growing quadratically.

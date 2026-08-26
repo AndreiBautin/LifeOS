@@ -196,6 +196,21 @@ time nobody was running, so it sat at Untrained permanently — a fixed
 zero on a screen whose job is to show movement. Consistency levelled the
 session count, which XP already spends. Conditioning is still
 _programmed_; it is not scored, because nothing measures it.
+
+**`domain/game/` is the model for the whole hub, and nothing imports it
+yet.** Lift is being promoted to the app every other life-tracking app is
+absorbed into, and [docs/GAME_MODEL.md](docs/GAME_MODEL.md) decides — before
+any of them arrive — what a number is allowed to mean: three currencies
+(ladder, rating, XP), one tech tree, three rules. `character.ts` is the
+part of it that is wired up; `ladder.ts`, `rating.ts`, `xp.ts`, `tree.ts`,
+`credit.ts` and `registry.ts` are not, deliberately. Hooking a new domain
+to XP during its migration is how the exchange rate gets set by accident,
+in a commit whose message is about something else.
+
+The three rules are tests, not prose: **no ladder is fed by XP** (a ladder
+must name an external standard), **no rating is promoted to a ladder** (no
+measurement may be claimed by both), and **nothing is counted twice**
+(`creditFor` returns one credit or none). `registry.test.ts` fails on each.
 **Upper, lower, upper, lower, upper — and no borrowing.** `RpDay.muscles`,
 one list, one fill pass. Two earlier attempts at balancing the week are
 in the git history and both were wrong: listing the arms on every day
