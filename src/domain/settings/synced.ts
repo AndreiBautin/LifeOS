@@ -103,3 +103,21 @@ export function mergeSettings(local: AppSettings, incoming: SyncedSettings): App
   // the loop needed, not about a claim the compiler cannot check.
   return merged as unknown as AppSettings
 }
+
+/**
+ * Whether two settings differ in any of the parts that travel.
+ *
+ * The stamp must move when the shared half changes and stay put when only
+ * a device preference does. Stamping every save looks harmless and is not:
+ * push happens before pull, so toggling dark mode made this device's copy
+ * the newest and pushed its *stale* shared values over a reminder setting
+ * the other device had genuinely changed. A theme switch silently
+ * reverting someone else's edit is about as quiet as a bug gets.
+ */
+export function syncedPartChanged(before: AppSettings | undefined, after: AppSettings): boolean {
+  if (before === undefined) return true
+
+  return SYNCED_SETTING_KEYS.some(
+    (key) => JSON.stringify(before[key] ?? null) !== JSON.stringify(after[key] ?? null),
+  )
+}

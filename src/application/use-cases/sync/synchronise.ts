@@ -76,7 +76,7 @@ export async function synchronise(target: SyncTarget, deps: SynchroniseDeps): Pr
    */
   const startedAt = deps.clock.now().toISOString()
 
-  const outgoing = await collectLocal(deps, state.pushedThrough)
+  const outgoing = await collectLocal(deps, state.pushedThrough, state.settingsSynced)
   await target.push(outgoing)
 
   const { payload: incoming, cursor } = await target.pull(state.cursor)
@@ -121,9 +121,22 @@ export async function synchronise(target: SyncTarget, deps: SynchroniseDeps): Pr
     }
   }
 
+  /*
+   * The stamp actually exchanged, whichever direction it went.
+   *
+   * Recording the incoming one matters as much as the outgoing: accepted
+   * settings keep the *sending* device's stamp, and on a device whose
+   * clock runs slow that value sits permanently ahead of the local
+   * watermark — so a watermark comparison would re-push them on every
+   * sync, forever, with nothing changing.
+   */
+  const settingsStamp =
+    accepted.settings?.updatedAt ?? outgoing.settings?.updatedAt ?? state.settingsSynced
+
   await deps.syncState.save({
     cursor,
     pushedThrough: startedAt,
+    ...(settingsStamp === undefined ? {} : { settingsSynced: settingsStamp }),
     lastSyncedAt: startedAt,
   })
 
@@ -150,6 +163,7 @@ export async function synchronise(target: SyncTarget, deps: SynchroniseDeps): Pr
 async function collectLocal(
   deps: SynchroniseDeps,
   watermark: string | undefined,
+  settingsSynced: string | undefined,
 ): Promise<SyncPayload> {
   const [exercises, workouts, checkIns, tombstones, settings] = await Promise.all([
     deps.exercises.all(),
@@ -167,8 +181,7 @@ async function collectLocal(
    * the stamp is what makes two copies orderable, and a copy that cannot
    * prove it is newer must not overwrite one that can.
    */
-  const settingsChanged =
-    settings.updatedAt !== undefined && (watermark === undefined || settings.updatedAt > watermark)
+  const settingsChanged = settings.updatedAt !== undefined && settings.updatedAt !== settingsSynced
 
   /*
    * Filtered in memory rather than by an index.

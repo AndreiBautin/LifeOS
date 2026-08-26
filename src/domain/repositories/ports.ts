@@ -196,6 +196,17 @@ export interface SyncState {
    * one to use here and the wrong one to use for `cursor`.
    */
   readonly pushedThrough?: string
+  /**
+   * The exact settings stamp last sent or received.
+   *
+   * Compared for equality, not against the watermark, because settings
+   * accepted from another device keep *its* stamp — and on a device whose
+   * clock runs slow that stamp sits permanently ahead of the local
+   * watermark, so an ordering comparison re-pushes the same settings on
+   * every sync forever. Equality against the value actually exchanged is
+   * clock-independent.
+   */
+  readonly settingsSynced?: string
   readonly lastSyncedAt?: string
 }
 

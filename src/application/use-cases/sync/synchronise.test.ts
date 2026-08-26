@@ -366,3 +366,65 @@ describe('syncing the settings the program is derived from', () => {
     expect(after.theme).toBe('dark')
   })
 })
+
+describe('settings bugs an eval agent found', () => {
+  it('does not let a device preference push stale shared settings', async () => {
+    /*
+     * Push happens before pull, so a device whose settings blob is the
+     * newest wins — and stamping every save made toggling dark mode the
+     * newest. The other phone's genuine reminder change was then
+     * overwritten by this phone's untouched copy of it. About as quiet as
+     * a bug gets: a theme switch reverting someone else's edit.
+     */
+    const clock = advancingClock()
+    const server = createMemorySyncServer()
+    const phone = device(clock)
+    const desk = device(clock)
+
+    const deskBase = await desk.settings.get()
+    await desk.settings.save({
+      ...deskBase,
+      weeksBeforeDeload: 8,
+      updatedAt: clock.now().toISOString(),
+    })
+    await synchronise(createMemorySyncTarget(server, 'desk'), desk)
+
+    // Only a device preference moves here, and it moves *later*.
+    const phoneBase = await phone.settings.get()
+    await phone.settings.save({ ...phoneBase, theme: 'dark' })
+
+    await synchronise(createMemorySyncTarget(server, 'phone'), phone)
+
+    const after = await phone.settings.get()
+    expect(after.theme).toBe('dark')
+    expect(after.weeksBeforeDeload).toBe(8)
+  })
+
+  it('stops re-sending settings on a device whose clock runs slow', async () => {
+    /*
+     * Accepted settings keep the *sending* device's stamp. On a slow
+     * clock that value sits permanently ahead of the local watermark, so
+     * comparing by ordering re-pushed the same blob on every exchange,
+     * forever, with nothing having changed.
+     */
+    const fast = advancingClock()
+    const slow = { now: () => new Date(fast.now().getTime() - 4 * 60 * 1000) }
+
+    const server = createMemorySyncServer()
+    const phone = device(fast)
+    const desk = device(slow)
+
+    const base = await phone.settings.get()
+    await phone.settings.save({ ...base, daysPerWeek: 3, updatedAt: fast.now().toISOString() })
+
+    await synchronise(createMemorySyncTarget(server, 'phone'), phone)
+
+    const deskTarget = createMemorySyncTarget(server, 'desk')
+    expect((await synchronise(deskTarget, desk)).received).toBe(1)
+
+    // The slow device now holds a stamp from the future. It must still go
+    // quiet rather than pushing it back every time.
+    expect((await synchronise(deskTarget, desk)).pushed).toBe(0)
+    expect((await synchronise(deskTarget, desk)).pushed).toBe(0)
+  })
+})

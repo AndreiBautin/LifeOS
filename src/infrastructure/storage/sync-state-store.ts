@@ -74,11 +74,13 @@ function parse(value: unknown): SyncState | undefined {
   const state: {
     cursor?: string
     pushedThrough?: string
+    settingsSynced?: string
     lastSyncedAt?: string
   } = {}
 
   if (typeof bag.cursor === 'string') state.cursor = bag.cursor
   if (typeof bag.pushedThrough === 'string') state.pushedThrough = bag.pushedThrough
+  if (typeof bag.settingsSynced === 'string') state.settingsSynced = bag.settingsSynced
   if (typeof bag.lastSyncedAt === 'string') state.lastSyncedAt = bag.lastSyncedAt
 
   return state

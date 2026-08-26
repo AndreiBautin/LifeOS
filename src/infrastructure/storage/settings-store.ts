@@ -3,6 +3,7 @@ import { DEFAULT_SETTINGS, SETTINGS_SCHEMA_VERSION } from '@/domain/settings/set
 import { MUSCLE_GROUPS } from '@/domain/exercises/taxonomy'
 import { completeTiers } from '@/domain/priority/tiers'
 import type { SettingsRepository } from '@/domain/repositories/ports'
+import { syncedPartChanged } from '@/domain/settings/synced'
 import { STORAGE_KEYS } from '@/config/storage-keys'
 
 /**
@@ -72,7 +73,33 @@ export function writeSettings(
   now: () => Date = () => new Date(),
 ): boolean {
   try {
-    const stamped: AppSettings = { ...settings, updatedAt: now().toISOString() }
+    /*
+     * Stamped only when something that travels changed.
+     *
+     * The previous value is read back to compare against, which is a
+     * localStorage hit on a path that already writes one — and the
+     * alternative is stamping every save, which makes a theme toggle the
+     * newest copy of the *shared* settings and pushes stale values over
+     * another device's real edit.
+     */
+    const previous = readSettings(storage).settings
+
+    /*
+     * Stamp when the shared half moved, and also when there is no stamp
+     * yet: an unstamped blob cannot travel at all, so leaving it that way
+     * would mean settings never synced from a device whose only change
+     * had been a preference.
+     *
+     *  answers with the defaults for empty storage rather
+     * than with nothing, so the absence of a stamp is the only signal
+     * that this is a first write.
+     */
+    const stamped: AppSettings =
+      previous.updatedAt === undefined || syncedPartChanged(previous, settings)
+        ? { ...settings, updatedAt: now().toISOString() }
+        : // Reached only when the previous stamp exists, so it is carried
+          // forward rather than re-checked.
+          { ...settings, updatedAt: previous.updatedAt }
     storage.setItem(STORAGE_KEYS.settings, JSON.stringify(stamped))
     return true
   } catch {
@@ -170,6 +197,16 @@ function mergeWithDefaults(parsed: unknown): AppSettings {
       stored.theme === 'light' || stored.theme === 'dark' || stored.theme === 'system'
         ? stored.theme
         : DEFAULT_SETTINGS.theme,
+    /*
+     * Carried through, or the stamp is written and never read.
+     *
+     * This parse builds its result field by field rather than spreading,
+     * which is what makes an unknown blob safe — and also means a field
+     * added to the type without being added here is silently dropped.
+     * `updatedAt` was, so settings were stamped on every write and came
+     * back unstamped, which would have meant they never synced at all.
+     */
+    ...(typeof stored.updatedAt === 'string' ? { updatedAt: stored.updatedAt } : {}),
     ...(typeof stored.lastExportAt === 'string' ? { lastExportAt: stored.lastExportAt } : {}),
     schemaVersion: SETTINGS_SCHEMA_VERSION,
   }
