@@ -2,7 +2,7 @@ import { deleteDB } from 'idb'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { builtInExercises, STRENGTH_LIFT_SLUGS } from '@/domain/exercises/catalogue'
-import { asExerciseId, type IdGenerator } from '@/domain/ids/ids'
+import { asExerciseId, type ExerciseId, type IdGenerator } from '@/domain/ids/ids'
 import type { Clock } from '@/domain/repositories/ports'
 import type { AthleteState } from '@/domain/resolution/resolve'
 import { deriveProgram } from '@/application/use-cases/programs/current-program'
@@ -77,6 +77,7 @@ function services() {
     workouts: createWorkoutRepository(db, testClock),
     ids: counterIds(),
     roundingIncrement: 5,
+    exerciseFor: (id: ExerciseId) => builtInExercises().find((e) => e.id === id),
     clock,
     program,
   }

@@ -123,6 +123,7 @@ export function useStartWorkout() {
 export function useLogSet(workoutId: WorkoutId | undefined) {
   const services = useServices()
   const { settings } = useSettings()
+  const exercises = useExercises()
   const client = useQueryClient()
 
   return useMutation({
@@ -130,7 +131,11 @@ export function useLogSet(workoutId: WorkoutId | undefined) {
       if (workoutId === undefined) throw new Error('No workout is open.')
       return logSet(
         { workoutId, ...input },
-        { ...services, roundingIncrement: settings.roundingIncrement },
+        {
+          ...services,
+          roundingIncrement: settings.roundingIncrement,
+          exerciseFor: (id: ExerciseId) => exercises.data?.find((exercise) => exercise.id === id),
+        },
       )
     },
     onSuccess: () => {
@@ -142,6 +147,7 @@ export function useLogSet(workoutId: WorkoutId | undefined) {
 export function useClearSet(workoutId: WorkoutId | undefined) {
   const services = useServices()
   const { settings } = useSettings()
+  const exercises = useExercises()
   const client = useQueryClient()
 
   return useMutation({
@@ -149,7 +155,11 @@ export function useClearSet(workoutId: WorkoutId | undefined) {
       if (workoutId === undefined) throw new Error('No workout is open.')
       return clearSet(
         { workoutId, ...input },
-        { ...services, roundingIncrement: settings.roundingIncrement },
+        {
+          ...services,
+          roundingIncrement: settings.roundingIncrement,
+          exerciseFor: (id: ExerciseId) => exercises.data?.find((exercise) => exercise.id === id),
+        },
       )
     },
     onSuccess: () => {

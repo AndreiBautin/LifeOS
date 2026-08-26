@@ -1,7 +1,9 @@
+import type { Exercise } from '@/domain/exercises/exercise'
 import type { ExerciseId, WorkoutId } from '@/domain/ids/ids'
 import type { LoggedSet, SetOutcome, WorkoutLog } from '@/domain/logging/workout-log'
 import { comparePerformance } from '@/domain/logging/workout-log'
 import { replanBackoffs } from '@/domain/framework/replan-backoffs'
+import { replanAccessoryVolume } from '@/domain/volume/replan-accessories'
 import type { Clock, WorkoutRepository } from '@/domain/repositories/ports'
 
 /**
@@ -23,6 +25,12 @@ export interface LogSetDeps {
    * the new bar weight has to land on plates the lifter owns.
    */
   readonly roundingIncrement: number
+  /**
+   * Needed because resizing the accessory work has to know what each
+   * exercise trains. Taken as a function rather than a repository so the
+   * use-case stays synchronous once the workout is loaded.
+   */
+  readonly exerciseFor: (id: ExerciseId) => Exercise | undefined
 }
 
 export interface SetResult {
@@ -57,7 +65,18 @@ export async function logSet(request: LogSetRequest, deps: LogSetDeps): Promise<
    * when there is no completed top set to read.
    */
   const logged = updateSet(workout, request, deps.clock.now())
-  const updated = replanBackoffs(logged, { roundingIncrement: deps.roundingIncrement })
+
+  /*
+   * Two re-plans, and the order between them does not matter — one
+   * rewrites the load on pending back-offs, the other the *number* of
+   * pending accessory sets, and neither reads what the other writes.
+   *
+   * Both exist for the same reason: RTS discovers what the session is
+   * rather than declaring it, so anything derived from the top set has to
+   * be derived again once the top set is a fact.
+   */
+  const replanned = replanBackoffs(logged, { roundingIncrement: deps.roundingIncrement })
+  const updated = replanAccessoryVolume(replanned, (id) => deps.exerciseFor(id))
 
   await deps.workouts.save(updated)
   return updated

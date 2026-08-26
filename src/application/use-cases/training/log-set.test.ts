@@ -22,7 +22,7 @@ function repositoryOf(...workouts: readonly WorkoutLog[]) {
   } as unknown as WorkoutRepository
 
   const clock: Clock = { now: () => new Date('2026-08-25T09:00:00.000Z') }
-  return { workouts: workoutsRepo, clock, roundingIncrement: 5 }
+  return { workouts: workoutsRepo, clock, roundingIncrement: 5, exerciseFor: () => undefined }
 }
 
 /*
