@@ -1,24 +1,43 @@
 rules_version = '2';
 
 /*
- * Every document belongs to exactly one account, and only that account
- * can touch it.
+ * One account can read or write anything here, and it is named.
  *
- * This file is the entire access control story. The Firebase config in
+ * This file is the entire access-control story. The Firebase config in
  * the bundle is public by design — the API key identifies the project,
  * it does not authorise anything — so these rules, and not the key, are
- * what stand between a lifter's training history and the internet. A
- * project left on the default "allow read, write: if true" test rules is
- * world-readable regardless of what the client does.
+ * what stand between a lifter's training history and the internet.
+ *
+ * Two conditions rather than one, and the second is why:
+ *
+ *   - `request.auth.uid == userId` is what stops one signed-in person
+ *     touching another's documents. On its own it is the usual rule for a
+ *     multi-user app, and it would leave this project open to anyone with
+ *     a Google account writing into their *own* subtree — no exposure of
+ *     anything, but the owner's free-tier quota spent by a stranger.
+ *   - `userId == OWNER` closes that. This deployment is a personal
+ *     training log with a public demo attached, not a service, so a
+ *     second account has nothing legitimate to store here.
+ *
+ * The demo is unaffected. The app requires no account for anything except
+ * sync — someone opening the deployed page gets a complete, working
+ * application against their own device storage. What they cannot do is
+ * write to this database.
+ *
+ * Adding a second person means adding their uid, deliberately and by
+ * hand. There is no path here that grows the allowed set by accident.
  */
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    function isOwner(userId) {
+      return request.auth != null
+        && request.auth.uid == userId
+        && userId == 'QmXEMrBsHSY286MCOn5YHDa4axm1';
+    }
+
     match /users/{userId}/{collection}/{document} {
-      // Signed in, and asking for their own data. `request.auth` is null
-      // for an unauthenticated caller, so the null check is not
-      // redundant with the comparison.
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read, write: if isOwner(userId);
     }
 
     // Anything not matched above is denied. Stated rather than left

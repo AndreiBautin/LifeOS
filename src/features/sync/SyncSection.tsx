@@ -2,6 +2,8 @@ import { RefreshCw } from 'lucide-react'
 
 import { Badge, Button, Card, Section } from '@/components/shared/primitives'
 
+import { describeSyncError } from './describe-error'
+
 import {
   useAccount,
   useSignIn,
@@ -126,15 +128,11 @@ export function SyncSection() {
         )}
 
         {syncNow.error !== null && (
-          <p className="text-bad-500 text-xs">
-            {syncNow.error instanceof Error ? syncNow.error.message : 'Sync failed.'}
-          </p>
+          <p className="text-bad-500 text-xs">{describeSyncError(syncNow.error)}</p>
         )}
 
         {signIn.error !== null && (
-          <p className="text-bad-500 text-xs">
-            {signIn.error instanceof Error ? signIn.error.message : 'Could not sign in.'}
-          </p>
+          <p className="text-bad-500 text-xs">{describeSyncError(signIn.error)}</p>
         )}
 
         <p className="text-ink-500 text-xs">
