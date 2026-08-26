@@ -50,14 +50,28 @@ describe('attributing a week', () => {
   })
 
   it('counts a direct set whole and an indirect one at a half', () => {
-    // The arithmetic a lifter cannot see from the session list, and the
-    // reason a total can land on a half. Triceps is the clearest case:
-    // one exercise trains them directly and four pay them a fraction.
-    const triceps = attribution.find((entry) => entry.muscle === 'triceps')
-    const primary = triceps?.contributions.find((entry) => entry.kind === 'primary')
-    const secondary = triceps?.contributions.filter((entry) => entry.kind === 'secondary') ?? []
+    /*
+     * The arithmetic a lifter cannot see from the session list, and the
+     * reason a total can land on a half.
+     *
+     * Found rather than named. This used to pin the triceps, which was
+     * the clearest example right up until the fill stopped scheduling
+     * direct triceps work — correctly, because three bench sessions and
+     * a day of dips cover the target before anything is scheduled for
+     * them. A test naming one muscle was asserting a *composition* while
+     * claiming to assert arithmetic, and it failed the day the
+     * composition moved for an unrelated reason.
+     */
+    const mixed = attribution.find(
+      (entry) =>
+        entry.contributions.some((one) => one.kind === 'primary' && one.counted > 0) &&
+        entry.contributions.some((one) => one.kind === 'secondary'),
+    )
 
-    expect(primary?.counted).toBeGreaterThan(0)
+    expect(mixed, 'no muscle receives both direct and indirect work').toBeDefined()
+
+    const secondary = mixed?.contributions.filter((entry) => entry.kind === 'secondary') ?? []
+
     expect(secondary.length).toBeGreaterThan(0)
 
     /*

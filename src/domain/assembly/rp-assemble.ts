@@ -681,7 +681,29 @@ function fillHypertrophy(args: FillArgs): BuiltSlots {
   const used = new Set(args.alreadyUsed)
   const slots: Slot[] = []
   const placed: Exercise[] = []
-  let added = emptyVolumeMap()
+
+  /*
+   * Seeded with what the day has *already* delivered, not with nothing.
+   *
+   * "Adjusted for partial volume within the session" has to mean the
+   * whole session, and the competition lifting is the largest part of
+   * it: a Monday bench pays the chest about six credited sets before any
+   * accessory is chosen. Starting this at zero told the fill the chest
+   * was untouched, so it added its full share on top and Monday went out
+   * at nine against a share of 5.7 — while the muscles sorted below it
+   * got whatever minutes were left.
+   *
+   * The weekly `committed` map already counts the same work, but a
+   * weekly figure divided by sessions gives back only a third of it.
+   * Today's spend has to come off today.
+   */
+  let added = args.existingSlots.reduce((total, slot) => {
+    const ref = slot.exercise
+    if (ref.kind !== 'specific') return total
+    const exercise = deps.exercises.find((candidate) => candidate.id === ref.exerciseId)
+    if (exercise === undefined) return total
+    return addInto(total, slotVolume(exercise, slot.sets))
+  }, emptyVolumeMap())
 
   /*
    * What the day already costs before any accessory is chosen — with
@@ -1015,35 +1037,49 @@ function shareOwed(
   committed: VolumeMap,
   addedToday: VolumeMap,
 ): number {
-  const sessionsLeft = 1 + args.remainingDays.filter((day) => day.muscles.includes(muscle)).length
-  const share = Math.max(0, args.targets[muscle] - committed[muscle]) / Math.max(1, sessionsLeft)
-
-  const dose = setsPerSession(
-    args.targets[muscle],
-    requiredFrequency(
-      tierRankOf(args.recipe.muscleTiers, muscle),
-      daysAvailableFor(muscle, args.split),
-    ),
+  /*
+   * What is left, divided evenly among the sessions that still train it.
+   *
+   * A fixed `target / frequency` share is the cleaner-sounding rule and
+   * is worse in practice, which is worth recording because it will be
+   * proposed again. It spreads the *plan* evenly and then has no way to
+   * absorb an error: a day that over-delivers — usually because a
+   * compound paid the muscle after its isolation slot was already sized
+   * — leaves the whole overshoot sitting on the last session, and the
+   * biceps came out 7.5 / 5.5 / 3. Dividing the remainder spreads that
+   * error across every session that follows instead: 5.5 / 6 / 5.5.
+   *
+   * The important thing is what it does *not* depend on. Sessions left
+   * is a count of days that train this muscle, not a measure of how long
+   * any of them ran. Two sessions with the same muscles get the same
+   * share whether one of them finished in forty minutes and the other in
+   * eighty.
+   */
+  const frequency = requiredFrequency(
+    tierRankOf(args.recipe.muscleTiers, muscle),
+    daysAvailableFor(muscle, args.split),
   )
 
+  const dose = setsPerSession(args.targets[muscle], frequency)
+
+  const remaining = Math.max(0, args.targets[muscle] - committed[muscle])
+  const sessionsLeft = 1 + args.remainingDays.filter((day) => day.muscles.includes(muscle)).length
+  const share = remaining / Math.max(1, sessionsLeft)
+
   /*
-   * What today has already paid this muscle comes off today's share in
-   * full, not diluted across the sessions that follow.
+   * Then the day's own partial credit comes off, in full.
    *
-   * This is the difference between an even spread and a front-loaded one,
-   * and it is easy to get wrong because the naive version looks right.
-   * Folding the day's own credit into the *weekly* remainder and then
-   * dividing by sessions left charges today a third of what today spent:
-   * Monday's chin-ups paid the biceps 2.5 sets, the curl was still sized
-   * as though they had paid nothing, and the day delivered 8.5 against a
-   * fair share of 5.7. Wednesday — the crowded day — then got what was
-   * left, which was two sets.
+   * A slot chosen for the lats pays the biceps on the way past, and that
+   * is real volume the session delivered. Sizing the curl as though it
+   * had not happened spends the same credit twice — Monday sized six
+   * curl sets against an unpaid target, then placed chin-ups worth
+   * another two and a half, and went out at 8.5 against a share of 5.7.
    *
-   * Subtracting it here makes each accountable session take the same
-   * bite, and makes incidental credit actually *reduce* the direct work
-   * it duplicates rather than sitting on top of it.
+   * Subtracting it here is the "adjusted for partial volume within the
+   * session" half of the rule, and it is what makes the equal split
+   * actually come out equal.
    */
-  return Math.max(0, Math.min(share, dose) - addedToday[muscle])
+  return Math.max(0, Math.min(share, dose, remaining) - addedToday[muscle])
 }
 
 /**

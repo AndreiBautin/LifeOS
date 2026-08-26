@@ -90,7 +90,27 @@ placed chin-ups for the lats, which paid the biceps another two and a
 half: the day delivered 8.5 against a fair share of 5.7, the week
 delivered 21 against a target of 17, and Wednesday — the crowded day —
 got the two sets that were left. It reads as a scheduling quirk and is
-actually the same credit being spent twice. Now 5.5 / 6 / 5.5.
+actually the same credit being spent twice.
+
+**That subtraction starts from the day's strength work, not from zero.**
+`added` is seeded with the volume of `existingSlots` — the competition
+lifting is the largest thing in the session, and a Monday bench pays the
+chest about six credited sets before any accessory is chosen. Seeding it
+empty told the fill the chest was untouched, so it added a full share on
+top, and the muscles sorted below it got whatever minutes were left. The
+rear delts were the visible casualty: 7.5 against a target of 11, fixed
+to exactly 11 by this one line.
+
+**A session's share is the remainder divided by the sessions left, not
+`target / frequency`.** The fixed share is the cleaner-sounding rule and
+is worse, which is recorded here because it will be proposed again: it
+spreads the _plan_ evenly and cannot absorb an error, so a day that
+over-delivers leaves the whole overshoot on the last session — biceps
+7.5 / 5.5 / 3 against 5.5 / 6 / 5.5 for the remainder rule. What matters
+is that sessions-left is a **count of days that train the muscle**, not a
+measure of how long any of them ran: two sessions with the same muscles
+get the same share whether one finished in forty minutes and the other
+in eighty.
 
 The backfill has a slot grace of **one**, not just a time grace. A
 two-set frequency slot costs four minutes, so a day with time left will

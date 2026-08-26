@@ -668,16 +668,27 @@ describe('the order a session is performed in', () => {
      * Compounds stay on systemic cost — asserted by the cost test above,
      * and pinned here against a future "just sort everything by tier".
      */
-    const wednesday = week.days[2]?.slots ?? []
-    const compounds = wednesday
-      .filter((slot) => slot.role === 'hypertrophy')
-      .flatMap((slot) => (slot.exercise.kind === 'specific' ? [slot.exercise.exerciseId] : []))
+    /*
+     * Asserted as a property across the week rather than by naming two
+     * exercises on one day. The first version pinned Barbell Row ahead
+     * of Dips on Wednesday, which stopped being true when Dips moved to
+     * another day — a test about *ordering* failing because the
+     * *composition* changed is a test measuring the wrong thing.
+     */
+    for (const day of week.days) {
+      const costs = day.slots
+        .filter((slot) => slot.role === 'hypertrophy')
+        .flatMap((slot) =>
+          slot.exercise.kind === 'specific'
+            ? [lookup(slot.exercise.exerciseId)?.systemicCost ?? 0]
+            : [],
+        )
 
-    // Barbell Row (upper back, tier 2) precedes Dips (chest, tier 1)
-    // because it is the heavier movement, not because of any tier.
-    expect(compounds.indexOf(asExerciseId('barbell-row'))).toBeLessThan(
-      compounds.indexOf(asExerciseId('dips')),
-    )
+      expect(
+        [...costs].sort((a, b) => b - a),
+        day.label,
+      ).toEqual(costs)
+    }
   })
 
   it('finishes with conditioning', () => {
