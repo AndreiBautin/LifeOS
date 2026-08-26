@@ -111,9 +111,7 @@ export function PlanPage() {
       */}
       <header className="mb-6">
         <h1 className="text-ink-50 text-2xl font-semibold tracking-tight">Plan</h1>
-        <p className="text-ink-500 mt-0.5 text-sm">
-          What this block asks of you, and whether the week can deliver it
-        </p>
+        <p className="text-ink-500 mt-0.5 text-sm">Your priorities, and what they cost</p>
       </header>
 
       <Section title="This block">

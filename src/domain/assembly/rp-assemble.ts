@@ -123,7 +123,16 @@ export function defaultRpRecipe(overrides: Partial<RpRecipe> = {}): RpRecipe {
     includeWarmUps: true,
     maxHypertrophySlotsPerDay: 6,
     minSetsPerSlot: 2,
-    maxSetsPerSlot: 5,
+    /*
+     * Eight, matching `MAX_DIRECT_SETS_PER_SESSION`.
+     *
+     * These two caps are different things — one bounds a slot, the other
+     * bounds a muscle's work in a session — and they have to be raised
+     * together or neither moves. `shareOwed` takes the lower of the
+     * per-session dose and this, so leaving one at five made the other
+     * decorative.
+     */
+    maxSetsPerSlot: 8,
     excludedExercises: [],
     settings: DEFAULT_PROGRAM_SETTINGS,
     ...overrides,

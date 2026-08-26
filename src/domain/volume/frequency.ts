@@ -27,8 +27,20 @@
  * exact figure is arguable and the shape is not: there is a per-session
  * ceiling, it is well below a week's worth of volume for a prioritised
  * muscle, and pretending otherwise concentrates junk volume into one day.
+ *
+ * Raised from six to eight because six was quietly deciding something
+ * else. A muscle with one exercise in the catalogue gets one slot per
+ * session, so the per-session ceiling became a per-*exercise* ceiling —
+ * and the side delts, asked for twenty sets across three days, could
+ * never receive more than fifteen however they were tiered. The report
+ * on the Plan screen named it as a capacity shortfall, which was true
+ * and unhelpful: the week had the time, the constant did not have the
+ * room.
+ *
+ * Eight is still a ceiling and still well under a prioritised week. What
+ * it no longer does is stand in for "how many exercises exist".
  */
-export const MAX_DIRECT_SETS_PER_SESSION = 6
+export const MAX_DIRECT_SETS_PER_SESSION = 8
 
 /**
  * What share of the available days each tier is trained on.
