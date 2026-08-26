@@ -1,19 +1,25 @@
 import { useQuery } from '@tanstack/react-query'
-import { Trash2 } from 'lucide-react'
+import { RotateCcw, Trash2 } from 'lucide-react'
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 
 import { useServices, useSettings } from '@/app/context'
 import type { Exercise } from '@/domain/exercises/exercise'
 import { MUSCLE_GROUP_LABELS, type MuscleGroup } from '@/domain/exercises/taxonomy'
 import type { ExerciseId, WorkoutId } from '@/domain/ids/ids'
 import type { WorkoutLog } from '@/domain/logging/workout-log'
-import { loggedVolume, totalTonnage, totalWorkingSets } from '@/domain/logging/workout-log'
+import {
+  loggedVolume,
+  remainingSets,
+  totalTonnage,
+  totalWorkingSets,
+} from '@/domain/logging/workout-log'
 import type { WeightUnit } from '@/domain/units/weight'
 import { formatLoad } from '@/domain/units/weight'
 import { displaySets, sumVolume, type VolumeMap } from '@/domain/volume/accounting'
 import { Badge, Button, Card, Empty, Section } from '@/components/shared/primitives'
 
-import { useDeleteWorkout } from './hooks'
+import { useDeleteWorkout, useReopenWorkout } from './hooks'
 
 /**
  * Training history, and the weekly volume that comes out of it.
@@ -28,6 +34,8 @@ export function HistoryPage() {
   const services = useServices()
   const { settings } = useSettings()
   const deleteWorkout = useDeleteWorkout()
+  const reopenWorkout = useReopenWorkout()
+  const navigate = useNavigate()
 
   /*
    * Which row is asking to be confirmed, if any.
@@ -165,6 +173,19 @@ export function HistoryPage() {
                       },
                     })
                   }}
+                  // Only the newest session can be reopened — rolling the
+                  // program back past a session already trained would
+                  // have the lifter repeat days and file logs out of
+                  // order. The use-case refuses it too; this stops the
+                  // button appearing where it would.
+                  canReopen={workout.id === sessions[0]?.id}
+                  onReopen={() => {
+                    reopenWorkout.mutate(workout.id, {
+                      onSuccess: (result) => {
+                        if (result.kind === 'reopened') void navigate('/train')
+                      },
+                    })
+                  }}
                 />
               </li>
             ))}
@@ -198,6 +219,8 @@ function SessionRow({
   onAskDelete,
   onCancel,
   onConfirm,
+  onReopen,
+  canReopen,
 }: {
   readonly workout: WorkoutLog
   readonly units: WeightUnit
@@ -206,8 +229,11 @@ function SessionRow({
   readonly onAskDelete: () => void
   readonly onCancel: () => void
   readonly onConfirm: () => void
+  readonly onReopen: () => void
+  readonly canReopen: boolean
 }) {
   const sets = totalWorkingSets(workout)
+  const unfinished = remainingSets(workout)
 
   return (
     <Card className="p-3">
@@ -230,6 +256,23 @@ function SessionRow({
             <Badge>
               C{workout.position.cycleNumber} W{workout.position.weekIndex + 1}
             </Badge>
+          )}
+          {/*
+            Offered only on the session that can actually take it: the
+            most recent one, with sets still pending. Anywhere else the
+            button would be a promise the use-case refuses, and a control
+            that explains itself by failing is worse than no control.
+          */}
+          {!confirming && canReopen && unfinished > 0 && (
+            <button
+              type="button"
+              onClick={onReopen}
+              disabled={pending}
+              aria-label={`Reopen ${workout.title} from ${formatDate(workout.date)} — ${String(unfinished)} sets left`}
+              className="tap-target text-ink-500 hover:text-accent-400 flex items-center justify-center rounded-lg transition-colors disabled:opacity-50"
+            >
+              <RotateCcw size={16} aria-hidden />
+            </button>
           )}
           {!confirming && (
             <button

@@ -282,6 +282,24 @@ alternatives puts an empty workout in the history, where it counts as a
 training day and drags every frequency and volume figure down. Finishing
 and skipping share `nextPosition` so they cannot drift.
 
+Two more say something about the _record_ rather than the training, and
+they are the pair most easily confused. **Deleting** answers "this
+session did not happen" and deliberately **moves nothing** — removing a
+record is a claim about the record, and rewinding the program from there
+would make one destructive action into two, the second invisible.
+**Reopening** answers "it is not over yet", and therefore **must** move
+the program: the session is still running, so the position finishing
+advanced past is simply wrong, and left forward the lifter finishes
+today a second time and lands two days on.
+
+`reopenWorkout` restores the position **from the log**, not by inverting
+`nextPosition`. A `WorkoutLog` records where it sat, so there is a right
+answer to read; a subtly wrong inverse would only surface on the last
+day of a block. It refuses four cases rather than resolving them —
+nothing left pending, another session already open, a later session
+already filed, no such workout — because each of those is a different
+request wearing a resumption's clothes.
+
 **Choosing is not ordering.** The fill picks exercises by which muscle
 is owed the most, which is right for deciding _what_ is in a session and
 wrong for deciding _when_. `inSessionOrder` is a separate pass:
