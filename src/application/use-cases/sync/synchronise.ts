@@ -136,9 +136,11 @@ async function collectLocal(
    *
    * The exercise library is the exception worth knowing about: it is
    * *derived*, so `all()` returns the shipped catalogue as well as the
-   * lifter's own. Built-ins have no `updatedAt` and are therefore never
-   * selected, which is correct — they ship with the app and do not need
-   * to travel between two installs of it.
+   * lifter's own. Built-ins carry no `updatedAt` and `changedSince`
+   * therefore drops them — which it did not always do, and the first
+   * real sync uploaded all thirty-five of them. See the note there; it is
+   * the reason the rule is "no stamp, no send" rather than a watermark
+   * comparison alone.
    */
   return {
     exercises: changedSince(exercises, watermark),

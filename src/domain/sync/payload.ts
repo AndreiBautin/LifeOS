@@ -90,9 +90,30 @@ export function changedSince<T extends { readonly updatedAt?: string }>(
   records: readonly T[],
   watermark: string | undefined,
 ): readonly T[] {
-  if (watermark === undefined) return records
-
-  return records.filter((record) => record.updatedAt !== undefined && record.updatedAt > watermark)
+  /*
+   * No `updatedAt` means the record was never written by this app's save
+   * path, and shipped content is not a device's to send.
+   *
+   * This used to return everything when there was no watermark, which
+   * reads as the obviously right answer for a first sync and is not: the
+   * exercise library is *derived*, so `all()` hands back the whole
+   * built-in catalogue alongside a lifter's own entries. A first sync
+   * therefore uploaded thirty-five exercises that ship with the app,
+   * keyed by slugs that are identical on every install — so two devices
+   * wrote to the same documents, each overwrote the other, and each then
+   * skipped them on pull as its own writes. Both reported sending ninety
+   * records and receiving nothing, from databases holding no sessions at
+   * all.
+   *
+   * The stamp is the right test rather than a filter on `isBuiltIn`,
+   * because it generalises: a retired built-in that a lifter archived was
+   * written by `save`, carries a stamp, and *should* travel to their
+   * other device.
+   */
+  return records.filter(
+    (record) =>
+      record.updatedAt !== undefined && (watermark === undefined || record.updatedAt > watermark),
+  )
 }
 
 export function deletedSince(
