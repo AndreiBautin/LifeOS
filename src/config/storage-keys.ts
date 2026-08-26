@@ -24,6 +24,13 @@ export const STORAGE_KEYS = {
    * muscle tier and a list's sort order sharing a change stamp.
    */
   backlogSettings: `${PREFIX}.backlog-settings`,
+  /**
+   * What there is to spend on upgrades right now.
+   *
+   * Device-local and never synced — see
+   * `infrastructure/storage/upgrade-budget-store.ts` for why.
+   */
+  upgradeBudget: `${PREFIX}.upgrade-budget`,
   /** Set once the install prompt has been dismissed, so it is not nagged. */
   installPromptDismissed: `${PREFIX}.install-dismissed`,
   /** Set once the storage-durability explanation has been acknowledged. */

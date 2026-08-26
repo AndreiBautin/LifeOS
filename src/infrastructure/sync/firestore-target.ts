@@ -16,6 +16,7 @@ import {
 import type { CheckIn } from '@/domain/autoregulation/check-in'
 import type { Item } from '@/domain/backlog/item'
 import type { Project } from '@/domain/projects/project'
+import type { Upgrade } from '@/domain/upgrades/upgrade'
 import type { Exercise } from '@/domain/exercises/exercise'
 import type { WorkoutLog } from '@/domain/logging/workout-log'
 import type { SyncTarget } from '@/domain/repositories/ports'
@@ -53,6 +54,7 @@ const COLLECTIONS = {
   checkIns: 'checkIns',
   items: 'items',
   projects: 'projects',
+  upgrades: 'upgrades',
   tombstones: 'tombstones',
   /*
    * One document, not a collection. There is one settings blob, and it is
@@ -101,18 +103,19 @@ export function createFirestoreSyncTarget(options: FirestoreTargetOptions): Sync
       const from = decodeCursor(cursor)
       const after = new Timestamp(from.seconds, from.nanoseconds)
 
-      const [exercises, workouts, checkIns, items, projects, tombstones, settings] =
+      const [exercises, workouts, checkIns, items, projects, upgrades, tombstones, settings] =
         await Promise.all([
           readSince(root(COLLECTIONS.exercises), after),
           readSince(root(COLLECTIONS.workouts), after),
           readSince(root(COLLECTIONS.checkIns), after),
           readSince(root(COLLECTIONS.items), after),
           readSince(root(COLLECTIONS.projects), after),
+          readSince(root(COLLECTIONS.upgrades), after),
           readSince(root(COLLECTIONS.tombstones), after),
           readSince(root(COLLECTIONS.settings), after),
         ])
 
-      const pages = [exercises, workouts, checkIns, items, projects, tombstones, settings]
+      const pages = [exercises, workouts, checkIns, items, projects, upgrades, tombstones, settings]
 
       /*
        * The cursor advances to the newest document actually read, and no
@@ -142,6 +145,7 @@ export function createFirestoreSyncTarget(options: FirestoreTargetOptions): Sync
           checkIns: checkIns.records as readonly CheckIn[],
           items: items.records as readonly Item[],
           projects: projects.records as readonly Project[],
+          upgrades: upgrades.records as readonly Upgrade[],
           tombstones: tombstones.records as readonly Tombstone[],
           ...(latestSettings === undefined ? {} : { settings: latestSettings as SyncedSettings }),
         },
@@ -169,6 +173,11 @@ export function createFirestoreSyncTarget(options: FirestoreTargetOptions): Sync
         })),
         ...payload.workouts.map((record) => ({
           path: COLLECTIONS.workouts,
+          id: record.id,
+          record,
+        })),
+        ...payload.upgrades.map((record) => ({
+          path: COLLECTIONS.upgrades,
           id: record.id,
           record,
         })),

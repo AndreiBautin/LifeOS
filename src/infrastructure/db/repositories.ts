@@ -1,11 +1,19 @@
 import type { CheckIn } from '@/domain/autoregulation/check-in'
 import type { Item } from '@/domain/backlog/item'
 import type { Project } from '@/domain/projects/project'
+import type { Upgrade } from '@/domain/upgrades/upgrade'
 import type { ProgramPosition } from '@/domain/programs/position'
 import { builtInExercises } from '@/domain/exercises/catalogue'
 import type { Exercise } from '@/domain/exercises/exercise'
 import { resolveLibrary } from '@/domain/exercises/library'
-import type { BacklogItemId, CheckInId, ExerciseId, ProjectId, WorkoutId } from '@/domain/ids/ids'
+import type {
+  BacklogItemId,
+  CheckInId,
+  ExerciseId,
+  ProjectId,
+  UpgradeId,
+  WorkoutId,
+} from '@/domain/ids/ids'
 import type { WorkoutLog } from '@/domain/logging/workout-log'
 import type {
   BacklogItemRepository,
@@ -14,6 +22,7 @@ import type {
   ExerciseRepository,
   PositionRepository,
   ProjectRepository,
+  UpgradeRepository,
   TombstoneRepository,
   WorkoutQuery,
   WorkoutRepository,
@@ -310,6 +319,44 @@ export function createProjectRepository(db: LiftDatabase, clock: Clock): Project
     },
     async count() {
       return db.count('projects')
+    },
+  }
+}
+
+/**
+ * The tech tree.
+ *
+ * No batch write, unlike projects: buying something changes no other
+ * record, because what it unblocks is derived from the graph on every
+ * read rather than stored on the nodes.
+ */
+export function createUpgradeRepository(db: LiftDatabase, clock: Clock): UpgradeRepository {
+  return {
+    async all() {
+      return db.getAll('upgrades')
+    },
+    async byId(id: UpgradeId) {
+      return db.get('upgrades', id)
+    },
+    async save(upgrade: Upgrade) {
+      await db.put('upgrades', stamp(upgrade, clock))
+    },
+    async restoreMany(upgrades: readonly Upgrade[]) {
+      const tx = db.transaction('upgrades', 'readwrite')
+      await Promise.all([...upgrades.map((upgrade) => tx.store.put(upgrade)), tx.done])
+    },
+    async remove(id: UpgradeId) {
+      await db.delete('upgrades', id)
+      await bury(db, clock, 'upgrades', id)
+    },
+    async purge(id: UpgradeId) {
+      await db.delete('upgrades', id)
+    },
+    async clear() {
+      await db.clear('upgrades')
+    },
+    async count() {
+      return db.count('upgrades')
     },
   }
 }

@@ -1,9 +1,17 @@
 import type { CheckIn } from '@/domain/autoregulation/check-in'
 import type { Item } from '@/domain/backlog/item'
 import type { Project } from '@/domain/projects/project'
+import type { Upgrade } from '@/domain/upgrades/upgrade'
 import type { BacklogSettings } from '@/domain/backlog/settings'
 import type { Exercise } from '@/domain/exercises/exercise'
-import type { BacklogItemId, CheckInId, ExerciseId, ProjectId, WorkoutId } from '@/domain/ids/ids'
+import type {
+  BacklogItemId,
+  CheckInId,
+  ExerciseId,
+  ProjectId,
+  UpgradeId,
+  WorkoutId,
+} from '@/domain/ids/ids'
 import type { WorkoutLog } from '@/domain/logging/workout-log'
 import type { ProgramPosition } from '@/domain/programs/position'
 import type { AppSettings } from '@/domain/settings/settings'
@@ -207,6 +215,27 @@ export interface ProjectRepository {
   remove(id: ProjectId): Promise<void>
   /** Deletes without recording a tombstone — the receiving half of a sync. */
   purge(id: ProjectId): Promise<void>
+  clear(): Promise<void>
+  count(): Promise<number>
+}
+
+/**
+ * The tech tree.
+ *
+ * No `saveMany`. Unlike a project, buying an upgrade changes no other
+ * record — what it unblocks is *derived* from the graph on every read, so
+ * nothing needs re-deriving and writing back. The whole reason the
+ * projects repository needed a batch write is absent here.
+ */
+export interface UpgradeRepository {
+  all(): Promise<readonly Upgrade[]>
+  byId(id: UpgradeId): Promise<Upgrade | undefined>
+  save(upgrade: Upgrade): Promise<void>
+  /** Writes records exactly as given, without stamping `updatedAt`. */
+  restoreMany(upgrades: readonly Upgrade[]): Promise<void>
+  remove(id: UpgradeId): Promise<void>
+  /** Deletes without recording a tombstone — the receiving half of a sync. */
+  purge(id: UpgradeId): Promise<void>
   clear(): Promise<void>
   count(): Promise<number>
 }

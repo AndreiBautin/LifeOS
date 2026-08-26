@@ -27,6 +27,7 @@ export const TOMBSTONED_COLLECTIONS = [
   'checkIns',
   'items',
   'projects',
+  'upgrades',
 ] as const
 
 export type TombstonedCollection = (typeof TOMBSTONED_COLLECTIONS)[number]

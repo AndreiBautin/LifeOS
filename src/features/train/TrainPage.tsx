@@ -1,4 +1,4 @@
-import { History, Play, Plus, SkipForward } from 'lucide-react'
+import { History, ListChecks, Play, Plus, SkipForward } from 'lucide-react'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 
@@ -98,20 +98,26 @@ export function TrainPage() {
   return (
     <div>
       {/*
-        History lives here rather than in the navigation. The bottom bar
-        holds six destinations on a phone and the hub now needs a slot for
-        every absorbed app — so the tabs are for the things opened daily,
-        and past sessions are reached from the screen they belong to.
+        Plan and History live here rather than in the navigation. The bottom
+        bar holds six destinations on a phone and the hub needs a slot for
+        every absorbed app — so the tabs are for what is opened daily, and
+        training's two review screens are reached from the training screen.
       */}
       <header className="mb-6 flex items-end justify-between gap-3">
         <div>
           <h1 className="text-ink-50 text-2xl font-semibold tracking-tight">Train</h1>
           <p className="text-ink-500 mt-0.5 text-sm">{program.data?.name ?? 'Loading…'}</p>
         </div>
-        <Link to="/history" className={buttonStyles({ variant: 'ghost', size: 'sm' })}>
-          <History size={16} aria-hidden />
-          History
-        </Link>
+        <div className="flex shrink-0 gap-1">
+          <Link to="/plan" className={buttonStyles({ variant: 'ghost', size: 'sm' })}>
+            <ListChecks size={16} aria-hidden />
+            Plan
+          </Link>
+          <Link to="/history" className={buttonStyles({ variant: 'ghost', size: 'sm' })}>
+            <History size={16} aria-hidden />
+            History
+          </Link>
+        </div>
       </header>
 
       {nextDay !== undefined ? (

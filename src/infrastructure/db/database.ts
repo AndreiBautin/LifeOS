@@ -4,6 +4,7 @@ import { openDB } from 'idb'
 import type { CheckIn } from '@/domain/autoregulation/check-in'
 import type { Item } from '@/domain/backlog/item'
 import type { Project } from '@/domain/projects/project'
+import type { Upgrade } from '@/domain/upgrades/upgrade'
 import type { Tombstone } from '@/domain/sync/tombstone'
 import type { Exercise } from '@/domain/exercises/exercise'
 import type { WorkoutLog } from '@/domain/logging/workout-log'
@@ -42,7 +43,7 @@ export const DB_NAME = 'lift'
  * a device that already ran it will not run it again, so changing one
  * leaves two devices with different schemas and no way to tell.
  */
-export const DB_VERSION = 5
+export const DB_VERSION = 6
 
 /**
  * A workout as it is stored, which is not quite a workout as the domain
@@ -164,6 +165,20 @@ export interface LiftDB extends DBSchema {
     value: Project
     indexes: { 'by-status': string }
   }
+  /**
+   * The tech tree — things being saved up for, and what comes first.
+   *
+   * No index on priority, deliberately. What the screen orders by is
+   * *effective* priority, which a node inherits from the most important
+   * thing it unblocks — a property of the whole graph rather than of any
+   * record, so it cannot be an index and has to be computed from the full
+   * list. At a few dozen rows that is a single read.
+   */
+  upgrades: {
+    key: string
+    value: Upgrade
+    indexes: { 'by-status': string }
+  }
 }
 
 export type LiftDatabase = IDBPDatabase<LiftDB>
@@ -258,6 +273,12 @@ export function openLiftDatabase(name = DB_NAME): Promise<LiftDatabase> {
         const projects = db.createObjectStore('projects', { keyPath: 'id' })
         projects.createIndex('by-status', 'status')
       }
+
+      /* Version 6 brings the tech tree in. */
+      if (oldVersion < 6) {
+        const upgrades = db.createObjectStore('upgrades', { keyPath: 'id' })
+        upgrades.createIndex('by-status', 'status')
+      }
     },
 
     blocked() {
@@ -300,7 +321,7 @@ export async function closeLiftDatabase(): Promise<void> {
  */
 export async function clearAllStores(db: LiftDatabase): Promise<void> {
   const tx = db.transaction(
-    ['exercises', 'position', 'workouts', 'checkIns', 'items', 'projects'],
+    ['exercises', 'position', 'workouts', 'checkIns', 'items', 'projects', 'upgrades'],
     'readwrite',
   )
 
@@ -311,6 +332,7 @@ export async function clearAllStores(db: LiftDatabase): Promise<void> {
     tx.objectStore('checkIns').clear(),
     tx.objectStore('items').clear(),
     tx.objectStore('projects').clear(),
+    tx.objectStore('upgrades').clear(),
     tx.done,
   ])
 }

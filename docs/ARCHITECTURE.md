@@ -197,6 +197,30 @@ they are always read with it and never queried alone. Blockers are a list
 of ids on the project rather than a join table, because the whole graph is
 a few dozen records in memory whenever anything asks a question about it.
 
+## The tech tree, and the one place the game model is wired up
+
+The third absorbed app, at `/upgrades`, and the first domain that uses
+`domain/game/` rather than sitting beside it. `domain/upgrades/` projects
+an upgrade onto the model's `TreeNode` and lets `gatesFor` decide what
+stands in the way — so `GATE_KINDS` being exactly `['money',
+'prerequisite']` is now a constraint on live code rather than a note.
+
+Its engine inherits priority _up_ the prerequisite chain: a dull desk that
+stands between you and the monitor arm sorts as high as the arm does,
+because buying it is the first step. Ranking is therefore a property of the
+whole graph, which is why the store has no priority index — there is
+nothing on a record to index.
+
+Two rules had a database behind them and now do not. **Cycle detection**
+(`wouldCreateCycle`) was belt to the schema's braces. **Refusing to delete
+something with dependents** was enforced by `DeleteBehavior.Restrict` on
+the self-referencing key; the app refuses rather than silently detaching,
+because "unlink these first" is a decision about a tree somebody built.
+
+Money is integer minor units throughout. JavaScript has no decimal type,
+and a budget filter on binary floating point eventually disagrees with
+itself about what is affordable.
+
 ## Autoregulation
 
 Check-ins are **recorded events**, and adjusting a volume landmark is a

@@ -1,4 +1,4 @@
-import { Dumbbell, Library, ListChecks, Settings, Target, User } from 'lucide-react'
+import { Dumbbell, Library, Settings, Sparkles, Target, User } from 'lucide-react'
 import { NavLink, Outlet } from 'react-router-dom'
 
 import { BackupReminder } from '@/features/backup/BackupReminder'
@@ -17,8 +17,8 @@ import { UpdatePrompt } from '@/features/pwa/UpdatePrompt'
 const NAV = [
   { to: '/next', label: 'Next', Icon: Target },
   { to: '/train', label: 'Train', Icon: Dumbbell },
-  { to: '/plan', label: 'Plan', Icon: ListChecks },
   { to: '/backlog', label: 'Backlog', Icon: Library },
+  { to: '/upgrades', label: 'Upgrades', Icon: Sparkles },
   { to: '/character', label: 'You', Icon: User },
   { to: '/settings', label: 'Settings', Icon: Settings },
 ] as const

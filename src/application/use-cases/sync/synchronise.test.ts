@@ -8,6 +8,7 @@ import type { WorkoutLog } from '@/domain/logging/workout-log'
 import type {
   BacklogItemRepository,
   ProjectRepository,
+  UpgradeRepository,
   CheckInRepository,
   Clock,
   ExerciseRepository,
@@ -177,6 +178,17 @@ function device(clock: Clock): Device {
     count: () => Promise.resolve(0),
   }
 
+  const upgrades: UpgradeRepository = {
+    all: () => Promise.resolve([]),
+    byId: () => Promise.resolve(undefined),
+    save: () => Promise.resolve(),
+    restoreMany: () => Promise.resolve(),
+    remove: () => Promise.resolve(),
+    purge: () => Promise.resolve(),
+    clear: () => Promise.resolve(),
+    count: () => Promise.resolve(0),
+  }
+
   const tombstones: TombstoneRepository = {
     all: () => Promise.resolve([...graves.values()]),
     since: (deletedAt) =>
@@ -216,6 +228,7 @@ function device(clock: Clock): Device {
     checkIns,
     items,
     projects,
+    upgrades,
     tombstones,
     syncState,
     settings,

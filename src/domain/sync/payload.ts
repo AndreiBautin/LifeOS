@@ -3,6 +3,7 @@ import type { Item } from '@/domain/backlog/item'
 import type { DailyProgressEntry } from '@/domain/backlog/daily-goal'
 import type { Exercise } from '@/domain/exercises/exercise'
 import type { Project } from '@/domain/projects/project'
+import type { Upgrade } from '@/domain/upgrades/upgrade'
 import type { WorkoutLog } from '@/domain/logging/workout-log'
 
 import type { SyncedSettings } from '@/domain/settings/synced'
@@ -30,6 +31,7 @@ export interface SyncPayload {
   readonly checkIns: readonly CheckIn[]
   readonly items: readonly Item[]
   readonly projects: readonly Project[]
+  readonly upgrades: readonly Upgrade[]
   readonly tombstones: readonly Tombstone[]
   /**
    * The travelling half of the settings, when they have changed.
@@ -52,6 +54,7 @@ export const EMPTY_PAYLOAD: SyncPayload = {
   checkIns: [],
   items: [],
   projects: [],
+  upgrades: [],
   tombstones: [],
 }
 
@@ -62,6 +65,7 @@ export function isEmpty(payload: SyncPayload): boolean {
     payload.checkIns.length === 0 &&
     payload.items.length === 0 &&
     payload.projects.length === 0 &&
+    payload.upgrades.length === 0 &&
     payload.tombstones.length === 0 &&
     payload.settings === undefined
   )
@@ -74,6 +78,7 @@ export function payloadSize(payload: SyncPayload): number {
     payload.checkIns.length +
     payload.items.length +
     payload.projects.length +
+    payload.upgrades.length +
     payload.tombstones.length +
     // Counted as one record, because that is what a lifter reading "sent
     // 3" is being told: three things moved, one of which was their
@@ -160,6 +165,7 @@ export function acceptableFrom(
         return { ...item, dailyProgress: unionProgress(local.dailyProgress, item.dailyProgress) }
       }),
     projects: incoming.projects.filter((item) => shouldAccept(item, 'projects', item.id, index)),
+    upgrades: incoming.upgrades.filter((item) => shouldAccept(item, 'upgrades', item.id, index)),
     tombstones: incoming.tombstones,
     // Passed through untouched. Settings cannot be deleted, so there is
     // no tombstone that could apply to them.

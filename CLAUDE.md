@@ -236,6 +236,20 @@ now the only guard there is; cascade delete is `withoutBlocker`, called by
 hand, because a dangling blocker id would otherwise sit in the record,
 travel over sync, and come back if a later project reused the id.
 
+**The tech tree is where `domain/game/` stops being unwired.**
+`domain/upgrades/` projects an upgrade onto the model's `TreeNode`, so
+`GATE_KINDS` — money and a prerequisite, nothing bought with points — now
+constrains live code. Money is integer minor units everywhere; a budget
+filter on floating point eventually disagrees with itself. Two of its
+rules had a database behind them and no longer do: `wouldCreateCycle`, and
+the refusal to delete anything with dependents still attached.
+
+**A rule nothing can reach is a rule nobody can trust.** Both the quest
+log's cycle guard and the tree's were briefly unreachable from the UI —
+the domain refused correctly and no screen could ask it to. Adding a
+domain rule means adding the control that can trip it, or the guard is
+decoration with a test attached.
+
 **The bottom navigation is full at six.** Adding an area means taking one
 out, not adding a seventh — History moved to a link on the Train page for
 exactly that reason. Phase 7 owns the proper rethink; until then, a new
