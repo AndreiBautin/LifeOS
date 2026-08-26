@@ -3,11 +3,13 @@ import type {
   CheckInRepository,
   Clock,
   ExerciseRepository,
+  SettingsRepository,
   SyncStateRepository,
   SyncTarget,
   TombstoneRepository,
   WorkoutRepository,
 } from '@/domain/repositories/ports'
+import { mergeSettings, projectForSync } from '@/domain/settings/synced'
 import {
   acceptableFrom,
   changedSince,
@@ -48,6 +50,7 @@ export interface SynchroniseDeps {
   readonly checkIns: CheckInRepository
   readonly tombstones: TombstoneRepository
   readonly syncState: SyncStateRepository
+  readonly settings: SettingsRepository
   readonly clock: Clock
 }
 
@@ -98,14 +101,43 @@ export async function synchronise(target: SyncTarget, deps: SynchroniseDeps): Pr
   await deps.workouts.restoreMany(accepted.workouts)
   await deps.checkIns.restoreMany(accepted.checkIns)
 
+  /*
+   * Settings last, and only if they are newer.
+   *
+   * `mergeSettings` returns the local object by identity when the
+   * incoming copy loses, so the write is skipped rather than restamping
+   * values that did not change — which would make this device the newest
+   * and bounce the same settings back on the next exchange, forever.
+   */
+  let settingsMoved = false
+
+  if (accepted.settings !== undefined) {
+    const local = await deps.settings.get()
+    const merged = mergeSettings(local, accepted.settings)
+
+    if (merged !== local) {
+      await deps.settings.save(merged)
+      settingsMoved = true
+    }
+  }
+
   await deps.syncState.save({
     cursor,
     pushedThrough: startedAt,
     lastSyncedAt: startedAt,
   })
 
-  const received = accepted.exercises.length + accepted.workouts.length + accepted.checkIns.length
-  const offered = incoming.exercises.length + incoming.workouts.length + incoming.checkIns.length
+  const received =
+    accepted.exercises.length +
+    accepted.workouts.length +
+    accepted.checkIns.length +
+    (settingsMoved ? 1 : 0)
+
+  const offered =
+    incoming.exercises.length +
+    incoming.workouts.length +
+    incoming.checkIns.length +
+    (accepted.settings === undefined ? 0 : 1)
 
   return {
     pushed: payloadSize(outgoing),
@@ -119,12 +151,24 @@ async function collectLocal(
   deps: SynchroniseDeps,
   watermark: string | undefined,
 ): Promise<SyncPayload> {
-  const [exercises, workouts, checkIns, tombstones] = await Promise.all([
+  const [exercises, workouts, checkIns, tombstones, settings] = await Promise.all([
     deps.exercises.all(),
     deps.workouts.all(),
     deps.checkIns.all(),
     deps.tombstones.all(),
+    deps.settings.get(),
   ])
+
+  /*
+   * Settings travel only when they have changed since the last exchange,
+   * on the same watermark as everything else.
+   *
+   * Unstamped settings are never sent, for the reason records are not:
+   * the stamp is what makes two copies orderable, and a copy that cannot
+   * prove it is newer must not overwrite one that can.
+   */
+  const settingsChanged =
+    settings.updatedAt !== undefined && (watermark === undefined || settings.updatedAt > watermark)
 
   /*
    * Filtered in memory rather than by an index.
@@ -147,6 +191,7 @@ async function collectLocal(
     workouts: changedSince(workouts, watermark),
     checkIns: changedSince(checkIns, watermark),
     tombstones: deletedSince(tombstones, watermark),
+    ...(settingsChanged ? { settings: projectForSync(settings) } : {}),
   }
 }
 

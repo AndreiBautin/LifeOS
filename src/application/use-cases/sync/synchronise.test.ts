@@ -9,10 +9,13 @@ import type {
   Clock,
   ExerciseRepository,
   SyncState,
+  SettingsRepository,
   SyncStateRepository,
   TombstoneRepository,
   WorkoutRepository,
 } from '@/domain/repositories/ports'
+import type { AppSettings } from '@/domain/settings/settings'
+import { DEFAULT_SETTINGS } from '@/domain/settings/settings'
 import type { Tombstone } from '@/domain/sync/tombstone'
 import { aWorkout } from '@/test/builders/workout'
 import {
@@ -130,7 +133,22 @@ function device(clock: Clock): Device {
     },
   }
 
-  return { exercises, workouts, checkIns, tombstones, syncState, clock, log }
+  /*
+   * Settings the device actually holds, so the merge is exercised rather
+   * than stubbed. A double that always answers with the defaults would
+   * make every settings assertion pass against an implementation that
+   * never wrote anything.
+   */
+  let stored: AppSettings = { ...DEFAULT_SETTINGS }
+  const settings: SettingsRepository = {
+    get: () => Promise.resolve(stored),
+    save: (next) => {
+      stored = next
+      return Promise.resolve()
+    },
+  }
+
+  return { exercises, workouts, checkIns, tombstones, syncState, settings, clock, log }
 }
 
 describe('syncing two devices', () => {
@@ -273,5 +291,78 @@ describe('syncing two devices', () => {
 
     expect(report.received).toBe(0)
     expect(await phone.workouts.byId(session.id)).toBeDefined()
+  })
+})
+
+describe('syncing the settings the program is derived from', () => {
+  it('carries a tier change to the other device', () => {
+    /*
+     * The gap this closes. Without it the two devices agree perfectly
+     * about history and derive different programs from it — a session
+     * logged on a Tuesday the other device does not show.
+     */
+    return (async () => {
+      const clock = advancingClock()
+      const server = createMemorySyncServer()
+      const phone = device(clock)
+      const desk = device(clock)
+
+      const changed = await phone.settings.get()
+      await phone.settings.save({
+        ...changed,
+        daysPerWeek: 3,
+        updatedAt: clock.now().toISOString(),
+      })
+
+      await synchronise(createMemorySyncTarget(server, 'phone'), phone)
+      const report = await synchronise(createMemorySyncTarget(server, 'desk'), desk)
+
+      expect(report.received).toBe(1)
+      expect((await desk.settings.get()).daysPerWeek).toBe(3)
+    })()
+  })
+
+  it('does not send settings that have not changed', async () => {
+    const clock = advancingClock()
+    const server = createMemorySyncServer()
+    const phone = device(clock)
+    const target = createMemorySyncTarget(server, 'phone')
+
+    const changed = await phone.settings.get()
+    await phone.settings.save({ ...changed, daysPerWeek: 3, updatedAt: clock.now().toISOString() })
+
+    expect((await synchronise(target, phone)).pushed).toBe(1)
+
+    // The watermark is the whole reason a second exchange is quiet. A
+    // settings blob re-sent every time would keep two devices trading the
+    // same values forever.
+    expect((await synchronise(target, phone)).pushed).toBe(0)
+  })
+
+  it('leaves device preferences alone on the receiving side', async () => {
+    const clock = advancingClock()
+    const server = createMemorySyncServer()
+    const phone = device(clock)
+    const desk = device(clock)
+
+    const deskLocal = await desk.settings.get()
+    await desk.settings.save({ ...deskLocal, theme: 'dark', updatedAt: clock.now().toISOString() })
+
+    const phoneLocal = await phone.settings.get()
+    await phone.settings.save({
+      ...phoneLocal,
+      daysPerWeek: 3,
+      theme: 'light',
+      updatedAt: clock.now().toISOString(),
+    })
+
+    await synchronise(createMemorySyncTarget(server, 'phone'), phone)
+    await synchronise(createMemorySyncTarget(server, 'desk'), desk)
+
+    const after = await desk.settings.get()
+
+    expect(after.daysPerWeek).toBe(3)
+    // The phone's theme never left it, so the desktop keeps its own.
+    expect(after.theme).toBe('dark')
   })
 })

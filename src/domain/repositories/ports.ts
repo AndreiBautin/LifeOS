@@ -3,6 +3,7 @@ import type { Exercise } from '@/domain/exercises/exercise'
 import type { CheckInId, ExerciseId, WorkoutId } from '@/domain/ids/ids'
 import type { WorkoutLog } from '@/domain/logging/workout-log'
 import type { ProgramPosition } from '@/domain/programs/position'
+import type { AppSettings } from '@/domain/settings/settings'
 import type { SyncPayload } from '@/domain/sync/payload'
 import type { Tombstone } from '@/domain/sync/tombstone'
 
@@ -220,6 +221,19 @@ export interface SyncTarget {
   /** Everything the target has taken since `cursor`, and the next cursor. */
   pull(cursor: string | undefined): Promise<{ payload: SyncPayload; cursor: string }>
   push(payload: SyncPayload): Promise<void>
+}
+
+/**
+ * The lifter's settings.
+ *
+ * A port because the sync needs to read and write them and lives in the
+ * application layer, which may not know they are a JSON blob in
+ * localStorage. Asynchronous even though the implementation is not, so
+ * the seam survives a future where they are somewhere slower.
+ */
+export interface SettingsRepository {
+  get(): Promise<AppSettings>
+  save(settings: AppSettings): Promise<void>
 }
 
 /** A clock, injected so progression and scheduling are reproducible in a test. */

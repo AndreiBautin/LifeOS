@@ -80,12 +80,25 @@ export function createMemorySyncTarget(server: MemorySyncServer, clientId: strin
 
       const mine = server.batches.slice(start).filter((batch) => batch.from !== clientId)
 
+      /*
+       * The newest settings among the batches read, not all of them.
+       * Settings are one blob rather than a collection, so concatenating
+       * is meaningless — the last one wins, exactly as a real backend
+       * storing them under a single document would give back whatever was
+       * written most recently.
+       */
+      const settings = mine.reduce<SyncPayload['settings']>(
+        (latest, batch) => batch.payload.settings ?? latest,
+        undefined,
+      )
+
       return Promise.resolve({
         payload: {
           exercises: mine.flatMap((batch) => batch.payload.exercises),
           workouts: mine.flatMap((batch) => batch.payload.workouts),
           checkIns: mine.flatMap((batch) => batch.payload.checkIns),
           tombstones: mine.flatMap((batch) => batch.payload.tombstones),
+          ...(settings === undefined ? {} : { settings }),
         },
         // Past everything read, including this client's own batches —
         // they were skipped deliberately, not left for later.

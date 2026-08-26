@@ -4,6 +4,7 @@ import type {
   Clock,
   ExerciseRepository,
   PositionRepository,
+  SettingsRepository,
   SyncStateRepository,
   SyncTarget,
   TombstoneRepository,
@@ -18,6 +19,7 @@ import {
   createTombstoneRepository,
   createWorkoutRepository,
 } from '@/infrastructure/db/repositories'
+import { createSettingsStore } from '@/infrastructure/storage/settings-store'
 import { createSyncStateStore } from '@/infrastructure/storage/sync-state-store'
 import { createNullSyncTarget } from '@/infrastructure/sync/targets'
 import { requestPersistence } from '@/infrastructure/storage/durability'
@@ -48,6 +50,7 @@ export interface AppServices {
   readonly workouts: WorkoutRepository
   readonly checkIns: CheckInRepository
   readonly tombstones: TombstoneRepository
+  readonly settings: SettingsRepository
   readonly syncState: SyncStateRepository
   /**
    * Where changes go, if anywhere.
@@ -90,6 +93,7 @@ export async function bootstrap(): Promise<BootstrapResult> {
     workouts: createWorkoutRepository(db, systemClock),
     checkIns: createCheckInRepository(db, systemClock),
     tombstones: createTombstoneRepository(db),
+    settings: createSettingsStore(),
     syncState: createSyncStateStore(),
     syncTarget: createNullSyncTarget(),
     ids: cryptoIds,

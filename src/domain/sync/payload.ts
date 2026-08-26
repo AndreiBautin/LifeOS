@@ -2,6 +2,8 @@ import type { CheckIn } from '@/domain/autoregulation/check-in'
 import type { Exercise } from '@/domain/exercises/exercise'
 import type { WorkoutLog } from '@/domain/logging/workout-log'
 
+import type { SyncedSettings } from '@/domain/settings/synced'
+
 import { indexTombstones, shouldAccept, type Tombstone } from './tombstone'
 
 /**
@@ -24,6 +26,19 @@ export interface SyncPayload {
   readonly workouts: readonly WorkoutLog[]
   readonly checkIns: readonly CheckIn[]
   readonly tombstones: readonly Tombstone[]
+  /**
+   * The travelling half of the settings, when they have changed.
+   *
+   * One blob rather than a collection, because there is one of them. It
+   * is here at all because the program is *derived* from settings — two
+   * devices with different tiers derive different programs, so syncing
+   * history without the priorities that produced it is the half that only
+   * looks like it works.
+   *
+   * Absent when nothing changed, and absent from anything a build without
+   * this sent.
+   */
+  readonly settings?: SyncedSettings
 }
 
 export const EMPTY_PAYLOAD: SyncPayload = {
@@ -38,7 +53,8 @@ export function isEmpty(payload: SyncPayload): boolean {
     payload.exercises.length === 0 &&
     payload.workouts.length === 0 &&
     payload.checkIns.length === 0 &&
-    payload.tombstones.length === 0
+    payload.tombstones.length === 0 &&
+    payload.settings === undefined
   )
 }
 
@@ -47,7 +63,11 @@ export function payloadSize(payload: SyncPayload): number {
     payload.exercises.length +
     payload.workouts.length +
     payload.checkIns.length +
-    payload.tombstones.length
+    payload.tombstones.length +
+    // Counted as one record, because that is what a lifter reading "sent
+    // 3" is being told: three things moved, one of which was their
+    // priorities.
+    (payload.settings === undefined ? 0 : 1)
   )
 }
 
@@ -73,6 +93,9 @@ export function acceptableFrom(
     workouts: incoming.workouts.filter((item) => shouldAccept(item, 'workouts', item.id, index)),
     checkIns: incoming.checkIns.filter((item) => shouldAccept(item, 'checkIns', item.id, index)),
     tombstones: incoming.tombstones,
+    // Passed through untouched. Settings cannot be deleted, so there is
+    // no tombstone that could apply to them.
+    ...(incoming.settings === undefined ? {} : { settings: incoming.settings }),
   }
 }
 

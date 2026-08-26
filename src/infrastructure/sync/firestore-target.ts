@@ -18,6 +18,7 @@ import type { Exercise } from '@/domain/exercises/exercise'
 import type { WorkoutLog } from '@/domain/logging/workout-log'
 import type { SyncTarget } from '@/domain/repositories/ports'
 import { CURSOR_START, decodeCursor, encodeCursor, laterCursor } from '@/domain/sync/cursor'
+import type { SyncedSettings } from '@/domain/settings/synced'
 import type { SyncPayload } from '@/domain/sync/payload'
 import { tombstoneKey, type Tombstone } from '@/domain/sync/tombstone'
 
@@ -49,7 +50,15 @@ const COLLECTIONS = {
   workouts: 'workouts',
   checkIns: 'checkIns',
   tombstones: 'tombstones',
+  /*
+   * One document, not a collection. There is one settings blob, and it is
+   * stored under a fixed id so writing it is an overwrite rather than an
+   * accumulation.
+   */
+  settings: 'settings',
 } as const
+
+const SETTINGS_DOCUMENT = 'current'
 
 /**
  * How many documents one pull will take.
@@ -88,14 +97,15 @@ export function createFirestoreSyncTarget(options: FirestoreTargetOptions): Sync
       const from = decodeCursor(cursor)
       const after = new Timestamp(from.seconds, from.nanoseconds)
 
-      const [exercises, workouts, checkIns, tombstones] = await Promise.all([
+      const [exercises, workouts, checkIns, tombstones, settings] = await Promise.all([
         readSince(root(COLLECTIONS.exercises), after),
         readSince(root(COLLECTIONS.workouts), after),
         readSince(root(COLLECTIONS.checkIns), after),
         readSince(root(COLLECTIONS.tombstones), after),
+        readSince(root(COLLECTIONS.settings), after),
       ])
 
-      const pages = [exercises, workouts, checkIns, tombstones]
+      const pages = [exercises, workouts, checkIns, tombstones, settings]
 
       /*
        * The cursor advances to the newest document actually read, and no
@@ -110,12 +120,21 @@ export function createFirestoreSyncTarget(options: FirestoreTargetOptions): Sync
        */
       const reached = pages.reduce((latest, page) => laterCursor(latest, page.reached), from)
 
+      /*
+       * The last, because there is only ever one document and a page
+       * ordered by `syncedAt` puts the newest write at the end. Taking
+       * the first would hand back a settings blob that has since been
+       * replaced.
+       */
+      const latestSettings = settings.records[settings.records.length - 1]
+
       return {
         payload: {
           exercises: exercises.records as readonly Exercise[],
           workouts: workouts.records as readonly WorkoutLog[],
           checkIns: checkIns.records as readonly CheckIn[],
           tombstones: tombstones.records as readonly Tombstone[],
+          ...(latestSettings === undefined ? {} : { settings: latestSettings as SyncedSettings }),
         },
         cursor: encodeCursor(reached),
       }
@@ -154,6 +173,11 @@ export function createFirestoreSyncTarget(options: FirestoreTargetOptions): Sync
           id: tombstoneKey(record.collection, record.id),
           record,
         })),
+        // Under a fixed id, so a second push overwrites rather than
+        // accumulating settings blobs nobody will read.
+        ...(payload.settings === undefined
+          ? []
+          : [{ path: COLLECTIONS.settings, id: SETTINGS_DOCUMENT, record: payload.settings }]),
       ]
 
       for (let index = 0; index < operations.length; index += BATCH_LIMIT) {

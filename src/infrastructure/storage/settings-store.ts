@@ -2,6 +2,7 @@ import type { AppSettings } from '@/domain/settings/settings'
 import { DEFAULT_SETTINGS, SETTINGS_SCHEMA_VERSION } from '@/domain/settings/settings'
 import { MUSCLE_GROUPS } from '@/domain/exercises/taxonomy'
 import { completeTiers } from '@/domain/priority/tiers'
+import type { SettingsRepository } from '@/domain/repositories/ports'
 import { STORAGE_KEYS } from '@/config/storage-keys'
 
 /**
@@ -58,9 +59,21 @@ export function readSettings(storage: Storage = localStorage): SettingsReadResul
   return { settings: mergeWithDefaults(parsed), recovered: false }
 }
 
-export function writeSettings(settings: AppSettings, storage: Storage = localStorage): boolean {
+/**
+ * The one path settings take to storage, and therefore the one place
+ * they are stamped.
+ *
+ * `now` is a parameter so a test can pin it, and because a module reading
+ * the clock directly is the thing the lint rule forbids everywhere else.
+ */
+export function writeSettings(
+  settings: AppSettings,
+  storage: Storage = localStorage,
+  now: () => Date = () => new Date(),
+): boolean {
   try {
-    storage.setItem(STORAGE_KEYS.settings, JSON.stringify(settings))
+    const stamped: AppSettings = { ...settings, updatedAt: now().toISOString() }
+    storage.setItem(STORAGE_KEYS.settings, JSON.stringify(stamped))
     return true
   } catch {
     // Quota exhausted, or storage disabled. Reported rather than thrown:
@@ -192,4 +205,26 @@ function asBoundedNumber(value: unknown, min: number, max: number, fallback: num
 
 function asBoolean(value: unknown, fallback: boolean): boolean {
   return typeof value === 'boolean' ? value : fallback
+}
+
+/**
+ * The settings port, over the same localStorage blob.
+ *
+ * Thin on purpose: reading recovers a malformed blob to defaults and
+ * writing stamps it, and both of those already live above. This exists so
+ * the sync — which is in the application layer and has no business
+ * knowing settings are JSON in localStorage — can reach them through a
+ * port like everything else.
+ */
+export function createSettingsStore(
+  storage: Storage = localStorage,
+  now: () => Date = () => new Date(),
+): SettingsRepository {
+  return {
+    get: () => Promise.resolve(readSettings(storage).settings),
+    save: (settings) => {
+      writeSettings(settings, storage, now)
+      return Promise.resolve()
+    },
+  }
 }

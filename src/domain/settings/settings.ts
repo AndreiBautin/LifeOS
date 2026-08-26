@@ -74,6 +74,19 @@ export interface AppSettings {
    * reminder — a backup feature nobody is prompted to use is worth
    * nothing, and this is local-only storage.
    */
+  /**
+   * When the synced half of these settings last changed.
+   *
+   * On the blob rather than per field, because nobody edits their tiers
+   * on two devices at once and a half-merged settings object derives a
+   * program matching neither device. Stamped by `writeSettings`, which
+   * is the single path anything takes to reach storage.
+   *
+   * Optional because settings saved before this existed have none, and
+   * such a copy loses every comparison — it cannot prove it is newer,
+   * which is the rule records and tombstones already follow.
+   */
+  readonly updatedAt?: string
   readonly lastExportAt?: string
   readonly schemaVersion: number
 }
