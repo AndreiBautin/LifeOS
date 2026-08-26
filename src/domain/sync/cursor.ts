@@ -25,12 +25,24 @@ export interface CursorPosition {
 
 export const CURSOR_START: CursorPosition = { seconds: 0, nanoseconds: 0 }
 
+/**
+ * Both halves padded, so the string sorts the way the position orders.
+ *
+ * Only the nanoseconds were, and the comment claimed the whole cursor
+ * sorted correctly — which it did not: `"10.000000000"` is less than
+ * `"9.000000000"` as text, so a cursor nine seconds into the epoch
+ * compared as *later* than one ten seconds in. Nothing reads it as text
+ * today, which is exactly why it went unnoticed, and exactly the kind of
+ * thing a later change relies on by accident.
+ *
+ * Twelve digits covers seconds past the year 33,000. Wide enough that the
+ * question does not come up, narrow enough to read.
+ */
+export const CURSOR_SECONDS_DIGITS = 12
+
 export function encodeCursor(position: CursorPosition): string {
-  // Nanoseconds padded so the string sorts the same way the number does.
-  // Not required by anything today — the value is parsed, not compared as
-  // text — but a cursor that sorts wrongly is the kind of thing someone
-  // later relies on by accident.
-  return `${String(position.seconds)}.${String(position.nanoseconds).padStart(9, '0')}`
+  const seconds = String(position.seconds).padStart(CURSOR_SECONDS_DIGITS, '0')
+  return `${seconds}.${String(position.nanoseconds).padStart(9, '0')}`
 }
 
 /**
@@ -52,8 +64,19 @@ export function decodeCursor(value: string | undefined): CursorPosition {
   if (parts.length > 2) return CURSOR_START
 
   const [secondsText, nanosecondsText] = parts
-  if (secondsText === undefined || secondsText === '') return CURSOR_START
-  if (nanosecondsText !== undefined && nanosecondsText === '') return CURSOR_START
+
+  /*
+   * Digits only, checked before `Number` sees the string.
+   *
+   * `Number` is far more generous than a cursor format has any business
+   * being: it read `"1.5e3"` as 1500, `" 7 "` as 7, `"1e2"` as 100 and
+   * `"0b11"` as 3 — all of them integers, all of them passing the checks
+   * below, none of them a position this app ever wrote. The guard against
+   * `"1.2.3"` was already here for exactly that reason and simply did not
+   * go far enough.
+   */
+  if (!isDigits(secondsText)) return CURSOR_START
+  if (nanosecondsText !== undefined && !isDigits(nanosecondsText)) return CURSOR_START
 
   const seconds = Number(secondsText)
   const nanoseconds = nanosecondsText === undefined ? 0 : Number(nanosecondsText)
@@ -70,4 +93,9 @@ export function decodeCursor(value: string | undefined): CursorPosition {
 export function laterCursor(a: CursorPosition, b: CursorPosition): CursorPosition {
   if (a.seconds !== b.seconds) return a.seconds > b.seconds ? a : b
   return a.nanoseconds >= b.nanoseconds ? a : b
+}
+
+/** Non-empty, digits only, and short enough not to overflow a safe integer. */
+function isDigits(value: string | undefined): value is string {
+  return value !== undefined && value.length > 0 && value.length <= 15 && /^\d+$/.test(value)
 }
