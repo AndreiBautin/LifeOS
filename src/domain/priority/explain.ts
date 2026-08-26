@@ -129,7 +129,21 @@ export function describeBlock(
   const leadLifts = liftsAt(1)
 
   const sentences = [
-    'Renaissance Periodization volume with RTS autoregulated strength on the three lifts.',
+    /*
+     * Both abbreviated, rather than one of each.
+     *
+     * This read "Renaissance Periodization volume with RTS autoregulated
+     * strength", which spells out one training system and initialises the
+     * other in the same breath — the inconsistency is the kind of thing
+     * that reads as carelessness even when nobody can say why.
+     *
+     * Abbreviating both wins over expanding both because this is the
+     * first of five sentences, and the alternative front-loads eight
+     * words of proper noun before the reader reaches anything about their
+     * own program. Both initialisms are standard in the field, and RTS
+     * gets a full explanation further down the same screen.
+     */
+    'RP volume with RTS autoregulated strength on the three lifts.',
     top.length > 0 ? `${sentenceCase(list(top))} specialised.` : '',
     middle.length > 0 ? `${sentenceCase(list(middle))} building.` : '',
     bottom.length > 0 ? `${sentenceCase(list(bottom))} maintained.` : '',

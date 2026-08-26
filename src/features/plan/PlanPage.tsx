@@ -119,7 +119,17 @@ export function PlanPage() {
       <Section title="This block">
         <Card className="space-y-3">
           <dl className="space-y-2">
-            <Facet term="Volume" detail={block.focus.muscles} />
+            {/*
+              "Hypertrophy", not "Volume".
+
+              Volume is the *unit* — every slot in the app is measured in
+              sets, strength work included — so labelling one half of the
+              block "Volume" and the other "Strength" pairs a measure
+              against a goal. The app already names the three kinds of
+              work Strength, Hypertrophy and Conditioning on every slot;
+              the block's facets should use the same words.
+            */}
+            <Facet term="Hypertrophy" detail={block.focus.muscles} />
             {block.focus.lifts !== undefined && (
               <Facet term="Strength" detail={block.focus.lifts} />
             )}
