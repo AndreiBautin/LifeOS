@@ -13,6 +13,13 @@ export type InstanceId = Branded<'InstanceId'>
 export type WorkoutId = Branded<'WorkoutId'>
 export type SlotId = Branded<'SlotId'>
 export type CheckInId = Branded<'CheckInId'>
+/**
+ * A backlog item — a game, a book, a series.
+ *
+ * Named for its area rather than called `ItemId`, because "item" on its own
+ * is what half the app would call whatever it is currently holding.
+ */
+export type BacklogItemId = Branded<'BacklogItemId'>
 
 export const asExerciseId = (value: string): ExerciseId => value as ExerciseId
 export const asProgramId = (value: string): ProgramId => value as ProgramId
@@ -20,6 +27,7 @@ export const asInstanceId = (value: string): InstanceId => value as InstanceId
 export const asWorkoutId = (value: string): WorkoutId => value as WorkoutId
 export const asSlotId = (value: string): SlotId => value as SlotId
 export const asCheckInId = (value: string): CheckInId => value as CheckInId
+export const asBacklogItemId = (value: string): BacklogItemId => value as BacklogItemId
 
 /**
  * Generating an id is a side effect, so the domain takes it as a
