@@ -184,6 +184,7 @@ const WEEK_5: RpSplit = {
       label: 'Monday',
       muscles: UPPER,
       carries: ['upper'],
+      conditioning: ['incline-walk'],
       warmUp: 'upper',
     },
     {
@@ -192,17 +193,21 @@ const WEEK_5: RpSplit = {
       muscles: LOWER,
       carries: ['lower'],
       /*
-       * Conditioning lives on the lower days, and this is the balancing
-       * decision rather than a training one.
+       * Intervals on the lower days, easy work on the upper days.
        *
-       * The upper days carry the whole upper body and run to eighty
-       * minutes; the lower days carry a maintained lower body and finish
-       * in forty. Twenty minutes of conditioning on an upper day makes
-       * the long day longer. Moved down, it evens the week out.
+       * The split is by *domain*, not by which day has room. Swings are a
+       * hinge with a real systemic cost, so they belong beside the
+       * lifting that already loads the hips rather than on a bench day
+       * where they would be the only lower-body stress of the session.
+       * The trade is that Thursday stacks a hinge on the heaviest pull of
+       * the week — a deliberate concentration of lower-body fatigue on
+       * lower-body days, chosen over spreading it thin across five.
        *
-       * Swings follow the squat rather than the deadlift: they are a
-       * hinge, and stacking a hinge on the heaviest hinge of the week is
-       * the one pairing worth avoiding.
+       * This used to be balanced by session length instead: conditioning
+       * went wherever the day was short, which put the walk on Thursday
+       * and kept the upper days clear. That evened out the clock and made
+       * the arrangement unquotable — you could not say what trained when
+       * without reading the minute totals.
        */
       conditioning: ['kb-swing'],
       warmUp: 'lower',
@@ -212,6 +217,7 @@ const WEEK_5: RpSplit = {
       label: 'Wednesday',
       muscles: UPPER,
       carries: ['upper'],
+      conditioning: ['incline-walk'],
       warmUp: 'upper',
     },
     {
@@ -219,9 +225,7 @@ const WEEK_5: RpSplit = {
       label: 'Thursday',
       muscles: LOWER,
       carries: ['lower'],
-      // The walk costs nothing and asks nothing, which is what belongs
-      // after the heaviest pull of the week.
-      conditioning: ['incline-walk'],
+      conditioning: ['kb-swing'],
       warmUp: 'lower',
     },
     {
@@ -239,6 +243,7 @@ const WEEK_5: RpSplit = {
        */
       muscles: UPPER,
       carries: ['upper'],
+      conditioning: ['incline-walk'],
       warmUp: 'upper',
     },
   ],

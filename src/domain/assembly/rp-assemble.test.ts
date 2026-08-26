@@ -319,7 +319,10 @@ describe('naming a day after what is in it', () => {
    * behind a list of muscles.
    */
   it('says in the heading whether a day is strength, hypertrophy or both', () => {
-    expect(week.days[0]?.label).toBe('Monday — Strength and Hypertrophy')
+    // Every day carries conditioning now, so every heading says so. The
+    // label is read off the finished slots rather than written into the
+    // split, which is why this needed no code change to follow.
+    expect(week.days[0]?.label).toBe('Monday — Strength, Hypertrophy and Conditioning')
     expect(week.days[1]?.label).toBe('Tuesday — Strength, Hypertrophy and Conditioning')
   })
 
@@ -512,6 +515,44 @@ describe('how a muscle is spread across its sessions', () => {
     expect(delivered).toBeLessThanOrEqual(asked + 1)
   })
 
+  it('does not let an easy walk cost a day its lifting', () => {
+    /*
+     * Zone 2 conditioning is outside the accessory budget, and this is
+     * the test that says why.
+     *
+     * The ceiling exists so one day cannot claim the week's recovery
+     * allowance. An incline walk is twenty minutes costing almost no
+     * systemic fatigue, and charging it against the budget spends a
+     * recovery allowance on something that does not consume one — put it
+     * on the three upper days and the side delts silently went from
+     * twenty sets to eleven. A training decision made by bookkeeping.
+     */
+    const asked = weeklyTargetForWeek(
+      DEFAULT_LANDMARKS['side-delts'],
+      priorityPosition(DEFAULT_MUSCLE_TIERS, 'side-delts'),
+      false,
+    )
+    const delivered = perDay('side-delts').reduce((total, credit) => total + credit, 0)
+
+    // Every upper day carries a walk, so this fails outright if the walk
+    // is competing with the lateral raises for the same minutes.
+    expect(delivered).toBeGreaterThanOrEqual(asked - 1)
+  })
+
+  it('still charges interval work against the budget', () => {
+    // The other half. Swings are intervals with a real cost, and work
+    // that competes for recovery should compete for the budget — so the
+    // exemption has to be the domain, not conditioning as a category.
+    const lower = week.days.filter((day) =>
+      day.slots.some((slot) => slot.role === 'conditioning' && slot.variant === 'HIIT'),
+    )
+
+    expect(lower.length).toBeGreaterThan(0)
+    for (const day of lower) {
+      expect(estimateDayMinutes(day), day.label).toBeLessThanOrEqual(SESSION_TOO_LONG_MINUTES)
+    }
+  })
+
   it('keeps a day to a session rather than a list of two-set exercises', () => {
     /*
      * The failure mode the backfill's slot grace exists to stop. A
@@ -664,35 +705,29 @@ describe('conditioning', () => {
         .flatMap((slot) => (slot.exercise.kind === 'specific' ? [slot.exercise.exerciseId] : [])),
     )
 
-    expect(all).toEqual(['kb-swing', 'incline-walk'])
+    expect(all).toEqual(['incline-walk', 'kb-swing', 'incline-walk', 'kb-swing', 'incline-walk'])
   })
 
-  /*
-   * Conditioning sits on the lower days now, and the reason is the
-   * clock rather than the training: the upper days carry the whole
-   * upper body and run to seventy minutes, the lower days carry a
-   * maintained lower body and finish in forty. Twenty minutes of
-   * walking on an upper day makes the long day longer.
-   */
-  it('puts conditioning on the lower days, where there is room for it', () => {
-    expect(conditioningIn(0)).toEqual([])
-    expect(conditioningIn(2)).toEqual([])
-    expect(conditioningIn(4)).toEqual([])
+  it('runs every day, split by domain rather than by spare time', () => {
+    /*
+     * Easy work on the upper days, intervals on the lower ones.
+     *
+     * The split is by *domain*: swings are a hinge with a real systemic
+     * cost and belong beside the lifting that already loads the hips,
+     * while a Zone 2 walk asks nothing of anything and can sit anywhere.
+     *
+     * It used to be decided by the clock instead — conditioning went
+     * wherever the day was short — which balanced the minute totals and
+     * made the arrangement impossible to state without reading them.
+     */
+    const domainOn = (dayIndex: number) =>
+      conditioningIn(dayIndex).map((slot) => slot.variant ?? '')
 
-    expect(conditioningIn(1)).toHaveLength(1)
-    expect(conditioningIn(3)).toHaveLength(1)
-  })
-
-  it('follows the squat with the swings, not the deadlift', () => {
-    // Swings are a hinge. Stacking a hinge on the heaviest hinge of the
-    // week is the one pairing worth avoiding.
-    const on = (dayIndex: number) =>
-      conditioningIn(dayIndex).flatMap((slot) =>
-        slot.exercise.kind === 'specific' ? [slot.exercise.exerciseId as string] : [],
-      )
-
-    expect(on(1)).toEqual(['kb-swing'])
-    expect(on(3)).toEqual(['incline-walk'])
+    expect(domainOn(0)).toEqual(['Zone 2'])
+    expect(domainOn(1)).toEqual(['HIIT'])
+    expect(domainOn(2)).toEqual(['Zone 2'])
+    expect(domainOn(3)).toEqual(['HIIT'])
+    expect(domainOn(4)).toEqual(['Zone 2'])
   })
 
   it('is prescribed by time, not by reps', () => {
@@ -707,8 +742,8 @@ describe('conditioning', () => {
     // A twenty-minute walk costed as one thirty-second set let the
     // planner stack conditioning onto the longest day and still believe
     // the day fitted inside the target.
-    const withWalk = estimateDayMinutes(week.days[3] as never)
-    const conditioningMinutes = conditioningIn(3).reduce(
+    const withWalk = estimateDayMinutes(week.days[0] as never)
+    const conditioningMinutes = conditioningIn(0).reduce(
       (total, slot) =>
         total +
         slot.sets.reduce((sum, set) => sum + (set.reps.kind === 'time' ? set.reps.seconds : 0), 0) /

@@ -683,8 +683,31 @@ function fillHypertrophy(args: FillArgs): BuiltSlots {
   const placed: Exercise[] = []
   let added = emptyVolumeMap()
 
-  // What the day already costs before any accessory is chosen.
-  let minutes = args.existingSlots.reduce((total, slot) => total + slotMinutes(slot), 0)
+  /*
+   * What the day already costs before any accessory is chosen — with
+   * easy conditioning left out of it.
+   *
+   * The ceiling exists so one day cannot claim the week's recovery
+   * budget, not to describe how long you are in the garage. A Zone 2
+   * incline walk is twenty minutes that cost almost no systemic fatigue
+   * and can be done before, after, or apart from the lifting, so
+   * charging it against the accessory budget spends a recovery allowance
+   * on something that does not consume one. Put the walk on the three
+   * upper days and it silently halved the side delts — twenty sets to
+   * eleven — which is a real training decision made by a bookkeeping
+   * detail.
+   *
+   * HIIT still counts. Swings are intervals with a genuine cost, and
+   * work that competes for recovery should compete for the budget.
+   *
+   * `estimateDayMinutes` is unaffected and still reports the whole
+   * session, walk included: this changes what the fill may spend, not
+   * what the lifter is told the day takes.
+   */
+  let minutes = args.existingSlots.reduce(
+    (total, slot) => total + (isEasyConditioning(slot) ? 0 : slotMinutes(slot)),
+    0,
+  )
 
   /** Places one pass of accessory work, neediest muscle first. */
   const fillFor = (
@@ -1023,6 +1046,18 @@ function shareOwed(
   return Math.max(0, Math.min(share, dose) - addedToday[muscle])
 }
 
+/**
+ * Conditioning cheap enough not to compete with lifting for recovery.
+ *
+ * Matched on the slot's own variant rather than on the exercise, because
+ * the domain is the thing that decides this: an easy incline walk and an
+ * easy run are the same work under two names and both belong here, while
+ * the same runner doing intervals does not.
+ */
+function isEasyConditioning(slot: Slot): boolean {
+  return slot.role === 'conditioning' && slot.variant === ZONE_2_VARIANT
+}
+
 /** Minutes one slot costs: work plus rest, warm-ups rested through. */
 function slotMinutes(slot: Slot): number {
   const rest = slot.restSeconds ?? 120
@@ -1046,6 +1081,16 @@ const BACKFILL_TIME_GRACE = 1.15
  * exercises, which is the shape the volume was split up to avoid.
  */
 const BACKFILL_SLOT_GRACE = 1
+
+/**
+ * The easy conditioning domain, as it appears on `Slot.variant`.
+ *
+ * Named rather than written twice: it is matched on in
+ * {@link isEasyConditioning} to decide what competes for the accessory
+ * budget, and a typo there would silently change how much lifting a day
+ * gets rather than failing.
+ */
+const ZONE_2_VARIANT = 'Zone 2'
 
 /**
  * Muscles a day trained *directly* — as the primary of some working slot.
@@ -1310,7 +1355,7 @@ function conditioningSlots(
 
     const plan = CONDITIONING_PLANS[slug] ?? {
       minutes: 15,
-      style: 'Zone 2',
+      style: ZONE_2_VARIANT,
       note: 'Easy, conversational pace.',
     }
     // A deload cuts conditioning the same way it cuts everything else.
@@ -1356,7 +1401,7 @@ const CONDITIONING_PLANS: Readonly<
 > = {
   'incline-walk': {
     minutes: 20,
-    style: 'Zone 2',
+    style: ZONE_2_VARIANT,
     note: 'Steep incline, easy pace. You should be able to hold a conversation.',
   },
   'kb-swing': {
