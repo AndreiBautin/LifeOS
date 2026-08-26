@@ -611,6 +611,21 @@ const ENTRIES: readonly CatalogueEntry[] = [
     notes: 'Upper-day warm-up. Contributes no training volume.',
   },
   {
+    slug: 'band-pull-apart',
+    name: 'Band Pull-Aparts',
+    primaryMuscle: 'rear-delts',
+    equipment: 'band',
+    pattern: 'isolation',
+    isCompound: false,
+    intent: 'conditioning',
+    sfr: 5,
+    systemicCost: 0.01,
+    safeToFail: true,
+    defaultRepRange: { low: 15, high: 25 },
+    defaultRestSeconds: 0,
+    notes: 'Upper-day warm-up. Contributes no training volume.',
+  },
+  {
     slug: 'foam-roll',
     name: 'Foam Rolling',
     primaryMuscle: 'quads',
@@ -676,16 +691,39 @@ export function conditioningExercises(): readonly Exercise[] {
  * number gets them to the bar soonest. A warm-up is done properly or not
  * at all, so it says how many.
  */
+/**
+ * The warm-up routine, one set of each.
+ *
+ * Multiple sets were a habit rather than a decision. A warm-up is there
+ * to move the joint through its range and raise tissue temperature, and
+ * the second set of shoulder dislocations does neither of those any
+ * better than the first — it just puts two rows on the screen for
+ * something nobody counts. Twenty reps in one go is the same work, said
+ * once.
+ *
+ * `note` carries what the rep count cannot. "1 × 20" is ambiguous for
+ * anything done per side or per area, and a lifter reading it on a phone
+ * between sets should not have to infer that a foam-rolling entry means
+ * seven regions.
+ */
 export const WARM_UPS = {
   upper: [
-    { slug: 'shoulder-dislocation', sets: 2, reps: 10 },
-    { slug: 'rotator-cuff-plate', sets: 2, reps: 12 },
+    { slug: 'shoulder-dislocation', sets: 1, reps: 20 },
+    { slug: 'rotator-cuff-plate', sets: 1, reps: 20, note: 'Twenty each side.' },
+    { slug: 'band-pull-apart', sets: 1, reps: 20 },
   ],
-  lower: [{ slug: 'foam-roll', sets: 1, reps: 10 }],
+  lower: [
+    {
+      slug: 'foam-roll',
+      sets: 1,
+      reps: 20,
+      note: 'Hamstrings, quads, IT band, groin, lats, upper back, calves — twenty passes each.',
+    },
+  ],
 } as const
 
 export const WARM_UP_SLUGS = {
-  upper: ['shoulder-dislocation', 'rotator-cuff-plate'],
+  upper: ['shoulder-dislocation', 'rotator-cuff-plate', 'band-pull-apart'],
   lower: ['foam-roll'],
 } as const
 

@@ -455,7 +455,7 @@ describe('the order a session is performed in', () => {
       .filter((slot) => slot.role === 'warmup')
       .flatMap((slot) => (slot.exercise.kind === 'specific' ? [slot.exercise.exerciseId] : []))
 
-    expect(monday).toEqual(['shoulder-dislocation', 'rotator-cuff-plate'])
+    expect(monday).toEqual(['shoulder-dislocation', 'rotator-cuff-plate', 'band-pull-apart'])
   })
 
   it('finishes with conditioning', () => {

@@ -1130,7 +1130,18 @@ function warmUpSlots(
           isWarmup: true,
         })),
         restSeconds: 0,
-        notes: 'Warm-up. Not counted toward volume.',
+        /*
+         * The routine's own note, appended rather than replacing.
+         *
+         * "Not counted toward volume" is the part every warm-up shares
+         * and the reason the row looks different from the ones below it;
+         * the per-entry note is what a rep count cannot say — which side,
+         * which areas. Losing either one costs something.
+         */
+        notes:
+          'note' in plan && typeof plan.note === 'string'
+            ? `Warm-up. Not counted toward volume. ${plan.note}`
+            : 'Warm-up. Not counted toward volume.',
       },
     ]
   })
