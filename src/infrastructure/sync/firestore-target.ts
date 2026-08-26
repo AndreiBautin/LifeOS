@@ -14,6 +14,7 @@ import {
 } from 'firebase/firestore'
 
 import type { CheckIn } from '@/domain/autoregulation/check-in'
+import type { Item } from '@/domain/backlog/item'
 import type { Exercise } from '@/domain/exercises/exercise'
 import type { WorkoutLog } from '@/domain/logging/workout-log'
 import type { SyncTarget } from '@/domain/repositories/ports'
@@ -49,6 +50,7 @@ const COLLECTIONS = {
   exercises: 'exercises',
   workouts: 'workouts',
   checkIns: 'checkIns',
+  items: 'items',
   tombstones: 'tombstones',
   /*
    * One document, not a collection. There is one settings blob, and it is
@@ -97,15 +99,16 @@ export function createFirestoreSyncTarget(options: FirestoreTargetOptions): Sync
       const from = decodeCursor(cursor)
       const after = new Timestamp(from.seconds, from.nanoseconds)
 
-      const [exercises, workouts, checkIns, tombstones, settings] = await Promise.all([
+      const [exercises, workouts, checkIns, items, tombstones, settings] = await Promise.all([
         readSince(root(COLLECTIONS.exercises), after),
         readSince(root(COLLECTIONS.workouts), after),
         readSince(root(COLLECTIONS.checkIns), after),
+        readSince(root(COLLECTIONS.items), after),
         readSince(root(COLLECTIONS.tombstones), after),
         readSince(root(COLLECTIONS.settings), after),
       ])
 
-      const pages = [exercises, workouts, checkIns, tombstones, settings]
+      const pages = [exercises, workouts, checkIns, items, tombstones, settings]
 
       /*
        * The cursor advances to the newest document actually read, and no
@@ -133,6 +136,7 @@ export function createFirestoreSyncTarget(options: FirestoreTargetOptions): Sync
           exercises: exercises.records as readonly Exercise[],
           workouts: workouts.records as readonly WorkoutLog[],
           checkIns: checkIns.records as readonly CheckIn[],
+          items: items.records as readonly Item[],
           tombstones: tombstones.records as readonly Tombstone[],
           ...(latestSettings === undefined ? {} : { settings: latestSettings as SyncedSettings }),
         },
@@ -160,6 +164,11 @@ export function createFirestoreSyncTarget(options: FirestoreTargetOptions): Sync
         })),
         ...payload.workouts.map((record) => ({
           path: COLLECTIONS.workouts,
+          id: record.id,
+          record,
+        })),
+        ...payload.items.map((record) => ({
+          path: COLLECTIONS.items,
           id: record.id,
           record,
         })),

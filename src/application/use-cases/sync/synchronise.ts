@@ -1,5 +1,6 @@
-import { asCheckInId, asExerciseId, asWorkoutId } from '@/domain/ids/ids'
+import { asBacklogItemId, asCheckInId, asExerciseId, asWorkoutId } from '@/domain/ids/ids'
 import type {
+  BacklogItemRepository,
   CheckInRepository,
   Clock,
   ExerciseRepository,
@@ -48,6 +49,7 @@ export interface SynchroniseDeps {
   readonly exercises: ExerciseRepository
   readonly workouts: WorkoutRepository
   readonly checkIns: CheckInRepository
+  readonly items: BacklogItemRepository
   readonly tombstones: TombstoneRepository
   readonly syncState: SyncStateRepository
   readonly settings: SettingsRepository
@@ -82,7 +84,14 @@ export async function synchronise(target: SyncTarget, deps: SynchroniseDeps): Pr
   const { payload: incoming, cursor } = await target.pull(state.cursor)
 
   const localTombstones = await deps.tombstones.all()
-  const accepted = acceptableFrom(incoming, localTombstones)
+
+  /*
+   * The local items go in so an incoming one can have its progress log
+   * unioned with the copy already here. Only the backlog needs this — see
+   * `unionProgress` for why a per-day log is the one thing in this app
+   * that a record-level winner gets wrong.
+   */
+  const accepted = acceptableFrom(incoming, localTombstones, await deps.items.all())
 
   /*
    * Deletions land before records do.
@@ -100,6 +109,7 @@ export async function synchronise(target: SyncTarget, deps: SynchroniseDeps): Pr
   await deps.exercises.restoreMany(accepted.exercises)
   await deps.workouts.restoreMany(accepted.workouts)
   await deps.checkIns.restoreMany(accepted.checkIns)
+  await deps.items.restoreMany(accepted.items)
 
   /*
    * Settings last, and only if they are newer.
@@ -144,12 +154,14 @@ export async function synchronise(target: SyncTarget, deps: SynchroniseDeps): Pr
     accepted.exercises.length +
     accepted.workouts.length +
     accepted.checkIns.length +
+    accepted.items.length +
     (settingsMoved ? 1 : 0)
 
   const offered =
     incoming.exercises.length +
     incoming.workouts.length +
     incoming.checkIns.length +
+    incoming.items.length +
     (accepted.settings === undefined ? 0 : 1)
 
   return {
@@ -165,10 +177,11 @@ async function collectLocal(
   watermark: string | undefined,
   settingsSynced: string | undefined,
 ): Promise<SyncPayload> {
-  const [exercises, workouts, checkIns, tombstones, settings] = await Promise.all([
+  const [exercises, workouts, checkIns, items, tombstones, settings] = await Promise.all([
     deps.exercises.all(),
     deps.workouts.all(),
     deps.checkIns.all(),
+    deps.items.all(),
     deps.tombstones.all(),
     deps.settings.get(),
   ])
@@ -203,6 +216,7 @@ async function collectLocal(
     exercises: changedSince(exercises, watermark),
     workouts: changedSince(workouts, watermark),
     checkIns: changedSince(checkIns, watermark),
+    items: changedSince(items, watermark),
     tombstones: deletedSince(tombstones, watermark),
     ...(settingsChanged ? { settings: projectForSync(settings) } : {}),
   }
@@ -250,6 +264,13 @@ async function applyDeletions(
         const local = await deps.checkIns.byId(asCheckInId(tombstone.id))
         if (local !== undefined && !survives(local, tombstone)) {
           await deps.checkIns.purge(asCheckInId(tombstone.id))
+        }
+        break
+      }
+      case 'items': {
+        const local = await deps.items.byId(asBacklogItemId(tombstone.id))
+        if (local !== undefined && !survives(local, tombstone)) {
+          await deps.items.purge(asBacklogItemId(tombstone.id))
         }
         break
       }

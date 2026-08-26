@@ -1,6 +1,8 @@
 import type { CheckIn } from '@/domain/autoregulation/check-in'
+import type { Item } from '@/domain/backlog/item'
+import type { BacklogSettings } from '@/domain/backlog/settings'
 import type { Exercise } from '@/domain/exercises/exercise'
-import type { CheckInId, ExerciseId, WorkoutId } from '@/domain/ids/ids'
+import type { BacklogItemId, CheckInId, ExerciseId, WorkoutId } from '@/domain/ids/ids'
 import type { WorkoutLog } from '@/domain/logging/workout-log'
 import type { ProgramPosition } from '@/domain/programs/position'
 import type { AppSettings } from '@/domain/settings/settings'
@@ -153,6 +155,44 @@ export interface CheckInRepository {
    */
   purge(id: CheckInId): Promise<void>
   all(): Promise<readonly CheckIn[]>
+}
+
+/**
+ * The backlog: games, books, series — things waiting to be consumed.
+ *
+ * Same shape as the three above, and for the same reasons, with one
+ * difference worth naming: there is no `replaceAll`. Backlogs had one, and
+ * it rewrote the whole collection in a single call — which is a clobber
+ * the moment two devices are involved, and is the destructive and
+ * non-destructive operation sharing one name. It splits into
+ * `restoreMany`, which writes records as given, and `clear`, which says
+ * what it does.
+ */
+export interface BacklogItemRepository {
+  all(): Promise<readonly Item[]>
+  byId(id: BacklogItemId): Promise<Item | undefined>
+  save(item: Item): Promise<void>
+  /** Writes records exactly as given, without stamping `updatedAt`. */
+  restoreMany(items: readonly Item[]): Promise<void>
+  remove(id: BacklogItemId): Promise<void>
+  /** Deletes without recording a tombstone — the receiving half of a sync. */
+  purge(id: BacklogItemId): Promise<void>
+  /** Empties the store. Never "restore into an empty store" behind one name. */
+  clear(): Promise<void>
+  count(): Promise<number>
+}
+
+/**
+ * The backlog's own preferences.
+ *
+ * Separate from `SettingsRepository` because they are separate records:
+ * one holds muscle tiers and estimated maxes, the other holds which
+ * category a new book lands in. Merging them would put a training decision
+ * and a list's default sort order in the same blob.
+ */
+export interface BacklogSettingsRepository {
+  get(): Promise<BacklogSettings>
+  save(settings: BacklogSettings): Promise<void>
 }
 
 /**

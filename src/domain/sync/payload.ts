@@ -1,4 +1,6 @@
 import type { CheckIn } from '@/domain/autoregulation/check-in'
+import type { Item } from '@/domain/backlog/item'
+import type { DailyProgressEntry } from '@/domain/backlog/daily-goal'
 import type { Exercise } from '@/domain/exercises/exercise'
 import type { WorkoutLog } from '@/domain/logging/workout-log'
 
@@ -25,6 +27,7 @@ export interface SyncPayload {
   readonly exercises: readonly Exercise[]
   readonly workouts: readonly WorkoutLog[]
   readonly checkIns: readonly CheckIn[]
+  readonly items: readonly Item[]
   readonly tombstones: readonly Tombstone[]
   /**
    * The travelling half of the settings, when they have changed.
@@ -45,6 +48,7 @@ export const EMPTY_PAYLOAD: SyncPayload = {
   exercises: [],
   workouts: [],
   checkIns: [],
+  items: [],
   tombstones: [],
 }
 
@@ -53,6 +57,7 @@ export function isEmpty(payload: SyncPayload): boolean {
     payload.exercises.length === 0 &&
     payload.workouts.length === 0 &&
     payload.checkIns.length === 0 &&
+    payload.items.length === 0 &&
     payload.tombstones.length === 0 &&
     payload.settings === undefined
   )
@@ -63,12 +68,52 @@ export function payloadSize(payload: SyncPayload): number {
     payload.exercises.length +
     payload.workouts.length +
     payload.checkIns.length +
+    payload.items.length +
     payload.tombstones.length +
     // Counted as one record, because that is what a lifter reading "sent
     // 3" is being told: three things moved, one of which was their
     // priorities.
     (payload.settings === undefined ? 0 : 1)
   )
+}
+
+/**
+ * Merges two copies of one item's progress log, by day.
+ *
+ * The only place in this file where a *record's contents* are reconciled
+ * rather than the record as a whole, and it is here because the general
+ * rule genuinely does not apply.
+ *
+ * Whole-record last-write-wins is justified for a workout by how workouts
+ * are used: you log sets on the phone in the gym and read the results at
+ * your desk, so two devices editing one session is not a real scenario.
+ * That reasoning does not transfer to a backlog. Reading a chapter on the
+ * phone on Monday and an episode on the laptop on Tuesday — before the two
+ * have spoken — is ordinary, and under a record-level winner Monday
+ * silently vanishes: the laptop's copy is newer, and its progress log
+ * never contained Monday at all.
+ *
+ * A progress log is append-only per day, so a union is the correct merge
+ * and needs no timestamps. Where both copies claim the same day, the
+ * larger count wins: neither device can have lost progress it recorded, so
+ * the higher number is the one that saw more. The case that remains
+ * imprecise is both devices logging the *same day* while apart, where two
+ * separate readings show up as one — which is strictly better than the
+ * record-level rule, under which the whole day disappears.
+ */
+export function unionProgress(
+  mine: readonly DailyProgressEntry[],
+  theirs: readonly DailyProgressEntry[],
+): readonly DailyProgressEntry[] {
+  const byDate = new Map<string, number>()
+
+  for (const entry of [...mine, ...theirs]) {
+    byDate.set(entry.date, Math.max(byDate.get(entry.date) ?? 0, entry.amount))
+  }
+
+  return [...byDate]
+    .map(([date, amount]) => ({ date, amount }))
+    .sort((a, b) => a.date.localeCompare(b.date))
 }
 
 /**
@@ -85,13 +130,30 @@ export function payloadSize(payload: SyncPayload): number {
 export function acceptableFrom(
   incoming: SyncPayload,
   localTombstones: readonly Tombstone[],
+  /**
+   * The local copies of the items being received.
+   *
+   * Needed only so a progress log can be unioned *before* the record-level
+   * winner is chosen — by the time a record has won, the loser's days are
+   * already gone.
+   */
+  localItems: readonly Item[] = [],
 ): SyncPayload {
   const index = indexTombstones([...localTombstones, ...incoming.tombstones])
+  const localById = new Map(localItems.map((item) => [item.id, item]))
 
   return {
     exercises: incoming.exercises.filter((item) => shouldAccept(item, 'exercises', item.id, index)),
     workouts: incoming.workouts.filter((item) => shouldAccept(item, 'workouts', item.id, index)),
     checkIns: incoming.checkIns.filter((item) => shouldAccept(item, 'checkIns', item.id, index)),
+    items: incoming.items
+      .filter((item) => shouldAccept(item, 'items', item.id, index))
+      .map((item) => {
+        const local = localById.get(item.id)
+        if (local === undefined) return item
+
+        return { ...item, dailyProgress: unionProgress(local.dailyProgress, item.dailyProgress) }
+      }),
     tombstones: incoming.tombstones,
     // Passed through untouched. Settings cannot be deleted, so there is
     // no tombstone that could apply to them.

@@ -16,6 +16,14 @@ const PREFIX = import.meta.env.VITE_DEMO_MODE === 'true' ? 'lift.demo' : 'lift'
 
 export const STORAGE_KEYS = {
   settings: `${PREFIX}.settings`,
+  /**
+   * The backlog's own preferences — default sort, default category.
+   *
+   * Its own key rather than a field on `settings`, because they are two
+   * records about two different things and a single blob would mean a
+   * muscle tier and a list's sort order sharing a change stamp.
+   */
+  backlogSettings: `${PREFIX}.backlog-settings`,
   /** Set once the install prompt has been dismissed, so it is not nagged. */
   installPromptDismissed: `${PREFIX}.install-dismissed`,
   /** Set once the storage-durability explanation has been acknowledged. */

@@ -1,11 +1,13 @@
 import type { CheckIn } from '@/domain/autoregulation/check-in'
+import type { Item } from '@/domain/backlog/item'
 import type { ProgramPosition } from '@/domain/programs/position'
 import { builtInExercises } from '@/domain/exercises/catalogue'
 import type { Exercise } from '@/domain/exercises/exercise'
 import { resolveLibrary } from '@/domain/exercises/library'
-import type { CheckInId, ExerciseId, WorkoutId } from '@/domain/ids/ids'
+import type { BacklogItemId, CheckInId, ExerciseId, WorkoutId } from '@/domain/ids/ids'
 import type { WorkoutLog } from '@/domain/logging/workout-log'
 import type {
+  BacklogItemRepository,
   CheckInRepository,
   Clock,
   ExerciseRepository,
@@ -218,6 +220,47 @@ export function createWorkoutRepository(db: LiftDatabase, clock: Clock): Workout
 
     async all() {
       return (await db.getAll('workouts')).map(fromStored)
+    },
+  }
+}
+
+/**
+ * The backlog.
+ *
+ * `replaceAll` did not come across. It rewrote the whole collection in one
+ * call, which is what localStorage forces and IndexedDB does not — and it
+ * put a destructive operation and a restore behind one name, so a call
+ * site asking to fill an empty store could receive a wipe. It is
+ * `restoreMany` and `clear` here, and the import path is the only caller
+ * of the second.
+ */
+export function createBacklogItemRepository(db: LiftDatabase, clock: Clock): BacklogItemRepository {
+  return {
+    async all() {
+      return db.getAll('items')
+    },
+    async byId(id: BacklogItemId) {
+      return db.get('items', id)
+    },
+    async save(item: Item) {
+      await db.put('items', stamp(item, clock))
+    },
+    async restoreMany(items: readonly Item[]) {
+      const tx = db.transaction('items', 'readwrite')
+      await Promise.all([...items.map((item) => tx.store.put(item)), tx.done])
+    },
+    async remove(id: BacklogItemId) {
+      await db.delete('items', id)
+      await bury(db, clock, 'items', id)
+    },
+    async purge(id: BacklogItemId) {
+      await db.delete('items', id)
+    },
+    async clear() {
+      await db.clear('items')
+    },
+    async count() {
+      return db.count('items')
     },
   }
 }

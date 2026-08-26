@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest'
 
 import type { CheckIn } from '@/domain/autoregulation/check-in'
+import type { Item } from '@/domain/backlog/item'
 import type { Exercise } from '@/domain/exercises/exercise'
-import type { WorkoutId } from '@/domain/ids/ids'
+import type { BacklogItemId, WorkoutId } from '@/domain/ids/ids'
 import type { WorkoutLog } from '@/domain/logging/workout-log'
 import type {
+  BacklogItemRepository,
   CheckInRepository,
   Clock,
   ExerciseRepository,
@@ -23,6 +25,8 @@ import {
   createMemorySyncTarget,
   createNullSyncTarget,
 } from '@/infrastructure/sync/targets'
+
+import { createItem, logDailyProgress } from '@/domain/backlog/item'
 
 import { synchronise, type SynchroniseDeps } from './synchronise'
 
@@ -54,6 +58,7 @@ function advancingClock(): Clock {
 }
 
 interface Device extends SynchroniseDeps {
+  readonly backlog: Map<string, Item>
   readonly log: Map<string, WorkoutLog>
 }
 
@@ -115,6 +120,44 @@ function device(clock: Clock): Device {
     purge: () => Promise.resolve(),
   }
 
+  /*
+   * A real double, unlike the exercises and check-ins above, because the
+   * backlog is the one collection whose *contents* are reconciled — a
+   * stub returning an empty list would let the progress-union test pass
+   * against a `unionProgress` that was never called.
+   */
+  const backlog = new Map<string, Item>()
+  const items: BacklogItemRepository = {
+    all: () => Promise.resolve([...backlog.values()]),
+    byId: (id) => Promise.resolve(backlog.get(id as string)),
+    save: (record) => {
+      backlog.set(record.id, { ...record, updatedAt: clock.now().toISOString() })
+      return Promise.resolve()
+    },
+    restoreMany: (records) => {
+      for (const record of records) backlog.set(record.id, record)
+      return Promise.resolve()
+    },
+    purge: (id: BacklogItemId) => {
+      backlog.delete(id)
+      return Promise.resolve()
+    },
+    remove: (id: BacklogItemId) => {
+      backlog.delete(id)
+      graves.set(`items:${id as string}`, {
+        id,
+        collection: 'items',
+        deletedAt: clock.now().toISOString(),
+      })
+      return Promise.resolve()
+    },
+    clear: () => {
+      backlog.clear()
+      return Promise.resolve()
+    },
+    count: () => Promise.resolve(backlog.size),
+  }
+
   const tombstones: TombstoneRepository = {
     all: () => Promise.resolve([...graves.values()]),
     since: (deletedAt) =>
@@ -148,7 +191,18 @@ function device(clock: Clock): Device {
     },
   }
 
-  return { exercises, workouts, checkIns, tombstones, syncState, settings, clock, log }
+  return {
+    exercises,
+    workouts,
+    checkIns,
+    items,
+    tombstones,
+    syncState,
+    settings,
+    clock,
+    log,
+    backlog,
+  }
 }
 
 describe('syncing two devices', () => {
@@ -426,5 +480,98 @@ describe('settings bugs an eval agent found', () => {
     // quiet rather than pushing it back every time.
     expect((await synchronise(deskTarget, desk)).pushed).toBe(0)
     expect((await synchronise(deskTarget, desk)).pushed).toBe(0)
+  })
+})
+
+/*
+ * The one collection whose contents are merged rather than replaced.
+ *
+ * Everything else in this app is whole-record last-write-wins, and that is
+ * right for a workout: you log sets on the phone in the gym and read them
+ * at the desk. A backlog is used differently — a chapter on the phone on
+ * Monday, an episode on the laptop on Tuesday, neither device having heard
+ * from the other — and under a record-level winner Monday disappears.
+ */
+describe('a backlog item’s progress log', () => {
+  const anItem = (): Item =>
+    createItem(
+      { title: 'The Way of Kings', category: 'books', dailyGoal: { amount: 1, unit: 'chapter' } },
+      {
+        clock: { now: () => new Date('2026-08-01T09:00:00.000Z') },
+        ids: { next: () => 'way-of-kings' },
+      },
+    )
+
+  it('keeps both devices’ days when neither has heard from the other', async () => {
+    const clock = advancingClock()
+    const server = createMemorySyncServer()
+    const phone = device(clock)
+    const desk = device(clock)
+
+    const shared = anItem()
+    await phone.items.save(shared)
+    await desk.items.save(shared)
+
+    const monday = new Date(2026, 7, 24, 20, 0)
+    const tuesday = new Date(2026, 7, 25, 20, 0)
+
+    await phone.items.save(
+      logDailyProgress(shared, { on: monday }, { clock, ids: { next: () => 'unused' } }),
+    )
+    await desk.items.save(
+      logDailyProgress(shared, { on: tuesday }, { clock, ids: { next: () => 'unused' } }),
+    )
+
+    await synchronise(createMemorySyncTarget(server, 'phone'), phone)
+    await synchronise(createMemorySyncTarget(server, 'desk'), desk)
+
+    expect((await desk.items.byId(shared.id))?.dailyProgress).toEqual([
+      { date: '2026-08-24', amount: 1 },
+      { date: '2026-08-25', amount: 1 },
+    ])
+  })
+
+  it('takes the larger count when both devices logged the same day', async () => {
+    const clock = advancingClock()
+    const server = createMemorySyncServer()
+    const phone = device(clock)
+    const desk = device(clock)
+
+    const shared = anItem()
+    const deps = { clock, ids: { next: () => 'unused' } }
+    const today = new Date(2026, 7, 24, 20, 0)
+
+    const once = logDailyProgress(shared, { on: today }, deps)
+    await phone.items.save(once)
+    await desk.items.save(logDailyProgress(once, { on: today }, deps))
+
+    await synchronise(createMemorySyncTarget(server, 'phone'), phone)
+    await synchronise(createMemorySyncTarget(server, 'desk'), desk)
+
+    // Neither device can have lost progress it recorded, so the higher
+    // number is the one that saw more. Two separate readings on one day
+    // still show up as the larger of the two — better than the whole day
+    // vanishing, and the reason this is documented rather than hidden.
+    expect((await desk.items.byId(shared.id))?.dailyProgress).toEqual([
+      { date: '2026-08-24', amount: 2 },
+    ])
+  })
+
+  it('does not resurrect an item the other device deleted', async () => {
+    const clock = advancingClock()
+    const server = createMemorySyncServer()
+    const phone = device(clock)
+    const desk = device(clock)
+
+    const shared = anItem()
+    await phone.items.save(shared)
+    await synchronise(createMemorySyncTarget(server, 'phone'), phone)
+    await synchronise(createMemorySyncTarget(server, 'desk'), desk)
+
+    await phone.items.remove(shared.id)
+    await synchronise(createMemorySyncTarget(server, 'phone'), phone)
+    await synchronise(createMemorySyncTarget(server, 'desk'), desk)
+
+    expect(await desk.items.byId(shared.id)).toBeUndefined()
   })
 })

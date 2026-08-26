@@ -2,6 +2,7 @@ import type { DBSchema, IDBPDatabase } from 'idb'
 import { openDB } from 'idb'
 
 import type { CheckIn } from '@/domain/autoregulation/check-in'
+import type { Item } from '@/domain/backlog/item'
 import type { Tombstone } from '@/domain/sync/tombstone'
 import type { Exercise } from '@/domain/exercises/exercise'
 import type { WorkoutLog } from '@/domain/logging/workout-log'
@@ -40,7 +41,7 @@ export const DB_NAME = 'lift'
  * a device that already ran it will not run it again, so changing one
  * leaves two devices with different schemas and no way to tell.
  */
-export const DB_VERSION = 3
+export const DB_VERSION = 4
 
 /**
  * A workout as it is stored, which is not quite a workout as the domain
@@ -127,6 +128,24 @@ export interface LiftDB extends DBSchema {
     value: Tombstone
     indexes: { 'by-deleted': string }
   }
+  /**
+   * The backlog — games, books, series.
+   *
+   * IndexedDB rather than the localStorage blob it arrived in. Backlogs
+   * rewrote its entire collection on every write, which is affordable for
+   * a few hundred items on one device and is a clobber the moment a second
+   * one exists: two devices each rewriting the whole list means the later
+   * write erases everything the earlier one added.
+   *
+   * Indexed by status and category because those are the two the list
+   * screen filters on, and by `dateAdded` because that is its default
+   * order.
+   */
+  items: {
+    key: string
+    value: Item
+    indexes: { 'by-status': string; 'by-category': string; 'by-added': string }
+  }
 }
 
 export type LiftDatabase = IDBPDatabase<LiftDB>
@@ -194,6 +213,21 @@ export function openLiftDatabase(name = DB_NAME): Promise<LiftDatabase> {
         const tombstones = db.createObjectStore('tombstones')
         tombstones.createIndex('by-deleted', 'deletedAt')
       }
+
+      /*
+       * Version 4 brings the backlog in.
+       *
+       * The first absorbed app. Nothing is migrated from anywhere — the
+       * old app's data comes across through its own export file, once,
+       * along the import path, rather than through a schema step that
+       * would have to know about another origin's localStorage.
+       */
+      if (oldVersion < 4) {
+        const items = db.createObjectStore('items', { keyPath: 'id' })
+        items.createIndex('by-status', 'status')
+        items.createIndex('by-category', 'category')
+        items.createIndex('by-added', 'dateAdded')
+      }
     },
 
     blocked() {
@@ -235,13 +269,14 @@ export async function closeLiftDatabase(): Promise<void> {
  * receive a wipe instead.
  */
 export async function clearAllStores(db: LiftDatabase): Promise<void> {
-  const tx = db.transaction(['exercises', 'position', 'workouts', 'checkIns'], 'readwrite')
+  const tx = db.transaction(['exercises', 'position', 'workouts', 'checkIns', 'items'], 'readwrite')
 
   await Promise.all([
     tx.objectStore('exercises').clear(),
     tx.objectStore('position').clear(),
     tx.objectStore('workouts').clear(),
     tx.objectStore('checkIns').clear(),
+    tx.objectStore('items').clear(),
     tx.done,
   ])
 }

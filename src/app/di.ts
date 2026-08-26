@@ -1,5 +1,7 @@
 import type { IdGenerator } from '@/domain/ids/ids'
 import type {
+  BacklogItemRepository,
+  BacklogSettingsRepository,
   CheckInRepository,
   Clock,
   ExerciseRepository,
@@ -13,12 +15,14 @@ import type {
 import { DATABASE_NAME } from '@/config/storage-keys'
 import { openLiftDatabase, type LiftDatabase } from '@/infrastructure/db/database'
 import {
+  createBacklogItemRepository,
   createCheckInRepository,
   createExerciseRepository,
   createPositionRepository,
   createTombstoneRepository,
   createWorkoutRepository,
 } from '@/infrastructure/db/repositories'
+import { createBacklogSettingsStore } from '@/infrastructure/storage/backlog-settings-store'
 import { createSettingsStore } from '@/infrastructure/storage/settings-store'
 import { createSyncStateStore } from '@/infrastructure/storage/sync-state-store'
 import { createNullSyncTarget } from '@/infrastructure/sync/targets'
@@ -49,6 +53,8 @@ export interface AppServices {
   readonly position: PositionRepository
   readonly workouts: WorkoutRepository
   readonly checkIns: CheckInRepository
+  readonly items: BacklogItemRepository
+  readonly backlogSettings: BacklogSettingsRepository
   readonly tombstones: TombstoneRepository
   readonly settings: SettingsRepository
   readonly syncState: SyncStateRepository
@@ -92,6 +98,8 @@ export async function bootstrap(): Promise<BootstrapResult> {
     position: createPositionRepository(db),
     workouts: createWorkoutRepository(db, systemClock),
     checkIns: createCheckInRepository(db, systemClock),
+    items: createBacklogItemRepository(db, systemClock),
+    backlogSettings: createBacklogSettingsStore(),
     tombstones: createTombstoneRepository(db),
     settings: createSettingsStore(),
     syncState: createSyncStateStore(),
