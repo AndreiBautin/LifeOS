@@ -182,6 +182,38 @@ export function totalTonnage(log: WorkoutLog): number {
   return Number(total.toFixed(1))
 }
 
+/**
+ * What a logged set actually was, in the shape the accounting reads.
+ *
+ * Credit depends on reps and on how close to failure the set ended, and
+ * both of those are *discovered*. Counting the prescription instead meant
+ * a set planned at five reps and taken for three was credited as five —
+ * which mattered little while it only fed a history chart, and matters a
+ * great deal now that the accessory work resizes against the same number.
+ * A lifter cutting a set short would have the app conclude the muscle was
+ * covered.
+ *
+ * The plan is the fallback, not the answer. A set logged with reps and no
+ * RPE keeps the prescribed target, because that is what the lifter was
+ * aiming at and no better evidence exists.
+ *
+ * The load is rewritten as a bare RPE, which is lossy and deliberately
+ * local to this function: `slotVolume` reads the load *only* to recover an
+ * expected RPE, so nothing downstream can see the difference. Anything
+ * needing the real prescription reads `set.prescription`.
+ */
+function asPerformed(set: LoggedSet): SetPrescription {
+  return {
+    ...set.prescription,
+    ...(set.actualReps !== undefined
+      ? { reps: { kind: 'fixed' as const, reps: set.actualReps } }
+      : {}),
+    ...(set.actualRpe !== undefined
+      ? { load: { kind: 'rpe' as const, target: set.actualRpe } }
+      : {}),
+  }
+}
+
 /** Per-muscle set counts for one workout, using the same rules as planning. */
 export function loggedVolume(
   log: WorkoutLog,
@@ -200,12 +232,7 @@ export function loggedVolume(
     // planned week are counted by identical rules. Two implementations
     // would drift, and the whole autoregulation loop depends on the
     // comparison being meaningful.
-    contributions.push(
-      slotVolume(
-        exercise,
-        performed.map((set) => set.prescription),
-      ),
-    )
+    contributions.push(slotVolume(exercise, performed.map(asPerformed)))
   }
 
   return contributions.length > 0 ? sumVolume(contributions) : emptyVolumeMap()
