@@ -75,7 +75,11 @@ export interface VolumePlan {
 export function describeBlock(
   muscleTiers: MuscleTiers,
   strengthTiers: StrengthTiers,
-): { readonly name: string; readonly description: string } {
+): {
+  readonly name: string
+  readonly description: string
+  readonly focus: { readonly muscles: string; readonly lifts?: string }
+} {
   const list = (values: readonly string[]): string => {
     if (values.length === 0) return 'nothing'
     if (values.length === 1) return values[0] ?? ''
@@ -151,6 +155,19 @@ export function describeBlock(
     // strength, so naming it that distinguishes the block from nothing.
     name: liftFocus === undefined ? muscleFocus : `${muscleFocus} · ${liftFocus}`,
     description: sentences.join(' '),
+    /*
+     * The two halves, unjoined.
+     *
+     * `name` is an identity — it belongs in a title bar, and the
+     * interpunct is doing the work of "and also". A screen with room to
+     * lay the block out properly should not have to split that string
+     * back apart to label the halves, and one that tries will get it
+     * wrong the first time a muscle group's name contains a separator.
+     */
+    focus: {
+      muscles: muscleFocus,
+      ...(liftFocus === undefined ? {} : { lifts: sentenceCase(list(leadLifts)) }),
+    },
   }
 }
 
