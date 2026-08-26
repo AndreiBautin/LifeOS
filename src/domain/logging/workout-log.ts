@@ -1,4 +1,5 @@
 import type { Exercise } from '@/domain/exercises/exercise'
+import type { MuscleGroup } from '@/domain/exercises/taxonomy'
 import type { CheckInId, ExerciseId, SlotId, WorkoutId } from '@/domain/ids/ids'
 import type { SetPrescription } from '@/domain/programs/prescription'
 import type { SlotRole } from '@/domain/programs/program'
@@ -108,6 +109,20 @@ export interface WorkoutLog {
   readonly preCheckInId?: CheckInId
   readonly postCheckInId?: CheckInId
   readonly bodyweight?: number
+  /**
+   * What the day set out to deliver, per muscle, in credited sets.
+   *
+   * Copied from the program day when the session is started, for the
+   * same reason every set carries its own prescription: a log describes
+   * itself. Reading it back off the program would make a mid-session
+   * tally depend on settings that may since have moved, and the target
+   * a lifter is measuring against must not change under them while they
+   * are measuring.
+   *
+   * Absent on a freestyle session and on anything logged before this
+   * existed, which is why every reader treats it as optional.
+   */
+  readonly volumeTargets?: Readonly<Partial<Record<MuscleGroup, number>>>
   readonly notes?: string
   /**
    * When this record last changed, ISO.

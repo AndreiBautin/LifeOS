@@ -309,8 +309,25 @@ function buildWeek(
       if (dayTotal[muscle] > 0) daysTrained[muscle] += 1
     }
 
-    for (const muscle of trainedDirectly([...slots, ...filled.slots], deps.exercises)) {
+    /*
+     * The day's own target, kept for the session to measure against.
+     *
+     * `dayTotal` is what this day planned to deliver — the strength work
+     * plus the fill — which is the right number precisely because it is
+     * the one the assembler used. Recomputing it in the player would mean
+     * reproducing how a weekly target is shared across the days that
+     * remain, and a second implementation of that would drift.
+     *
+     * Restricted to muscles the day trains *directly*. Everything else it
+     * pays incidentally, and a lifter asking "am I done" between sets
+     * wants the two or three the session is for, not a table of fifteen.
+     */
+    const dayDirect = trainedDirectly([...slots, ...filled.slots], deps.exercises)
+    const volumeTargets: Partial<Record<MuscleGroup, number>> = {}
+
+    for (const muscle of dayDirect) {
       directDays[muscle] += 1
+      if (dayTotal[muscle] > 0) volumeTargets[muscle] = Number(dayTotal[muscle].toFixed(1))
     }
 
     slots.push(...filled.slots)
@@ -322,6 +339,7 @@ function buildWeek(
       index: dayIndex,
       ...describeDay(splitDay, ordered, deps.exercises, targets),
       slots: ordered,
+      volumeTargets,
     })
 
     for (const slot of slots) {

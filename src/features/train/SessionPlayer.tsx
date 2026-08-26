@@ -4,9 +4,16 @@ import { useState } from 'react'
 import type { Exercise } from '@/domain/exercises/exercise'
 import type { ExerciseId } from '@/domain/ids/ids'
 import type { WorkoutLog } from '@/domain/logging/workout-log'
-import { isEntryComplete, remainingSets, totalWorkingSets } from '@/domain/logging/workout-log'
+import {
+  isEntryComplete,
+  loggedVolume,
+  remainingSets,
+  totalWorkingSets,
+} from '@/domain/logging/workout-log'
 import { slotRoleLabel, slotRoleTone, slotVariant } from '@/domain/programs/program'
+import { MUSCLE_GROUP_LABELS } from '@/domain/exercises/taxonomy'
 import type { WeightUnit } from '@/domain/units/weight'
+import { sessionProgress } from '@/domain/volume/session-target'
 import { Badge, Button, Card } from '@/components/shared/primitives'
 import { useKeepAwake } from '@/shared/hooks/useKeepAwake'
 import { cn } from '@/lib/cn'
@@ -168,6 +175,8 @@ export function SessionPlayer({
         <p className="text-ink-500 mt-3 text-sm italic">{entry.notes}</p>
       )}
 
+      <VolumeTally workout={workout} exercises={exercises} />
+
       <nav className="mt-6 flex items-center gap-2" aria-label="Exercise navigation">
         <Button
           variant="outline"
@@ -284,4 +293,78 @@ export function SessionPlayer({
 function firstIncompleteIndex(workout: WorkoutLog): number {
   const found = workout.entries.findIndex((entry) => !isEntryComplete(entry))
   return found === -1 ? 0 : found
+}
+
+/**
+ * How much of the day's target has actually been done.
+ *
+ * The one thing the plan cannot know in advance. RTS back-off volume is
+ * discovered — you stop when the implied max has fallen by the day's
+ * allowance — but the assembler has to materialise something, so it
+ * materialises the cap and the accessory work is scheduled against it. A
+ * lifter who stops at two back-offs instead of four leaves the gym
+ * several sets under a session that reports itself complete.
+ *
+ * So the session says where it stands, and the lifter decides. That is
+ * the same shape as everything else here: the app supplies the number and
+ * declines to make the decision. Two more sets of dips, or not, but
+ * knowingly.
+ *
+ * Counted by `loggedVolume`, which is what the planner uses on the other
+ * side of the comparison. A tally measured by different rules from the
+ * target it sits next to would be worse than no tally.
+ */
+function VolumeTally({
+  workout,
+  exercises,
+}: {
+  readonly workout: WorkoutLog
+  readonly exercises: readonly Exercise[]
+}) {
+  const targets = workout.volumeTargets
+  if (targets === undefined) return null
+
+  const done = loggedVolume(workout, (id) => exercises.find((exercise) => exercise.id === id))
+  const rows = sessionProgress(targets, done)
+  if (rows.length === 0) return null
+
+  const owed = rows.filter((row) => row.remaining > 0)
+
+  return (
+    <Card className="mt-4">
+      <p className="text-ink-500 text-xs">
+        {owed.length === 0
+          ? 'Every muscle this day is for has hit its target.'
+          : 'What this day set out to deliver, and what you have done.'}
+      </p>
+
+      <ul className="mt-2 space-y-1.5">
+        {rows.map((row) => {
+          const share = row.target === 0 ? 1 : Math.min(1, row.done / row.target)
+
+          return (
+            <li key={row.muscle} className="flex items-center gap-3">
+              <span className="text-ink-300 w-24 shrink-0 text-xs">
+                {MUSCLE_GROUP_LABELS[row.muscle]}
+              </span>
+
+              <span className="bg-ink-850 h-1.5 flex-1 overflow-hidden rounded-full">
+                <span
+                  className={cn(
+                    'block h-full rounded-full',
+                    row.remaining > 0 ? 'bg-warn-500' : 'bg-good-500',
+                  )}
+                  style={{ width: `${String(Math.round(share * 100))}%` }}
+                />
+              </span>
+
+              <span className="numeric text-ink-500 w-14 shrink-0 text-right text-xs">
+                {row.done} / {row.target}
+              </span>
+            </li>
+          )
+        })}
+      </ul>
+    </Card>
+  )
 }

@@ -1,4 +1,5 @@
 import type { ExerciseQuery } from '@/domain/exercises/exercise'
+import type { MuscleGroup } from '@/domain/exercises/taxonomy'
 import type { ExerciseId, ProgramId, SlotId } from '@/domain/ids/ids'
 import type { WeightUnit } from '@/domain/units/weight'
 
@@ -179,6 +180,26 @@ export interface ProgramDay {
    */
   readonly focus?: string
   readonly slots: readonly Slot[]
+  /**
+   * What this day set out to deliver, per muscle, in credited sets.
+   *
+   * Carried on the day rather than recomputed, because the session needs
+   * to compare against the number the *assembler* used and no other. The
+   * fill's share of a weekly target depends on how many days remain and
+   * what earlier days already committed — reproducing that in the player
+   * would be a second implementation of the thing most likely to drift.
+   *
+   * It exists because RTS back-off volume is discovered rather than
+   * planned. The plan materialises the cap and counts all of it, so a
+   * lifter who stops at two back-offs instead of four is several sets
+   * short in a week that reports itself complete. Knowing the target
+   * turns that into a number they can act on before leaving the gym.
+   *
+   * Only the muscles the day is *for*. A session pays a dozen more
+   * incidentally, and listing those turns a glanceable answer into a
+   * table nobody reads between sets.
+   */
+  readonly volumeTargets?: Readonly<Partial<Record<MuscleGroup, number>>>
   readonly notes?: string
 }
 
