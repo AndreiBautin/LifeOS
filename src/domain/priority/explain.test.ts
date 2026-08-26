@@ -20,7 +20,7 @@ describe('naming a block from its tiers', () => {
     // Reads the shipped tiers back, so it fails when the defaults move —
     // which is the point: the name is the one line describing them and
     // nobody would otherwise notice it had gone stale.
-    expect(described.name).toBe('Chest, side delts, lats and biceps · Bench press strength')
+    expect(described.name).toBe('Chest, side delts and biceps · Bench press strength')
   })
 
   it('follows a tier when it moves', () => {

@@ -269,7 +269,7 @@ export const DEFAULT_STRENGTH_TIERS: StrengthTiers = [
 
 export const DEFAULT_MUSCLE_TIERS: MuscleTiers = [
   /*
-   * Four at the top, and the arms no longer move together.
+   * Three at the top, and the arms no longer move together.
    *
    * The biceps stay specialised and the triceps drop to building, which
    * looks inconsistent until you count what pays them: three bench
@@ -278,10 +278,18 @@ export const DEFAULT_MUSCLE_TIERS: MuscleTiers = [
    * Tiering the arms as a unit asked for a symmetry the week does not
    * have.
    *
-   * The lats come up because the pulls are the only thing training them,
-   * and they were finishing the week short of target.
+   * The lats were briefly here and are not, which is the more useful
+   * note. Promoting them raised the ask from fourteen sets to nineteen
+   * and the week delivered sixteen and a half — the chin-ups and pull-ups
+   * were already at the per-session cap on every day that carries them,
+   * so the extra target had nowhere to go. A tier is a request, and
+   * requesting volume the split cannot physically fit produces a
+   * permanent entry on the capacity report rather than more lat work.
+   *
+   * The fix, if the lats ever do want specialising, is a third pull
+   * variant in the catalogue — not a higher number here.
    */
-  { rank: 1, members: ['chest', 'side-delts', 'lats', 'biceps'], label: 'Specialising' },
+  { rank: 1, members: ['chest', 'side-delts', 'biceps'], label: 'Specialising' },
   // Front delts sit here rather than in the bottom tier so the overhead
   // press keeps a real allocation. Its primary muscle is what decides how
   // many sets it gets, and at tier 3 a lift meant to stay in the rotation
@@ -301,6 +309,7 @@ export const DEFAULT_MUSCLE_TIERS: MuscleTiers = [
       'front-delts',
       'rear-delts',
       'triceps',
+      'lats',
       'upper-back',
       'traps',
       'forearms',
