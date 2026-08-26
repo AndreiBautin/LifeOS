@@ -7,6 +7,8 @@ import type { CreateItemInput, Item } from '@/domain/backlog/item'
 import { PRIORITIES, PRIORITY_LABELS } from '@/domain/backlog/priority'
 import { STATUS_LABELS, STATUSES } from '@/domain/backlog/status'
 
+import { useBacklogSettings } from './hooks'
+
 /**
  * Adding something, and editing it.
  *
@@ -30,9 +32,16 @@ const FIELD =
 const LABEL = 'text-ink-500 mb-1 block text-xs font-medium tracking-wide uppercase'
 
 export function ItemForm({ existing, onCancel, onSubmit, pending, error }: ItemFormProps) {
+  /*
+   * The defaults apply to a new entry only. An edit opens on what the item
+   * already is — a preference about where new things start is not a claim
+   * about where old ones belong.
+   */
+  const { settings } = useBacklogSettings()
+
   const [title, setTitle] = useState(existing?.title ?? '')
-  const [category, setCategory] = useState<string>(existing?.category ?? 'games')
-  const [status, setStatus] = useState<string>(existing?.status ?? 'backlog')
+  const [category, setCategory] = useState<string>(existing?.category ?? settings.defaultCategory)
+  const [status, setStatus] = useState<string>(existing?.status ?? settings.defaultStatus)
   const [priority, setPriority] = useState<string>(existing?.priority ?? 'medium')
   const [platform, setPlatform] = useState(existing?.platform ?? '')
   const [goalAmount, setGoalAmount] = useState(existing?.dailyGoal?.amount.toString() ?? '')

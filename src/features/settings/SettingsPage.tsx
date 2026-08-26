@@ -14,6 +14,7 @@ import {
   MIN_DAYS_PER_WEEK,
   MIN_WEEKS_BEFORE_DELOAD,
 } from '@/domain/autoregulation/schedule'
+import { BacklogSettingsSection } from '@/features/backlog/BacklogSettingsSection'
 import { useBackup } from '@/features/backup/useBackup'
 import { SyncSection } from '@/features/sync/SyncSection'
 import { useSyncConfig } from '@/features/sync/useSync'
@@ -267,6 +268,8 @@ export function SettingsPage() {
         configured, and a reassurance that is quietly false is worse than
         none. It reports where the data is, not where it used to be.
       */}
+      <BacklogSettingsSection />
+
       <Section title="Your data" description={dataLocation}>
         <Card className="space-y-4">
           <div className="flex items-start gap-3">

@@ -10,7 +10,18 @@ import {
   type ListBacklogOptions,
 } from '@/application/use-cases/backlog/items'
 import { backlogOverview, dailyGoalBoard } from '@/application/use-cases/backlog/overview'
+import {
+  exportBacklog,
+  importBacklog,
+  type BacklogImportMode,
+  type BacklogImportResult,
+} from '@/application/use-cases/backlog/transfer'
 import type { CreateItemInput, Item, ItemChanges } from '@/domain/backlog/item'
+import {
+  applyBacklogSettingsChanges,
+  DEFAULT_BACKLOG_SETTINGS,
+  type BacklogSettingsChanges,
+} from '@/domain/backlog/settings'
 import type { BacklogItemId } from '@/domain/ids/ids'
 import { logger } from '@/shared/logging/logger'
 
@@ -132,6 +143,80 @@ export function useLogProgress() {
     'backlog.progress',
     ({ id, delta }, services) => serialise(id, () => logBacklogProgress(id, { delta }, services)),
   )
+}
+
+export function useBacklogSettings() {
+  const services = useServices()
+  const client = useQueryClient()
+
+  const query = useQuery({
+    queryKey: [...BACKLOG, 'settings'],
+    queryFn: () => services.backlogSettings.get(),
+  })
+
+  const update = useMutation<unknown, Error, BacklogSettingsChanges>({
+    mutationFn: async (changes) => {
+      const current = await services.backlogSettings.get()
+      await services.backlogSettings.save(applyBacklogSettingsChanges(current, changes))
+    },
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: [...BACKLOG, 'settings'] })
+    },
+  })
+
+  return { settings: query.data ?? DEFAULT_BACKLOG_SETTINGS, update }
+}
+
+/**
+ * The way the old app's data gets here, and the way it leaves.
+ *
+ * The download is a Blob and an anchor click for the same reason the
+ * training backup's is: it is the one mechanism that works in an
+ * installed PWA on both iOS and Android.
+ */
+export function useBacklogTransfer() {
+  const services = useServices()
+  const client = useQueryClient()
+
+  const exportItems = useMutation({
+    mutationFn: async () => {
+      const file = await exportBacklog(services)
+      const url = URL.createObjectURL(new Blob([file], { type: 'application/json' }))
+
+      const anchor = document.createElement('a')
+      anchor.href = url
+      anchor.download = `backlog-${services.clock.now().toISOString().slice(0, 10)}.json`
+      anchor.click()
+
+      // Revoked on a later turn of the event loop: Safari is known to
+      // cancel an in-flight download when the object URL goes away in
+      // the same tick as the click.
+      setTimeout(() => {
+        URL.revokeObjectURL(url)
+      }, 1000)
+    },
+    onSuccess: () => {
+      logger.info('backlog.export', {})
+    },
+  })
+
+  const importItems = useMutation<
+    BacklogImportResult,
+    Error,
+    { raw: string; mode: BacklogImportMode }
+  >({
+    mutationFn: ({ raw, mode }) => importBacklog(raw, mode, services),
+    onSuccess: (result) => {
+      logger.info('backlog.import', {
+        imported: result.imported,
+        rejected: result.rejected,
+        valid: result.envelopeValid,
+      })
+      void client.invalidateQueries({ queryKey: BACKLOG })
+    },
+  })
+
+  return { exportItems, importItems }
 }
 
 export type { Item }

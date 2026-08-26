@@ -237,3 +237,61 @@ describe('parseItemEnvelope as a trust boundary', () => {
     })
   })
 })
+
+/*
+ * A file the old app actually wrote.
+ *
+ * This is the migration, and it has one translation in it that everything
+ * else depends on. Backlogs spelled the change stamp `lastUpdated`; every
+ * sync primitive here reads `updatedAt`, and `changedSince` sends only
+ * records that carry one. Import a backlog without translating it and the
+ * whole thing sits on one device forever while the sync reports success —
+ * which is the failure this test exists to catch.
+ */
+describe('a file exported by the old Backlogs app', () => {
+  const legacyFile = JSON.stringify({
+    version: 1,
+    items: [
+      {
+        id: 'a1b2c3',
+        title: 'The Way of Kings',
+        category: 'books',
+        status: 'currently-using',
+        priority: 'high',
+        platform: 'Kindle',
+        tags: ['fantasy'],
+        favorite: true,
+        dailyGoal: { amount: 2, unit: 'chapter' },
+        dailyProgress: [{ date: '2026-08-24', amount: 2 }],
+        dateAdded: '2026-06-01T10:00:00.000Z',
+        dateStarted: '2026-08-01T10:00:00.000Z',
+        lastUpdated: '2026-08-24T21:14:02.000Z',
+      },
+    ],
+  })
+
+  it('carries the change stamp across under its new name', () => {
+    const [item] = parseItemEnvelope(legacyFile).items
+
+    expect(item?.updatedAt).toBe('2026-08-24T21:14:02.000Z')
+    expect('lastUpdated' in (item ?? {})).toBe(false)
+  })
+
+  it('keeps everything else the old app stored', () => {
+    const [item] = parseItemEnvelope(legacyFile).items
+
+    expect(item).toMatchObject({
+      id: 'a1b2c3',
+      title: 'The Way of Kings',
+      category: 'books',
+      status: 'currently-using',
+      priority: 'high',
+      platform: 'Kindle',
+      tags: ['fantasy'],
+      favorite: true,
+      dailyGoal: { amount: 2, unit: 'chapter' },
+      dailyProgress: [{ date: '2026-08-24', amount: 2 }],
+      dateStarted: '2026-08-01T10:00:00.000Z',
+    })
+  })
+})

@@ -15,6 +15,7 @@ import {
   useAddItem,
   useBacklogItems,
   useBacklogOverview,
+  useBacklogSettings,
   useDailyGoals,
   useDeleteItem,
   useUpdateItem,
@@ -100,13 +101,14 @@ export function BacklogPage() {
   const [confirming, setConfirming] = useState<BacklogItemId | undefined>(undefined)
 
   const [status, setStatus] = useState<Status | 'all'>('all')
-  const [sortKey, setSortKey] = useState<SortKey>('recently-added')
+  const { settings } = useBacklogSettings()
+  const [sortKey, setSortKey] = useState<SortKey | undefined>(undefined)
   const [search, setSearch] = useState('')
 
   const overview = useBacklogOverview()
   const goals = useDailyGoals()
   const items = useBacklogItems({
-    sortKey,
+    sortKey: sortKey ?? settings.defaultSort,
     filters: {
       ...(status === 'all' ? {} : { status }),
       ...(search.trim() === '' ? {} : { searchQuery: search }),
@@ -228,7 +230,7 @@ export function BacklogPage() {
           </select>
           <select
             className={CONTROL}
-            value={sortKey}
+            value={sortKey ?? settings.defaultSort}
             aria-label="Sort by"
             onChange={(event) => {
               setSortKey(event.target.value as SortKey)

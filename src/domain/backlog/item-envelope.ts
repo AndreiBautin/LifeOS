@@ -87,27 +87,40 @@ export function isPlausibleItem(value: unknown): value is Item {
 }
 
 /**
- * Repairs the daily-goal fields of an otherwise-plausible item and drops
- * prototype-polluting keys.
+ * Repairs the daily-goal fields of an otherwise-plausible item, translates
+ * the old app's change stamp, and drops prototype-polluting keys.
  *
  * Backlogs saved before daily goals existed carry neither field, so a
  * missing log becomes an empty one here rather than an
  * undefined-is-not-iterable crash later; a malformed goal or log entry is
  * dropped on its own instead of taking the whole item down with it.
+ *
+ * **`lastUpdated` becomes `updatedAt`**, which is the one translation that
+ * has to happen for the migration to be worth anything. Every file the old
+ * app exported spells the stamp its own way, and an item arriving with no
+ * `updatedAt` is not merely untidy: `changedSince` sends only records that
+ * carry a stamp, so an entire imported backlog would sit on one device and
+ * never reach the other — the failure looking exactly like a sync that
+ * runs, reports success, and moves nothing.
  */
 function normalizeItem(item: Item): Item {
   const raw = item as unknown as Record<string, unknown>
   const rawProgress = raw.dailyProgress
+  const legacyStamp = raw.lastUpdated
 
   const { dailyGoal: storedGoal, ...withoutGoal } = item
   void storedGoal
 
   const safe = { ...withoutGoal } as Record<string, unknown>
-  for (const key of POLLUTING_KEYS) {
+  for (const key of [...POLLUTING_KEYS, 'lastUpdated']) {
     if (Object.hasOwn(safe, key)) {
       // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
       delete safe[key]
     }
+  }
+
+  if (item.updatedAt === undefined && typeof legacyStamp === 'string') {
+    safe.updatedAt = legacyStamp
   }
 
   return {
