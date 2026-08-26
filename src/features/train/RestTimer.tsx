@@ -68,7 +68,26 @@ export function RestTimer({ startedAt, seconds, onDismiss }: Props) {
 
   return (
     <div
-      className="border-ink-800 bg-ink-900 fixed inset-x-0 bottom-16 z-30 mx-auto max-w-2xl rounded-t-2xl border-t px-4 py-3"
+      className="border-ink-800 bg-ink-900 fixed inset-x-0 z-30 mx-auto max-w-2xl rounded-t-2xl border-t px-4 py-3"
+      /*
+       * Sits on top of the navigation, and the navigation is taller than
+       * it looks.
+       *
+       * `AppShell` pins the nav to `bottom-0` and pads it by
+       * `env(safe-area-inset-bottom)`, so its real height is the 4rem of
+       * buttons *plus* the home indicator — about 34px more on a phone
+       * that has one. A plain `bottom-16` clears only the 4rem, which
+       * left the timer's bottom third behind a nav that also outranks it
+       * on z-index: the pause, undo and Done controls were cut in half on
+       * the device and perfectly fine in a desktop browser, which is why
+       * it survived.
+       *
+       * Written as a style rather than an arbitrary Tailwind value
+       * because `env()` inside a bracket class is fragile across builds,
+       * and this is the one measurement that must not silently resolve
+       * to zero.
+       */
+      style={{ bottom: 'calc(4rem + env(safe-area-inset-bottom))' }}
       role="status"
       aria-live="polite"
     >
