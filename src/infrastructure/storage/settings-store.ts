@@ -1,5 +1,7 @@
 import type { AppSettings } from '@/domain/settings/settings'
 import { DEFAULT_SETTINGS, SETTINGS_SCHEMA_VERSION } from '@/domain/settings/settings'
+import { MUSCLE_GROUPS } from '@/domain/exercises/taxonomy'
+import { completeTiers } from '@/domain/priority/tiers'
 import { STORAGE_KEYS } from '@/config/storage-keys'
 
 /**
@@ -124,8 +126,13 @@ function mergeWithDefaults(parsed: unknown): AppSettings {
     excludedExercises: Array.isArray(stored.excludedExercises)
       ? (stored.excludedExercises as AppSettings['excludedExercises'])
       : DEFAULT_SETTINGS.excludedExercises,
+    /*
+     * Completed on read, because a stored tier list is a snapshot of the
+     * muscle groups that existed when it was saved. Splitting traps out of
+     * the upper back gave every existing install a muscle in no tier.
+     */
     muscleTiers: Array.isArray(stored.muscleTiers)
-      ? (stored.muscleTiers as AppSettings['muscleTiers'])
+      ? completeTiers(stored.muscleTiers as AppSettings['muscleTiers'], MUSCLE_GROUPS)
       : DEFAULT_SETTINGS.muscleTiers,
     strengthTiers: Array.isArray(stored.strengthTiers)
       ? (stored.strengthTiers as AppSettings['strengthTiers'])

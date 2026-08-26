@@ -285,7 +285,11 @@ export const DEFAULT_MUSCLE_TIERS: MuscleTiers = [
   { rank: 2, members: ['lats', 'upper-back', 'front-delts', 'core'], label: 'Building' },
   {
     rank: 3,
-    members: ['rear-delts', 'quads', 'hamstrings', 'glutes', 'calves'],
+    // Traps are here because almost everything else pays them: every
+    // deadlift, row and heavy carry loads them isometrically. A higher
+    // tier would schedule shrugs to fill a target the rest of the week
+    // had already met.
+    members: ['rear-delts', 'traps', 'quads', 'hamstrings', 'glutes', 'calves'],
     label: 'Maintaining',
   },
 ]
@@ -334,4 +338,46 @@ export const STRENGTH_SESSIONS_BY_TIER: Readonly<Record<number, number>> = {
 export function strengthSessionsFor(tiers: StrengthTiers, lift: StrengthLift): number {
   const rank = tiers.find((tier) => tier.members.includes(lift))?.rank ?? 3
   return STRENGTH_SESSIONS_BY_TIER[rank] ?? 1
+}
+
+/**
+ * Puts any muscle the stored tiers have never heard of into the bottom
+ * tier.
+ *
+ * A tier list is saved the first time a lifter touches the Priorities
+ * screen and is never overwritten — which is right, they are their
+ * choices. It also means a muscle group added later exists in the app and
+ * not in their settings, belonging to no tier at all.
+ *
+ * That is worse than it sounds. `priorityPosition` answers
+ * `BOTTOM_TIER_POSITION` for an unknown member, so the volume is roughly
+ * correct by luck, while every screen that reads a *tier* has nothing to
+ * show — the muscle appears in the editor with no rank selected and in
+ * the plan with no tier label. The number and the explanation disagree,
+ * which is the one failure this whole area is built to avoid.
+ *
+ * The bottom tier is the right home for a muscle nobody has expressed an
+ * opinion about: it asks for maintenance rather than silently claiming a
+ * share of the week. Promoting it is one tap away and is a decision the
+ * lifter should make.
+ */
+export function completeTiers<T extends string>(
+  tiers: readonly Tier<T>[],
+  everyMember: readonly T[],
+): readonly Tier<T>[] {
+  const placed = new Set(tiers.flatMap((tier) => tier.members))
+  const missing = everyMember.filter((member) => !placed.has(member))
+
+  if (missing.length === 0) return tiers
+
+  const bottom = tiers.reduce<Tier<T> | undefined>(
+    (lowest, tier) => (lowest === undefined || tier.rank > lowest.rank ? tier : lowest),
+    undefined,
+  )
+
+  if (bottom === undefined) return tiers
+
+  return tiers.map((tier) =>
+    tier === bottom ? { ...tier, members: [...tier.members, ...missing] } : tier,
+  )
 }

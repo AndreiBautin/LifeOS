@@ -381,6 +381,23 @@ then fail the build at every consumer until each is handled. That is
 working as intended — silently falling through to a default is how a
 prescription becomes a wrong number.
 
+**Traps are their own muscle, split out of the upper back.** One
+group was covering two regions: a barbell row and a barbell shrug were
+both `upper-back` while training almost nothing in common, so rowing
+satisfied a target a shrug was then scheduled to fill. Traps carry a low
+MEV because nearly everything pays them — every deadlift, row and heavy
+carry loads them isometrically, and naming that credit is the point of
+the split. The shipped week now delivers 7.5 trap sets against a
+maintenance ask of 2, entirely incidentally, and schedules no shrug.
+
+The trap that came with it: `MUSCLE_GROUP_LABELS` and
+`DEFAULT_LANDMARKS` are `Record<MuscleGroup, …>` so a new group fails the
+build until both are filled, but **tiers are an array** and a new group
+silently belongs to no tier. Typecheck passed with traps untiered.
+`tiers.test.ts` → "places every muscle group in exactly one tier" is the
+guard, and `completeTiers` drops an unknown muscle into the bottom tier
+when reading settings saved before it existed.
+
 **A deletion is a fact, not an absence.** `domain/sync/tombstone.ts`.
 Removing a row leaves nothing behind, and nothing is indistinguishable
 from "never existed" — so any merge reads it as a record the other copy

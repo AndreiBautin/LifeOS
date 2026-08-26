@@ -1,3 +1,4 @@
+import { MUSCLE_GROUPS } from '@/domain/exercises/taxonomy'
 import { describe, expect, it } from 'vitest'
 
 import type { MuscleGroup } from '@/domain/exercises/taxonomy'
@@ -5,6 +6,7 @@ import { DEFAULT_LANDMARKS } from '@/domain/volume/landmarks'
 
 import {
   BOTTOM_TIER_POSITION,
+  completeTiers,
   DEFAULT_MUSCLE_TIERS,
   priorityPosition,
   TOP_TIER_POSITION,
@@ -198,5 +200,55 @@ describe('validation', () => {
     expect(() => {
       validateTiers(DEFAULT_MUSCLE_TIERS)
     }).not.toThrow()
+  })
+})
+
+describe('every muscle has a tier', () => {
+  /*
+   * The compiler cannot check this, which is why it is here.
+   *
+   * `MUSCLE_GROUP_LABELS` and `DEFAULT_LANDMARKS` are `Record<MuscleGroup,
+   * …>`, so adding a muscle group fails the build until both are filled
+   * in. Tiers are an *array*, so a new group simply belongs to no tier and
+   * nothing complains — which is what happened when `traps` was split out
+   * of `upper-back`: typecheck passed, and the muscle silently fell to the
+   * bottom position with no tier to explain it on any screen.
+   */
+  it('places every muscle group in exactly one tier', () => {
+    const placed = DEFAULT_MUSCLE_TIERS.flatMap((tier) => tier.members)
+
+    expect([...placed].sort()).toEqual([...MUSCLE_GROUPS].sort())
+  })
+
+  it('gives every muscle group landmarks', () => {
+    for (const muscle of MUSCLE_GROUPS) {
+      expect(DEFAULT_LANDMARKS[muscle], muscle).toBeDefined()
+    }
+  })
+})
+
+describe('tiers saved before a muscle existed', () => {
+  const saved = [
+    { rank: 1, members: ['biceps'], label: 'Specialising' },
+    { rank: 2, members: ['lats'], label: 'Building' },
+    { rank: 3, members: ['calves'], label: 'Maintaining' },
+  ]
+
+  it('drops an unknown muscle into the bottom tier', () => {
+    const completed = completeTiers(saved, ['biceps', 'lats', 'calves', 'traps'])
+
+    expect(completed.find((tier) => tier.rank === 3)?.members).toContain('traps')
+  })
+
+  it('leaves the lifter’s own choices alone', () => {
+    const completed = completeTiers(saved, ['biceps', 'lats', 'calves', 'traps'])
+
+    expect(completed.find((tier) => tier.rank === 1)?.members).toEqual(['biceps'])
+    expect(completed.find((tier) => tier.rank === 2)?.members).toEqual(['lats'])
+  })
+
+  it('returns the same list when nothing is missing', () => {
+    // Identity, so a read that changes nothing does not look like a write.
+    expect(completeTiers(saved, ['biceps', 'lats', 'calves'])).toBe(saved)
   })
 })

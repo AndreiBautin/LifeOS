@@ -87,6 +87,7 @@ const UPPER: readonly MuscleGroup[] = [
   'rear-delts',
   'lats',
   'upper-back',
+  'traps',
   'biceps',
   'triceps',
   'forearms',

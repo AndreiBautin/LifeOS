@@ -64,6 +64,21 @@ export const DEFAULT_LANDMARKS: LandmarkSet = {
   triceps: { mv: 4, mev: 6, mav: 14, mrv: 20 },
   lats: { mv: 6, mev: 10, mav: 18, mrv: 25 },
   'upper-back': { mv: 6, mev: 10, mav: 20, mrv: 26 },
+  /*
+   * A low minimum effective volume, deliberately.
+   *
+   * The traps are the clearest case in the whole set of a muscle paid
+   * mostly by work programmed for something else — every deadlift, row
+   * and heavy carry loads them isometrically. RP publishes them this way
+   * for the same reason, and it is why a lifter who has never done a
+   * shrug still has traps.
+   *
+   * They were inside `upper-back` until it became clear that one number
+   * was covering two regions: a barbell row and a barbell shrug were both
+   * "upper back" while training almost nothing in common, so the row
+   * satisfied a target the shrug was scheduled to fill.
+   */
+  traps: { mv: 0, mev: 4, mav: 12, mrv: 20 },
   biceps: { mv: 4, mev: 8, mav: 16, mrv: 22 },
   forearms: { mv: 0, mev: 2, mav: 10, mrv: 16 },
   quads: { mv: 6, mev: 8, mav: 16, mrv: 22 },
