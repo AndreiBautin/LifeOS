@@ -409,7 +409,31 @@ function assignStrengthLifts(
     }
   }
 
-  return perDay
+  /*
+   * When a day hosts two competition lifts, alternate which one opens it.
+   *
+   * A tier-2 squat and a tier-2 deadlift both want two sessions and there
+   * are only two lower days, so they share both. Left alone the order is
+   * whatever `STRENGTH_LIFTS` happens to list, which means the same lift
+   * opens fresh every time and the other one is always second, always
+   * after five heavy sets. Over a block that is not a small difference —
+   * the second lift never gets a session where it is the priority.
+   *
+   * Alternating is counted across the days that actually hold a pair
+   * rather than by day index, so the two lower days swap even when they
+   * are Tuesday and Thursday with an untouched Wednesday between them.
+   *
+   * Deterministic, which matters: assembly must produce a byte-identical
+   * program for the same settings, and a workout in progress refers to
+   * its sets by index.
+   */
+  let paired = 0
+  return perDay.map((lifts) => {
+    if (lifts.length < 2) return lifts
+
+    paired += 1
+    return paired % 2 === 0 ? [...lifts].reverse() : lifts
+  })
 }
 
 /**
@@ -1226,7 +1250,7 @@ function describeDay(
   const direct = emptyVolumeMap()
   const indirect = emptyVolumeMap()
 
-  let strengthName: string | undefined
+  const strengthNames: string[] = []
   let hasStrength = false
   let hasHypertrophy = false
   let hasConditioning = false
@@ -1238,7 +1262,18 @@ function describeDay(
     if (exercise === undefined) continue
 
     if (slot.role === 'strength') {
-      strengthName = exercise.name
+      /*
+       * Every competition lift on the day, in the order it is performed.
+       *
+       * This kept one name and overwrote it, which was invisible while a
+       * day held a single lift and wrong the moment two shared one: the
+       * description named the *last* strength slot, so a session opening
+       * with the squat announced itself as a deadlift day.
+       *
+       * Deduped because a lift is two slots — a top set and its back-offs
+       * — and naming it twice reads as a stutter.
+       */
+      if (!strengthNames.includes(exercise.name)) strengthNames.push(exercise.name)
       hasStrength = true
     }
     if (slot.role === 'hypertrophy' || slot.role === 'assistance') hasHypertrophy = true
@@ -1293,7 +1328,10 @@ function describeDay(
    * The lift keeps its own capitalisation. The parenthetical variant is
    * dropped: "Low Bar Squat", not "Low Bar Squat (competition)".
    */
-  const lift = strengthName?.replace(/\s*\([^)]*\)\s*/g, '').trim()
+  const lift =
+    strengthNames.length === 0
+      ? undefined
+      : strengthNames.map((name) => name.replace(/\s*\([^)]*\)\s*/g, '').trim()).join(' and ')
 
   /*
    * What kind of session it is — the headline, named from the roles

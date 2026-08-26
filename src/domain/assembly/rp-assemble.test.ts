@@ -90,7 +90,7 @@ describe('the assembled block', () => {
     expect([...kinds].sort()).toEqual(['rpe', 'rts-backoff'])
   })
 
-  it('gives every day exactly one competition lift, and benches three times', () => {
+  it('benches three times and shares the lower days between squat and deadlift', () => {
     const week = block?.weeks[0]
     const mains = (week?.days ?? []).map((day) => [
       ...new Set(
@@ -101,25 +101,47 @@ describe('the assembled block', () => {
     ])
 
     /*
-     * The bench opens all three upper days. It is the lift with the most
-     * room for frequency — it recovers fastest of the three and it is
-     * the one an upper day is built around anyway — and the two
-     * supporting sessions spend a fraction of the fatigue allowance
-     * rather than a full one. See RpDay.strengthEmphasis.
-     */
-    /*
-     * Five sessions across five days, one each. That tidiness falls out
-     * of the tiers rather than being arranged: the bench is specialised
-     * and gets three, the squat and the deadlift are maintained and get
-     * one apiece.
+     * Eight sessions across five days. The bench is specialised and takes
+     * all three upper days; the squat and the deadlift are both building
+     * and want two sessions each, and there are only two lower days — so
+     * they share both.
+     *
+     * The order is the interesting part. Tuesday opens with the squat and
+     * Thursday with the deadlift, because a lift that is always second is
+     * a lift that is never trained fresh. See `assignStrengthLifts`.
      */
     expect(mains).toEqual([
       ['bench-press'],
-      ['low-bar-squat'],
+      ['low-bar-squat', 'sumo-deadlift'],
       ['bench-press'],
-      ['sumo-deadlift'],
+      ['sumo-deadlift', 'low-bar-squat'],
       ['bench-press'],
     ])
+  })
+
+  it('alternates which lift opens a day that hosts two', () => {
+    /*
+     * Guarding the property rather than the arrangement: whatever two
+     * lifts share a pair of days, they must not appear in the same order
+     * on both. Five heavy sets before the second one is a real cost, and
+     * paying it always with the same lift is the failure.
+     */
+    const week = block?.weeks[0]
+    const pairs = (week?.days ?? [])
+      .map((day) => [
+        ...new Set(
+          day.slots
+            .filter((slot) => slot.role === 'strength')
+            .flatMap((slot) =>
+              slot.exercise.kind === 'specific' ? [slot.exercise.exerciseId] : [],
+            ),
+        ),
+      ])
+      .filter((lifts) => lifts.length > 1)
+
+    expect(pairs.length).toBeGreaterThan(1)
+    expect(pairs[0]).not.toEqual(pairs[1])
+    expect([...(pairs[0] ?? [])].sort()).toEqual([...(pairs[1] ?? [])].sort())
   })
 
   /*
@@ -173,10 +195,11 @@ describe('the assembled block', () => {
         ),
       ).length
 
-    // Bench is tier 1; squat and deadlift are maintained.
+    // Bench is specialised and takes three; the squat and the deadlift
+    // are both building and take two each, sharing the two lower days.
     expect(sessions('bench-press')).toBe(3)
-    expect(sessions('low-bar-squat')).toBe(1)
-    expect(sessions('sumo-deadlift')).toBe(1)
+    expect(sessions('low-bar-squat')).toBe(2)
+    expect(sessions('sumo-deadlift')).toBe(2)
   })
 
   /*
@@ -242,10 +265,19 @@ describe('naming a day after what is in it', () => {
     expect(week.days[1]?.label).toBe('Tuesday — Strength, Hypertrophy and Conditioning')
   })
 
-  it('names the competition lift first in the detail line', () => {
+  it('names every competition lift, in the order they are performed', () => {
+    /*
+     * A day can hold two, and it used to name whichever came last — so a
+     * session opening with the squat described itself as a deadlift day.
+     * The order here is not cosmetic: it is the order the lifter will do
+     * them in, and Thursday's is deliberately the reverse of Tuesday's.
+     */
     const tuesday = week.days[1]
+    const thursday = week.days[3]
 
-    expect(tuesday?.focus).toMatch(/^Low Bar Squat, then /)
+    expect(tuesday?.focus).toMatch(/^Low Bar Squat and Sumo Deadlift, then /)
+    expect(thursday?.focus).toMatch(/^Sumo Deadlift and Low Bar Squat, then /)
+
     // Without the parenthetical variant, which is catalogue bookkeeping.
     expect(tuesday?.focus).not.toContain('(')
   })
@@ -318,13 +350,18 @@ describe('how often a muscle is trained', () => {
    */
   it('trains a specialised muscle directly more than once a week', () => {
     /*
-     * The forearms are not in this list, and that is not an oversight.
-     * Every barbell in the week pays them, so they reach their landmark
-     * ceiling on secondary credit alone — a second direct session would
-     * put them over MRV, which is a worse answer than one. A muscle
-     * trained by everything does not need to be trained by anything.
+     * Read from the tiers rather than listed, so promoting a muscle does
+     * not quietly leave it unchecked.
+     *
+     * The chest is excluded because the bench and the dips cover it three
+     * days a week without a single slot being scheduled *for* it — the
+     * property under test is about muscles that need dedicated work, and
+     * a muscle paid by everything does not.
      */
-    for (const muscle of ['side-delts', 'biceps', 'triceps'] as const) {
+    const specialised = DEFAULT_MUSCLE_TIERS.find((tier) => tier.rank === 1)?.members ?? []
+
+    for (const muscle of specialised) {
+      if (muscle === 'chest') continue
       expect(directDays(muscle), muscle).toBeGreaterThan(1)
     }
   })
@@ -591,11 +628,18 @@ describe('tiers driving volume', () => {
     expect(volume['side-delts']).toBeGreaterThan(volume.calves)
   })
 
-  it('weights the three arm muscles equally, as tiered', () => {
-    const positions = (['biceps', 'triceps', 'forearms'] as const).map((muscle) =>
-      priorityPosition(DEFAULT_MUSCLE_TIERS, muscle),
+  it('separates the biceps from the triceps, which the week pays differently', () => {
+    /*
+     * This asserted the opposite — biceps, triceps and forearms weighted
+     * as one — which was right while the arms shared a tier and became a
+     * test defending an arrangement nobody wanted. Three bench sessions
+     * and a day of dips cover the triceps before anything is scheduled
+     * for them; the biceps get only what the pulls pay. Tiering them
+     * together asked for a symmetry the week does not have.
+     */
+    expect(priorityPosition(DEFAULT_MUSCLE_TIERS, 'biceps')).toBeGreaterThan(
+      priorityPosition(DEFAULT_MUSCLE_TIERS, 'triceps'),
     )
-    expect(new Set(positions).size).toBe(1)
   })
 
   it('gives every working week the same volume', () => {

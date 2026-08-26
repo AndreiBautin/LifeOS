@@ -248,27 +248,40 @@ export function validateTiers<T extends string>(tiers: readonly Tier<T>[]): void
  */
 export const DEFAULT_STRENGTH_TIERS: StrengthTiers = [
   /*
-   * One session each for the squat and the deadlift, three for the
-   * bench, which is five strength sessions across five days — exactly
-   * one per day.
+   * Bench three times, squat and deadlift twice each.
    *
-   * That tidiness is a consequence rather than the goal. The tiers say
-   * the legs are maintained, and squatting and deadlifting twice a week
-   * each contradicted that: the quads came out at fifteen sets against a
-   * seven-set target and the glutes at fifteen against two. Strength
-   * frequency and muscle priority now say the same thing.
+   * Eight strength sessions across five days, so both lower lifts share
+   * both lower days — there are only two of them and a tier-2 lift wants
+   * two sessions. Those days are demanding on purpose.
+   *
+   * An earlier default put both lower lifts at tier 3, one session each,
+   * reasoning that maintained legs should not be squatted twice a week.
+   * That reads well and answers the wrong question. The muscle tiers
+   * govern *hypertrophy* volume; frequency on a competition lift is about
+   * the strength and the skill. Squatting twice is a strength decision,
+   * and how many quad sets it happens to pay is a consequence the
+   * capacity report on the Plan screen will show either way.
    */
   { rank: 1, members: ['bench'], label: 'Specialising' },
-  { rank: 2, members: [], label: 'Building' },
-  { rank: 3, members: ['squat', 'deadlift'], label: 'Maintaining' },
+  { rank: 2, members: ['squat', 'deadlift'], label: 'Building' },
+  { rank: 3, members: [], label: 'Maintaining' },
 ]
 
 export const DEFAULT_MUSCLE_TIERS: MuscleTiers = [
-  {
-    rank: 1,
-    members: ['biceps', 'triceps', 'forearms', 'side-delts', 'chest'],
-    label: 'Specialising',
-  },
+  /*
+   * Four at the top, and the arms no longer move together.
+   *
+   * The biceps stay specialised and the triceps drop to building, which
+   * looks inconsistent until you count what pays them: three bench
+   * sessions and a day of dips cover the triceps before anything is
+   * scheduled for them, while the biceps get only what the pulls pay.
+   * Tiering the arms as a unit asked for a symmetry the week does not
+   * have.
+   *
+   * The lats come up because the pulls are the only thing training them,
+   * and they were finishing the week short of target.
+   */
+  { rank: 1, members: ['chest', 'side-delts', 'lats', 'biceps'], label: 'Specialising' },
   // Front delts sit here rather than in the bottom tier so the overhead
   // press keeps a real allocation. Its primary muscle is what decides how
   // many sets it gets, and at tier 3 a lift meant to stay in the rotation
@@ -282,16 +295,29 @@ export const DEFAULT_MUSCLE_TIERS: MuscleTiers = [
    * the room, and abs are the one thing a maintained lower body should
    * still be working directly.
    */
-  { rank: 2, members: ['lats', 'upper-back', 'front-delts', 'core'], label: 'Building' },
   {
-    rank: 3,
-    // Traps are here because almost everything else pays them: every
-    // deadlift, row and heavy carry loads them isometrically. A higher
-    // tier would schedule shrugs to fill a target the rest of the week
-    // had already met.
-    members: ['rear-delts', 'traps', 'quads', 'hamstrings', 'glutes', 'calves'],
-    label: 'Maintaining',
+    rank: 2,
+    members: [
+      'front-delts',
+      'rear-delts',
+      'triceps',
+      'upper-back',
+      'traps',
+      'forearms',
+      'calves',
+      'core',
+    ],
+    label: 'Building',
   },
+  /*
+   * The legs, maintained — for *volume*.
+   *
+   * The tier most likely to be misread now that the squat and the
+   * deadlift are trained twice a week. It is not a contradiction: these
+   * numbers decide how much dedicated leg work the week schedules, and
+   * the answer is none beyond what the competition lifts already pay.
+   */
+  { rank: 3, members: ['quads', 'hamstrings', 'glutes'], label: 'Maintaining' },
 ]
 
 /* -------------------------------------------------------------------- */

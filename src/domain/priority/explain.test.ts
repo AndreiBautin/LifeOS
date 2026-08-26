@@ -17,7 +17,10 @@ describe('naming a block from its tiers', () => {
   it('names it after what is actually specialised', () => {
     const described = describeBlock(DEFAULT_MUSCLE_TIERS, DEFAULT_STRENGTH_TIERS)
 
-    expect(described.name).toBe('Arms, side delts and chest · Bench press strength')
+    // Reads the shipped tiers back, so it fails when the defaults move —
+    // which is the point: the name is the one line describing them and
+    // nobody would otherwise notice it had gone stale.
+    expect(described.name).toBe('Chest, side delts, lats and biceps · Bench press strength')
   })
 
   it('follows a tier when it moves', () => {
@@ -70,12 +73,24 @@ describe('naming a block from its tiers', () => {
    * the deadlift, are different blocks and were indistinguishable by name.
    */
   it('carries the strength focus in the title, not only the volume focus', () => {
-    const deadliftLed = describeBlock(DEFAULT_MUSCLE_TIERS, [
+    const volume = [
+      { rank: 1, members: ['chest'] as const, label: 'Specialising' },
+      { rank: 2, members: ['lats'] as const, label: 'Building' },
+    ]
+
+    const benchLed = describeBlock(volume, [
+      { rank: 1, members: ['bench'], label: 'Specialising' },
+      { rank: 2, members: ['squat', 'deadlift'], label: 'Building' },
+    ])
+    const deadliftLed = describeBlock(volume, [
       { rank: 1, members: ['deadlift'], label: 'Specialising' },
       { rank: 2, members: ['squat', 'bench'], label: 'Building' },
     ])
 
-    expect(deadliftLed.name).toBe('Arms, side delts and chest · Deadlift strength')
+    // Same volume tiers, different lead lift: two different blocks, and
+    // they must not share a name.
+    expect(benchLed.name).toBe('Chest · Bench press strength')
+    expect(deadliftLed.name).toBe('Chest · Deadlift strength')
   })
 
   it('names every lead lift when more than one leads', () => {
@@ -88,11 +103,12 @@ describe('naming a block from its tiers', () => {
   })
 
   it('falls back to the volume focus alone when no lift leads', () => {
-    const flat = describeBlock(DEFAULT_MUSCLE_TIERS, [
-      { rank: 2, members: ['squat', 'bench', 'deadlift'], label: 'Building' },
-    ])
+    const flat = describeBlock(
+      [{ rank: 1, members: ['chest'], label: 'Specialising' }],
+      [{ rank: 2, members: ['squat', 'bench', 'deadlift'], label: 'Building' }],
+    )
 
-    expect(flat.name).toBe('Arms, side delts and chest')
+    expect(flat.name).toBe('Chest')
   })
 })
 

@@ -73,9 +73,17 @@ describe('a muscle tier changes that muscle and nothing else', () => {
 
 describe('priority position', () => {
   it('puts the top tier high and the bottom tier low', () => {
-    const top = priorityPosition(DEFAULT_MUSCLE_TIERS, 'triceps')
-    const middle = priorityPosition(DEFAULT_MUSCLE_TIERS, 'lats')
-    const bottom = priorityPosition(DEFAULT_MUSCLE_TIERS, 'calves')
+    // Taken from the tiers rather than named, so moving a muscle between
+    // tiers cannot break a test that is about the ordering.
+    const memberOf = (rank: number) => {
+      const member = DEFAULT_MUSCLE_TIERS.find((tier) => tier.rank === rank)?.members[0]
+      if (member === undefined) throw new Error(`tier ${String(rank)} is empty`)
+      return member
+    }
+
+    const top = priorityPosition(DEFAULT_MUSCLE_TIERS, memberOf(1))
+    const middle = priorityPosition(DEFAULT_MUSCLE_TIERS, memberOf(2))
+    const bottom = priorityPosition(DEFAULT_MUSCLE_TIERS, memberOf(3))
 
     expect(top).toBeGreaterThan(middle)
     expect(middle).toBeGreaterThan(bottom)
@@ -84,13 +92,15 @@ describe('priority position', () => {
   })
 
   it('treats every member of a tier identically', () => {
-    // Arms are weighted equally by request: biceps, triceps and forearms
-    // share tier 1 with the side delts and must come out the same.
-    const positions = (['biceps', 'triceps', 'forearms', 'side-delts'] as const).map((muscle) =>
-      priorityPosition(DEFAULT_MUSCLE_TIERS, muscle),
-    )
+    // A tier is a statement about rank and nothing else — two muscles
+    // sharing one must produce the same position, whichever they are.
+    for (const tier of DEFAULT_MUSCLE_TIERS) {
+      if (tier.members.length < 2) continue
 
-    expect(new Set(positions).size).toBe(1)
+      const positions = tier.members.map((muscle) => priorityPosition(DEFAULT_MUSCLE_TIERS, muscle))
+
+      expect(new Set(positions).size, tier.label).toBe(1)
+    }
   })
 
   it('places an untiered muscle at the bottom rather than throwing', () => {
