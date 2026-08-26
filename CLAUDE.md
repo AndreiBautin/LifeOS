@@ -211,6 +211,31 @@ The three rules are tests, not prose: **no ladder is fed by XP** (a ladder
 must name an external standard), **no rating is promoted to a ladder** (no
 measurement may be claimed by both), and **nothing is counted twice**
 (`creditFor` returns one credit or none). `registry.test.ts` fails on each.
+
+**The backlog is the first absorbed app, and it is namespaced for a
+reason.** `domain/backlog/` holds a second `Settings` and a second
+`priority/`: Lift's priority is muscle tiers and capacity, the backlog's is
+how much you want to get to a book. The directory is what keeps them
+apart, and `BacklogSettings` / `BacklogItemId` are named for their area for
+the same reason. Its `updatedAt` is optional and written by the repository,
+not by `createItem` — the domain deliberately leaves it undefined.
+
+**A progress log is unioned by day, and it is the only merged record in
+the app.** `unionProgress` in `domain/sync/payload.ts`. Everything else is
+whole-record last-write-wins, which is right for a workout — you log sets
+on the phone and read them at the desk — and wrong for a backlog: a chapter
+on the phone on Monday and an episode on the laptop on Tuesday, with
+neither device having heard from the other, loses Monday entirely. Do not
+"simplify" this back to a record-level winner; `synchronise.test.ts` fails
+in two places if you do.
+
+**Logging progress is serialised per item, by hand.** `serialise` in
+`features/backlog/hooks.ts`. It is a read-modify-write, so two in flight
+at once count two taps as one. React Query's `scope` does exactly this job
+and was tried first: it queues correctly and then does not drain when an
+observer unmounts mid-queue — which a hot reload does — leaving the row
+permanently dead with no error anywhere. Four lines of promise chain has
+no such failure mode.
 **Upper, lower, upper, lower, upper — and no borrowing.** `RpDay.muscles`,
 one list, one fill pass. Two earlier attempts at balancing the week are
 in the git history and both were wrong: listing the arms on every day

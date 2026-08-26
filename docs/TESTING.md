@@ -122,3 +122,11 @@ Naming these is the point of the section.
   barbell bench press is a barbell bench press catches nothing. What _is_
   tested is that every exercise a built-in program references exists in
   the library — the failure that would render a blank row.
+- **The backlog's screen, and the serialised progress chain behind it.**
+  Both were checked by driving the running app — three rapid taps landing
+  as three, a deletion writing a tombstone — rather than in jsdom. The
+  chain exists because of a race between two in-flight writes, and a test
+  that fakes the timing of that race is a test of the fake. What _is_
+  tested is everything the screen calls: the rules in `domain/backlog/`,
+  the operations in `application/use-cases/backlog/`, and the
+  progress-log merge in `synchronise.test.ts`.

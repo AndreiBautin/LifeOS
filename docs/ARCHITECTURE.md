@@ -148,6 +148,30 @@ Starting a session and logging the top set:
    the instance by one day — _on completion, not on the calendar_, so a
    missed Tuesday costs nothing.
 
+## The backlog, and what a second domain changed
+
+Lift is becoming the hub that every other life-tracking app is absorbed
+into — [docs/GAME_MODEL.md](GAME_MODEL.md) decides what a number is
+allowed to mean across all of them, and the backlog is the first to land.
+
+It occupies the same four layers as training and touches nothing in it:
+`domain/backlog/` holds the rules, `application/use-cases/backlog/` the
+operations, an `items` object store at `DB_VERSION 4` the records, and
+`features/backlog/` one screen.
+
+Two decisions are worth knowing before reading that code.
+
+**A progress log is the one thing merged rather than replaced.** Every
+other record in this app wins or loses whole, which is right for a workout
+and wrong for a backlog — see `unionProgress` in `domain/sync/payload.ts`
+and the section below.
+
+**`domain/backlog/` is namespaced because two domains collide.** Both apps
+had a `Settings` and a `priority/`; Lift's priority is muscle tiers and
+capacity, the backlog's is how much you want to get to something. The
+directory is what keeps the two apart, and `BacklogSettings` and
+`BacklogItemId` are named for their area for the same reason.
+
 ## Autoregulation
 
 Check-ins are **recorded events**, and adjusting a volume landmark is a

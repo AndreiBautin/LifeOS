@@ -1,5 +1,6 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom'
 
+import { BacklogPage } from '@/features/backlog/BacklogPage'
 import { CharacterPage } from '@/features/character/CharacterPage'
 import { HistoryPage } from '@/features/history/HistoryPage'
 import { PlanPage } from '@/features/plan/PlanPage'
@@ -28,6 +29,7 @@ export const router = createBrowserRouter(
         { path: 'train', element: <TrainPage /> },
         { path: 'plan', element: <PlanPage /> },
         { path: 'program', element: <ProgramPage /> },
+        { path: 'backlog', element: <BacklogPage /> },
         { path: 'character', element: <CharacterPage /> },
         { path: 'history', element: <HistoryPage /> },
         { path: 'settings', element: <SettingsPage /> },
