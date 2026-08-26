@@ -277,11 +277,18 @@ log, but both _label_ as "Hypertrophy".
 
 **A lift rotates through variations; the competition version is always
 first.** `STRENGTH_VARIATIONS` in `domain/exercises/catalogue.ts`. The
-bench runs touch-and-go, paused, close-grip across its three sessions,
+bench runs **paused, touch-and-go, close-grip** across its three sessions,
 picked by the lift's session ordinal — not by the day. Index 0 is the
 competition version so that dropping the bench a tier, which buys fewer
 sessions, costs the variations rather than the lift the total is measured
 on.
+
+**The paused bench is the competition lift**, because a raw meet bench is
+judged on a pause and a touch-and-go single measures something else.
+`bench-press` is therefore the _touch-and-go_ variation despite its slug,
+which is the one genuinely confusing thing here — the slug is kept
+because it is written into every existing log, and renaming ids to match
+a change of meaning is how history stops resolving.
 
 This is a rotation, **not** an anchor, and the distinction is the reason
 `RpDay.anchors` is not coming back: nothing is pinned to a _day_. The day
@@ -298,11 +305,20 @@ max mistake in a new costume. It is applied where the athlete is
 assembled, never inside `resolve`, so resolution stays a function of the
 numbers it is handed.
 
-The cost, stated plainly: only `bench-press` is `isCompetition`, so the
-character sheet's bench standard and the total now move on one session a
-week rather than three. That is correct — the other two days are not
-measuring the lift being scored — but it is a real change to how fast
-that number responds.
+The cost, stated plainly: only `paused-bench-press` is `isCompetition`,
+so the character sheet's bench standard and the total now move on one
+session a week rather than three. That is correct — the other two days
+are not measuring the lift being scored — but it is a real change to how
+fast that number responds.
+
+`migrateBenchEstimate` moved the old `bench-press` estimate onto the
+paused bench at 95%, because a number stored under that slug was pressed
+without a pause whatever the exercise was called at the time; copying it
+across would have credited a paused max nobody had lifted. It is
+idempotent and never overwrites an existing paused estimate, so a
+correction sticks. **A settings migration that silently changes a
+strength score is the failure to avoid here** — this one is discounted,
+tested in both directions, and visible as an 11 lb drop in the total.
 
 **The competition lift is two slots, not one.** They were merged once on
 the reasoning that it is one exercise in one trip to the rack — true, and

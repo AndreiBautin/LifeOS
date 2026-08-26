@@ -52,7 +52,7 @@ interface CatalogueEntry {
  */
 export const STRENGTH_LIFT_SLUGS = {
   squat: 'low-bar-squat',
-  bench: 'bench-press',
+  bench: 'paused-bench-press',
   deadlift: 'sumo-deadlift',
 } as const
 
@@ -73,7 +73,7 @@ export const STRENGTH_LIFT_SLUGS = {
  */
 export const STRENGTH_VARIATIONS: Record<keyof typeof STRENGTH_LIFT_SLUGS, readonly string[]> = {
   squat: ['low-bar-squat'],
-  bench: ['bench-press', 'paused-bench-press', 'close-grip-bench-press'],
+  bench: ['paused-bench-press', 'bench-press', 'close-grip-bench-press'],
   deadlift: ['sumo-deadlift'],
 }
 
@@ -91,8 +91,11 @@ export const STRENGTH_VARIATIONS: Record<keyof typeof STRENGTH_LIFT_SLUGS, reado
 export const VARIATION_OF: Readonly<
   Record<string, { readonly of: string; readonly factor: number }>
 > = {
-  'paused-bench-press': { of: 'bench-press', factor: 0.95 },
-  'close-grip-bench-press': { of: 'bench-press', factor: 0.9 },
+  // Touch-and-go is *heavier* than the paused version — no pause means no
+  // loss of stretch reflex — so this factor is above one. It reads wrong
+  // until you remember which lift is the reference.
+  'bench-press': { of: 'paused-bench-press', factor: 1.05 },
+  'close-grip-bench-press': { of: 'paused-bench-press', factor: 0.95 },
 }
 
 /** Two minutes on everything, as actually trained. */
@@ -103,7 +106,7 @@ const ENTRIES: readonly CatalogueEntry[] = [
   /* ---- The total ---------------------------------------------------- */
   {
     slug: 'bench-press',
-    name: 'Bench Press',
+    name: 'Touch-and-Go Bench Press',
     primaryMuscle: 'chest',
     secondaryMuscles: ['triceps', 'front-delts'],
     equipment: 'barbell',
@@ -114,7 +117,6 @@ const ENTRIES: readonly CatalogueEntry[] = [
     systemicCost: 0.55,
     // No spotter in a garage. A failed rep here is an emergency.
     safeToFail: false,
-    isCompetition: true,
     loadBasis: 'estimated-1rm',
     defaultRepRange: { low: 3, high: 6 },
     defaultRestSeconds: REST_HEAVY,
@@ -131,15 +133,17 @@ const ENTRIES: readonly CatalogueEntry[] = [
    * wrong — and it would make history unable to answer what the close
    * grip actually does.
    *
-   * Neither is `isCompetition`. Only the touch-and-go bench feeds the
-   * character sheet's bench standard and the total, which is the cost of
-   * this: the competition estimate now moves on one session a week
-   * rather than three. That is the honest arrangement — the other two
-   * days are not measuring the lift being scored.
+   * The **paused** version is the competition lift, because a raw meet
+   * bench is judged on a pause and a touch-and-go single is a different
+   * measurement. So the paused bench is what the character sheet scores
+   * and what feeds the total; the other two are training. The cost is
+   * that the scored number now moves on one session a week rather than
+   * three — honest, because the other two days are not measuring the lift
+   * being scored, but slower to respond.
    */
   {
     slug: 'paused-bench-press',
-    name: 'Paused Bench Press',
+    name: 'Bench Press (Competition)',
     primaryMuscle: 'chest',
     secondaryMuscles: ['triceps', 'front-delts'],
     equipment: 'barbell',
@@ -149,6 +153,7 @@ const ENTRIES: readonly CatalogueEntry[] = [
     sfr: 3,
     systemicCost: 0.55,
     safeToFail: false,
+    isCompetition: true,
     loadBasis: 'estimated-1rm',
     defaultRepRange: { low: 3, high: 6 },
     defaultRestSeconds: REST_HEAVY,

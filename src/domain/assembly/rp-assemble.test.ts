@@ -111,9 +111,9 @@ describe('the assembled block', () => {
      * a lift that is never trained fresh. See `assignStrengthLifts`.
      */
     expect(mains).toEqual([
-      ['bench-press'],
-      ['low-bar-squat', 'sumo-deadlift'],
       ['paused-bench-press'],
+      ['low-bar-squat', 'sumo-deadlift'],
+      ['bench-press'],
       ['sumo-deadlift', 'low-bar-squat'],
       ['close-grip-bench-press'],
     ])
@@ -165,7 +165,7 @@ describe('the assembled block', () => {
         ),
     )
 
-    expect([...new Set(benches)]).toEqual(['bench-press'])
+    expect([...new Set(benches)]).toEqual(['paused-bench-press'])
   })
 
   it('alternates which lift opens a day that hosts two', () => {

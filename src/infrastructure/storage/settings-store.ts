@@ -3,6 +3,7 @@ import { DEFAULT_SETTINGS, SETTINGS_SCHEMA_VERSION } from '@/domain/settings/set
 import { MUSCLE_GROUPS } from '@/domain/exercises/taxonomy'
 import { completeTiers } from '@/domain/priority/tiers'
 import type { SettingsRepository } from '@/domain/repositories/ports'
+import { migrateBenchEstimate } from '@/domain/exercises/derived-maxes'
 import { syncedPartChanged } from '@/domain/settings/synced'
 import { STORAGE_KEYS } from '@/config/storage-keys'
 
@@ -155,14 +156,22 @@ function mergeWithDefaults(parsed: unknown): AppSettings {
     // winning. It is indistinguishable from never having set one, and an
     // earlier version wrote `{}` on first run — which then permanently
     // shadowed the seeded maxes for anyone who had already opened the app.
-    estimatedMaxes: hasEntries(stored.estimatedMaxes)
-      ? Object.fromEntries(
-          Object.entries(stored.estimatedMaxes).filter(
-            (entry): entry is [string, number] =>
-              typeof entry[1] === 'number' && Number.isFinite(entry[1]) && entry[1] > 0,
-          ),
-        )
-      : DEFAULT_SETTINGS.estimatedMaxes,
+    /*
+     * Migrated on read, so the move survives a device that has not opened
+     * the settings screen since the competition bench changed. Idempotent
+     * and stops the moment a paused estimate exists, so a correction is
+     * never overwritten — see `migrateBenchEstimate`.
+     */
+    estimatedMaxes: migrateBenchEstimate(
+      hasEntries(stored.estimatedMaxes)
+        ? Object.fromEntries(
+            Object.entries(stored.estimatedMaxes).filter(
+              (entry): entry is [string, number] =>
+                typeof entry[1] === 'number' && Number.isFinite(entry[1]) && entry[1] > 0,
+            ),
+          )
+        : DEFAULT_SETTINGS.estimatedMaxes,
+    ),
     excludedExercises: Array.isArray(stored.excludedExercises)
       ? (stored.excludedExercises as AppSettings['excludedExercises'])
       : DEFAULT_SETTINGS.excludedExercises,

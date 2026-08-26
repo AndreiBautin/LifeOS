@@ -107,6 +107,10 @@ export const DEFAULT_SETTINGS: AppSettings = {
   // each lift is trained.
   estimatedMaxes: {
     [asExerciseId('low-bar-squat')]: 303,
+    // The paused bench is the competition lift and the one the character
+    // sheet scores; the touch-and-go number is the same bar without the
+    // pause, so it sits about five per cent higher.
+    [asExerciseId('paused-bench-press')]: 217,
     [asExerciseId('bench-press')]: 228,
     [asExerciseId('sumo-deadlift')]: 368,
     [asExerciseId('overhead-press')]: 152,
