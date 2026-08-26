@@ -3,6 +3,9 @@ import { useState } from 'react'
 
 import type { WorkoutReport } from '@/application/use-cases/training/finish-workout'
 import { useSettings } from '@/app/context'
+import type { MuscleGroup } from '@/domain/exercises/taxonomy'
+import { MUSCLE_GROUP_LABELS } from '@/domain/exercises/taxonomy'
+import type { ProgramDay } from '@/domain/programs/program'
 import type { SetPrescription } from '@/domain/programs/prescription'
 import { describeReps } from '@/domain/programs/prescription'
 import { clampPosition, dayAt, weekAt } from '@/application/use-cases/programs/current-program'
@@ -130,6 +133,8 @@ export function TrainPage() {
               ))}
             </ul>
 
+            <VolumeTargets day={nextDay} />
+
             <Button
               variant="primary"
               size="lg"
@@ -182,6 +187,45 @@ export function TrainPage() {
           Log a session from scratch
         </Button>
       </Section>
+    </div>
+  )
+}
+
+/**
+ * What the day is actually trying to deliver, per muscle.
+ *
+ * The per-exercise counts above it are the *current split*, not the
+ * plan. RTS back-off volume is discovered rather than prescribed — you
+ * stop when the implied max has dropped by the day's allowance — and
+ * `replanAccessoryVolume` resizes the accessories from whatever the
+ * strength work turned out to be. So "2 × Dips" is a number the session
+ * will change under you, while "chest 6" is the number it is changing it
+ * to. Showing only the first states a precision the app does not have
+ * and hides the figure that survives.
+ *
+ * Credited sets, so a muscle paid half by a compound reads the same here
+ * as it does everywhere else. Ordered by size because the first two or
+ * three are what the day is *for* and the tail is rounding.
+ */
+function VolumeTargets({ day }: { day: ProgramDay }) {
+  const targets = Object.entries(day.volumeTargets ?? {}) as [MuscleGroup, number][]
+  if (targets.length === 0) return null
+
+  const ordered = [...targets].sort((a, b) => b[1] - a[1])
+
+  return (
+    <div className="border-ink-800 mb-4 border-t pt-3">
+      <p className="text-ink-500 text-xs">
+        Aiming for{' '}
+        <span className="text-ink-300 numeric">
+          {ordered
+            .map(([muscle, sets]) => `${MUSCLE_GROUP_LABELS[muscle].toLowerCase()} ${String(sets)}`)
+            .join(' · ')}
+        </span>
+      </p>
+      <p className="text-ink-600 mt-1 text-xs">
+        Set counts move with the bar — cut the back-offs short and the accessories grow to cover it.
+      </p>
     </div>
   )
 }

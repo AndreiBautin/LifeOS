@@ -458,6 +458,55 @@ describe('the order a session is performed in', () => {
     expect(monday).toEqual(['shoulder-dislocation', 'rotator-cuff-plate', 'band-pull-apart'])
   })
 
+  it('runs the isolation work in tier order, priority first', () => {
+    /*
+     * The fill orders by muscle *debt*, which answers a different
+     * question. A prioritised muscle nearly paid up for the week is owed
+     * less on a given day than a maintained one that has had nothing, so
+     * the biceps — tier 1, and over target across the week — came last on
+     * a day that also trained the traps at maintenance. Every isolation
+     * slot after the first is done more tired than the one before it, and
+     * a tier list is exactly the thing that should decide who gets the
+     * freshness.
+     */
+    for (const [index, day] of week.days.entries()) {
+      const ranks = day.slots
+        .filter((slot) => slot.role === 'assistance')
+        .flatMap((slot) => (slot.exercise.kind === 'specific' ? [slot.exercise.exerciseId] : []))
+        .flatMap((id) => {
+          const muscle = lookup(id)?.primaryMuscle
+          if (muscle === undefined) return []
+          const rank = DEFAULT_MUSCLE_TIERS.find((tier) => tier.members.includes(muscle))?.rank
+          return [rank ?? DEFAULT_MUSCLE_TIERS.length]
+        })
+
+      expect(
+        [...ranks].sort((a, b) => a - b),
+        `${day.label} (index ${String(index)})`,
+      ).toEqual(ranks)
+    }
+  })
+
+  it('does not let a tier list reorder the compounds', () => {
+    /*
+     * The guard on the rule above. Ordering isolation by priority is a
+     * cheap trade; doing it to the compounds would put a curl ahead of a
+     * heavy pull to honour a tier, which costs more than it fixes.
+     * Compounds stay on systemic cost — asserted by the cost test above,
+     * and pinned here against a future "just sort everything by tier".
+     */
+    const wednesday = week.days[2]?.slots ?? []
+    const compounds = wednesday
+      .filter((slot) => slot.role === 'hypertrophy')
+      .flatMap((slot) => (slot.exercise.kind === 'specific' ? [slot.exercise.exerciseId] : []))
+
+    // Barbell Row (upper back, tier 2) precedes Dips (chest, tier 1)
+    // because it is the heavier movement, not because of any tier.
+    expect(compounds.indexOf(asExerciseId('barbell-row'))).toBeLessThan(
+      compounds.indexOf(asExerciseId('dips')),
+    )
+  })
+
   it('finishes with conditioning', () => {
     for (const [index, day] of week.days.entries()) {
       const roles = rolesOn(index)

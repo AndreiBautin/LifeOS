@@ -333,7 +333,7 @@ function buildWeek(
     slots.push(...filled.slots)
     slots.push(...conditioning)
 
-    const ordered = inSessionOrder(slots, deps.exercises)
+    const ordered = inSessionOrder(slots, deps.exercises, recipe.muscleTiers)
 
     days.push({
       index: dayIndex,
@@ -1446,11 +1446,15 @@ function joinAnd(values: readonly string[]): string {
  *
  * So placement is a separate pass. Warm-ups, then the competition lift,
  * then compounds heaviest-first while the lifter is fresh, then
- * isolation, then conditioning. Nothing about *what* is in the session
- * changes — only the order, which is the part the debt ordering had no
- * business deciding.
+ * isolation **in tier order**, then conditioning. Nothing about *what* is
+ * in the session changes — only the order, which is the part the debt
+ * ordering had no business deciding.
  */
-function inSessionOrder(slots: readonly Slot[], library: readonly Exercise[]): readonly Slot[] {
+function inSessionOrder(
+  slots: readonly Slot[],
+  library: readonly Exercise[],
+  tiers: MuscleTiers,
+): readonly Slot[] {
   const rank = (slot: Slot): number => {
     switch (slot.role) {
       case 'warmup':
@@ -1467,10 +1471,25 @@ function inSessionOrder(slots: readonly Slot[], library: readonly Exercise[]): r
     }
   }
 
-  const cost = (slot: Slot): number => {
-    if (slot.exercise.kind !== 'specific') return 0
+  const exerciseFor = (slot: Slot): Exercise | undefined => {
+    if (slot.exercise.kind !== 'specific') return undefined
     const id = slot.exercise.exerciseId
-    return library.find((exercise) => exercise.id === id)?.systemicCost ?? 0
+    return library.find((exercise) => exercise.id === id)
+  }
+
+  const cost = (slot: Slot): number => exerciseFor(slot)?.systemicCost ?? 0
+
+  /**
+   * The tier of the muscle an isolation slot is *for*.
+   *
+   * Primary only. An isolation exercise has one muscle it exists to
+   * train, and ranking it by anything it merely pays on the way past
+   * would put a curl ahead of a lateral raise on the strength of the
+   * forearms.
+   */
+  const tierOf = (slot: Slot): number => {
+    const exercise = exerciseFor(slot)
+    return exercise === undefined ? tiers.length : tierRankOf(tiers, exercise.primaryMuscle)
   }
 
   return [...slots]
@@ -1488,6 +1507,30 @@ function inSessionOrder(slots: readonly Slot[], library: readonly Exercise[]): r
        * put the rotator-cuff work ahead of the shoulder dislocations, and
        * curls ahead of the lateral raises Monday is anchored to.
        */
+      /*
+       * Isolation runs in tier order, priority first.
+       *
+       * The fill's order is the muscle-*debt* order, which reads as
+       * correct and answers a different question. A prioritised muscle
+       * that is nearly paid up for the week is owed less on any given day
+       * than a maintained one that has had nothing — so the biceps, at
+       * tier 1 and over target, came last on a day that also trained the
+       * traps at maintenance. Every isolation slot after the first is
+       * performed more tired than the one before it, and spending that
+       * freshness by debt rather than by priority is what a tier list is
+       * supposed to decide.
+       *
+       * Debt still breaks ties inside a tier, via the index below. This
+       * deliberately does not extend to the compounds — those are ordered
+       * by systemic cost, and a heavy pull done after a curl to honour a
+       * tier list would be a worse trade than the one it fixed.
+       */
+      if (a.slot.role === 'assistance') {
+        const byTier = tierOf(a.slot) - tierOf(b.slot)
+        if (byTier !== 0) return byTier
+        return a.index - b.index
+      }
+
       if (a.slot.role !== 'hypertrophy') return a.index - b.index
 
       // Heaviest first, so the work that most needs a fresh lifter gets one.
