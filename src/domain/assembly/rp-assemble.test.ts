@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { builtInExercises } from '@/domain/exercises/catalogue'
+import { builtInExercises, STRENGTH_VARIATIONS } from '@/domain/exercises/catalogue'
 import type { MuscleGroup } from '@/domain/exercises/taxonomy'
 import { asExerciseId, asProgramId, type IdGenerator } from '@/domain/ids/ids'
 import type { ProgramTemplate, ProgramWeek } from '@/domain/programs/program'
@@ -113,10 +113,59 @@ describe('the assembled block', () => {
     expect(mains).toEqual([
       ['bench-press'],
       ['low-bar-squat', 'sumo-deadlift'],
-      ['bench-press'],
+      ['paused-bench-press'],
       ['sumo-deadlift', 'low-bar-squat'],
-      ['bench-press'],
+      ['close-grip-bench-press'],
     ])
+  })
+
+  it('rotates the bench through its variations, competition version first', () => {
+    /*
+     * Three bench sessions, three different lifts. The competition
+     * version is first so that dropping the bench to a lower tier — which
+     * buys fewer sessions — costs the variations rather than the lift the
+     * total is measured on.
+     */
+    const week = block?.weeks[0]
+    const benches = (week?.days ?? []).flatMap((day) =>
+      day.slots
+        .filter((slot) => slot.role === 'strength')
+        .flatMap((slot) =>
+          slot.exercise.kind === 'specific' &&
+          STRENGTH_VARIATIONS.bench.includes(slot.exercise.exerciseId as string)
+            ? [slot.exercise.exerciseId as string]
+            : [],
+        ),
+    )
+
+    // Two slots each — top set and back-off — so each variation appears twice.
+    expect([...new Set(benches)]).toEqual(STRENGTH_VARIATIONS.bench)
+  })
+
+  it('gives a once-a-week lift the competition version, not a variation', () => {
+    // The guard on the rotation. A lift the tiers buy one session of must
+    // get the thing being measured; a rotation that started anywhere else
+    // would silently stop tracking the competition lift.
+    const once = build({
+      strengthTiers: [
+        { rank: 1, members: [] },
+        { rank: 2, members: [] },
+        { rank: 3, members: ['squat', 'bench', 'deadlift'] },
+      ],
+    })
+
+    const benches = weekAt(once, 0).days.flatMap((day) =>
+      day.slots
+        .filter((slot) => slot.role === 'strength')
+        .flatMap((slot) =>
+          slot.exercise.kind === 'specific' &&
+          STRENGTH_VARIATIONS.bench.includes(slot.exercise.exerciseId as string)
+            ? [slot.exercise.exerciseId as string]
+            : [],
+        ),
+    )
+
+    expect([...new Set(benches)]).toEqual(['bench-press'])
   })
 
   it('alternates which lift opens a day that hosts two', () => {
@@ -188,18 +237,23 @@ describe('the assembled block', () => {
 
     expect(new Set(backoffSets).size).toBe(1)
 
-    const sessions = (lift: string): number =>
+    // Counted across a lift's variations, not by slug: the bench trains
+    // three different versions of itself across the week and they are all
+    // bench sessions.
+    const sessions = (lift: 'squat' | 'bench' | 'deadlift'): number =>
       (week?.days ?? []).filter((day) =>
         day.slots.some(
-          (slot) => slot.exercise.kind === 'specific' && slot.exercise.exerciseId === lift,
+          (slot) =>
+            slot.exercise.kind === 'specific' &&
+            STRENGTH_VARIATIONS[lift].includes(slot.exercise.exerciseId),
         ),
       ).length
 
     // Bench is specialised and takes three; the squat and the deadlift
     // are both building and take two each, sharing the two lower days.
-    expect(sessions('bench-press')).toBe(3)
-    expect(sessions('low-bar-squat')).toBe(2)
-    expect(sessions('sumo-deadlift')).toBe(2)
+    expect(sessions('bench')).toBe(3)
+    expect(sessions('squat')).toBe(2)
+    expect(sessions('deadlift')).toBe(2)
   })
 
   /*

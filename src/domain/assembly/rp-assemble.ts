@@ -1,5 +1,5 @@
 import { invariant } from '@/domain/errors/domain-error'
-import { WARM_UPS } from '@/domain/exercises/catalogue'
+import { STRENGTH_VARIATIONS, WARM_UPS } from '@/domain/exercises/catalogue'
 import type { Exercise } from '@/domain/exercises/exercise'
 import { HYPERTROPHY_RPE } from '@/domain/exercises/loading'
 import type { MuscleGroup } from '@/domain/exercises/taxonomy'
@@ -209,10 +209,21 @@ function buildWeek(
    * deadlift is going to need.
    */
   const liftsByDay = assignStrengthLifts(split, recipe.strengthTiers)
+
+  /*
+   * How many times each lift has already appeared this week, so a lift
+   * can rotate through its variations. Counted as the days are walked
+   * rather than derived from the day index, because the bench's three
+   * sessions are its first, second and third whichever days they land on.
+   */
+  const sessionsSoFar = new Map<StrengthLift, number>()
+
   const strengthByDay = split.days.map((_day, index) => {
-    const built = (liftsByDay[index] ?? []).map((lift) =>
-      buildStrengthSlots(recipe, deps, lift, isDeload),
-    )
+    const built = (liftsByDay[index] ?? []).map((lift) => {
+      const session = sessionsSoFar.get(lift) ?? 0
+      sessionsSoFar.set(lift, session + 1)
+      return buildStrengthSlots(recipe, deps, lift, session, isDeload)
+    })
     return {
       slots: built.flatMap((one) => one.slots),
       spent: built.reduce<VolumeMap>((total, one) => addInto(total, one.spent), emptyVolumeMap()),
@@ -376,10 +387,22 @@ interface BuiltSlots {
   readonly spent: VolumeMap
 }
 
-const STRENGTH_SLUG: Record<StrengthLift, string> = {
-  squat: 'low-bar-squat',
-  bench: 'bench-press',
-  deadlift: 'sumo-deadlift',
+/**
+ * Which version of a lift this session trains.
+ *
+ * `session` is the ordinal of this lift's appearance in the week, not the
+ * day index — the bench is on Monday, Wednesday and Friday, so its
+ * sessions are 0, 1, 2 whatever days those turn out to be. Modulo, so a
+ * lift with one variation is unaffected and a rotation shorter than the
+ * frequency repeats rather than falling off the end.
+ *
+ * The competition version is index 0, so a lift trained once a week gets
+ * it: a rotation must never cost a single-session lift the thing the
+ * total is measured on.
+ */
+function strengthSlugFor(lift: StrengthLift, session: number): string {
+  const variations = STRENGTH_VARIATIONS[lift]
+  return variations[session % variations.length] ?? variations[0] ?? ''
 }
 
 /** Which half of the body a competition lift belongs to. */
@@ -477,9 +500,10 @@ function buildStrengthSlots(
   recipe: RpRecipe,
   deps: RpAssembleDeps,
   lift: StrengthLift,
+  session: number,
   isDeload: boolean,
 ): BuiltSlots {
-  const exerciseId = asExerciseId(STRENGTH_SLUG[lift])
+  const exerciseId = asExerciseId(strengthSlugFor(lift, session))
   const exercise = deps.exercises.find((candidate) => candidate.id === exerciseId)
   if (exercise === undefined) return { slots: [], spent: emptyVolumeMap() }
 

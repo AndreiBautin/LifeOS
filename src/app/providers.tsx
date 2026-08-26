@@ -4,6 +4,7 @@ import { useMemo, useState, type ReactNode } from 'react'
 import type { AthleteState } from '@/domain/resolution/resolve'
 import type { AppSettings } from '@/domain/settings/settings'
 import { readSettings, writeSettings } from '@/infrastructure/storage/settings-store'
+import { withDerivedMaxes } from '@/domain/exercises/derived-maxes'
 import { logger } from '@/shared/logging/logger'
 
 import { ServicesContext, SettingsContext, type SettingsContextValue } from './context'
@@ -49,7 +50,10 @@ export function AppProviders({ services, children }: Props) {
 
   const value = useMemo<SettingsContextValue>(() => {
     const athlete: AthleteState = {
-      estimatedMaxes: settings.estimatedMaxes,
+      // A bench variation with no measured max borrows one from the
+      // competition lift, so its first session has a suggested load
+      // instead of a dash. Anything measured wins; see withDerivedMaxes.
+      estimatedMaxes: withDerivedMaxes(settings.estimatedMaxes),
       ...(settings.bodyweight !== undefined ? { bodyweight: settings.bodyweight } : {}),
       units: settings.units,
     }

@@ -42,14 +42,58 @@ interface CatalogueEntry {
 }
 
 /**
- * The three lifts the total is made of. These are the only exercises with
- * `intent: 'strength'`, and the only ones RTS autoregulation applies to.
+ * The three lifts the total is made of — the competition version of each.
+ *
+ * `intent: 'strength'` is wider than this: the bench variations carry it
+ * too, because RTS autoregulation applies to them in exactly the same way.
+ * What this map picks out is narrower and is what the character sheet
+ * scores — only these three have `isCompetition`, and only these three
+ * feed a total. See {@link STRENGTH_VARIATIONS}.
  */
 export const STRENGTH_LIFT_SLUGS = {
   squat: 'low-bar-squat',
   bench: 'bench-press',
   deadlift: 'sumo-deadlift',
 } as const
+
+/**
+ * The variations a lift rotates through, one per session in the week.
+ *
+ * The competition version is always first, so a lift trained once a week
+ * gets it and nothing else — a rotation must not be able to cost a
+ * single-session lift the thing being measured.
+ *
+ * This is a rotation, not an anchor. `RpDay.anchors` was removed for good
+ * reason and must not come back: a day pinned to a slug goes on
+ * scheduling that exercise long after the tiers that justified it have
+ * moved. Here nothing is pinned to a *day*. The day asks for the bench,
+ * and which bench it gets falls out of how many bench sessions the tiers
+ * bought and which one this is. Drop the bench to tier 2 and it takes the
+ * first two; raise it and it takes all three.
+ */
+export const STRENGTH_VARIATIONS: Record<keyof typeof STRENGTH_LIFT_SLUGS, readonly string[]> = {
+  squat: ['low-bar-squat'],
+  bench: ['bench-press', 'paused-bench-press', 'close-grip-bench-press'],
+  deadlift: ['sumo-deadlift'],
+}
+
+/**
+ * What a variation's max is worth relative to the lift it descends from,
+ * until the lifter has measured it.
+ *
+ * A suggestion, not a prescription, and only used when there is no
+ * measured estimate of its own — the moment one exists it wins, because a
+ * number off a bar beats a number off a ratio. Without this the first
+ * paused and close-grip sessions would show no suggested load at all,
+ * which is survivable (an RPE set is performable without one) and a poor
+ * way to meet a new exercise.
+ */
+export const VARIATION_OF: Readonly<
+  Record<string, { readonly of: string; readonly factor: number }>
+> = {
+  'paused-bench-press': { of: 'bench-press', factor: 0.95 },
+  'close-grip-bench-press': { of: 'bench-press', factor: 0.9 },
+}
 
 /** Two minutes on everything, as actually trained. */
 const REST = 120
@@ -74,6 +118,61 @@ const ENTRIES: readonly CatalogueEntry[] = [
     loadBasis: 'estimated-1rm',
     defaultRepRange: { low: 3, high: 6 },
     defaultRestSeconds: REST_HEAVY,
+  },
+  /*
+   * Two bench variations, and they are separate exercises rather than a
+   * label on the same one.
+   *
+   * A close-grip bench is not a bench press done differently; it is a
+   * lift with its own maximum, roughly a tenth lighter. Sharing an
+   * estimate would make the suggested load wrong in the same direction
+   * every week — RTS tolerates a wrong suggestion, because the lifter
+   * loads what feels like the RPE, but it should not be systematically
+   * wrong — and it would make history unable to answer what the close
+   * grip actually does.
+   *
+   * Neither is `isCompetition`. Only the touch-and-go bench feeds the
+   * character sheet's bench standard and the total, which is the cost of
+   * this: the competition estimate now moves on one session a week
+   * rather than three. That is the honest arrangement — the other two
+   * days are not measuring the lift being scored.
+   */
+  {
+    slug: 'paused-bench-press',
+    name: 'Paused Bench Press',
+    primaryMuscle: 'chest',
+    secondaryMuscles: ['triceps', 'front-delts'],
+    equipment: 'barbell',
+    pattern: 'horizontal-push',
+    isCompound: true,
+    intent: 'strength',
+    sfr: 3,
+    systemicCost: 0.55,
+    safeToFail: false,
+    loadBasis: 'estimated-1rm',
+    defaultRepRange: { low: 3, high: 6 },
+    defaultRestSeconds: REST_HEAVY,
+    notes: 'One second on the chest, dead still. The command, not a touch.',
+  },
+  {
+    slug: 'close-grip-bench-press',
+    name: 'Close-Grip Bench Press',
+    primaryMuscle: 'chest',
+    // The triceps do enough here to lead, but the chest is still the
+    // primary — a close grip narrows the leverage, it does not change
+    // which muscle is being trained.
+    secondaryMuscles: ['triceps', 'front-delts'],
+    equipment: 'barbell',
+    pattern: 'horizontal-push',
+    isCompound: true,
+    intent: 'strength',
+    sfr: 3,
+    systemicCost: 0.5,
+    safeToFail: false,
+    loadBasis: 'estimated-1rm',
+    defaultRepRange: { low: 3, high: 6 },
+    defaultRestSeconds: REST_HEAVY,
+    notes: 'Index fingers on the smooth. Touch-and-go.',
   },
   {
     slug: 'low-bar-squat',

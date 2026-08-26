@@ -275,6 +275,35 @@ position in the pair cannot be read off `role` at all. The roles stay
 `hypertrophy` and `assistance` because they are written into every stored
 log, but both _label_ as "Hypertrophy".
 
+**A lift rotates through variations; the competition version is always
+first.** `STRENGTH_VARIATIONS` in `domain/exercises/catalogue.ts`. The
+bench runs touch-and-go, paused, close-grip across its three sessions,
+picked by the lift's session ordinal — not by the day. Index 0 is the
+competition version so that dropping the bench a tier, which buys fewer
+sessions, costs the variations rather than the lift the total is measured
+on.
+
+This is a rotation, **not** an anchor, and the distinction is the reason
+`RpDay.anchors` is not coming back: nothing is pinned to a _day_. The day
+asks for the bench and gets whichever version the tiers' session count
+implies.
+
+The variations are separate exercises with their own slugs, their own
+`estimatedMaxes` entry and their own history, because a close-grip bench
+is a lift with its own maximum rather than a bench done differently.
+`withDerivedMaxes` fills an unmeasured variation from its parent (95% and
+90%) so the first session has a suggestion; **anything measured always
+wins** — a derived value that overrode a real one would be the training
+max mistake in a new costume. It is applied where the athlete is
+assembled, never inside `resolve`, so resolution stays a function of the
+numbers it is handed.
+
+The cost, stated plainly: only `bench-press` is `isCompetition`, so the
+character sheet's bench standard and the total now move on one session a
+week rather than three. That is correct — the other two days are not
+measuring the lift being scored — but it is a real change to how fast
+that number responds.
+
 **The competition lift is two slots, not one.** They were merged once on
 the reasoning that it is one exercise in one trip to the rack — true, and
 it hid what makes this RTS: the top set is a _measurement_ everything
