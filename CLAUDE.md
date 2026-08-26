@@ -397,10 +397,39 @@ shape, same constants — and the copies drifted the moment RPE entered
 the calculation, so the program was built against one number while the
 breakdown explaining it printed another.
 
-**A repeat is penalised across the week, not just against yesterday.**
-The same upright row kept appearing on Tuesday and Thursday. It is a soft
-sort, never a filter: side delts have two hypertrophy options and calves
-have one, so banning a repeat would drop the muscle from the day instead.
+**A repeat is penalised across the week, not just against yesterday —
+and the repeat is the _movement_, not the exercise id.** Keyed on
+`primaryMuscle|pattern`, the same key the day-level check uses. Four
+wrist exercises are two movements, so an id-level penalty cheerfully
+scheduled a barbell wrist curl and then a dumbbell wrist curl and called
+the forearms trained: twice into flexion, extensors untouched. Naming
+`wrist-flexion` and `wrist-extension` as patterns is what makes "once
+each way" fall out of the rule rather than needing a special case.
+
+It is a soft sort, never a filter: side delts have two hypertrophy
+options and calves have one, so banning a repeat would drop the muscle
+from the day instead.
+
+**Straps mean the pulls stop paying the forearms.** `STRAPPED` in
+`domain/exercises/catalogue.ts` strips `forearms` from the secondary
+list of every strapped pull as the catalogue is built. The forearm work
+in a heavy pull is _grip_; in straps it is gone, while the lat and
+hamstring credit is untouched. Leaving it in had the app believe a
+strapped deadlift trained the forearms — twelve credited sets against a
+target of six, and nothing direct ever scheduled.
+
+A list rather than a setting on purpose: this is one lifter's garage,
+the catalogue is how content is delivered, and a boolean would mean a
+settings field, a sync key, a screen and a migration to express
+something that is one line to reverse. The kettlebell swing is not on
+it — nobody straps a swing — and neither are the curls, whose forearm
+involvement is wrist and elbow work rather than grip.
+
+**The forearm landmarks were raised with it**, from MEV 2 to MEV 6. They
+were low for the reason the traps' are: nearly everything paid them.
+A landmark set against a source that no longer exists is a target the
+week meets on paper with two sets of curls — and at MEV 2 there was only
+ever room for one direct session, which cannot be both directions.
 
 **A timed set is costed by its duration.** `setSeconds` in
 `domain/programs/program.ts`. Counting a twenty-minute walk as one

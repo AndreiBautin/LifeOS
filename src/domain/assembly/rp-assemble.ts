@@ -1267,9 +1267,30 @@ function pickHypertrophyExercise(
    * entirely, which is a worse outcome than repeating it. Sorting it to
    * the back means it is chosen only when nothing else can be.
    */
+  /*
+   * The penalty is on the *movement*, not the exact exercise.
+   *
+   * Two wrist curls and two reverse wrist curls are four ids and two
+   * movements, so an id-level penalty happily gave the forearms a
+   * barbell wrist curl on Monday and a dumbbell wrist curl on Thursday
+   * and called them trained — twice in the same direction, with the
+   * extensors untouched. Keying on muscle-and-pattern makes "once each
+   * way" fall out of the rule that was already there.
+   *
+   * Same reasoning as the day-level `alreadyCovered` check above; this
+   * is that idea applied across the week.
+   */
+  const movement = (exercise: Exercise): string => `${exercise.primaryMuscle}|${exercise.pattern}`
+
+  const usedMovements = new Set(
+    args.deps.exercises
+      .filter((exercise) => args.usedThisWeek.has(exercise.id))
+      .map((exercise) => movement(exercise)),
+  )
+
   const ordered = [...candidates].sort((a, b) => {
-    const aUsed = args.usedThisWeek.has(a.id) ? 1 : 0
-    const bUsed = args.usedThisWeek.has(b.id) ? 1 : 0
+    const aUsed = usedMovements.has(movement(a)) ? 1 : 0
+    const bUsed = usedMovements.has(movement(b)) ? 1 : 0
     if (aUsed !== bUsed) return aUsed - bUsed
 
     if (a.sfr !== b.sfr) return b.sfr - a.sfr
@@ -1283,7 +1304,7 @@ function pickHypertrophyExercise(
   // exercise every session of the week — but rotate only within the
   // candidates the week has not used, or the rotation would land back on
   // one and undo the penalty above.
-  const fresh = ordered.filter((exercise) => !args.usedThisWeek.has(exercise.id))
+  const fresh = ordered.filter((exercise) => !usedMovements.has(movement(exercise)))
   const pool = fresh.length > 0 ? fresh : ordered
 
   return pool[args.splitDay.index % pool.length] ?? pool[0]

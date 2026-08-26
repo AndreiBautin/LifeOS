@@ -80,7 +80,22 @@ export const DEFAULT_LANDMARKS: LandmarkSet = {
    */
   traps: { mv: 0, mev: 4, mav: 12, mrv: 20 },
   biceps: { mv: 4, mev: 8, mav: 16, mrv: 22 },
-  forearms: { mv: 0, mev: 2, mav: 10, mrv: 16 },
+  /*
+   * Raised across the board when the pulls went into straps.
+   *
+   * These were low for the same reason the traps' are: nearly everything
+   * paid them. Every deadlift, row, shrug and hang was grip work, so a
+   * small direct ask was all it took to finish the job. Straps remove
+   * that entirely — the lat and hamstring credit survives, the forearm
+   * credit does not — and a landmark set against a source that no longer
+   * exists is a target the week meets on paper with two sets of curls.
+   *
+   * At an MEV of 6 the forearms need direct work on two sessions rather
+   * than one, which is what makes "once each way" schedulable at all:
+   * flexors and extensors are different movements, and one session
+   * cannot be both.
+   */
+  forearms: { mv: 2, mev: 6, mav: 14, mrv: 20 },
   quads: { mv: 6, mev: 8, mav: 16, mrv: 22 },
   hamstrings: { mv: 3, mev: 6, mav: 13, mrv: 18 },
   glutes: { mv: 0, mev: 4, mav: 10, mrv: 16 },

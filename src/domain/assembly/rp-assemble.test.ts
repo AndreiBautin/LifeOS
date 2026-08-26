@@ -553,6 +553,42 @@ describe('how a muscle is spread across its sessions', () => {
     }
   })
 
+  it('trains the forearms both ways rather than twice the same way', () => {
+    /*
+     * Four wrist exercises are two movements, and an id-level repeat
+     * penalty happily scheduled a barbell wrist curl and then a dumbbell
+     * wrist curl — twice into flexion, with the extensors untouched.
+     * Keying the penalty on muscle-and-pattern is what makes "once each
+     * way" fall out of a rule that was already there.
+     */
+    const directions = week.days.flatMap((day) =>
+      day.slots.flatMap((slot) => {
+        if (slot.exercise.kind !== 'specific') return []
+        const pattern = lookup(slot.exercise.exerciseId)?.pattern
+        return pattern === 'wrist-flexion' || pattern === 'wrist-extension' ? [pattern] : []
+      }),
+    )
+
+    expect(directions).toHaveLength(2)
+    expect(new Set(directions).size).toBe(2)
+  })
+
+  it('does not credit the forearms for a strapped pull', () => {
+    /*
+     * The forearm work in a heavy pull is grip. In straps it is gone,
+     * while the lat and hamstring credit is untouched — so a catalogue
+     * that still paid the forearms for a deadlift would report a muscle
+     * covered by work nobody did, and schedule nothing direct for it.
+     */
+    for (const slug of ['sumo-deadlift', 'barbell-row', 'pull-up', 'chin-up', 'barbell-shrug']) {
+      expect(lookup(slug)?.secondaryMuscles, slug).not.toContain('forearms')
+    }
+
+    // Curls still pay them: that involvement is wrist and elbow work
+    // rather than grip, and nobody straps a curl.
+    expect(lookup('hammer-curl')?.secondaryMuscles).toContain('forearms')
+  })
+
   it('keeps a day to a session rather than a list of two-set exercises', () => {
     /*
      * The failure mode the backfill's slot grace exists to stop. A

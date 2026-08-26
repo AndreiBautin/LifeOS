@@ -105,6 +105,17 @@ export const MOVEMENT_PATTERNS = [
   'lunge',
   'carry',
   'isolation',
+  /**
+   * The two wrist directions, separated from `isolation` on purpose.
+   *
+   * A forearm needs both — flexors and extensors — and the picker's
+   * repeat rule works on muscle-and-pattern, so leaving both as
+   * `isolation` let a week schedule two wrist curls and call the forearms
+   * covered. Naming the directions is what makes "once each way" fall out
+   * of the existing rule instead of needing a special case.
+   */
+  'wrist-flexion',
+  'wrist-extension',
   'core',
   /** Running, walking, swings — anything trained for conditioning. */
   'conditioning',

@@ -98,6 +98,39 @@ export const VARIATION_OF: Readonly<
   'close-grip-bench-press': { of: 'paused-bench-press', factor: 0.95 },
 }
 
+/**
+ * Pulls done in straps, and what that costs the forearms.
+ *
+ * The forearm credit on a heavy pull is *grip* — holding the bar is the
+ * work. Put wrist straps on and that work is gone, while the lat, back
+ * and hamstring credit is untouched. Leaving it in the catalogue would
+ * have the app believe a strapped deadlift trains the forearms, which is
+ * how a muscle ends up with twelve credited sets against a target of six
+ * and no direct work scheduled at all.
+ *
+ * A list rather than a setting, deliberately. This is one lifter's
+ * garage and the catalogue is how content is delivered here; a boolean
+ * would mean a settings field, a sync key, a screen and a migration to
+ * express something that is one line to reverse — delete the constant
+ * and the credit comes back.
+ *
+ * The kettlebell swing is **not** on it. Nobody straps a swing: the bell
+ * is light enough that grip is not the limiter, and the hold is dynamic.
+ * Curls are not on it either — their forearm involvement is wrist and
+ * elbow work rather than grip, and a hammer curl trains the
+ * brachioradialis directly.
+ */
+const STRAPPED: readonly string[] = [
+  'sumo-deadlift',
+  'conventional-deadlift',
+  'romanian-deadlift',
+  'barbell-row',
+  'pull-up',
+  'chin-up',
+  'barbell-shrug',
+  'hanging-leg-raise',
+]
+
 /** Two minutes on everything, as actually trained. */
 const REST = 120
 const REST_HEAVY = 180
@@ -492,7 +525,7 @@ const ENTRIES: readonly CatalogueEntry[] = [
     name: 'Barbell Wrist Curl',
     primaryMuscle: 'forearms',
     equipment: 'barbell',
-    pattern: 'isolation',
+    pattern: 'wrist-flexion',
     isCompound: false,
     intent: 'hypertrophy',
     sfr: 5,
@@ -506,7 +539,7 @@ const ENTRIES: readonly CatalogueEntry[] = [
     name: 'Barbell Reverse Wrist Curl',
     primaryMuscle: 'forearms',
     equipment: 'barbell',
-    pattern: 'isolation',
+    pattern: 'wrist-extension',
     isCompound: false,
     intent: 'hypertrophy',
     sfr: 5,
@@ -520,7 +553,7 @@ const ENTRIES: readonly CatalogueEntry[] = [
     name: 'Dumbbell Wrist Curl',
     primaryMuscle: 'forearms',
     equipment: 'dumbbell',
-    pattern: 'isolation',
+    pattern: 'wrist-flexion',
     isCompound: false,
     intent: 'hypertrophy',
     sfr: 5,
@@ -535,7 +568,7 @@ const ENTRIES: readonly CatalogueEntry[] = [
     name: 'Dumbbell Reverse Wrist Curl',
     primaryMuscle: 'forearms',
     equipment: 'dumbbell',
-    pattern: 'isolation',
+    pattern: 'wrist-extension',
     isCompound: false,
     intent: 'hypertrophy',
     sfr: 5,
@@ -712,6 +745,38 @@ const ENTRIES: readonly CatalogueEntry[] = [
     notes:
       'Lowest-interference cardio available. Burns without competing with lower-body recovery.',
   },
+  /*
+   * Back on the treadmill, and the reason it left no longer holds.
+   *
+   * It was withdrawn because "conditioning belongs on the lower days, and
+   * a run is not what they need" — true while conditioning sat on two
+   * days beside the squat and the deadlift, and false now that Zone 2
+   * runs on all three upper days where it interferes with nothing.
+   *
+   * Shares the Zone 2 label with the walk on purpose: they are the same
+   * work under two names, which is why there are two conditioning
+   * domains rather than three. What separates them is systemic cost, and
+   * the exercise already carries that.
+   */
+  {
+    slug: 'running',
+    name: 'Easy Run',
+    primaryMuscle: 'calves',
+    secondaryMuscles: ['glutes', 'hamstrings', 'quads'],
+    equipment: 'bodyweight',
+    pattern: 'conditioning',
+    isCompound: true,
+    intent: 'conditioning',
+    sfr: 3,
+    // Four times the walk. Real eccentric loading through the calves and
+    // hamstrings, which is exactly what makes it interfere with lifting
+    // in a way the walk does not.
+    systemicCost: 0.32,
+    safeToFail: true,
+    loadBasis: 'bodyweight',
+    defaultRestSeconds: 0,
+    notes: 'Conversational pace throughout. If you cannot talk, you are running the wrong session.',
+  },
   {
     slug: 'kb-swing',
     name: 'Kettlebell Swing',
@@ -797,7 +862,12 @@ export function builtInExercises(): readonly Exercise[] {
     id: entry.slug as Exercise['id'],
     name: entry.name,
     primaryMuscle: entry.primaryMuscle,
-    secondaryMuscles: entry.secondaryMuscles ?? [],
+    // Straps take the grip out of a pull, so they take the forearms out
+    // of its credit. Applied here rather than edited into every entry, so
+    // the reason stays in one place and reversing it is one line.
+    secondaryMuscles: STRAPPED.includes(entry.slug)
+      ? (entry.secondaryMuscles ?? []).filter((muscle) => muscle !== 'forearms')
+      : (entry.secondaryMuscles ?? []),
     equipment: entry.equipment,
     pattern: entry.pattern,
     isCompound: entry.isCompound,
