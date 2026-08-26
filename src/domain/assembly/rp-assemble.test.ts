@@ -4,13 +4,17 @@ import { builtInExercises, STRENGTH_VARIATIONS } from '@/domain/exercises/catalo
 import type { MuscleGroup } from '@/domain/exercises/taxonomy'
 import { asExerciseId, asProgramId, type IdGenerator } from '@/domain/ids/ids'
 import type { ProgramTemplate, ProgramWeek } from '@/domain/programs/program'
-import { DEFAULT_MUSCLE_TIERS, priorityPosition } from '@/domain/priority/tiers'
+import {
+  DEFAULT_MUSCLE_TIERS,
+  priorityPosition,
+  weeklyTargetForWeek,
+} from '@/domain/priority/tiers'
 import {
   SESSION_TOO_LONG_MINUTES,
   SESSION_TOO_SHORT_MINUTES,
 } from '@/domain/autoregulation/schedule'
 import { estimateDayMinutes } from '@/domain/programs/program'
-import { sumVolume, volumeForSlots } from '@/domain/volume/accounting'
+import { slotVolume, sumVolume, volumeForSlots } from '@/domain/volume/accounting'
 import { DEFAULT_LANDMARKS } from '@/domain/volume/landmarks'
 
 import { assembleRpProgram, defaultRpRecipe, type RpRecipe } from './rp-assemble'
@@ -448,6 +452,80 @@ describe('how often a muscle is trained', () => {
         // stacking several slots of the same muscle into a junk block.
         expect(sets, `${day.label}: ${muscle}`).toBeLessThanOrEqual(10)
       }
+    }
+  })
+})
+
+describe('how a muscle is spread across its sessions', () => {
+  const week = weekAt(build(), 0)
+
+  /** Credited sets of one muscle on each day that trains it at all. */
+  const perDay = (muscle: MuscleGroup): number[] =>
+    week.days
+      .map((day) =>
+        day.slots.reduce((total, slot) => {
+          if (slot.exercise.kind !== 'specific') return total
+          const exercise = lookup(slot.exercise.exerciseId)
+          if (exercise === undefined) return total
+          return total + slotVolume(exercise, slot.sets)[muscle]
+        }, 0),
+      )
+      .filter((credit) => credit > 0)
+
+  it('gives a prioritised muscle a comparable dose each session', () => {
+    /*
+     * The reported bug: eight and a half sets of biceps on Monday and two
+     * on Wednesday, on a tier-1 muscle.
+     *
+     * The cause was incidental credit being spent twice. Monday sized six
+     * curl sets against an unpaid target and *then* placed chin-ups for
+     * the lats, which paid the biceps another two and a half; the day
+     * delivered well over its share, and the crowded day later in the
+     * week got the remainder. Fixed by budgeting the compound work first
+     * and subtracting what the day has already paid.
+     *
+     * A ratio rather than an equality, because the sessions genuinely
+     * differ — a day may be short on time or out of exercises — but a
+     * muscle should not be trained three times as hard on one day as
+     * another when the whole point of the split is to spread it.
+     */
+    for (const muscle of ['biceps', 'chest', 'side-delts'] as const) {
+      const days = perDay(muscle)
+      const most = Math.max(...days)
+      const least = Math.min(...days)
+
+      expect(most / least, `${muscle}: ${days.map(String).join(' / ')}`).toBeLessThan(1.6)
+    }
+  })
+
+  it('does not overshoot a prioritised target to achieve that', () => {
+    // The cheap way to even out a spread is to give every session the
+    // full dose, which meets the shape and blows the weekly number. The
+    // biceps came out at 21 against a target of 17 before this.
+    const asked = weeklyTargetForWeek(
+      DEFAULT_LANDMARKS.biceps,
+      priorityPosition(DEFAULT_MUSCLE_TIERS, 'biceps'),
+      false,
+    )
+    const delivered = perDay('biceps').reduce((total, credit) => total + credit, 0)
+
+    expect(delivered).toBeLessThanOrEqual(asked + 1)
+  })
+
+  it('keeps a day to a session rather than a list of two-set exercises', () => {
+    /*
+     * The failure mode the backfill's slot grace exists to stop. A
+     * two-set frequency slot costs four minutes, so a day with time left
+     * will take four or five of them and arrive at thirteen exercises of
+     * two sets — inside the minute budget and a worse session than six of
+     * four.
+     */
+    for (const day of week.days) {
+      const fill = day.slots.filter(
+        (slot) => slot.role === 'hypertrophy' || slot.role === 'assistance',
+      )
+
+      expect(fill.length, day.label).toBeLessThanOrEqual(7)
     }
   })
 })

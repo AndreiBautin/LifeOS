@@ -687,11 +687,15 @@ function fillHypertrophy(args: FillArgs): BuiltSlots {
   let minutes = args.existingSlots.reduce((total, slot) => total + slotMinutes(slot), 0)
 
   /** Places one pass of accessory work, neediest muscle first. */
-  const fillFor = (muscles: readonly MuscleGroup[], ceiling: number): void => {
+  const fillFor = (
+    muscles: readonly MuscleGroup[],
+    ceiling: number,
+    options: { readonly compoundsOnly?: boolean } = {},
+  ): void => {
     const debts = muscles
       .map((muscle) => ({
         muscle,
-        owed: shareOwed(muscle, args, addInto(committed, added)),
+        owed: shareOwed(muscle, args, committed, added),
         /*
          * How far behind its *own* required frequency this muscle is.
          *
@@ -721,14 +725,32 @@ function fillHypertrophy(args: FillArgs): BuiltSlots {
        */
       .sort((a, b) => (a.behind !== b.behind ? b.behind - a.behind : b.owed - a.owed))
 
-    for (const { muscle, owed } of debts) {
+    for (const { muscle } of debts) {
       if (slots.length >= recipe.maxHypertrophySlotsPerDay) break
       // Out of time. What this day does not spend stays in the weekly
       // budget and is picked up by the sessions that follow.
       if (minutes >= ceiling) break
 
+      /*
+       * Re-asked here rather than reused from the sort above.
+       *
+       * The order is decided once for the whole pass, which is right — it
+       * is a ranking, and re-ranking mid-pass would let a muscle jump the
+       * queue after another was placed. The *size* is a different
+       * question and has to see what the pass has already done: a slot
+       * chosen for the lats pays the biceps on the way past, and a curl
+       * sized against the state at the top of the pass spends that credit
+       * twice.
+       */
+      const owed = shareOwed(muscle, args, committed, added)
+      if (owed <= 0) continue
+
       const exercise = pickHypertrophyExercise(args, muscle, used, placed)
       if (exercise === undefined) continue
+      // The compound pass skips anything that trains one muscle: it is
+      // budgeting the work that pays several, and isolation gets the
+      // remainder on the pass that follows.
+      if (options.compoundsOnly === true && !exercise.isCompound) continue
 
       const setCount = fittableSets(
         exercise,
@@ -781,6 +803,25 @@ function fillHypertrophy(args: FillArgs): BuiltSlots {
    * still does not fit is reported on the Plan screen rather than tucked
    * into whichever session had a gap.
    */
+  /*
+   * Compounds first, then everything.
+   *
+   * Two passes over the same muscles, the first restricted to compound
+   * movements. A compound pays two or three muscles at once, and a fill
+   * that sizes isolation before it has decided on the compounds spends
+   * that incidental credit twice: Monday sized six curl sets against an
+   * unpaid biceps target, then placed chin-ups for the lats which paid
+   * the biceps another two and a half. The day delivered eight and a half
+   * against a fair share of under six, and Wednesday — the crowded day —
+   * got what was left.
+   *
+   * Budgeting the multi-muscle work first means the isolation pass sees
+   * what has already been paid and fills the gap rather than the whole
+   * target. It also matches how the session is performed: `inSessionOrder`
+   * puts compounds before isolation for an unrelated reason, and having
+   * the fill agree removes a mismatch between what is chosen and when.
+   */
+  fillFor(splitDay.muscles, SESSION_MINUTES_CAP, { compoundsOnly: true })
   fillFor(splitDay.muscles, SESSION_MINUTES_CAP)
 
   /*
@@ -892,6 +933,19 @@ function fillHypertrophy(args: FillArgs): BuiltSlots {
     const cost = slotMinutes(slot)
     if (minutes + cost > SESSION_MINUTES_CAP * BACKFILL_TIME_GRACE) continue
 
+    /*
+     * And it may add exercises, but not without limit either.
+     *
+     * The clock alone does not bound this: a two-set frequency slot is
+     * four minutes, so a day with time left will take four or five of
+     * them and arrive at thirteen exercises of two sets each. That fits
+     * the minute budget and is a worse session than six of four — more
+     * setup, more walking, less of anything. `BACKFILL_SLOT_GRACE` is
+     * deliberately small, because the backfill exists to guarantee a
+     * muscle is *touched* on a day, not to finish the week here.
+     */
+    if (slots.length >= recipe.maxHypertrophySlotsPerDay + BACKFILL_SLOT_GRACE) break
+
     used.add(exercise.id)
     added = addInto(added, slotVolume(exercise, sets))
     minutes += cost
@@ -932,7 +986,12 @@ function fillHypertrophy(args: FillArgs): BuiltSlots {
  * a week that reads as hitting its total is really one session of junk
  * volume wearing the total's clothes.
  */
-function shareOwed(muscle: MuscleGroup, args: FillArgs, committed: VolumeMap): number {
+function shareOwed(
+  muscle: MuscleGroup,
+  args: FillArgs,
+  committed: VolumeMap,
+  addedToday: VolumeMap,
+): number {
   const sessionsLeft = 1 + args.remainingDays.filter((day) => day.muscles.includes(muscle)).length
   const share = Math.max(0, args.targets[muscle] - committed[muscle]) / Math.max(1, sessionsLeft)
 
@@ -944,7 +1003,24 @@ function shareOwed(muscle: MuscleGroup, args: FillArgs, committed: VolumeMap): n
     ),
   )
 
-  return Math.min(share, dose)
+  /*
+   * What today has already paid this muscle comes off today's share in
+   * full, not diluted across the sessions that follow.
+   *
+   * This is the difference between an even spread and a front-loaded one,
+   * and it is easy to get wrong because the naive version looks right.
+   * Folding the day's own credit into the *weekly* remainder and then
+   * dividing by sessions left charges today a third of what today spent:
+   * Monday's chin-ups paid the biceps 2.5 sets, the curl was still sized
+   * as though they had paid nothing, and the day delivered 8.5 against a
+   * fair share of 5.7. Wednesday — the crowded day — then got what was
+   * left, which was two sets.
+   *
+   * Subtracting it here makes each accountable session take the same
+   * bite, and makes incidental credit actually *reduce* the direct work
+   * it duplicates rather than sitting on top of it.
+   */
+  return Math.max(0, Math.min(share, dose) - addedToday[muscle])
 }
 
 /** Minutes one slot costs: work plus rest, warm-ups rested through. */
@@ -959,6 +1035,17 @@ function slotMinutes(slot: Slot): number {
  * Fifteen per cent: about one more accessory on a seventy-minute day.
  */
 const BACKFILL_TIME_GRACE = 1.15
+
+/**
+ * Extra exercises the frequency backfill may add beyond the fill's own
+ * ceiling.
+ *
+ * One. A day that has already chosen six accessories and still owes a
+ * muscle a session gets one more and stops — the alternative is a session
+ * that meets every frequency floor by becoming a list of two-set
+ * exercises, which is the shape the volume was split up to avoid.
+ */
+const BACKFILL_SLOT_GRACE = 1
 
 /**
  * Muscles a day trained *directly* — as the primary of some working slot.

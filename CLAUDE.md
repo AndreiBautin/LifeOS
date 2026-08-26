@@ -78,6 +78,26 @@ counts the volume the strength work already contributed before filling
 anything. Removing that subtraction turns one coherent program into a
 powerlifting block with a bodybuilding routine stapled to it.
 
+**Incidental credit is spent once.** The fill budgets **compounds before
+isolation** (two passes over the same muscles, the first restricted to
+`isCompound`), and `shareOwed` subtracts what the day has already paid a
+muscle from that day's share **in full**, not diluted across the sessions
+that follow.
+
+Both halves are needed and the bug they fix is invisible from the totals.
+Monday sized six curl sets against an unpaid biceps target and _then_
+placed chin-ups for the lats, which paid the biceps another two and a
+half: the day delivered 8.5 against a fair share of 5.7, the week
+delivered 21 against a target of 17, and Wednesday — the crowded day —
+got the two sets that were left. It reads as a scheduling quirk and is
+actually the same credit being spent twice. Now 5.5 / 6 / 5.5.
+
+The backfill has a slot grace of **one**, not just a time grace. A
+two-set frequency slot costs four minutes, so a day with time left will
+take four or five of them and arrive at thirteen exercises of two sets —
+inside the minute budget, and the shape splitting the volume was meant to
+avoid.
+
 **Priority decides frequency; volume decides how much per session.**
 `domain/volume/frequency.ts`. Tier 1 is trained on every day accountable
 for it, tier 2 on two thirds of them, tier 3 once. `setsPerSession` then
