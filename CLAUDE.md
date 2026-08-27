@@ -307,10 +307,22 @@ the domain refused correctly and no screen could ask it to. Adding a
 domain rule means adding the control that can trip it, or the guard is
 decoration with a test attached.
 
-**The bottom navigation is full at six.** Adding an area means taking one
-out, not adding a seventh — History moved to a link on the Train page for
-exactly that reason. Phase 7 owns the proper rethink; until then, a new
-area displaces something rather than squeezing in beside it.
+**The bottom navigation is full at six**, and it stayed at six. Adding an
+area means taking one out, not adding a seventh — History moved to a link
+on the Train page for exactly that reason, and Trips and the inbox are
+links from the map rather than tabs. Phase 7 was to own the rethink and
+found there was nothing to rethink: the job-search area was deliberately
+not absorbed, so no seventh ever arrived. If one does, it displaces
+something.
+
+**A field added to `AppSettings` must be added to the parse.**
+`infrastructure/storage/settings-store.ts` builds its result field by
+field rather than spreading, which is what makes an unknown blob safe —
+and what makes a new field silently vanish on the way back in. This has
+now caught two fields: `updatedAt`, which meant settings were stamped on
+every write and never synced, and `exploredRegionKm2`, which meant the
+exploration ladder read "nothing measured" against a number sitting in
+storage the whole time.
 
 **Logging progress is serialised per item, by hand.** `serialise` in
 `features/backlog/hooks.ts`. It is a read-modify-write, so two in flight

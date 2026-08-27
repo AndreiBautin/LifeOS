@@ -301,6 +301,39 @@ source divides walked area by the area of the region being explored — and
 nothing in the app knows which region is meant, so that number is typed
 into settings. Until it is, the ladder reads _absent_ rather than zero.
 
+## The character sheet — where the model is actually read
+
+`application/use-cases/character/sheet.ts` is the join the game model was
+written for. `domain/game/registry.ts` declares what each area has;
+this turns those declarations into one readout, restating nothing. An area
+appears on the sheet by gaining a row in the registry, and a test asserts
+the two lists match — an absorbed area that silently stops appearing is
+the failure worth guarding.
+
+The three currencies read from three different places, and that is the
+whole point of having three:
+
+| Currency   | Read from                  | Why not the others                                                               |
+| ---------- | -------------------------- | -------------------------------------------------------------------------------- |
+| **Ladder** | live measurement           | Anchored externally; its answer must not depend on whether you opened the review |
+| **Rating** | what the review _recorded_ | A monthly judgement that shifted every time a page opened would not be monthly   |
+| **XP**     | a tally of acts            | Paid for doing, never for it having worked — an outcome already moved a ladder   |
+
+The XP tally is **derived from the records**, never stored as a counter.
+A counter cannot survive two devices — both increment it, last-write-wins
+throws one away — and cannot survive a restore either. Counting visited
+places cannot drift from the places.
+
+One act is deliberately uncounted. `social.hangout-logged` needs a list of
+hangouts and the friend record keeps only `lastHangout`, a single date
+ratcheted forward. A friends-with-a-date count would stop growing after
+the first coffee and read as a social life that happened once, so it earns
+zero XP until hangouts are stored as events.
+
+An area with no measurement, no recorded rating and no acts is **silent**
+and renders nothing at all. `insufficient-data` counts as silence — it is
+the absence of a judgement, not a bad one.
+
 ## Autoregulation
 
 Check-ins are **recorded events**, and adjusting a volume landmark is a
