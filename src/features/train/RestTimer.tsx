@@ -87,7 +87,7 @@ export function RestTimer({ startedAt, seconds, onDismiss }: Props) {
        * and this is the one measurement that must not silently resolve
        * to zero.
        */
-      style={{ bottom: 'calc(4rem + env(safe-area-inset-bottom))' }}
+      style={{ bottom: 'calc(4rem + var(--safe-bottom))' }}
       role="status"
       aria-live="polite"
     >

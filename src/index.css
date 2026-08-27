@@ -41,6 +41,30 @@
 
 @layer base {
   :root {
+    /* The notch, the status bar and the home indicator.
+     *
+     * `viewport-fit=cover` plus `apple-mobile-web-app-status-bar-style:
+     * black-translucent` means an installed copy paints edge to edge and
+     * therefore *underneath* the status bar — which is what put the clock
+     * on top of every page heading. The insets are the app's problem from
+     * that point on.
+     *
+     * Named here rather than written as `env()` at each use because
+     * `env()` inside a Tailwind bracket class is fragile across builds
+     * (see the rest timer, which learned that the hard way), and because
+     * one definition is what stops the next fixed element being added
+     * without one.
+     *
+     * The `0px` fallbacks are load-bearing rather than tidy: where `env()`
+     * is unsupported the whole function is invalid, and an invalid value
+     * inside `calc()` invalidates the declaration around it — so a
+     * `padding-top: calc(1rem + var(--safe-top))` would collapse to no
+     * padding at all rather than to the 1rem it asked for. */
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-left: env(safe-area-inset-left, 0px);
+    --safe-right: env(safe-area-inset-right, 0px);
+
     --surface: var(--color-ink-950);
     --surface-raised: var(--color-ink-900);
     --surface-inset: var(--color-ink-850);
@@ -104,7 +128,7 @@
     color: var(--text-primary);
     font-family: var(--font-sans);
     /* Room for the bottom navigation and the iOS home indicator. */
-    padding-bottom: env(safe-area-inset-bottom);
+    padding-bottom: var(--safe-bottom);
     overscroll-behavior-y: none;
     -webkit-font-smoothing: antialiased;
   }

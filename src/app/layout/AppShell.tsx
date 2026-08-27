@@ -35,18 +35,43 @@ const NAV = [
 ] as const
 
 export function AppShell() {
+  /*
+   * The shell is `100dvh` *minus the bottom inset*, not `min-h-dvh`.
+   *
+   * The body already carries `padding-bottom: var(--safe-bottom)` to clear
+   * the home indicator, so a full-height shell inside it makes the document
+   * taller than the viewport by exactly that inset. Every short page on a
+   * notched phone had thirty-four pixels of scroll with nothing in them.
+   */
   return (
-    <div className="flex min-h-dvh flex-col">
+    <div className="flex flex-col" style={{ minHeight: 'calc(100dvh - var(--safe-bottom))' }}>
       <a
         href="#main"
-        className="sr-only-focusable bg-accent-500 fixed top-2 left-2 z-50 rounded-md px-3 py-2 text-sm font-medium text-black"
+        className="sr-only-focusable bg-accent-500 fixed left-2 z-50 rounded-md px-3 py-2 text-sm font-medium text-black"
+        style={{ top: 'calc(0.5rem + var(--safe-top))' }}
       >
         Skip to content
       </a>
 
       <UpdatePrompt />
 
-      <main id="main" className="mx-auto w-full max-w-2xl flex-1 px-4 pt-4 pb-28">
+      {/*
+        The safe area is the shell's job, not each page's — every screen
+        below is an ordinary block of content and none of them should have
+        to know a notch exists.
+
+        The sides matter in landscape on a notched phone, where the cutout
+        eats into one edge; without them a heading starts underneath it.
+      */}
+      <main
+        id="main"
+        className="mx-auto w-full max-w-2xl flex-1 pb-28"
+        style={{
+          paddingTop: 'calc(1rem + var(--safe-top))',
+          paddingLeft: 'calc(1rem + var(--safe-left))',
+          paddingRight: 'calc(1rem + var(--safe-right))',
+        }}
+      >
         <BackupReminder />
         <Outlet />
       </main>
@@ -57,7 +82,7 @@ export function AppShell() {
         style={{
           backgroundColor: 'color-mix(in oklab, var(--surface-raised) 92%, transparent)',
           borderColor: 'var(--border-subtle)',
-          paddingBottom: 'env(safe-area-inset-bottom)',
+          paddingBottom: 'var(--safe-bottom)',
         }}
       >
         <ul className="mx-auto flex max-w-2xl">

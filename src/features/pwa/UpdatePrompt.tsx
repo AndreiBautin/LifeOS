@@ -33,7 +33,11 @@ export function UpdatePrompt() {
   return (
     <div
       role="status"
-      className="border-accent-500/40 bg-ink-900 fixed inset-x-3 top-3 z-50 mx-auto flex max-w-xl items-center gap-3 rounded-xl border p-3 shadow-lg"
+      className="border-accent-500/40 bg-ink-900 fixed inset-x-3 z-50 mx-auto flex max-w-xl items-center gap-3 rounded-xl border p-3 shadow-lg"
+      // Below the status bar rather than under it — this is the one banner
+      // that appears without being asked for, so it must not land on top
+      // of the clock.
+      style={{ top: 'calc(0.75rem + var(--safe-top))' }}
     >
       <RefreshCw size={18} className="text-accent-400 shrink-0" aria-hidden />
       <p className="text-ink-100 flex-1 text-sm">
