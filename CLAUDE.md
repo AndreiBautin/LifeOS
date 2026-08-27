@@ -1,7 +1,8 @@
-# Working on Lift
+# Working on LifeOS
 
-A client-only React + TypeScript PWA for building strength programs and
-tracking workouts. **No server of ours, and no database of ours.**
+A client-only React + TypeScript PWA covering six areas — training,
+quests, a backlog, a tech tree, a circle and an atlas — scored by one
+game model. **No server of ours, and no database of ours.**
 Persistence is IndexedDB behind a repository interface. That constraint is
 the product, not a limitation — see
 [docs/PERSISTENCE.md](docs/PERSISTENCE.md).
@@ -200,21 +201,26 @@ diverge again that screen becomes a lie, which is what
 `rp-assemble.test.ts` → "gives every working week the same volume" is
 guarding.
 
-**The character sheet scores strength only.** Conditioning was a mile
-time nobody was running, so it sat at Untrained permanently — a fixed
-zero on a screen whose job is to show movement. Consistency levelled the
-session count, which XP already spends. Conditioning is still
-_programmed_; it is not scored, because nothing measures it.
+**Conditioning is programmed but not scored.** It was a mile time nobody
+was running, so it sat at Untrained permanently — a fixed zero on a screen
+whose job is to show movement. Consistency levelled the session count,
+which XP already spends. Nothing measures conditioning, so nothing scores
+it; that is the same rule every other area follows.
 
-**`domain/game/` is the model for the whole hub, and nothing imports it
-yet.** Lift is being promoted to the app every other life-tracking app is
-absorbed into, and [docs/GAME_MODEL.md](docs/GAME_MODEL.md) decides — before
-any of them arrive — what a number is allowed to mean: three currencies
-(ladder, rating, XP), one tech tree, three rules. `character.ts` is the
-part of it that is wired up; `ladder.ts`, `rating.ts`, `xp.ts`, `tree.ts`,
-`credit.ts` and `registry.ts` are not, deliberately. Hooking a new domain
-to XP during its migration is how the exchange rate gets set by accident,
-in a commit whose message is about something else.
+**An area with nothing to say says nothing.** `AreaStanding.silent` on the
+character sheet, and `insufficient-data` counts as silence — it is the
+absence of a judgement rather than a bad one. Treating it as something
+said made six untouched areas report news on an empty database.
+
+**`domain/game/` is the model for the whole hub, and it is all wired up
+now.** [docs/GAME_MODEL.md](docs/GAME_MODEL.md) decided — before any area
+arrived — what a number is allowed to mean: three currencies (ladder,
+rating, XP), one tech tree, three rules. It stayed deliberately unwired
+through every migration, because hooking a new domain to XP while it is
+being ported is how an exchange rate gets set by accident, in a commit
+whose message is about something else. `application/use-cases/character/
+sheet.ts` is where it finally joins up, and it restates nothing: an area
+reaches the character sheet by gaining a row in `registry.ts`.
 
 The three rules are tests, not prose: **no ladder is fed by XP** (a ladder
 must name an external standard), **no rating is promoted to a ladder** (no
@@ -223,7 +229,7 @@ measurement may be claimed by both), and **nothing is counted twice**
 
 **The backlog is the first absorbed app, and it is namespaced for a
 reason.** `domain/backlog/` holds a second `Settings` and a second
-`priority/`: Lift's priority is muscle tiers and capacity, the backlog's is
+`priority/`: LifeOS's priority is muscle tiers and capacity, the backlog's is
 how much you want to get to a book. The directory is what keeps them
 apart, and `BacklogSettings` / `BacklogItemId` are named for their area for
 the same reason. Its `updatedAt` is optional and written by the repository,
@@ -329,6 +335,15 @@ operating system at install time: an installed copy goes on asking for the
 old path long after the manifest stops mentioning it. `/map` keeps its
 path for the same reason — the share target is registered there — even
 though every label now reads Atlas.
+
+**This was called Lift, and the rename went all the way down.** The
+database, the `localStorage` prefix and `BACKUP_MAGIC` all say `lifeos`.
+Those are _addresses_, not labels: changing one opens a fresh empty one
+beside the old rather than migrating anything, so it was a deliberate
+factory reset taken at the only moment it was free — before there was data
+worth keeping. Doing it later would have meant a migration, or a database
+called `lift` inside an app called LifeOS forever. `LiftTracker` in the
+archaeology is a different repository and keeps its name.
 
 **A field added to `AppSettings` must be added to the parse.**
 `infrastructure/storage/settings-store.ts` builds its result field by

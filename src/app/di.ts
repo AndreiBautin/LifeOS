@@ -22,7 +22,7 @@ import type {
   WorkoutRepository,
 } from '@/domain/repositories/ports'
 import { DATABASE_NAME } from '@/config/storage-keys'
-import { openLiftDatabase, type LiftDatabase } from '@/infrastructure/db/database'
+import { openDatabase, type AppDatabase } from '@/infrastructure/db/database'
 import {
   createBacklogItemRepository,
   createProjectRepository,
@@ -66,7 +66,7 @@ import { logger } from '@/shared/logging/logger'
  */
 
 export interface AppServices {
-  readonly db: LiftDatabase
+  readonly db: AppDatabase
   readonly exercises: ExerciseRepository
   readonly position: PositionRepository
   readonly workouts: WorkoutRepository
@@ -123,7 +123,7 @@ export interface BootstrapResult {
 }
 
 export async function bootstrap(): Promise<BootstrapResult> {
-  const db = await openLiftDatabase(DATABASE_NAME)
+  const db = await openDatabase(DATABASE_NAME)
 
   const services: AppServices = {
     db,

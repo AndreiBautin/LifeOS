@@ -52,7 +52,18 @@ import type { Tombstone } from '@/domain/sync/tombstone'
  */
 export const BACKUP_SCHEMA_VERSION = 3
 
-export const BACKUP_MAGIC = 'lift.backup'
+/**
+ * Renamed with the app, and this is the one that could not have been
+ * undone later.
+ *
+ * It is the first thing checked when a file is opened, so a new magic
+ * rejects every file written under the old one. Changing it once there
+ * were backups worth having would have made the rename the single event
+ * that invalidated all of them — precisely the moment somebody might
+ * reach for one. Changed now, while every file carrying `lift.backup`
+ * was written this week by a test.
+ */
+export const BACKUP_MAGIC = 'lifeos.backup'
 
 export interface BackupEnvelope {
   /** Identifies the file as ours before anything else is parsed. */

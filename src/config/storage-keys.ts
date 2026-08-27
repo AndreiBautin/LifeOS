@@ -12,7 +12,7 @@
  * `infrastructure/storage/`, so this is the only route to a key.
  */
 
-const PREFIX = import.meta.env.VITE_DEMO_MODE === 'true' ? 'lift.demo' : 'lift'
+const PREFIX = import.meta.env.VITE_DEMO_MODE === 'true' ? 'lifeos.demo' : 'lifeos'
 
 export const STORAGE_KEYS = {
   settings: `${PREFIX}.settings`,

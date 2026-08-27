@@ -34,7 +34,7 @@ import { parseSharedLocation, type SharedLocation } from './ParseSharedLocation'
 /**
  * The categories a place can belong to.
  *
- * Data, and shipped rather than stored — the same decision Lift already
+ * Data, and shipped rather than stored — the same decision LifeOS already
  * made for the exercise catalogue and Backlogs for its content types. A
  * store of record for shipped content is what makes an edit undeliverable.
  */

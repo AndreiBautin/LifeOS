@@ -90,8 +90,8 @@ export default defineConfig(({ mode }) => {
         },
 
         manifest: {
-          name: 'Lift — training, quests, backlog and atlas',
-          short_name: 'Lift',
+          name: 'LifeOS — training, quests, backlog and atlas',
+          short_name: 'LifeOS',
           description:
             'Six things worth tracking, scored by one model: what you are training, building, reading, saving up for, who you are seeing and where you have been.',
           /*

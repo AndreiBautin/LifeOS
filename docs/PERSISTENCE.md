@@ -1,6 +1,6 @@
 # Where your data lives, and what can destroy it
 
-Lift has no server. Everything — programs, training history, settings —
+LifeOS has no server. Everything — programs, training history, settings —
 is stored in your browser, on the device you are using. That is a
 deliberate product decision, not a limitation waiting to be fixed: the
 app works on a gym basement's dead Wi-Fi, needs no account, and sends
@@ -131,7 +131,7 @@ Browser storage is "best-effort" by default: under disk pressure the
 browser evicts least-recently-used origins. Calling
 [`navigator.storage.persist()`](https://developer.mozilla.org/docs/Web/API/StorageManager/persist)
 promotes the origin to **persistent**, which exempts it from that
-automatic eviction. Lift requests it at every startup
+automatic eviction. LifeOS requests it at every startup
 (`src/infrastructure/storage/durability.ts`).
 
 | Browser  | Behaviour                                                                                        |

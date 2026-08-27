@@ -150,7 +150,7 @@ Starting a session and logging the top set:
 
 ## The backlog, and what a second domain changed
 
-Lift is becoming the hub that every other life-tracking app is absorbed
+LifeOS is becoming the hub that every other life-tracking app is absorbed
 into — [docs/GAME_MODEL.md](GAME_MODEL.md) decides what a number is
 allowed to mean across all of them, and the backlog is the first to land.
 
@@ -167,7 +167,7 @@ and wrong for a backlog — see `unionProgress` in `domain/sync/payload.ts`
 and the section below.
 
 **`domain/backlog/` is namespaced because two domains collide.** Both apps
-had a `Settings` and a `priority/`; Lift's priority is muscle tiers and
+had a `Settings` and a `priority/`; LifeOS's priority is muscle tiers and
 capacity, the backlog's is how much you want to get to something. The
 directory is what keeps the two apart, and `BacklogSettings` and
 `BacklogItemId` are named for their area for the same reason.

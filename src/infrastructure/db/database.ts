@@ -40,7 +40,18 @@ import type { ProgramPosition } from '@/domain/programs/position'
  *   - Quota is a share of free disk rather than five megabytes.
  */
 
-export const DB_NAME = 'lift'
+/**
+ * Renamed with the app, which was only free because it happened before
+ * there was anything to lose.
+ *
+ * A database name is an *address*, not a label: changing it does not
+ * migrate anything, it opens a second empty database beside the first and
+ * strands every record in one nothing opens any more. Doing it now cost a
+ * factory reset of a database holding test data. Doing it later would have
+ * meant writing a migration, or living with a database called `lift`
+ * inside an app called LifeOS forever.
+ */
+export const DB_NAME = 'lifeos'
 
 /**
  * Bump this and add an upgrade step below. Never edit an existing step —
@@ -241,11 +252,11 @@ export interface LiftDB extends DBSchema {
   }
 }
 
-export type LiftDatabase = IDBPDatabase<LiftDB>
+export type AppDatabase = IDBPDatabase<LiftDB>
 
-let connection: Promise<LiftDatabase> | undefined
+let connection: Promise<AppDatabase> | undefined
 
-export function openLiftDatabase(name = DB_NAME): Promise<LiftDatabase> {
+export function openDatabase(name = DB_NAME): Promise<AppDatabase> {
   connection ??= openDB<LiftDB>(name, DB_VERSION, {
     upgrade(db, oldVersion) {
       // Each step is guarded by the version it was introduced at, and
@@ -395,7 +406,7 @@ export function openLiftDatabase(name = DB_NAME): Promise<LiftDatabase> {
 }
 
 /** Closes the shared connection. Used by tests and by the import flow. */
-export async function closeLiftDatabase(): Promise<void> {
+export async function closeAppDatabase(): Promise<void> {
   const existing = connection
   connection = undefined
   if (existing !== undefined) {
@@ -412,7 +423,7 @@ export async function closeLiftDatabase(): Promise<void> {
  * seeding path, so no call site can ask to fill an empty database and
  * receive a wipe instead.
  */
-export async function clearAllStores(db: LiftDatabase): Promise<void> {
+export async function clearAllStores(db: AppDatabase): Promise<void> {
   const tx = db.transaction(
     [
       'exercises',

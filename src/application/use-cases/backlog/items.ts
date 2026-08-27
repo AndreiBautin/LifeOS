@@ -19,7 +19,7 @@ import type { BacklogItemRepository, Clock } from '@/domain/repositories/ports'
  * Each takes its dependencies as a parameter, as everything in this layer
  * does. Backlogs wrapped each of these in a factory returning a closure;
  * that is the same idea one indirection deeper, and the shape here is the
- * one the rest of Lift's use-cases already have.
+ * one the rest of LifeOS's use-cases already have.
  */
 
 export interface BacklogDeps {

@@ -44,7 +44,7 @@ import type {
 import type { Tombstone, TombstonedCollection } from '@/domain/sync/tombstone'
 import { tombstoneKey } from '@/domain/sync/tombstone'
 
-import { fromStored, toStored, type LiftDatabase } from './database'
+import { fromStored, toStored, type AppDatabase } from './database'
 
 /**
  * IndexedDB implementations of the domain's repository ports.
@@ -68,7 +68,7 @@ function stamp<T>(record: T, clock: Clock): T & { readonly updatedAt: string } {
 }
 
 async function bury(
-  db: LiftDatabase,
+  db: AppDatabase,
   clock: Clock,
   collection: TombstonedCollection,
   id: string,
@@ -80,7 +80,7 @@ async function bury(
 /**
  * What has been deleted. See `domain/sync/tombstone.ts`.
  */
-export function createTombstoneRepository(db: LiftDatabase): TombstoneRepository {
+export function createTombstoneRepository(db: AppDatabase): TombstoneRepository {
   return {
     async all() {
       return db.getAll('tombstones')
@@ -110,7 +110,7 @@ export function createTombstoneRepository(db: LiftDatabase): TombstoneRepository
  * between them still could not deliver an edit to an exercise that
  * already existed.
  */
-export function createExerciseRepository(db: LiftDatabase, clock: Clock): ExerciseRepository {
+export function createExerciseRepository(db: AppDatabase, clock: Clock): ExerciseRepository {
   return {
     async all() {
       return resolveLibrary(builtInExercises(), await db.getAll('exercises'))
@@ -148,7 +148,7 @@ export function createExerciseRepository(db: LiftDatabase, clock: Clock): Exerci
  */
 const POSITION_KEY = 'current'
 
-export function createPositionRepository(db: LiftDatabase): PositionRepository {
+export function createPositionRepository(db: AppDatabase): PositionRepository {
   return {
     async get() {
       return db.get('position', POSITION_KEY)
@@ -162,7 +162,7 @@ export function createPositionRepository(db: LiftDatabase): PositionRepository {
   }
 }
 
-export function createWorkoutRepository(db: LiftDatabase, clock: Clock): WorkoutRepository {
+export function createWorkoutRepository(db: AppDatabase, clock: Clock): WorkoutRepository {
   const newestFirst = (a: WorkoutLog, b: WorkoutLog): number => b.date.localeCompare(a.date)
 
   return {
@@ -259,7 +259,7 @@ export function createWorkoutRepository(db: LiftDatabase, clock: Clock): Workout
  * `restoreMany` and `clear` here, and the import path is the only caller
  * of the second.
  */
-export function createBacklogItemRepository(db: LiftDatabase, clock: Clock): BacklogItemRepository {
+export function createBacklogItemRepository(db: AppDatabase, clock: Clock): BacklogItemRepository {
   return {
     async all() {
       return db.getAll('items')
@@ -299,7 +299,7 @@ export function createBacklogItemRepository(db: LiftDatabase, clock: Clock): Bac
  * every record in it stamped, which is what separates it from
  * `restoreMany`.
  */
-export function createProjectRepository(db: LiftDatabase, clock: Clock): ProjectRepository {
+export function createProjectRepository(db: AppDatabase, clock: Clock): ProjectRepository {
   return {
     async all() {
       return db.getAll('projects')
@@ -344,7 +344,7 @@ export function createProjectRepository(db: LiftDatabase, clock: Clock): Project
  * record, because what it unblocks is derived from the graph on every
  * read rather than stored on the nodes.
  */
-export function createUpgradeRepository(db: LiftDatabase, clock: Clock): UpgradeRepository {
+export function createUpgradeRepository(db: AppDatabase, clock: Clock): UpgradeRepository {
   return {
     async all() {
       return db.getAll('upgrades')
@@ -375,7 +375,7 @@ export function createUpgradeRepository(db: LiftDatabase, clock: Clock): Upgrade
   }
 }
 
-export function createFriendRepository(db: LiftDatabase, clock: Clock): FriendRepository {
+export function createFriendRepository(db: AppDatabase, clock: Clock): FriendRepository {
   return {
     async all() {
       return db.getAll('friends')
@@ -411,7 +411,7 @@ export function createFriendRepository(db: LiftDatabase, clock: Clock): FriendRe
  * tombstone is keyed on the month for the same reason — there is no other
  * identity to delete.
  */
-export function createReviewRepository(db: LiftDatabase, clock: Clock): ReviewRepository {
+export function createReviewRepository(db: AppDatabase, clock: Clock): ReviewRepository {
   return {
     async metrics() {
       return db.getAll('metrics')
@@ -450,7 +450,7 @@ export function createReviewRepository(db: LiftDatabase, clock: Clock): ReviewRe
   }
 }
 
-export function createPlaceRepository(db: LiftDatabase, clock: Clock): PlaceRepository {
+export function createPlaceRepository(db: AppDatabase, clock: Clock): PlaceRepository {
   return {
     async all() {
       return db.getAll('places')
@@ -478,7 +478,7 @@ export function createPlaceRepository(db: LiftDatabase, clock: Clock): PlaceRepo
   }
 }
 
-export function createTripRepository(db: LiftDatabase, clock: Clock): TripRepository {
+export function createTripRepository(db: AppDatabase, clock: Clock): TripRepository {
   return {
     async all() {
       return db.getAll('trips')
@@ -515,7 +515,7 @@ export function createTripRepository(db: LiftDatabase, clock: Clock): TripReposi
  * write and a re-render when a reading lands in a cell already cleared,
  * which on a walk is most readings.
  */
-export function createExploredAreaRepository(db: LiftDatabase): ExploredAreaRepository {
+export function createExploredAreaRepository(db: AppDatabase): ExploredAreaRepository {
   return {
     async all() {
       return new Set((await db.getAllKeys('exploredCells')) as CellId[])
@@ -538,7 +538,7 @@ export function createExploredAreaRepository(db: LiftDatabase): ExploredAreaRepo
   }
 }
 
-export function createCheckInRepository(db: LiftDatabase, clock: Clock): CheckInRepository {
+export function createCheckInRepository(db: AppDatabase, clock: Clock): CheckInRepository {
   return {
     async byId(id: CheckInId) {
       return db.get('checkIns', id)

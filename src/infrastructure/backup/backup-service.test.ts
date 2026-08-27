@@ -6,9 +6,9 @@ import { BACKUP_MAGIC, BACKUP_SCHEMA_VERSION } from '@/domain/backup/envelope'
 import { DEFAULT_SETTINGS } from '@/domain/settings/settings'
 import {
   clearAllStores,
-  closeLiftDatabase,
-  openLiftDatabase,
-  type LiftDatabase,
+  closeAppDatabase,
+  openDatabase,
+  type AppDatabase,
 } from '@/infrastructure/db/database'
 import {
   createCheckInRepository,
@@ -47,14 +47,14 @@ import {
 /** Fixed, so a stamped updatedAt is reproducible. */
 const testClock = { now: () => new Date('2026-08-25T09:00:00.000Z') }
 
-const TEST_DB = 'lift-backup-test'
+const TEST_DB = 'lifeos-backup-test'
 const NOW = new Date('2026-08-24T12:00:00.000Z')
 
-let db: LiftDatabase
+let db: AppDatabase
 let repositories: BackupRepositories
 
 beforeEach(async () => {
-  db = await openLiftDatabase(TEST_DB)
+  db = await openDatabase(TEST_DB)
   repositories = {
     exercises: createExerciseRepository(db, testClock),
     workouts: createWorkoutRepository(db, testClock),
@@ -72,7 +72,7 @@ beforeEach(async () => {
 })
 
 afterEach(async () => {
-  await closeLiftDatabase()
+  await closeAppDatabase()
   await deleteDB(TEST_DB)
 })
 
@@ -127,13 +127,13 @@ describe('export and import round-trip', () => {
     await populate()
     const file = serialiseBackup(await buildBackup(repositories, exportOptions))
 
-    expect(file).toContain('"magic": "lift.backup"')
+    expect(file).toContain('"magic": "lifeos.backup"')
     expect(file).toContain('\n  ')
     expect(file).toContain('"date": "2026-08-20"')
   })
 
   it('names the file by the moment it was taken', () => {
-    expect(backupFilename(NOW)).toBe('lift-backup-2026-08-24-12-00-00.json')
+    expect(backupFilename(NOW)).toBe('lifeos-backup-2026-08-24-12-00-00.json')
   })
 })
 

@@ -85,7 +85,7 @@ export function serialiseBackup(envelope: BackupEnvelope): string {
 
 export function backupFilename(now: Date): string {
   const stamp = now.toISOString().slice(0, 19).replace(/[:T]/g, '-')
-  return `lift-backup-${stamp}.json`
+  return `lifeos-backup-${stamp}.json`
 }
 
 /* -------------------------------------------------------------------- */

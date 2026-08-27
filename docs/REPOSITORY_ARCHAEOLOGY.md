@@ -1,6 +1,6 @@
 # What came before
 
-Lift consolidates three earlier repositories. This is the record of what
+LifeOS consolidates three earlier repositories. This is the record of what
 each actually was, what was worth keeping, and what was not — written
 before any code here was, so the decisions below can be checked against
 the evidence rather than taken on trust.
@@ -121,7 +121,7 @@ replaced them, and those are the parts that survive:
   the prescription _is_ a load.
 - `MuscleGroup.WeeklyVolume`: a per-muscle weekly set target. The embryo
   of MEV/MAV/MRV.
-- A finer muscle taxonomy, splitting the deltoid heads out. Lift splits
+- A finer muscle taxonomy, splitting the deltoid heads out. LifeOS splits
   both the delts _and_ the posterior chain, because volume landmarks are
   per-muscle and hamstrings and glutes do not share a recovery budget.
 

@@ -1,6 +1,6 @@
 # The game model
 
-Lift is becoming the hub that every other life-tracking app is absorbed
+LifeOS is becoming the hub that every other life-tracking app is absorbed
 into. Seven areas will eventually report progress on one screen. This
 document decides — before any of them arrive — what a number is allowed to
 mean here.
@@ -34,7 +34,7 @@ all measure the same kind of quantity.
 
 ### Ladder — for the few things with a real top
 
-Anchored to a standard the app did not invent. Lift already states the
+Anchored to a standard the app did not invent. LifeOS already states the
 principle in `character.ts`: **a scale the app can move is a scale that
 means nothing.** Strength qualifies because "Advanced" means something to
 a coach who has never seen this app.
@@ -95,7 +95,7 @@ the node is what the tree was for.
 
 ## The three rules
 
-**1 · No ladder is fed by XP.** Already Lift's rule for strength; now the
+**1 · No ladder is fed by XP.** Already LifeOS's rule for strength; now the
 system's. Showing up cannot make you stronger on paper than you are.
 `readLadder(ladder, value)` takes a measurement and nothing else — there is
 no parameter through which XP could arrive.

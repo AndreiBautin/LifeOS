@@ -1,4 +1,4 @@
-# Lift
+# LifeOS
 
 Six things worth tracking, in one app, scored by one model.
 
@@ -169,6 +169,20 @@ estimate when the session opens — never stored in the program. See
 | [DEPLOYMENT.md](docs/DEPLOYMENT.md)                         | Hosting, CI/CD, and the base-path trap                      |
 
 ## Origins
+
+**This was called Lift**, and lived at `andreibautin.github.io/Lift/`.
+The name stopped describing it once five other apps were absorbed.
+
+The rename went all the way down — the database, the `localStorage`
+prefix and the magic string at the top of every backup file all say
+`lifeos` now. Those are _addresses_, not labels: renaming one does not
+migrate anything, it opens a fresh empty one beside the old. So this was a
+factory reset, done deliberately at the only moment it was free, rather
+than a migration written later or a database called `lift` living inside
+an app called LifeOS forever.
+
+If you had the old app installed, reinstall from the new URL. It will come
+up empty.
 
 Consolidated twice.
 

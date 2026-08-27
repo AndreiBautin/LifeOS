@@ -7,7 +7,7 @@ import type { Exercise } from '@/domain/exercises/exercise'
 import { asExerciseId } from '@/domain/ids/ids'
 import { anEntry, aWorkout, BENCH, SQUAT } from '@/test/builders/workout'
 
-import { closeLiftDatabase, openLiftDatabase, type LiftDatabase } from './database'
+import { closeAppDatabase, openDatabase, type AppDatabase } from './database'
 import {
   createBacklogItemRepository,
   createExerciseRepository,
@@ -21,14 +21,14 @@ const testClock = { now: () => new Date('2026-08-25T09:00:00.000Z') }
 
 const TEST_DB = 'lift-test'
 
-let db: LiftDatabase
+let db: AppDatabase
 
 beforeEach(async () => {
-  db = await openLiftDatabase(TEST_DB)
+  db = await openDatabase(TEST_DB)
 })
 
 afterEach(async () => {
-  await closeLiftDatabase()
+  await closeAppDatabase()
   await deleteDB(TEST_DB)
 })
 

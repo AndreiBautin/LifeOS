@@ -6,11 +6,7 @@ import { asExerciseId, type ExerciseId, type IdGenerator } from '@/domain/ids/id
 import type { Clock } from '@/domain/repositories/ports'
 import type { AthleteState } from '@/domain/resolution/resolve'
 import { deriveProgram } from '@/application/use-cases/programs/current-program'
-import {
-  closeLiftDatabase,
-  openLiftDatabase,
-  type LiftDatabase,
-} from '@/infrastructure/db/database'
+import { closeAppDatabase, openDatabase, type AppDatabase } from '@/infrastructure/db/database'
 import {
   createExerciseRepository,
   createPositionRepository,
@@ -39,7 +35,7 @@ const testClock = { now: () => new Date('2026-08-25T09:00:00.000Z') }
 
 const TEST_DB = 'lift-flow-test'
 
-let db: LiftDatabase
+let db: AppDatabase
 let clock: Clock
 let currentTime = new Date('2026-08-24T09:00:00.000Z')
 
@@ -112,13 +108,13 @@ beforeEach(async () => {
   currentTime = new Date('2026-08-24T09:00:00.000Z')
   clock = { now: () => currentTime }
 
-  db = await openLiftDatabase(TEST_DB)
+  db = await openDatabase(TEST_DB)
   // Derived from settings, exactly as the app derives it.
   program = deriveProgram(DEFAULT_SETTINGS, builtInExercises())
 })
 
 afterEach(async () => {
-  await closeLiftDatabase()
+  await closeAppDatabase()
   await deleteDB(TEST_DB)
 })
 
