@@ -350,7 +350,18 @@ worth keeping. Doing it later would have meant a migration, or a database
 called `lift` inside an app called LifeOS forever. `LiftTracker` in the
 archaeology is a different repository and keeps its name.
 
-**A habit cannot ring, and the design is built around that.** iOS gives
+**Dailies are the one area where the screen and the code agree.** Quests
+sit over `Project`, Codex over `backlog`, Tech tree over `upgrades` — and
+`domain/dailies/` is called dailies on both sides, because the MMO word
+for a recurring quest and the type name happened to be the same word. Do
+not "fix" the label to Habits for plainness; the agreement is worth more
+than the plainness, and it is the only one there is.
+
+The wrinkle it carries, stated so nobody treats it as a bug: a
+days-of-week cadence means a "daily" can happen weekly. Every MMO with
+dailies has the same thing and nobody is confused by it.
+
+**A daily cannot ring, and the design is built around that.** iOS gives
 a PWA no way to schedule a local notification, and Web Push needs a
 server this app does not have. So `domain/dailies/` earns its place by
 being the first thing on the home screen rather than by finding you.

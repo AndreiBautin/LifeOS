@@ -135,8 +135,8 @@ function AddDaily({ onDone }: { readonly onDone: () => void }) {
         <input
           className={FIELD}
           value={title}
-          aria-label="New habit"
-          placeholder="Something you mean to do"
+          aria-label="New daily"
+          placeholder="Something you mean to do daily"
           onChange={(event) => {
             setTitle(event.target.value)
           }}
@@ -216,8 +216,8 @@ export function Dailies() {
       )}
 
       {views.length === 0 ? (
-        <Empty title="No habits yet">
-          A habit here is a checkbox and a streak. It cannot ring — nothing in a web app on iOS can
+        <Empty title="No dailies yet">
+          A daily here is a checkbox and a streak. It cannot ring — nothing in a web app on iOS can
           — so it earns its place by being the first thing on this screen.
         </Empty>
       ) : (

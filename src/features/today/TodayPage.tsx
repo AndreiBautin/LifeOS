@@ -75,7 +75,7 @@ export function TodayPage() {
         <p className="text-ink-500 numeric mt-0.5 text-sm">{today}</p>
       </header>
 
-      <Section title="Habits" description="A checkbox and a streak.">
+      <Section title="Dailies" description="A checkbox and a streak.">
         <Dailies />
       </Section>
 

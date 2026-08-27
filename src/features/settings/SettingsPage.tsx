@@ -459,7 +459,7 @@ const COUNT_LABELS: readonly (readonly [keyof BackupCounts, string])[] = [
   ['friends', 'people'],
   ['places', 'places'],
   ['trips', 'trips'],
-  ['dailies', 'habits'],
+  ['dailies', 'dailies'],
   ['reviews', 'monthly reviews'],
   ['metrics', 'tracked metrics'],
   ['exploredCells', 'squares of walked ground'],

@@ -42,7 +42,7 @@ export async function addDaily(
   deps: DailyDeps,
 ): Promise<{ readonly error?: string }> {
   const trimmed = title.trim()
-  if (trimmed === '') return { error: 'A habit needs a name.' }
+  if (trimmed === '') return { error: 'A daily needs a name.' }
 
   await deps.dailies.save({
     id: deps.ids.next() as DailyId,

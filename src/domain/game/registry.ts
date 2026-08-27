@@ -203,7 +203,7 @@ export const SCORING: readonly AreaScoring[] = [
   },
   {
     area: 'dailies',
-    name: 'Habits',
+    name: 'Dailies',
     phase: 9,
     /*
      * No ladder, and no external anchor to hang one on. Nobody publishes
@@ -230,7 +230,7 @@ export const SCORING: readonly AreaScoring[] = [
      * rule against feeding a currency from an outcome, broken in the one
      * area where the temptation is strongest.
      */
-    acts: [{ id: 'dailies.completed', area: 'dailies', label: 'Kept a habit', points: 15 }],
+    acts: [{ id: 'dailies.completed', area: 'dailies', label: 'Kept a daily', points: 15 }],
     hasTree: false,
   },
   {
