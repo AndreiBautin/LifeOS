@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 
 import { builtInExercises, STRENGTH_VARIATIONS } from '@/domain/exercises/catalogue'
-import { MAX_DIRECT_SETS_PER_SESSION } from '@/domain/volume/frequency'
-import type { MuscleGroup } from '@/domain/exercises/taxonomy'
+import { MAX_DIRECT_SETS_PER_SESSION, TIER_FREQUENCY } from '@/domain/volume/frequency'
+import { MUSCLE_GROUPS, type MuscleGroup } from '@/domain/exercises/taxonomy'
 import { asExerciseId, asProgramId, type IdGenerator } from '@/domain/ids/ids'
 import type { ProgramTemplate, ProgramWeek } from '@/domain/programs/program'
 import {
@@ -18,7 +18,15 @@ import { estimateDayMinutes } from '@/domain/programs/program'
 import { slotVolume, sumVolume, volumeForSlots } from '@/domain/volume/accounting'
 import { DEFAULT_LANDMARKS } from '@/domain/volume/landmarks'
 
-import { assembleRpProgram, defaultRpRecipe, type RpRecipe } from './rp-assemble'
+import { DEFAULT_DAYS_PER_WEEK } from '@/domain/autoregulation/schedule'
+import { rpSplitForDays } from '@/domain/splits/rp-splits'
+
+import {
+  assembleRpProgram,
+  defaultRpRecipe,
+  SESSION_MINUTES_CAP,
+  type RpRecipe,
+} from './rp-assemble'
 
 const exercises = builtInExercises()
 const lookup = (id: string) => exercises.find((exercise) => exercise.id === id)
@@ -451,12 +459,36 @@ describe('how often a muscle is trained', () => {
      * This compared side delts against calves on the reasoning that the
      * first is owed three times the volume — true at the time, and the
      * wrong reason. Frequency follows the tier and nothing else, which is
-     * the whole point of TIER_FREQUENCY. The two muscles now share a tier
-     * and correctly share a frequency, so a test asserting otherwise
-     * would be defending the volume-derived rule that was deliberately
-     * removed.
+     * the whole point of TIER_FREQUENCY.
+     *
+     * Built with a short tier list rather than read off the shipped week,
+     * for a second reason that arrived later: the shipped upper days are
+     * full, so two muscles that should differ in frequency can come out
+     * equal because neither fitted. That is a capacity fact and it is
+     * asserted below, on purpose, separately — mixing it in here would
+     * leave this test unable to fail for the reason it exists.
      */
-    expect(directDays('side-delts')).toBeGreaterThan(directDays('core'))
+    const sparse = weekAt(
+      build({
+        muscleTiers: [
+          { rank: 1, members: [], label: 'Specialising' },
+          { rank: 2, members: ['side-delts'], label: 'Building' },
+          { rank: 3, members: ['core'], label: 'Maintaining' },
+        ],
+      }),
+      3,
+    )
+
+    const daysWith = (muscle: MuscleGroup): number =>
+      sparse.days.filter((day) =>
+        day.slots.some(
+          (slot) =>
+            slot.exercise.kind === 'specific' &&
+            lookup(slot.exercise.exerciseId)?.primaryMuscle === muscle,
+        ),
+      ).length
+
+    expect(daysWith('side-delts')).toBeGreaterThan(daysWith('core'))
   })
 
   it('does not let one session swallow a muscle`s whole week', () => {
@@ -1045,28 +1077,90 @@ describe('tiers driving volume', () => {
 })
 
 describe('the split', () => {
-  it('trains every muscle it programmes at least twice a week', () => {
-    const program = build()
-    const week = program.blocks[0]?.weeks[3]
-    if (!week) throw new Error('missing week')
+  /*
+   * This asserted that every muscle carrying real volume is trained on at
+   * least two days, and the four-day week cannot promise that any more.
+   *
+   * Two upper days with nine tier-2 muscles need eight accessory slots a
+   * day; the clock allows six. Raising `maxHypertrophySlotsPerDay` to
+   * seven, eight or nine changes nothing at all — measured — because the
+   * fill stops on `SESSION_MINUTES_CAP`, not on the slot count. So the
+   * frequency the tiers ask for is not always deliverable, and a test
+   * demanding it would be asserting something about the split rather than
+   * about the assembler.
+   *
+   * What is still guaranteed is the half that matters most, and it is
+   * stated as a ceiling because a ceiling is always achievable: a muscle
+   * that loses a session must not be handed the missing sets in the one it
+   * keeps. That was the actual failure — a weekly target delivered in a
+   * single sitting, where splitting it was the whole point.
+   */
+  it('never hands a muscle more than one session’s worth in a day', () => {
+    const week = weekAt(build(), 3)
 
-    const daysTraining = (muscle: MuscleGroup): number =>
+    for (const day of week.days) {
+      const perMuscle = new Map<MuscleGroup, number>()
+
+      for (const slot of day.slots) {
+        if (slot.exercise.kind !== 'specific') continue
+        const exercise = lookup(slot.exercise.exerciseId)
+        if (exercise === undefined || slot.role === 'conditioning') continue
+        const working = slot.sets.filter((set) => set.isWarmup !== true).length
+        perMuscle.set(
+          exercise.primaryMuscle,
+          (perMuscle.get(exercise.primaryMuscle) ?? 0) + working,
+        )
+      }
+
+      for (const [muscle, sets] of perMuscle) {
+        expect(sets, `${muscle} on ${day.label}`).toBeLessThanOrEqual(MAX_DIRECT_SETS_PER_SESSION)
+      }
+    }
+  })
+
+  /*
+   * And when a muscle does fall short of its tier's frequency, it is the
+   * clock that did it rather than the ordering.
+   *
+   * Worth pinning, because the two are indistinguishable from the output
+   * and only one of them is acceptable. A muscle passed over while the day
+   * still had minutes in it is a bug in the sort; one passed over on a day
+   * already at the cap is the week being full. The shipped default leaves
+   * the side delts and the triceps a session short and both upper days run
+   * past the cap, which is the second case.
+   */
+  it('falls short of a tier’s frequency only on a day that is already full', () => {
+    const week = weekAt(build(), 3)
+    const split = rpSplitForDays(DEFAULT_DAYS_PER_WEEK)
+
+    const directDaysFor = (muscle: MuscleGroup): number =>
       week.days.filter((day) =>
-        day.slots.some((slot) => {
-          if (slot.exercise.kind !== 'specific') return false
-          const exercise = lookup(slot.exercise.exerciseId)
-          if (exercise === undefined) return false
-          if (slot.sets.every((set) => set.isWarmup === true)) return false
-          return exercise.primaryMuscle === muscle || exercise.secondaryMuscles.includes(muscle)
-        }),
+        day.slots.some(
+          (slot) =>
+            slot.exercise.kind === 'specific' &&
+            lookup(slot.exercise.exerciseId)?.primaryMuscle === muscle,
+        ),
       ).length
 
-    const volume = weeklyVolume(week)
-    const trained = (Object.keys(volume) as MuscleGroup[]).filter((muscle) => volume[muscle] >= 4)
+    for (const muscle of MUSCLE_GROUPS) {
+      const accountable = split.days.filter((day) => day.muscles.includes(muscle))
+      const wanted = Math.min(
+        accountable.length,
+        TIER_FREQUENCY[
+          DEFAULT_MUSCLE_TIERS.find((tier) => tier.members.includes(muscle))?.rank ?? 3
+        ] ?? 1,
+      )
 
-    expect(trained.length).toBeGreaterThan(6)
-    for (const muscle of trained) {
-      expect(daysTraining(muscle), `${muscle} trained on too few days`).toBeGreaterThanOrEqual(2)
+      if (directDaysFor(muscle) >= wanted) continue
+
+      for (const splitDay of accountable) {
+        const day = week.days[splitDay.index]
+        if (day === undefined) throw new Error('missing day')
+        expect(
+          estimateDayMinutes(day),
+          `${muscle} is short but ${day.label} had room`,
+        ).toBeGreaterThan(SESSION_MINUTES_CAP)
+      }
     }
   })
 
@@ -1196,25 +1290,35 @@ describe('session length', () => {
     expect(average).toBeLessThan(SESSION_TOO_LONG_MINUTES)
   })
 
-  it('trains the small fast-recovering muscles on every day that carries them', () => {
-    // Arms and side delts recover fast and cost almost nothing
-    // systemically, so they carry the balancing load — on both upper
-    // days, which is every day accountable for them.
+  it('gives the small fast-recovering muscles a place on every upper day', () => {
+    /*
+     * Arms and side delts recover fast and cost almost nothing
+     * systemically, so they carry the balancing load.
+     *
+     * This asked for each of them on both upper days, which one exercise
+     * per muscle per session made unaffordable: they now compete for the
+     * same six slots as the back and the delts rather than being tucked in
+     * alongside. What survives is that they are still what a full day
+     * makes room for — an upper day with none of them would mean the
+     * ordering had stopped preferring cheap work when it ran out of time.
+     */
     const peak = weekAt(program, 5)
+    const upper = peak.days.filter((day) => day.label.includes('Upper'))
 
-    for (const muscle of ['biceps', 'triceps', 'side-delts'] as const) {
-      const days = peak.days.filter((day) =>
-        day.slots.some((slot) => {
-          if (slot.exercise.kind !== 'specific') return false
-          const exercise = lookup(slot.exercise.exerciseId)
-          return (
-            exercise !== undefined &&
-            (exercise.primaryMuscle === muscle || exercise.secondaryMuscles.includes(muscle))
-          )
+    expect(upper).toHaveLength(2)
+
+    for (const day of upper) {
+      const small = new Set(
+        day.slots.flatMap((slot) => {
+          if (slot.exercise.kind !== 'specific') return []
+          const muscle = lookup(slot.exercise.exerciseId)?.primaryMuscle
+          return muscle === 'biceps' || muscle === 'triceps' || muscle === 'side-delts'
+            ? [muscle]
+            : []
         }),
-      ).length
+      )
 
-      expect(days, `${muscle} appears on too few days`).toBeGreaterThanOrEqual(2)
+      expect(small.size, `${day.label} made room for none of them`).toBeGreaterThanOrEqual(1)
     }
   })
 })

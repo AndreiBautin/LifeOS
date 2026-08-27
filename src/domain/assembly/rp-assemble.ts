@@ -32,7 +32,11 @@ import { describeBlock } from '@/domain/priority/explain'
 import type { RpDay, RpSplit } from '@/domain/splits/rp-splits'
 import { rpFrequency, rpSplitForDays } from '@/domain/splits/rp-splits'
 import { countsAsWorking, slotVolume, type VolumeMap } from '@/domain/volume/accounting'
-import { requiredFrequency, setsPerSession } from '@/domain/volume/frequency'
+import {
+  MAX_DIRECT_SETS_PER_SESSION,
+  requiredFrequency,
+  setsPerSession,
+} from '@/domain/volume/frequency'
 import { emptyVolumeMap } from '@/domain/volume/landmarks'
 import type { LandmarkSet } from '@/domain/volume/landmarks'
 import { DEFAULT_LANDMARKS } from '@/domain/volume/landmarks'
@@ -122,32 +126,31 @@ export function defaultRpRecipe(overrides: Partial<RpRecipe> = {}): RpRecipe {
     rts: DEFAULT_RTS,
     includeWarmUps: true,
     maxHypertrophySlotsPerDay: 6,
-    minSetsPerSlot: 2,
+    minSetsPerSlot: 3,
     /*
-     * Eight, matching `MAX_DIRECT_SETS_PER_SESSION`.
+     * Three to five sets of one exercise, or the muscle is not trained
+     * today.
      *
-     * These two caps are different things — one bounds a slot, the other
-     * bounds a muscle's work in a session — and they have to be raised
-     * together or neither moves. `shareOwed` takes the lower of the
-     * per-session dose and this, so leaving one at five made the other
-     * decorative.
+     * These now agree with `MAX_DIRECT_SETS_PER_SESSION` rather than
+     * bounding something separate, because one exercise per muscle per
+     * session makes the slot and the muscle's session dose the same
+     * thing. Keep them in step: a `maxSetsPerSlot` below the per-session
+     * ceiling would make that ceiling unreachable, and one above it would
+     * be decorative — `shareOwed` takes the lower of the two.
+     *
+     * The floor is three rather than one, which is the load-bearing half.
+     * A one-set slot costs a warm-up and a machine and delivers almost
+     * nothing, and the fill will happily produce a dozen of them to make
+     * an arithmetic total come out — thirteen exercises inside the minute
+     * budget, which is the shape splitting the volume was meant to
+     * avoid. Below three the muscle waits for a session that can do it
+     * properly, and the Plan screen reports the shortfall.
+     *
+     * The old value was eight, under a comment claiming it matched the
+     * per-session ceiling. It matched an older value of it and had been
+     * decorative for some time.
      */
-    /*
-     * Three, and it is a different cap from the per-session ceiling.
-     *
-     * `MAX_DIRECT_SETS_PER_SESSION` bounds what a *muscle* takes in a
-     * session; this bounds what one *exercise* takes. Five and five
-     * collapsed the distinction — a muscle's whole session dose went into
-     * a single movement — so the pairing that actually trains a muscle
-     * well, a compound and then an isolation, could not be expressed. At
-     * three the ceiling still fills, in two slots instead of one.
-     *
-     * It was eight, under a comment claiming it matched the per-session
-     * ceiling. It matched an older value of it and had been decorative
-     * since: `shareOwed` takes the lower of the two, so the session dose
-     * had been the real cap for some time.
-     */
-    maxSetsPerSlot: 3,
+    maxSetsPerSlot: MAX_DIRECT_SETS_PER_SESSION,
     excludedExercises: [],
     settings: DEFAULT_PROGRAM_SETTINGS,
     ...overrides,
@@ -1261,14 +1264,27 @@ function pickHypertrophyExercise(
   const excluded = new Set(args.recipe.excludedExercises)
 
   /*
-   * Two movements that train the same muscle through the same pattern are
-   * the same exercise as far as a session is concerned. The `used` set
-   * stops the identical one repeating; this stops pull-ups being followed
-   * by chin-ups, which is not extra stimulus, just extra time.
+   * One exercise per muscle per session, full stop.
+   *
+   * This keyed on muscle *and* pattern, which stopped pull-ups being
+   * followed by chin-ups and allowed a compound and an isolation for the
+   * same muscle — the compound pass would place a row for the upper back
+   * and the isolation pass a shrug, and the muscle's session dose arrived
+   * split across two movements and two warm-ups.
+   *
+   * A muscle gets one movement and three to five sets of it. Splitting a
+   * dose that small buys nothing: the second exercise costs its own
+   * ramp-up and the sets it contributes are the ones the first was
+   * already going to do. The pattern half of the key is subsumed — two
+   * movements for one muscle are now barred whether they share a pattern
+   * or not.
+   *
+   * Day-scoped, because `placed` is. The weekly repeat penalty is a
+   * separate mechanism and still keys on muscle-and-pattern, which is
+   * what makes the forearms get flexion one session and extension the
+   * other.
    */
-  const alreadyCovered = new Set(
-    placed.map((exercise) => `${exercise.primaryMuscle}|${exercise.pattern}`),
-  )
+  const alreadyCovered = new Set(placed.map((exercise) => exercise.primaryMuscle))
 
   const candidates = args.deps.exercises.filter(
     (exercise) =>
@@ -1277,7 +1293,7 @@ function pickHypertrophyExercise(
       !exercise.isArchived &&
       !used.has(exercise.id) &&
       !excluded.has(exercise.id) &&
-      !alreadyCovered.has(`${exercise.primaryMuscle}|${exercise.pattern}`),
+      !alreadyCovered.has(exercise.primaryMuscle),
   )
 
   if (candidates.length === 0) return undefined

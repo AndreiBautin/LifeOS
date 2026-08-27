@@ -215,13 +215,45 @@ by deficit, not by the order muscles happen to appear in `RpDay.muscles`;
 that array is grouped by region, and walking it verbatim left the side
 delts last in `UPPER` and finishing blocks ten sets short.
 
-**Two caps, and they are different things.**
-`MAX_DIRECT_SETS_PER_SESSION` bounds what a _muscle_ takes in a session;
-`maxSetsPerSlot` bounds what one _exercise_ takes, and it is three. Equal
-values collapse the distinction — a muscle's whole session dose goes into
-one movement — so the pairing that actually trains a muscle well, a
-compound and then an isolation, becomes inexpressible. At three the
-session ceiling still fills, in two slots rather than one.
+**One exercise per muscle per session, three to five sets, or the muscle
+is not trained today.** `alreadyCovered` in `pickHypertrophyExercise` keys
+on `primaryMuscle` alone. It keyed on muscle _and_ pattern, which let the
+compound pass place a row for the upper back and the isolation pass a
+shrug, so one muscle's session dose arrived split across two movements and
+two ramp-ups. The pattern half is subsumed — two movements for one muscle
+are barred whether they share a pattern or not. Day-scoped, because
+`placed` is: the _weekly_ repeat penalty still keys on muscle-and-pattern,
+and that is what gives the forearms flexion one session and extension the
+other.
+
+`minSetsPerSlot` is 3 and `maxSetsPerSlot` is `MAX_DIRECT_SETS_PER_SESSION`.
+Those two now describe the same quantity rather than bounding a slot and a
+muscle separately, which is what one-exercise-per-muscle makes true — keep
+them in step. The floor is the load-bearing half: a one-set slot costs a
+warm-up and a machine and delivers almost nothing, and the fill will
+happily produce a dozen of them to make a total come out. Below three the
+muscle waits for a session that can do it properly.
+
+**The minimum session length is gone; the ceiling is not, and it is now
+the binding constraint.** Worth stating together, because the first
+sentence is the memorable one and it gets remembered as both. What was
+removed was the padding of a _short_ day. `SESSION_MINUTES_CAP` stayed on
+purpose — without it one day claims the week's recovery budget — and it is
+what the four-day week now runs into: two upper days with nine tier-2
+muscles want eight accessory slots each, the fill places six and stops on
+the clock. Raising `maxHypertrophySlotsPerDay` to seven, eight or nine
+changes the output not at all, measured rather than assumed. The shipped
+week therefore leaves the side delts and the triceps a session short and
+the traps with nothing.
+
+Do not answer that by widening a tolerance. The ways out are all decisions
+for a person: fewer muscles at tier 2, a fifth day, or a higher ceiling.
+What the assembler owes is that the miss is the _clock_ and not its own
+ordering — a muscle passed over while a day still had minutes in it is a
+bug in the sort — and `rp-assemble.test.ts` → "falls short of a tier's
+frequency only on a day that is already full" is what separates the two. A
+frequency miss currently reaches the Plan screen only as the volume
+shortfall it causes; the session count itself is not shown.
 
 **There is no minimum session length.** Deliberately, after there was.
 Enforcing one took three mechanisms in the assembler — a grace period
@@ -229,14 +261,6 @@ letting the frequency backfill overrun, a top-up pass scheduling muscles
 already at their target, and a loop lengthening existing slots one set at
 a time — all to move a thirty-nine minute session to forty-one. Each had
 to be reasoned about again every time anything else moved.
-
-**The bottom tier is maintenance volume, not zero.** Easy to expect
-otherwise, because it _looks_ like zero for the legs: quads, hamstrings
-and glutes are maintained and receive no dedicated slot, since the squat
-and the deadlift already pay them past the ask. Core, forearms and traps
-are maintained too and nothing pays them — no competition lift trains
-them directly and secondary credit is gone — so they each get a small
-direct slot instead. Same rule, different arithmetic.
 
 A short day is information. A deadlift day with the legs on maintenance
 runs twenty-five minutes because that is what the tiers asked for, and
@@ -246,6 +270,14 @@ The ceiling stays — without it one day claims the whole week — but it is
 As a setting it read as a dial for how long you wanted to train, which it
 never was: raising it does not lengthen a session, it only stops the
 first day being held back from spending the last day's budget.
+
+**The bottom tier is maintenance volume, not zero.** Easy to expect
+otherwise, because it _looks_ like zero for the legs: quads, hamstrings
+and glutes are maintained and receive no dedicated slot, since the squat
+and the deadlift already pay them past the ask. Core, forearms and traps
+are maintained too and nothing pays them — no competition lift trains them
+directly and secondary credit is gone — so they each get a small direct
+slot instead. Same rule, different arithmetic.
 
 **Every working week is identical.** `weeklyTargetForWeek` returns the
 target the priority asked for, and MV on the deload. There is no ramp.
