@@ -1,4 +1,7 @@
 import type { ActionId, ProjectId } from '@/domain/ids/ids'
+import { toDayKey } from '@/domain/time/day'
+
+export { toDayKey }
 
 import type { ActionItem, Project, ProjectStatus } from './project'
 
@@ -27,12 +30,6 @@ import type { ActionItem, Project, ProjectStatus } from './project'
 export const DEADLINE_RAMP_DAYS = 14
 
 /** A `YYYY-MM-DD` key for the local calendar day a moment falls on. */
-export function toDayKey(date: Date): string {
-  const year = date.getFullYear().toString().padStart(4, '0')
-  const month = (date.getMonth() + 1).toString().padStart(2, '0')
-  const day = date.getDate().toString().padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
 
 /**
  * Whole days from one calendar day to another.

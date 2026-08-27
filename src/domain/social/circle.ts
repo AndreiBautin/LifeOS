@@ -1,3 +1,4 @@
+import { toDayKey } from '@/domain/time/day'
 import type { FriendId } from '@/domain/ids/ids'
 
 /**
@@ -56,13 +57,6 @@ export function logHangout(friend: Friend, date: string): Friend {
 function parseDay(key: string): Date {
   const [year, month, day] = key.split('-').map(Number)
   return new Date(year ?? 0, (month ?? 1) - 1, day ?? 1)
-}
-
-function toDayKey(date: Date): string {
-  const year = date.getFullYear().toString().padStart(4, '0')
-  const month = (date.getMonth() + 1).toString().padStart(2, '0')
-  const day = date.getDate().toString().padStart(2, '0')
-  return `${year}-${month}-${day}`
 }
 
 /**

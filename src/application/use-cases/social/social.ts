@@ -1,3 +1,4 @@
+import { toDayKey } from '@/domain/time/day'
 import { asFriendId, type FriendId, type IdGenerator } from '@/domain/ids/ids'
 import type { Clock, FriendRepository } from '@/domain/repositories/ports'
 import {
@@ -128,11 +129,4 @@ export async function logHangoutFor(
  */
 export async function removeFriend(id: FriendId, deps: SocialDeps): Promise<void> {
   await deps.friends.remove(id)
-}
-
-function toDayKey(date: Date): string {
-  const year = date.getFullYear().toString().padStart(4, '0')
-  const month = (date.getMonth() + 1).toString().padStart(2, '0')
-  const day = date.getDate().toString().padStart(2, '0')
-  return `${year}-${month}-${day}`
 }

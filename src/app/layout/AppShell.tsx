@@ -1,4 +1,4 @@
-import { BookMarked, Dumbbell, Map, Network, Target, User } from 'lucide-react'
+import { BookMarked, CalendarDays, Dumbbell, Map, Target, User, Users } from 'lucide-react'
 import { NavLink, Outlet } from 'react-router-dom'
 
 import { BackupReminder } from '@/features/backup/BackupReminder'
@@ -25,23 +25,29 @@ import { UpdatePrompt } from '@/features/pwa/UpdatePrompt'
  * written; the screens were the only place still calling them Projects and
  * Upgrades.
  *
- * **Settings gave up the sixth seat to the tech tree.** It is the only
- * entry here that was not a place you go to *do* something, and the tech
- * tree is — it was reached through Quests, which coupled two screens that
- * have nothing to do with each other beyond both being planning. Settings
- * is now a gear in the Character header, which is the home screen, so it
- * is still one tap from anywhere you would think to look for it.
+ * **Seven seats, not six, and the labels paid for it.** "Character"
+ * became "You" and "Tech tree" moved out entirely, because seven cells on
+ * a 375-pixel screen are 53 pixels wide and "Character" measures 53 —
+ * exactly the width with nothing left for padding. With the longest
+ * remaining label at 38 pixels there is room to spare. Measured rather
+ * than guessed; the widths are in the commit that added the seventh.
+ *
+ * Settings, the tech tree and the monthly review are links from You,
+ * which is the hub. None of the three is a place you go to *do* something
+ * daily, and that is the line: a tab is for somewhere you act, a link on
+ * the hub is for somewhere you decide.
  *
  * "Map" rather than "Atlas": the route has always been `/map`, and that
  * was the one label in here that disagreed with its own path.
  */
 const NAV = [
-  { to: '/character', label: 'Character', Icon: User },
+  { to: '/today', label: 'Today', Icon: CalendarDays },
+  { to: '/character', label: 'You', Icon: User },
   { to: '/train', label: 'Train', Icon: Dumbbell },
   { to: '/quests', label: 'Quests', Icon: Target },
   { to: '/backlog', label: 'Codex', Icon: BookMarked },
   { to: '/map', label: 'Map', Icon: Map },
-  { to: '/upgrades', label: 'Tech tree', Icon: Network },
+  { to: '/party', label: 'Party', Icon: Users },
 ] as const
 
 export function AppShell() {

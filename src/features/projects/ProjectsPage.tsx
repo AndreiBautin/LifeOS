@@ -217,6 +217,32 @@ function ProjectCard({
             </Button>
           </form>
 
+          {/*
+            The deadline was readable and not settable, which made it a
+            rule nothing could reach: it drives `computeEffectiveUrgency`
+            and now the Today agenda, and no screen could put one on.
+            Clearing it sends `null` rather than `undefined` — the use case
+            distinguishes "leave it alone" from "remove it", and a spread
+            of `undefined` means the first.
+          */}
+          <label className="mt-3 block">
+            <span className="text-ink-500 mb-1 block text-xs font-medium tracking-wide uppercase">
+              Deadline
+            </span>
+            <input
+              type="date"
+              className={FIELD}
+              value={project.deadline ?? ''}
+              aria-label={`Deadline for ${project.name}`}
+              onChange={(event) => {
+                update.mutate({
+                  id: project.id,
+                  changes: { deadline: event.target.value === '' ? null : event.target.value },
+                })
+              }}
+            />
+          </label>
+
           <Blockers project={project} others={others} />
 
           <div className="mt-3 flex gap-2">

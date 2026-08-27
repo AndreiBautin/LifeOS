@@ -2,6 +2,8 @@ import { createBrowserRouter, Navigate } from 'react-router-dom'
 
 import { AtlasPage } from '@/features/atlas/AtlasPage'
 import { InboxPage } from '@/features/atlas/InboxPage'
+import { PartyPage } from '@/features/party/PartyPage'
+import { TodayPage } from '@/features/today/TodayPage'
 import { SharePage } from '@/features/atlas/SharePage'
 import { TripsPage } from '@/features/atlas/TripsPage'
 import { BacklogPage } from '@/features/backlog/BacklogPage'
@@ -35,7 +37,7 @@ export const router = createBrowserRouter(
         // The hub opens on what to do next, not on the training screen. That
         // is the change from a training app to a hub: the first thing on the
         // first screen should be the answer to "what now".
-        { index: true, element: <Navigate to="/character" replace /> },
+        { index: true, element: <Navigate to="/today" replace /> },
         { path: 'quests', element: <ProjectsPage /> },
         /*
          * Kept as a redirect rather than deleted. The PWA manifest shipped
@@ -55,6 +57,8 @@ export const router = createBrowserRouter(
         { path: 'map/inbox', element: <InboxPage /> },
         { path: 'trips', element: <TripsPage /> },
         { path: 'character', element: <CharacterPage /> },
+        { path: 'today', element: <TodayPage /> },
+        { path: 'party', element: <PartyPage /> },
         { path: 'review', element: <ReviewPage /> },
         { path: 'history', element: <HistoryPage /> },
         { path: 'settings', element: <SettingsPage /> },
