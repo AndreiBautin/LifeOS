@@ -169,7 +169,7 @@ export function BacklogPage() {
       </Section>
 
       <Section
-        title="Backlog"
+        title="Codex"
         description={
           overview.data === undefined
             ? undefined

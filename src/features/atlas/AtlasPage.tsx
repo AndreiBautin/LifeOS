@@ -290,7 +290,7 @@ export function AtlasPage() {
   return (
     <>
       <Section
-        title="The atlas"
+        title="The map"
         description={
           atlas.data === undefined
             ? undefined

@@ -8,7 +8,7 @@ decides how the week is laid out, and hypertrophy volume is filled to
 weekly targets after subtracting what the strength work already spent.
 Five more areas were absorbed into it: a backlog, a quest log of
 projects, a tech tree of things to save up for, a circle of people worth
-seeing, and an atlas with fog that clears as you walk.
+seeing, and a map with fog that clears as you walk.
 
 **The insight that makes it click:** the areas are not separate apps
 sharing a shell. Each declares what it has — ladders, ratings, acts — in

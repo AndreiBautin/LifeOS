@@ -313,28 +313,30 @@ the domain refused correctly and no screen could ask it to. Adding a
 domain rule means adding the control that can trip it, or the guard is
 decoration with a test attached.
 
-**The bottom navigation is full at six**, and it stayed at six. Adding an
-area means taking one out, not adding a seventh — History is a link on the
-Train page, the tech tree a link from Quests, and Trips and the inbox
-links from the Atlas. Phase 7 was to own the rethink and found there was
-nothing to rethink: the job-search area was deliberately not absorbed, so
-no seventh ever arrived. If one does, it displaces something.
+**The bottom navigation is full at six**, and a seventh displaces one.
+It has now actually happened: the tech tree earned a tab and **Settings**
+gave up its seat, becoming a gear in the Character header. Settings was
+the only entry that was not a place you go to _do_ something, and the
+tech tree had been reached through Quests — which coupled two screens
+sharing nothing but the word "planning". History is a link on Train,
+Trips and the inbox are links from the Map, and the monthly review is a
+link from Character. If a seventh area ever arrives, something else goes.
 
-**The screens say "quest" where the code says `Project`, on purpose.**
-The same holds for "tech tree" over `upgrades` and "Atlas" over
-`domain/atlas`'s own `places`. The presented vocabulary is the game
-model's; the type names are the ones forty files were written under, and
-renaming them buys nothing a reader of this paragraph does not already
-have. What must match is any string a _person_ reads — several of those
-live in `domain/projects/`, which emits its own refusals, and they say
-quest.
+**The screens and the code use different words, on purpose.** Quests over
+`Project`, Codex over `backlog`, Tech tree over `upgrades`, Map over
+`domain/atlas`. The presented vocabulary is the game model's; the type
+names are the ones the files were written under, and renaming forty of
+them buys nothing a reader of this paragraph does not already have. What
+must match is any string a _person_ reads — several of those live in
+`domain/projects/`, which emits its own refusals, and they say quest.
 
 **Routes outlive the labels on them.** `/next` still resolves, as a
 redirect to `/quests`, because a PWA shortcut is registered with the
 operating system at install time: an installed copy goes on asking for the
-old path long after the manifest stops mentioning it. `/map` keeps its
-path for the same reason — the share target is registered there — even
-though every label now reads Atlas.
+old path long after the manifest stops mentioning it. `/backlog` and
+`/upgrades` keep their paths under the Codex and Tech tree labels for the
+same reason. `/map` is the one that came back into agreement — it was
+always `/map`, and "Atlas" was the label that disagreed with it.
 
 **This was called Lift, and the rename went all the way down.** The
 database, the `localStorage` prefix and `BACKUP_MAGIC` all say `lifeos`.

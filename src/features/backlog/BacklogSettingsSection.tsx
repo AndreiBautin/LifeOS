@@ -29,7 +29,7 @@ export function BacklogSettingsSection() {
   const result = importItems.data
 
   return (
-    <Section title="Backlog" description="What a new entry starts as, and how the list is ordered.">
+    <Section title="Codex" description="What a new entry starts as, and how the list is ordered.">
       <Card className="space-y-4">
         <div className="grid grid-cols-2 gap-3">
           <label className="block">

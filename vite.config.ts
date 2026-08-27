@@ -90,7 +90,7 @@ export default defineConfig(({ mode }) => {
         },
 
         manifest: {
-          name: 'LifeOS — training, quests, backlog and atlas',
+          name: 'LifeOS — training, quests, codex and map',
           short_name: 'LifeOS',
           description:
             'Six things worth tracking, scored by one model: what you are training, building, reading, saving up for, who you are seeing and where you have been.',
@@ -149,7 +149,7 @@ export default defineConfig(({ mode }) => {
               url: `${base}train`,
               description: 'Jump into today’s session',
             },
-            { name: 'Backlog', url: `${base}backlog`, description: 'What is due today' },
+            { name: 'Codex', url: `${base}backlog`, description: 'What is due today' },
           ],
         },
 

@@ -1,4 +1,4 @@
-import { Dumbbell, Library, Map, Settings, Target, User } from 'lucide-react'
+import { BookMarked, Dumbbell, Map, Network, Target, User } from 'lucide-react'
 import { NavLink, Outlet } from 'react-router-dom'
 
 import { BackupReminder } from '@/features/backup/BackupReminder'
@@ -24,14 +24,24 @@ import { UpdatePrompt } from '@/features/pwa/UpdatePrompt'
  * words the domain and the docs have used since the game model was
  * written; the screens were the only place still calling them Projects and
  * Upgrades.
+ *
+ * **Settings gave up the sixth seat to the tech tree.** It is the only
+ * entry here that was not a place you go to *do* something, and the tech
+ * tree is — it was reached through Quests, which coupled two screens that
+ * have nothing to do with each other beyond both being planning. Settings
+ * is now a gear in the Character header, which is the home screen, so it
+ * is still one tap from anywhere you would think to look for it.
+ *
+ * "Map" rather than "Atlas": the route has always been `/map`, and that
+ * was the one label in here that disagreed with its own path.
  */
 const NAV = [
   { to: '/character', label: 'Character', Icon: User },
   { to: '/train', label: 'Train', Icon: Dumbbell },
   { to: '/quests', label: 'Quests', Icon: Target },
-  { to: '/backlog', label: 'Backlog', Icon: Library },
-  { to: '/map', label: 'Atlas', Icon: Map },
-  { to: '/settings', label: 'Settings', Icon: Settings },
+  { to: '/backlog', label: 'Codex', Icon: BookMarked },
+  { to: '/map', label: 'Map', Icon: Map },
+  { to: '/upgrades', label: 'Tech tree', Icon: Network },
 ] as const
 
 export function AppShell() {
