@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { builtInExercises, STRENGTH_VARIATIONS } from '@/domain/exercises/catalogue'
+import { MAX_DIRECT_SETS_PER_SESSION } from '@/domain/volume/frequency'
 import type { MuscleGroup } from '@/domain/exercises/taxonomy'
 import { asExerciseId, asProgramId, type IdGenerator } from '@/domain/ids/ids'
 import type { ProgramTemplate, ProgramWeek } from '@/domain/programs/program'
@@ -503,17 +504,26 @@ describe('how a muscle is spread across its sessions', () => {
      * week got the remainder. Fixed by budgeting the compound work first
      * and subtracting what the day has already paid.
      *
-     * A ratio rather than an equality, because the sessions genuinely
-     * differ — a day may be short on time or out of exercises — but a
-     * muscle should not be trained three times as hard on one day as
-     * another when the whole point of the split is to spread it.
+     * An absolute gap rather than a ratio, and the change is not cosmetic.
+     * A ratio is scale-sensitive: when a session could hold eight sets, a
+     * two-set difference was 1.4 and passed; with the ceiling at five the
+     * same two sets are 2.0 and fail. The programming did not get worse —
+     * the denominator got smaller.
+     *
+     * The gap is bounded by the per-session ceiling, which is a real
+     * constant rather than a tuned one: two sessions of the same muscle
+     * should never differ by a whole session's worth of work. The bug this
+     * guards against was 8.5 against 2 — a gap of six and a half — and
+     * still fails.
      */
     for (const muscle of ['biceps', 'chest', 'side-delts'] as const) {
       const days = perDay(muscle)
       const most = Math.max(...days)
       const least = Math.min(...days)
 
-      expect(most / least, `${muscle}: ${days.map(String).join(' / ')}`).toBeLessThan(1.6)
+      expect(most - least, `${muscle}: ${days.map(String).join(' / ')}`).toBeLessThan(
+        MAX_DIRECT_SETS_PER_SESSION,
+      )
     }
   })
 

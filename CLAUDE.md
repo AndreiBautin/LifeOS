@@ -128,18 +128,39 @@ take four or five of them and arrive at thirteen exercises of two sets —
 inside the minute budget, and the shape splitting the volume was meant to
 avoid.
 
-**Priority decides frequency; volume decides how much per session.**
-`domain/volume/frequency.ts`. Tier 1 is trained on every day accountable
-for it, tier 2 on two thirds of them, tier 3 once. `setsPerSession` then
-divides the weekly target across those sessions and caps it at
+**Priority maps straight onto frequency.** Tier 1 is trained three times
+a week, tier 2 twice, tier 3 once — `TIER_FREQUENCY` in
+`domain/volume/frequency.ts`, capped only by how many days are
+accountable for the muscle. `setsPerSession` then divides the weekly
+target across those sessions and caps it at
 `MAX_DIRECT_SETS_PER_SESSION`.
 
-It used to be the other way round — divide the target by the ceiling and
-take the answer — which produced a frequency table nobody could predict
-from their own tier list: forearms on two sessions, lats on three, so a
-tier-1 muscle was trained less often than a tier-2 one. Correct
-arithmetic, unquotable rule. **Frequency counts direct work only**
-(`trainedDirectly`); half credit is right for volume and wrong here.
+It has been wrong twice in opposite directions, which is why it is
+stated so plainly now. First it was volume-driven — divide the target by
+the ceiling and take the answer — which produced a frequency table
+nobody could predict from their own tier list. Then it was a _share_ of
+the accountable days, tier 2 getting two thirds of them, which moved
+when the split moved and rounded down to one on a two-day pool. A fixed
+count is the only version you can say out loud without knowing the
+split. **Frequency counts direct work only** (`trainedDirectly`); half
+credit is right for volume and wrong here.
+
+**Three numbers have to agree, so two of them are derived.** Five direct
+sets a session (`MAX_DIRECT_SETS_PER_SESSION`) on at most three sessions
+(`MAX_FREQUENCY`) is fifteen, and `MAX_WEEKLY_DIRECT_SETS` is that
+multiplication rather than a fourth constant to keep in step. The
+published landmarks are then clamped to it — `PUBLISHED_LANDMARKS` keeps
+the citation, `DEFAULT_LANDMARKS` is what the app uses. Above fifteen
+describes volume this app will never schedule, and a target nothing can
+reach is a permanent shortfall on the Plan screen that trains you to
+ignore the screen.
+
+**MAV lands a set below MRV, not on it.** Clamping both to fifteen was
+the first attempt and it collapsed the gap `justUnder` depends on: with
+MAV equal to MRV a normal week targets maximum recoverable volume, which
+is the one thing the target is written never to do. Fourteen and fifteen
+also keeps the hardest week deliverable — fourteen across three sessions
+is 5/5/4.
 
 **Priority buys strength frequency too, not a bigger fatigue
 allowance.** `strengthSessionsFor` — tier 1 three sessions a week, tier 2

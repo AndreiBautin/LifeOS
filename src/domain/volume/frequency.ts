@@ -23,35 +23,52 @@
 /**
  * Direct sets of one muscle worth doing in a single session.
  *
- * Roughly where the returns flatten in the literature RP works from. The
- * exact figure is arguable and the shape is not: there is a per-session
- * ceiling, it is well below a week's worth of volume for a prioritised
- * muscle, and pretending otherwise concentrates junk volume into one day.
+ * Five. It was eight, and eight was chosen to solve a problem that no
+ * longer exists: the side delts were asked for twenty sets a week and
+ * could not receive them at six per session, so the ceiling was raised
+ * rather than the ask lowered. Capping the weekly targets instead — see
+ * {@link MAX_WEEKLY_DIRECT_SETS} — fixes it from the other end and leaves
+ * the per-session figure where the returns actually flatten.
  *
- * Raised from six to eight because six was quietly deciding something
- * else. A muscle with one exercise in the catalogue gets one slot per
- * session, so the per-session ceiling became a per-*exercise* ceiling —
- * and the side delts, asked for twenty sets across three days, could
- * never receive more than fifteen however they were tiered. The report
- * on the Plan screen named it as a capacity shortfall, which was true
- * and unhelpful: the week had the time, the constant did not have the
- * room.
- *
- * Eight is still a ceiling and still well under a prioritised week. What
- * it no longer does is stand in for "how many exercises exist".
+ * The shape matters more than the number: there is a per-session ceiling,
+ * it is well below a week's volume for a prioritised muscle, and
+ * pretending otherwise concentrates junk volume into one day.
  */
-export const MAX_DIRECT_SETS_PER_SESSION = 8
+export const MAX_DIRECT_SETS_PER_SESSION = 5
 
 /**
- * What share of the available days each tier is trained on.
+ * Sessions a week a muscle is ever trained directly.
  *
- * Tier 1 takes all of them, tier 2 two thirds — "two of the three upper
- * days" — and tier 3 is trained once, which is what maintenance is.
+ * Three, and this is now a hard ceiling rather than "however many days
+ * happen to be accountable". A tier-1 muscle in a five-upper-day split
+ * used to be trained five times; it is trained three times.
  */
-export const TIER_FREQUENCY_SHARE: Readonly<Record<number, number>> = {
-  1: 1,
-  2: 2 / 3,
-  3: 0,
+export const MAX_FREQUENCY = 3
+
+/**
+ * The most direct volume a week can hold for one muscle.
+ *
+ * Derived rather than declared, because the three numbers have to agree
+ * and a fourth constant is a fourth thing to keep in step. Five sets on
+ * each of three sessions is fifteen, so a weekly target above fifteen is
+ * one the split cannot deliver however it is arranged — which is why the
+ * landmarks are clamped to it rather than published above it.
+ */
+export const MAX_WEEKLY_DIRECT_SETS = MAX_DIRECT_SETS_PER_SESSION * MAX_FREQUENCY
+
+/**
+ * Sessions a week each tier gets.
+ *
+ * A direct map from priority to frequency, which is the whole point: tier
+ * 2 is trained twice a week, always, and you can say that without knowing
+ * the split. It was a *share* of the accountable days — tier 1 all of
+ * them, tier 2 two thirds — which meant the answer moved when the split
+ * did, and a tier-2 muscle on a two-day pool rounded down to one.
+ */
+export const TIER_FREQUENCY: Readonly<Record<number, number>> = {
+  1: MAX_FREQUENCY,
+  2: 2,
+  3: 1,
 }
 
 /**
@@ -66,16 +83,12 @@ export function requiredFrequency(tierRank: number, daysAvailable: number): numb
   if (daysAvailable <= 0) return 0
 
   /*
-   * Rounded up, so "most of them" never rounds down to one.
-   *
-   * Two thirds of three is two, which is the case the share was written
-   * for. Two thirds of *two* is 1.33, and rounding that to one made a
-   * tier-2 muscle on a two-day pool indistinguishable from a maintained
-   * one — the core came out at a single session on a pair of lower days
-   * that had the room for both.
+   * Still capped by the days there are. Asking for three sessions of a
+   * muscle on a two-day pool is not a plan the split can honour, and a
+   * floor that cannot be met would have the backfill add slots forever
+   * trying to reach it. The Plan screen reports the shortfall instead.
    */
-  const share = TIER_FREQUENCY_SHARE[tierRank] ?? 0
-  return Math.min(daysAvailable, Math.max(1, Math.ceil(daysAvailable * share)))
+  return Math.min(daysAvailable, TIER_FREQUENCY[tierRank] ?? 1)
 }
 
 /**

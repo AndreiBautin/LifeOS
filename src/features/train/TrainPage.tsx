@@ -251,7 +251,7 @@ function VolumeTargets({ day }: { day: ProgramDay }) {
 }
 
 /**
- * A slot summarised in one line: "4 × 3–6", "1–4 × 5", or "20 min".
+ * A slot summarised in one line: "4 × 3–6", "1–3 × 5", or "20 min".
  *
  * A single timed set drops the count, because "1 × 20 min" invites the
  * reader to work out what one of a twenty-minute walk is.
@@ -260,11 +260,11 @@ function VolumeTargets({ day }: { day: ProgramDay }) {
  * prescription. The number of back-offs is discovered in the session —
  * you keep going until a set comes in at the stop RPE — so "4 × 5" was
  * the shape of a fixed prescription making a promise the block does not
- * make. A lifter who grinds out all four because the page said four has
+ * make. A lifter who grinds out all three because the page said three has
  * had the stopping rule taken away from them, which is the whole of what
  * makes this RTS rather than a percentage program.
  *
- * The four is still real: it is the cap, materialised as slots and
+ * The three is still real: it is the cap, materialised as slots and
  * counted as volume, so the week is planned against the ceiling rather
  * than against a session that stops early.
  */

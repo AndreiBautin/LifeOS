@@ -57,8 +57,10 @@ describe('requiredFrequency', () => {
 
 describe('setsPerSession', () => {
   it('divides the target across the sessions it has', () => {
-    expect(setsPerSession(12, 2)).toBe(6)
-    expect(setsPerSession(15, 3)).toBe(5)
+    // Chosen under the ceiling so this shows the division rather than the
+    // cap — the cap has its own test below.
+    expect(setsPerSession(8, 2)).toBe(4)
+    expect(setsPerSession(9, 3)).toBe(3)
   })
 
   /*

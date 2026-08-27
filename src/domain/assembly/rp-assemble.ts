@@ -1167,11 +1167,18 @@ const HEAVY_HYPERTROPHY_REPS = 6
 /**
  * How many back-off sets a competition lift is capped at.
  *
- * Four, because with the drop and the allowance equal the stopping rule
- * usually fires in three or four sets, and a cap far above where the
- * rule fires is a cap that only ever misleads the volume count.
+ * Three. It was four, on the reasoning that the stopping rule usually
+ * fires in three or four sets and a cap far above where the rule fires
+ * only misleads the volume count. The same reasoning taken one step
+ * further gives three: the cap is *materialised as slots and counted as
+ * volume*, so it is the week's plan whether or not you reach it, and the
+ * honest place for it is the low end of where the rule fires rather than
+ * the high end.
+ *
+ * The screens say "1–3" now rather than "1–4", which is the same promise
+ * made smaller.
  */
-export const STRENGTH_BACKOFF_CAP = 4
+export const STRENGTH_BACKOFF_CAP = 3
 
 /** Which tier a muscle sits in; the bottom tier if it is unplaced. */
 function tierRankOf(tiers: MuscleTiers, muscle: MuscleGroup): number {

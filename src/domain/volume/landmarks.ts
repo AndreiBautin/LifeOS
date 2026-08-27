@@ -1,5 +1,6 @@
 import { invariant } from '@/domain/errors/domain-error'
 import type { MuscleGroup } from '@/domain/exercises/taxonomy'
+import { MAX_WEEKLY_DIRECT_SETS } from '@/domain/volume/frequency'
 import { MUSCLE_GROUPS } from '@/domain/exercises/taxonomy'
 
 /**
@@ -56,7 +57,15 @@ export function validateLandmarks(landmarks: VolumeLandmarks, muscle: MuscleGrou
  * deliberately conservative at the MEV end so a new user is not buried in
  * week one.
  */
-export const DEFAULT_LANDMARKS: LandmarkSet = {
+/**
+ * The published figures, before this app's own ceiling is applied.
+ *
+ * Kept separately and kept whole, because they are the citation: these
+ * are roughly what RP publishes, and editing them in place to fit a
+ * constraint of ours would lose the provenance and leave numbers nobody
+ * could check. {@link DEFAULT_LANDMARKS} is these, clamped.
+ */
+const PUBLISHED_LANDMARKS: LandmarkSet = {
   chest: { mv: 4, mev: 8, mav: 16, mrv: 22 },
   'front-delts': { mv: 0, mev: 0, mav: 6, mrv: 12 },
   'side-delts': { mv: 6, mev: 8, mav: 19, mrv: 26 },
@@ -102,6 +111,45 @@ export const DEFAULT_LANDMARKS: LandmarkSet = {
   calves: { mv: 6, mev: 8, mav: 16, mrv: 22 },
   core: { mv: 0, mev: 4, mav: 12, mrv: 20 },
 }
+
+/**
+ * The published set, brought under what a week can actually deliver.
+ *
+ * Five direct sets a session on at most three sessions is fifteen, so
+ * every landmark above fifteen describes volume this app will never
+ * schedule. Leaving them published-high would mean a target nothing could
+ * reach and a permanent shortfall on the Plan screen — a report that is
+ * technically true, tells you nothing you can act on, and trains you to
+ * ignore the screen.
+ *
+ * Clamped rather than rewritten so the relationship stays visible: the
+ * quads read 22 in the literature and 15 here, and the reason is one
+ * multiplication rather than an opinion about quads.
+ *
+ * The whole band comes down together, because `MV ≤ MEV ≤ MAV ≤ MRV` has
+ * to keep holding — capping only the top would leave a MAV above its own
+ * MRV.
+ *
+ * **MAV lands a set below MRV rather than on it.** Clamping both to
+ * fifteen was the first attempt and it collapsed the gap `justUnder`
+ * depends on: with MAV equal to MRV, a normal week's target *is* maximum
+ * recoverable volume, which is the one thing the target is written never
+ * to reach. A block with no room for a bad night ends early. So the top
+ * of the adaptive band sits at fourteen and the recovery ceiling at
+ * fifteen, which also keeps the hardest week deliverable — fourteen sets
+ * across three sessions is 5/5/4.
+ */
+function underCeiling(marks: VolumeLandmarks): VolumeLandmarks {
+  const mrv = Math.min(marks.mrv, MAX_WEEKLY_DIRECT_SETS)
+  const mav = Math.min(marks.mav, mrv - 1)
+  const mev = Math.min(marks.mev, mav)
+
+  return { mv: Math.min(marks.mv, mev), mev, mav, mrv }
+}
+
+export const DEFAULT_LANDMARKS: LandmarkSet = Object.fromEntries(
+  Object.entries(PUBLISHED_LANDMARKS).map(([muscle, marks]) => [muscle, underCeiling(marks)]),
+) as LandmarkSet
 
 /**
  * How much of a set "counts" toward a muscle that the exercise trains but
