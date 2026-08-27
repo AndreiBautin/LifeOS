@@ -8,6 +8,7 @@ import type { ProgramTemplate, ProgramWeek } from '@/domain/programs/program'
 import {
   DEFAULT_MUSCLE_TIERS,
   priorityPosition,
+  weeklyTargetForMember,
   weeklyTargetForWeek,
 } from '@/domain/priority/tiers'
 import {
@@ -21,15 +22,16 @@ import { DEFAULT_LANDMARKS } from '@/domain/volume/landmarks'
 import { DEFAULT_DAYS_PER_WEEK } from '@/domain/autoregulation/schedule'
 import { rpSplitForDays } from '@/domain/splits/rp-splits'
 
-import {
-  assembleRpProgram,
-  defaultRpRecipe,
-  SESSION_MINUTES_CAP,
-  type RpRecipe,
-} from './rp-assemble'
+import { assembleRpProgram, defaultRpRecipe, type RpRecipe } from './rp-assemble'
 
 const exercises = builtInExercises()
 const lookup = (id: string) => exercises.find((exercise) => exercise.id === id)
+
+/** The floor a fill slot may not go under; read from the recipe, not retyped. */
+const MIN_SETS_PER_SLOT = defaultRpRecipe().minSetsPerSlot
+
+const targetFor = (muscle: MuscleGroup): number =>
+  weeklyTargetForMember(DEFAULT_MUSCLE_TIERS, muscle, DEFAULT_LANDMARKS[muscle])
 
 function counterIds(): IdGenerator {
   let n = 0
@@ -705,18 +707,42 @@ describe('how a muscle is spread across its sessions', () => {
 
   it('keeps a day to a session rather than a list of two-set exercises', () => {
     /*
-     * The failure mode the backfill's slot grace exists to stop. A
-     * two-set frequency slot costs four minutes, so a day with time left
-     * will take four or five of them and arrive at thirteen exercises of
-     * two sets — inside the minute budget and a worse session than six of
-     * four.
+     * Thirteen exercises of two sets is a worse session than six of four,
+     * and this is the test that says so.
+     *
+     * It asserted an exercise count, which was the only instrument
+     * available while a slot grace and a minute budget were what bounded
+     * the day. Both are gone, and a count was always the wrong instrument:
+     * it cannot tell eight exercises of four sets from thirteen of two,
+     * and only one of those is the failure.
+     *
+     * Two rules now make the bad shape unconstructible — a floor of three
+     * sets on any slot, and one exercise per muscle per session — so those
+     * are what is asserted. The day's length falls out of them and is
+     * deliberately not checked.
      */
     for (const day of week.days) {
       const fill = day.slots.filter(
         (slot) => slot.role === 'hypertrophy' || slot.role === 'assistance',
       )
 
-      expect(fill.length, day.label).toBeLessThanOrEqual(7)
+      const perMuscle = new Map<MuscleGroup, number>()
+
+      for (const slot of fill) {
+        const working = slot.sets.filter((set) => set.isWarmup !== true).length
+        expect(working, `${day.label}: a slot of ${String(working)} sets`).toBeGreaterThanOrEqual(
+          MIN_SETS_PER_SLOT,
+        )
+
+        if (slot.exercise.kind !== 'specific') continue
+        const muscle = lookup(slot.exercise.exerciseId)?.primaryMuscle
+        if (muscle === undefined) continue
+        perMuscle.set(muscle, (perMuscle.get(muscle) ?? 0) + 1)
+      }
+
+      for (const [muscle, count] of perMuscle) {
+        expect(count, `${muscle} has ${String(count)} exercises on ${day.label}`).toBe(1)
+      }
     }
   })
 })
@@ -1119,19 +1145,26 @@ describe('the split', () => {
   })
 
   /*
-   * And when a muscle does fall short of its tier's frequency, it is the
-   * clock that did it rather than the ordering.
+   * Every muscle gets the frequency its tier bought. No exceptions, and
+   * there was one until the session ceiling went.
    *
-   * Worth pinning, because the two are indistinguishable from the output
-   * and only one of them is acceptable. A muscle passed over while the day
-   * still had minutes in it is a bug in the sort; one passed over on a day
-   * already at the cap is the week being full. The shipped default leaves
-   * the side delts and the triceps a session short and both upper days run
-   * past the cap, which is the second case.
+   * This is the invariant TIER_FREQUENCY exists to state, and for a while
+   * the four-day week could not honour it: two upper days ran out of clock
+   * at six accessory slots, so the side delts and the triceps got one
+   * session where their tier asked for two. It was recorded here as a
+   * known miss, alongside a companion test proving the cause was the
+   * ceiling rather than the ordering — which is the shape a test takes
+   * when a constraint is quietly overriding a rule.
+   *
+   * With no session ceiling the rule holds outright, so it is asserted
+   * outright. If this fails again, the question to ask first is what new
+   * limit is declining to schedule the last exercise.
    */
-  it('falls short of a tier’s frequency only on a day that is already full', () => {
+  it('trains every muscle as often as its tier asks', () => {
     const week = weekAt(build(), 3)
     const split = rpSplitForDays(DEFAULT_DAYS_PER_WEEK)
+
+    const volume = weeklyVolume(week)
 
     const directDaysFor = (muscle: MuscleGroup): number =>
       week.days.filter((day) =>
@@ -1143,24 +1176,31 @@ describe('the split', () => {
       ).length
 
     for (const muscle of MUSCLE_GROUPS) {
-      const accountable = split.days.filter((day) => day.muscles.includes(muscle))
-      const wanted = Math.min(
-        accountable.length,
-        TIER_FREQUENCY[
-          DEFAULT_MUSCLE_TIERS.find((tier) => tier.members.includes(muscle))?.rank ?? 3
-        ] ?? 1,
+      /*
+       * Muscles with no direct work are out of scope, not failures. Quads
+       * and glutes are maintained and paid past their target by the squat
+       * and the deadlift, so nothing is scheduled *for* them and a count
+       * of direct days says nothing about how often they were trained.
+       */
+      if (directDaysFor(muscle) === 0) continue
+
+      /*
+       * And a muscle already at its weekly volume is finished, however
+       * few sessions it took. Frequency is a means to volume and never a
+       * goal — a second session for a muscle at its target buys fatigue
+       * and no stimulus, which is the rule the backfill enforces. The
+       * front delts reach three sets against a target of two on their
+       * first upper day and correctly get no second one.
+       */
+      if (volume[muscle] >= targetFor(muscle)) continue
+
+      const accountable = split.days.filter((day) => day.muscles.includes(muscle)).length
+      const rank = DEFAULT_MUSCLE_TIERS.find((tier) => tier.members.includes(muscle))?.rank ?? 3
+      const wanted = Math.min(accountable, TIER_FREQUENCY[rank] ?? 1)
+
+      expect(directDaysFor(muscle), `${muscle} trained on too few days`).toBeGreaterThanOrEqual(
+        wanted,
       )
-
-      if (directDaysFor(muscle) >= wanted) continue
-
-      for (const splitDay of accountable) {
-        const day = week.days[splitDay.index]
-        if (day === undefined) throw new Error('missing day')
-        expect(
-          estimateDayMinutes(day),
-          `${muscle} is short but ${day.label} had room`,
-        ).toBeGreaterThan(SESSION_MINUTES_CAP)
-      }
     }
   })
 

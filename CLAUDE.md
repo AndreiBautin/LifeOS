@@ -207,7 +207,11 @@ the allowance by tier (2% to 7%) was coherent and made that sentence
 false for every tier but one.
 **Frequency is a means to volume, never a goal.** The backfill will not
 schedule a muscle already at its weekly target, secondary credit
-included. Without that guard the two-session floor applied to the front
+included. This is the one exception to "every muscle gets the frequency
+its tier bought", and it is why `rp-assemble.test.ts` → "trains every
+muscle as often as its tier asks" exempts a muscle already at target: the
+front delts reach three sets against a target of two on their first upper
+day, and a second session would buy fatigue and no stimulus. Without that guard the two-session floor applied to the front
 delts — asking for three sets while the bench press and dips paid them
 ten — and put an overhead press on every Friday to satisfy an arithmetic
 minimum for a muscle at three times its target. The backfill also orders
@@ -234,42 +238,51 @@ warm-up and a machine and delivers almost nothing, and the fill will
 happily produce a dozen of them to make a total come out. Below three the
 muscle waits for a session that can do it properly.
 
-**The minimum session length is gone; the ceiling is not, and it is now
-the binding constraint.** Worth stating together, because the first
-sentence is the memorable one and it gets remembered as both. What was
-removed was the padding of a _short_ day. `SESSION_MINUTES_CAP` stayed on
-purpose — without it one day claims the week's recovery budget — and it is
-what the four-day week now runs into: two upper days with nine tier-2
-muscles want eight accessory slots each, the fill places six and stops on
-the clock. Raising `maxHypertrophySlotsPerDay` to seven, eight or nine
-changes the output not at all, measured rather than assumed. The shipped
-week therefore leaves the side delts and the triceps a session short and
-the traps with nothing.
+**There is no session length at all — no minimum and no maximum.** The
+minimum went first, and enforcing it had taken three mechanisms: a grace
+period letting the frequency backfill overrun, a top-up pass scheduling
+muscles already at their target, and a loop lengthening existing slots one
+set at a time, all to move a thirty-nine minute session to forty-one.
 
-Do not answer that by widening a tolerance. The ways out are all decisions
-for a person: fewer muscles at tier 2, a fifth day, or a higher ceiling.
-What the assembler owes is that the miss is the _clock_ and not its own
-ordering — a muscle passed over while a day still had minutes in it is a
-bug in the sort — and `rp-assemble.test.ts` → "falls short of a tier's
-frequency only on a day that is already full" is what separates the two. A
-frequency miss currently reaches the Plan screen only as the volume
-shortfall it causes; the session count itself is not shown.
+The ceiling outlived it by a while, as `SESSION_MINUTES_CAP = 70`,
+defended as a recovery budget rather than a clock — "one day must not
+claim the whole week". That defence stopped holding once a muscle's weekly
+target was itself clamped to what its tier's frequency can deliver. **The
+target is the recovery budget now**, and the ceiling was a second one laid
+on top: a day could satisfy every landmark it was accountable for and be
+cut off mid-fill regardless.
 
-**There is no minimum session length.** Deliberately, after there was.
-Enforcing one took three mechanisms in the assembler — a grace period
-letting the frequency backfill overrun, a top-up pass scheduling muscles
-already at their target, and a loop lengthening existing slots one set at
-a time — all to move a thirty-nine minute session to forty-one. Each had
-to be reasoned about again every time anything else moved.
+What it cost is the reason it is worth a paragraph rather than a line,
+because it read as a cap nobody reached right up until the split changed.
+Four days with nine tier-2 muscles ran the upper days out of clock at six
+accessory slots, so the side delts and the triceps got one session where
+their tier asked for two and the traps got nothing at all — a training
+decision made by a constant, invisible on every screen and unreachable
+from any setting. Removing it took the week from three muscles short to
+**zero**, at the price of upper days that run about ninety minutes of
+lifting.
+
+**Nothing bounds a day now except the arithmetic that produced its
+volume**, and that is genuinely a bound rather than an absence of one: one
+exercise per muscle per session, at most five sets, over a muscle list the
+split fixes. `estimateDayMinutes` still reports how long a day takes —
+reporting is not enforcing — and `SESSION_TOO_LONG_MINUTES` survives as a
+line the suite holds the assembler to, not as anything the assembler
+consults. If a session comes out too long the answer is fewer muscles at
+tier 2 or more days, decisions a person makes and can see, rather than a
+constant quietly declining to schedule the last two exercises.
+
+Gone with it: `maxHypertrophySlotsPerDay`, `BACKFILL_TIME_GRACE`,
+`BACKFILL_SLOT_GRACE`, `slotMinutes` and `isEasyConditioning`. That last
+one is worth knowing about if you go looking for it — it kept the Zone 2
+walk out of the accessory budget, because charging twenty minutes of
+walking against a recovery allowance it does not consume had once halved
+the side delts. With no budget to charge against, it had nothing left to
+decide.
 
 A short day is information. A deadlift day with the legs on maintenance
-runs twenty-five minutes because that is what the tiers asked for, and
-the Plan screen already reports what the week does and does not deliver.
-The ceiling stays — without it one day claims the whole week — but it is
-`SESSION_MINUTES_CAP` in `domain/assembly/rp-assemble.ts`, not a setting.
-As a setting it read as a dial for how long you wanted to train, which it
-never was: raising it does not lengthen a session, it only stops the
-first day being held back from spending the last day's budget.
+runs fifty minutes because that is what the tiers asked for, and the Plan
+screen reports what the week does and does not deliver.
 
 **The bottom tier is maintenance volume, not zero.** Easy to expect
 otherwise, because it _looks_ like zero for the legs: quads, hamstrings

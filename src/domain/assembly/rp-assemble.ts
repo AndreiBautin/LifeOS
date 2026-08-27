@@ -17,7 +17,7 @@ import type {
   ProgramWeek,
   Slot,
 } from '@/domain/programs/program'
-import { DEFAULT_PROGRAM_SETTINGS, setSeconds } from '@/domain/programs/program'
+import { DEFAULT_PROGRAM_SETTINGS } from '@/domain/programs/program'
 import type { MuscleTiers, StrengthLift, StrengthTiers } from '@/domain/priority/tiers'
 import {
   DEFAULT_MUSCLE_TIERS,
@@ -76,7 +76,6 @@ export interface RpRecipe {
   readonly weeksBeforeDeload: number
   readonly rts: RtsPrescription
   readonly includeWarmUps: boolean
-  readonly maxHypertrophySlotsPerDay: number
   /**
    * Roughly how long a session should run.
    *
@@ -101,7 +100,32 @@ export interface RpRecipe {
 }
 
 /** The ceiling a day's fill is costed against. See {@link RpRecipe}. */
-export const SESSION_MINUTES_CAP = 70
+/*
+ * There is no session length, minimum or maximum.
+ *
+ * A ceiling of seventy minutes lived here. It was defended as a recovery
+ * budget rather than a clock — "one day must not claim the whole week" —
+ * and that reading stopped being true once a muscle's weekly target was
+ * itself clamped to what its tier's frequency can deliver. The target is
+ * the recovery budget now, and the ceiling was a second one applied on
+ * top: a day could satisfy every landmark it was accountable for and be
+ * cut off mid-fill anyway.
+ *
+ * What it actually cost is worth writing down, because "a cap nobody
+ * reaches" is how it read right up until the split changed. Two upper
+ * days with nine tier-2 muscles ran out of clock at six accessory slots,
+ * so the side delts and the triceps got one session where their tier
+ * asked for two — a training decision made by a constant, invisible on
+ * every screen, and unreachable by any setting.
+ *
+ * The day is now as long as the volume asked for, and nothing bounds it
+ * except the arithmetic that produced the volume. That is not unbounded:
+ * one exercise per muscle per session times five sets is the ceiling, and
+ * the muscle list a day carries is fixed by the split. If a session comes
+ * out too long the answer is fewer muscles at tier 2 or more days —
+ * decisions a person makes and can see — rather than a number here
+ * quietly declining to schedule the last two.
+ */
 
 export function defaultRpRecipe(overrides: Partial<RpRecipe> = {}): RpRecipe {
   const muscleTiers = overrides.muscleTiers ?? DEFAULT_MUSCLE_TIERS
@@ -125,7 +149,6 @@ export function defaultRpRecipe(overrides: Partial<RpRecipe> = {}): RpRecipe {
     weeksBeforeDeload: DEFAULT_WEEKS_BEFORE_DELOAD,
     rts: DEFAULT_RTS,
     includeWarmUps: true,
-    maxHypertrophySlotsPerDay: 6,
     minSetsPerSlot: 3,
     /*
      * Three to five sets of one exercise, or the muscle is not trained
@@ -727,36 +750,9 @@ function fillHypertrophy(args: FillArgs): BuiltSlots {
     return addInto(total, slotVolume(exercise, slot.sets))
   }, emptyVolumeMap())
 
-  /*
-   * What the day already costs before any accessory is chosen — with
-   * easy conditioning left out of it.
-   *
-   * The ceiling exists so one day cannot claim the week's recovery
-   * budget, not to describe how long you are in the garage. A Zone 2
-   * incline walk is twenty minutes that cost almost no systemic fatigue
-   * and can be done before, after, or apart from the lifting, so
-   * charging it against the accessory budget spends a recovery allowance
-   * on something that does not consume one. Put the walk on the three
-   * upper days and it silently halved the side delts — twenty sets to
-   * eleven — which is a real training decision made by a bookkeeping
-   * detail.
-   *
-   * HIIT still counts. Swings are intervals with a genuine cost, and
-   * work that competes for recovery should compete for the budget.
-   *
-   * `estimateDayMinutes` is unaffected and still reports the whole
-   * session, walk included: this changes what the fill may spend, not
-   * what the lifter is told the day takes.
-   */
-  let minutes = args.existingSlots.reduce(
-    (total, slot) => total + (isEasyConditioning(slot) ? 0 : slotMinutes(slot)),
-    0,
-  )
-
   /** Places one pass of accessory work, neediest muscle first. */
   const fillFor = (
     muscles: readonly MuscleGroup[],
-    ceiling: number,
     options: { readonly compoundsOnly?: boolean } = {},
   ): void => {
     const debts = muscles
@@ -793,11 +789,6 @@ function fillHypertrophy(args: FillArgs): BuiltSlots {
       .sort((a, b) => (a.behind !== b.behind ? b.behind - a.behind : b.owed - a.owed))
 
     for (const { muscle } of debts) {
-      if (slots.length >= recipe.maxHypertrophySlotsPerDay) break
-      // Out of time. What this day does not spend stays in the weekly
-      // budget and is picked up by the sessions that follow.
-      if (minutes >= ceiling) break
-
       /*
        * Re-asked here rather than reused from the sort above.
        *
@@ -841,14 +832,8 @@ function fillHypertrophy(args: FillArgs): BuiltSlots {
           : { notes: 'One rep in reserve on every set — not a lift to fail on.' }),
       }
 
-      // Projected, not retrospective. Checking only after adding lets a
-      // twelve-minute slot push a sixty-nine minute day to eighty-one.
-      const cost = slotMinutes(slot)
-      if (minutes + cost > ceiling && slots.length > 0) continue
-
       used.add(exercise.id)
       added = addInto(added, slotVolume(exercise, sets))
-      minutes += cost
       placed.push(exercise)
       slots.push(slot)
     }
@@ -888,8 +873,8 @@ function fillHypertrophy(args: FillArgs): BuiltSlots {
    * puts compounds before isolation for an unrelated reason, and having
    * the fill agree removes a mismatch between what is chosen and when.
    */
-  fillFor(splitDay.muscles, SESSION_MINUTES_CAP, { compoundsOnly: true })
-  fillFor(splitDay.muscles, SESSION_MINUTES_CAP)
+  fillFor(splitDay.muscles, { compoundsOnly: true })
+  fillFor(splitDay.muscles)
 
   /*
    * Frequency backfill.
@@ -989,33 +974,23 @@ function fillHypertrophy(args: FillArgs): BuiltSlots {
     }
 
     /*
-     * The backfill may run a session over, but not without limit.
+     * Nothing gates this on time or on a slot count any more.
      *
-     * It used to ignore the clock entirely, which was survivable while
-     * the floor was two and it fired once or twice a week. Driven by
-     * volume it fires often enough to matter, and a frequency floor that
-     * turns a seventy-minute session into a hundred has traded one
-     * recovery problem for another.
-     */
-    const cost = slotMinutes(slot)
-    if (minutes + cost > SESSION_MINUTES_CAP * BACKFILL_TIME_GRACE) continue
-
-    /*
-     * And it may add exercises, but not without limit either.
+     * Both gates were here, and between them the backfill could decline
+     * to give a muscle the session its tier had bought — which is the one
+     * thing the backfill exists to prevent. What bounds it now is the
+     * thing that should: it runs once over the muscles the day is
+     * accountable for, skips any already trained today, and skips any
+     * already at its weekly target. A day cannot exceed one exercise per
+     * muscle it carries.
      *
-     * The clock alone does not bound this: a two-set frequency slot is
-     * four minutes, so a day with time left will take four or five of
-     * them and arrive at thirteen exercises of two sets each. That fits
-     * the minute budget and is a worse session than six of four — more
-     * setup, more walking, less of anything. `BACKFILL_SLOT_GRACE` is
-     * deliberately small, because the backfill exists to guarantee a
-     * muscle is *touched* on a day, not to finish the week here.
+     * The three-set floor is what the slot grace was really protecting
+     * against. Thirteen exercises of two sets is a worse session than six
+     * of four, and `minSetsPerSlot` bars it directly rather than by
+     * limiting how many exercises may exist.
      */
-    if (slots.length >= recipe.maxHypertrophySlotsPerDay + BACKFILL_SLOT_GRACE) break
-
     used.add(exercise.id)
     added = addInto(added, slotVolume(exercise, sets))
-    minutes += cost
     placed.push(exercise)
     directToday.add(exercise.primaryMuscle)
     slots.push(slot)
@@ -1105,48 +1080,15 @@ function shareOwed(
 }
 
 /**
- * Conditioning cheap enough not to compete with lifting for recovery.
- *
- * Matched on the slot's own variant rather than on the exercise, because
- * the domain is the thing that decides this: an easy incline walk and an
- * easy run are the same work under two names and both belong here, while
- * the same runner doing intervals does not.
- */
-function isEasyConditioning(slot: Slot): boolean {
-  return slot.role === 'conditioning' && slot.variant === ZONE_2_VARIANT
-}
-
-/** Minutes one slot costs: work plus rest, warm-ups rested through. */
-function slotMinutes(slot: Slot): number {
-  const rest = slot.restSeconds ?? 120
-  return slot.sets.reduce((total, set) => total + setSeconds(set, rest), 0) / 60
-}
-
-/**
- * How far past its target session a frequency slot may push a day.
- *
- * Fifteen per cent: about one more accessory on a seventy-minute day.
- */
-const BACKFILL_TIME_GRACE = 1.15
-
-/**
- * Extra exercises the frequency backfill may add beyond the fill's own
- * ceiling.
- *
- * One. A day that has already chosen six accessories and still owes a
- * muscle a session gets one more and stops — the alternative is a session
- * that meets every frequency floor by becoming a list of two-set
- * exercises, which is the shape the volume was split up to avoid.
- */
-const BACKFILL_SLOT_GRACE = 1
-
-/**
  * The easy conditioning domain, as it appears on `Slot.variant`.
  *
- * Named rather than written twice: it is matched on in
- * {@link isEasyConditioning} to decide what competes for the accessory
- * budget, and a typo there would silently change how much lifting a day
- * gets rather than failing.
+ * It had a second job until the session ceiling went: an `isEasyConditioning`
+ * predicate kept the Zone 2 walk out of the accessory budget, because
+ * charging twenty minutes of walking against a recovery allowance it does
+ * not consume once halved the side delts. With no budget to be charged
+ * against, the distinction has nowhere left to apply and the predicate is
+ * gone — the walk is simply twenty minutes the day takes, reported by
+ * `estimateDayMinutes` like everything else.
  */
 const ZONE_2_VARIANT = 'Zone 2'
 
