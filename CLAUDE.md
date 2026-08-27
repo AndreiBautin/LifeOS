@@ -67,8 +67,21 @@ is where nearly all the tests live.
 RPE, with back-off work driven by measured fatigue percentages
 (`domain/framework/rts.ts`). The overhead press is **not** a strength
 lift — it was a main lift under 5/3/1 only because that framework wanted
-a fourth one, and it contributes nothing to a total. It is hypertrophy
-work in the 3–6 range.
+a fourth one, and it contributes nothing to a total. It is a hypertrophy
+compound and runs 5–8 like every other one.
+
+**The top set is a triple.** `topSetReps` is 3. The top set is a
+measurement before it is training — reps at an RPE, read back through the
+chart as an implied max — and a triple sits closer to the single the total
+is scored on, so less of the chart's error lies between what was lifted
+and what it claims you can lift.
+
+It costs the other job the top set was doing, and that cost is not
+recorded anywhere on a screen: five reps at RPE 8 is a real hypertrophy
+stimulus for the muscles the lift trains, and three is much less. The
+back-offs carry that alone now. If the chest or the quads start looking
+thin, this is the change to suspect first — the bench and the squat pay
+them less than they did.
 
 5/3/1 was removed wholesale — framework, assembler, recipes, splits,
 progression, `percent-training-max`, training maxes. It is in the git
@@ -833,11 +846,34 @@ sort and both rank the same. **`previousSetFor` must take the variant**:
 matching on the exercise alone hands the first back-off the previous
 session's _top set_ as its "last time".
 
-**A heavy hypertrophy set is not taken to failure.** `safeToFail` covers
-"you would be pinned under it"; `HEAVY_HYPERTROPHY_REPS` covers the other
-case — failing a top-heavy triple costs what a max costs. The overhead
-press carried both the note "one rep in reserve, not a max" and a last
-set at RPE 10.
+**Two rep ranges, chosen by the movement.** Compounds run 5–8, isolations
+15–30, and no exercise carries its own. `COMPOUND_REPS` and
+`ISOLATION_REPS` in `domain/assembly/rp-assemble.ts`. Every exercise used
+to hold a `defaultRepRange` — fifteen or so hand-set pairs whose
+differences nobody could account for and which drifted as the catalogue
+grew. The field is gone rather than ignored.
+
+Worth being concrete about what it did, because "adjusted the rep ranges"
+undersells it: this is roughly two and a half times the reps and
+substantially less load on **every isolation slot in the program**. A
+12–20 lateral raise is now 15–30 with the dumbbell that implies.
+
+**Every hypertrophy slot ends in a set to failure.** No exceptions, and
+`safeToFail` is gone with the exceptions it encoded. It marked twelve
+exercises for three different reasons and the third was the strongest:
+**failure is not a clean event on every movement.** On a lateral raise, a
+shrug or a calf raise there is always another rep if you cheat the form,
+so "to failure" resolves to "until your technique goes" rather than to a
+definite point — and an instruction that resolves differently every week
+is worse than one rep in reserve every week. Dips and pull-ups are the
+contrast: you either complete the rep or you do not.
+
+The 15–30 range defuses most of the safety half of that argument — a
+thirty-rep French press is a light implement and a long set. It does not
+defuse a compound hinge at 5–8, and a Romanian deadlift or a good morning
+taken to failure is the slot to look at first if this proves too broad.
+The full reasoning is preserved in `hypertrophySets` rather than deleted
+with the flag.
 
 **A set is one set, for the muscle it is programmed for.** No fractions,
 in either direction: not scaled by reps or proximity to failure, and not
@@ -939,10 +975,20 @@ reason to be careful: **strapping a lift silently removes a muscle's only
 source of work**, and nothing in the landmark numbers records which
 muscles depend on which lifts.
 
-**A timed set is costed by its duration.** `setSeconds` in
-`domain/programs/program.ts`. Counting a twenty-minute walk as one
+**A set is costed by its reps, and a timed set by its duration.**
+`setSeconds` in `domain/programs/program.ts`, at `SECONDS_PER_REP` = 3
+with a fifteen-second floor. Counting a twenty-minute walk as one
 thirty-second set made conditioning free to the planner, which then
 stacked a run onto the longest day of the week and still believed it fit.
+
+The per-rep part is newer and has the same shape of cause. It was a flat
+`SECONDS_PER_SET = 30`, defended on the grounds that rest dominates —
+true while every set was eight to twelve reps, and false the moment
+isolations went to 15–30 and the competition lifts to triples. A flat cost
+prices a thirty-rep lateral raise the same as a three-rep squat, and the
+upper days were being reported at 81 minutes while genuinely running 88.
+**A constant that encodes the shape of the programme it was written
+against goes wrong silently when the programme changes.**
 
 **Exclusions are absolute.** A lifter who cannot do an exercise means it
 everywhere — warm-ups and conditioning included, not only the hypertrophy

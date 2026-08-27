@@ -853,9 +853,7 @@ function fillHypertrophy(args: FillArgs): BuiltSlots {
         exercise: { kind: 'specific', exerciseId: exercise.id },
         sets,
         restSeconds: exercise.defaultRestSeconds ?? 120,
-        ...(exercise.safeToFail
-          ? { notes: 'Last set to failure; the rest at one rep in reserve.' }
-          : { notes: 'One rep in reserve on every set — not a lift to fail on.' }),
+        notes: 'Last set to failure; the rest at one rep in reserve.',
       }
 
       used.add(exercise.id)
@@ -1203,10 +1201,27 @@ function trainedDirectly(
 }
 
 /**
- * Above this rep ceiling a hypertrophy set is long enough to fail
- * safely; at or below it, failing is a max attempt wearing a rep range.
+ * Rep ranges by movement, not by exercise.
+ *
+ * Compounds run heavy and short, isolations long and light, and there is
+ * nothing in between. Every exercise used to carry its own
+ * `defaultRepRange` — 8–12 here, 10–15 there, 3–6 on the overhead press —
+ * fifteen or so hand-set pairs whose differences nobody could account for
+ * and which drifted from each other as the catalogue grew.
+ *
+ * The split is the point: a compound is loaded enough that the limiting
+ * factor is force, so it earns a rep range where load is the variable; an
+ * isolation on a small muscle with a light implement is limited by local
+ * fatigue, and 15–30 is where that muscle actually works rather than
+ * where the weight runs out.
+ *
+ * A real consequence, since it is easy to read this as a wash: this is
+ * substantially more total reps and substantially less load on every
+ * isolation slot in the program. A 12–20 lateral raise becomes 15–30 with
+ * the dumbbell that implies.
  */
-const HEAVY_HYPERTROPHY_REPS = 6
+const COMPOUND_REPS = { low: 5, high: 8 } as const
+const ISOLATION_REPS = { low: 15, high: 30 } as const
 
 /**
  * How many back-off sets a competition lift is capped at.
@@ -1232,40 +1247,54 @@ function daysAvailableFor(muscle: MuscleGroup, split: RpSplit): number {
 }
 
 /**
- * Every work set at one rep in reserve, held constant.
+ * Every work set at one rep in reserve, and the last one to failure.
  *
  * No ramp across the block. Ramping proximity to failure *and* volume at
  * the same time makes it impossible to attribute a stall to either, and
  * RIR is the variable with the least room to move: past about 2 RIR the
  * stimulus falls away, and at 0 the fatigue stops paying for itself on
- * most sets.
+ * most sets. The last set is the exception, on every exercise.
  *
- * The exception is the last set, which goes to failure — but only where
- * failing is neither dangerous nor disproportionately expensive, and only
- * where the set is long enough that failing it is not a max attempt.
+ * **Every exercise, including the ones `safeToFail` used to exclude.**
+ * That flag is no longer consulted here and the reasoning behind it was
+ * not wrong, so it is worth stating what changed rather than what was
+ * decided. It excluded two groups: isolations where failing degrades form
+ * (lateral raises, shrugs, calf raises) and lifts where failing is
+ * genuinely dangerous or expensive — a skullcrusher over your face, a
+ * good morning under a loaded spine.
+ *
+ * The rep ranges above defuse the first group entirely and most of the
+ * second: an isolation at 15–30 is a light implement and a long set, and
+ * failing a thirty-rep French press is a different event from failing an
+ * eight-rep one. What it does *not* defuse is a compound hinge at 5–8 —
+ * a Romanian deadlift or a good morning taken to failure is a real risk,
+ * and those are the slots to look at first if this turns out to have been
+ * too broad.
+ *
+ * The strongest argument against it was not about safety at all, and it
+ * is preserved here because it is the one that will still be true next
+ * year. **Failure is not a clean event on every movement.** On a lateral
+ * raise, a shrug, a calf raise or a hanging leg raise there is always
+ * another rep if you cheat the form a little, so "to failure" resolves to
+ * "until your technique goes" rather than to a definite point — and an
+ * instruction that resolves differently every week is worse than one rep
+ * in reserve every week. Dips and pull-ups are the contrast: you either
+ * complete the rep or you do not, and the set ends itself.
+ *
+ * That was the reason most isolation work carried `safeToFail: false`,
+ * and the flag is gone rather than quietly retained, because a field
+ * nothing reads is a field somebody will assume still does something.
  */
 function hypertrophySets(exercise: Exercise, count: number): readonly SetPrescription[] {
-  const range = exercise.defaultRepRange ?? { low: 8, high: 12 }
-
-  /*
-   * A heavy set of three is a single by another name once you fail it.
-   *
-   * The overhead press ran 3–6 and carried both the note "one rep in
-   * reserve, not a max" and a last set prescribed at RPE 10 — two
-   * instructions that contradict each other on the same slot. Failing a
-   * top-heavy triple costs what a max costs and returns hypertrophy's
-   * worth of stimulus, which is the wrong side of that trade.
-   */
-  const tooHeavyToFail = range.high <= HEAVY_HYPERTROPHY_REPS
+  const range = exercise.isCompound ? COMPOUND_REPS : ISOLATION_REPS
 
   return Array.from({ length: count }, (_unused, index) => {
     const isLast = index === count - 1
-    const toFailure = isLast && exercise.safeToFail && !tooHeavyToFail
 
     return {
-      load: { kind: 'rpe' as const, target: toFailure ? 10 : HYPERTROPHY_RPE },
+      load: { kind: 'rpe' as const, target: isLast ? 10 : HYPERTROPHY_RPE },
       reps: { kind: 'range' as const, low: range.low, high: range.high },
-      ...(toFailure ? { notes: 'Take this one to failure.' } : {}),
+      ...(isLast ? { notes: 'Take this one to failure.' } : {}),
     }
   })
 }

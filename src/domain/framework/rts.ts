@@ -104,7 +104,21 @@ export interface RtsPrescription {
 }
 
 export const DEFAULT_RTS: RtsPrescription = {
-  topSetReps: 5,
+  /*
+   * Three, not five.
+   *
+   * The top set is a measurement before it is training — reps at an RPE,
+   * read back through the chart as an implied max — and a triple sits
+   * closer to the single the total is actually scored on, so less of the
+   * chart's error is between what you lifted and what it says you can.
+   *
+   * It costs the other thing the top set was doing. Five reps at RPE 8 is
+   * a real hypertrophy stimulus for the muscles the lift trains; three is
+   * much less, and the back-offs are now carrying that alone. Worth
+   * knowing if the chest or the quads start looking thin — the bench and
+   * the squat pay them less than they did.
+   */
+  topSetReps: 3,
   topSetRpe: 8,
   method: 'load-drop',
   fatigueTargetPercent: FATIGUE_TARGETS.moderate,

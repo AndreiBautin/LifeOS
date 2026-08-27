@@ -3,6 +3,7 @@ import type { MuscleGroup } from '@/domain/exercises/taxonomy'
 import type { ExerciseId, ProgramId, SlotId } from '@/domain/ids/ids'
 import type { WeightUnit } from '@/domain/units/weight'
 
+import { nominalReps } from './prescription'
 import type { ProgressionRule } from './progression-rule'
 import type { SetPrescription } from './prescription'
 
@@ -328,14 +329,28 @@ export function isIndefinite(program: ProgramTemplate): boolean {
 /* -------------------------------------------------------------------- */
 
 /**
- * Seconds a working set takes to perform, excluding rest.
+ * Seconds one rep takes, under load.
  *
- * A rough constant on purpose. Rest is the dominant term — at two minutes
- * between everything, a twenty-set session is forty minutes of standing
- * around before a single rep is counted — so the estimate is accurate
- * enough to compare two days against each other, which is all it is for.
+ * This was `SECONDS_PER_SET = 30`, a flat cost per set, defended on the
+ * grounds that rest dominates — at two minutes between everything, a
+ * twenty-set session is forty minutes of standing around before a rep is
+ * counted. That held while every set was eight to twelve reps.
+ *
+ * It stopped holding when isolations went to 15–30 and the competition
+ * lifts to triples. A flat thirty seconds costs a thirty-rep lateral
+ * raise the same as a three-rep squat, and those differ by more than a
+ * minute — so an upper day full of long isolation sets was being reported
+ * at the same length as before while genuinely running a quarter longer.
+ *
+ * Three seconds a rep is the compromise: about two under load plus the
+ * turnaround, honest for a straight set and too slow for a fast triple,
+ * which is the direction to err in for an estimate a person plans an
+ * evening around.
  */
-export const SECONDS_PER_SET = 30
+export const SECONDS_PER_REP = 3
+
+/** The floor for a set, so a short set still costs its setup. */
+export const MINIMUM_SET_SECONDS = 15
 
 /**
  * Estimated minutes for a day, from set count and prescribed rest.
@@ -365,9 +380,17 @@ export function estimateDayMinutes(day: ProgramDay, defaultRestSeconds = 120): n
  * incline walk as one thirty-second set made conditioning free to the
  * planner: it could stack a run onto the longest day of the week and
  * still believe the day fit inside the target.
+ *
+ * Everything else is costed by its reps, which a flat per-set constant
+ * could not do. A range is costed at its midpoint — the number the lifter
+ * is most likely to hit — rather than at its ceiling, which would inflate
+ * every isolation slot by a third.
  */
 export function setSeconds(set: SetPrescription, restSeconds: number): number {
-  const work = set.reps.kind === 'time' ? set.reps.seconds : SECONDS_PER_SET
+  const work =
+    set.reps.kind === 'time'
+      ? set.reps.seconds
+      : Math.max(MINIMUM_SET_SECONDS, nominalReps(set.reps) * SECONDS_PER_REP)
 
   // Warm-ups are quick and rested through, so they cost the work but not
   // the full interval.

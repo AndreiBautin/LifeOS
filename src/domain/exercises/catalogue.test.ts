@@ -14,45 +14,23 @@ const bySlug = (slug: string) => CATALOGUE.find((exercise) => (exercise.id as st
  * the next load. These are the properties worth failing a build over.
  */
 
-describe('taking a set to failure', () => {
-  /*
-   * Three reasons to refuse, and only one of them is about danger.
-   *
-   * The interesting one is that failure is not always a *definite event*.
-   * On a lateral raise, a shrug, a calf raise or a hanging leg raise
-   * there is always another rep available if the form gives a little, so
-   * "to failure" resolves to "until your technique goes" — an
-   * instruction that means something different every week. Dips and
-   * pull-ups are the contrast: the rep completes or it does not, and the
-   * set ends itself.
-   */
-  const notToFailure = [
-    'db-lateral-raise',
-    'rear-delt-raise',
-    'barbell-shrug',
-    'hanging-leg-raise',
-    'ab-wheel',
-    'barbell-calf-raise',
-    // The triceps isolations are the genuinely unsafe pair — the failing
-    // rep is the one that puts an elbow somewhere it should not go.
-    'skullcrusher',
-    'french-press',
-  ]
-
-  it.each(notToFailure)('does not send %s to failure', (slug) => {
-    expect(bySlug(slug), slug).toBeDefined()
-    expect(bySlug(slug)?.safeToFail).toBe(false)
-  })
-
-  /*
-   * The counter-examples matter as much: a rule that said "no isolation
-   * ever fails" would be a different and worse rule, and these are the
-   * movements where failing is both safe and unambiguous.
-   */
-  it.each(['dips', 'pull-up', 'chin-up'])('still sends %s to failure', (slug) => {
-    expect(bySlug(slug)?.safeToFail).toBe(true)
-  })
-})
+/*
+ * The failure-safety flag is gone, and this is what it used to say.
+ *
+ * `safeToFail` marked twelve exercises as not to be taken to failure for
+ * three different reasons — you would be pinned under the bar, the
+ * failing rep puts an elbow somewhere bad, or failure is not a clean
+ * event because there is always another rep if you cheat the form. The
+ * third covered most of the isolation work and was the strongest of the
+ * three: an instruction that resolves differently every week is worse
+ * than one rep in reserve every week.
+ *
+ * Every hypertrophy slot now ends in a set to failure regardless. The
+ * argument above is preserved in `hypertrophySets` rather than here,
+ * because there is no longer a field to hang it on — and if the rule
+ * needs narrowing again, a lateral raise and a good morning are the two
+ * to look at first for opposite reasons.
+ */
 
 describe('what the catalogue no longer ships', () => {
   /*

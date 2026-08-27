@@ -70,23 +70,6 @@ export const TRAINING_INTENT_LABELS: Record<TrainingIntent, string> = {
 }
 
 /**
- * Whether the final work set should be taken to failure.
- *
- * Covers two different reasons to say no, and they are worth keeping
- * together because the answer is the same either way:
- *
- *   - **Physical danger.** A failed flat bench in a garage with no
- *     spotter is a genuine emergency. A failed lateral raise is a
- *     dumbbell on the floor.
- *   - **Disproportionate cost.** Taking a deadlift to failure is
- *     survivable and still a bad idea; the fatigue vastly outruns the
- *     extra stimulus, and form degrades exactly where it matters most.
- *
- * Only exercises marked `true` get a to-failure last set.
- */
-export type FailureSafety = boolean
-
-/**
  * The RPE at which every hypertrophy work set is prescribed.
  *
  * One rep in reserve, held constant — no ramp across the block. Ramping

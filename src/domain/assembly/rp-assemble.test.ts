@@ -1007,21 +1007,71 @@ describe('constant proximity to failure', () => {
       const last = slot.sets[slot.sets.length - 1]
 
       /*
-       * Two separate reasons not to fail a set, and both apply here. A
-       * skullcrusher over your face with no spotter is the first. The
-       * second is rep count: the overhead press runs 3–6, and a top-heavy
-       * triple taken to failure costs what a max costs — it also carried
-       * the note "one rep in reserve, not a max" while being prescribed
-       * at RPE 10, which is two instructions contradicting each other on
-       * one slot.
+       * Every hypertrophy slot ends in a set to failure now, with no
+       * exceptions. It used to carve out two groups — lifts that are
+       * dangerous to fail and lifts whose failure point is ambiguous —
+       * and that carve-out is gone rather than narrowed, so the test says
+       * so plainly rather than encoding a rule that is no longer there.
        */
-      const heavy = (exercise?.defaultRepRange?.high ?? 12) <= 6
+      expect(last?.load, exercise?.name).toEqual({ kind: 'rpe', target: 10 })
 
-      if (exercise?.safeToFail === true && !heavy) {
-        expect(last?.load).toEqual({ kind: 'rpe', target: 10 })
-      } else {
-        expect(last?.load).toEqual({ kind: 'rpe', target: 9 })
+      for (const set of slot.sets.slice(0, -1)) {
+        expect(set.load, exercise?.name).toEqual({ kind: 'rpe', target: 9 })
       }
+    }
+  })
+})
+
+describe('rep ranges', () => {
+  const week = weekAt(build(), 3)
+
+  /*
+   * Two ranges, chosen by whether the movement is a compound, and no
+   * per-exercise override. Every exercise used to carry its own
+   * `defaultRepRange` — fifteen or so hand-set pairs whose differences
+   * nobody could account for.
+   */
+  it('runs compounds heavy and isolations long', () => {
+    const seen = new Map<string, string>()
+
+    for (const day of week.days) {
+      for (const slot of day.slots) {
+        if (slot.role !== 'hypertrophy' && slot.role !== 'assistance') continue
+        if (slot.exercise.kind !== 'specific') continue
+
+        const exercise = lookup(slot.exercise.exerciseId)
+        if (exercise === undefined) continue
+
+        for (const set of slot.sets) {
+          expect(set.reps.kind).toBe('range')
+          if (set.reps.kind !== 'range') continue
+
+          const expected = exercise.isCompound ? { low: 5, high: 8 } : { low: 15, high: 30 }
+          expect({ low: set.reps.low, high: set.reps.high }, exercise.name).toEqual(expected)
+          seen.set(exercise.isCompound ? 'compound' : 'isolation', exercise.name)
+        }
+      }
+    }
+
+    // Both branches were actually exercised, so a week that happened to
+    // contain only isolations could not pass this by default.
+    expect([...seen.keys()].sort()).toEqual(['compound', 'isolation'])
+  })
+
+  /*
+   * The competition lifts are triples. The top set is a measurement
+   * before it is training, and a triple sits closer to the single the
+   * total is scored on.
+   */
+  it('runs the competition lifts as triples', () => {
+    const topSets = week.days.flatMap((day) =>
+      day.slots.filter((slot) => slot.variant === 'Top set').flatMap((slot) => slot.sets),
+    )
+
+    expect(topSets.length).toBeGreaterThan(0)
+
+    for (const set of topSets) {
+      expect(set.reps).toEqual({ kind: 'fixed', reps: 3 })
     }
   })
 })

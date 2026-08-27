@@ -27,7 +27,6 @@ const dips: Exercise = {
   intent: 'hypertrophy',
   sfr: 4,
   systemicCost: 0.3,
-  safeToFail: true,
   isUnilateral: false,
   isCompetition: false,
   loadBasis: 'bodyweight',

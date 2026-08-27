@@ -1,5 +1,5 @@
 import type { Exercise, LoadBasis } from './exercise'
-import type { FailureSafety, Sfr, SystemicCost, TrainingIntent } from './loading'
+import type { Sfr, SystemicCost, TrainingIntent } from './loading'
 import type { Equipment, MovementPattern, MuscleGroup } from './taxonomy'
 
 /**
@@ -32,11 +32,9 @@ interface CatalogueEntry {
   readonly intent: TrainingIntent
   readonly sfr: Sfr
   readonly systemicCost?: SystemicCost
-  readonly safeToFail: FailureSafety
   readonly isUnilateral?: boolean
   readonly isCompetition?: boolean
   readonly loadBasis?: LoadBasis
-  readonly defaultRepRange?: { readonly low: number; readonly high: number }
   readonly defaultRestSeconds?: number
   readonly notes?: string
 }
@@ -161,9 +159,7 @@ const ENTRIES: readonly CatalogueEntry[] = [
     sfr: 3,
     systemicCost: 0.55,
     // No spotter in a garage. A failed rep here is an emergency.
-    safeToFail: false,
     loadBasis: 'estimated-1rm',
-    defaultRepRange: { low: 3, high: 6 },
     defaultRestSeconds: REST_HEAVY,
   },
   /*
@@ -197,10 +193,8 @@ const ENTRIES: readonly CatalogueEntry[] = [
     intent: 'strength',
     sfr: 3,
     systemicCost: 0.55,
-    safeToFail: false,
     isCompetition: true,
     loadBasis: 'estimated-1rm',
-    defaultRepRange: { low: 3, high: 6 },
     defaultRestSeconds: REST_HEAVY,
     notes: 'One second on the chest, dead still. The command, not a touch.',
   },
@@ -218,9 +212,7 @@ const ENTRIES: readonly CatalogueEntry[] = [
     intent: 'strength',
     sfr: 3,
     systemicCost: 0.5,
-    safeToFail: false,
     loadBasis: 'estimated-1rm',
-    defaultRepRange: { low: 3, high: 6 },
     defaultRestSeconds: REST_HEAVY,
     notes: 'Index fingers on the smooth. Touch-and-go.',
   },
@@ -235,10 +227,8 @@ const ENTRIES: readonly CatalogueEntry[] = [
     intent: 'strength',
     sfr: 2,
     systemicCost: 0.9,
-    safeToFail: false,
     isCompetition: true,
     loadBasis: 'estimated-1rm',
-    defaultRepRange: { low: 3, high: 6 },
     defaultRestSeconds: REST_HEAVY,
   },
   {
@@ -254,10 +244,8 @@ const ENTRIES: readonly CatalogueEntry[] = [
     systemicCost: 1,
     // Survivable to fail, and still a bad idea: the fatigue vastly
     // outruns the stimulus and form breaks where it matters most.
-    safeToFail: false,
     isCompetition: true,
     loadBasis: 'estimated-1rm',
-    defaultRepRange: { low: 1, high: 5 },
     defaultRestSeconds: REST_HEAVY,
   },
 
@@ -273,9 +261,7 @@ const ENTRIES: readonly CatalogueEntry[] = [
     intent: 'hypertrophy',
     sfr: 3,
     systemicCost: 0.3,
-    safeToFail: true,
     loadBasis: 'bodyweight',
-    defaultRepRange: { low: 6, high: 10 },
     defaultRestSeconds: REST,
   },
 
@@ -291,9 +277,7 @@ const ENTRIES: readonly CatalogueEntry[] = [
     intent: 'hypertrophy',
     sfr: 3,
     systemicCost: 0.3,
-    safeToFail: true,
     loadBasis: 'bodyweight',
-    defaultRepRange: { low: 5, high: 10 },
     defaultRestSeconds: REST,
     notes: 'The width builder. Tier 2 priority — worth the systemic cost.',
   },
@@ -308,9 +292,7 @@ const ENTRIES: readonly CatalogueEntry[] = [
     intent: 'hypertrophy',
     sfr: 4,
     systemicCost: 0.28,
-    safeToFail: true,
     loadBasis: 'bodyweight',
-    defaultRepRange: { low: 5, high: 10 },
     defaultRestSeconds: REST,
     notes: 'Doubles as biceps volume, which matters when arms are tier 1.',
   },
@@ -325,8 +307,6 @@ const ENTRIES: readonly CatalogueEntry[] = [
     intent: 'hypertrophy',
     sfr: 3,
     systemicCost: 0.45,
-    safeToFail: true,
-    defaultRepRange: { low: 6, high: 10 },
     defaultRestSeconds: REST,
   },
 
@@ -343,9 +323,7 @@ const ENTRIES: readonly CatalogueEntry[] = [
     intent: 'hypertrophy',
     sfr: 3,
     systemicCost: 0.5,
-    safeToFail: true,
     loadBasis: 'estimated-1rm',
-    defaultRepRange: { low: 3, high: 6 },
     defaultRestSeconds: REST_HEAVY,
     notes: 'Heavy hypertrophy, not a strength lift. Volume counts toward front delts and triceps.',
   },
@@ -359,7 +337,6 @@ const ENTRIES: readonly CatalogueEntry[] = [
     intent: 'hypertrophy',
     sfr: 5,
     systemicCost: 0.05,
-    safeToFail: false,
     /*
      * Up to thirty, not twenty, because the dumbbells stop at 25 lb.
      *
@@ -369,7 +346,6 @@ const ENTRIES: readonly CatalogueEntry[] = [
      * still counts; capping the range at twenty would end the overload
      * the week the top of it is reached.
      */
-    defaultRepRange: { low: 12, high: 20 },
     defaultRestSeconds: REST,
     notes: 'The highest-SFR movement available here. Tier 1 side delts are built on this.',
   },
@@ -383,8 +359,6 @@ const ENTRIES: readonly CatalogueEntry[] = [
     intent: 'hypertrophy',
     sfr: 3,
     systemicCost: 0.05,
-    safeToFail: true,
-    defaultRepRange: { low: 10, high: 15 },
     defaultRestSeconds: REST,
     notes: 'Largely redundant with pressing. Rarely needed unless front delts are prioritised.',
   },
@@ -399,8 +373,6 @@ const ENTRIES: readonly CatalogueEntry[] = [
     intent: 'hypertrophy',
     sfr: 5,
     systemicCost: 0.05,
-    safeToFail: false,
-    defaultRepRange: { low: 12, high: 20 },
     defaultRestSeconds: REST,
   },
 
@@ -416,8 +388,6 @@ const ENTRIES: readonly CatalogueEntry[] = [
     intent: 'hypertrophy',
     sfr: 4,
     systemicCost: 0.1,
-    safeToFail: true,
-    defaultRepRange: { low: 8, high: 12 },
     defaultRestSeconds: REST,
   },
   {
@@ -431,8 +401,6 @@ const ENTRIES: readonly CatalogueEntry[] = [
     intent: 'hypertrophy',
     sfr: 5,
     systemicCost: 0.08,
-    safeToFail: true,
-    defaultRepRange: { low: 8, high: 12 },
     defaultRestSeconds: REST,
   },
   /*
@@ -462,8 +430,6 @@ const ENTRIES: readonly CatalogueEntry[] = [
     // performed. A pair of dumbbells curled together is one set.
     sfr: 5,
     systemicCost: 0.08,
-    safeToFail: true,
-    defaultRepRange: { low: 8, high: 12 },
     defaultRestSeconds: REST,
   },
   {
@@ -477,8 +443,6 @@ const ENTRIES: readonly CatalogueEntry[] = [
     intent: 'hypertrophy',
     sfr: 5,
     systemicCost: 0.08,
-    safeToFail: true,
-    defaultRepRange: { low: 10, high: 15 },
     defaultRestSeconds: REST,
     notes: 'Neutral grip throughout — brachialis and brachioradialis, not just biceps.',
   },
@@ -508,8 +472,6 @@ const ENTRIES: readonly CatalogueEntry[] = [
     intent: 'hypertrophy',
     sfr: 5,
     systemicCost: 0.07,
-    safeToFail: true,
-    defaultRepRange: { low: 10, high: 15 },
     defaultRestSeconds: REST,
   },
 
@@ -525,8 +487,6 @@ const ENTRIES: readonly CatalogueEntry[] = [
     sfr: 4,
     systemicCost: 0.12,
     // A bar over the face with no spotter. Stop at one rep in reserve.
-    safeToFail: false,
-    defaultRepRange: { low: 8, high: 12 },
     defaultRestSeconds: REST,
   },
   {
@@ -539,8 +499,6 @@ const ENTRIES: readonly CatalogueEntry[] = [
     intent: 'hypertrophy',
     sfr: 4,
     systemicCost: 0.12,
-    safeToFail: false,
-    defaultRepRange: { low: 8, high: 12 },
     defaultRestSeconds: REST,
     notes:
       'Overhead, so the long head gets a real stretch. Failure just means lowering behind the head.',
@@ -557,8 +515,6 @@ const ENTRIES: readonly CatalogueEntry[] = [
     intent: 'hypertrophy',
     sfr: 5,
     systemicCost: 0.04,
-    safeToFail: true,
-    defaultRepRange: { low: 12, high: 20 },
     defaultRestSeconds: REST,
   },
   {
@@ -571,8 +527,6 @@ const ENTRIES: readonly CatalogueEntry[] = [
     intent: 'hypertrophy',
     sfr: 5,
     systemicCost: 0.04,
-    safeToFail: true,
-    defaultRepRange: { low: 12, high: 20 },
     defaultRestSeconds: REST,
   },
   {
@@ -585,9 +539,7 @@ const ENTRIES: readonly CatalogueEntry[] = [
     intent: 'hypertrophy',
     sfr: 5,
     systemicCost: 0.04,
-    safeToFail: true,
     isUnilateral: true,
-    defaultRepRange: { low: 12, high: 20 },
     defaultRestSeconds: REST,
   },
   {
@@ -600,9 +552,7 @@ const ENTRIES: readonly CatalogueEntry[] = [
     intent: 'hypertrophy',
     sfr: 5,
     systemicCost: 0.04,
-    safeToFail: true,
     isUnilateral: true,
-    defaultRepRange: { low: 12, high: 20 },
     defaultRestSeconds: REST,
   },
 
@@ -618,8 +568,6 @@ const ENTRIES: readonly CatalogueEntry[] = [
     intent: 'hypertrophy',
     sfr: 4,
     systemicCost: 0.18,
-    safeToFail: false,
-    defaultRepRange: { low: 8, high: 15 },
     defaultRestSeconds: REST,
   },
 
@@ -636,8 +584,6 @@ const ENTRIES: readonly CatalogueEntry[] = [
     systemicCost: 0.15,
     // A loaded bar on your back with your heels at full stretch is not a
     // position to reach failure in.
-    safeToFail: false,
-    defaultRepRange: { low: 10, high: 15 },
     defaultRestSeconds: REST,
   },
 
@@ -667,9 +613,7 @@ const ENTRIES: readonly CatalogueEntry[] = [
     // assembler should go on believing that.
     sfr: 2,
     systemicCost: 0.8,
-    safeToFail: false,
     loadBasis: 'estimated-1rm',
-    defaultRepRange: { low: 3, high: 6 },
     defaultRestSeconds: REST_HEAVY,
   },
   {
@@ -683,8 +627,6 @@ const ENTRIES: readonly CatalogueEntry[] = [
     intent: 'hypertrophy',
     sfr: 2,
     systemicCost: 0.75,
-    safeToFail: false,
-    defaultRepRange: { low: 5, high: 8 },
     defaultRestSeconds: REST_HEAVY,
   },
 
@@ -700,8 +642,6 @@ const ENTRIES: readonly CatalogueEntry[] = [
     intent: 'hypertrophy',
     sfr: 1,
     systemicCost: 0.95,
-    safeToFail: false,
-    defaultRepRange: { low: 3, high: 6 },
     defaultRestSeconds: REST_HEAVY,
   },
   {
@@ -715,8 +655,6 @@ const ENTRIES: readonly CatalogueEntry[] = [
     intent: 'hypertrophy',
     sfr: 2,
     systemicCost: 0.5,
-    safeToFail: false,
-    defaultRepRange: { low: 6, high: 10 },
     defaultRestSeconds: REST,
   },
   {
@@ -730,8 +668,6 @@ const ENTRIES: readonly CatalogueEntry[] = [
     intent: 'hypertrophy',
     sfr: 2,
     systemicCost: 0.55,
-    safeToFail: false,
-    defaultRepRange: { low: 8, high: 12 },
     defaultRestSeconds: REST,
   },
 
@@ -746,9 +682,7 @@ const ENTRIES: readonly CatalogueEntry[] = [
     intent: 'hypertrophy',
     sfr: 4,
     systemicCost: 0.12,
-    safeToFail: false,
     loadBasis: 'bodyweight',
-    defaultRepRange: { low: 8, high: 15 },
     defaultRestSeconds: REST,
   },
   {
@@ -762,9 +696,7 @@ const ENTRIES: readonly CatalogueEntry[] = [
     intent: 'hypertrophy',
     sfr: 4,
     systemicCost: 0.12,
-    safeToFail: false,
     loadBasis: 'bodyweight',
-    defaultRepRange: { low: 8, high: 15 },
     defaultRestSeconds: REST,
   },
 
@@ -781,7 +713,6 @@ const ENTRIES: readonly CatalogueEntry[] = [
     sfr: 4,
     // Almost free. The reason it is the default cardio during a cut.
     systemicCost: 0.08,
-    safeToFail: true,
     loadBasis: 'bodyweight',
     defaultRestSeconds: 0,
     notes:
@@ -814,7 +745,6 @@ const ENTRIES: readonly CatalogueEntry[] = [
     // hamstrings, which is exactly what makes it interfere with lifting
     // in a way the walk does not.
     systemicCost: 0.32,
-    safeToFail: true,
     loadBasis: 'bodyweight',
     defaultRestSeconds: 0,
     notes: 'Conversational pace throughout. If you cannot talk, you are running the wrong session.',
@@ -830,8 +760,6 @@ const ENTRIES: readonly CatalogueEntry[] = [
     intent: 'conditioning',
     sfr: 3,
     systemicCost: 0.35,
-    safeToFail: true,
-    defaultRepRange: { low: 15, high: 25 },
     defaultRestSeconds: 60,
     notes:
       'Conditioning that also loads the posterior chain — count it against hip fatigue, not as free cardio.',
@@ -848,8 +776,6 @@ const ENTRIES: readonly CatalogueEntry[] = [
     intent: 'conditioning',
     sfr: 5,
     systemicCost: 0.01,
-    safeToFail: true,
-    defaultRepRange: { low: 10, high: 20 },
     defaultRestSeconds: 0,
     notes: 'Upper-day warm-up. Contributes no training volume.',
   },
@@ -863,8 +789,6 @@ const ENTRIES: readonly CatalogueEntry[] = [
     intent: 'conditioning',
     sfr: 5,
     systemicCost: 0.02,
-    safeToFail: true,
-    defaultRepRange: { low: 10, high: 20 },
     defaultRestSeconds: 0,
     notes: 'Upper-day warm-up. Contributes no training volume.',
   },
@@ -878,8 +802,6 @@ const ENTRIES: readonly CatalogueEntry[] = [
     intent: 'conditioning',
     sfr: 5,
     systemicCost: 0.01,
-    safeToFail: true,
-    defaultRepRange: { low: 15, high: 25 },
     defaultRestSeconds: 0,
     notes: 'Upper-day warm-up. Contributes no training volume.',
   },
@@ -893,7 +815,6 @@ const ENTRIES: readonly CatalogueEntry[] = [
     intent: 'conditioning',
     sfr: 5,
     systemicCost: 0,
-    safeToFail: true,
     defaultRestSeconds: 0,
     notes: 'Lower-day warm-up. Contributes no training volume.',
   },
@@ -919,8 +840,6 @@ export function builtInExercises(): readonly Exercise[] {
     intent: entry.intent,
     sfr: entry.sfr,
     ...(entry.systemicCost !== undefined ? { systemicCost: entry.systemicCost } : {}),
-    safeToFail: entry.safeToFail,
-    ...(entry.defaultRepRange !== undefined ? { defaultRepRange: entry.defaultRepRange } : {}),
     ...(entry.defaultRestSeconds !== undefined
       ? { defaultRestSeconds: entry.defaultRestSeconds }
       : {}),

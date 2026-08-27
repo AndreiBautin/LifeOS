@@ -18,7 +18,6 @@ function exercise(slug: string, overrides: Partial<Exercise> = {}): Exercise {
     loadBasis: 'estimated-1rm',
     intent: 'hypertrophy',
     sfr: 4,
-    safeToFail: true,
     isBuiltIn: true,
     isArchived: false,
     ...overrides,
@@ -33,13 +32,13 @@ describe('resolving the exercise library', () => {
    * additive.
    */
   it('takes a changed built-in from the catalogue, not from the store', () => {
-    const shipped = exercise('db-curl', { defaultRepRange: { low: 10, high: 30 } })
-    const onDevice = exercise('db-curl', { defaultRepRange: { low: 10, high: 15 } })
+    const shipped = exercise('db-curl', { name: 'Dumbbell Curl' })
+    const onDevice = exercise('db-curl', { name: 'Curl (old name)' })
 
     const library = resolveLibrary([shipped], [onDevice])
 
     expect(library).toHaveLength(1)
-    expect(library[0]?.defaultRepRange).toEqual({ low: 10, high: 30 })
+    expect(library[0]?.name).toBe('Dumbbell Curl')
   })
 
   it('keeps a withdrawn built-in, archived, so history still resolves', () => {
