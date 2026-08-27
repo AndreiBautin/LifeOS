@@ -263,6 +263,20 @@ what had nothing to say. A zero turns an honest blank into an accusation,
 and it compounds — one fabricated reading makes the next month's trend a
 lie too.
 
+**The fog is a grow-only set, and that is the only reason it can sync.**
+`unionCells` in `domain/sync/payload.ts`, one row per geohash cell in
+`exploredCells`. It carries no stamp and no tombstone because neither
+question arises — two copies merge by union, and you cannot un-walk
+ground. It is the one collection exempt from `acceptableFrom`. Do not
+"simplify" it back to a blob: as one record under one stamp, the device
+that walked less recently has its morning erased, and no version of
+last-write-wins fixes that.
+
+**A vague fix reveals nothing.** `revealCell` refuses anything worse than
+100 m, and the gate is irreversible in one direction only: fog cleared by
+a bad reading cannot be put back, for the same reason there is no
+tombstone. Do not relax it to make the map feel more responsive indoors.
+
 **A rule nothing can reach is a rule nobody can trust.** Both the quest
 log's cycle guard and the tree's were briefly unreachable from the UI —
 the domain refused correctly and no screen could ask it to. Adding a

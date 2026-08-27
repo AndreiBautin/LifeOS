@@ -1,8 +1,10 @@
-import { Check, ChevronDown, ChevronRight, Plus, Trash2, Undo2 } from 'lucide-react'
+import { Check, ChevronDown, ChevronRight, Plus, Sparkles, Trash2, Undo2 } from 'lucide-react'
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 
 import { useServices } from '@/app/context'
 import { Badge, Button, Card, Empty, Section } from '@/components/shared/primitives'
+import { buttonStyles } from '@/components/shared/styles'
 
 import { computeProgress, computeScore } from '@/domain/projects/priority'
 import { PROJECT_STATUS_LABELS, type Project } from '@/domain/projects/project'
@@ -286,7 +288,22 @@ export function ProjectsPage() {
 
   return (
     <>
-      <Section title="Next" description="One thing, and why it is that one.">
+      {/*
+        The tech tree is reached from here rather than from the navigation.
+        Six tabs is the limit on a phone, and this is the planning screen —
+        "what should I do next" and "what am I saving up for" are the same
+        question at two horizons.
+      */}
+      <Section
+        title="Next"
+        description="One thing, and why it is that one."
+        action={
+          <Link to="/upgrades" className={buttonStyles({ variant: 'ghost', size: 'sm' })}>
+            <Sparkles size={16} aria-hidden />
+            Upgrades
+          </Link>
+        }
+      >
         {recommendation.data !== undefined && <NextAction recommendation={recommendation.data} />}
       </Section>
 

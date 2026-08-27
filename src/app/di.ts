@@ -1,3 +1,4 @@
+import type { Geolocation } from '@/domain/atlas/Geolocation'
 import type { IdGenerator } from '@/domain/ids/ids'
 import type {
   BacklogItemRepository,
@@ -38,6 +39,7 @@ import {
 } from '@/infrastructure/db/repositories'
 import { createBacklogSettingsStore } from '@/infrastructure/storage/backlog-settings-store'
 import { createSettingsStore } from '@/infrastructure/storage/settings-store'
+import { createBrowserGeolocation } from '@/infrastructure/map/browser-geolocation'
 import { createSyncStateStore } from '@/infrastructure/storage/sync-state-store'
 import { createNullSyncTarget } from '@/infrastructure/sync/targets'
 import { requestPersistence } from '@/infrastructure/storage/durability'
@@ -75,6 +77,8 @@ export interface AppServices {
   readonly places: PlaceRepository
   readonly trips: TripRepository
   readonly explored: ExploredAreaRepository
+  /** The device's own position, behind a port so a test can fake it. */
+  readonly geolocation: Geolocation
   readonly backlogSettings: BacklogSettingsRepository
   readonly tombstones: TombstoneRepository
   readonly settings: SettingsRepository
@@ -127,6 +131,7 @@ export async function bootstrap(): Promise<BootstrapResult> {
     places: createPlaceRepository(db, systemClock),
     trips: createTripRepository(db, systemClock),
     explored: createExploredAreaRepository(db),
+    geolocation: createBrowserGeolocation(),
     backlogSettings: createBacklogSettingsStore(),
     tombstones: createTombstoneRepository(db),
     settings: createSettingsStore(),

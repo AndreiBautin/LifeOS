@@ -64,6 +64,24 @@ export default defineConfig(({ mode }) => {
            * a network is still precached in full.
            */
           globIgnores: ['**/firebase-*.js', '**/firebase-*.js.map'],
+
+          /*
+           * Leaflet is *not* on that list, and the asymmetry is the point.
+           *
+           * It is a comparable weight — about 190 kB for the map and its
+           * clustering plugin — and by the same first-load argument it
+           * looks like a candidate. It is not, because of when the map is
+           * actually wanted: outdoors, walking, on a phone with poor
+           * signal, clearing fog. That is precisely the moment a chunk
+           * fetched on demand would fail to arrive.
+           *
+           * The Firebase argument does not transfer either. Sync needs a
+           * network by definition, so leaving it out costs nothing in the
+           * one situation where a missing cache entry would hurt. A map
+           * degrades without a network — no tiles — but the fog and the
+           * markers still draw, and that is most of what the screen is
+           * for.
+           */
           cleanupOutdatedCaches: true,
           // A client-side route requested cold must return the shell
           // rather than a 404 from the static host.
