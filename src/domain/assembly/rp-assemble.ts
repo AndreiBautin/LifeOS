@@ -350,6 +350,7 @@ function buildWeek(
       directDays,
       existingSlots: [...slots, ...conditioning],
       usedThisWeek,
+      isDeload,
     })
 
     committed = addInto(committed, filled.spent)
@@ -718,6 +719,8 @@ interface FillArgs {
    * four times, even where the volume is identical.
    */
   readonly usedThisWeek: ReadonlySet<ExerciseId>
+  /** A deload sheds fatigue; the frequency floor does not apply. */
+  readonly isDeload: boolean
 }
 
 function fillHypertrophy(args: FillArgs): BuiltSlots {
@@ -914,6 +917,24 @@ function fillHypertrophy(args: FillArgs): BuiltSlots {
    * Ordered by the same deficit the main fill uses, so the two passes
    * cannot disagree about who needs the work most.
    */
+  /*
+   * Not on a deload, and this cost a week to find.
+   *
+   * The backfill places at the three-set floor, because a slot cannot be
+   * smaller than one. On a working week that rounds an ask of five up to
+   * six across two sessions, which is the floor being honest about the
+   * smallest useful dose. On a deload it does something else entirely: the
+   * target is MV, the main fill correctly declines to open a two-set slot,
+   * and the backfill then puts three sets on both upper days anyway — so
+   * the biceps came out at six in the deload and six in the peak week, and
+   * the deload was not one.
+   *
+   * A deload sheds fatigue. Frequency is a means to volume and never a
+   * goal, and on the one week where the goal is *less* volume, a floor
+   * that only ever adds has no business firing.
+   */
+  if (args.isDeload) return { slots, spent: added }
+
   const backfillOrder = [...splitDay.muscles].sort((a, b) => {
     const behind = (muscle: MuscleGroup): number =>
       requiredFrequency(

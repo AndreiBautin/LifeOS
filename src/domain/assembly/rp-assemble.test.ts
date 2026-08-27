@@ -1067,6 +1067,27 @@ describe('tiers driving volume', () => {
     expect(priorityPosition(tiers, 'biceps')).toBeGreaterThan(priorityPosition(tiers, 'triceps'))
   })
 
+  /*
+   * The frequency backfill does not run on a deload, and this is the test
+   * that says why it must not.
+   *
+   * It places at the three-set floor, because a slot cannot be smaller. On
+   * a working week that rounds an ask of five up to six across two
+   * sessions — the floor being honest about the smallest useful dose. On a
+   * deload the target is MV, the main fill correctly declines to open a
+   * two-set slot, and the backfill was putting three sets on both upper
+   * days regardless: the biceps came out at six in the deload and six in
+   * the peak week, so the deload was not one.
+   */
+  it('does not let the frequency floor undo a deload', () => {
+    const deload = weeklyVolume(weekAt(program, 6))
+    const working = weeklyVolume(weekAt(program, 3))
+
+    for (const muscle of ['biceps', 'triceps', 'side-delts'] as const) {
+      expect(deload[muscle], `${muscle} was not deloaded`).toBeLessThan(working[muscle])
+    }
+  })
+
   it('gives every working week the same volume', () => {
     /*
      * The block used to open below the target and climb into it. Flat

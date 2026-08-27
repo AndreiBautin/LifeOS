@@ -618,6 +618,35 @@ eighteen. A day spends of it.
 The cap moves with the allowance too — the app materialises the cap as
 slots and counts them as volume, so a plan that is only correct if you
 stop early is not correct.
+**Where MEV sits in the band is the dial for how hard tier 2 is pushed.**
+`MEV_POSITION` in `domain/priority/tiers.ts`, 0.4. Four anchors — MV,
+MEV, MAV, ceiling — and a position between 0 and 1 lerps through them, so
+moving MEV up moves the whole middle of the ordering down toward it.
+
+It was 0.25, which put a tier-2 muscle forty-five per cent of the way from
+MEV to MAV. Defensible while tier 2 was a genuine middle with three
+muscles above it, and wrong once eight muscles sat there with nothing
+above them: forty-five per cent of the band, eight times over, is a
+ninety-minute upper day, and the session ceiling that used to hide that is
+gone. At 0.4 a tier-2 muscle lands one to three sets above its own MEV.
+
+**Measuring the tier-3 consequence corrected what I expected**, which is
+the reason it is written down. The MV→MEV segment stretches, so traps,
+core and glutes fall to an ask of one set. I assumed they would then fall
+under the three-set slot floor and get nothing. They do not: the main fill
+skips them and the frequency backfill still places three, because a muscle
+its tier says to train once a week cannot be trained in one set. They come
+out at 3 against 1 — over ask, not absent.
+
+**The frequency backfill does not run on a deload.** Same floor, opposite
+effect. A deload targets MV, the main fill correctly declines to open a
+two-set slot, and the backfill put three sets on both upper days anyway —
+the biceps came out at six in the deload and six in the peak week, so the
+deload was not one. Frequency is a means to volume, and on the one week
+where the goal is _less_ volume a floor that only ever adds has no
+business firing. The cost is deliberate and worth knowing: several
+muscles get no direct work at all that week, biceps and triceps included.
+
 **A muscle's target depends on its own tier and nothing else.**
 `priorityPosition` maps rank onto a position between
 `BOTTOM_TIER_POSITION` and `TOP_TIER_POSITION` and stops there. There

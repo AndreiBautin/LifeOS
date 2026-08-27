@@ -28,10 +28,10 @@ describe('naming a block from its tiers', () => {
 
     expect(described.name).toBe('General')
     expect(described.description).toContain(
-      'Back, chest, side delts, biceps, front delts, rear delts, triceps and calves building.',
+      'Back, chest, side delts, biceps, rear delts, triceps and calves building.',
     )
     expect(described.description).toContain(
-      'Quads, hamstrings, glutes, core, forearms and traps maintained.',
+      'Quads, hamstrings, glutes, core, forearms, traps and front delts maintained.',
     )
   })
 

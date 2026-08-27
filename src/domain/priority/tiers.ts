@@ -144,6 +144,44 @@ export interface VolumeTargetOptions {
   readonly overreach?: boolean
 }
 
+/**
+ * Where MEV and MAV sit inside the 0–1 position range.
+ *
+ * Four anchors rather than two: MV at the bottom, then MEV, then MAV, then
+ * the ceiling. The obvious two-anchor version — MV → MEV → ceiling with
+ * MEV at the midpoint — puts the middle tier of a three-tier structure at
+ * exactly MEV, and MEV is the least volume that grows anything: a muscle
+ * sitting on it has no margin for a bad week.
+ *
+ * MEV was at 0.25, which left the whole productive band to the middle of
+ * the ordering. That was right while the middle was a middle — tier 1 held
+ * three muscles, tier 2 was genuinely secondary, and a tier-2 muscle
+ * landing forty-five per cent of the way from MEV to MAV was a fair
+ * reading of "building".
+ *
+ * It stopped being right when eight muscles ended up in tier 2 with
+ * nothing above them. Forty-five per cent of the band, eight times over,
+ * is a ninety-minute upper day — and the session ceiling that used to hide
+ * that is gone, so the ask now arrives in full as session length. At 0.4 a
+ * tier-2 muscle lands one or two sets above its own MEV, which is what
+ * "closer to MEV" means without being *at* it.
+ *
+ * The tier-3 consequence is real, and measuring it corrected what I
+ * expected. The MV→MEV segment stretches, so a maintained muscle's ask
+ * drops — traps, core and glutes fall to a single set. I assumed they
+ * would then fall under the three-set slot floor and get nothing, and they
+ * do not: the main fill skips them, and the frequency backfill still
+ * places a three-set slot, because a muscle its tier says to train once a
+ * week cannot be trained in one set. So they come out *over* ask, at 3
+ * against 1, rather than absent.
+ *
+ * That overshoot is the floor being honest about the smallest useful dose
+ * rather than a bug, but it is worth knowing the bottom tier does not mean
+ * zero even when its number rounds to one.
+ */
+const MEV_POSITION = 0.4
+const MAV_POSITION = 0.75
+
 export function weeklyTargetFor(
   landmarks: VolumeLandmarks,
   position: number,
@@ -152,24 +190,12 @@ export function weeklyTargetFor(
   const p = clamp01(position)
   const ceiling = options.overreach === true ? landmarks.mrv : justUnder(landmarks)
 
-  /*
-   * Four anchors rather than two: MV at the bottom, MEV a quarter of the
-   * way up, MAV three quarters, and the ceiling at the top.
-   *
-   * The obvious two-anchor version — MV → MEV → ceiling with MEV at the
-   * midpoint — puts the *middle* tier of a three-tier structure at
-   * exactly MEV, which is the least volume that grows anything. A muscle
-   * a lifter explicitly named as one they want to build would then get
-   * maintenance volume and no ramp. Putting MEV at a quarter leaves the
-   * whole productive band available to the middle of the ordering, which
-   * is where most muscles sit.
-   */
   const value =
-    p <= 0.25
-      ? lerp(landmarks.mv, landmarks.mev, p / 0.25)
-      : p <= 0.75
-        ? lerp(landmarks.mev, landmarks.mav, (p - 0.25) / 0.5)
-        : lerp(landmarks.mav, ceiling, (p - 0.75) / 0.25)
+    p <= MEV_POSITION
+      ? lerp(landmarks.mv, landmarks.mev, p / MEV_POSITION)
+      : p <= MAV_POSITION
+        ? lerp(landmarks.mev, landmarks.mav, (p - MEV_POSITION) / (MAV_POSITION - MEV_POSITION))
+        : lerp(landmarks.mav, ceiling, (p - MAV_POSITION) / (1 - MAV_POSITION))
 
   return Math.max(0, Math.round(value))
 }
@@ -366,7 +392,6 @@ export const DEFAULT_MUSCLE_TIERS: MuscleTiers = [
       'chest',
       'side-delts',
       'biceps',
-      'front-delts',
       'rear-delts',
       'triceps',
       'lats',
@@ -381,7 +406,10 @@ export const DEFAULT_MUSCLE_TIERS: MuscleTiers = [
    * The legs were already here and the reasoning now extends to the trunk
    * and the grip: the squat and the deadlift are the quads, hamstrings and
    * glutes, and they are also most of what the core and the forearms get.
-   * Traps join them because nothing in a four-day week is short of pulling.
+   * Traps join them because nothing in a four-day week is short of pulling,
+   * and the front delts because two bench sessions are already more
+   * anterior pressing than their four-set MAV wants — their MV and MEV are
+   * both zero, which is the landmark table saying the same thing.
    *
    * Worth being exact, because "maintaining" is easy to read as "a little
    * bit of work". It is a *volume* tier: it decides how much dedicated
@@ -390,7 +418,7 @@ export const DEFAULT_MUSCLE_TIERS: MuscleTiers = [
    */
   {
     rank: 3,
-    members: ['quads', 'hamstrings', 'glutes', 'core', 'forearms', 'traps'],
+    members: ['quads', 'hamstrings', 'glutes', 'core', 'forearms', 'traps', 'front-delts'],
     label: 'Maintaining',
   },
 ]
