@@ -72,10 +72,17 @@ export default defineConfig(({ mode }) => {
         },
 
         manifest: {
-          name: 'Lift — Programs & Training Log',
+          name: 'Lift — training, backlog, projects and upgrades',
           short_name: 'Lift',
           description:
-            'Build strength programs and track the workouts that follow them. Works fully offline; your data never leaves the device.',
+            'One place for what you are training, reading, building and saving up for. Works fully offline; your data never leaves the device.',
+          /*
+           * `id`, `start_url` and `scope` all derive from `base` and must
+           * not move until the repository is renamed — changing any of
+           * them makes every installed copy on every device look like a
+           * different app, which is a bad thing to debug mid-migration.
+           * The name and description are free to change; identity is not.
+           */
           id: base,
           start_url: base,
           scope: base,
@@ -94,13 +101,21 @@ export default defineConfig(({ mode }) => {
               purpose: 'maskable',
             },
           ],
+          /*
+           * The long-press menu. `Programs` used to point at `programs`,
+           * which is not a route — the page is `program`, singular — so
+           * the shortcut landed on Not Found. Fixed here rather than by
+           * adding a second route, because the route name is right and the
+           * link was wrong.
+           */
           shortcuts: [
+            { name: 'What next', url: `${base}next`, description: 'The next thing to do' },
             {
               name: 'Start workout',
               url: `${base}train`,
               description: 'Jump into today’s session',
             },
-            { name: 'Programs', url: `${base}programs`, description: 'Browse and edit programs' },
+            { name: 'Backlog', url: `${base}backlog`, description: 'What is due today' },
           ],
         },
 
