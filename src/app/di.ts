@@ -4,6 +4,8 @@ import type {
   BacklogSettingsRepository,
   ProjectRepository,
   UpgradeRepository,
+  FriendRepository,
+  ReviewRepository,
   CheckInRepository,
   Clock,
   ExerciseRepository,
@@ -19,6 +21,8 @@ import { openLiftDatabase, type LiftDatabase } from '@/infrastructure/db/databas
 import {
   createBacklogItemRepository,
   createProjectRepository,
+  createFriendRepository,
+  createReviewRepository,
   createUpgradeRepository,
   createCheckInRepository,
   createExerciseRepository,
@@ -60,6 +64,8 @@ export interface AppServices {
   readonly items: BacklogItemRepository
   readonly projects: ProjectRepository
   readonly upgrades: UpgradeRepository
+  readonly friends: FriendRepository
+  readonly review: ReviewRepository
   readonly backlogSettings: BacklogSettingsRepository
   readonly tombstones: TombstoneRepository
   readonly settings: SettingsRepository
@@ -107,6 +113,8 @@ export async function bootstrap(): Promise<BootstrapResult> {
     items: createBacklogItemRepository(db, systemClock),
     projects: createProjectRepository(db, systemClock),
     upgrades: createUpgradeRepository(db, systemClock),
+    friends: createFriendRepository(db, systemClock),
+    review: createReviewRepository(db, systemClock),
     backlogSettings: createBacklogSettingsStore(),
     tombstones: createTombstoneRepository(db),
     settings: createSettingsStore(),

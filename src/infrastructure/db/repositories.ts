@@ -2,6 +2,8 @@ import type { CheckIn } from '@/domain/autoregulation/check-in'
 import type { Item } from '@/domain/backlog/item'
 import type { Project } from '@/domain/projects/project'
 import type { Upgrade } from '@/domain/upgrades/upgrade'
+import type { MetricDefinition, MonthlySnapshot } from '@/domain/review/metric'
+import type { Friend } from '@/domain/social/circle'
 import type { ProgramPosition } from '@/domain/programs/position'
 import { builtInExercises } from '@/domain/exercises/catalogue'
 import type { Exercise } from '@/domain/exercises/exercise'
@@ -10,6 +12,8 @@ import type {
   BacklogItemId,
   CheckInId,
   ExerciseId,
+  FriendId,
+  MetricId,
   ProjectId,
   UpgradeId,
   WorkoutId,
@@ -21,7 +25,9 @@ import type {
   Clock,
   ExerciseRepository,
   PositionRepository,
+  FriendRepository,
   ProjectRepository,
+  ReviewRepository,
   UpgradeRepository,
   TombstoneRepository,
   WorkoutQuery,
@@ -357,6 +363,81 @@ export function createUpgradeRepository(db: LiftDatabase, clock: Clock): Upgrade
     },
     async count() {
       return db.count('upgrades')
+    },
+  }
+}
+
+export function createFriendRepository(db: LiftDatabase, clock: Clock): FriendRepository {
+  return {
+    async all() {
+      return db.getAll('friends')
+    },
+    async byId(id: FriendId) {
+      return db.get('friends', id)
+    },
+    async save(friend: Friend) {
+      await db.put('friends', stamp(friend, clock))
+    },
+    async restoreMany(friends: readonly Friend[]) {
+      const tx = db.transaction('friends', 'readwrite')
+      await Promise.all([...friends.map((friend) => tx.store.put(friend)), tx.done])
+    },
+    async remove(id: FriendId) {
+      await db.delete('friends', id)
+      await bury(db, clock, 'friends', id)
+    },
+    async purge(id: FriendId) {
+      await db.delete('friends', id)
+    },
+    async count() {
+      return db.count('friends')
+    },
+  }
+}
+
+/**
+ * Hand-defined metrics, and the months.
+ *
+ * A snapshot's key is its month, which is what makes "one review per
+ * month" structural rather than a rule somebody has to check. Its
+ * tombstone is keyed on the month for the same reason — there is no other
+ * identity to delete.
+ */
+export function createReviewRepository(db: LiftDatabase, clock: Clock): ReviewRepository {
+  return {
+    async metrics() {
+      return db.getAll('metrics')
+    },
+    async saveMetric(metric: MetricDefinition) {
+      await db.put('metrics', stamp(metric, clock))
+    },
+    async removeMetric(id: MetricId) {
+      await db.delete('metrics', id)
+    },
+    async restoreMetrics(metrics: readonly MetricDefinition[]) {
+      const tx = db.transaction('metrics', 'readwrite')
+      await Promise.all([...metrics.map((metric) => tx.store.put(metric)), tx.done])
+    },
+
+    async snapshots() {
+      return db.getAll('reviews')
+    },
+    async snapshot(month: string) {
+      return db.get('reviews', month)
+    },
+    async saveSnapshot(snapshot: MonthlySnapshot) {
+      await db.put('reviews', stamp(snapshot, clock))
+    },
+    async restoreSnapshots(snapshots: readonly MonthlySnapshot[]) {
+      const tx = db.transaction('reviews', 'readwrite')
+      await Promise.all([...snapshots.map((snapshot) => tx.store.put(snapshot)), tx.done])
+    },
+    async removeSnapshot(month: string) {
+      await db.delete('reviews', month)
+      await bury(db, clock, 'reviews', month)
+    },
+    async purgeSnapshot(month: string) {
+      await db.delete('reviews', month)
     },
   }
 }

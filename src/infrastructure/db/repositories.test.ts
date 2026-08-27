@@ -37,9 +37,12 @@ describe('the schema', () => {
     expect([...db.objectStoreNames].sort()).toEqual([
       'checkIns',
       'exercises',
+      'friends',
       'items',
+      'metrics',
       'position',
       'projects',
+      'reviews',
       'tombstones',
       'upgrades',
       'workouts',

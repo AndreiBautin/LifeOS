@@ -9,6 +9,8 @@ import type {
   BacklogItemRepository,
   ProjectRepository,
   UpgradeRepository,
+  FriendRepository,
+  ReviewRepository,
   CheckInRepository,
   Clock,
   ExerciseRepository,
@@ -178,6 +180,29 @@ function device(clock: Clock): Device {
     count: () => Promise.resolve(0),
   }
 
+  const friends: FriendRepository = {
+    all: () => Promise.resolve([]),
+    byId: () => Promise.resolve(undefined),
+    save: () => Promise.resolve(),
+    restoreMany: () => Promise.resolve(),
+    remove: () => Promise.resolve(),
+    purge: () => Promise.resolve(),
+    count: () => Promise.resolve(0),
+  }
+
+  const review: ReviewRepository = {
+    metrics: () => Promise.resolve([]),
+    saveMetric: () => Promise.resolve(),
+    removeMetric: () => Promise.resolve(),
+    restoreMetrics: () => Promise.resolve(),
+    snapshots: () => Promise.resolve([]),
+    snapshot: () => Promise.resolve(undefined),
+    saveSnapshot: () => Promise.resolve(),
+    restoreSnapshots: () => Promise.resolve(),
+    removeSnapshot: () => Promise.resolve(),
+    purgeSnapshot: () => Promise.resolve(),
+  }
+
   const upgrades: UpgradeRepository = {
     all: () => Promise.resolve([]),
     byId: () => Promise.resolve(undefined),
@@ -229,6 +254,8 @@ function device(clock: Clock): Device {
     items,
     projects,
     upgrades,
+    friends,
+    review,
     tombstones,
     syncState,
     settings,

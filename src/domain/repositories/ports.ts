@@ -2,12 +2,16 @@ import type { CheckIn } from '@/domain/autoregulation/check-in'
 import type { Item } from '@/domain/backlog/item'
 import type { Project } from '@/domain/projects/project'
 import type { Upgrade } from '@/domain/upgrades/upgrade'
+import type { MetricDefinition, MonthlySnapshot } from '@/domain/review/metric'
+import type { Friend } from '@/domain/social/circle'
 import type { BacklogSettings } from '@/domain/backlog/settings'
 import type { Exercise } from '@/domain/exercises/exercise'
 import type {
   BacklogItemId,
   CheckInId,
   ExerciseId,
+  FriendId,
+  MetricId,
   ProjectId,
   UpgradeId,
   WorkoutId,
@@ -238,6 +242,50 @@ export interface UpgradeRepository {
   purge(id: UpgradeId): Promise<void>
   clear(): Promise<void>
   count(): Promise<number>
+}
+
+/**
+ * The people in your circle.
+ *
+ * Never hard-deleted for going quiet — `remove` is for somebody entered by
+ * mistake. Somebody you have simply not seen in two years stays, because
+ * the active circle is a reading over `lastHangout` rather than a list
+ * anyone curates.
+ */
+export interface FriendRepository {
+  all(): Promise<readonly Friend[]>
+  byId(id: FriendId): Promise<Friend | undefined>
+  save(friend: Friend): Promise<void>
+  restoreMany(friends: readonly Friend[]): Promise<void>
+  remove(id: FriendId): Promise<void>
+  purge(id: FriendId): Promise<void>
+  count(): Promise<number>
+}
+
+/**
+ * Metrics defined by hand, and the months they were recorded in.
+ *
+ * Only the hand-defined ones are stored: the measured ones are derived
+ * from `domain/game/registry.ts` on every read, for the same reason the
+ * training program is derived — a stored copy of a declaration can only
+ * ever be a stale one.
+ *
+ * A snapshot is keyed by its month, which is the invariant the whole
+ * record turns on: one review per month, and re-entering a value fixes the
+ * one already there.
+ */
+export interface ReviewRepository {
+  metrics(): Promise<readonly MetricDefinition[]>
+  saveMetric(metric: MetricDefinition): Promise<void>
+  removeMetric(id: MetricId): Promise<void>
+  restoreMetrics(metrics: readonly MetricDefinition[]): Promise<void>
+
+  snapshots(): Promise<readonly MonthlySnapshot[]>
+  snapshot(month: string): Promise<MonthlySnapshot | undefined>
+  saveSnapshot(snapshot: MonthlySnapshot): Promise<void>
+  restoreSnapshots(snapshots: readonly MonthlySnapshot[]): Promise<void>
+  removeSnapshot(month: string): Promise<void>
+  purgeSnapshot(month: string): Promise<void>
 }
 
 /**

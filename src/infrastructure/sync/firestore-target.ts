@@ -17,6 +17,8 @@ import type { CheckIn } from '@/domain/autoregulation/check-in'
 import type { Item } from '@/domain/backlog/item'
 import type { Project } from '@/domain/projects/project'
 import type { Upgrade } from '@/domain/upgrades/upgrade'
+import type { MetricDefinition, MonthlySnapshot } from '@/domain/review/metric'
+import type { Friend } from '@/domain/social/circle'
 import type { Exercise } from '@/domain/exercises/exercise'
 import type { WorkoutLog } from '@/domain/logging/workout-log'
 import type { SyncTarget } from '@/domain/repositories/ports'
@@ -55,6 +57,9 @@ const COLLECTIONS = {
   items: 'items',
   projects: 'projects',
   upgrades: 'upgrades',
+  friends: 'friends',
+  metrics: 'metrics',
+  reviews: 'reviews',
   tombstones: 'tombstones',
   /*
    * One document, not a collection. There is one settings blob, and it is
@@ -103,17 +108,31 @@ export function createFirestoreSyncTarget(options: FirestoreTargetOptions): Sync
       const from = decodeCursor(cursor)
       const after = new Timestamp(from.seconds, from.nanoseconds)
 
-      const [exercises, workouts, checkIns, items, projects, upgrades, tombstones, settings] =
-        await Promise.all([
-          readSince(root(COLLECTIONS.exercises), after),
-          readSince(root(COLLECTIONS.workouts), after),
-          readSince(root(COLLECTIONS.checkIns), after),
-          readSince(root(COLLECTIONS.items), after),
-          readSince(root(COLLECTIONS.projects), after),
-          readSince(root(COLLECTIONS.upgrades), after),
-          readSince(root(COLLECTIONS.tombstones), after),
-          readSince(root(COLLECTIONS.settings), after),
-        ])
+      const [
+        exercises,
+        workouts,
+        checkIns,
+        items,
+        projects,
+        upgrades,
+        friends,
+        metrics,
+        reviews,
+        tombstones,
+        settings,
+      ] = await Promise.all([
+        readSince(root(COLLECTIONS.exercises), after),
+        readSince(root(COLLECTIONS.workouts), after),
+        readSince(root(COLLECTIONS.checkIns), after),
+        readSince(root(COLLECTIONS.items), after),
+        readSince(root(COLLECTIONS.projects), after),
+        readSince(root(COLLECTIONS.upgrades), after),
+        readSince(root(COLLECTIONS.friends), after),
+        readSince(root(COLLECTIONS.metrics), after),
+        readSince(root(COLLECTIONS.reviews), after),
+        readSince(root(COLLECTIONS.tombstones), after),
+        readSince(root(COLLECTIONS.settings), after),
+      ])
 
       const pages = [exercises, workouts, checkIns, items, projects, upgrades, tombstones, settings]
 
@@ -146,6 +165,9 @@ export function createFirestoreSyncTarget(options: FirestoreTargetOptions): Sync
           items: items.records as readonly Item[],
           projects: projects.records as readonly Project[],
           upgrades: upgrades.records as readonly Upgrade[],
+          friends: friends.records as readonly Friend[],
+          metrics: metrics.records as readonly MetricDefinition[],
+          reviews: reviews.records as readonly MonthlySnapshot[],
           tombstones: tombstones.records as readonly Tombstone[],
           ...(latestSettings === undefined ? {} : { settings: latestSettings as SyncedSettings }),
         },
@@ -174,6 +196,21 @@ export function createFirestoreSyncTarget(options: FirestoreTargetOptions): Sync
         ...payload.workouts.map((record) => ({
           path: COLLECTIONS.workouts,
           id: record.id,
+          record,
+        })),
+        ...payload.friends.map((record) => ({
+          path: COLLECTIONS.friends,
+          id: record.id,
+          record,
+        })),
+        ...payload.metrics.map((record) => ({
+          path: COLLECTIONS.metrics,
+          id: record.id,
+          record,
+        })),
+        ...payload.reviews.map((record) => ({
+          path: COLLECTIONS.reviews,
+          id: record.month,
           record,
         })),
         ...payload.upgrades.map((record) => ({

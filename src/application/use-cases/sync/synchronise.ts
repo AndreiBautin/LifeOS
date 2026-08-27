@@ -4,6 +4,7 @@ import {
   asExerciseId,
   asProjectId,
   asUpgradeId,
+  asFriendId,
   asWorkoutId,
 } from '@/domain/ids/ids'
 import type {
@@ -11,6 +12,8 @@ import type {
   CheckInRepository,
   ProjectRepository,
   UpgradeRepository,
+  FriendRepository,
+  ReviewRepository,
   Clock,
   ExerciseRepository,
   SettingsRepository,
@@ -61,6 +64,8 @@ export interface SynchroniseDeps {
   readonly items: BacklogItemRepository
   readonly projects: ProjectRepository
   readonly upgrades: UpgradeRepository
+  readonly friends: FriendRepository
+  readonly review: ReviewRepository
   readonly tombstones: TombstoneRepository
   readonly syncState: SyncStateRepository
   readonly settings: SettingsRepository
@@ -123,6 +128,9 @@ export async function synchronise(target: SyncTarget, deps: SynchroniseDeps): Pr
   await deps.items.restoreMany(accepted.items)
   await deps.projects.restoreMany(accepted.projects)
   await deps.upgrades.restoreMany(accepted.upgrades)
+  await deps.friends.restoreMany(accepted.friends)
+  await deps.review.restoreMetrics(accepted.metrics)
+  await deps.review.restoreSnapshots(accepted.reviews)
 
   /*
    * Settings last, and only if they are newer.
@@ -170,6 +178,9 @@ export async function synchronise(target: SyncTarget, deps: SynchroniseDeps): Pr
     accepted.items.length +
     accepted.projects.length +
     accepted.upgrades.length +
+    accepted.friends.length +
+    accepted.metrics.length +
+    accepted.reviews.length +
     (settingsMoved ? 1 : 0)
 
   const offered =
@@ -179,6 +190,9 @@ export async function synchronise(target: SyncTarget, deps: SynchroniseDeps): Pr
     incoming.items.length +
     incoming.projects.length +
     incoming.upgrades.length +
+    incoming.friends.length +
+    incoming.metrics.length +
+    incoming.reviews.length +
     (accepted.settings === undefined ? 0 : 1)
 
   return {
@@ -194,17 +208,31 @@ async function collectLocal(
   watermark: string | undefined,
   settingsSynced: string | undefined,
 ): Promise<SyncPayload> {
-  const [exercises, workouts, checkIns, items, projects, upgrades, tombstones, settings] =
-    await Promise.all([
-      deps.exercises.all(),
-      deps.workouts.all(),
-      deps.checkIns.all(),
-      deps.items.all(),
-      deps.projects.all(),
-      deps.upgrades.all(),
-      deps.tombstones.all(),
-      deps.settings.get(),
-    ])
+  const [
+    exercises,
+    workouts,
+    checkIns,
+    items,
+    projects,
+    upgrades,
+    friends,
+    metrics,
+    reviews,
+    tombstones,
+    settings,
+  ] = await Promise.all([
+    deps.exercises.all(),
+    deps.workouts.all(),
+    deps.checkIns.all(),
+    deps.items.all(),
+    deps.projects.all(),
+    deps.upgrades.all(),
+    deps.friends.all(),
+    deps.review.metrics(),
+    deps.review.snapshots(),
+    deps.tombstones.all(),
+    deps.settings.get(),
+  ])
 
   /*
    * Settings travel only when they have changed since the last exchange,
@@ -239,6 +267,9 @@ async function collectLocal(
     items: changedSince(items, watermark),
     projects: changedSince(projects, watermark),
     upgrades: changedSince(upgrades, watermark),
+    friends: changedSince(friends, watermark),
+    metrics: changedSince(metrics, watermark),
+    reviews: changedSince(reviews, watermark),
     tombstones: deletedSince(tombstones, watermark),
     ...(settingsChanged ? { settings: projectForSync(settings) } : {}),
   }
@@ -286,6 +317,20 @@ async function applyDeletions(
         const local = await deps.checkIns.byId(asCheckInId(tombstone.id))
         if (local !== undefined && !survives(local, tombstone)) {
           await deps.checkIns.purge(asCheckInId(tombstone.id))
+        }
+        break
+      }
+      case 'friends': {
+        const local = await deps.friends.byId(asFriendId(tombstone.id))
+        if (local !== undefined && !survives(local, tombstone)) {
+          await deps.friends.purge(asFriendId(tombstone.id))
+        }
+        break
+      }
+      case 'reviews': {
+        const local = await deps.review.snapshot(tombstone.id)
+        if (local !== undefined && !survives(local, tombstone)) {
+          await deps.review.purgeSnapshot(tombstone.id)
         }
         break
       }

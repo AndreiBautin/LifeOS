@@ -5,6 +5,8 @@ import type { CheckIn } from '@/domain/autoregulation/check-in'
 import type { Item } from '@/domain/backlog/item'
 import type { Project } from '@/domain/projects/project'
 import type { Upgrade } from '@/domain/upgrades/upgrade'
+import type { MetricDefinition, MonthlySnapshot } from '@/domain/review/metric'
+import type { Friend } from '@/domain/social/circle'
 import type { Tombstone } from '@/domain/sync/tombstone'
 import type { Exercise } from '@/domain/exercises/exercise'
 import type { WorkoutLog } from '@/domain/logging/workout-log'
@@ -43,7 +45,7 @@ export const DB_NAME = 'lift'
  * a device that already ran it will not run it again, so changing one
  * leaves two devices with different schemas and no way to tell.
  */
-export const DB_VERSION = 6
+export const DB_VERSION = 7
 
 /**
  * A workout as it is stored, which is not quite a workout as the domain
@@ -179,6 +181,35 @@ export interface LiftDB extends DBSchema {
     value: Upgrade
     indexes: { 'by-status': string }
   }
+  /** The people in your circle. */
+  friends: {
+    key: string
+    value: Friend
+    indexes: { 'by-last-hangout': string }
+  }
+  /**
+   * Metrics defined by hand.
+   *
+   * Only the hand-defined ones. The measured metrics are derived from
+   * `domain/game/registry.ts` on every read — a stored copy of a
+   * declaration can only ever be a stale one, which is the same reason
+   * the training program is not stored either.
+   */
+  metrics: {
+    key: string
+    value: MetricDefinition
+  }
+  /**
+   * One record per month, keyed by the month.
+   *
+   * The key *is* the invariant: one review per month, so re-entering a
+   * value fixes the one already there rather than adding a second reading
+   * nobody asked for.
+   */
+  reviews: {
+    key: string
+    value: MonthlySnapshot
+  }
 }
 
 export type LiftDatabase = IDBPDatabase<LiftDB>
@@ -279,6 +310,23 @@ export function openLiftDatabase(name = DB_NAME): Promise<LiftDatabase> {
         const upgrades = db.createObjectStore('upgrades', { keyPath: 'id' })
         upgrades.createIndex('by-status', 'status')
       }
+
+      /*
+       * Version 7 brings the scoring spine and the social circle in.
+       *
+       * `reviews` is keyed by month rather than by an id, which is the
+       * one place in this schema where the key carries meaning — one
+       * review per month is the invariant, and making the month the key
+       * is what enforces it rather than a uniqueness check somebody has
+       * to remember to run.
+       */
+      if (oldVersion < 7) {
+        const friends = db.createObjectStore('friends', { keyPath: 'id' })
+        friends.createIndex('by-last-hangout', 'lastHangout')
+
+        db.createObjectStore('metrics', { keyPath: 'id' })
+        db.createObjectStore('reviews', { keyPath: 'month' })
+      }
     },
 
     blocked() {
@@ -321,7 +369,18 @@ export async function closeLiftDatabase(): Promise<void> {
  */
 export async function clearAllStores(db: LiftDatabase): Promise<void> {
   const tx = db.transaction(
-    ['exercises', 'position', 'workouts', 'checkIns', 'items', 'projects', 'upgrades'],
+    [
+      'exercises',
+      'position',
+      'workouts',
+      'checkIns',
+      'items',
+      'projects',
+      'upgrades',
+      'friends',
+      'metrics',
+      'reviews',
+    ],
     'readwrite',
   )
 
@@ -333,6 +392,9 @@ export async function clearAllStores(db: LiftDatabase): Promise<void> {
     tx.objectStore('items').clear(),
     tx.objectStore('projects').clear(),
     tx.objectStore('upgrades').clear(),
+    tx.objectStore('friends').clear(),
+    tx.objectStore('metrics').clear(),
+    tx.objectStore('reviews').clear(),
     tx.done,
   ])
 }
