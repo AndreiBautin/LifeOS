@@ -287,11 +287,14 @@ purpose — demanding a coordinate per line would turn a thirty-second
 capture into an evening — and `/map/inbox` is where that pile gets
 cleared, either from a pasted link or from a single position reading.
 
-**What is missing is a search box, and it is missing on purpose.** Map's
-own inbox resolves a name by asking Nominatim for coordinates. That is a
-third-party network call, and it sits directly against this app's stated
-identity. Adding it is a decision about what the hub _is_; it is not a
-feature to slip in behind a text field.
+The fourth way in **does** leave the device: searching by name asks
+Nominatim, at `nominatim.openstreetmap.org`. That is worth stating
+plainly rather than burying, and worth stating accurately — the map has
+been fetching tiles from the same organisation on every pan since Leaflet
+was wired up, so this is a wider use of an existing relationship rather
+than a new one. It is rate-limited to one request a second and run on
+donations: the query debounces at 500 ms, the adapter enforces the floor
+again, and results cache for five minutes.
 
 The same honesty governs the exploration ladder. Its `places.explored-share`
 source divides walked area by the area of the region being explored — and
@@ -334,7 +337,10 @@ Here (`domain/autoregulation/`):
 
 ## What is deliberately absent
 
-- **No server, no API, no auth.** Single user, single device, by design.
+- **No server, no API, no auth of ours.** Single user, single device, by
+  design. Two third parties are reached, both only from the screens that
+  need them: OpenStreetMap for map tiles and geocoding, and Firebase for
+  sync when it is configured. Neither is a service this project runs.
 - **No state-management library beyond context.** Server-ish state is
   TanStack Query's; the rest is component state. Redux would be ceremony.
 - **No chart library.** The one chart that matters — weekly volume

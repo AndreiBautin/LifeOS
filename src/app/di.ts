@@ -1,4 +1,5 @@
 import type { Geolocation } from '@/domain/atlas/Geolocation'
+import type { PlaceSearchProvider } from '@/domain/atlas/PlaceSearch'
 import type { IdGenerator } from '@/domain/ids/ids'
 import type {
   BacklogItemRepository,
@@ -40,6 +41,7 @@ import {
 import { createBacklogSettingsStore } from '@/infrastructure/storage/backlog-settings-store'
 import { createSettingsStore } from '@/infrastructure/storage/settings-store'
 import { createBrowserGeolocation } from '@/infrastructure/map/browser-geolocation'
+import { NominatimSearchProvider } from '@/infrastructure/map/nominatim-search'
 import { createSyncStateStore } from '@/infrastructure/storage/sync-state-store'
 import { createNullSyncTarget } from '@/infrastructure/sync/targets'
 import { requestPersistence } from '@/infrastructure/storage/durability'
@@ -79,6 +81,12 @@ export interface AppServices {
   readonly explored: ExploredAreaRepository
   /** The device's own position, behind a port so a test can fake it. */
   readonly geolocation: Geolocation
+  /**
+   * Turning a typed name into a point, which is the one thing the atlas
+   * cannot work out locally. Nominatim, the same organisation whose tiles
+   * the map already draws.
+   */
+  readonly placeSearch: PlaceSearchProvider
   readonly backlogSettings: BacklogSettingsRepository
   readonly tombstones: TombstoneRepository
   readonly settings: SettingsRepository
@@ -132,6 +140,7 @@ export async function bootstrap(): Promise<BootstrapResult> {
     trips: createTripRepository(db, systemClock),
     explored: createExploredAreaRepository(db),
     geolocation: createBrowserGeolocation(),
+    placeSearch: new NominatimSearchProvider(),
     backlogSettings: createBacklogSettingsStore(),
     tombstones: createTombstoneRepository(db),
     settings: createSettingsStore(),

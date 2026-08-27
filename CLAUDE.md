@@ -1,10 +1,19 @@
 # Working on Lift
 
 A client-only React + TypeScript PWA for building strength programs and
-tracking workouts. **No server, no database, no network calls.**
+tracking workouts. **No server of ours, and no database of ours.**
 Persistence is IndexedDB behind a repository interface. That constraint is
 the product, not a limitation — see
 [docs/PERSISTENCE.md](docs/PERSISTENCE.md).
+
+The honest qualifier: the map talks to OpenStreetMap. Tiles come from
+`tile.openstreetmap.org` on every pan, and the inbox's search asks
+Nominatim to turn a name into coordinates. Both are the same third party,
+both are opt-in in the sense that they only happen on the map screens, and
+neither carries a record — but "no network calls" was never true once
+Leaflet was rendering live tiles, and claiming it made the _other_
+requests look like a bigger step than they are. Firebase sync, when
+configured, is the other one.
 
 ## Before you finish anything
 
@@ -277,13 +286,13 @@ last-write-wins fixes that.
 a bad reading cannot be put back, for the same reason there is no
 tombstone. Do not relax it to make the map feel more responsive indoors.
 
-**The atlas makes no network calls, and the gap is deliberate.**
-Map's inbox is built around a Nominatim search that turns "Kiln, London"
-into coordinates. That is a third-party request, and this hub's stated
-identity is that it makes none — so `features/atlas/InboxPage.tsx` ships
-the local half only: paste a link, a `geo:` URI or a pair of numbers, or
-say you are standing there. If a geocoder is ever added it is a decision
-about what this app is, not a feature to slip in behind a search box.
+**The atlas talks to OpenStreetMap, and only to OpenStreetMap.**
+Tiles from `tile.openstreetmap.org`, and geocoding from Nominatim in the
+inbox's search. Both are rate-limited services run on donations: Nominatim
+allows one request a second and forbids bulk use, which is why the search
+debounces and why nothing calls it in a loop. Anything else that wants the
+network is a new third party and a new decision — this is one
+relationship, not a precedent for others.
 
 **The exploration ladder's denominator comes from a person, not the app.**
 `exploredRegionKm2` in settings. The ladder is only a ladder because a

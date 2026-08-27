@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useEffect, useState } from 'react'
 
 import { useServices } from '@/app/context'
 import {
@@ -7,6 +8,7 @@ import {
   unplacedPlaces,
   type AtlasResult,
 } from '@/application/use-cases/atlas/atlas'
+import type { Coordinates } from '@/domain/atlas/place/Coordinates'
 import type { Place } from '@/domain/atlas/place/Place'
 import type { PlaceId } from '@/domain/atlas/place/PlaceId'
 import { logger } from '@/shared/logging/logger'
@@ -64,4 +66,59 @@ export function useHereFor() {
 
     return editPlace(id, { latitude: fix.value.latitude, longitude: fix.value.longitude }, services)
   })
+}
+
+/**
+ * Turning a typed name into a point.
+ *
+ * The one thing in the atlas that leaves the device. It asks Nominatim,
+ * which is the same organisation whose tiles the map already draws on
+ * every pan — so this is a wider use of an existing relationship rather
+ * than a new one. What it sends is the text typed into the box.
+ *
+ * Nominatim is run on donations and allows one request a second, so the
+ * query is debounced here and the adapter enforces the floor again on the
+ * way out. `enabled` keeps it from firing on an empty or barely-started
+ * box: two characters is not a search, it is somebody still typing.
+ */
+export function usePlaceSearch(text: string, near?: Coordinates) {
+  const services = useServices()
+  const query = useDebounced(text, 500)
+
+  return useQuery({
+    queryKey: [...ATLAS, 'search', query, near?.latitude, near?.longitude],
+    enabled: query.trim().length >= 3,
+    // A place does not move, so a repeated search is worth keeping.
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      const result = await services.placeSearch.search({
+        text: query,
+        ...(near === undefined ? {} : { near }),
+      })
+      if (!result.ok) throw new Error(result.error.message)
+      return result.value
+    },
+  })
+}
+
+/**
+ * The typed value, but only once it stops changing.
+ *
+ * Without this every keystroke is a request to a service that allows one
+ * a second, and the adapter's own floor would turn a typed word into a
+ * queue of stale searches resolving one per second after you stopped.
+ */
+function useDebounced(value: string, ms: number): string {
+  const [settled, setSettled] = useState(value)
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSettled(value)
+    }, ms)
+    return () => {
+      clearTimeout(timer)
+    }
+  }, [value, ms])
+
+  return settled
 }
