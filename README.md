@@ -1,14 +1,28 @@
 # Lift
 
-Build strength programs and track the workouts that follow them.
+Six things worth tracking, in one app, scored by one model.
 
-One app where the programming and the logging are the same system: RTS
-autoregulation runs the three competition lifts, your split decides how
-the week is laid out, and hypertrophy volume is filled to weekly targets
-— after subtracting what the strength work already spent.
+It started as a strength-training app and still has the deepest roots
+there — RTS autoregulation runs the three competition lifts, your split
+decides how the week is laid out, and hypertrophy volume is filled to
+weekly targets after subtracting what the strength work already spent.
+Five more areas were absorbed into it: a backlog, a quest log of
+projects, a tech tree of things to save up for, a circle of people worth
+seeing, and an atlas with fog that clears as you walk.
 
-**It works entirely offline. There is no account, no server, and your
-data never leaves your device.**
+**The insight that makes it click:** the areas are not separate apps
+sharing a shell. Each declares what it has — ladders, ratings, acts — in
+one registry, and everything else is derived from that. A ladder is
+anchored to something external and says where you stand. A rating is a
+monthly judgement about a direction. XP is paid for showing up and never
+for it having worked. An area with nothing to say says nothing, because a
+level nobody earned is worse than an obvious gap.
+
+**No account, no server of ours, and no database of ours.** Everything is
+in IndexedDB on the device. Two third parties are reached, both only from
+the screens that need them: OpenStreetMap for map tiles and for turning a
+place name into coordinates, and Firebase for syncing two devices when
+you configure it. Neither is something this project runs.
 
 ## What it does
 
@@ -56,7 +70,9 @@ you rely on it:
   the control is really "cookies and other site data".
 - **Nothing transfers** to a new phone or a different browser.
 - **Export is the only thing that survives all of it.** The app will ask
-  you to, after a fortnight or ten sessions.
+  you to, after a fortnight or ten sessions. It carries everything — all
+  six areas, the monthly reviews, and the ground you have walked — not
+  just the training half.
 
 The full account — what happens on install, on uninstall, on update, on
 storage cleanup, and what the app does about each — is in
@@ -154,11 +170,29 @@ estimate when the session opens — never stored in the program. See
 
 ## Origins
 
-Consolidated from three earlier repositories — StrengthFlow, LiftTracker
-and ProgramBuilder — all three of which shared one structural flaw: the
-program and the workout log were the same database rows, so editing a
-program rewrote history. The good ideas were kept, the implementations
-were not.
+Consolidated twice.
+
+First from three training repositories — StrengthFlow, LiftTracker and
+ProgramBuilder — which shared one structural flaw: the program and the
+workout log were the same database rows, so editing a program rewrote
+history. The good ideas were kept, the implementations were not.
+
+Then from five more, each now archived and pointing here:
+
+| Was                                                                | Is                                                        |
+| ------------------------------------------------------------------ | --------------------------------------------------------- |
+| [Backlogs](https://github.com/AndreiBautin/Backlogs)               | The backlog, with its daily goals and progress log        |
+| [ProjectManager](https://github.com/AndreiBautin/ProjectManager)   | Projects — scoring, blockers, and what to do next         |
+| [upgrade-planner](https://github.com/AndreiBautin/upgrade-planner) | The tech tree, gated on money and prerequisites           |
+| [Dashboard](https://github.com/AndreiBautin/Dashboard)             | Not an area — the scoring spine every area plugs into     |
+| [Map](https://github.com/AndreiBautin/Map)                         | The atlas: places, trips, and fog that clears as you walk |
+
+One repository deliberately did **not** move.
+[career-command-center](https://github.com/AndreiBautin/career-command-center)
+polls ATS boards over the network and drives a real browser to fill in
+application forms — a server and a robot, neither of which a client-only
+PWA can be. Absorbing its tracker while losing those was a worse trade
+than leaving it whole.
 
 An earlier version of this app ran 5/3/1 as its default framework. It was
 removed once RTS became the only way strength is run — carrying two
