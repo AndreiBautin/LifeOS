@@ -293,7 +293,12 @@ function SlotRow({
    * A lifter who grinds out all three because the page said three has
    * had the stopping rule taken away from them.
    *
-   *   5 × 235 lb  ·  5% drop, stop at RPE 8.5  ·  cap 3
+   *   5 × 235 lb  ·  5% drop, stop at RPE 8.5  ·  1–4 sets
+   *
+   * Written as a range rather than as "cap 4" so that this page and the
+   * Train page say the same thing about the same block. "Cap" is accurate
+   * and is a word about the *model*; "1–4" is a word about the session,
+   * and the session is what a lifter is reading for.
    */
   const load = shown[0]?.prescription.load
   const backoff = load?.kind === 'rts-backoff' ? load : undefined
@@ -303,7 +308,7 @@ function SlotRow({
       ? [
           `${describeReps(shown[0]?.reps ?? { kind: 'fixed', reps: 0 })} × ${shown[0]?.loadDisplay ?? '—'}`,
           `${String(backoff.dropPercent)}% drop${backoff.stopRpe === undefined ? '' : `, stop at RPE ${String(backoff.stopRpe)}`}`,
-          `cap ${String(shown.length)}`,
+          shown.length > 1 ? `1–${String(shown.length)} sets` : '1 set',
         ].join('  ·  ')
       : grouped
           .map((row) =>

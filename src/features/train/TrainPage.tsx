@@ -251,10 +251,22 @@ function VolumeTargets({ day }: { day: ProgramDay }) {
 }
 
 /**
- * A slot summarised in one line: "4 × 3–6", or "20 min".
+ * A slot summarised in one line: "4 × 3–6", "1–4 × 5", or "20 min".
  *
  * A single timed set drops the count, because "1 × 20 min" invites the
  * reader to work out what one of a twenty-minute walk is.
+ *
+ * **A back-off block is written as a range**, because its count is not a
+ * prescription. The number of back-offs is discovered in the session —
+ * you keep going until a set comes in at the stop RPE — so "4 × 5" was
+ * the shape of a fixed prescription making a promise the block does not
+ * make. A lifter who grinds out all four because the page said four has
+ * had the stopping rule taken away from them, which is the whole of what
+ * makes this RTS rather than a percentage program.
+ *
+ * The four is still real: it is the cap, materialised as slots and
+ * counted as volume, so the week is planned against the ceiling rather
+ * than against a session that stops early.
  */
 function describeSlot(sets: readonly SetPrescription[]): string {
   const first = sets.find((set) => set.isWarmup !== true) ?? sets[0]
@@ -263,7 +275,14 @@ function describeSlot(sets: readonly SetPrescription[]): string {
   const label = describeReps(first.reps)
   if (sets.length === 1 && first.reps.kind === 'time') return label
 
-  return `${String(countedSets(sets))} × ${label}`
+  const count = countedSets(sets)
+
+  // A deload caps the back-offs at one, and "1–1" is not a range.
+  if (first.load.kind === 'rts-backoff' && count > 1) {
+    return `1–${String(count)} × ${label}`
+  }
+
+  return `${String(count)} × ${label}`
 }
 
 /**
