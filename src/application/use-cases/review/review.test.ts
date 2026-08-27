@@ -3,10 +3,16 @@ import { describe, expect, it } from 'vitest'
 import { createItem } from '@/domain/backlog/item'
 import type { CellId } from '@/domain/atlas/exploration/GeoCell'
 import type { Place } from '@/domain/atlas/place/Place'
-import type { AppSettings } from '@/domain/settings/settings'
 import { DEFAULT_SETTINGS } from '@/domain/settings/settings'
 import { SCORING } from '@/domain/game/registry'
-import { asFriendId, asMetricId, asProjectId, asUpgradeId, type MetricId } from '@/domain/ids/ids'
+import {
+  asExerciseId,
+  asFriendId,
+  asMetricId,
+  asProjectId,
+  asUpgradeId,
+  type MetricId,
+} from '@/domain/ids/ids'
 import type { Item } from '@/domain/backlog/item'
 import type { Project } from '@/domain/projects/project'
 import type { Clock, WorkoutRepository, ReviewRepository } from '@/domain/repositories/ports'
@@ -35,7 +41,10 @@ import {
  */
 function harness(
   at = new Date(2026, 7, 26, 9, 0),
-  settingsOverride: Partial<AppSettings> = {},
+  // Deliberately not `Partial<AppSettings>`: a test needs to express "no
+  // bodyweight on file", and under `exactOptionalPropertyTypes` a Partial
+  // will not carry an explicit `undefined` through.
+  settingsOverride: Record<string, unknown> = {},
   walkedCells: CellId[] = [],
 ) {
   const clock: Clock = { now: () => at }
@@ -137,7 +146,61 @@ describe('measuring the hub', () => {
   it('reports nothing for an area with no data at all', async () => {
     const { deps } = harness()
 
-    expect(await measureAll(deps)).toEqual({})
+    /*
+     * Settings are data, and the shipped defaults carry a bodyweight and
+     * estimated maxes read out of a real 5/3/1 export — so the strength
+     * ladders have something true to say on a fresh install where every
+     * store is still empty. Everything genuinely unmeasured stays absent,
+     * which is what this is really asserting.
+     */
+    const measured = await measureAll(deps)
+
+    expect(Object.keys(measured).sort()).toEqual([
+      'training.bench-e1rm',
+      'training.deadlift-e1rm',
+      'training.squat-e1rm',
+      'training.total',
+    ])
+  })
+
+  /*
+   * The standards are multiples of bodyweight, so the number placed on the
+   * ladder is a ratio and not a load. Feeding pounds to a ladder whose
+   * rungs are 0.75 and 1.25 puts everybody at Elite, which is the sort of
+   * wrong that looks like good news.
+   */
+  it('measures strength as a multiple of bodyweight', async () => {
+    const { deps } = harness()
+
+    const measured = await measureAll(deps)
+
+    // 303 lb squat at 200 lb bodyweight.
+    expect(measured['training.squat-e1rm']).toBeCloseTo(1.515, 3)
+  })
+
+  it('says nothing about strength without a bodyweight to divide by', async () => {
+    const { deps } = harness(undefined, { bodyweight: undefined })
+
+    const measured = await measureAll(deps)
+
+    expect(measured['training.squat-e1rm']).toBeUndefined()
+    expect(measured['training.total']).toBeUndefined()
+  })
+
+  /*
+   * A total missing one lift is not a smaller total, it is a wrong one —
+   * and it reads as a lower level rather than as a gap, which is exactly
+   * the failure this file is careful about everywhere else.
+   */
+  it('refuses a total when a lift is missing', async () => {
+    const { deps } = harness(undefined, {
+      estimatedMaxes: { [asExerciseId('low-bar-squat')]: 300 },
+    })
+
+    const measured = await measureAll(deps)
+
+    expect(measured['training.squat-e1rm']).toBeDefined()
+    expect(measured['training.total']).toBeUndefined()
   })
 
   it('counts the tech tree as a share of what is owned', async () => {

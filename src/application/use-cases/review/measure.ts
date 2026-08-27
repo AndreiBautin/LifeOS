@@ -1,4 +1,6 @@
 import { getGoalsStats } from '@/domain/backlog/goals-stats'
+import { STRENGTH_LIFT_SLUGS } from '@/domain/exercises/catalogue'
+import { asExerciseId } from '@/domain/ids/ids'
 import { isActive } from '@/domain/social/circle'
 import type {
   BacklogItemRepository,
@@ -97,14 +99,51 @@ export async function measureAll(deps: MeasureDeps): Promise<Readonly<Record<str
   }
 
   /*
+   * The strength ladders, as **multiples of bodyweight** rather than as
+   * loads.
+   *
+   * The source ids say `e1rm`, but the number placed on the ladder is a
+   * ratio, because the thresholds are ratios — every published standard is
+   * expressed that way, and it is the whole reason "Advanced" here means
+   * what a coach means by it. Feeding pounds to a ladder whose rungs are
+   * 0.75 and 1.25 would put everyone at Elite.
+   *
+   * No bodyweight means no reading at all, for the same reason: the
+   * standards are not expressible without it.
+   */
+  const strength = await deps.settings.get()
+  const bodyweight = strength.bodyweight
+  if (bodyweight !== undefined && bodyweight > 0) {
+    const maxes = strength.estimatedMaxes
+    const ratio = (slug: string): number | undefined => {
+      const max = maxes[asExerciseId(slug)]
+      return max === undefined ? undefined : max / bodyweight
+    }
+
+    const squat = ratio(STRENGTH_LIFT_SLUGS.squat)
+    const bench = ratio(STRENGTH_LIFT_SLUGS.bench)
+    const deadlift = ratio(STRENGTH_LIFT_SLUGS.deadlift)
+
+    if (squat !== undefined) measured['training.squat-e1rm'] = squat
+    if (bench !== undefined) measured['training.bench-e1rm'] = bench
+    if (deadlift !== undefined) measured['training.deadlift-e1rm'] = deadlift
+
+    // All three or none. A total missing the bench is not a smaller total,
+    // it is a wrong one — and it would read as a lower level rather than
+    // as a gap, which is the failure this whole file is careful about.
+    if (squat !== undefined && bench !== undefined && deadlift !== undefined) {
+      measured['training.total'] = squat + bench + deadlift
+    }
+  }
+
+  /*
    * The exploration ladder's denominator is the one number the app cannot
    * work out for itself — see `exploredRegionKm2`. Without it there is no
    * share to report, and an absent reading is exactly what the spine
    * expects: no region set means the ladder says nothing, rather than
    * scoring somebody against a figure nobody chose.
    */
-  const settings = await deps.settings.get()
-  const region = settings.exploredRegionKm2
+  const region = strength.exploredRegionKm2
   if (region !== undefined && region > 0) {
     const view = await atlasView({
       places: deps.places,

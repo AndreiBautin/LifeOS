@@ -215,6 +215,17 @@ function mergeWithDefaults(parsed: unknown): AppSettings {
      * `updatedAt` was, so settings were stamped on every write and came
      * back unstamped, which would have meant they never synced at all.
      */
+    /*
+     * The exploration ladder's denominator. Absent unless a real positive
+     * number was stored: a zero would divide, and absent is what tells the
+     * ladder to say nothing rather than to score against a figure nobody
+     * chose.
+     */
+    ...(typeof stored.exploredRegionKm2 === 'number' &&
+    Number.isFinite(stored.exploredRegionKm2) &&
+    stored.exploredRegionKm2 > 0
+      ? { exploredRegionKm2: stored.exploredRegionKm2 }
+      : {}),
     ...(typeof stored.updatedAt === 'string' ? { updatedAt: stored.updatedAt } : {}),
     ...(typeof stored.lastExportAt === 'string' ? { lastExportAt: stored.lastExportAt } : {}),
     schemaVersion: SETTINGS_SCHEMA_VERSION,

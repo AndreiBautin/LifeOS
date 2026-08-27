@@ -4,10 +4,14 @@ import { Link } from 'react-router-dom'
 
 import { useServices, useSettings } from '@/app/context'
 import { buildCharacter, LEVELS, type Attribute } from '@/domain/game/character'
+import type { RatingOutcome } from '@/domain/game/rating'
+import type { AreaStanding } from '@/application/use-cases/character/sheet'
 import { totalWorkingSets } from '@/domain/logging/workout-log'
 import { Badge, Card, Section } from '@/components/shared/primitives'
 import { buttonStyles } from '@/components/shared/styles'
 import { cn } from '@/lib/cn'
+
+import { useCharacterSheet } from './hooks'
 
 /**
  * The lifter as a character sheet.
@@ -49,7 +53,21 @@ export function CharacterPage() {
     workingSets: completed.reduce((total, log) => total + totalWorkingSets(log), 0),
   })
 
-  const xpFill = Math.round((character.xpIntoLevel / Math.max(1, character.xpForNextLevel)) * 100)
+  const sheet = useCharacterSheet()
+
+  /*
+   * XP is the whole hub's now, not training's. `buildCharacter` still
+   * computes a training-only figure and it is deliberately not used here:
+   * two numbers called "level" on one page, disagreeing, is worse than
+   * either of them alone.
+   */
+  const standing = sheet.data?.standing
+  const xpFill =
+    standing === undefined ? 0 : Math.round((standing.into / Math.max(1, standing.needed)) * 100)
+
+  // Training keeps its own section below, which shows real loads in pounds
+  // rather than the ratios the ladder is scored on.
+  const elsewhere = (sheet.data?.areas ?? []).filter((area) => area.area !== 'training')
 
   return (
     <div>
@@ -73,13 +91,13 @@ export function CharacterPage() {
         </Link>
       </header>
 
-      <Section title={`Level ${String(character.xpLevel)}`}>
+      <Section title={`Level ${String(standing?.level ?? 1)}`}>
         <Card>
           <div className="flex items-baseline justify-between gap-2">
             <span className="text-ink-300 text-sm">Experience</span>
             <span className="numeric text-ink-50 text-sm font-semibold">
-              {character.xpIntoLevel}
-              <span className="text-ink-500 font-normal"> / {character.xpForNextLevel}</span>
+              {standing?.into ?? 0}
+              <span className="text-ink-500 font-normal"> / {standing?.needed ?? 0}</span>
             </span>
           </div>
           <div className="bg-ink-850 mt-2 h-2 overflow-hidden rounded-full">
@@ -89,8 +107,9 @@ export function CharacterPage() {
             />
           </div>
           <p className="text-ink-500 mt-2 text-xs">
-            {character.xp} XP all time · 50 for a session, 5 for a working set. XP never moves a
-            strength level — showing up and getting stronger are different things.
+            {standing?.xp ?? 0} XP all time, across everything you track. Paid for doing the thing,
+            never for it having worked — getting stronger moves a ladder, and paying it twice is how
+            a number stops being a record of effort.
           </p>
         </Card>
       </Section>
@@ -102,6 +121,29 @@ export function CharacterPage() {
             <AttributeRow key={lift.name} attribute={lift} />
           ))}
         </Card>
+      </Section>
+
+      <Section
+        title="Everywhere else"
+        description="Levels are measured, ratings are the last monthly judgement"
+      >
+        {elsewhere.every((area) => area.silent) ? (
+          <Card>
+            <p className="text-ink-500 text-sm">
+              Nothing else has anything to say yet. An area speaks once it has a measurement, a
+              recorded rating, or something you did — never before, because a level nobody earned is
+              worse than an obvious gap.
+            </p>
+          </Card>
+        ) : (
+          <div className="space-y-3">
+            {elsewhere
+              .filter((area) => !area.silent)
+              .map((area) => (
+                <AreaCard key={area.area} area={area} />
+              ))}
+          </div>
+        )}
       </Section>
 
       <Section title="The ladder">
@@ -167,4 +209,101 @@ function AttributeRow({
       </p>
     </div>
   )
+}
+
+/**
+ * What an outcome is worth saying, and how loudly.
+ *
+ * `insufficient-data` gets no tone at all: it is not a bad result, it is
+ * the absence of one, and colouring it would make a second month of
+ * tracking look like a setback.
+ */
+const OUTCOME_LABEL: Record<RatingOutcome, string> = {
+  improved: 'Improving',
+  regressed: 'Slipping',
+  stagnant: 'Flat',
+  'insufficient-data': 'Not enough months yet',
+}
+
+const OUTCOME_TONE: Record<RatingOutcome, 'good' | 'bad' | 'neutral'> = {
+  improved: 'good',
+  regressed: 'bad',
+  stagnant: 'neutral',
+  'insufficient-data': 'neutral',
+}
+
+function AreaCard({ area }: { readonly area: AreaStanding }) {
+  return (
+    <Card className="space-y-3">
+      <div className="flex items-baseline justify-between gap-2">
+        <h3 className="text-ink-50 font-semibold">{area.name}</h3>
+        {area.xp > 0 && <span className="numeric text-ink-500 text-xs">{area.xp} XP</span>}
+      </div>
+
+      {area.ladders.map((ladder) => (
+        <div key={ladder.id}>
+          <div className="flex items-baseline justify-between gap-2">
+            <span className="text-ink-300 text-sm font-medium">{ladder.name}</span>
+            {ladder.reading === undefined ? (
+              <span className="text-ink-600 text-xs">Nothing measured yet</span>
+            ) : (
+              <Badge tone={LEVEL_TONE[ladder.reading.level] ?? 'neutral'}>
+                {ladder.reading.level}
+              </Badge>
+            )}
+          </div>
+
+          {ladder.reading !== undefined && (
+            <>
+              <div className="bg-ink-850 mt-1.5 h-1.5 overflow-hidden rounded-full">
+                <div
+                  className="bg-accent-500 h-full rounded-full"
+                  style={{ width: `${String(Math.round(ladder.reading.progress * 100))}%` }}
+                />
+              </div>
+              <p className="text-ink-500 mt-1 text-xs">
+                {formatLadderValue(ladder.value, ladder.unit)} · anchored to {ladder.anchor}
+              </p>
+            </>
+          )}
+        </div>
+      ))}
+
+      {area.ratings.map((rating) => (
+        <div key={rating.id} className="flex items-baseline justify-between gap-2">
+          <span className="text-ink-300 text-sm font-medium">{rating.name}</span>
+          <div className="flex items-center gap-2">
+            {rating.value !== undefined && (
+              <span className="numeric text-ink-500 text-xs">{formatValue(rating.value)}</span>
+            )}
+            {rating.outcome !== undefined && (
+              <Badge tone={OUTCOME_TONE[rating.outcome]}>{OUTCOME_LABEL[rating.outcome]}</Badge>
+            )}
+          </div>
+        </div>
+      ))}
+    </Card>
+  )
+}
+
+/** A share reads as a percentage; everything else reads as itself. */
+function formatLadderValue(value: number | undefined, unit: string): string {
+  if (value === undefined) return unit
+  if (unit === 'share of region') {
+    const percent = value * 100
+
+    /*
+     * Enough decimals to be a number rather than a zero. A single 153-metre
+     * square against Greater London is 0.0015%, and one decimal renders
+     * that as "0.0%" — which reads as nothing measured, on the one screen
+     * whose whole job is to distinguish a small reading from no reading.
+     */
+    const shown = percent >= 0.1 ? percent.toFixed(1) : percent.toPrecision(2)
+    return `${shown}% of the region walked`
+  }
+  return `${formatValue(value)} ${unit}`
+}
+
+function formatValue(value: number): string {
+  return Number.isInteger(value) ? value.toString() : value.toFixed(2)
 }
