@@ -278,3 +278,55 @@ export async function recordPosition(
 
   return deps.explored.reveal([toCellId(coordinates)])
 }
+
+/**
+ * Places saved by name that still have no point on the map.
+ *
+ * The pile the paste path creates on purpose: a name is enough to save
+ * somewhere, and a coordinate can wait. What this is for is working
+ * through that pile deliberately rather than discovering it as gaps on
+ * the map.
+ *
+ * Oldest first — something that has been sitting unplaced for a month is
+ * more likely to be the thing you meant to deal with than what you typed
+ * this morning.
+ */
+export async function unplacedPlaces(deps: AtlasDeps): Promise<readonly Place[]> {
+  const places = await deps.places.all()
+  return places
+    .filter((place) => !isResolved(place))
+    .sort((a, b) => a.dateAdded.localeCompare(b.dateAdded))
+}
+
+/**
+ * Gives an unplaced place a point, from a link, a pair of coordinates, or
+ * the device.
+ *
+ * The parse is the same one the share target uses, so anything that can be
+ * shared in can also be pasted here — and neither path touches the
+ * network.
+ */
+export async function placeFromText(
+  id: PlaceId,
+  text: string,
+  deps: AtlasDeps,
+): Promise<AtlasResult> {
+  const shared = parseSharedLocation(text)
+  if (shared.coordinates === undefined) {
+    return {
+      error: shared.needsRedirect
+        ? 'That short link only resolves on a server, so there is no point in it to read.'
+        : 'No coordinates in that.',
+    }
+  }
+
+  return editPlace(
+    id,
+    {
+      latitude: shared.coordinates.latitude,
+      longitude: shared.coordinates.longitude,
+      ...(shared.url === undefined ? {} : { website: shared.url }),
+    },
+    deps,
+  )
+}

@@ -4,6 +4,7 @@ import {
   ClipboardList,
   Footprints,
   Heart,
+  Inbox,
   MapPin,
   Plus,
   Trash2,
@@ -260,6 +261,10 @@ export function AtlasPage() {
   // Deliberately built from the filtered list rather than from everything:
   // a map still showing forty pins while the list underneath shows three
   // reads as a bug, whichever one you happen to trust.
+  // The size of the pile the paste path creates. Shown only when there is
+  // one — a permanent "0 waiting" is a chore that never goes away.
+  const unplaced = useMemo(() => places.filter((place) => !isResolved(place)).length, [places])
+
   const markers: readonly MapMarker[] = useMemo(
     () =>
       shown.filter(isResolved).map((place) => ({
@@ -297,6 +302,12 @@ export function AtlasPage() {
               <CalendarDays size={16} aria-hidden />
               Trips
             </Link>
+            {unplaced > 0 && (
+              <Link to="/map/inbox" className={buttonStyles({ variant: 'ghost', size: 'sm' })}>
+                <Inbox size={16} aria-hidden />
+                {unplaced.toString()} waiting
+              </Link>
+            )}
             <Button
               size="sm"
               variant={walk.following ? 'danger' : 'primary'}

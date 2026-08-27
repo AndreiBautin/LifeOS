@@ -10,7 +10,9 @@ import {
   addSharedLocation,
   atlasView,
   bulkAddPlaces,
+  placeFromText,
   recordPosition,
+  unplacedPlaces,
   visitPlace,
   type AtlasDeps,
 } from './atlas'
@@ -337,5 +339,47 @@ describe('a share for somewhere already on the list', () => {
     )
 
     expect(store.size).toBe(1)
+  })
+})
+
+describe('places still waiting for a point', () => {
+  it('lists only the unplaced, oldest first', async () => {
+    const { deps } = harness()
+    await addPlace({ name: 'First', categoryId: 'food' as never }, deps)
+    await addPlace(
+      { name: 'Placed', categoryId: 'food' as never, latitude: 51.5, longitude: -0.1 },
+      deps,
+    )
+    await addPlace({ name: 'Second', categoryId: 'food' as never }, deps)
+
+    const waiting = await unplacedPlaces(deps)
+
+    // The clock is fixed in this harness, so both share a `dateAdded` and
+    // the sort is a stable no-op — what is being pinned here is which
+    // places appear at all, not the tie-break.
+    expect(waiting.map((place) => place.name)).toEqual(['First', 'Second'])
+  })
+
+  it('gives one a point from a pasted pair of coordinates', async () => {
+    const { deps } = harness()
+    const added = await addPlace({ name: 'A bar', categoryId: 'food' as never }, deps)
+    if (added.place === undefined) throw new Error(added.error)
+
+    const result = await placeFromText(added.place.id, '51.5074, -0.1278', deps)
+
+    expect(result.place?.location.coordinates).toMatchObject({ latitude: 51.5074 })
+    expect(await unplacedPlaces(deps)).toHaveLength(0)
+  })
+
+  it('says why a short link cannot be used rather than failing silently', async () => {
+    const { deps } = harness()
+    const added = await addPlace({ name: 'A bar', categoryId: 'food' as never }, deps)
+    if (added.place === undefined) throw new Error(added.error)
+
+    const result = await placeFromText(added.place.id, 'https://maps.app.goo.gl/abc', deps)
+
+    expect(result.error).toMatch(/only resolves on a server/)
+    // And the place is left exactly as it was, still waiting.
+    expect(await unplacedPlaces(deps)).toHaveLength(1)
   })
 })
