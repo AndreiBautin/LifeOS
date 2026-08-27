@@ -289,8 +289,15 @@ export function AtlasPage() {
 
   return (
     <>
+      <header className="mb-6">
+        <h1 className="text-ink-50 text-2xl font-semibold tracking-tight">Map</h1>
+        <p className="text-ink-500 mt-0.5 text-sm">
+          Places worth going, and the ground you have covered.
+        </p>
+      </header>
+
       <Section
-        title="The map"
+        title="The world"
         description={
           atlas.data === undefined
             ? undefined

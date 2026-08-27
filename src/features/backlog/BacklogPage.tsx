@@ -157,6 +157,13 @@ export function BacklogPage() {
 
   return (
     <>
+      <header className="mb-6">
+        <h1 className="text-ink-50 text-2xl font-semibold tracking-tight">Codex</h1>
+        <p className="text-ink-500 mt-0.5 text-sm">
+          Games, books, shows and films you are working through.
+        </p>
+      </header>
+
       <Section
         title="Today"
         description={
@@ -169,7 +176,7 @@ export function BacklogPage() {
       </Section>
 
       <Section
-        title="Codex"
+        title="Entries"
         description={
           overview.data === undefined
             ? undefined
