@@ -1,149 +1,36 @@
-/**
- * How many sessions a week a muscle is trained directly.
- *
- * **Priority decides this, not volume.** A muscle in the top tier is
- * trained on every day accountable for it; one a tier down is trained on
- * most of them; a maintained one is trained once. That is what
- * prioritising something means when you say it out loud — "I train delts
- * every upper day" — and it is the same sentence whether you are
- * describing the plan or reading it off the week.
- *
- * This replaced a volume-derived rule: divide the weekly target by a
- * per-session ceiling and take the answer. Defensible, and it produced a
- * frequency table nobody could predict from their own tier list. The
- * forearms came out at two sessions and the lats at three, so a tier-1
- * muscle was trained less often than a tier-2 one — arithmetically
- * correct, and impossible to describe without walking through the
- * arithmetic.
- *
- * The volume ceiling has not gone anywhere; it just stopped setting the
- * frequency. See {@link setsPerSession}.
- */
+import { MAX_SESSIONS_PER_WEEK, MAX_SETS_PER_SESSION } from '@/domain/volume/levels'
 
 /**
- * Direct sets of one muscle worth doing in a single session.
+ * What is left of a module that used to decide frequency.
  *
- * Five. It was eight, and eight was chosen to solve a problem that no
- * longer exists: the side delts were asked for twenty sets a week and
- * could not receive them at six per session, so the ceiling was raised
- * rather than the ask lowered. Capping the weekly targets instead — see
- * {@link MAX_WEEKLY_DIRECT_SETS} — fixes it from the other end and leaves
- * the per-session figure where the returns actually flatten.
+ * Frequency was derived here — a tier chose it, and a per-session ceiling
+ * and a weekly maximum were derived from it in turn. All three are now
+ * settings a lifter states directly: sessions a week per muscle, and sets
+ * per session per level. There is nothing left to derive.
  *
- * The shape matters more than the number: there is a per-session ceiling,
- * it is well below a week's volume for a prioritised muscle, and
- * pretending otherwise concentrates junk volume into one day.
+ * The two constants are re-exported rather than moved so the many call
+ * sites that reason about "a session's worth" keep reading naturally;
+ * `levels.ts` is where they are defined and where the reasoning lives.
  */
-export const MAX_DIRECT_SETS_PER_SESSION = 5
+export { MAX_SESSIONS_PER_WEEK, MAX_SETS_PER_SESSION }
+
+/** Kept under its old name: five direct sets is one session's worth. */
+export const MAX_DIRECT_SETS_PER_SESSION = MAX_SETS_PER_SESSION
 
 /**
- * Sessions a week a muscle is ever trained directly.
+ * How many sessions this muscle's target should be split across.
  *
- * Three, and this is now a hard ceiling rather than "however many days
- * happen to be accountable". A tier-1 muscle in a five-upper-day split
- * used to be trained five times; it is trained three times.
+ * The ask, held to the days that could actually deliver it. A muscle
+ * wanting three sessions on a split with two upper days gets two — the
+ * shortfall is real and is reported on the Plan screen rather than
+ * silently rounded away here.
  */
-export const MAX_FREQUENCY = 2
-
-/**
- * The most direct volume a week can hold for one muscle.
- *
- * Derived rather than declared, because the three numbers have to agree
- * and a fourth constant is a fourth thing to keep in step. Five sets on
- * each of three sessions is fifteen, so a weekly target above fifteen is
- * one the split cannot deliver however it is arranged — which is why the
- * landmarks are clamped to it rather than published above it.
- */
-export const MAX_WEEKLY_DIRECT_SETS = MAX_DIRECT_SETS_PER_SESSION * MAX_FREQUENCY
-
-/**
- * Sessions a week each tier gets.
- *
- * A direct map from priority to frequency, which is the whole point: tier
- * 2 is trained twice a week, always, and you can say that without knowing
- * the split. It was a *share* of the accountable days — tier 1 all of
- * them, tier 2 two thirds — which meant the answer moved when the split
- * did, and a tier-2 muscle on a two-day pool rounded down to one.
- */
-/**
- * Sessions a week, by tier. Two, two, and none.
- *
- * Tier 1 and tier 2 differ in *volume*, not in how often — ten sets a week
- * against six, both split across two sessions, so five sets a session
- * against three. Those are exactly the per-slot ceiling and the per-slot
- * floor, which is not a coincidence: one exercise per muscle per session
- * means a tier picks which end of the 3–5 range that exercise sits at.
- *
- * Tier 3 is zero, and zero is the whole rule — a maintained muscle gets no
- * dedicated work at all and lives on what the competition lifts pay it.
- * It used to mean one session at a reduced target, which produced two-set
- * shrugs and hanging leg raises for muscles the lifter had explicitly
- * deprioritised.
- *
- * Tier 1 was three sessions a week. Nothing has three upper days to spend
- * them on, so it bought a session that could not be scheduled and showed
- * up as a permanent shortfall.
- */
-export const TIER_FREQUENCY: Readonly<Record<number, number>> = {
-  1: 2,
-  2: 2,
-  3: 0,
-}
-
-/**
- * Sessions a muscle in this tier should get, given the days available.
- *
- * Never more than the days there are: asking for four sessions of a
- * muscle in a three-day week is not a plan the split can honour, and a
- * floor that cannot be met would have the filler add slots forever
- * trying.
- */
-export function requiredFrequency(tierRank: number, daysAvailable: number): number {
+export function requiredFrequency(sessionsPerWeek: number, daysAvailable: number): number {
   if (daysAvailable <= 0) return 0
-
-  /*
-   * Still capped by the days there are. Asking for three sessions of a
-   * muscle on a two-day pool is not a plan the split can honour, and a
-   * floor that cannot be met would have the backfill add slots forever
-   * trying to reach it. The Plan screen reports the shortfall instead.
-   */
-  return Math.min(daysAvailable, TIER_FREQUENCY[tierRank] ?? 1)
+  return Math.min(daysAvailable, Math.max(0, sessionsPerWeek))
 }
 
-/**
- * Direct sets to put in one session, given how many sessions there are.
- *
- * Where the volume ceiling still lives. Frequency says how many times a
- * week; this says how much each time, and caps it — a muscle squeezed
- * into fewer sessions than its volume wants does not get a bigger
- * session, it gets a session at the ceiling and a shortfall, which is
- * the honest outcome and the one the Plan screen reports.
- */
 export function setsPerSession(weeklyTarget: number, frequency: number): number {
   if (frequency <= 0) return 0
   return Math.min(MAX_DIRECT_SETS_PER_SESSION, Math.ceil(weeklyTarget / frequency))
-}
-
-/**
- * The most weekly volume a tier can actually be given.
- *
- * Frequency times the per-session ceiling, and nothing else. A tier-2
- * muscle is trained twice and a session holds five direct sets, so ten is
- * the whole of what a week can hand it however high its landmarks go.
- *
- * This generalises a clamp that already existed at the top: the published
- * landmarks are held to `MAX_WEEKLY_DIRECT_SETS` because fifteen is three
- * sessions of five, and describing volume the app will never schedule
- * turns the Plan screen into a permanent complaint. The same sentence is
- * true one tier down and was not being applied there — which stayed
- * invisible only while the top tier had members in it.
- *
- * With the top tier empty, `priorityPosition` promotes tier 2 to the top
- * of the *expressed* ordering and hands it a near-MAV target, while
- * `TIER_FREQUENCY` reads the declared rank and buys two sessions. Thirteen
- * sets asked, ten deliverable, and the gap is not a capacity problem the
- * lifter can solve by training harder — it is two rules disagreeing.
- */
-export function reachableWeeklySets(tierRank: number): number {
-  return requiredFrequency(tierRank, MAX_FREQUENCY) * MAX_DIRECT_SETS_PER_SESSION
 }

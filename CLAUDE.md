@@ -128,68 +128,57 @@ take four or five of them and arrive at thirteen exercises of two sets —
 inside the minute budget, and the shape splitting the volume was meant to
 avoid.
 
-**The whole hypertrophy model is three lines, and keeping it that way is
-the point.**
+**The whole volume model is one multiplication.**
 
 ```
-  tier 1   MRV    ten sets a week, twice, five a session
-  tier 2   MEV    six sets a week, twice, three a session
-  tier 3   none   no dedicated work at all
-  deload   MV     two sets, once, whatever the tier
+  weekly sets = sessions a week × sets per session for its level
 ```
 
-`targetForRank` in `domain/priority/tiers.ts` and `TIER_FREQUENCY` in
-`domain/volume/frequency.ts`. **The landmarks are the same three numbers
-for every muscle** — MV 2, MEV 6, MRV 10, `STARTING_LANDMARKS` — so a tier
-name and a landmark name are between them the entire derivation.
+Each muscle carries a `sessionsPerWeek` and a `level`; the levels are four
+shared numbers — deload 2, low 3, medium 4, high 5 — and a deload swaps
+the level for the deload number while keeping the frequency. Each
+competition lift carries a `sessionsPerWeek` of its own.
+`domain/volume/levels.ts` and `DEFAULT_LIFT_SESSIONS` in
+`domain/priority/tiers.ts`. **Nothing is derived from anything else, and
+no number depends on any other muscle.**
 
-Five sets a session is `MAX_DIRECT_SETS_PER_SESSION` and three is
-`minSetsPerSlot`. Not a coincidence: with one exercise per muscle per
-session, a tier is choosing which end of the 3–5 range that exercise sits
-at. If those numbers drift apart a tier will ask for a slot the fill
-cannot build, so `tiers.test.ts` → "divide into whole slots at both
-tiers" holds them together.
+Zero sessions is a first-class answer, not a bottom tier. It means the
+muscle gets no dedicated work and lives on what the competition lifts pay
+it, and it is what most muscles are set to.
 
-**What this replaced, so nobody rebuilds it by accident.** Targets used to
-come from a _position_ between 0 and 1: a tier chose a position, the
-position was lerped through four anchors — MV, MEV, MAV, ceiling — and the
-result was clamped to what the tier's frequency could deliver. Landmarks
-were per-muscle, derived from RP's published table through a two-thirds
-factor for direct-only credit and a clamp for what a week could schedule.
-Every piece had a reason and the whole thing took four constants, a
-fifteen-row table and several paragraphs to explain, and produced numbers
-you had to run the code to predict.
+**Five sets and three sets are `MAX_SETS_PER_SESSION` and
+`minSetsPerSlot`.** With one exercise per muscle per session a level is
+choosing how long that single exercise runs, so the high level and the
+slot ceiling are the same number by construction. If they drift apart a
+level will ask for a slot the fill cannot build.
 
-What was genuinely lost is worth naming, because it will look like an
-oversight later. The side delts and the calves do recover faster than the
-quads and could take more; the flat table says they cannot. A muscle can
-no longer sit _between_ MEV and MRV, so there is no way to ask for eight
-sets, and a tier list with more than three tiers has nothing to say about
-the fourth. If any of that becomes a real need, the honest fix is another
-row in the table above — not a return to interpolation. Per-muscle numbers
-are the thing to reintroduce **from evidence**, one muscle at a time, once
-the check-in loop has produced some.
+**What this replaced, so nobody rebuilds it by accident.** Four eras of
+increasingly elaborate derivation, each a reasonable fix for the last:
+per-muscle RP landmarks (MV/MEV/MAV/MRV, fifteen rows) scaled by a
+two-thirds factor for direct-only credit and clamped to what a week could
+schedule; a priority _tier_ that chose a position between 0 and 1; that
+position lerped through the four landmarks; and the result clamped again
+by a frequency the same tier had chosen. Gone with it: `Tier`,
+`priorityPosition`, `weeklyTargetFor`, `TIER_FREQUENCY`,
+`reachableWeeklySets`, `VolumeLandmarks`, `DEFAULT_LANDMARKS`,
+`adjust-landmarks.ts`, and the four position constants.
 
-**MAV survives and no longer decides anything.** Nothing reads it when
-computing a target. It is kept because `adjust-landmarks.ts` moves it, and
-moving it up past MRV is what raises MRV — a lifter who keeps recovering
-early at their ceiling has shown the ceiling was too low. That path is
-live, which is why `targetForRank` still clamps to
-`reachableWeeklySets(rank)`: it reads as redundant against the shipped
-numbers — tier 1 asks for MRV, MRV is ten, two sessions of five is ten —
-and without it a raised MRV would produce a target no week could reach.
+What is genuinely lost is worth naming because it will look like an
+oversight. A landmark is a claim about a **muscle** — side delts recover
+faster than quads and can take more — and a level is a claim about a
+**session**, shared by everything assigned to it. Per-muscle difference is
+now expressed by assigning a different level, which is coarser and is a
+decision a person can see and make. If evidence ever justifies real
+per-muscle numbers, that is a new field on `MuscleVolume`, not a return to
+interpolation.
 
-**Frequency counts direct work only** (`trainedDirectly`). `setsPerSession`
-divides the target across the sessions the tier bought and caps it at
-`MAX_DIRECT_SETS_PER_SESSION`.
-
-It has been wrong three times, which is why it is stated so plainly. It
-was volume-derived — divide the target by the ceiling and take the answer
-— which put the forearms on two sessions and the lats on three, so a
-tier-1 muscle was trained less often than a tier-2 one. Then it was a
-_share_ of the accountable days, which moved when the split moved. Then
-tier 1 bought three sessions, which no four-day split has three upper days
-to spend, so it asked for a session that could not be scheduled.
+**The check-in loop went with the landmarks, and it was never wired up.**
+`adjust-landmarks.ts` turned check-in history into a proposal to move MAV
+— three sessions of evidence, clamped to the band, never applied silently
+— and `proposeLandmarks` had no caller outside its own test. It was the
+rule nothing could reach that this file warns about elsewhere. If
+autoregulated volume comes back, the thing to move is a muscle's level,
+and it needs a screen the same day it needs a function.
 
 **Priority buys strength frequency too, not a bigger fatigue
 allowance.** `strengthSessionsFor` — tier 1 three sessions a week, tier 2
@@ -200,20 +189,29 @@ implementation and is wrong the moment two lifts share a pool: a squat
 and a deadlift wanting one session each from the same two lower days both
 computed the same index and landed on Tuesday.
 
-**The fatigue allowance equals the load drop, always.** Both 5%. That
+**The fatigue allowance equals the load drop, always.** One setting —
+`settings.fatiguePercent`, 5 by default and adjustable from 5 to 10 — read
+as both. That
 equality is what makes the stopping rule sayable: at matched reps and
 RPE an implied max is proportional to bar weight, so stopping at a 5%
 drop in implied max _is_ the moment the 5%-lighter bar feels like the
 top set did. One sentence, no arithmetic, true on every lift. Varying
-the allowance by tier (2% to 7%) was coherent and made that sentence
-false for every tier but one.
+the allowance by tier (2% to 7%) was coherent and made that sentence false
+for every tier but one, which is why the setting is a single number rather
+than a pair: two fields would let a lifter set a 5% bar and a 9% target
+and there would be no sentence left to say.
+
+**Published RTS guidance stops at 7%** — the scale is 0 none, 2 minimal, 5
+moderate, 7 high — and the setting goes to 10 because a lifter who has run
+7% and recovers from it knows something a general scale cannot. Above 7 is
+extrapolation and the editor says so rather than presenting the whole
+range as equally supported.
 **Frequency is a means to volume, never a goal.** The backfill will not
 schedule a muscle already at its weekly target, secondary credit
-included. This is the one exception to "every muscle gets the frequency
-its tier bought", and it is why `rp-assemble.test.ts` → "trains every
-muscle as often as its tier asks" exempts a muscle already at target: the
-front delts reach three sets against a target of two on their first upper
-day, and a second session would buy fatigue and no stimulus. Without that guard the two-session floor applied to the front
+included. This is the one exception to "every muscle gets the sessions it
+asked for", and it is why `rp-assemble.test.ts` → "trains every muscle as
+often as its tier asks" exempts a muscle already at target — a second
+session for a muscle at its number buys fatigue and no stimulus. Without that guard the two-session floor applied to the front
 delts — asking for three sets while the bench press and dips paid them
 ten — and put an overhead press on every Friday to satisfy an arithmetic
 minimum for a muscle at three times its target. The backfill also orders
@@ -286,7 +284,7 @@ A short day is information. A deadlift day with the legs on maintenance
 runs fifty minutes because that is what the tiers asked for, and the Plan
 screen reports what the week does and does not deliver.
 
-**The bottom tier is zero, and one muscle pays for that.** Quads and
+**Zero sessions is zero, and one muscle pays for that.** Quads and
 glutes are maintained and fine, because the squat and the deadlift are
 scheduled _for_ them and pay well past what maintenance would ask. The
 trunk and the grip are maintained and get nothing, which is the intent.
@@ -624,47 +622,46 @@ eighteen. A day spends of it.
 The cap moves with the allowance too — the app materialises the cap as
 slots and counts them as volume, so a plan that is only correct if you
 stop early is not correct.
-**The deload is one session at MV, and three separate things had to give
-way for that to be true.** It targets two sets, and two sets will not
-survive any rule written for a working week.
+**The deload keeps the muscle's frequency and shrinks the session, and
+getting there took three fixes and one reversal.** `setsPerSession.deload`
+is 2, so a muscle trained twice a week gets two sets on each of those two
+days.
 
-The frequency backfill does not run at all — it places at the slot floor,
-so it was putting three sets on both upper days regardless of the target,
-and the biceps came out at six in the deload and six in the peak week.
-Frequency is a means to volume, and on the one week where the goal is
-_less_ volume a floor that only ever adds has no business firing.
+The frequency backfill does not run on a deload at all. It places at the
+slot floor regardless of the target, so it was putting three sets on both
+upper days and the biceps came out at six in the deload and six in the
+peak week. Frequency is a means to volume, and on the one week where the
+goal is _less_ volume a floor that only ever adds has no business firing.
 
-`floorFor` caps the slot floor at the muscle's own weekly target, because
-a floor above the ask schedules nothing — a flat three meant "everything
-drops to MV" delivered zero rather than two.
+`floorFor` caps the slot floor at what the settings say a session holds,
+because a floor above the ask schedules nothing — a flat three against a
+two-set deload delivered zero.
 
-And `shareOwed` divides by the sessions a muscle will actually get rather
-than the days that could give it one. Those are the same number every
-working week and come apart on the deload, where frequency drops to one
-and both upper days remain accountable: the day count halved a two-set
-dose to one, put it under the floor, and every muscle waited for the last
-accountable day. The symptom was a deload where one upper session carried
-nine exercises and the other carried none.
+**And the third fix had to be undone when the model changed under it,
+which is the part worth remembering.** `shareOwed` briefly forced the
+deload to a single session. That was right while a deload target was a
+weekly _total_ of two sets: spreading two over two days asks for one each,
+under any floor, and scheduled nothing. The deload is now stated per
+session, so the frequency is already accounted for — and the override
+survived long enough to deliver the whole week in one sitting: four sets
+on Monday and none on Thursday, for a setting that reads "two sets per
+session". A fix that encodes the shape of the model it was written against
+outlives its reason silently.
 
-Known wart: with frequency one, the muscles all land on the _first_
-accountable day, so a deload week is front-loaded — Monday 64 minutes of
-two-set work, Thursday 19. Balancing it needs a mechanism that does not
-exist and probably is not worth one.
-
-**A muscle's target depends on its own tier and nothing else.** A lookup
-makes this nearly impossible to break, which is exactly when the warning
-is worth keeping: there used to be a `spreadFactor` scaling every target
-by how crowded the top tier was — sound reasoning ("prioritising
-everything prioritises nothing"), catastrophic as an implementation. Every
-target depended on every other muscle's placement, so moving the biceps
-out of tier 1 silently raised the side delts from 22 to 24. A lifter could
-not state a mental map without the app renegotiating it. The idea will
-return as a reasonable suggestion rather than as a bug. **Do not
-reintroduce a cross-muscle term here** — `tiers.test.ts` → "a muscle tier
-changes that muscle and nothing else" is the guard.
+**A muscle's numbers depend on that muscle and nothing else.** Two
+settings multiplied makes this nearly impossible to break, which is
+exactly when the warning is worth keeping: there used to be a
+`spreadFactor` scaling every target by how crowded the top tier was —
+sound reasoning ("prioritising everything prioritises nothing"),
+catastrophic as an implementation. Every target depended on every other
+muscle's placement, so moving the biceps out of tier 1 silently raised the
+side delts from 22 to 24, and a lifter could not state a mental map
+without the app renegotiating it. The idea returns as a reasonable
+suggestion rather than as a bug. **Do not reintroduce a cross-muscle term
+here.**
 
 **"You cannot prioritise everything" is a capacity report, not a
-multiplier.** It lives on the Plan screen: the tiers state the ask, and
+multiplier.** It lives on the Plan screen: the settings state the ask, and
 the page lists any muscle the hardest week of the built program leaves
 short. Measured off the assembler's output rather than modelled, so it
 cannot drift from what the program does — and **counted per muscle, never
@@ -677,12 +674,10 @@ muscles are starved.
 is right — the position records what happened. But a lifter arriving
 mid-block would otherwise skip fifteen sessions to line the app up.
 
-**Landmarks stay ordered.** `MV ≤ MEV ≤ MAV ≤ MRV`, always. Check-ins
-move MAV only, within bounds, and only with three sessions of evidence.
-MEV never moves from a soreness rating.
-
-**Readiness scales today, not the landmarks.** Sleep and stress adjust
-one session. They must never produce a landmark proposal.
+**Readiness scales today, not the settings.** Sleep and stress adjust one
+session. They must never write back to a muscle's sessions or level —
+those are the lifter's statement of intent, and a bad night is not
+evidence about intent.
 
 **The program is derived, never stored.** `deriveProgram(settings,
 library)` in `application/use-cases/programs/current-program.ts`. Only the
@@ -885,11 +880,11 @@ used to be handled by a structural MEV — `TWO_SESSION_MUSCLES` floored it
 above what a session holds — which the flat landmark table removed along
 with every other per-muscle number.
 
-It does not currently matter, because the forearms are tier 3 and get
-nothing, and the pulls are strapped so no lift pays them either. It starts
-mattering the moment anyone promotes them: at tier 2 they get six sets
-across two sessions, and nothing now forces those two sessions to be
-different directions except the repeat penalty below.
+It does not currently matter, because the forearms are set to zero
+sessions and get nothing, and the pulls are strapped so no lift pays them
+either. It starts mattering the moment anyone turns them on: at two
+sessions they get two slots, and nothing now forces those to be different
+directions except the repeat penalty below.
 `rp-assemble.test.ts` → "trains the forearms both ways rather than twice
 the same way" builds that promotion itself and is the only thing watching.
 

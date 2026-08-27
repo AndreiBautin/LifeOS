@@ -32,25 +32,22 @@ export function RtsExplainer() {
   const worked = STRENGTH_LIFTS.map((lift) => {
     const id = asExerciseId(STRENGTH_LIFT_SLUGS[lift])
     const max = settings.estimatedMaxes[id]
-    const tier = settings.strengthTiers.find((entry) => entry.members.includes(lift))?.rank ?? 2
-
     const suggested = max === undefined ? undefined : loadForRpe(max, rts.topSetReps, rts.topSetRpe)
 
     const backoff =
       suggested === undefined ? undefined : suggested * (1 - (rts.loadDropPercent ?? 5) / 100)
 
     /*
-     * The allowance is the same for every lift — it equals the load
-     * drop, which is what makes the stopping rule one sentence. What the
-     * tier buys is *sessions*.
+     * The allowance is the same for every lift — it equals the load drop,
+     * which is what makes the stopping rule one sentence. What a lift's
+     * own setting buys is *sessions*.
      */
-    const target = rts.loadDropPercent ?? 5
-    const sessions = strengthSessionsFor(settings.strengthTiers, lift)
+    const target = settings.fatiguePercent
+    const sessions = strengthSessionsFor(settings.liftSessions, lift)
 
     return {
       lift,
       label: STRENGTH_LIFT_LABELS[lift],
-      tier,
       max,
       suggested: suggested === undefined ? undefined : round(suggested),
       backoff: backoff === undefined ? undefined : round(backoff),
@@ -109,7 +106,7 @@ export function RtsExplainer() {
               <li key={entry.lift}>
                 <div className="flex items-baseline justify-between gap-2">
                   <span className="text-ink-50 text-sm font-medium">{entry.label}</span>
-                  <Badge tone={entry.tier === 1 ? 'accent' : 'neutral'}>
+                  <Badge tone={entry.sessions > 0 ? 'accent' : 'neutral'}>
                     {entry.sessions}× a week
                   </Badge>
                 </div>

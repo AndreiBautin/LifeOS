@@ -55,9 +55,9 @@ export function recipeFromSettings(
   overrides: Partial<RpRecipe> = {},
 ): RpRecipe {
   return defaultRpRecipe({
-    muscleTiers: settings.muscleTiers,
-    strengthTiers: settings.strengthTiers,
-    landmarks: settings.landmarks,
+    muscleVolumes: settings.muscleVolumes,
+    liftSessions: settings.liftSessions,
+    setsPerSession: settings.setsPerSession,
     daysPerWeek: settings.daysPerWeek,
     weeksBeforeDeload: settings.weeksBeforeDeload,
     excludedExercises: settings.excludedExercises,

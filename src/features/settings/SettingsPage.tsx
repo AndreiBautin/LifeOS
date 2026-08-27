@@ -5,9 +5,9 @@ import { AlertTriangle, Download, HardDrive, Upload } from 'lucide-react'
 import { useId, useRef, useState } from 'react'
 
 import { useServices, useSettings } from '@/app/context'
-import { tiersMatch } from '@/domain/priority/divergence'
-import { DEFAULT_MUSCLE_TIERS, DEFAULT_STRENGTH_TIERS } from '@/domain/priority/tiers'
-import { MUSCLE_GROUPS, MUSCLE_GROUP_LABELS } from '@/domain/exercises/taxonomy'
+import { liftsDivergeFrom, musclesDivergeFrom } from '@/domain/priority/divergence'
+import { DEFAULT_LIFT_SESSIONS } from '@/domain/priority/tiers'
+import { DEFAULT_MUSCLE_VOLUMES } from '@/domain/volume/levels'
 import { DEFAULT_INCREMENT } from '@/domain/units/weight'
 import { Badge, Button, Card, Section } from '@/components/shared/primitives'
 import {
@@ -40,8 +40,10 @@ export function SettingsPage() {
   const { settings, update } = useSettings()
 
   const diverged = [
-    tiersMatch(settings.muscleTiers, DEFAULT_MUSCLE_TIERS) ? undefined : 'muscle',
-    tiersMatch(settings.strengthTiers, DEFAULT_STRENGTH_TIERS) ? undefined : 'lift',
+    musclesDivergeFrom(settings.muscleVolumes, DEFAULT_MUSCLE_VOLUMES).length > 0
+      ? 'muscle'
+      : undefined,
+    liftsDivergeFrom(settings.liftSessions, DEFAULT_LIFT_SESSIONS) ? 'lift' : undefined,
   ].filter((one): one is string => one !== undefined)
   const services = useServices()
   const backup = useBackup()
@@ -102,24 +104,31 @@ export function SettingsPage() {
 
       <Section
         title="Priorities"
-        description="Tier 1 is highest. What you prioritise decides where inside each landmark band a muscle's weekly target lands."
+        description="How often each thing is trained, and how hard. Weekly sets are those two multiplied — there is nothing else in the calculation."
       >
         <TierEditor
-          muscleTiers={settings.muscleTiers}
-          strengthTiers={settings.strengthTiers}
-          landmarks={settings.landmarks}
-          onMuscleTiers={(muscleTiers) => {
-            update({ muscleTiers })
+          muscleVolumes={settings.muscleVolumes}
+          liftSessions={settings.liftSessions}
+          setsPerSession={settings.setsPerSession}
+          fatiguePercent={settings.fatiguePercent}
+          onMuscleVolumes={(muscleVolumes) => {
+            update({ muscleVolumes })
           }}
-          onStrengthTiers={(strengthTiers) => {
-            update({ strengthTiers })
+          onLiftSessions={(liftSessions) => {
+            update({ liftSessions })
+          }}
+          onSetsPerSession={(setsPerSession) => {
+            update({ setsPerSession })
+          }}
+          onFatiguePercent={(fatiguePercent) => {
+            update({ fatiguePercent })
           }}
         />
 
         <Card className="mt-4">
           <p className="text-ink-300 text-sm">
-            Nothing to press. The block is built from these priorities every time it is read, so a
-            tier moved here is in tomorrow's session — and a session already open keeps the
+            Nothing to press. The block is built from these settings every time it is read, so a
+            number changed here is in tomorrow's session — and a session already open keeps the
             prescription it started with.
           </p>
         </Card>
@@ -129,11 +138,11 @@ export function SettingsPage() {
           the missing information.
 
           Priorities are the lifter's own and nothing overwrites them —
-          which quietly means a tier list saved months ago goes on being
-          used after the shipped defaults have moved underneath it. The
-          screen then reports "Squat, tier 2" perfectly truthfully about a
-          choice nobody remembers making. Naming the divergence is the
-          fix; resolving it stays a decision.
+          which quietly means settings saved months ago go on being used
+          after the shipped defaults have moved underneath them. The screen
+          then reports "Squat, twice a week" perfectly truthfully about a
+          choice nobody remembers making. Naming the divergence is the fix;
+          resolving it stays a decision.
         */}
         {diverged.length > 0 && (
           <Card className="border-warn-500/30 mt-4">
@@ -149,8 +158,8 @@ export function SettingsPage() {
               className="mt-3"
               onClick={() => {
                 update({
-                  muscleTiers: DEFAULT_MUSCLE_TIERS,
-                  strengthTiers: DEFAULT_STRENGTH_TIERS,
+                  muscleVolumes: DEFAULT_MUSCLE_VOLUMES,
+                  liftSessions: DEFAULT_LIFT_SESSIONS,
                 })
               }}
             >
@@ -198,31 +207,6 @@ export function SettingsPage() {
             Days per week stays between {MIN_DAYS_PER_WEEK} and {MAX_DAYS_PER_WEEK}, and the block
             between {MIN_WEEKS_BEFORE_DELOAD} and {MAX_WEEKS_BEFORE_DELOAD} weeks. Wanting to go
             outside either range is a sign the volume is wrong rather than the schedule.
-          </p>
-        </Card>
-      </Section>
-
-      <Section
-        title="Volume landmarks"
-        description="Weekly hard sets per muscle — the range assistance work is filled to"
-      >
-        <Card>
-          <ul className="space-y-1.5">
-            {MUSCLE_GROUPS.map((muscle) => {
-              const marks = settings.landmarks[muscle]
-              return (
-                <li key={muscle} className="flex items-center justify-between gap-3 text-sm">
-                  <span className="text-ink-300">{MUSCLE_GROUP_LABELS[muscle]}</span>
-                  <span className="numeric text-ink-500 text-xs">
-                    {marks.mev} → {marks.mav} (max {marks.mrv})
-                  </span>
-                </li>
-              )
-            })}
-          </ul>
-          <p className="text-ink-500 mt-3 text-xs">
-            These move on their own as your check-ins accumulate — three consistent sessions of
-            evidence before anything changes, and never outside the recoverable band.
           </p>
         </Card>
       </Section>

@@ -1,10 +1,11 @@
+import { DEFAULT_RTS } from '@/domain/framework/rts'
 import { asExerciseId, type ExerciseId } from '@/domain/ids/ids'
 import type { E1rmFormula } from '@/domain/strength/one-rep-max'
 import type { WeightUnit } from '@/domain/units/weight'
-import type { MuscleTiers, StrengthTiers } from '@/domain/priority/tiers'
-import { DEFAULT_MUSCLE_TIERS, DEFAULT_STRENGTH_TIERS } from '@/domain/priority/tiers'
-import type { LandmarkSet } from '@/domain/volume/landmarks'
-import { DEFAULT_LANDMARKS } from '@/domain/volume/landmarks'
+import type { LiftSessions } from '@/domain/priority/tiers'
+import { DEFAULT_LIFT_SESSIONS } from '@/domain/priority/tiers'
+import type { MuscleVolumes, SetsPerSession } from '@/domain/volume/levels'
+import { DEFAULT_MUSCLE_VOLUMES, DEFAULT_SETS_PER_SESSION } from '@/domain/volume/levels'
 import {
   DEFAULT_DAYS_PER_WEEK,
   DEFAULT_WEEKS_BEFORE_DELOAD,
@@ -24,7 +25,15 @@ export interface AppSettings {
   readonly units: WeightUnit
   readonly roundingIncrement: number
   readonly bodyweight?: number
-  readonly landmarks: LandmarkSet
+  /**
+   * Sets in one session, by level, and what a deload uses instead.
+   *
+   * Shared by every muscle. Per-muscle numbers were four landmarks each
+   * across fifteen muscles; these are four numbers total, and a muscle
+   * expresses a difference by being assigned a different level rather
+   * than by carrying its own table.
+   */
+  readonly setsPerSession: SetsPerSession
 
   /**
    * What the lifter can do for one rep, per exercise.
@@ -48,11 +57,28 @@ export interface AppSettings {
   readonly excludedExercises: readonly ExerciseId[]
 
   /**
-   * What the lifter is prioritising, which drives where inside each
-   * landmark band a muscle's weekly target lands.
+   * How often each muscle is trained and how hard, which between them are
+   * the entire volume model — weekly sets are the product of the two.
+   *
+   * Zero sessions is a real answer and the one most muscles are on: the
+   * muscle is maintained by whatever the competition lifts pay it.
    */
-  readonly muscleTiers: MuscleTiers
-  readonly strengthTiers: StrengthTiers
+  readonly muscleVolumes: MuscleVolumes
+
+  /** Sessions a week for each competition lift. */
+  readonly liftSessions: LiftSessions
+
+  /**
+   * Where the back-off work stops, as a drop in implied max — and, being
+   * the same number, how much lighter the back-off bar is.
+   *
+   * One value doing both jobs is what makes the stopping rule sayable in
+   * a sentence: at matched reps and RPE an implied max is proportional to
+   * bar weight, so stopping at an N% drop *is* the moment the N%-lighter
+   * bar feels like the top set did. Splitting them into two settings
+   * would make that sentence false for every pair but one.
+   */
+  readonly fatiguePercent: number
 
   /**
    * Days per week and weeks per block.
@@ -122,7 +148,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   // strength standard is a multiple of bodyweight, so without it the
   // character sheet can only say "set your bodyweight".
   bodyweight: 200,
-  landmarks: DEFAULT_LANDMARKS,
+  setsPerSession: DEFAULT_SETS_PER_SESSION,
   // Read out of the 5/3/1 export, each from the best completed work set
   // in it: 260x5, 195x5, 315x5 and 130x5. A starting point for the RTS
   // suggestions, not a claim — the top set corrects them the first time
@@ -138,8 +164,9 @@ export const DEFAULT_SETTINGS: AppSettings = {
     [asExerciseId('overhead-press')]: 152,
   },
   excludedExercises: [],
-  muscleTiers: DEFAULT_MUSCLE_TIERS,
-  strengthTiers: DEFAULT_STRENGTH_TIERS,
+  muscleVolumes: DEFAULT_MUSCLE_VOLUMES,
+  liftSessions: DEFAULT_LIFT_SESSIONS,
+  fatiguePercent: DEFAULT_RTS.loadDropPercent ?? 5,
   daysPerWeek: DEFAULT_DAYS_PER_WEEK,
   weeksBeforeDeload: DEFAULT_WEEKS_BEFORE_DELOAD,
   e1rmFormula: 'epley',

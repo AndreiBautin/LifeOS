@@ -69,6 +69,26 @@ export const FATIGUE_TARGETS = {
 
 export type FatigueLevel = keyof typeof FATIGUE_TARGETS
 
+/**
+ * The range the fatigue percent may be set to, and where published
+ * guidance stops.
+ *
+ * RTS names four points — 0% none, 2% minimal, 5% moderate, 7% high —
+ * and 7 is the top of them. The setting goes to 10 because a lifter who
+ * has run 7% for a while and recovers from it has evidence nobody
+ * publishing a general scale could have, and there is no mechanism in the
+ * body that makes 8 meaningless. But **above 7 is extrapolation**, and
+ * the Plan screen says so rather than presenting the whole range as
+ * equally supported.
+ *
+ * Five is the floor rather than zero: below moderate the back-off work
+ * stops being enough to matter, and a lifter who wants none of it is
+ * describing a different program than this one.
+ */
+export const MIN_FATIGUE_PERCENT = FATIGUE_TARGETS.moderate
+export const MAX_FATIGUE_PERCENT = 10
+export const PUBLISHED_FATIGUE_CEILING = FATIGUE_TARGETS.high
+
 export interface RtsPrescription {
   /** Reps for the top set. */
   readonly topSetReps: number

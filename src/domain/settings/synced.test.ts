@@ -20,7 +20,13 @@ describe('what travels', () => {
   it('sends the settings the program is derived from', () => {
     const projected = projectForSync(at('2026-08-25T09:00:00.000Z'))
 
-    for (const key of ['muscleTiers', 'strengthTiers', 'landmarks', 'daysPerWeek'] as const) {
+    for (const key of [
+      'muscleVolumes',
+      'liftSessions',
+      'setsPerSession',
+      'fatiguePercent',
+      'daysPerWeek',
+    ] as const) {
       expect(projected, key).toHaveProperty(key)
     }
   })

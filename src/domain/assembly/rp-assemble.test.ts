@@ -1,22 +1,22 @@
 import { describe, expect, it } from 'vitest'
 
 import { builtInExercises, STRENGTH_VARIATIONS } from '@/domain/exercises/catalogue'
-import { MAX_DIRECT_SETS_PER_SESSION, TIER_FREQUENCY } from '@/domain/volume/frequency'
+import { MAX_DIRECT_SETS_PER_SESSION } from '@/domain/volume/frequency'
 import { MUSCLE_GROUPS, type MuscleGroup } from '@/domain/exercises/taxonomy'
 import { asExerciseId, asProgramId, type IdGenerator } from '@/domain/ids/ids'
 import type { ProgramTemplate, ProgramWeek } from '@/domain/programs/program'
-import {
-  DEFAULT_MUSCLE_TIERS,
-  weeklyTargetForMember,
-  weeklyTargetForWeek,
-} from '@/domain/priority/tiers'
 import {
   SESSION_TOO_LONG_MINUTES,
   SESSION_TOO_SHORT_MINUTES,
 } from '@/domain/autoregulation/schedule'
 import { estimateDayMinutes } from '@/domain/programs/program'
 import { slotVolume, sumVolume, volumeForSlots } from '@/domain/volume/accounting'
-import { DEFAULT_LANDMARKS } from '@/domain/volume/landmarks'
+import type { MuscleVolumes, VolumeLevel } from '@/domain/volume/levels'
+import {
+  DEFAULT_MUSCLE_VOLUMES,
+  DEFAULT_SETS_PER_SESSION,
+  weeklySetsFor,
+} from '@/domain/volume/levels'
 
 import { DEFAULT_DAYS_PER_WEEK } from '@/domain/autoregulation/schedule'
 import { rpSplitForDays } from '@/domain/splits/rp-splits'
@@ -29,8 +29,27 @@ const lookup = (id: string) => exercises.find((exercise) => exercise.id === id)
 /** The floor a fill slot may not go under; read from the recipe, not retyped. */
 const MIN_SETS_PER_SLOT = defaultRpRecipe().minSetsPerSlot
 
+/**
+ * A volume map with only the named muscles trained.
+ *
+ * The tests used to build tier lists, which said the same thing in a
+ * shape that no longer exists. Everything unnamed is at zero sessions,
+ * which is what the bottom tier used to mean.
+ */
+const trainingOnly = (
+  members: readonly MuscleGroup[],
+  sessionsPerWeek = 2,
+  level: VolumeLevel = 'low',
+): MuscleVolumes =>
+  Object.fromEntries(
+    MUSCLE_GROUPS.map((muscle) => [
+      muscle,
+      members.includes(muscle) ? { sessionsPerWeek, level } : { sessionsPerWeek: 0, level: 'low' },
+    ]),
+  ) as MuscleVolumes
+
 const targetFor = (muscle: MuscleGroup): number =>
-  weeklyTargetForMember(DEFAULT_MUSCLE_TIERS, muscle, DEFAULT_LANDMARKS[muscle])
+  weeklySetsFor(DEFAULT_MUSCLE_VOLUMES[muscle], DEFAULT_SETS_PER_SESSION, false)
 
 function counterIds(): IdGenerator {
   let n = 0
@@ -165,11 +184,7 @@ describe('the assembled block', () => {
     // get the thing being measured; a rotation that started anywhere else
     // would silently stop tracking the competition lift.
     const once = build({
-      strengthTiers: [
-        { rank: 1, members: [] },
-        { rank: 2, members: [] },
-        { rank: 3, members: ['squat', 'bench', 'deadlift'] },
-      ],
+      liftSessions: { squat: 1, bench: 1, deadlift: 1 },
     })
 
     const benches = weekAt(once, 0).days.flatMap((day) =>
@@ -447,35 +462,40 @@ describe('how often a muscle is trained', () => {
      * property under test is about muscles that need dedicated work, and
      * a muscle paid by everything does not.
      */
-    const specialised = DEFAULT_MUSCLE_TIERS.find((tier) => tier.rank === 1)?.members ?? []
+    /*
+     * Read from the settings rather than listed, so changing a default
+     * does not quietly leave a muscle unchecked. The chest is excluded
+     * because the bench covers it on both upper days without a slot ever
+     * being scheduled *for* it — the property is about muscles that need
+     * dedicated work, and one paid by a competition lift does not.
+     */
+    const trained = MUSCLE_GROUPS.filter(
+      (muscle) => DEFAULT_MUSCLE_VOLUMES[muscle].sessionsPerWeek > 1,
+    )
 
-    for (const muscle of specialised) {
+    expect(trained.length).toBeGreaterThan(0)
+
+    for (const muscle of trained) {
       if (muscle === 'chest') continue
       expect(directDays(muscle), muscle).toBeGreaterThan(1)
     }
   })
 
-  it('trains a higher-tier muscle more often than a lower-tier one', () => {
+  it('trains a muscle as often as its own setting asks', () => {
     /*
      * This compared side delts against calves on the reasoning that the
-     * first is owed three times the volume — true at the time, and the
-     * wrong reason. Frequency follows the tier and nothing else, which is
-     * the whole point of TIER_FREQUENCY.
+     * first is owed three times the volume — true at the time and the
+     * wrong reason. Frequency is now a setting rather than something
+     * derived from volume, so the thing to check is that the setting
+     * arrives intact.
      *
-     * Built with a short tier list rather than read off the shipped week,
-     * for a second reason that arrived later: the shipped upper days are
-     * full, so two muscles that should differ in frequency can come out
-     * equal because neither fitted. That is a capacity fact and it is
-     * asserted below, on purpose, separately — mixing it in here would
-     * leave this test unable to fail for the reason it exists.
+     * Built with its own volume map rather than read off the shipped week,
+     * because a full upper day flattens every frequency to what fitted —
+     * a capacity fact, asserted separately and on purpose.
      */
     const sparse = weekAt(
       build({
-        muscleTiers: [
-          { rank: 1, members: [], label: 'Specialising' },
-          { rank: 2, members: ['side-delts'], label: 'Building' },
-          { rank: 3, members: ['core'], label: 'Maintaining' },
-        ],
+        muscleVolumes: trainingOnly(['side-delts'], 2),
       }),
       3,
     )
@@ -489,7 +509,8 @@ describe('how often a muscle is trained', () => {
         ),
       ).length
 
-    expect(daysWith('side-delts')).toBeGreaterThan(daysWith('core'))
+    expect(daysWith('side-delts')).toBe(2)
+    expect(daysWith('core')).toBe(0)
   })
 
   it('does not let one session swallow a muscle`s whole week', () => {
@@ -573,12 +594,7 @@ describe('how a muscle is spread across its sessions', () => {
     // The cheap way to even out a spread is to give every session the
     // full dose, which meets the shape and blows the weekly number. The
     // biceps came out at 21 against a target of 17 before this.
-    const asked = weeklyTargetForWeek(
-      DEFAULT_MUSCLE_TIERS,
-      'biceps',
-      DEFAULT_LANDMARKS.biceps,
-      false,
-    )
+    const asked = targetFor('biceps')
     const delivered = perDay('biceps').reduce((total, credit) => total + credit, 0)
 
     expect(delivered).toBeLessThanOrEqual(asked + 1)
@@ -656,15 +672,7 @@ describe('how a muscle is spread across its sessions', () => {
      * tier editor, so it is tested through the tier editor's input rather
      * than deleted for not firing on the default.
      */
-    const directions = wristDirections(
-      build({
-        muscleTiers: [
-          { rank: 1, members: [], label: 'Specialising' },
-          { rank: 2, members: ['forearms'], label: 'Building' },
-          { rank: 3, members: [], label: 'Maintaining' },
-        ],
-      }),
-    )
+    const directions = wristDirections(build({ muscleVolumes: trainingOnly(['forearms'], 2) }))
 
     expect(directions).toHaveLength(2)
     expect(new Set(directions).size).toBe(2)
@@ -824,8 +832,10 @@ describe('the order a session is performed in', () => {
         .flatMap((id) => {
           const muscle = lookup(id)?.primaryMuscle
           if (muscle === undefined) return []
-          const rank = DEFAULT_MUSCLE_TIERS.find((tier) => tier.members.includes(muscle))?.rank
-          return [rank ?? DEFAULT_MUSCLE_TIERS.length]
+          // Negated so that "more sessions a week" sorts first, which is
+          // what the assembler does — a tier rank sorted ascending for
+          // free and sessions a week point the other way.
+          return [-DEFAULT_MUSCLE_VOLUMES[muscle].sessionsPerWeek]
         })
 
       expect(
@@ -1030,11 +1040,12 @@ describe('tiers driving volume', () => {
      */
     const week = weekAt(
       build({
-        muscleTiers: [
-          { rank: 1, members: ['biceps'], label: 'Specialising' },
-          { rank: 2, members: ['side-delts'], label: 'Building' },
-          { rank: 3, members: ['calves'], label: 'Maintaining' },
-        ],
+        muscleVolumes: {
+          ...trainingOnly([]),
+          biceps: { sessionsPerWeek: 2, level: 'high' },
+          'side-delts': { sessionsPerWeek: 2, level: 'low' },
+          calves: { sessionsPerWeek: 0, level: 'low' },
+        },
       }),
       3,
     )
@@ -1057,14 +1068,14 @@ describe('tiers driving volume', () => {
    * different as the tier list says they are.
    */
   it('lets the arms be tiered apart from each other', () => {
-    const tiers = [
-      { rank: 1, members: ['biceps'] as const, label: 'Specialising' },
-      { rank: 2, members: [] as const, label: 'Building' },
-      { rank: 3, members: ['triceps'] as const, label: 'Maintaining' },
-    ]
+    const volumes: MuscleVolumes = {
+      ...trainingOnly([]),
+      biceps: { sessionsPerWeek: 2, level: 'high' },
+      triceps: { sessionsPerWeek: 1, level: 'low' },
+    }
 
-    expect(weeklyTargetForMember(tiers, 'biceps', DEFAULT_LANDMARKS.biceps)).toBeGreaterThan(
-      weeklyTargetForMember(tiers, 'triceps', DEFAULT_LANDMARKS.triceps),
+    expect(weeklySetsFor(volumes.biceps, DEFAULT_SETS_PER_SESSION, false)).toBeGreaterThan(
+      weeklySetsFor(volumes.triceps, DEFAULT_SETS_PER_SESSION, false),
     )
   })
 
@@ -1103,15 +1114,29 @@ describe('tiers driving volume', () => {
     expect(new Set(totals).size).toBe(1)
   })
 
-  it('never exceeds maximum recoverable volume in any week', () => {
+  /*
+   * There is no recovery ceiling above the target any more — the target
+   * is what the lifter asked for, so overshooting *it* is the thing to
+   * check. One session of slack, because a compound pays two or three
+   * muscles and sizing every slot to land exactly on each of their
+   * targets would refuse most useful exercises.
+   *
+   * Muscles with no target are excluded rather than asserted at zero:
+   * the squat and the deadlift pay the quads and glutes well past
+   * anything, which is the whole reason they need no dedicated work.
+   */
+  it('does not overshoot a muscle’s own target by more than a session', () => {
     for (const [index, week] of (program.blocks[0]?.weeks ?? []).entries()) {
       const volume = weeklyVolume(week)
 
-      for (const muscle of Object.keys(volume) as MuscleGroup[]) {
+      for (const muscle of MUSCLE_GROUPS) {
+        const target = targetFor(muscle)
+        if (target <= 0) continue
+
         expect(
           volume[muscle],
-          `${muscle} over MRV in week ${String(index + 1)}`,
-        ).toBeLessThanOrEqual(DEFAULT_LANDMARKS[muscle].mrv)
+          `${muscle} over target in week ${String(index + 1)}`,
+        ).toBeLessThanOrEqual(target + MAX_DIRECT_SETS_PER_SESSION)
       }
     }
   })
@@ -1217,8 +1242,7 @@ describe('the split', () => {
       if (volume[muscle] >= targetFor(muscle)) continue
 
       const accountable = split.days.filter((day) => day.muscles.includes(muscle)).length
-      const rank = DEFAULT_MUSCLE_TIERS.find((tier) => tier.members.includes(muscle))?.rank ?? 3
-      const wanted = Math.min(accountable, TIER_FREQUENCY[rank] ?? 1)
+      const wanted = Math.min(accountable, DEFAULT_MUSCLE_VOLUMES[muscle].sessionsPerWeek)
 
       expect(directDaysFor(muscle), `${muscle} trained on too few days`).toBeGreaterThanOrEqual(
         wanted,

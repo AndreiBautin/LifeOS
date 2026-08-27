@@ -18,19 +18,17 @@ import type {
   Slot,
 } from '@/domain/programs/program'
 import { DEFAULT_PROGRAM_SETTINGS } from '@/domain/programs/program'
-import type { MuscleTiers, StrengthLift, StrengthTiers } from '@/domain/priority/tiers'
+import type { LiftSessions, StrengthLift } from '@/domain/priority/tiers'
 import {
-  DEFAULT_MUSCLE_TIERS,
-  DEFAULT_STRENGTH_TIERS,
+  DEFAULT_LIFT_SESSIONS,
   strengthSessionsFor,
   STRENGTH_LIFTS,
-  validateTiers,
-  tierRankOf,
-  weeklyTargetForWeek,
+  validateLiftSessions,
 } from '@/domain/priority/tiers'
 import { describeBlock } from '@/domain/priority/explain'
 import type { RpDay, RpSplit } from '@/domain/splits/rp-splits'
 import { rpFrequency, rpSplitForDays } from '@/domain/splits/rp-splits'
+import { MUSCLE_GROUPS } from '@/domain/exercises/taxonomy'
 import { countsAsWorking, slotVolume, type VolumeMap } from '@/domain/volume/accounting'
 import {
   MAX_DIRECT_SETS_PER_SESSION,
@@ -38,8 +36,15 @@ import {
   setsPerSession,
 } from '@/domain/volume/frequency'
 import { emptyVolumeMap } from '@/domain/volume/landmarks'
-import type { LandmarkSet } from '@/domain/volume/landmarks'
-import { DEFAULT_LANDMARKS } from '@/domain/volume/landmarks'
+import type { MuscleVolumes, SetsPerSession } from '@/domain/volume/levels'
+import {
+  DEFAULT_MUSCLE_VOLUMES,
+  DEFAULT_SETS_PER_SESSION,
+  setsPerSessionFor,
+  validateMuscleVolumes,
+  validateSetsPerSession,
+  weeklySetsFor,
+} from '@/domain/volume/levels'
 
 import {
   DEFAULT_DAYS_PER_WEEK,
@@ -69,9 +74,9 @@ import {
 export interface RpRecipe {
   readonly name: string
   readonly description: string
-  readonly strengthTiers: StrengthTiers
-  readonly muscleTiers: MuscleTiers
-  readonly landmarks: LandmarkSet
+  readonly liftSessions: LiftSessions
+  readonly muscleVolumes: MuscleVolumes
+  readonly setsPerSession: SetsPerSession
   readonly daysPerWeek: number
   readonly weeksBeforeDeload: number
   readonly rts: RtsPrescription
@@ -128,20 +133,21 @@ export interface RpRecipe {
  */
 
 export function defaultRpRecipe(overrides: Partial<RpRecipe> = {}): RpRecipe {
-  const muscleTiers = overrides.muscleTiers ?? DEFAULT_MUSCLE_TIERS
-  const strengthTiers = overrides.strengthTiers ?? DEFAULT_STRENGTH_TIERS
+  const muscleVolumes = overrides.muscleVolumes ?? DEFAULT_MUSCLE_VOLUMES
+  const liftSessions = overrides.liftSessions ?? DEFAULT_LIFT_SESSIONS
+  const setsPerSession = overrides.setsPerSession ?? DEFAULT_SETS_PER_SESSION
 
   // Named and described from the tiers rather than by hand, so the block
   // cannot go on calling itself an arms specialisation after the arms
   // have been moved down.
-  const described = describeBlock(muscleTiers, strengthTiers)
+  const described = describeBlock(muscleVolumes, setsPerSession, liftSessions)
 
   return {
     name: described.name,
     description: described.description,
-    strengthTiers,
-    muscleTiers,
-    landmarks: DEFAULT_LANDMARKS,
+    liftSessions,
+    muscleVolumes,
+    setsPerSession,
     // Five, matching `DEFAULT_SETTINGS`. Four has to carry the week's
     // volume in four sittings and runs the upper days long; six divides
     // it so finely that several sessions are not worth the trip.
@@ -191,8 +197,9 @@ export function assembleRpProgram(
   programId: ProgramId,
   deps: RpAssembleDeps,
 ): ProgramTemplate {
-  validateTiers(recipe.muscleTiers)
-  validateTiers(recipe.strengthTiers)
+  validateMuscleVolumes(recipe.muscleVolumes)
+  validateSetsPerSession(recipe.setsPerSession)
+  validateLiftSessions(recipe.liftSessions)
   invariant(
     recipe.weeksBeforeDeload >= 1,
     'RP_BLOCK_TOO_SHORT',
@@ -249,7 +256,7 @@ function buildWeek(
    * day by day would let Monday's accessories spend a budget Thursday's
    * deadlift is going to need.
    */
-  const liftsByDay = assignStrengthLifts(split, recipe.strengthTiers)
+  const liftsByDay = assignStrengthLifts(split, recipe.liftSessions)
 
   /*
    * How many times each lift has already appeared this week, so a lift
@@ -288,9 +295,10 @@ function buildWeek(
    * later pays it — and the press day would then skip it, leaving the
    * chest trained once on a split built to train it twice.
    */
-  const daysTrained = Object.fromEntries(
-    (Object.keys(recipe.landmarks) as MuscleGroup[]).map((muscle) => [muscle, 0]),
-  ) as Record<MuscleGroup, number>
+  const daysTrained = Object.fromEntries(MUSCLE_GROUPS.map((muscle) => [muscle, 0])) as Record<
+    MuscleGroup,
+    number
+  >
 
   /*
    * Days on which a muscle was trained *directly*, counted apart from
@@ -302,9 +310,10 @@ function buildWeek(
    * credit is right for volume and wrong for frequency: a muscle is
    * trained on a day when something trained it.
    */
-  const directDays = Object.fromEntries(
-    (Object.keys(recipe.landmarks) as MuscleGroup[]).map((muscle) => [muscle, 0]),
-  ) as Record<MuscleGroup, number>
+  const directDays = Object.fromEntries(MUSCLE_GROUPS.map((muscle) => [muscle, 0])) as Record<
+    MuscleGroup,
+    number
+  >
 
   const days: ProgramDay[] = []
   // Everything the week has used so far, so a later day can reach for
@@ -386,7 +395,7 @@ function buildWeek(
     slots.push(...filled.slots)
     slots.push(...conditioning)
 
-    const ordered = inSessionOrder(slots, deps.exercises, recipe.muscleTiers)
+    const ordered = inSessionOrder(slots, deps.exercises, recipe.muscleVolumes)
 
     days.push({
       index: dayIndex,
@@ -412,13 +421,8 @@ function buildWeek(
 function weeklyTargets(recipe: RpRecipe, isDeload: boolean): Record<MuscleGroup, number> {
   const targets = {} as Record<MuscleGroup, number>
 
-  for (const muscle of Object.keys(recipe.landmarks) as MuscleGroup[]) {
-    targets[muscle] = weeklyTargetForWeek(
-      recipe.muscleTiers,
-      muscle,
-      recipe.landmarks[muscle],
-      isDeload,
-    )
+  for (const muscle of MUSCLE_GROUPS) {
+    targets[muscle] = weeklySetsFor(recipe.muscleVolumes[muscle], recipe.setsPerSession, isDeload)
   }
 
   return targets
@@ -472,7 +476,7 @@ const STRENGTH_REGION: Record<StrengthLift, 'upper' | 'lower'> = {
  */
 function assignStrengthLifts(
   split: RpSplit,
-  strengthTiers: StrengthTiers,
+  liftSessions: LiftSessions,
 ): readonly (readonly StrengthLift[])[] {
   const perDay: StrengthLift[][] = split.days.map(() => [])
 
@@ -483,7 +487,7 @@ function assignStrengthLifts(
     )
     if (eligible.length === 0) continue
 
-    const wanted = Math.min(eligible.length, strengthSessionsFor(strengthTiers, lift))
+    const wanted = Math.min(eligible.length, strengthSessionsFor(liftSessions, lift))
 
     for (let session = 0; session < wanted; session += 1) {
       /*
@@ -756,18 +760,21 @@ function fillHypertrophy(args: FillArgs): BuiltSlots {
   /**
    * The smallest slot this muscle may get.
    *
-   * Three sets normally, and never more than the muscle's entire weekly
-   * target — a floor above the ask is a floor that schedules nothing.
+   * Three sets normally, and never more than the settings say a session
+   * holds — a floor above the ask is a floor that schedules nothing.
    *
-   * The deload is what forced this to be written down. It targets MV,
-   * which is two sets, so a flat floor of three meant no accessory work
-   * could be placed at all and "everything drops to MV" delivered zero
-   * rather than two. Zero is a defensible deload and it is not the rule
-   * that was asked for, and the gap between those two is exactly the kind
-   * of thing a constant decides silently.
+   * The deload is what forced this to be written down. Its sets-per-
+   * session is two, so a flat floor of three meant no accessory work
+   * could be placed at all and a deload delivered zero rather than two.
+   * Zero is a defensible deload; it is not the one that was configured,
+   * and the gap between those two is exactly the kind of thing a constant
+   * decides silently.
    */
   const floorFor = (muscle: MuscleGroup): number =>
-    Math.min(recipe.minSetsPerSlot, args.targets[muscle])
+    Math.min(
+      recipe.minSetsPerSlot,
+      setsPerSessionFor(recipe.muscleVolumes[muscle].level, recipe.setsPerSession, args.isDeload),
+    )
 
   /** Places one pass of accessory work, neediest muscle first. */
   const fillFor = (
@@ -789,7 +796,7 @@ function fillHypertrophy(args: FillArgs): BuiltSlots {
          */
         behind:
           requiredFrequency(
-            tierRankOf(args.recipe.muscleTiers, muscle),
+            args.recipe.muscleVolumes[muscle].sessionsPerWeek,
             daysAvailableFor(muscle, args.split),
           ) - args.directDays[muscle],
       }))
@@ -832,7 +839,7 @@ function fillHypertrophy(args: FillArgs): BuiltSlots {
       const setCount = fittableSets(
         exercise,
         Math.min(recipe.maxSetsPerSlot, Math.round(owed)),
-        recipe,
+        args.targets,
         addInto(committed, added),
       )
       if (setCount < floorFor(muscle)) continue
@@ -954,7 +961,7 @@ function fillHypertrophy(args: FillArgs): BuiltSlots {
   const backfillOrder = [...splitDay.muscles].sort((a, b) => {
     const behind = (muscle: MuscleGroup): number =>
       requiredFrequency(
-        tierRankOf(args.recipe.muscleTiers, muscle),
+        args.recipe.muscleVolumes[muscle].sessionsPerWeek,
         daysAvailableFor(muscle, args.split),
       ) - args.directDays[muscle]
 
@@ -982,7 +989,7 @@ function fillHypertrophy(args: FillArgs): BuiltSlots {
     if (stillOwed <= 0) continue
 
     const needed = requiredFrequency(
-      tierRankOf(args.recipe.muscleTiers, muscle),
+      args.recipe.muscleVolumes[muscle].sessionsPerWeek,
       daysAvailableFor(muscle, args.split),
     )
     const daysLeftTrainingIt = args.remainingDays.filter((day) =>
@@ -996,7 +1003,12 @@ function fillHypertrophy(args: FillArgs): BuiltSlots {
     const exercise = pickHypertrophyExercise(args, muscle, used, placed)
     if (exercise === undefined) continue
 
-    const count = fittableSets(exercise, recipe.minSetsPerSlot, recipe, addInto(committed, added))
+    const count = fittableSets(
+      exercise,
+      recipe.minSetsPerSlot,
+      args.targets,
+      addInto(committed, added),
+    )
     if (count < recipe.minSetsPerSlot) continue
 
     const sets = hypertrophySets(exercise, count)
@@ -1090,20 +1102,20 @@ function shareOwed(
    * eighty.
    */
   /*
-   * One session on a deload, whatever the tier says.
+   * A deload keeps the muscle's own frequency.
    *
-   * Frequency exists to spread a weekly target so no single session is
-   * unrecoverable. A deload's target is MV — two sets — and spreading two
-   * sets over two sessions asks for one set each, which is under any
-   * sensible slot and so gets scheduled as nothing at all. Splitting a
-   * dose that small is solving a problem the dose does not have.
+   * It used to collapse to one session, which was right when a deload
+   * target was a weekly total of two sets — spreading two sets over two
+   * days asks for one each, under any sensible slot, and scheduled
+   * nothing. The deload is now stated *per session*, so the frequency is
+   * already accounted for and overriding it here would deliver the whole
+   * week in one sitting. It did: four sets on Monday and nothing on
+   * Thursday, for a setting that reads "two sets per session".
    */
-  const frequency = args.isDeload
-    ? 1
-    : requiredFrequency(
-        tierRankOf(args.recipe.muscleTiers, muscle),
-        daysAvailableFor(muscle, args.split),
-      )
+  const frequency = requiredFrequency(
+    args.recipe.muscleVolumes[muscle].sessionsPerWeek,
+    daysAvailableFor(muscle, args.split),
+  )
 
   const dose = setsPerSession(args.targets[muscle], frequency)
 
@@ -1371,7 +1383,7 @@ const STUB: SetPrescription = {
 function fittableSets(
   exercise: Exercise,
   desired: number,
-  recipe: RpRecipe,
+  targets: Record<MuscleGroup, number>,
   committed: VolumeMap,
 ): number {
   for (let count = desired; count >= 1; count -= 1) {
@@ -1380,10 +1392,24 @@ function fittableSets(
       Array.from({ length: count }, () => STUB),
     )
 
+    /*
+     * Bounded by the muscle's own weekly target rather than by MRV.
+     *
+     * MRV was a per-muscle recovery ceiling standing above the target,
+     * so a slot could overshoot the ask and still be refused only at the
+     * ceiling. There is no ceiling above the target any more — the target
+     * is what the lifter asked for — so overshooting it is the thing to
+     * refuse.
+     *
+     * One session's worth of slack, because a compound pays two or three
+     * muscles and sizing every slot to land exactly on each of their
+     * targets would refuse most useful exercises. What this stops is a
+     * slot that doubles a muscle's week, not one that rounds it up.
+     */
     const fits = (Object.keys(contribution) as MuscleGroup[]).every(
       (muscle) =>
         contribution[muscle] <= 0 ||
-        committed[muscle] + contribution[muscle] <= recipe.landmarks[muscle].mrv,
+        committed[muscle] + contribution[muscle] <= targets[muscle] + MAX_DIRECT_SETS_PER_SESSION,
     )
 
     if (fits) return count
@@ -1707,7 +1733,7 @@ function joinAnd(values: readonly string[]): string {
 function inSessionOrder(
   slots: readonly Slot[],
   library: readonly Exercise[],
-  tiers: MuscleTiers,
+  volumes: MuscleVolumes,
 ): readonly Slot[] {
   const rank = (slot: Slot): number => {
     switch (slot.role) {
@@ -1741,9 +1767,16 @@ function inSessionOrder(
    * would put a curl ahead of a lateral raise on the strength of the
    * forearms.
    */
+  /*
+   * Lower sorts earlier, so this is negated: a muscle trained more often
+   * is the one whose work should come while you are fresh.
+   *
+   * This read a tier rank directly, which sorted ascending for free.
+   * Sessions a week is the nearest thing left and points the other way.
+   */
   const tierOf = (slot: Slot): number => {
     const exercise = exerciseFor(slot)
-    return exercise === undefined ? tiers.length : tierRankOf(tiers, exercise.primaryMuscle)
+    return exercise === undefined ? 0 : -volumes[exercise.primaryMuscle].sessionsPerWeek
   }
 
   return [...slots]

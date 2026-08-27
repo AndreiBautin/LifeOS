@@ -6,8 +6,9 @@ import { MUSCLE_GROUP_LABELS, type MuscleGroup } from '@/domain/exercises/taxono
 import type { Exercise } from '@/domain/exercises/exercise'
 import type { ExerciseId } from '@/domain/ids/ids'
 import { attributeWeek } from '@/domain/volume/attribution'
-import { explainVolume, type Band, type MuscleAllocation } from '@/domain/priority/explain'
-import { MAX_FREQUENCY, requiredFrequency } from '@/domain/volume/frequency'
+import { explainVolume, type MuscleAllocation } from '@/domain/priority/explain'
+import type { VolumeLevel } from '@/domain/volume/levels'
+import { VOLUME_LEVELS, VOLUME_LEVEL_LABELS } from '@/domain/volume/levels'
 import { Badge, Card, Section } from '@/components/shared/primitives'
 import { buttonStyles } from '@/components/shared/styles'
 import { cn } from '@/lib/cn'
@@ -29,26 +30,40 @@ import { RtsExplainer } from './RtsExplainer'
  * change to move it.
  */
 
-const BAND_TONE: Record<Band, 'accent' | 'good' | 'neutral'> = {
-  specialising: 'accent',
-  building: 'good',
-  maintaining: 'neutral',
-}
-
 export function PlanPage() {
   const { settings } = useSettings()
   const program = useProgram()
   const exercises = useExercises()
 
-  const plan = explainVolume(settings.muscleTiers, settings.strengthTiers, settings.landmarks)
+  const plan = explainVolume(settings.muscleVolumes, settings.setsPerSession, settings.liftSessions)
 
-  const byTier = [1, 2, 3].map((rank) => ({
-    rank,
-    label: plan.muscles.find((entry) => entry.tier === rank)?.tierLabel ?? `Tier ${String(rank)}`,
-    muscles: plan.muscles
-      .filter((entry) => entry.tier === rank)
-      .sort((a, b) => b.weeklySets - a.weeklySets),
-  }))
+  /*
+   * Grouped by level, with everything untrained in one group at the end.
+   *
+   * This grouped by tier, which was the same thing under a different name
+   * while a tier decided the volume. It no longer does: two muscles on the
+   * same level can be trained a different number of times a week, so the
+   * group is a claim about how hard the sessions are and the row says how
+   * many there are.
+   */
+  const groups: readonly {
+    readonly key: string
+    readonly label: string
+    readonly muscles: typeof plan.muscles
+  }[] = [
+    ...VOLUME_LEVELS.map((level: VolumeLevel) => ({
+      key: level,
+      label: `${VOLUME_LEVEL_LABELS[level]} volume`,
+      muscles: plan.muscles
+        .filter((entry) => entry.weeklySets > 0 && entry.level === level)
+        .sort((a, b) => b.weeklySets - a.weeklySets),
+    })),
+    {
+      key: 'untrained',
+      label: 'No direct work',
+      muscles: plan.muscles.filter((entry) => entry.weeklySets <= 0),
+    },
+  ]
 
   const running = program.data
 
@@ -146,7 +161,9 @@ export function PlanPage() {
               <li key={lift.lift}>
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-ink-50 text-sm font-medium">{lift.label}</span>
-                  <Badge tone={lift.tier === 1 ? 'accent' : 'neutral'}>Tier {lift.tier}</Badge>
+                  <Badge tone={lift.sessionsPerWeek > 0 ? 'accent' : 'neutral'}>
+                    {lift.sessionsPerWeek}× a week
+                  </Badge>
                 </div>
                 <p className="text-ink-500 mt-0.5 text-xs">{lift.reason}</p>
               </li>
@@ -155,14 +172,14 @@ export function PlanPage() {
         </Card>
       </Section>
 
-      {byTier.map((tier) =>
-        tier.muscles.length === 0 ? null : (
+      {groups.map((group) =>
+        group.muscles.length === 0 ? null : (
           <Section
-            key={tier.rank}
-            title={`Tier ${String(tier.rank)} — ${tier.label}`}
-            description={`${String(tier.muscles.reduce((total, entry) => total + entry.weeklySets, 0))} hard sets a week across ${String(tier.muscles.length)} muscles`}
+            key={group.key}
+            title={group.label}
+            description={`${String(group.muscles.reduce((total, entry) => total + entry.weeklySets, 0))} hard sets a week across ${String(group.muscles.length)} muscle${group.muscles.length === 1 ? '' : 's'}`}
           >
-            <TierCard muscles={tier.muscles} />
+            <LevelCard muscles={group.muscles} />
           </Section>
         ),
       )}
@@ -186,93 +203,40 @@ export function PlanPage() {
 }
 
 /**
- * One card per tier, not one per muscle.
+ * One card per group, not one per muscle.
  *
  * Every muscle used to get a landmark bar, four numbers under it and a
- * sentence explaining its own derivation. That was worth the space while
- * the derivation was per-muscle: the landmarks differed, the target was
- * interpolated inside them, and the bar showed where in its own band a
- * muscle had landed.
- *
- * None of that is true now. The landmarks are the same three numbers for
- * every muscle and the target is the tier, so the old layout printed "MV 2
- * MEV 6 MAV 8 MRV 10" fifteen times and the same sentence eight times —
- * a screen insisting on a per-muscle reason that no longer exists, which
- * is worse than saying nothing because it implies there is something to
- * compare.
- *
- * So: the rule once, then the muscles it applies to.
+ * sentence of its own derivation. That was worth the space while the
+ * derivation was per-muscle. It is not now: a group shares a level, so
+ * it shares the sets-per-session number, and the only thing that varies
+ * within a group is how many sessions — which is one figure per row.
  */
-function TierCard({ muscles }: { readonly muscles: readonly MuscleAllocation[] }) {
+function LevelCard({ muscles }: { readonly muscles: readonly MuscleAllocation[] }) {
   const first = muscles[0]
   if (first === undefined) return null
 
-  const { landmarks: marks, weeklySets, band } = first
-  const sessions = requiredFrequency(first.tier, MAX_FREQUENCY)
-
   return (
     <Card className="space-y-3">
-      <div className="flex items-baseline justify-between gap-2">
-        <span className="numeric text-ink-50 text-lg font-semibold">
-          {weeklySets}
-          <span className="text-ink-500 text-sm font-normal"> sets a week</span>
-        </span>
-        <span className="text-ink-500 numeric text-xs">
-          {sessions > 0
-            ? `${String(sessions)} × ${String(Math.round(weeklySets / sessions))} sets`
-            : 'nothing scheduled'}
-        </span>
-      </div>
-
-      {/* MV at the left, MRV at the right, with MEV marked. */}
-      <div>
-        <div className="bg-ink-850 relative h-2 overflow-hidden rounded-full">
-          <div
-            className={cn(
-              'h-full rounded-full',
-              BAND_TONE[band] === 'accent'
-                ? 'bg-accent-500'
-                : BAND_TONE[band] === 'good'
-                  ? 'bg-good-500'
-                  : 'bg-ink-700',
-            )}
-            style={{
-              width: `${String(Math.round(fractionOfBand(weeklySets, marks) * 100))}%`,
-            }}
-          />
-          <span
-            className="bg-ink-500/70 absolute top-0 h-full w-px"
-            style={{
-              left: `${String(Math.round(fractionOfBand(marks.mev, marks) * 100))}%`,
-            }}
-            aria-hidden
-          />
-        </div>
-
-        <div className="text-ink-500 numeric mt-1 flex justify-between text-[11px]">
-          <span>MV {marks.mv}</span>
-          <span>MEV {marks.mev}</span>
-          <span>MRV {marks.mrv}</span>
-        </div>
-      </div>
-
       <p className="text-ink-500 text-xs">{first.reason}</p>
 
-      <ul className="flex flex-wrap gap-x-3 gap-y-1">
+      <ul className="space-y-1.5">
         {muscles.map((muscle) => (
-          <li key={muscle.muscle} className="text-ink-300 text-sm">
-            {muscle.label}
+          <li key={muscle.muscle} className="flex items-baseline justify-between gap-3">
+            <span className="text-ink-300 min-w-0 flex-1 truncate text-sm">{muscle.label}</span>
+
+            {muscle.weeklySets > 0 ? (
+              <span className="numeric text-ink-500 shrink-0 text-xs">
+                {muscle.sessionsPerWeek} × {muscle.setsPerSession}
+                <span className="text-ink-50 font-semibold"> = {muscle.weeklySets}</span>
+              </span>
+            ) : (
+              <span className="text-ink-700 shrink-0 text-xs">—</span>
+            )}
           </li>
         ))}
       </ul>
     </Card>
   )
-}
-
-/** Where a set count sits across the full MV→MRV range, for the bar. */
-function fractionOfBand(sets: number, marks: MuscleAllocation['landmarks']): number {
-  const span = Math.max(1, marks.mrv - marks.mv)
-  return Math.max(0, Math.min(1, (sets - marks.mv) / span))
 }
 
 /**

@@ -6,105 +6,69 @@ import {
   setsPerSession,
 } from '@/domain/volume/frequency'
 
+/*
+ * Frequency is a setting now, not a derivation.
+ *
+ * This file used to test a tier-to-frequency table and the rounding that
+ * came with it — two thirds of a day count, ceiled, so a middle tier on a
+ * two-day pool took both days rather than rounding down to one. All of
+ * that machinery is gone: a muscle carries the number of sessions it
+ * wants and this function does one thing, which is refuse to promise more
+ * sessions than the split has days for.
+ *
+ * The rounding case is worth remembering even though it can no longer
+ * happen. It produced a frequency table nobody could predict from their
+ * own settings, and the fix each time was another rule. Asking the lifter
+ * was the fix that worked.
+ */
 describe('requiredFrequency', () => {
-  /*
-   * Priority decides frequency, and the answer is meant to be one you
-   * could have predicted from your own tier list.
-   *
-   * The volume-derived rule this replaced could not manage that: it put
-   * the forearms on two sessions and the lats on three, so a tier-1
-   * muscle was trained less often than a tier-2 one. True to the
-   * arithmetic and impossible to describe without reciting it.
-   */
-  /*
-   * Tier 1 and tier 2 are both twice a week. They differ in volume — ten
-   * sets against six — not in how often, so the same two sessions carry
-   * five sets each or three each.
-   *
-   * Tier 1 was three sessions. Nothing has three upper days to spend them
-   * on, so it bought a session that could not be scheduled and arrived as
-   * a permanent shortfall on the Plan screen.
-   */
-  it('trains the top two tiers twice a week', () => {
-    expect(requiredFrequency(1, 3)).toBe(2)
-    expect(requiredFrequency(1, 2)).toBe(2)
+  it('gives a muscle the sessions it asks for', () => {
     expect(requiredFrequency(2, 3)).toBe(2)
+    expect(requiredFrequency(3, 3)).toBe(3)
+    expect(requiredFrequency(1, 3)).toBe(1)
   })
 
-  it('gives a maintained muscle no sessions at all', () => {
-    // Zero, not one. The bottom tier means no dedicated work — it used to
-    // mean one session at a reduced target, which produced two-set shrugs
-    // for muscles the lifter had explicitly deprioritised.
-    expect(requiredFrequency(3, 3)).toBe(0)
-    expect(requiredFrequency(3, 2)).toBe(0)
-  })
-
-  it('does not depend on how much volume the muscle is owed', () => {
-    // The whole point: two tier-1 muscles with very different targets
-    // are trained equally often, and the difference shows up in how much
-    // each session carries rather than in how many there are.
-    expect(requiredFrequency(1, 3)).toBe(requiredFrequency(1, 3))
+  it('gives nothing to a muscle that asks for nothing', () => {
+    // Zero is a real answer and the one most muscles are on: the
+    // competition lifts pay them and no slot is scheduled.
+    expect(requiredFrequency(0, 3)).toBe(0)
+    expect(requiredFrequency(0, 0)).toBe(0)
   })
 
   /*
    * A floor that cannot be met is not a floor — the filler would add
-   * slots forever trying to satisfy it.
+   * slots forever trying to satisfy it. What the week cannot deliver is
+   * reported on the Plan screen instead.
    */
   it('never asks for more sessions than the week has', () => {
-    expect(requiredFrequency(1, 1)).toBe(1)
+    expect(requiredFrequency(3, 1)).toBe(1)
     expect(requiredFrequency(2, 1)).toBe(1)
   })
 
   it('asks for nothing when no day is accountable', () => {
-    expect(requiredFrequency(1, 0)).toBe(0)
+    expect(requiredFrequency(3, 0)).toBe(0)
   })
 
-  it('treats an unknown tier as maintenance rather than throwing', () => {
-    expect(requiredFrequency(9, 3)).toBe(1)
+  it('treats a negative setting as none rather than throwing', () => {
+    expect(requiredFrequency(-1, 3)).toBe(0)
   })
 })
 
 describe('setsPerSession', () => {
   it('divides the target across the sessions it has', () => {
-    // Chosen under the ceiling so this shows the division rather than the
-    // cap — the cap has its own test below.
-    expect(setsPerSession(8, 2)).toBe(4)
-    expect(setsPerSession(9, 3)).toBe(3)
+    expect(setsPerSession(6, 2)).toBe(3)
+    expect(setsPerSession(10, 2)).toBe(5)
   })
 
-  /*
-   * The cap is the point. A muscle squeezed into fewer sessions than its
-   * volume wants does not get a bigger session — it gets a session at
-   * the ceiling and a shortfall, which the Plan screen reports.
-   */
+  it('rounds up rather than leaving a set unplaced', () => {
+    expect(setsPerSession(7, 2)).toBe(4)
+  })
+
   it('caps a session at the per-session ceiling regardless', () => {
     expect(setsPerSession(30, 1)).toBe(MAX_DIRECT_SETS_PER_SESSION)
   })
 
   it('is zero when there are no sessions', () => {
     expect(setsPerSession(12, 0)).toBe(0)
-  })
-})
-
-/*
- * The rounding case that matters, and the one that motivated `ceil`.
- *
- * Two thirds of three is two, which is the case the share was written
- * for. Two thirds of two is 1.33, and rounding it down made a tier-2
- * muscle on a two-day pool indistinguishable from a maintained one — the
- * core came out at a single session on a pair of lower days that had the
- * room for both.
- */
-describe('a middle tier on a two-day pool', () => {
-  it('takes both days rather than rounding down to one', () => {
-    expect(requiredFrequency(2, 2)).toBe(2)
-  })
-
-  it('still takes two of three when there are three', () => {
-    expect(requiredFrequency(2, 3)).toBe(2)
-  })
-
-  it('does not promote maintenance by the same route', () => {
-    expect(requiredFrequency(3, 2)).toBe(0)
   })
 })

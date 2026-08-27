@@ -1,72 +1,47 @@
 import { describe, expect, it } from 'vitest'
 
-import { tiersMatch } from '@/domain/priority/divergence'
-import type { MuscleTiers } from '@/domain/priority/tiers'
+import { liftsDivergeFrom, musclesDivergeFrom } from '@/domain/priority/divergence'
+import { DEFAULT_LIFT_SESSIONS } from '@/domain/priority/tiers'
+import type { MuscleVolumes } from '@/domain/volume/levels'
+import { DEFAULT_MUSCLE_VOLUMES } from '@/domain/volume/levels'
 
-const shipped: MuscleTiers = [
-  { rank: 1, members: ['biceps', 'triceps'], label: 'Specialising' },
-  { rank: 2, members: ['chest'], label: 'Building' },
-  { rank: 3, members: ['calves'], label: 'Maintaining' },
-]
+/*
+ * Settings are the lifter's own and nothing overwrites them, which
+ * quietly means a choice saved months ago goes on being used after the
+ * shipped defaults have moved underneath it. Naming the divergence is the
+ * whole fix; resolving it stays a decision.
+ */
+describe('divergence from the shipped defaults', () => {
+  it('finds nothing when the settings are the defaults', () => {
+    expect(musclesDivergeFrom(DEFAULT_MUSCLE_VOLUMES, DEFAULT_MUSCLE_VOLUMES)).toHaveLength(0)
+    expect(liftsDivergeFrom(DEFAULT_LIFT_SESSIONS, DEFAULT_LIFT_SESSIONS)).toBe(false)
+  })
 
-describe('spotting a diverged tier list', () => {
-  it('matches an identical list', () => {
-    expect(tiersMatch(shipped, shipped)).toBe(true)
+  it('names a muscle trained a different number of times', () => {
+    const mine: MuscleVolumes = {
+      ...DEFAULT_MUSCLE_VOLUMES,
+      calves: { ...DEFAULT_MUSCLE_VOLUMES.calves, sessionsPerWeek: 1 },
+    }
+
+    expect(musclesDivergeFrom(mine, DEFAULT_MUSCLE_VOLUMES)).toEqual(['calves'])
   })
 
   /*
-   * Order is presentation. A lifter who dragged two muscles into a tier
-   * in a different sequence has not diverged from anything, and telling
-   * them they have would train them to ignore the message.
+   * A level change counts too. Same frequency and a different dose is a
+   * different week, and reporting only frequency would call it identical.
    */
-  it('ignores the order of members inside a tier', () => {
-    const reordered: MuscleTiers = [
-      { rank: 1, members: ['triceps', 'biceps'], label: 'Specialising' },
-      { rank: 2, members: ['chest'], label: 'Building' },
-      { rank: 3, members: ['calves'], label: 'Maintaining' },
-    ]
+  it('names a muscle trained at a different level', () => {
+    const mine: MuscleVolumes = {
+      ...DEFAULT_MUSCLE_VOLUMES,
+      chest: { ...DEFAULT_MUSCLE_VOLUMES.chest, level: 'high' },
+    }
 
-    expect(tiersMatch(shipped, reordered)).toBe(true)
+    expect(musclesDivergeFrom(mine, DEFAULT_MUSCLE_VOLUMES)).toEqual(['chest'])
   })
 
-  it('ignores the order of the tiers themselves', () => {
-    const flipped: MuscleTiers = [
-      { rank: 3, members: ['calves'], label: 'Maintaining' },
-      { rank: 1, members: ['biceps', 'triceps'], label: 'Specialising' },
-      { rank: 2, members: ['chest'], label: 'Building' },
-    ]
-
-    expect(tiersMatch(shipped, flipped)).toBe(true)
-  })
-
-  it('ignores an empty tier', () => {
-    const padded: MuscleTiers = [...shipped, { rank: 4, members: [], label: 'Unused' }]
-    expect(tiersMatch(shipped, padded)).toBe(true)
-  })
-
-  /*
-   * The case this exists for: a lift moved between tiers, which is
-   * exactly what happened when the squat and deadlift dropped to
-   * maintenance in the shipped defaults and a saved list kept them a
-   * tier up.
-   */
-  it('spots a member that moved tier', () => {
-    const moved: MuscleTiers = [
-      { rank: 1, members: ['biceps'], label: 'Specialising' },
-      { rank: 2, members: ['chest', 'triceps'], label: 'Building' },
-      { rank: 3, members: ['calves'], label: 'Maintaining' },
-    ]
-
-    expect(tiersMatch(shipped, moved)).toBe(false)
-  })
-
-  it('spots a member that is missing entirely', () => {
-    const dropped: MuscleTiers = [
-      { rank: 1, members: ['biceps'], label: 'Specialising' },
-      { rank: 2, members: ['chest'], label: 'Building' },
-      { rank: 3, members: ['calves'], label: 'Maintaining' },
-    ]
-
-    expect(tiersMatch(shipped, dropped)).toBe(false)
+  it('reports a lift trained a different number of times', () => {
+    expect(liftsDivergeFrom({ ...DEFAULT_LIFT_SESSIONS, bench: 3 }, DEFAULT_LIFT_SESSIONS)).toBe(
+      true,
+    )
   })
 })

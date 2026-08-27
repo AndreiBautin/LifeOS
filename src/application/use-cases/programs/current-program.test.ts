@@ -31,23 +31,19 @@ describe('deriving the program', () => {
   })
 
   it('changes when the settings change, with nothing to press', () => {
-    // The failure this replaces: a tier moved in Settings and the stored
-    // block went on prescribing the old shape until something refreshed
-    // it — which, four separate mechanisms later, it still did not.
+    // The failure this replaces: a setting moved in Settings and the
+    // stored block went on prescribing the old shape until something
+    // refreshed it — which, four separate mechanisms later, it still did
+    // not.
     const before = deriveProgram(DEFAULT_SETTINGS, library)
     const after = deriveProgram(
       {
         ...DEFAULT_SETTINGS,
-        muscleTiers: [
-          { rank: 1, members: ['chest'], label: 'Specialising' },
-          { rank: 2, members: ['lats'], label: 'Building' },
-          { rank: 3, members: ['biceps'], label: 'Maintaining' },
-        ],
-        strengthTiers: [
-          { rank: 1, members: ['bench'], label: 'Specialising' },
-          { rank: 2, members: ['squat', 'deadlift'], label: 'Building' },
-          { rank: 3, members: [], label: 'Maintaining' },
-        ],
+        muscleVolumes: {
+          ...DEFAULT_SETTINGS.muscleVolumes,
+          chest: { sessionsPerWeek: 2, level: 'high' },
+        },
+        liftSessions: { squat: 1, bench: 2, deadlift: 1 },
       },
       library,
     )

@@ -1,7 +1,8 @@
 import type { AppSettings } from '@/domain/settings/settings'
 import { DEFAULT_SETTINGS, SETTINGS_SCHEMA_VERSION } from '@/domain/settings/settings'
-import { MUSCLE_GROUPS } from '@/domain/exercises/taxonomy'
-import { completeTiers } from '@/domain/priority/tiers'
+import { completeLiftSessions } from '@/domain/priority/tiers'
+import { MAX_FATIGUE_PERCENT, MIN_FATIGUE_PERCENT } from '@/domain/framework/rts'
+import { completeMuscleVolumes } from '@/domain/volume/levels'
 import type { SettingsRepository } from '@/domain/repositories/ports'
 import { migrateBenchEstimate } from '@/domain/exercises/derived-maxes'
 import { syncedPartChanged } from '@/domain/settings/synced'
@@ -28,6 +29,21 @@ export interface SettingsReadResult {
   readonly settings: AppSettings
   readonly recovered: boolean
   readonly warning?: string
+}
+
+/**
+ * A stored fatigue percent, held inside the range the setting allows.
+ *
+ * Parsed rather than trusted, like every other field here: this one
+ * decides both where the back-off work stops and how much lighter the bar
+ * is, so a value out of range would not fail — it would quietly prescribe
+ * a session nobody chose.
+ */
+function clampFatiguePercent(value: unknown): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    return DEFAULT_SETTINGS.fatiguePercent
+  }
+  return Math.min(MAX_FATIGUE_PERCENT, Math.max(MIN_FATIGUE_PERCENT, Math.round(value)))
 }
 
 export function readSettings(storage: Storage = localStorage): SettingsReadResult {
@@ -145,10 +161,13 @@ function mergeWithDefaults(parsed: unknown): AppSettings {
      */
     ...bodyweightOf(stored.bodyweight),
     // Spread over the defaults so a muscle group added since this blob was
-    // written gets its default landmarks rather than being absent.
-    landmarks: isRecord(stored.landmarks)
-      ? { ...DEFAULT_SETTINGS.landmarks, ...(stored.landmarks as AppSettings['landmarks']) }
-      : DEFAULT_SETTINGS.landmarks,
+    // written gets the shipped numbers rather than being absent.
+    setsPerSession: isRecord(stored.setsPerSession)
+      ? {
+          ...DEFAULT_SETTINGS.setsPerSession,
+          ...(stored.setsPerSession as unknown as AppSettings['setsPerSession']),
+        }
+      : DEFAULT_SETTINGS.setsPerSession,
     // Every value is checked rather than the record being trusted whole: a
     // junk entry here becomes a suggested load on a bar.
     //
@@ -180,12 +199,13 @@ function mergeWithDefaults(parsed: unknown): AppSettings {
      * muscle groups that existed when it was saved. Splitting traps out of
      * the upper back gave every existing install a muscle in no tier.
      */
-    muscleTiers: Array.isArray(stored.muscleTiers)
-      ? completeTiers(stored.muscleTiers as AppSettings['muscleTiers'], MUSCLE_GROUPS)
-      : DEFAULT_SETTINGS.muscleTiers,
-    strengthTiers: Array.isArray(stored.strengthTiers)
-      ? (stored.strengthTiers as AppSettings['strengthTiers'])
-      : DEFAULT_SETTINGS.strengthTiers,
+    muscleVolumes: isRecord(stored.muscleVolumes)
+      ? completeMuscleVolumes(stored.muscleVolumes)
+      : DEFAULT_SETTINGS.muscleVolumes,
+    liftSessions: isRecord(stored.liftSessions)
+      ? completeLiftSessions(stored.liftSessions)
+      : DEFAULT_SETTINGS.liftSessions,
+    fatiguePercent: clampFatiguePercent(stored.fatiguePercent),
     daysPerWeek: asBoundedNumber(stored.daysPerWeek, 2, 6, DEFAULT_SETTINGS.daysPerWeek),
     weeksBeforeDeload: asBoundedNumber(
       stored.weeksBeforeDeload,

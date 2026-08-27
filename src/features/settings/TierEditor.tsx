@@ -1,121 +1,164 @@
 import { MUSCLE_GROUPS, MUSCLE_GROUP_LABELS, type MuscleGroup } from '@/domain/exercises/taxonomy'
 import {
-  STRENGTH_LIFT_LABELS,
-  STRENGTH_LIFTS,
-  weeklyTargetForMember,
-  type MuscleTiers,
-  type StrengthLift,
-  type StrengthTiers,
-} from '@/domain/priority/tiers'
+  MAX_FATIGUE_PERCENT,
+  MIN_FATIGUE_PERCENT,
+  PUBLISHED_FATIGUE_CEILING,
+} from '@/domain/framework/rts'
+import { STRENGTH_LIFT_LABELS, STRENGTH_LIFTS, type LiftSessions } from '@/domain/priority/tiers'
+import type { MuscleVolumes, SetsPerSession, VolumeLevel } from '@/domain/volume/levels'
+import {
+  MAX_SESSIONS_PER_WEEK,
+  MAX_SETS_PER_SESSION,
+  VOLUME_LEVELS,
+  VOLUME_LEVEL_LABELS,
+  weeklySetsFor,
+} from '@/domain/volume/levels'
 
-import type { LandmarkSet } from '@/domain/volume/landmarks'
-import { Badge, Card } from '@/components/shared/primitives'
+import { Card } from '@/components/shared/primitives'
 import { cn } from '@/lib/cn'
 
 /**
- * Assigning tiers, and showing what they cost.
+ * Setting how often each thing is trained, and how hard.
  *
- * Tapping a tier is easy; understanding what it *does* is the hard part,
- * so the resulting weekly set target is shown next to every muscle and
- * updates as the tiers move.
+ * The controls are the same shape they have always been — a row of small
+ * buttons per muscle — and what a button *means* has changed completely.
+ * It used to be a tier, which chose a rank, which chose a position in a
+ * landmark band, which chose a target. It is now the number of sessions a
+ * week, and the number beside it is that times the sets per session for
+ * the level. Nothing between the tap and the number.
  *
- * Promoting a muscle now moves that muscle's number and nothing else.
- * It used to move all of them — a fourth muscle in tier 1 quietly
- * diluted the other three — and this panel carried a badge grading how
- * focused the structure was, which was really a warning about a rule
- * that should not have existed. Whether the total fits in a week is a
- * separate question, answered on the Plan screen against the program the
- * assembler actually builds.
+ * Zero is a first-class choice rather than a bottom tier. Most muscles
+ * are on it: the competition lifts pay them, and a lifter saying "I don't
+ * do direct ab work" should be able to say exactly that.
+ *
+ * Whether the total fits in a week is a separate question, answered on
+ * the Plan screen against the program the assembler actually builds.
  */
 
-const TIER_COUNT = 3
-
-const TIER_LABELS = ['Specialising', 'Building', 'Maintaining'] as const
-
 interface Props {
-  readonly muscleTiers: MuscleTiers
-  readonly strengthTiers: StrengthTiers
-  readonly landmarks: LandmarkSet
-  readonly onMuscleTiers: (tiers: MuscleTiers) => void
-  readonly onStrengthTiers: (tiers: StrengthTiers) => void
+  readonly muscleVolumes: MuscleVolumes
+  readonly liftSessions: LiftSessions
+  readonly setsPerSession: SetsPerSession
+  readonly fatiguePercent: number
+  readonly onMuscleVolumes: (volumes: MuscleVolumes) => void
+  readonly onLiftSessions: (sessions: LiftSessions) => void
+  readonly onSetsPerSession: (sets: SetsPerSession) => void
+  readonly onFatiguePercent: (percent: number) => void
 }
 
+const SESSION_CHOICES = Array.from({ length: MAX_SESSIONS_PER_WEEK + 1 }, (_u, i) => i)
+
 export function TierEditor({
-  muscleTiers,
-  strengthTiers,
-  landmarks,
-  onMuscleTiers,
-  onStrengthTiers,
+  muscleVolumes,
+  liftSessions,
+  setsPerSession,
+  fatiguePercent,
+  onMuscleVolumes,
+  onLiftSessions,
+  onSetsPerSession,
+  onFatiguePercent,
 }: Props) {
-  const rankOf = (muscle: MuscleGroup): number =>
-    muscleTiers.find((tier) => tier.members.includes(muscle))?.rank ?? TIER_COUNT
-
-  const setRank = (muscle: MuscleGroup, rank: number): void => {
-    const next: MuscleTiers = Array.from({ length: TIER_COUNT }, (_unused, index) => {
-      const tierRank = index + 1
-      const existing = muscleTiers.find((tier) => tier.rank === tierRank)
-      const members = (existing?.members ?? []).filter((member) => member !== muscle)
-
-      return {
-        rank: tierRank,
-        members: tierRank === rank ? [...members, muscle] : members,
-        label: TIER_LABELS[index] ?? `Tier ${String(tierRank)}`,
-      }
-    })
-
-    onMuscleTiers(next)
+  const setSessions = (muscle: MuscleGroup, sessionsPerWeek: number): void => {
+    onMuscleVolumes({ ...muscleVolumes, [muscle]: { ...muscleVolumes[muscle], sessionsPerWeek } })
   }
 
-  const strengthRankOf = (lift: StrengthLift): number =>
-    strengthTiers.find((tier) => tier.members.includes(lift))?.rank ?? 2
-
-  const setStrengthRank = (lift: StrengthLift, rank: number): void => {
-    const next: StrengthTiers = Array.from({ length: TIER_COUNT }, (_unused, index) => {
-      const tierRank = index + 1
-      const existing = strengthTiers.find((tier) => tier.rank === tierRank)
-      const members = (existing?.members ?? []).filter((member) => member !== lift)
-
-      return {
-        rank: tierRank,
-        members: tierRank === rank ? [...members, lift] : members,
-      }
-    })
-
-    onStrengthTiers(next)
+  const setLevel = (muscle: MuscleGroup, level: VolumeLevel): void => {
+    onMuscleVolumes({ ...muscleVolumes, [muscle]: { ...muscleVolumes[muscle], level } })
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <Card>
-        <div className="mb-3 flex items-center justify-between gap-2">
-          <h3 className="text-ink-50 text-sm font-semibold">The three lifts</h3>
-          <Badge tone="accent">total</Badge>
-        </div>
+        <h3 className="text-ink-50 mb-1 text-sm font-semibold">The three lifts</h3>
 
         <ul className="space-y-2">
           {STRENGTH_LIFTS.map((lift) => (
             <li key={lift} className="flex items-center justify-between gap-3">
               <span className="text-ink-300 text-sm">{STRENGTH_LIFT_LABELS[lift]}</span>
-              <div className="flex gap-1">
-                {[1, 2, 3].map((rank) => (
-                  <TierButton
-                    key={rank}
-                    rank={rank}
-                    active={strengthRankOf(lift) === rank}
-                    onSelect={() => {
-                      setStrengthRank(lift, rank)
-                    }}
-                  />
-                ))}
-              </div>
+              <ChoiceRow
+                choices={SESSION_CHOICES}
+                value={liftSessions[lift]}
+                label={(n) => `${STRENGTH_LIFT_LABELS[lift]} ${String(n)} times a week`}
+                onSelect={(n) => {
+                  onLiftSessions({ ...liftSessions, [lift]: n })
+                }}
+              />
             </li>
           ))}
         </ul>
 
         <p className="text-ink-500 mt-3 text-xs">
-          Three tiers, as with the muscles — and what they buy is sessions a week, not a longer
-          session. Every lift stops at the same 5%, so a tier decides how often you meet it: three
-          times, twice, or once.
+          Sessions a week. The split decides where they land — the bench goes on upper days, the
+          squat and deadlift on lower ones — so asking for more sessions than there are eligible
+          days gets you the days that exist, and the Plan screen says so.
+        </p>
+      </Card>
+
+      <Card>
+        <h3 className="text-ink-50 mb-1 text-sm font-semibold">How far back-offs go</h3>
+
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-ink-300 text-sm">Fatigue drop</span>
+          <ChoiceRow
+            choices={Array.from(
+              { length: MAX_FATIGUE_PERCENT - MIN_FATIGUE_PERCENT + 1 },
+              (_u, i) => MIN_FATIGUE_PERCENT + i,
+            )}
+            value={fatiguePercent}
+            label={(n) => `${String(n)} per cent`}
+            onSelect={onFatiguePercent}
+          />
+        </div>
+
+        <p className="text-ink-500 mt-3 text-xs">
+          One number doing two jobs, which is what makes the rule sayable: the back-off bar is this
+          much lighter, and you stop when your implied max has dropped this much. At matched reps
+          and RPE those are the same moment — you stop when the lighter bar feels like the top set
+          did.
+        </p>
+
+        {fatiguePercent > PUBLISHED_FATIGUE_CEILING && (
+          <p className="text-warn-500 mt-2 text-xs">
+            Past published guidance. RTS names {PUBLISHED_FATIGUE_CEILING}% as a high amount of
+            fatigue work and does not go above it — beyond that you are extrapolating from your own
+            recovery.
+          </p>
+        )}
+      </Card>
+
+      <Card>
+        <h3 className="text-ink-50 mb-1 text-sm font-semibold">Sets per session</h3>
+
+        <ul className="space-y-2">
+          {(['low', 'medium', 'high'] as const).map((level) => (
+            <li key={level} className="flex items-center justify-between gap-3">
+              <span className="text-ink-300 text-sm">{VOLUME_LEVEL_LABELS[level]}</span>
+              <ChoiceRow
+                choices={Array.from({ length: MAX_SETS_PER_SESSION }, (_u, i) => i + 1)}
+                value={setsPerSession[level]}
+                label={(n) => `${VOLUME_LEVEL_LABELS[level]} is ${String(n)} sets`}
+                onSelect={(n) => {
+                  onSetsPerSession({ ...setsPerSession, [level]: n })
+                }}
+              />
+            </li>
+          ))}
+          <li className="flex items-center justify-between gap-3">
+            <span className="text-ink-300 text-sm">Deload</span>
+            <ChoiceRow
+              choices={Array.from({ length: MAX_SETS_PER_SESSION }, (_u, i) => i + 1)}
+              value={setsPerSession.deload}
+              label={(n) => `Deload is ${String(n)} sets`}
+              onSelect={(n) => {
+                onSetsPerSession({ ...setsPerSession, deload: n })
+              }}
+            />
+          </li>
+        </ul>
+
+        <p className="text-ink-500 mt-3 text-xs">
+          Shared by every muscle, so raising Low moves everything assigned to it at once. The deload
+          replaces the level for one week and applies whatever a muscle is set to.
         </p>
       </Card>
 
@@ -123,77 +166,101 @@ export function TierEditor({
         <h3 className="text-ink-50 mb-1 text-sm font-semibold">Muscles</h3>
 
         <p className="text-ink-500 mb-3 text-xs">
-          Three tiers, three numbers. Tier 1 is maximum recoverable volume, tier 2 is minimum
-          effective volume, and tier 3 is no dedicated work at all — the competition lifts are what
-          holds those up. Both trained tiers run twice a week, so a tier-1 muscle gets five sets a
-          session and a tier-2 muscle three. Whether the total fits in your week is on the Plan
-          screen.
+          Sessions a week, then how hard each one is. Weekly sets are the two multiplied and there
+          is nothing else in it. Zero is a real answer — the competition lifts are what holds those
+          muscles up.
         </p>
 
-        <ul className="space-y-1.5">
+        <ul className="space-y-2.5">
           {MUSCLE_GROUPS.map((muscle) => {
-            const rank = rankOf(muscle)
-            const target = weeklyTargetForMember(muscleTiers, muscle, landmarks[muscle])
+            const volume = muscleVolumes[muscle]
+            const weekly = weeklySetsFor(volume, setsPerSession, false)
 
             return (
-              <li key={muscle} className="flex items-center justify-between gap-3">
-                <span className="text-ink-300 min-w-0 flex-1 truncate text-sm">
-                  {MUSCLE_GROUP_LABELS[muscle]}
-                </span>
+              <li key={muscle} className="space-y-1">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-ink-300 min-w-0 flex-1 truncate text-sm">
+                    {MUSCLE_GROUP_LABELS[muscle]}
+                  </span>
 
-                <span className="numeric text-ink-500 w-20 shrink-0 text-right text-xs">
-                  {target} sets
-                </span>
+                  <span className="numeric text-ink-500 w-16 shrink-0 text-right text-xs">
+                    {weekly > 0 ? `${String(weekly)} sets` : '—'}
+                  </span>
 
-                <div className="flex shrink-0 gap-1">
-                  {[1, 2, 3].map((candidate) => (
-                    <TierButton
-                      key={candidate}
-                      rank={candidate}
-                      active={rank === candidate}
-                      onSelect={() => {
-                        setRank(muscle, candidate)
-                      }}
-                    />
-                  ))}
+                  <ChoiceRow
+                    choices={SESSION_CHOICES}
+                    value={volume.sessionsPerWeek}
+                    label={(n) => `${MUSCLE_GROUP_LABELS[muscle]} ${String(n)} times a week`}
+                    onSelect={(n) => {
+                      setSessions(muscle, n)
+                    }}
+                  />
                 </div>
+
+                {volume.sessionsPerWeek > 0 && (
+                  <div className="flex justify-end gap-1">
+                    {VOLUME_LEVELS.map((level) => (
+                      <button
+                        key={level}
+                        type="button"
+                        onClick={() => {
+                          setLevel(muscle, level)
+                        }}
+                        aria-label={`${MUSCLE_GROUP_LABELS[muscle]} at ${VOLUME_LEVEL_LABELS[level]} volume`}
+                        aria-pressed={volume.level === level}
+                        className={cn(
+                          'tap-target rounded-lg border px-2.5 text-xs font-medium transition-colors',
+                          volume.level === level
+                            ? 'border-good-500 bg-good-500/15 text-good-500'
+                            : 'border-ink-800 bg-ink-850 text-ink-500 hover:border-ink-700',
+                        )}
+                      >
+                        {VOLUME_LEVEL_LABELS[level]}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </li>
             )
           })}
         </ul>
-
-        <p className="text-ink-500 mt-3 text-xs">
-          Set counts are the peak of the block. Every muscle ramps up to its target over the working
-          weeks rather than starting there.
-        </p>
       </Card>
     </div>
   )
 }
 
-function TierButton({
-  rank,
-  active,
+function ChoiceRow({
+  choices,
+  value,
+  label,
   onSelect,
 }: {
-  readonly rank: number
-  readonly active: boolean
-  readonly onSelect: () => void
+  readonly choices: readonly number[]
+  readonly value: number
+  readonly label: (choice: number) => string
+  readonly onSelect: (choice: number) => void
 }) {
   return (
-    <button
-      type="button"
-      onClick={onSelect}
-      aria-label={`Tier ${String(rank)}`}
-      aria-pressed={active}
-      className={cn(
-        'flex size-9 items-center justify-center rounded-lg border text-xs font-semibold transition-colors',
-        active
-          ? 'border-accent-500 bg-accent-500 text-black'
-          : 'border-ink-800 bg-ink-850 text-ink-500 hover:border-ink-700',
-      )}
-    >
-      {rank}
-    </button>
+    <div className="flex shrink-0 gap-1">
+      {choices.map((choice) => (
+        <button
+          key={choice}
+          type="button"
+          onClick={() => {
+            onSelect(choice)
+          }}
+          aria-label={label(choice)}
+          aria-pressed={value === choice}
+          className={cn(
+            'flex size-9 items-center justify-center rounded-lg border text-xs font-semibold transition-colors',
+            value === choice
+              ? 'border-accent-500 bg-accent-500 text-black'
+              : 'border-ink-800 bg-ink-850 text-ink-500 hover:border-ink-700',
+          )}
+        >
+          {choice}
+        </button>
+      ))}
+    </div>
   )
 }

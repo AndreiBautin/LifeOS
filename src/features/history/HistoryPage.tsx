@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom'
 
 import { useServices, useSettings } from '@/app/context'
 import type { Exercise } from '@/domain/exercises/exercise'
+import { weeklySetsFor } from '@/domain/volume/levels'
 import { MUSCLE_GROUP_LABELS, type MuscleGroup } from '@/domain/exercises/taxonomy'
 import type { ExerciseId, WorkoutId } from '@/domain/ids/ids'
 import type { WorkoutLog } from '@/domain/logging/workout-log'
@@ -114,22 +115,22 @@ export function HistoryPage() {
                 .filter((muscle) => weekVolume[muscle] > 0)
                 .sort((a, b) => weekVolume[b] - weekVolume[a])
                 .map((muscle) => {
-                  const landmarks = settings.landmarks[muscle]
+                  const target = weeklySetsFor(
+                    settings.muscleVolumes[muscle],
+                    settings.setsPerSession,
+                    false,
+                  )
                   const done = weekVolume[muscle]
                   return (
                     <li key={muscle}>
                       <div className="mb-1 flex justify-between text-sm">
                         <span className="text-ink-300">{MUSCLE_GROUP_LABELS[muscle]}</span>
                         <span className="numeric text-ink-500 text-xs">
-                          {displaySets(done)} / {landmarks.mev}–{landmarks.mav}
+                          {displaySets(done)}
+                          {target > 0 ? ` / ${String(target)}` : null}
                         </span>
                       </div>
-                      <VolumeBar
-                        done={done}
-                        mev={landmarks.mev}
-                        mav={landmarks.mav}
-                        mrv={landmarks.mrv}
-                      />
+                      <VolumeBar done={done} target={target} />
                     </li>
                   )
                 })}
@@ -321,29 +322,33 @@ function SessionRow({
  * communicates "under, in, or over" faster than a plotted series, and it
  * is the only question a lifter asks of this number.
  */
-function VolumeBar({
-  done,
-  mev,
-  mav,
-  mrv,
-}: {
-  readonly done: number
-  readonly mev: number
-  readonly mav: number
-  readonly mrv: number
-}) {
-  const scale = Math.max(mrv, done) || 1
+/**
+ * What was done against what was asked.
+ *
+ * This drew a *band* — MEV to MAV shaded, MRV as the scale — because a
+ * target used to be a point inside a range and landing anywhere in that
+ * range was the goal. There is no band now: there is a number, and the
+ * only questions are whether you reached it and how far past you went.
+ *
+ * A muscle with no target still gets a bar, because the sets were
+ * genuinely performed and hiding them would make the week look emptier
+ * than it was. It simply has nothing to be measured against.
+ */
+function VolumeBar({ done, target }: { readonly done: number; readonly target: number }) {
+  const scale = Math.max(target, done) || 1
   const pct = (value: number): number => Math.min(100, (value / scale) * 100)
 
-  const tone = done < mev ? 'bg-warn-500' : done > mrv ? 'bg-bad-500' : 'bg-good-500'
+  const tone = target <= 0 ? 'bg-ink-700' : done < target ? 'bg-warn-500' : 'bg-good-500'
 
   return (
     <div className="bg-ink-850 relative h-2 overflow-hidden rounded-full">
-      <div
-        className="bg-ink-800 absolute inset-y-0"
-        style={{ left: `${String(pct(mev))}%`, width: `${String(pct(mav) - pct(mev))}%` }}
-        aria-hidden
-      />
+      {target > 0 && (
+        <div
+          className="bg-ink-800 absolute inset-y-0"
+          style={{ left: `${String(pct(target))}%`, right: 0 }}
+          aria-hidden
+        />
+      )}
       <div
         className={`${tone} absolute inset-y-0 left-0`}
         style={{ width: `${String(pct(done))}%` }}

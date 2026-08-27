@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest'
 
-import { DEFAULT_MUSCLE_TIERS, DEFAULT_STRENGTH_TIERS } from '@/domain/priority/tiers'
-import { DEFAULT_LANDMARKS } from '@/domain/volume/landmarks'
+import type { MuscleGroup } from '@/domain/exercises/taxonomy'
+import { MUSCLE_GROUPS } from '@/domain/exercises/taxonomy'
+import type { LiftSessions } from '@/domain/priority/tiers'
+import { DEFAULT_LIFT_SESSIONS } from '@/domain/priority/tiers'
+import type { MuscleVolumes, VolumeLevel } from '@/domain/volume/levels'
+import { DEFAULT_MUSCLE_VOLUMES, DEFAULT_SETS_PER_SESSION } from '@/domain/volume/levels'
 
 import { describeBlock, explainVolume } from './explain'
 
@@ -9,198 +13,186 @@ import { describeBlock, explainVolume } from './explain'
  * The description is the one thing in the app a lifter cannot check.
  *
  * Every other number has a session or a bar behind it. A sentence saying
- * "everything else maintained" can be wrong for months without anything
- * contradicting it, which is why it is generated rather than written.
+ * "everything else is left to the competition lifts" can be wrong for
+ * months without anything contradicting it, which is why it is generated
+ * rather than written.
  */
 
-describe('naming a block from its tiers', () => {
+const sets = DEFAULT_SETS_PER_SESSION
+
+/** A volume map with only the named muscles trained. */
+const only = (
+  members: readonly MuscleGroup[],
+  sessionsPerWeek = 2,
+  level: VolumeLevel = 'low',
+): MuscleVolumes =>
+  Object.fromEntries(
+    MUSCLE_GROUPS.map((muscle) => [
+      muscle,
+      members.includes(muscle) ? { sessionsPerWeek, level } : { sessionsPerWeek: 0, level: 'low' },
+    ]),
+  ) as MuscleVolumes
+
+const evenLifts: LiftSessions = { squat: 2, bench: 2, deadlift: 2 }
+const benchLed: LiftSessions = { squat: 1, bench: 3, deadlift: 1 }
+
+describe('naming a block from its settings', () => {
   /*
-   * The shipped tiers specialise nothing, so the shipped block is
-   * general — and says so rather than borrowing a name from the tier
-   * below.
+   * The shipped settings train eight muscles identically, so nothing
+   * stands out and the block is general — it says so rather than listing
+   * all eight as though that were a name.
    *
    * Reads the defaults back, so it fails when they move. That is the
    * point: the name is the one line describing them and nobody would
    * otherwise notice it had gone stale.
    */
-  it('names it after what is actually specialised', () => {
-    const described = describeBlock(DEFAULT_MUSCLE_TIERS, DEFAULT_STRENGTH_TIERS)
+  it('names it after what actually stands out', () => {
+    const described = describeBlock(DEFAULT_MUSCLE_VOLUMES, sets, DEFAULT_LIFT_SESSIONS)
 
     expect(described.name).toBe('General')
-    expect(described.description).toContain(
-      'Back, chest, side delts, biceps, rear delts, triceps and calves building.',
-    )
-    expect(described.description).toContain(
-      'Quads, hamstrings, glutes, core, forearms, traps and front delts maintained.',
-    )
+    expect(described.description).toContain('at low volume.')
+    expect(described.description).toContain('left to the competition lifts.')
   })
 
-  /*
-   * A default block leads with no lift, because all three are building.
-   * The sentence has to be absent rather than name one of them — "bench
-   * press leads the strength work" would be a claim about a decision the
-   * lifter has not made.
-   */
-  it('claims no lead lift when none is specialised', () => {
-    const described = describeBlock(DEFAULT_MUSCLE_TIERS, DEFAULT_STRENGTH_TIERS)
+  it('claims no lead lift when every lift is trained the same', () => {
+    const described = describeBlock(DEFAULT_MUSCLE_VOLUMES, sets, DEFAULT_LIFT_SESSIONS)
 
     expect(described.description).not.toContain('leads the strength work')
     expect(described.focus.lifts).toBeUndefined()
   })
 
-  it('follows a tier when it moves', () => {
-    // The failure this replaces: the block went on calling itself an arms
-    // specialisation after the arms had been moved down.
-    const chestFocus = describeBlock(
-      [
-        { rank: 1, members: ['chest'], label: 'Specialising' },
-        { rank: 2, members: ['triceps'], label: 'Building' },
-        { rank: 3, members: ['biceps'], label: 'Maintaining' },
-      ],
-      [
-        { rank: 1, members: ['bench'], label: 'Specialising' },
-        { rank: 2, members: ['squat', 'deadlift'], label: 'Building' },
-      ],
-    )
+  /*
+   * The focus is whatever gets the most weekly sets, which is a real
+   * change of meaning from "what is in tier 1" and a better one: a lifter
+   * who trains their chest twice as hard has emphasised it whether or not
+   * they ever opened a tier list.
+   */
+  it('follows the emphasis when it moves', () => {
+    const volumes: MuscleVolumes = {
+      ...only(['chest', 'lats']),
+      chest: { sessionsPerWeek: 3, level: 'high' },
+    }
 
-    expect(chestFocus.name).toBe('Chest · Bench press strength')
-    expect(chestFocus.description).toContain('Chest specialised.')
-    expect(chestFocus.description).toContain('Triceps building.')
-    expect(chestFocus.description).toContain('Biceps maintained.')
+    const described = describeBlock(volumes, sets, benchLed)
+
+    expect(described.name).toBe('Chest · Bench press strength')
+    expect(described.description).toContain('Chest at high volume.')
+    expect(described.description).toContain('Lats at low volume.')
   })
 
   it('collapses a full muscle group into one word', () => {
-    const armsAndLegs = describeBlock(
-      [{ rank: 1, members: ['biceps', 'triceps', 'forearms'], label: 'Specialising' }],
-      [
-        { rank: 1, members: ['bench'], label: 'Specialising' },
-        { rank: 2, members: ['squat', 'deadlift'], label: 'Building' },
-      ],
-    )
+    const volumes: MuscleVolumes = {
+      ...only(['biceps', 'triceps', 'forearms', 'chest']),
+      biceps: { sessionsPerWeek: 3, level: 'high' },
+      triceps: { sessionsPerWeek: 3, level: 'high' },
+      forearms: { sessionsPerWeek: 3, level: 'high' },
+    }
 
-    expect(armsAndLegs.name).toBe('Arms · Bench press strength')
+    expect(describeBlock(volumes, sets, benchLed).name).toBe('Arms · Bench press strength')
   })
 
   it('does not collapse a partial group', () => {
-    // Prioritising biceps alone is not prioritising arms, and saying so
+    // Emphasising biceps alone is not emphasising arms, and saying so
     // would misdescribe the block in the direction of flattery.
-    const bicepsOnly = describeBlock(
-      [{ rank: 1, members: ['biceps', 'triceps'], label: 'Specialising' }],
-      [
-        { rank: 1, members: ['bench'], label: 'Specialising' },
-        { rank: 2, members: ['squat', 'deadlift'], label: 'Building' },
-      ],
-    )
+    const volumes: MuscleVolumes = {
+      ...only(['biceps', 'triceps', 'chest']),
+      biceps: { sessionsPerWeek: 3, level: 'high' },
+      triceps: { sessionsPerWeek: 3, level: 'high' },
+    }
 
-    expect(bicepsOnly.name).toBe('Biceps and triceps · Bench press strength')
+    // Named in taxonomy order, which puts the triceps first — the list
+    // is generated from MUSCLE_GROUPS rather than from the tier list a
+    // lifter typed, so it does not carry their ordering.
+    expect(describeBlock(volumes, sets, benchLed).name).toBe(
+      'Triceps and biceps · Bench press strength',
+    )
   })
 
   it('names the lift leading the strength work', () => {
-    const described = describeBlock(DEFAULT_MUSCLE_TIERS, [
-      { rank: 1, members: ['bench'], label: 'Specialising' },
-      { rank: 2, members: ['squat', 'deadlift'], label: 'Building' },
-    ])
-
-    expect(described.description).toContain('Bench press leads the strength work.')
+    expect(describeBlock(DEFAULT_MUSCLE_VOLUMES, sets, benchLed).description).toContain(
+      'Bench press leads the strength work.',
+    )
   })
 
   /*
    * A block has two focuses and the title used to carry one. Two blocks
-   * with identical volume tiers, one leading with the bench and one with
-   * the deadlift, are different blocks and were indistinguishable by name.
+   * with identical volume, one leading with the bench and one with the
+   * deadlift, are different blocks and were indistinguishable by name.
    */
   it('carries the strength focus in the title, not only the volume focus', () => {
-    const volume = [
-      { rank: 1, members: ['chest'] as const, label: 'Specialising' },
-      { rank: 2, members: ['lats'] as const, label: 'Building' },
-    ]
+    const volumes: MuscleVolumes = {
+      ...only(['chest', 'lats']),
+      chest: { sessionsPerWeek: 3, level: 'high' },
+    }
 
-    const benchLed = describeBlock(volume, [
-      { rank: 1, members: ['bench'], label: 'Specialising' },
-      { rank: 2, members: ['squat', 'deadlift'], label: 'Building' },
-    ])
-    const deadliftLed = describeBlock(volume, [
-      { rank: 1, members: ['deadlift'], label: 'Specialising' },
-      { rank: 2, members: ['squat', 'bench'], label: 'Building' },
-    ])
+    const bench = describeBlock(volumes, sets, benchLed)
+    const deadlift = describeBlock(volumes, sets, { squat: 1, bench: 1, deadlift: 3 })
 
-    // Same volume tiers, different lead lift: two different blocks, and
-    // they must not share a name.
-    expect(benchLed.name).toBe('Chest · Bench press strength')
-    expect(deadliftLed.name).toBe('Chest · Deadlift strength')
+    expect(bench.name).toBe('Chest · Bench press strength')
+    expect(deadlift.name).toBe('Chest · Deadlift strength')
   })
 
   it('names every lead lift when more than one leads', () => {
-    const twoLifts = describeBlock(DEFAULT_MUSCLE_TIERS, [
-      { rank: 1, members: ['squat', 'deadlift'], label: 'Specialising' },
-      { rank: 2, members: ['bench'], label: 'Building' },
-    ])
+    const twoLifts = describeBlock(DEFAULT_MUSCLE_VOLUMES, sets, {
+      squat: 3,
+      bench: 1,
+      deadlift: 3,
+    })
 
     expect(twoLifts.name).toContain('Squat and deadlift strength')
   })
 
   it('falls back to the volume focus alone when no lift leads', () => {
-    const flat = describeBlock(
-      [{ rank: 1, members: ['chest'], label: 'Specialising' }],
-      [{ rank: 2, members: ['squat', 'bench', 'deadlift'], label: 'Building' }],
-    )
+    const volumes: MuscleVolumes = {
+      ...only(['chest', 'lats']),
+      chest: { sessionsPerWeek: 3, level: 'high' },
+    }
 
-    expect(flat.name).toBe('Chest')
+    expect(describeBlock(volumes, sets, evenLifts).name).toBe('Chest')
   })
 })
 
 describe('explaining the volume', () => {
-  const plan = explainVolume(DEFAULT_MUSCLE_TIERS, DEFAULT_STRENGTH_TIERS, DEFAULT_LANDMARKS)
+  const plan = explainVolume(DEFAULT_MUSCLE_VOLUMES, sets, DEFAULT_LIFT_SESSIONS)
 
   it('gives every muscle a reason naming its inputs', () => {
     for (const muscle of plan.muscles) {
-      expect(muscle.reason, muscle.label).toMatch(/Tier \d of \d/)
-      expect(muscle.reason, muscle.label).toMatch(/sets|no dedicated work/)
+      expect(muscle.reason, muscle.label).toMatch(/sessions a week|Not trained directly/)
     }
   })
 
   /*
-   * The bottom of the range is zero now, not MV.
-   *
-   * This asserted every target sat inside MV–MRV, which was true while
-   * the bottom tier meant "a reduced amount" and stopped being true when
-   * it came to mean "none". A maintained muscle is below its own MV on
-   * purpose: MV keeps a muscle from shrinking through direct work, and
-   * these are held up by the competition lifts instead.
+   * Weekly sets are sessions times sets per session and nothing else.
+   * Asserted against the settings rather than against a constant, so the
+   * arithmetic is what is under test rather than today's defaults.
    */
-  it('reports a target of zero or something inside the landmark band', () => {
+  it('reports weekly sets as the two settings multiplied', () => {
     for (const muscle of plan.muscles) {
-      expect(muscle.weeklySets, muscle.label).toBeLessThanOrEqual(muscle.landmarks.mrv)
-      expect(muscle.weeklySets, muscle.label).toBeGreaterThanOrEqual(0)
-
-      if (muscle.tier < 3) {
-        expect(muscle.weeklySets, muscle.label).toBeGreaterThanOrEqual(muscle.landmarks.mev)
-      } else {
-        expect(muscle.weeklySets, muscle.label).toBe(0)
-      }
+      expect(muscle.weeklySets, muscle.label).toBe(muscle.sessionsPerWeek * muscle.setsPerSession)
     }
   })
 
-  /*
-   * Three tiers exist so the middle one can say "still progressing, just
-   * not the priority". All three lifts sit there by default now, which
-   * makes this the ordinary case rather than the spare one — but it is
-   * still worth pinning that a lift moved *out* of it reads differently.
-   */
-  it('describes a middle-tier lift as building rather than maintained', () => {
-    const middle = explainVolume(
-      DEFAULT_MUSCLE_TIERS,
-      [
-        { rank: 1, members: ['bench'], label: 'Specialising' },
-        { rank: 2, members: ['squat'], label: 'Building' },
-        { rank: 3, members: ['deadlift'], label: 'Maintaining' },
-      ],
-      DEFAULT_LANDMARKS,
+  it('reports a muscle with no sessions as getting nothing', () => {
+    for (const muscle of plan.muscles) {
+      if (muscle.sessionsPerWeek > 0) continue
+
+      expect(muscle.weeklySets, muscle.label).toBe(0)
+      expect(muscle.band, muscle.label).toBe('maintaining')
+    }
+  })
+
+  it('counts only the muscles that get dedicated work', () => {
+    expect(plan.trainedCount).toBe(plan.muscles.filter((entry) => entry.weeklySets > 0).length)
+    expect(plan.totalWeeklySets).toBe(
+      plan.muscles.reduce((total, entry) => total + entry.weeklySets, 0),
     )
+  })
 
-    const squat = middle.lifts.find((lift) => lift.lift === 'squat')
+  it('describes a lift that is not trained at all', () => {
+    const none = explainVolume(DEFAULT_MUSCLE_VOLUMES, sets, { squat: 0, bench: 2, deadlift: 2 })
+    const squat = none.lifts.find((lift) => lift.lift === 'squat')
 
-    expect(squat?.tier).toBe(2)
-    expect(squat?.reason).toMatch(/^Building/)
+    expect(squat?.sessionsPerWeek).toBe(0)
+    expect(squat?.reason).toBe('Not trained this block.')
   })
 })
