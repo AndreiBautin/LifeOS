@@ -53,223 +53,86 @@ export const STRENGTH_LIFT_LABELS: Record<StrengthLift, string> = {
 export type StrengthTiers = readonly Tier<StrengthLift>[]
 
 /* -------------------------------------------------------------------- */
-/* Where a tier sits, and how hard we are allowed to push                */
+/* What a tier is worth                                                  */
 /* -------------------------------------------------------------------- */
 
 /**
- * Where the top and bottom of the ordering land inside a muscle's band.
+ * Three tiers, three answers, and no arithmetic in between.
  *
- * Chosen against the landmarks rather than as round numbers.
- * {@link weeklyTargetFor} puts MEV at 0.25 and MAV at 0.75, so the top
- * tier sits just past MAV — the top of the adaptive range, with the last
- * week before a deload overreaching past it — and the bottom sits just
- * under MEV, which is what maintenance means.
+ * ```
+ *   tier 1   MRV   ten sets a week, twice, five a session
+ *   tier 2   MEV   six sets a week, twice, three a session
+ *   tier 3   none  no dedicated work at all
+ * ```
+ *
+ * This replaced a mapping that put each tier at a *position* between 0 and
+ * 1, lerped that position through four anchors — MV, MEV, MAV, ceiling —
+ * and clamped the result to what the tier's frequency could deliver. Every
+ * piece of it was there for a reason and it took four constants and three
+ * paragraphs to say what the table above says in three lines. Worse, the
+ * numbers it produced could not be predicted from the tier list: moving a
+ * muscle changed its target by an amount you had to run the code to learn.
+ *
+ * What was lost, so nobody rediscovers it as a surprise. The old mapping
+ * spread muscles smoothly through the productive band, so a four-tier or
+ * two-tier list still made sense and a muscle could sit *between* MEV and
+ * MRV. Now a tier list with more than three tiers has nothing to say about
+ * the fourth, and there is no way to ask for eight sets. If that becomes a
+ * real need, the honest fix is a fourth row in this table rather than a
+ * return to interpolation.
+ *
+ * The pairing with the slot rule is the part worth keeping in mind: five
+ * sets a session is `MAX_DIRECT_SETS_PER_SESSION` and three is
+ * `minSetsPerSlot`, so with one exercise per muscle per session a tier
+ * chooses which end of the 3–5 range that exercise sits at. Nothing else
+ * needs deciding.
  */
-export const TOP_TIER_POSITION = 0.8
-export const BOTTOM_TIER_POSITION = 0.15
+function targetForRank(rank: number, landmarks: VolumeLandmarks): number {
+  const asked = rank === 1 ? landmarks.mrv : rank === 2 ? landmarks.mev : 0
 
-/**
- * A muscle's position in its own band, 0 (MV) to 1 (just under MRV).
- *
- * **Depends on the muscle's own rank and nothing else.** There used to be
- * a `spreadFactor` here that scaled the whole mapping by how crowded the
- * top tier was, on the reasoning that prioritising eight things is not
- * prioritising. The reasoning is sound and the implementation was not:
- * it made every target depend on every other muscle's placement, so
- * moving the biceps out of tier 1 silently raised the side delts from 22
- * sets to 24, and a lifter could not say "these five matter to me"
- * without the app quietly renegotiating. Priority became a zero-sum game
- * played against yourself, with the rules hidden inside a curve.
- *
- * The constraint it was reaching for is real, but it is a **capacity**
- * constraint, not a scaling one, and it belongs where it can be seen: the
- * plan reports what the tiers ask for against what the week actually
- * delivers. Asking for more than five sessions can hold is a thing to be
- * told, not a thing to be silently corrected.
- *
- * Returned as a position rather than a set count so the caller can decide
- * what to do with it — the same position means different absolute volumes
- * for calves and for quads, which is the entire point of per-muscle
- * landmarks.
- */
-export function priorityPosition<T extends string>(tiers: readonly Tier<T>[], member: T): number {
   /*
-   * Every declared tier counts, empty ones included.
+   * Held to what the tier's sessions can actually deliver.
    *
-   * This used to filter to the tiers with members in them, so the
-   * ordering was the one you had *expressed* rather than the one you had
-   * *declared*. Defensible in isolation and wrong beside
-   * `TIER_FREQUENCY`, which has always read the declared rank: with the
-   * top tier emptied, one function called tier 2 the top of the ordering
-   * and handed it a near-MAV target while the other called it rank 2 and
-   * bought two sessions. Thirteen sets asked, ten deliverable, and no
-   * amount of training fixes a disagreement between two rules.
-   *
-   * The visible consequence is that emptying a tier now means something.
-   * Moving every muscle from tier 1 to tier 2 used to change nothing at
-   * all — the relative ordering was identical, so every target was — and
-   * "these are all secondary now" is a sentence a lifter is entitled to
-   * be able to say.
-   *
-   * It also fixes the mirror case, which was live and silent: declaring
-   * three tiers and leaving the *bottom* one empty put the building
-   * muscles at maintenance volume.
+   * Reads as redundant against the shipped numbers — tier 1 asks for MRV,
+   * MRV is ten, and two sessions of five is ten — and it is not, because
+   * the check-in loop raises MRV. A lifter who keeps recovering early at
+   * their ceiling has that ceiling moved up, and without this the target
+   * would follow it past anything two sessions can hold and sit on the
+   * Plan screen as a shortfall nobody could close.
    */
-  const ordered = [...tiers].sort((a, b) => a.rank - b.rank)
-
-  const index = ordered.findIndex((tier) => tier.members.includes(member))
-  // Anything not placed in a tier is treated as lowest priority rather
-  // than as an error: a new muscle group should not break a program.
-  if (index === -1) return BOTTOM_TIER_POSITION
-
-  // One tier is a statement that nothing is prioritised over anything
-  // else, so everything lands in the middle of the range.
-  if (ordered.length === 1) return (TOP_TIER_POSITION + BOTTOM_TIER_POSITION) / 2
-
-  const step = index / (ordered.length - 1)
-  return clamp01(TOP_TIER_POSITION - step * (TOP_TIER_POSITION - BOTTOM_TIER_POSITION))
+  return Math.min(asked, reachableWeeklySets(rank))
 }
 
-/**
- * Turns a position into a weekly set target.
- *
- * The top of the range is deliberately **not** MRV. MRV is the volume
- * beyond which you stop recovering; a block that targets it has no
- * headroom for a bad night's sleep, and arriving there in week two means
- * the rest of the block is spent digging out. `overreach` lifts the
- * ceiling to MRV for the single week before a deload, which is the one
- * time accumulating more fatigue than you can clear is the plan.
- */
-export interface VolumeTargetOptions {
-  readonly overreach?: boolean
-}
-
-/**
- * Where MEV and MAV sit inside the 0–1 position range.
- *
- * Four anchors rather than two: MV at the bottom, then MEV, then MAV, then
- * the ceiling. The obvious two-anchor version — MV → MEV → ceiling with
- * MEV at the midpoint — puts the middle tier of a three-tier structure at
- * exactly MEV, and MEV is the least volume that grows anything: a muscle
- * sitting on it has no margin for a bad week.
- *
- * MEV was at 0.25, which left the whole productive band to the middle of
- * the ordering. That was right while the middle was a middle — tier 1 held
- * three muscles, tier 2 was genuinely secondary, and a tier-2 muscle
- * landing forty-five per cent of the way from MEV to MAV was a fair
- * reading of "building".
- *
- * It stopped being right when eight muscles ended up in tier 2 with
- * nothing above them. Forty-five per cent of the band, eight times over,
- * is a ninety-minute upper day — and the session ceiling that used to hide
- * that is gone, so the ask now arrives in full as session length. At 0.4 a
- * tier-2 muscle lands one or two sets above its own MEV, which is what
- * "closer to MEV" means without being *at* it.
- *
- * The tier-3 consequence is real, and measuring it corrected what I
- * expected. The MV→MEV segment stretches, so a maintained muscle's ask
- * drops — traps, core and glutes fall to a single set. I assumed they
- * would then fall under the three-set slot floor and get nothing, and they
- * do not: the main fill skips them, and the frequency backfill still
- * places a three-set slot, because a muscle its tier says to train once a
- * week cannot be trained in one set. So they come out *over* ask, at 3
- * against 1, rather than absent.
- *
- * That overshoot is the floor being honest about the smallest useful dose
- * rather than a bug, but it is worth knowing the bottom tier does not mean
- * zero even when its number rounds to one.
- */
-const MEV_POSITION = 0.4
-const MAV_POSITION = 0.75
-
-export function weeklyTargetFor(
-  landmarks: VolumeLandmarks,
-  position: number,
-  options: VolumeTargetOptions = {},
-): number {
-  const p = clamp01(position)
-  const ceiling = options.overreach === true ? landmarks.mrv : justUnder(landmarks)
-
-  const value =
-    p <= MEV_POSITION
-      ? lerp(landmarks.mv, landmarks.mev, p / MEV_POSITION)
-      : p <= MAV_POSITION
-        ? lerp(landmarks.mev, landmarks.mav, (p - MEV_POSITION) / (MAV_POSITION - MEV_POSITION))
-        : lerp(landmarks.mav, ceiling, (p - MAV_POSITION) / (1 - MAV_POSITION))
-
-  return Math.max(0, Math.round(value))
-}
-
-/**
- * One set below MRV, or the top of the adaptive band if the two are
- * adjacent. The gap is what leaves room to have a bad week without the
- * block ending early.
- */
-function justUnder(landmarks: VolumeLandmarks): number {
-  return Math.max(landmarks.mav, landmarks.mrv - 1)
-}
-
-/* -------------------------------------------------------------------- */
-/* The target, week by week                                              */
-/* -------------------------------------------------------------------- */
-
-/**
- * The target for a specific week of a block.
- *
- * Flat across the working weeks, and maintenance on the deload. There is
- * no ramp and no overreach week.
- *
- * There was: week one opened near MEV, the target climbed across the
- * block, and the last working week touched MRV because a deload followed
- * it. That is defensible periodisation and it cost more than it paid
- * here. Every measurement of the program had to name a week to mean
- * anything, every screen showing volume had to pick one, and the Program
- * page carried a tab per week for six weeks that differed only by a
- * gradient nobody had asked to see. A block whose weeks are the same is a
- * block you can describe in one screen.
- *
- * What the ramp was for has not gone away — it is autoregulated instead.
- * RTS moves the strength loads set by set, and the check-ins move the
- * landmarks on evidence. Progression comes from those, not from a curve
- * laid down before the block started.
- *
- * The week index and the block length went with it. They were the whole
- * reason this took five arguments, and keeping them as ignored
- * parameters would have left every call site claiming a dependency that
- * no longer exists.
- */
 /** Which tier a member sits in. Unplaced members are treated as bottom. */
 export function tierRankOf<T extends string>(tiers: readonly Tier<T>[], member: T): number {
   return tiers.find((tier) => tier.members.includes(member))?.rank ?? tiers.length
 }
 
 /**
- * The target for one member of a tier list — position *and* reach.
+ * A member's weekly set target: its tier's number, and nothing else.
  *
- * The only entry point callers should use. {@link weeklyTargetFor} is the
- * primitive underneath it and knows nothing about frequency, which is
- * exactly the gap this closes: a position says how hard to push inside a
- * band, and a rank says how many sessions there are to push in. Both are
- * needed and only one of them was being asked.
- *
- * Written as one function rather than a clamp each caller applies because
- * there are three call sites — the assembler, the explanation and the tier
- * editor — and a rule living in each of them is a rule the next one will
- * miss. That failure would be quiet in the worst way: the editor would
- * promise thirteen sets, the assembler would deliver ten, and the Plan
- * screen would report the difference as the lifter's week being too
- * small.
+ * The only entry point callers should use. There are three — the
+ * assembler, the explanation and the tier editor — and when the rule lived
+ * partly in each of them they disagreed: the editor promised thirteen
+ * sets, the assembler delivered ten, and the Plan screen reported the
+ * difference as the lifter's week being too small.
  */
 export function weeklyTargetForMember<T extends string>(
   tiers: readonly Tier<T>[],
   member: T,
   landmarks: VolumeLandmarks,
-  options: VolumeTargetOptions = {},
 ): number {
-  const target = weeklyTargetFor(landmarks, priorityPosition(tiers, member), options)
-  return Math.min(target, reachableWeeklySets(tierRankOf(tiers, member)))
+  return targetForRank(tierRankOf(tiers, member), landmarks)
 }
 
+/**
+ * The target for a specific week of a block.
+ *
+ * Flat across the working weeks, and MV on the deload **whatever the
+ * tier** — a deload is a week off from the tier list, not a scaled-down
+ * version of it. There is no ramp: see the note in `CLAUDE.md` on why
+ * every working week is identical.
+ */
 export function weeklyTargetForWeek<T extends string>(
   tiers: readonly Tier<T>[],
   member: T,
@@ -422,16 +285,6 @@ export const DEFAULT_MUSCLE_TIERS: MuscleTiers = [
     label: 'Maintaining',
   },
 ]
-
-/* -------------------------------------------------------------------- */
-
-function clamp01(value: number): number {
-  return Math.min(1, Math.max(0, value))
-}
-
-function lerp(from: number, to: number, t: number): number {
-  return from + (to - from) * t
-}
 
 /* -------------------------------------------------------------------- */
 /* Priority as frequency                                                 */

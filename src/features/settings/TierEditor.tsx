@@ -123,11 +123,11 @@ export function TierEditor({
         <h3 className="text-ink-50 mb-1 text-sm font-semibold">Muscles</h3>
 
         <p className="text-ink-500 mb-3 text-xs">
-          Tier 1 sits at the top of a muscle's adaptive range, tier 3 at maintenance. Each number
-          depends on that muscle's tier and its own landmarks — moving one muscle never changes
-          another's. A tier also caps the number: it buys the sessions to deliver it, and a session
-          holds five direct sets, so tier 2 tops out at ten however high the band goes. Whether the
-          total fits in your week is on the Plan screen.
+          Three tiers, three numbers. Tier 1 is maximum recoverable volume, tier 2 is minimum
+          effective volume, and tier 3 is no dedicated work at all — the competition lifts are what
+          holds those up. Both trained tiers run twice a week, so a tier-1 muscle gets five sets a
+          session and a tier-2 muscle three. Whether the total fits in your week is on the Plan
+          screen.
         </p>
 
         <ul className="space-y-1.5">

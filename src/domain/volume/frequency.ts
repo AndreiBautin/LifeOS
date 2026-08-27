@@ -43,7 +43,7 @@ export const MAX_DIRECT_SETS_PER_SESSION = 5
  * happen to be accountable". A tier-1 muscle in a five-upper-day split
  * used to be trained five times; it is trained three times.
  */
-export const MAX_FREQUENCY = 3
+export const MAX_FREQUENCY = 2
 
 /**
  * The most direct volume a week can hold for one muscle.
@@ -65,10 +65,29 @@ export const MAX_WEEKLY_DIRECT_SETS = MAX_DIRECT_SETS_PER_SESSION * MAX_FREQUENC
  * them, tier 2 two thirds — which meant the answer moved when the split
  * did, and a tier-2 muscle on a two-day pool rounded down to one.
  */
+/**
+ * Sessions a week, by tier. Two, two, and none.
+ *
+ * Tier 1 and tier 2 differ in *volume*, not in how often — ten sets a week
+ * against six, both split across two sessions, so five sets a session
+ * against three. Those are exactly the per-slot ceiling and the per-slot
+ * floor, which is not a coincidence: one exercise per muscle per session
+ * means a tier picks which end of the 3–5 range that exercise sits at.
+ *
+ * Tier 3 is zero, and zero is the whole rule — a maintained muscle gets no
+ * dedicated work at all and lives on what the competition lifts pay it.
+ * It used to mean one session at a reduced target, which produced two-set
+ * shrugs and hanging leg raises for muscles the lifter had explicitly
+ * deprioritised.
+ *
+ * Tier 1 was three sessions a week. Nothing has three upper days to spend
+ * them on, so it bought a session that could not be scheduled and showed
+ * up as a permanent shortfall.
+ */
 export const TIER_FREQUENCY: Readonly<Record<number, number>> = {
-  1: MAX_FREQUENCY,
+  1: 2,
   2: 2,
-  3: 1,
+  3: 0,
 }
 
 /**

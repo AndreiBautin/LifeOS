@@ -753,6 +753,22 @@ function fillHypertrophy(args: FillArgs): BuiltSlots {
     return addInto(total, slotVolume(exercise, slot.sets))
   }, emptyVolumeMap())
 
+  /**
+   * The smallest slot this muscle may get.
+   *
+   * Three sets normally, and never more than the muscle's entire weekly
+   * target — a floor above the ask is a floor that schedules nothing.
+   *
+   * The deload is what forced this to be written down. It targets MV,
+   * which is two sets, so a flat floor of three meant no accessory work
+   * could be placed at all and "everything drops to MV" delivered zero
+   * rather than two. Zero is a defensible deload and it is not the rule
+   * that was asked for, and the gap between those two is exactly the kind
+   * of thing a constant decides silently.
+   */
+  const floorFor = (muscle: MuscleGroup): number =>
+    Math.min(recipe.minSetsPerSlot, args.targets[muscle])
+
   /** Places one pass of accessory work, neediest muscle first. */
   const fillFor = (
     muscles: readonly MuscleGroup[],
@@ -777,7 +793,7 @@ function fillHypertrophy(args: FillArgs): BuiltSlots {
             daysAvailableFor(muscle, args.split),
           ) - args.directDays[muscle],
       }))
-      .filter((entry) => entry.owed >= recipe.minSetsPerSlot)
+      .filter((entry) => entry.owed >= floorFor(entry.muscle))
       /*
        * Frequency first, then need.
        *
@@ -819,7 +835,7 @@ function fillHypertrophy(args: FillArgs): BuiltSlots {
         recipe,
         addInto(committed, added),
       )
-      if (setCount < recipe.minSetsPerSlot) continue
+      if (setCount < floorFor(muscle)) continue
 
       const sets = hypertrophySets(exercise, setCount)
 
@@ -1073,15 +1089,46 @@ function shareOwed(
    * share whether one of them finished in forty minutes and the other in
    * eighty.
    */
-  const frequency = requiredFrequency(
-    tierRankOf(args.recipe.muscleTiers, muscle),
-    daysAvailableFor(muscle, args.split),
-  )
+  /*
+   * One session on a deload, whatever the tier says.
+   *
+   * Frequency exists to spread a weekly target so no single session is
+   * unrecoverable. A deload's target is MV — two sets — and spreading two
+   * sets over two sessions asks for one set each, which is under any
+   * sensible slot and so gets scheduled as nothing at all. Splitting a
+   * dose that small is solving a problem the dose does not have.
+   */
+  const frequency = args.isDeload
+    ? 1
+    : requiredFrequency(
+        tierRankOf(args.recipe.muscleTiers, muscle),
+        daysAvailableFor(muscle, args.split),
+      )
 
   const dose = setsPerSession(args.targets[muscle], frequency)
 
   const remaining = Math.max(0, args.targets[muscle] - committed[muscle])
-  const sessionsLeft = 1 + args.remainingDays.filter((day) => day.muscles.includes(muscle)).length
+
+  /*
+   * Sessions this muscle will actually get, not days that could give it
+   * one.
+   *
+   * Those are the same number whenever the frequency matches the days
+   * accountable for a muscle, which is every working week — a tier-2
+   * upper muscle wants two sessions and there are two upper days. They
+   * come apart on the deload, where frequency drops to one and there are
+   * still two upper days, and the day count then divides the dose by a
+   * session that is never going to happen.
+   *
+   * The visible symptom was a lopsided deload: Monday's share came out at
+   * half the target, fell under the slot floor, and was skipped — so every
+   * muscle waited for the second upper day and Thursday arrived carrying
+   * nine exercises while Monday had none.
+   */
+  const sessionsPlanned = Math.max(1, frequency - args.directDays[muscle])
+  const daysThatCouldTrainIt =
+    1 + args.remainingDays.filter((day) => day.muscles.includes(muscle)).length
+  const sessionsLeft = Math.min(daysThatCouldTrainIt, sessionsPlanned)
   const share = remaining / Math.max(1, sessionsLeft)
 
   /*

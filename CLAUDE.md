@@ -128,66 +128,68 @@ take four or five of them and arrive at thirteen exercises of two sets —
 inside the minute budget, and the shape splitting the volume was meant to
 avoid.
 
-**Priority maps straight onto frequency.** Tier 1 is trained three times
-a week, tier 2 twice, tier 3 once — `TIER_FREQUENCY` in
-`domain/volume/frequency.ts`, capped only by how many days are
-accountable for the muscle.
+**The whole hypertrophy model is three lines, and keeping it that way is
+the point.**
 
-`setsPerSession` then divides the weekly target across those sessions and
-caps it at `MAX_DIRECT_SETS_PER_SESSION`.
+```
+  tier 1   MRV    ten sets a week, twice, five a session
+  tier 2   MEV    six sets a week, twice, three a session
+  tier 3   none   no dedicated work at all
+  deload   MV     two sets, once, whatever the tier
+```
 
-The shipped tiers top out at 2, and tier 1 is deliberately empty rather
-than deleted. A four-day upper/lower week has two upper days and two lower
-ones, so tier 1 would buy a third session that does not exist; leaving the
-tier visible is what keeps the trade legible — it is what a fifth day
-would buy.
+`targetForRank` in `domain/priority/tiers.ts` and `TIER_FREQUENCY` in
+`domain/volume/frequency.ts`. **The landmarks are the same three numbers
+for every muscle** — MV 2, MEV 6, MRV 10, `STARTING_LANDMARKS` — so a tier
+name and a landmark name are between them the entire derivation.
 
-It has been wrong twice in opposite directions, which is why it is
-stated so plainly now. First it was volume-driven — divide the target by
-the ceiling and take the answer — which produced a frequency table
-nobody could predict from their own tier list. Then it was a _share_ of
-the accountable days, tier 2 getting two thirds of them, which moved
-when the split moved and rounded down to one on a two-day pool. A fixed
-count is the only version you can say out loud without knowing the
-split. **Frequency counts direct work only** (`trainedDirectly`); half
-credit is right for volume and wrong here.
+Five sets a session is `MAX_DIRECT_SETS_PER_SESSION` and three is
+`minSetsPerSlot`. Not a coincidence: with one exercise per muscle per
+session, a tier is choosing which end of the 3–5 range that exercise sits
+at. If those numbers drift apart a tier will ask for a slot the fill
+cannot build, so `tiers.test.ts` → "divide into whole slots at both
+tiers" holds them together.
 
-**Three numbers have to agree, so two of them are derived.** Five direct
-sets a session (`MAX_DIRECT_SETS_PER_SESSION`) on at most three sessions
-(`MAX_FREQUENCY`) is fifteen, and `MAX_WEEKLY_DIRECT_SETS` is that
-multiplication rather than a fourth constant to keep in step. The
-published landmarks are then clamped to it — `PUBLISHED_LANDMARKS` keeps
-the citation, `DEFAULT_LANDMARKS` is what the app uses. Above fifteen
-describes volume this app will never schedule, and a target nothing can
-reach is a permanent shortfall on the Plan screen that trains you to
-ignore the screen.
+**What this replaced, so nobody rebuilds it by accident.** Targets used to
+come from a _position_ between 0 and 1: a tier chose a position, the
+position was lerped through four anchors — MV, MEV, MAV, ceiling — and the
+result was clamped to what the tier's frequency could deliver. Landmarks
+were per-muscle, derived from RP's published table through a two-thirds
+factor for direct-only credit and a clamp for what a week could schedule.
+Every piece had a reason and the whole thing took four constants, a
+fifteen-row table and several paragraphs to explain, and produced numbers
+you had to run the code to predict.
 
-**The same clamp applies one tier down, and forgetting that was a real
-bug.** `reachableWeeklySets(rank)` is the tier's frequency times the
-per-session ceiling — fifteen, ten, five — and
-`weeklyTargetForMember` is the only way to ask for a target, so no
-caller can skip it. Clamping only at the top stayed invisible while the
-top tier had members: `priorityPosition` promoted the highest _populated_
-tier to the top of the band while `TIER_FREQUENCY` read the _declared_
-rank, so with tier 1 emptied the side delts were asked for thirteen sets
-and bought two sessions to deliver ten in. Three sets short, permanently,
-and nothing a lifter could do about it — a disagreement between two rules
-wearing a capacity problem's clothes.
+What was genuinely lost is worth naming, because it will look like an
+oversight later. The side delts and the calves do recover faster than the
+quads and could take more; the flat table says they cannot. A muscle can
+no longer sit _between_ MEV and MRV, so there is no way to ask for eight
+sets, and a tier list with more than three tiers has nothing to say about
+the fourth. If any of that becomes a real need, the honest fix is another
+row in the table above — not a return to interpolation. Per-muscle numbers
+are the thing to reintroduce **from evidence**, one muscle at a time, once
+the check-in loop has produced some.
 
-**An empty tier still occupies its place in the ordering.**
-`priorityPosition` counts every declared tier. Filtering to the populated
-ones meant moving every muscle from tier 1 to tier 2 changed nothing at
-all — the relative ordering was identical, so every target was — and
-"these are all secondary now" is a sentence a lifter is entitled to say.
-The mirror case was live and silent: declaring three tiers and leaving the
-_bottom_ one empty gave the building muscles maintenance volume.
+**MAV survives and no longer decides anything.** Nothing reads it when
+computing a target. It is kept because `adjust-landmarks.ts` moves it, and
+moving it up past MRV is what raises MRV — a lifter who keeps recovering
+early at their ceiling has shown the ceiling was too low. That path is
+live, which is why `targetForRank` still clamps to
+`reachableWeeklySets(rank)`: it reads as redundant against the shipped
+numbers — tier 1 asks for MRV, MRV is ten, two sessions of five is ten —
+and without it a raised MRV would produce a target no week could reach.
 
-**MAV lands a set below MRV, not on it.** Clamping both to fifteen was
-the first attempt and it collapsed the gap `justUnder` depends on: with
-MAV equal to MRV a normal week targets maximum recoverable volume, which
-is the one thing the target is written never to do. Fourteen and fifteen
-also keeps the hardest week deliverable — fourteen across three sessions
-is 5/5/4.
+**Frequency counts direct work only** (`trainedDirectly`). `setsPerSession`
+divides the target across the sessions the tier bought and caps it at
+`MAX_DIRECT_SETS_PER_SESSION`.
+
+It has been wrong three times, which is why it is stated so plainly. It
+was volume-derived — divide the target by the ceiling and take the answer
+— which put the forearms on two sessions and the lats on three, so a
+tier-1 muscle was trained less often than a tier-2 one. Then it was a
+_share_ of the accountable days, which moved when the split moved. Then
+tier 1 bought three sessions, which no four-day split has three upper days
+to spend, so it asked for a session that could not be scheduled.
 
 **Priority buys strength frequency too, not a bigger fatigue
 allowance.** `strengthSessionsFor` — tier 1 three sessions a week, tier 2
@@ -284,13 +286,17 @@ A short day is information. A deadlift day with the legs on maintenance
 runs fifty minutes because that is what the tiers asked for, and the Plan
 screen reports what the week does and does not deliver.
 
-**The bottom tier is maintenance volume, not zero.** Easy to expect
-otherwise, because it _looks_ like zero for the legs: quads, hamstrings
-and glutes are maintained and receive no dedicated slot, since the squat
-and the deadlift already pay them past the ask. Core, forearms and traps
-are maintained too and nothing pays them — no competition lift trains them
-directly and secondary credit is gone — so they each get a small direct
-slot instead. Same rule, different arithmetic.
+**The bottom tier is zero, and one muscle pays for that.** Quads and
+glutes are maintained and fine, because the squat and the deadlift are
+scheduled _for_ them and pay well past what maintenance would ask. The
+trunk and the grip are maintained and get nothing, which is the intent.
+
+The hamstrings are the case to know about: no competition lift has them as
+its primary muscle, and secondary credit is gone, so at tier 3 they
+receive **literally nothing** — the Romanian deadlift that used to cover
+them was a tier-3 slot and tier 3 no longer has slots. If that is not
+wanted, the fix is to move them to tier 2 rather than to reintroduce a
+maintenance dose.
 
 **Every working week is identical.** `weeklyTargetForWeek` returns the
 target the priority asked for, and MV on the deload. There is no ramp.
@@ -618,45 +624,44 @@ eighteen. A day spends of it.
 The cap moves with the allowance too — the app materialises the cap as
 slots and counts them as volume, so a plan that is only correct if you
 stop early is not correct.
-**Where MEV sits in the band is the dial for how hard tier 2 is pushed.**
-`MEV_POSITION` in `domain/priority/tiers.ts`, 0.4. Four anchors — MV,
-MEV, MAV, ceiling — and a position between 0 and 1 lerps through them, so
-moving MEV up moves the whole middle of the ordering down toward it.
+**The deload is one session at MV, and three separate things had to give
+way for that to be true.** It targets two sets, and two sets will not
+survive any rule written for a working week.
 
-It was 0.25, which put a tier-2 muscle forty-five per cent of the way from
-MEV to MAV. Defensible while tier 2 was a genuine middle with three
-muscles above it, and wrong once eight muscles sat there with nothing
-above them: forty-five per cent of the band, eight times over, is a
-ninety-minute upper day, and the session ceiling that used to hide that is
-gone. At 0.4 a tier-2 muscle lands one to three sets above its own MEV.
+The frequency backfill does not run at all — it places at the slot floor,
+so it was putting three sets on both upper days regardless of the target,
+and the biceps came out at six in the deload and six in the peak week.
+Frequency is a means to volume, and on the one week where the goal is
+_less_ volume a floor that only ever adds has no business firing.
 
-**Measuring the tier-3 consequence corrected what I expected**, which is
-the reason it is written down. The MV→MEV segment stretches, so traps,
-core and glutes fall to an ask of one set. I assumed they would then fall
-under the three-set slot floor and get nothing. They do not: the main fill
-skips them and the frequency backfill still places three, because a muscle
-its tier says to train once a week cannot be trained in one set. They come
-out at 3 against 1 — over ask, not absent.
+`floorFor` caps the slot floor at the muscle's own weekly target, because
+a floor above the ask schedules nothing — a flat three meant "everything
+drops to MV" delivered zero rather than two.
 
-**The frequency backfill does not run on a deload.** Same floor, opposite
-effect. A deload targets MV, the main fill correctly declines to open a
-two-set slot, and the backfill put three sets on both upper days anyway —
-the biceps came out at six in the deload and six in the peak week, so the
-deload was not one. Frequency is a means to volume, and on the one week
-where the goal is _less_ volume a floor that only ever adds has no
-business firing. The cost is deliberate and worth knowing: several
-muscles get no direct work at all that week, biceps and triceps included.
+And `shareOwed` divides by the sessions a muscle will actually get rather
+than the days that could give it one. Those are the same number every
+working week and come apart on the deload, where frequency drops to one
+and both upper days remain accountable: the day count halved a two-set
+dose to one, put it under the floor, and every muscle waited for the last
+accountable day. The symptom was a deload where one upper session carried
+nine exercises and the other carried none.
 
-**A muscle's target depends on its own tier and nothing else.**
-`priorityPosition` maps rank onto a position between
-`BOTTOM_TIER_POSITION` and `TOP_TIER_POSITION` and stops there. There
-used to be a `spreadFactor` scaling the whole mapping by how crowded the
-top tier was — sound reasoning ("prioritising everything prioritises
-nothing"), catastrophic as an implementation. Every target depended on
-every other muscle's placement, so moving the biceps out of tier 1
-silently raised the side delts from 22 to 24 and pushed them past what
-the week could deliver. A lifter could not state a mental map without the
-app renegotiating it. **Do not reintroduce a cross-muscle term here.**
+Known wart: with frequency one, the muscles all land on the _first_
+accountable day, so a deload week is front-loaded — Monday 64 minutes of
+two-set work, Thursday 19. Balancing it needs a mechanism that does not
+exist and probably is not worth one.
+
+**A muscle's target depends on its own tier and nothing else.** A lookup
+makes this nearly impossible to break, which is exactly when the warning
+is worth keeping: there used to be a `spreadFactor` scaling every target
+by how crowded the top tier was — sound reasoning ("prioritising
+everything prioritises nothing"), catastrophic as an implementation. Every
+target depended on every other muscle's placement, so moving the biceps
+out of tier 1 silently raised the side delts from 22 to 24. A lifter could
+not state a mental map without the app renegotiating it. The idea will
+return as a reasonable suggestion rather than as a bug. **Do not
+reintroduce a cross-muscle term here** — `tiers.test.ts` → "a muscle tier
+changes that muscle and nothing else" is the guard.
 
 **"You cannot prioritise everything" is a capacity report, not a
 multiplier.** It lives on the Plan screen: the tiers state the ask, and
@@ -853,33 +858,40 @@ Plan screen as work that has to be scheduled, rather than hidden in a
 coefficient. That is the trade — a model you can audit by counting rows in
 a session, over one that was more nearly right and opaque.
 
-**The landmarks had to follow, and the measurement is the argument.**
+**The landmarks had to follow, and then stopped being a table at all.**
 Published landmarks are _total_ volume: every source producing them counts
-secondary involvement. Keeping them while crediting only direct work asked
-the week to schedule that whole total directly — measured at **eight
-muscles short by twenty-seven sets**, against four before. `DIRECT_ONLY`
-in `landmarks.ts` scales them to two thirds, which brought it back to
-five. It is this app's judgement rather than a citation, which is exactly
-why `PUBLISHED_LANDMARKS` is kept intact beside it.
+secondary involvement, so keeping them while crediting only direct work
+asked the week to schedule that whole total directly — measured at eight
+muscles short by twenty-seven sets. A `DIRECT_ONLY` factor of two thirds
+brought it back, and `PUBLISHED_LANDMARKS` was kept beside it as the
+citation.
+
+All of that is gone with the flat table. It is recorded here because the
+correction was right, and anyone reintroducing per-muscle landmarks has to
+make it again: **a published figure is total volume and this app counts
+direct sets**, so the two are not interchangeable and copying a table
+across will silently ask for half again as much work as it looks like.
 
 **`FREE_RIR` and `hypertrophyCredit` are gone**, and the note that used to
 be here explained why RPE-scaling mattered. It did. It also could not be
 checked by a person holding a training log, which turned out to matter
 more.
 
-**The forearms' MEV is structural, not a volume figure.** Flexion and
-extension are different movements and one session cannot be both, so the
-minimum has to exceed what a session holds or the fill trains one
-direction and calls the muscle done. `TWO_SESSION_MUSCLES` floors it at
-`MAX_DIRECT_SETS_PER_SESSION + 1`, derived rather than picked. Scaling it
-with everything else broke exactly this and a test caught it.
+**The forearms are trained both ways or not at all, and the shipped week
+picks "not at all".** Flexion and extension are different movements and
+one session cannot be both, so a forearm target that fits in a single
+session lets the fill train one direction and call the muscle done. That
+used to be handled by a structural MEV — `TWO_SESSION_MUSCLES` floored it
+above what a session holds — which the flat landmark table removed along
+with every other per-muscle number.
 
-**At tier 3 the forearms get one session and therefore one direction**,
-and the shipped tiers put them there. That is the model behaving
-correctly, not the rule above being violated — but it is worth knowing
-that the flexors then get nothing at all, because the pulls are strapped
-and no competition lift pays them either. The rule is still reachable from
-the tier editor and is tested through it.
+It does not currently matter, because the forearms are tier 3 and get
+nothing, and the pulls are strapped so no lift pays them either. It starts
+mattering the moment anyone promotes them: at tier 2 they get six sets
+across two sessions, and nothing now forces those two sessions to be
+different directions except the repeat penalty below.
+`rp-assemble.test.ts` → "trains the forearms both ways rather than twice
+the same way" builds that promotion itself and is the only thing watching.
 
 **The repeat penalty only sees movements it has been told about.** A
 reverse curl is pronated-grip elbow flexion — the wrist extensors hold the
@@ -924,11 +936,13 @@ something that is one line to reverse. The kettlebell swing is not on
 it — nobody straps a swing — and neither are the curls, whose forearm
 involvement is wrist and elbow work rather than grip.
 
-**The forearm landmarks were raised with it**, from MEV 2 to MEV 6. They
-were low for the reason the traps' are: nearly everything paid them.
-A landmark set against a source that no longer exists is a target the
-week meets on paper with two sets of curls — and at MEV 2 there was only
-ever room for one direct session, which cannot be both directions.
+The forearm landmarks were raised with it at the time, from MEV 2 to
+MEV 6 — a landmark set against a source that no longer exists is a target
+the week meets on paper with two sets of curls. The flat table has since
+removed every per-muscle landmark, so that correction now lives only as a
+reason to be careful: **strapping a lift silently removes a muscle's only
+source of work**, and nothing in the landmark numbers records which
+muscles depend on which lifts.
 
 **A timed set is costed by its duration.** `setSeconds` in
 `domain/programs/program.ts`. Counting a twenty-minute walk as one
@@ -997,18 +1011,18 @@ prescription becomes a wrong number.
 **Traps are their own muscle, split out of the upper back.** One
 group was covering two regions: a barbell row and a barbell shrug were
 both `upper-back` while training almost nothing in common, so rowing
-satisfied a target a shrug was then scheduled to fill. Traps carry a low
-MEV because nearly everything pays them — every deadlift, row and heavy
-carry loads them isometrically, and naming that credit is the point of
-the split.
+satisfied a target a shrug was then scheduled to fill. Traps used to carry a low MEV
+because nearly everything paid them — every deadlift, row and heavy carry
+loads them isometrically, and naming that credit was the point of the
+split.
 
-That credit is now zero, which is the thing to know before reading the
-low MEV as a mistake. The shipped week delivered 7.5 trap sets
-incidentally against a maintenance ask of 2 and scheduled no shrug;
-removing fractional credit for secondary movers took the 7.5 to 0, so the
-traps are the one muscle the four-day week cannot reach at all — 0 of 2,
-reported on the Plan screen. Raising the landmark would not help: nothing
-is short of trap _stimulus_, only of trap sets the accounting can see.
+That credit is now zero, and the landmark that recorded it is gone too.
+The shipped week delivered 7.5 trap sets incidentally against a
+maintenance ask of 2; removing fractional credit for secondary movers took
+the 7.5 to 0. The traps are tier 3 and ask for nothing, so the two
+cancel — but the split is still worth having, because a row and a shrug
+train almost nothing in common and one satisfying the other's target was
+the original bug.
 
 The trap that came with it: `MUSCLE_GROUP_LABELS` and
 `DEFAULT_LANDMARKS` are `Record<MuscleGroup, …>` so a new group fails the

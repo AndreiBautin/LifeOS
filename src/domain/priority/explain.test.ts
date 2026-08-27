@@ -155,14 +155,29 @@ describe('explaining the volume', () => {
   it('gives every muscle a reason naming its inputs', () => {
     for (const muscle of plan.muscles) {
       expect(muscle.reason, muscle.label).toMatch(/Tier \d of \d/)
-      expect(muscle.reason).toContain('hard sets a week')
+      expect(muscle.reason, muscle.label).toMatch(/sets|no dedicated work/)
     }
   })
 
-  it('reports the target inside the muscle’s own landmark band', () => {
+  /*
+   * The bottom of the range is zero now, not MV.
+   *
+   * This asserted every target sat inside MV–MRV, which was true while
+   * the bottom tier meant "a reduced amount" and stopped being true when
+   * it came to mean "none". A maintained muscle is below its own MV on
+   * purpose: MV keeps a muscle from shrinking through direct work, and
+   * these are held up by the competition lifts instead.
+   */
+  it('reports a target of zero or something inside the landmark band', () => {
     for (const muscle of plan.muscles) {
       expect(muscle.weeklySets, muscle.label).toBeLessThanOrEqual(muscle.landmarks.mrv)
-      expect(muscle.weeklySets, muscle.label).toBeGreaterThanOrEqual(muscle.landmarks.mv)
+      expect(muscle.weeklySets, muscle.label).toBeGreaterThanOrEqual(0)
+
+      if (muscle.tier < 3) {
+        expect(muscle.weeklySets, muscle.label).toBeGreaterThanOrEqual(muscle.landmarks.mev)
+      } else {
+        expect(muscle.weeklySets, muscle.label).toBe(0)
+      }
     }
   })
 

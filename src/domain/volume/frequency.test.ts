@@ -16,18 +16,27 @@ describe('requiredFrequency', () => {
    * muscle was trained less often than a tier-2 one. True to the
    * arithmetic and impossible to describe without reciting it.
    */
-  it('trains the top tier on every day accountable for it', () => {
-    expect(requiredFrequency(1, 3)).toBe(3)
+  /*
+   * Tier 1 and tier 2 are both twice a week. They differ in volume — ten
+   * sets against six — not in how often, so the same two sessions carry
+   * five sets each or three each.
+   *
+   * Tier 1 was three sessions. Nothing has three upper days to spend them
+   * on, so it bought a session that could not be scheduled and arrived as
+   * a permanent shortfall on the Plan screen.
+   */
+  it('trains the top two tiers twice a week', () => {
+    expect(requiredFrequency(1, 3)).toBe(2)
     expect(requiredFrequency(1, 2)).toBe(2)
-  })
-
-  it('trains the middle tier on most of them', () => {
     expect(requiredFrequency(2, 3)).toBe(2)
   })
 
-  it('trains a maintained muscle once', () => {
-    expect(requiredFrequency(3, 3)).toBe(1)
-    expect(requiredFrequency(3, 2)).toBe(1)
+  it('gives a maintained muscle no sessions at all', () => {
+    // Zero, not one. The bottom tier means no dedicated work — it used to
+    // mean one session at a reduced target, which produced two-set shrugs
+    // for muscles the lifter had explicitly deprioritised.
+    expect(requiredFrequency(3, 3)).toBe(0)
+    expect(requiredFrequency(3, 2)).toBe(0)
   })
 
   it('does not depend on how much volume the muscle is owed', () => {
@@ -96,6 +105,6 @@ describe('a middle tier on a two-day pool', () => {
   })
 
   it('does not promote maintenance by the same route', () => {
-    expect(requiredFrequency(3, 2)).toBe(1)
+    expect(requiredFrequency(3, 2)).toBe(0)
   })
 })

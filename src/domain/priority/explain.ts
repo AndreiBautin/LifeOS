@@ -2,13 +2,13 @@ import type { MuscleGroup } from '@/domain/exercises/taxonomy'
 import { MUSCLE_GROUP_LABELS, MUSCLE_GROUPS } from '@/domain/exercises/taxonomy'
 import type { MuscleTiers, StrengthLift, StrengthTiers } from '@/domain/priority/tiers'
 import {
-  priorityPosition,
   strengthSessionsFor,
   STRENGTH_LIFT_LABELS,
   STRENGTH_LIFTS,
   weeklyTargetForMember,
 } from '@/domain/priority/tiers'
-import type { LandmarkSet } from '@/domain/volume/landmarks'
+import { MAX_FREQUENCY, requiredFrequency } from '@/domain/volume/frequency'
+import type { LandmarkSet, VolumeLandmarks } from '@/domain/volume/landmarks'
 
 /**
  * Why each muscle is getting the volume it is getting.
@@ -33,8 +33,6 @@ export interface MuscleAllocation {
   readonly label: string
   readonly tier: number
   readonly tierLabel: string
-  /** 0–1: where inside the landmark band this muscle's target sits. */
-  readonly position: number
   readonly weeklySets: number
   readonly landmarks: {
     readonly mv: number
@@ -189,16 +187,26 @@ function sentenceCase(value: string): string {
   return value.charAt(0).toUpperCase() + value.slice(1)
 }
 
-function bandFor(position: number): Band {
-  if (position >= 0.6) return 'specialising'
-  if (position >= 0.3) return 'building'
+/*
+ * The band is the tier under another name, and saying so is the point.
+ *
+ * It used to be read back out of a position between 0 and 1 — the tier
+ * chose a position and the position chose a band — so a muscle could sit
+ * in tier 2 and be described as "specialising" if the numbers happened to
+ * land there. Two vocabularies for one decision, kept in step by
+ * arithmetic. A tier *is* a band now.
+ */
+function bandForRank(rank: number): Band {
+  if (rank === 1) return 'specialising'
+  if (rank === 2) return 'building'
   return 'maintaining'
 }
 
-const BAND_VERB: Record<Band, string> = {
-  specialising: 'pushed toward the top of',
-  building: 'set in the upper middle of',
-  maintaining: 'held near the bottom of',
+/** What each tier's number means, said in words rather than as a range. */
+const BAND_MEANING: Record<Band, (marks: VolumeLandmarks) => string> = {
+  specialising: (marks) => `maximum recoverable volume, ${String(marks.mrv)} sets`,
+  building: (marks) => `minimum effective volume, ${String(marks.mev)} sets`,
+  maintaining: () => 'no dedicated work',
 }
 
 export function explainVolume(
@@ -211,27 +219,34 @@ export function explainVolume(
   const muscles = MUSCLE_GROUPS.map((muscle): MuscleAllocation => {
     const tier = muscleTiers.find((candidate) => candidate.members.includes(muscle))
     const rank = tier?.rank ?? tierCount
-    const position = priorityPosition(muscleTiers, muscle)
     const marks = landmarks[muscle]
     const weeklySets = weeklyTargetForMember(muscleTiers, muscle, marks)
-    const band = bandFor(position)
-    const shareSize = tier?.members.length ?? 0
+    const band = bandForRank(rank)
+    const sessions = requiredFrequency(rank, MAX_FREQUENCY)
 
+    /*
+     * The whole derivation in one sentence, because there is now only
+     * one sentence's worth of it.
+     *
+     * It named the band the target was "pushed toward the top of" or
+     * "held near the bottom of", which honestly described an
+     * interpolation and is a strange thing to say about a lookup. It also
+     * reported how many muscles shared the tier — left over from when
+     * that changed the number, which it has not done for a long time.
+     */
     return {
       muscle,
       label: MUSCLE_GROUP_LABELS[muscle],
       tier: rank,
       tierLabel: tier?.label ?? `Tier ${String(rank)}`,
-      position,
       weeklySets,
       landmarks: { mv: marks.mv, mev: marks.mev, mav: marks.mav, mrv: marks.mrv },
       band,
       reason:
-        `Tier ${String(rank)} of ${String(tierCount)}` +
-        (shareSize > 1 ? `, shared with ${String(shareSize - 1)} other` : '') +
-        (shareSize > 2 ? 's' : '') +
-        `. Target ${BAND_VERB[band]} the ${String(marks.mev)}–${String(marks.mrv)} band` +
-        ` — ${String(weeklySets)} hard sets a week.`,
+        `Tier ${String(rank)} of ${String(tierCount)}: ${BAND_MEANING[band](marks)}` +
+        (sessions > 0
+          ? ` a week over ${String(sessions)} sessions — ${String(Math.round(weeklySets / sessions))} each.`
+          : ', so nothing is scheduled for it — what the competition lifts pay it is what it gets.'),
     }
   })
 

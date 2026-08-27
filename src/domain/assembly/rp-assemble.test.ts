@@ -7,7 +7,6 @@ import { asExerciseId, asProgramId, type IdGenerator } from '@/domain/ids/ids'
 import type { ProgramTemplate, ProgramWeek } from '@/domain/programs/program'
 import {
   DEFAULT_MUSCLE_TIERS,
-  priorityPosition,
   weeklyTargetForMember,
   weeklyTargetForWeek,
 } from '@/domain/priority/tiers'
@@ -1064,7 +1063,9 @@ describe('tiers driving volume', () => {
       { rank: 3, members: ['triceps'] as const, label: 'Maintaining' },
     ]
 
-    expect(priorityPosition(tiers, 'biceps')).toBeGreaterThan(priorityPosition(tiers, 'triceps'))
+    expect(weeklyTargetForMember(tiers, 'biceps', DEFAULT_LANDMARKS.biceps)).toBeGreaterThan(
+      weeklyTargetForMember(tiers, 'triceps', DEFAULT_LANDMARKS.triceps),
+    )
   })
 
   /*

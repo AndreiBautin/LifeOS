@@ -1,18 +1,14 @@
-import { MUSCLE_GROUPS } from '@/domain/exercises/taxonomy'
 import { describe, expect, it } from 'vitest'
 
 import type { MuscleGroup } from '@/domain/exercises/taxonomy'
+import { MUSCLE_GROUPS } from '@/domain/exercises/taxonomy'
 import { MAX_DIRECT_SETS_PER_SESSION, reachableWeeklySets } from '@/domain/volume/frequency'
-import { DEFAULT_LANDMARKS } from '@/domain/volume/landmarks'
+import { DEFAULT_LANDMARKS, STARTING_LANDMARKS } from '@/domain/volume/landmarks'
 
 import {
-  BOTTOM_TIER_POSITION,
   completeTiers,
   DEFAULT_MUSCLE_TIERS,
-  priorityPosition,
-  TOP_TIER_POSITION,
   validateTiers,
-  weeklyTargetFor,
   weeklyTargetForMember,
   weeklyTargetForWeek,
   type MuscleTiers,
@@ -20,220 +16,198 @@ import {
 
 const tier = (rank: number, members: MuscleGroup[]) => ({ rank, members })
 
+const marks = STARTING_LANDMARKS
+
 /*
- * The property a `spreadFactor` used to destroy.
+ * Three tiers, three answers, and nothing in between them.
  *
- * It scaled every target by how crowded the top tier was, so promoting
- * one muscle demoted the others by an amount nobody could see — moving
- * the biceps out of tier 1 silently raised the side delts from 22 sets
- * to 24. A lifter could not state a mental map, "these four matter to
- * me", without the app renegotiating it against them.
+ * This file used to test an interpolation: a tier chose a position
+ * between 0 and 1, the position was lerped through four landmark anchors,
+ * and the result was clamped to what the tier's frequency could deliver.
+ * Twenty tests covered the arithmetic — monotonicity, where MEV fell,
+ * what an empty tier did to the ordering — and every one of them was
+ * about machinery rather than about training.
  *
- * Independence is what is worth protecting here. Whether the total fits
- * in a week is a real constraint and a separate question, answered by
- * measuring the program the assembler builds rather than by bending the
- * targets until they look affordable.
+ * There is no arithmetic left to test. What is worth pinning is that the
+ * three answers are the three landmarks, that they cannot be reached by
+ * any other route, and the two things the old machinery got right and a
+ * lookup could plausibly get wrong: a muscle's target must not depend on
+ * any other muscle, and the deload must ignore the tier list entirely.
+ */
+describe('what a tier is worth', () => {
+  const tiers: MuscleTiers = [tier(1, ['chest']), tier(2, ['lats']), tier(3, ['calves'])]
+
+  it('gives the top tier maximum recoverable volume', () => {
+    expect(weeklyTargetForMember(tiers, 'chest', marks)).toBe(marks.mrv)
+  })
+
+  it('gives the middle tier minimum effective volume', () => {
+    expect(weeklyTargetForMember(tiers, 'lats', marks)).toBe(marks.mev)
+  })
+
+  it('gives the bottom tier no dedicated work at all', () => {
+    // Zero, not "a little". A maintained muscle lives on what the
+    // competition lifts pay it, which for the quads and glutes is well
+    // past this and for the trunk is nothing.
+    expect(weeklyTargetForMember(tiers, 'calves', marks)).toBe(0)
+  })
+
+  it('puts an untiered muscle at the bottom rather than erroring', () => {
+    // A new muscle group should not break a program.
+    expect(weeklyTargetForMember(tiers, 'core', marks)).toBe(0)
+  })
+
+  it('treats every member of a tier identically', () => {
+    const members: MuscleGroup[] = ['lats', 'biceps', 'calves']
+    const shared: MuscleTiers = [tier(1, []), tier(2, members), tier(3, [])]
+
+    const targets = members.map((muscle) => weeklyTargetForMember(shared, muscle, marks))
+
+    expect(new Set(targets).size).toBe(1)
+  })
+})
+
+/*
+ * The property a `spreadFactor` used to destroy, kept because the
+ * temptation that produced it is perennial.
+ *
+ * It scaled every target by how crowded the top tier was — sound
+ * reasoning, since prioritising eight things is not prioritising — and it
+ * made every target depend on every other muscle's placement. Moving the
+ * biceps out of tier 1 silently raised the side delts. A lifter could not
+ * state "these four matter to me" without the app renegotiating it.
+ *
+ * A lookup makes this almost impossible to break, which is exactly when a
+ * guard is worth keeping: the next version of the idea will arrive as a
+ * reasonable-sounding suggestion, not as a bug.
  */
 describe('a muscle tier changes that muscle and nothing else', () => {
   const base: MuscleTiers = [tier(1, ['side-delts']), tier(2, ['chest']), tier(3, ['calves'])]
-  const promoted: MuscleTiers = [
+  const crowded: MuscleTiers = [
     tier(1, ['side-delts', 'biceps', 'triceps', 'forearms']),
     tier(2, ['chest']),
     tier(3, ['calves']),
   ]
 
   it('leaves the top tier untouched when three more muscles join it', () => {
-    expect(priorityPosition(promoted, 'side-delts')).toBe(priorityPosition(base, 'side-delts'))
+    expect(weeklyTargetForMember(crowded, 'side-delts', marks)).toBe(
+      weeklyTargetForMember(base, 'side-delts', marks),
+    )
   })
 
   it('leaves the lower tiers untouched too', () => {
-    expect(priorityPosition(promoted, 'chest')).toBe(priorityPosition(base, 'chest'))
-    expect(priorityPosition(promoted, 'calves')).toBe(priorityPosition(base, 'calves'))
+    expect(weeklyTargetForMember(crowded, 'chest', marks)).toBe(
+      weeklyTargetForMember(base, 'chest', marks),
+    )
+    expect(weeklyTargetForMember(crowded, 'calves', marks)).toBe(
+      weeklyTargetForMember(base, 'calves', marks),
+    )
   })
 
-  it('gives a newly promoted muscle the same position as the rest of its tier', () => {
-    expect(priorityPosition(promoted, 'biceps')).toBe(priorityPosition(promoted, 'side-delts'))
-  })
-
-  it('anchors the ends of the ordering where the landmarks are', () => {
-    expect(priorityPosition(base, 'side-delts')).toBeCloseTo(TOP_TIER_POSITION, 6)
-    expect(priorityPosition(base, 'calves')).toBeCloseTo(BOTTOM_TIER_POSITION, 6)
-  })
-
-  it('puts an untiered muscle at the bottom rather than erroring', () => {
-    expect(priorityPosition(base, 'core')).toBeCloseTo(BOTTOM_TIER_POSITION, 6)
-  })
-
-  it('expresses no preference when a single tier holds everything', () => {
-    const flat: MuscleTiers = [tier(1, ['chest', 'lats', 'quads'])]
-    const middle = (TOP_TIER_POSITION + BOTTOM_TIER_POSITION) / 2
-
-    expect(priorityPosition(flat, 'chest')).toBe(middle)
-    expect(priorityPosition(flat, 'quads')).toBe(middle)
-  })
-})
-
-describe('priority position', () => {
-  it('puts the top tier high and the bottom tier low', () => {
-    const tiers: MuscleTiers = [tier(1, ['chest']), tier(2, ['lats']), tier(3, ['calves'])]
-
-    const top = priorityPosition(tiers, 'chest')
-    const middle = priorityPosition(tiers, 'lats')
-    const bottom = priorityPosition(tiers, 'calves')
-
-    expect(top).toBeGreaterThan(middle)
-    expect(middle).toBeGreaterThan(bottom)
-    expect(top).toBeGreaterThan(0.5)
-    expect(bottom).toBeLessThan(0.5)
+  it('gives a newly promoted muscle the same target as the rest of its tier', () => {
+    expect(weeklyTargetForMember(crowded, 'biceps', marks)).toBe(
+      weeklyTargetForMember(crowded, 'side-delts', marks),
+    )
   })
 
   /*
-   * An empty tier still occupies its place in the ordering.
-   *
-   * This filtered empty tiers out, so the ordering was the one you had
-   * expressed rather than the one you had declared — and moving every
-   * muscle down from tier 1 to tier 2 changed nothing at all, because the
-   * relative ordering was identical. `TIER_FREQUENCY` meanwhile read the
-   * declared rank the whole time, so the two disagreed about what a tier
-   * was: one handed tier 2 a top-of-band target and the other bought it
-   * two sessions to deliver it in.
+   * An empty tier is not a missing one. Emptying tier 1 must not promote
+   * tier 2 into its place — that bug was live for a while, and it handed
+   * tier 2 a top-of-band target while the frequency table still bought it
+   * two sessions, so the ask was three sets larger than anything could
+   * deliver.
    */
-  it('lowers what is below an emptied tier rather than promoting it', () => {
-    const withTop: MuscleTiers = [tier(1, ['chest']), tier(2, ['lats']), tier(3, ['calves'])]
-    const topEmptied: MuscleTiers = [tier(1, []), tier(2, ['lats']), tier(3, ['calves'])]
+  it('does not promote a lower tier when the one above it is emptied', () => {
+    const emptied: MuscleTiers = [tier(1, []), tier(2, ['lats']), tier(3, [])]
+    const populated: MuscleTiers = [tier(1, ['chest']), tier(2, ['lats']), tier(3, [])]
 
-    expect(priorityPosition(topEmptied, 'lats')).toBe(priorityPosition(withTop, 'lats'))
-    expect(priorityPosition(topEmptied, 'lats')).toBeLessThan(TOP_TIER_POSITION)
-  })
-
-  /*
-   * The mirror case, which was live and silent: declare three tiers,
-   * leave the bottom one empty, and the muscles you called "building"
-   * were given maintenance volume.
-   */
-  it('does not drop the middle tier to the floor when the bottom is empty', () => {
-    const bottomEmpty: MuscleTiers = [tier(1, ['chest']), tier(2, ['lats']), tier(3, [])]
-
-    expect(priorityPosition(bottomEmpty, 'lats')).toBeGreaterThan(BOTTOM_TIER_POSITION)
-  })
-
-  it('treats every member of a tier identically', () => {
-    // A tier is a statement about rank and nothing else — two muscles
-    // sharing one must produce the same position, whichever they are.
-    for (const tier of DEFAULT_MUSCLE_TIERS) {
-      if (tier.members.length < 2) continue
-
-      const positions = tier.members.map((muscle) => priorityPosition(DEFAULT_MUSCLE_TIERS, muscle))
-
-      expect(new Set(positions).size, tier.label).toBe(1)
-    }
-  })
-
-  it('places an untiered muscle at the bottom rather than throwing', () => {
-    const position = priorityPosition(DEFAULT_MUSCLE_TIERS, 'front-delts')
-    expect(position).toBeGreaterThanOrEqual(0)
-    expect(position).toBeLessThanOrEqual(1)
-  })
-})
-
-describe('turning a position into a weekly target', () => {
-  const chest = DEFAULT_LANDMARKS.chest
-
-  it('never reaches maximum recoverable volume in a normal week', () => {
-    // MRV is the point past which you stop recovering. A block that
-    // targets it has no room for a bad night, and arriving there early
-    // means the rest of the block is spent digging out.
-    expect(weeklyTargetFor(chest, 1)).toBeLessThan(chest.mrv)
-  })
-
-  it('allows the ceiling only when deliberately overreaching', () => {
-    expect(weeklyTargetFor(chest, 1, { overreach: true })).toBe(chest.mrv)
-  })
-
-  it('lands at minimum effective volume a quarter of the way up', () => {
-    expect(weeklyTargetFor(chest, 0.25)).toBe(chest.mev)
-  })
-
-  it('puts the middle of the ordering in the productive band, not at its floor', () => {
-    // A muscle a lifter named as one to build should get building volume.
-    const middle = weeklyTargetFor(chest, 0.5)
-    expect(middle).toBeGreaterThan(chest.mev)
-    expect(middle).toBeLessThan(chest.mav)
-  })
-
-  it('drops toward maintenance at the bottom', () => {
-    expect(weeklyTargetFor(chest, 0)).toBe(chest.mv)
-  })
-
-  it('is monotonic in position', () => {
-    const targets = [0, 0.25, 0.5, 0.75, 1].map((p) => weeklyTargetFor(chest, p))
-    const sorted = [...targets].sort((a, b) => a - b)
-
-    expect(targets).toEqual(sorted)
+    expect(weeklyTargetForMember(emptied, 'lats', marks)).toBe(
+      weeklyTargetForMember(populated, 'lats', marks),
+    )
+    expect(weeklyTargetForMember(emptied, 'lats', marks)).toBe(marks.mev)
   })
 })
 
 describe('the target, week by week', () => {
-  const biceps = DEFAULT_LANDMARKS.biceps
-
   it('is the same in every working week', () => {
     const weeks = [0, 1, 2, 3, 4, 5].map(() =>
-      weeklyTargetForWeek(DEFAULT_MUSCLE_TIERS, 'biceps', biceps, false),
+      weeklyTargetForWeek(DEFAULT_MUSCLE_TIERS, 'biceps', marks, false),
     )
 
     expect(new Set(weeks).size).toBe(1)
   })
 
   it('is the target the priority asked for, with no week-dependent discount', () => {
-    expect(weeklyTargetForWeek(DEFAULT_MUSCLE_TIERS, 'biceps', biceps, false)).toBe(
-      weeklyTargetForMember(DEFAULT_MUSCLE_TIERS, 'biceps', biceps),
+    expect(weeklyTargetForWeek(DEFAULT_MUSCLE_TIERS, 'biceps', marks, false)).toBe(
+      weeklyTargetForMember(DEFAULT_MUSCLE_TIERS, 'biceps', marks),
     )
   })
 
-  it('never overreaches past maximum recoverable volume', () => {
-    const peak = weeklyTargetForWeek([tier(1, ['biceps'])], 'biceps', biceps, false)
+  /*
+   * The deload ignores the tier list, and that is the point of it.
+   *
+   * Every muscle drops to MV whatever its tier — a deload is a week off
+   * from the priority ordering rather than a scaled-down version of it —
+   * so a tier-1 muscle and a tier-3 one get the same two sets.
+   */
+  it('drops everything to maintenance on the deload, whatever its tier', () => {
+    const tiers: MuscleTiers = [tier(1, ['chest']), tier(2, ['lats']), tier(3, ['calves'])]
 
-    // The ramp used to spend its last working week above MAV and touch
-    // MRV exactly once. Flat means the ceiling is the ceiling: the top
-    // of the band is where a specialised muscle sits all block, and
-    // nothing is left to climb into.
-    expect(peak).toBeLessThanOrEqual(biceps.mrv)
-  })
-
-  it('drops to maintenance on the deload', () => {
-    expect(weeklyTargetForWeek(DEFAULT_MUSCLE_TIERS, 'biceps', biceps, true)).toBe(biceps.mv)
-  })
-
-  it('keeps a deprioritised muscle near maintenance', () => {
-    const calves = DEFAULT_LANDMARKS.calves
-
-    const weeks = [0, 2, 5].map(() =>
-      weeklyTargetForWeek(DEFAULT_MUSCLE_TIERS, 'quads', calves, false),
-    )
-
-    for (const target of weeks) {
-      expect(target).toBeLessThan(calves.mav)
+    for (const muscle of ['chest', 'lats', 'calves'] as const) {
+      expect(weeklyTargetForWeek(tiers, muscle, marks, true), muscle).toBe(marks.mv)
     }
   })
 
   /*
-   * The ask is bounded by the week that has to deliver it.
+   * The ask is bounded by the sessions that have to deliver it.
    *
-   * A tier buys a frequency and a session holds five direct sets, so a
-   * tier-2 muscle can be handed ten sets and no more however high its
-   * landmarks reach. Without this the tier editor promised thirteen, the
-   * assembler delivered ten, and the Plan screen reported the difference
-   * as a capacity problem — three sets a lifter could not have found
-   * anywhere, because they did not exist.
+   * Reads as redundant against the shipped numbers — tier 1 asks for MRV,
+   * MRV is ten, two sessions of five is ten — and it is not, because the
+   * check-in loop raises MRV. Without this the target follows it past
+   * anything two sessions can hold and sits on the Plan screen as a
+   * shortfall nobody can close.
    */
-  it('never asks for more volume than the tier’s frequency can deliver', () => {
-    const sideDelts = DEFAULT_LANDMARKS['side-delts']
-    const tiers: MuscleTiers = [tier(1, []), tier(2, ['side-delts']), tier(3, [])]
+  it('never asks for more volume than the tier’s sessions can deliver', () => {
+    const raised = { ...marks, mrv: 40, mav: 30 }
+    const tiers: MuscleTiers = [tier(1, ['side-delts']), tier(2, []), tier(3, [])]
 
-    expect(weeklyTargetForMember(tiers, 'side-delts', sideDelts)).toBeLessThanOrEqual(
-      reachableWeeklySets(2),
-    )
-    expect(reachableWeeklySets(2)).toBe(MAX_DIRECT_SETS_PER_SESSION * 2)
+    expect(weeklyTargetForMember(tiers, 'side-delts', raised)).toBe(reachableWeeklySets(1))
+    expect(reachableWeeklySets(1)).toBe(MAX_DIRECT_SETS_PER_SESSION * 2)
+  })
+})
+
+/*
+ * One set of numbers, the same for every muscle.
+ *
+ * The per-muscle table is gone and this is what replaced it. Worth a test
+ * because the flatness is the simplification: if a future edit reintroduces
+ * per-muscle numbers it should be a deliberate act with its own reasoning,
+ * not something that creeps back in one muscle at a time.
+ */
+describe('the starting landmarks', () => {
+  it('are two, six and ten', () => {
+    expect(STARTING_LANDMARKS.mv).toBe(2)
+    expect(STARTING_LANDMARKS.mev).toBe(6)
+    expect(STARTING_LANDMARKS.mrv).toBe(10)
+  })
+
+  it('are the same for every muscle group', () => {
+    for (const muscle of MUSCLE_GROUPS) {
+      expect(DEFAULT_LANDMARKS[muscle], muscle).toEqual(STARTING_LANDMARKS)
+    }
+  })
+
+  /*
+   * A tier-2 muscle gets three sets a session and a tier-1 muscle five,
+   * which are exactly the slot floor and the slot ceiling. Not a
+   * coincidence and worth pinning: with one exercise per muscle per
+   * session, the tier is choosing which end of the 3–5 range that
+   * exercise sits at, and numbers that drifted out of step would leave a
+   * tier asking for a slot the fill cannot build.
+   */
+  it('divide into whole slots at both tiers', () => {
+    expect(STARTING_LANDMARKS.mev / 2).toBe(3)
+    expect(STARTING_LANDMARKS.mrv / 2).toBe(MAX_DIRECT_SETS_PER_SESSION)
   })
 })
 

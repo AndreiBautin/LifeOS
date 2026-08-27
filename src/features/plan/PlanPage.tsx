@@ -7,6 +7,7 @@ import type { Exercise } from '@/domain/exercises/exercise'
 import type { ExerciseId } from '@/domain/ids/ids'
 import { attributeWeek } from '@/domain/volume/attribution'
 import { explainVolume, type Band, type MuscleAllocation } from '@/domain/priority/explain'
+import { MAX_FREQUENCY, requiredFrequency } from '@/domain/volume/frequency'
 import { Badge, Card, Section } from '@/components/shared/primitives'
 import { buttonStyles } from '@/components/shared/styles'
 import { cn } from '@/lib/cn'
@@ -161,13 +162,7 @@ export function PlanPage() {
             title={`Tier ${String(tier.rank)} — ${tier.label}`}
             description={`${String(tier.muscles.reduce((total, entry) => total + entry.weeklySets, 0))} hard sets a week across ${String(tier.muscles.length)} muscles`}
           >
-            <Card>
-              <ul className="space-y-3">
-                {tier.muscles.map((muscle) => (
-                  <MuscleRow key={muscle.muscle} allocation={muscle} />
-                ))}
-              </ul>
-            </Card>
+            <TierCard muscles={tier.muscles} />
           </Section>
         ),
       )}
@@ -177,8 +172,9 @@ export function PlanPage() {
       <Section title="Change any of it">
         <Card className="space-y-3">
           <p className="text-ink-300 text-sm">
-            These numbers come from three inputs: which tier each muscle is in, the landmark band
-            for that muscle, and nothing else. Both are in Settings.
+            Two inputs and no arithmetic between them: which tier a muscle is in, and the three
+            landmarks every muscle shares. Tier 1 gets MRV, tier 2 gets MEV, tier 3 gets nothing,
+            and a deload drops all of them to MV. Both inputs are in Settings.
           </p>
           <Link to="/settings" className={cn(buttonStyles({ variant: 'outline' }), 'w-full')}>
             Edit priorities and landmarks
@@ -189,60 +185,94 @@ export function PlanPage() {
   )
 }
 
-function MuscleRow({ allocation }: { readonly allocation: MuscleAllocation }) {
-  const { landmarks: marks, weeklySets } = allocation
+/**
+ * One card per tier, not one per muscle.
+ *
+ * Every muscle used to get a landmark bar, four numbers under it and a
+ * sentence explaining its own derivation. That was worth the space while
+ * the derivation was per-muscle: the landmarks differed, the target was
+ * interpolated inside them, and the bar showed where in its own band a
+ * muscle had landed.
+ *
+ * None of that is true now. The landmarks are the same three numbers for
+ * every muscle and the target is the tier, so the old layout printed "MV 2
+ * MEV 6 MAV 8 MRV 10" fifteen times and the same sentence eight times —
+ * a screen insisting on a per-muscle reason that no longer exists, which
+ * is worse than saying nothing because it implies there is something to
+ * compare.
+ *
+ * So: the rule once, then the muscles it applies to.
+ */
+function TierCard({ muscles }: { readonly muscles: readonly MuscleAllocation[] }) {
+  const first = muscles[0]
+  if (first === undefined) return null
 
-  // Where the target sits across the full MV→MRV range, for the bar.
-  const span = Math.max(1, marks.mrv - marks.mv)
-  const fill = Math.max(0, Math.min(1, (weeklySets - marks.mv) / span))
-  const mevMark = Math.max(0, Math.min(1, (marks.mev - marks.mv) / span))
-  const mavMark = Math.max(0, Math.min(1, (marks.mav - marks.mv) / span))
+  const { landmarks: marks, weeklySets, band } = first
+  const sessions = requiredFrequency(first.tier, MAX_FREQUENCY)
 
   return (
-    <li>
+    <Card className="space-y-3">
       <div className="flex items-baseline justify-between gap-2">
-        <span className="text-ink-50 text-sm font-medium">{allocation.label}</span>
-        <span className="numeric text-ink-50 text-sm font-semibold">
+        <span className="numeric text-ink-50 text-lg font-semibold">
           {weeklySets}
-          <span className="text-ink-500 font-normal"> sets</span>
+          <span className="text-ink-500 text-sm font-normal"> sets a week</span>
+        </span>
+        <span className="text-ink-500 numeric text-xs">
+          {sessions > 0
+            ? `${String(sessions)} × ${String(Math.round(weeklySets / sessions))} sets`
+            : 'nothing scheduled'}
         </span>
       </div>
 
-      {/* MV at the left, MRV at the right, with MEV and MAV marked. */}
-      <div className="bg-ink-850 relative mt-1.5 h-2 overflow-hidden rounded-full">
-        <div
-          className={cn(
-            'h-full rounded-full',
-            BAND_TONE[allocation.band] === 'accent'
-              ? 'bg-accent-500'
-              : BAND_TONE[allocation.band] === 'good'
-                ? 'bg-good-500'
-                : 'bg-ink-700',
-          )}
-          style={{ width: `${String(Math.round(fill * 100))}%` }}
-        />
-        <span
-          className="bg-ink-500/70 absolute top-0 h-full w-px"
-          style={{ left: `${String(Math.round(mevMark * 100))}%` }}
-          aria-hidden
-        />
-        <span
-          className="bg-ink-500/70 absolute top-0 h-full w-px"
-          style={{ left: `${String(Math.round(mavMark * 100))}%` }}
-          aria-hidden
-        />
+      {/* MV at the left, MRV at the right, with MEV marked. */}
+      <div>
+        <div className="bg-ink-850 relative h-2 overflow-hidden rounded-full">
+          <div
+            className={cn(
+              'h-full rounded-full',
+              BAND_TONE[band] === 'accent'
+                ? 'bg-accent-500'
+                : BAND_TONE[band] === 'good'
+                  ? 'bg-good-500'
+                  : 'bg-ink-700',
+            )}
+            style={{
+              width: `${String(Math.round(fractionOfBand(weeklySets, marks) * 100))}%`,
+            }}
+          />
+          <span
+            className="bg-ink-500/70 absolute top-0 h-full w-px"
+            style={{
+              left: `${String(Math.round(fractionOfBand(marks.mev, marks) * 100))}%`,
+            }}
+            aria-hidden
+          />
+        </div>
+
+        <div className="text-ink-500 numeric mt-1 flex justify-between text-[11px]">
+          <span>MV {marks.mv}</span>
+          <span>MEV {marks.mev}</span>
+          <span>MRV {marks.mrv}</span>
+        </div>
       </div>
 
-      <div className="text-ink-500 numeric mt-1 flex justify-between text-[11px]">
-        <span>MV {marks.mv}</span>
-        <span>MEV {marks.mev}</span>
-        <span>MAV {marks.mav}</span>
-        <span>MRV {marks.mrv}</span>
-      </div>
+      <p className="text-ink-500 text-xs">{first.reason}</p>
 
-      <p className="text-ink-500 mt-1 text-xs">{allocation.reason}</p>
-    </li>
+      <ul className="flex flex-wrap gap-x-3 gap-y-1">
+        {muscles.map((muscle) => (
+          <li key={muscle.muscle} className="text-ink-300 text-sm">
+            {muscle.label}
+          </li>
+        ))}
+      </ul>
+    </Card>
   )
+}
+
+/** Where a set count sits across the full MV→MRV range, for the bar. */
+function fractionOfBand(sets: number, marks: MuscleAllocation['landmarks']): number {
+  const span = Math.max(1, marks.mrv - marks.mv)
+  return Math.max(0, Math.min(1, (sets - marks.mv) / span))
 }
 
 /**
