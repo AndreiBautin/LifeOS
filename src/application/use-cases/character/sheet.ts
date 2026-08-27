@@ -89,6 +89,18 @@ export interface CharacterSheet {
 export type SheetDeps = ReviewDeps
 
 /**
+ * When an act happened, for the ones that can say.
+ *
+ * Every act is dated by the record it is derived from — a workout's
+ * `date`, a progress entry's `date`, an action's `completedAt`, a place's
+ * `dateVisited`. That is what lets one tally serve "all time" and "this
+ * season" without a second implementation to drift from the first.
+ */
+export type Within = (isoDate: string) => boolean
+
+const ALWAYS: Within = () => true
+
+/**
  * How many times each act has happened, counted from the records.
  *
  * Every entry here is a derivation, not a read of a stored counter. The
@@ -97,9 +109,18 @@ export type SheetDeps = ReviewDeps
  * throws one away. It cannot survive a restore either.
  *
  * An act the hub cannot yet witness is simply absent, which costs zero XP
- * rather than a wrong number.
+ * rather than a wrong number. So is an act whose record carries no date —
+ * in **every** window, the all-time one included. That looks strict and is
+ * the only choice that keeps all-time equal to the sum of the seasons:
+ * counting an undated act once in the total and never in a season would
+ * leave two numbers on the same screen that quietly disagree. Every
+ * operation that performs an act stamps it, so this only excludes records
+ * that were already malformed.
  */
-export async function tallyActs(deps: SheetDeps): Promise<Readonly<Record<string, number>>> {
+export async function tallyActs(
+  deps: SheetDeps,
+  within: Within = ALWAYS,
+): Promise<Readonly<Record<string, number>>> {
   const [workouts, items, projects, places] = await Promise.all([
     deps.workouts.recent(500),
     deps.items.all(),
@@ -107,7 +128,10 @@ export async function tallyActs(deps: SheetDeps): Promise<Readonly<Record<string
     deps.places.all(),
   ])
 
-  const completed = workouts.filter((log) => log.status === 'completed')
+  /** No date, no act — see the note above on why this holds even all-time. */
+  const dated = (date: string | undefined): boolean => date !== undefined && within(date)
+
+  const completed = workouts.filter((log) => log.status === 'completed' && within(log.date))
 
   return {
     'training.session-finished': completed.length,
@@ -119,16 +143,19 @@ export async function tallyActs(deps: SheetDeps): Promise<Readonly<Record<string
     // keyed by day, so logging twice against the same item on the same
     // afternoon is one act rather than two.
     'backlog.progress-logged': items.reduce(
-      (total, item) => total + item.dailyProgress.filter((entry) => entry.amount > 0).length,
+      (total, item) =>
+        total + item.dailyProgress.filter((entry) => entry.amount > 0 && within(entry.date)).length,
       0,
     ),
     // Counted from `dateCompleted` rather than from the status, so an item
     // reopened and finished again is one finish and not two — the stamp is
     // set once, on the first completion.
-    'backlog.item-finished': items.filter((item) => item.dateCompleted !== undefined).length,
+    'backlog.item-finished': items.filter((item) => dated(item.dateCompleted)).length,
     'projects.action-closed': projects.reduce(
       (total, project) =>
-        total + project.actions.filter((action) => action.status === 'done').length,
+        total +
+        project.actions.filter((action) => action.status === 'done' && dated(action.completedAt))
+          .length,
       0,
     ),
     /*
@@ -147,7 +174,7 @@ export async function tallyActs(deps: SheetDeps): Promise<Readonly<Record<string
      * rather than a wrong amount of it.
      */
     'places.place-visited': places.filter(
-      (place) => place.status === 'visited' && isResolved(place),
+      (place) => place.status === 'visited' && isResolved(place) && dated(place.dateVisited),
     ).length,
   }
 }

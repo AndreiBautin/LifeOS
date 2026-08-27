@@ -345,6 +345,37 @@ worth keeping. Doing it later would have meant a migration, or a database
 called `lift` inside an app called LifeOS forever. `LiftTracker` in the
 archaeology is a different repository and keeps its name.
 
+**The season and the review are two different questions.** The season
+(`domain/game/season.ts`, `use-cases/character/season-progress.ts`) is
+live progress through Winter, Spring, Summer or Autumn, and needs no
+stored anything — every act carries a date, so it is derived from records
+that already exist. The monthly review is retrospective: it _records_
+values so a rating can judge a **direction**, and a direction needs two
+points in time, which is the only reason snapshots exist at all. Naming
+the review "Season review" was wrong on both counts and is undone.
+
+**The season bar fills against last season, not a tier curve.** A battle
+pass normally has a hundred tiers at thresholds somebody invented, which
+is precisely the "scale the app can move" the game model refuses
+everywhere else. Your own previous season is external to the season being
+measured and moves only because you moved it. A first season has nothing
+to beat and says so rather than filling a bar against zero.
+
+**An act with no date counts in no window at all, the all-time one
+included.** `tallyActs` takes an optional `Within` so one implementation
+serves all-time, a season and a month — and the strictness is what keeps
+all-time equal to the sum of the seasons. Counting an undated act once in
+the total and never in a season would put two numbers on one screen that
+quietly disagree. Every operation that performs an act stamps it, so this
+only excludes records that were already malformed.
+
+**Seasons are meteorological and northern.** Dec–Feb, Mar–May, Jun–Aug,
+Sep–Nov, so they sit on month boundaries the existing keys already use;
+the astronomical ones start at solstices and would cut months in half.
+Winter is named for the year it **ends** in, so December 2025 and January
+2026 are both Winter 2026 — the one case in here worth a test, and it has
+several.
+
 **A field added to `AppSettings` must be added to the parse.**
 `infrastructure/storage/settings-store.ts` builds its result field by
 field rather than spreading, which is what makes an unknown blob safe —

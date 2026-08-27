@@ -14,7 +14,8 @@ import { cn } from '@/lib/cn'
 import { NextAction } from '@/features/projects/NextAction'
 import { useRecommendation } from '@/features/projects/hooks'
 
-import { useCharacterSheet } from './hooks'
+import { SeasonCard } from './SeasonCard'
+import { useCharacterSheet, useSeasonProgress } from './hooks'
 
 /**
  * The lifter as a character sheet.
@@ -57,6 +58,7 @@ export function CharacterPage() {
   })
 
   const sheet = useCharacterSheet()
+  const season = useSeasonProgress()
   const recommendation = useRecommendation()
 
   /*
@@ -91,7 +93,7 @@ export function CharacterPage() {
         </div>
         <Link to="/review" className={buttonStyles({ variant: 'ghost', size: 'sm' })}>
           <CalendarCheck size={16} aria-hidden />
-          Season review
+          Monthly review
         </Link>
       </header>
 
@@ -117,6 +119,8 @@ export function CharacterPage() {
           </p>
         </Card>
       </Section>
+
+      {season.data !== undefined && <SeasonCard progress={season.data} />}
 
       {/*
         The one actionable thing on an otherwise reflective screen.

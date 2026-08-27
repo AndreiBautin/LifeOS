@@ -84,6 +84,7 @@ function aVisitedPlace(id: string): Place {
     favorite: false,
     tags: [],
     dateAdded: '2026-08-01T00:00:00.000Z',
+    dateVisited: '2026-08-10T00:00:00.000Z',
   } as unknown as Place
 }
 

@@ -305,10 +305,12 @@ export function ReviewPage() {
         opened ten minutes a month has not earned one.
       */}
       <header className="mb-6">
-        <h1 className="text-ink-50 text-2xl font-semibold tracking-tight">Season review</h1>
+        <h1 className="text-ink-50 text-2xl font-semibold tracking-tight">Monthly review</h1>
         <p className="text-ink-500 mt-0.5 text-sm">
-          Once a month, on purpose. A rating that moved because a page was opened would not be a
-          monthly rating.
+          Once a month, on purpose — a rating that moved because a page was opened would not be a
+          monthly rating. The <strong className="text-ink-300">season</strong> on the character
+          sheet is the other half of this: that one is live progress, this one is the record that
+          lets a direction be judged at all.
         </p>
       </header>
 

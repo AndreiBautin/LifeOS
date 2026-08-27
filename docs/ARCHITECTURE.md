@@ -334,6 +334,27 @@ An area with no measurement, no recorded rating and no acts is **silent**
 and renders nothing at all. `insufficient-data` counts as silence — it is
 the absence of a judgement, not a bad one.
 
+## The season, and why it is not the review
+
+Two screens read the same records and answer different questions.
+
+|                    | Question                      | Needs snapshots                 |
+| ------------------ | ----------------------------- | ------------------------------- |
+| **Season**         | What have I done this winter? | No — derived from dated records |
+| **Monthly review** | Which way is this going?      | Yes, that is its whole job      |
+
+A direction needs two points in time, so the review has to _record_
+values; that is what a `MonthlySnapshot` is for. The season needs nothing
+stored, because every act already carries a date — a workout's `date`, a
+progress entry's `date`, an action's `completedAt`, a place's
+`dateVisited`. `tallyActs` takes an optional window and one implementation
+therefore serves all-time, a season and a month.
+
+Keeping the review monthly is what keeps it responsive: `evaluate` needs
+two data points, so a monthly period says something after two months and a
+seasonal one would take six. The season carries the _feel_ of a longer
+chapter without costing the ratings their resolution.
+
 ## Autoregulation
 
 Check-ins are **recorded events**, and adjusting a volume landmark is a
