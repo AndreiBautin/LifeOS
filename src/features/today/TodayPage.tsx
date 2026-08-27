@@ -3,8 +3,8 @@ import { Link } from 'react-router-dom'
 
 import type { AgendaItem, Urgency } from '@/application/use-cases/today/agenda'
 import { Badge, Card, Empty, Section } from '@/components/shared/primitives'
-import { NextAction } from '@/features/projects/NextAction'
-import { useRecommendation } from '@/features/projects/hooks'
+import { ActiveQuests } from '@/features/projects/ActiveQuests'
+import { useActiveQuests } from '@/features/projects/hooks'
 import { toDayKey } from '@/domain/time/day'
 import { useServices } from '@/app/context'
 
@@ -62,7 +62,7 @@ function AgendaRow({ item }: { readonly item: AgendaItem }) {
 
 export function TodayPage() {
   const agenda = useAgenda()
-  const recommendation = useRecommendation()
+  const active = useActiveQuests()
   const services = useServices()
 
   const rows = agenda.data ?? []
@@ -79,22 +79,14 @@ export function TodayPage() {
         <Dailies />
       </Section>
 
-      <Section
-        title="Next quest"
-        description="One thing, and why it is that one."
-        action={
-          <Link to="/quests" className="text-ink-500 hover:text-ink-300 text-xs">
-            All quests
-          </Link>
-        }
-      >
-        {recommendation.data === undefined ? (
-          <Card>
-            <p className="text-ink-500 text-sm">Nothing on the board yet.</p>
-          </Card>
-        ) : (
-          <NextAction recommendation={recommendation.data} />
-        )}
+      {/*
+        The quests you chose, not the one the scoring picked.
+        The recommendation still exists and still runs — it lives on the
+        Quests page now, as a suggestion for what to activate rather than
+        as the answer.
+      */}
+      <Section title="Active quests" description="One main, one side.">
+        <ActiveQuests main={active.data?.main} side={active.data?.side} showLink />
       </Section>
 
       <Section

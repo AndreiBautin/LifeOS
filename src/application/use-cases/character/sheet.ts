@@ -1,4 +1,5 @@
 import { isResolved } from '@/domain/atlas/place/Place'
+import type { Project, QuestKind } from '@/domain/projects/project'
 import { readLadder, type LadderReading } from '@/domain/game/ladder'
 import { ALL_ACTS, SCORING } from '@/domain/game/registry'
 import { standing, xpFrom, type XpStanding } from '@/domain/game/xp'
@@ -152,13 +153,14 @@ export async function tallyActs(
     // reopened and finished again is one finish and not two — the stamp is
     // set once, on the first completion.
     'backlog.item-finished': items.filter((item) => dated(item.dateCompleted)).length,
-    'projects.action-closed': projects.reduce(
-      (total, project) =>
-        total +
-        project.actions.filter((action) => action.status === 'done' && dated(action.completedAt))
-          .length,
-      0,
-    ),
+    /*
+     * Counted by the kind stamped on the action, never by the quest's
+     * current one. An action closed before quests had kinds carries none
+     * and counts as a side quest, which is what `kindOf` says about a
+     * quest with no kind either.
+     */
+    'projects.main-action-closed': closedActions(projects, dated, 'main'),
+    'projects.side-action-closed': closedActions(projects, dated, 'side'),
     /*
      * `social.hangout-logged` is deliberately absent, and it is the one
      * act the registry declares that cannot be counted.
@@ -187,6 +189,25 @@ export async function tallyActs(
       (place) => place.status === 'visited' && isResolved(place) && dated(place.dateVisited),
     ).length,
   }
+}
+
+/** Closed actions of one kind, within a window. */
+function closedActions(
+  projects: readonly Project[],
+  dated: (date: string | undefined) => boolean,
+  kind: QuestKind,
+): number {
+  return projects.reduce(
+    (total, project) =>
+      total +
+      project.actions.filter(
+        (action) =>
+          action.status === 'done' &&
+          dated(action.completedAt) &&
+          (action.completedAsKind ?? 'side') === kind,
+      ).length,
+    0,
+  )
 }
 
 export async function characterSheet(deps: SheetDeps): Promise<CharacterSheet> {

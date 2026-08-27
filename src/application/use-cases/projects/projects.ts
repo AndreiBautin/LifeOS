@@ -1,3 +1,4 @@
+import { activate, activeQuest, kindOf, standDown } from '@/domain/projects/active'
 import {
   asActionId,
   asProjectId,
@@ -17,6 +18,7 @@ import {
   type ActionItem,
   type Project,
   type ProjectStatus,
+  type QuestKind,
 } from '@/domain/projects/project'
 import type { Clock, ProjectRepository } from '@/domain/repositories/ports'
 
@@ -44,6 +46,7 @@ export interface NewProject {
   readonly urgency?: number
   readonly effort?: number
   readonly deadline?: string
+  readonly kind?: QuestKind
   readonly isBlocked?: boolean
   readonly blockReason?: string
   readonly blockedBy?: readonly ProjectId[]
@@ -80,6 +83,9 @@ export async function addProject(input: NewProject, deps: ProjectDeps): Promise<
     urgency: input.urgency ?? 5,
     effort: input.effort ?? 5,
     status: 'active',
+    // Side unless said otherwise: a main quest is a deliberate choice, and
+    // most things get added without one being made.
+    kind: input.kind ?? 'side',
     isBlocked: input.isBlocked ?? false,
     ...(input.blockReason === undefined ? {} : { blockReason: input.blockReason }),
     blockedBy: input.blockedBy ?? [],
@@ -247,13 +253,61 @@ export async function setActionStatus(
   const actions = project.actions.map((action) => {
     if (action.id !== actionId) return action
 
-    const { completedAt: _was, ...rest } = action
+    const { completedAt: _was, completedAsKind: _wasKind, ...rest } = action
     return done
-      ? { ...rest, status: 'done' as const, completedAt: deps.clock.now().toISOString() }
+      ? {
+          ...rest,
+          status: 'done' as const,
+          completedAt: deps.clock.now().toISOString(),
+          /*
+           * Stamped now and never recomputed. XP differs by kind and the
+           * kind is a label you can change, so reading the quest's
+           * *current* kind would let promoting a side quest rewrite every
+           * action already closed against it — and demoting one would make
+           * XP go **down**, which a record of effort must never do.
+           */
+          completedAsKind: kindOf(project),
+        }
       : { ...rest, status: 'pending' as const }
   })
 
   return saveAndSettle({ ...project, actions }, deps)
+}
+
+/**
+ * Makes a quest the active one of its kind, or stands the kind down.
+ *
+ * Writes every record the change touched in one go — the newly active one
+ * and whichever was active before. `activeQuest` would resolve the answer
+ * even if the second write were lost, which is the point of deriving it
+ * from a stamp; clearing the old one keeps the stored state matching what
+ * a person would expect to find.
+ */
+export async function setActiveQuest(
+  id: ProjectId | undefined,
+  kind: QuestKind,
+  deps: ProjectDeps,
+): Promise<void> {
+  const projects = await deps.projects.all()
+  const changed =
+    id === undefined
+      ? standDown(projects, kind)
+      : activate(projects, id, deps.clock.now().toISOString())
+
+  if (changed.length > 0) await deps.projects.saveMany(changed)
+}
+
+export async function activeQuests(
+  deps: ProjectDeps,
+): Promise<{ readonly main?: Project; readonly side?: Project }> {
+  const projects = await deps.projects.all()
+  const main = activeQuest(projects, 'main')
+  const side = activeQuest(projects, 'side')
+
+  return {
+    ...(main === undefined ? {} : { main }),
+    ...(side === undefined ? {} : { side }),
+  }
 }
 
 export async function recommendation(deps: ProjectDeps): Promise<Recommendation> {

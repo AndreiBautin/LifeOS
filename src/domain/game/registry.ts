@@ -150,8 +150,29 @@ export const SCORING: readonly AreaScoring[] = [
         cadence: 'monthly',
       },
     ],
+    /*
+     * Split by quest kind, and paid from the kind recorded **on the
+     * action** rather than the one on the quest today.
+     *
+     * The kind is a label somebody can change, so reading it live would
+     * mean promoting a side quest silently repriced every action already
+     * closed against it — and demoting one would make XP go *down*. A
+     * closed action carries `completedAsKind`, which is a fact about the
+     * moment and cannot be edited by relabelling.
+     */
     acts: [
-      { id: 'projects.action-closed', area: 'projects', label: 'Closed an action', points: 25 },
+      {
+        id: 'projects.main-action-closed',
+        area: 'projects',
+        label: 'Closed a main quest step',
+        points: 40,
+      },
+      {
+        id: 'projects.side-action-closed',
+        area: 'projects',
+        label: 'Closed a side quest step',
+        points: 20,
+      },
     ],
     hasTree: false,
   },

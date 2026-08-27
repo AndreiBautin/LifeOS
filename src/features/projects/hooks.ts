@@ -2,18 +2,21 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { useServices } from '@/app/context'
 import {
+  activeQuests,
   addAction,
   addProject,
   deleteProject,
   listProjects,
   recommendation,
   setActionStatus,
+  setActiveQuest,
   setBlockers,
-  updateProject,
   type NewProject,
   type ProjectChanges,
+  updateProject,
 } from '@/application/use-cases/projects/projects'
 import type { ActionId, ProjectId } from '@/domain/ids/ids'
+import type { QuestKind } from '@/domain/projects/project'
 import { logger } from '@/shared/logging/logger'
 
 /**
@@ -105,4 +108,30 @@ export function useSetBlockers() {
     { id: ProjectId; blockerIds: readonly ProjectId[] },
     { readonly error?: string }
   >('projects.blockers', ({ id, blockerIds }, services) => setBlockers(id, blockerIds, services))
+}
+
+/**
+ * The two quests you are on.
+ *
+ * Derived from `activatedAt` stamps rather than a stored pair of ids, so
+ * a merge that left two quests stamped still resolves to one of each.
+ */
+export function useActiveQuests() {
+  const services = useServices()
+
+  return useQuery({ queryKey: [...PROJECTS, 'active'], queryFn: () => activeQuests(services) })
+}
+
+export function useSetActiveQuest() {
+  const services = useServices()
+  const client = useQueryClient()
+
+  return useMutation<undefined, Error, { id?: ProjectId; kind: QuestKind }>({
+    mutationFn: ({ id, kind }) => setActiveQuest(id, kind, services).then(() => undefined),
+    onSuccess: () => {
+      logger.info('quests.active-changed', {})
+      void client.invalidateQueries({ queryKey: PROJECTS })
+      void client.invalidateQueries({ queryKey: ['today'] })
+    },
+  })
 }

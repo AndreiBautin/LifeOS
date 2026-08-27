@@ -2,6 +2,9 @@ import { Check, ChevronDown, ChevronRight, Plus, Trash2, Undo2 } from 'lucide-re
 import { useState } from 'react'
 
 import { useServices } from '@/app/context'
+import { kindOf } from '@/domain/projects/active'
+import { QUEST_KIND_LABELS, type QuestKind } from '@/domain/projects/project'
+import { ActiveQuests } from './ActiveQuests'
 import { Badge, Button, Card, Empty, Section } from '@/components/shared/primitives'
 
 import { computeProgress, computeScore } from '@/domain/projects/priority'
@@ -12,7 +15,9 @@ import {
   useAddProject,
   useDeleteProject,
   useProjects,
+  useActiveQuests,
   useRecommendation,
+  useSetActiveQuest,
   useSetActionStatus,
   useSetBlockers,
   useUpdateProject,
@@ -147,7 +152,11 @@ function ProjectCard({
   const addAction = useAddAction()
   const update = useUpdateProject()
   const remove = useDeleteProject()
+  const setActive = useSetActiveQuest()
+  const active = useActiveQuests()
   const [confirming, setConfirming] = useState(false)
+
+  const isActive = active.data?.main?.id === project.id || active.data?.side?.id === project.id
 
   const progress = computeProgress(project)
 
@@ -166,7 +175,12 @@ function ProjectCard({
         </Button>
 
         <div className="min-w-0 flex-1">
-          <p className="text-ink-50 truncate font-medium">{project.name}</p>
+          <div className="flex items-center gap-2">
+            <p className="text-ink-50 truncate font-medium">{project.name}</p>
+            <Badge tone={kindOf(project) === 'main' ? 'accent' : 'neutral'}>
+              {QUEST_KIND_LABELS[kindOf(project)]}
+            </Badge>
+          </div>
           <p className="text-ink-500 numeric mt-0.5 text-xs">
             score {computeScore(project, today).toString()} · {progress.toString()}% done
             {project.deadline !== undefined && ` · due ${project.deadline}`}
@@ -216,6 +230,26 @@ function ProjectCard({
               <Plus size={16} aria-hidden />
             </Button>
           </form>
+
+          {/*
+            A rule nothing can reach is a rule nobody can trust — the same
+            reason the deadline field below exists. Without this, "active"
+            would be a domain concept no screen could set.
+          */}
+          <Button
+            full
+            variant={isActive ? 'outline' : 'primary'}
+            className="mt-2"
+            onClick={() => {
+              setActive.mutate(
+                isActive ? { kind: kindOf(project) } : { id: project.id, kind: kindOf(project) },
+              )
+            }}
+          >
+            {isActive
+              ? `Stand down as ${QUEST_KIND_LABELS[kindOf(project)].toLowerCase()} quest`
+              : `Make this my ${QUEST_KIND_LABELS[kindOf(project)].toLowerCase()} quest`}
+          </Button>
 
           {/*
             The deadline was readable and not settable, which made it a
@@ -294,9 +328,12 @@ function ProjectCard({
 
 export function ProjectsPage() {
   const [name, setName] = useState('')
+  const [kind, setKind] = useState<QuestKind>('side')
   const projects = useProjects()
+  const active = useActiveQuests()
   const recommendation = useRecommendation()
   const add = useAddProject()
+  const setActive = useSetActiveQuest()
 
   /*
    * Through the injected clock, and read once per render rather than per
@@ -306,6 +343,12 @@ export function ProjectsPage() {
    * harmless at midnight.
    */
   const today = useServices().clock.now()
+
+  // The recommendation carries ids rather than the record, so the button
+  // below needs the quest itself to know which kind it would activate.
+  const suggested = (projects.data ?? []).find(
+    (project) => project.id === recommendation.data?.projectId,
+  )
 
   const open = (projects.data ?? []).filter((project) => project.status !== 'completed')
   const done = (projects.data ?? []).filter((project) => project.status === 'completed')
@@ -319,16 +362,40 @@ export function ProjectsPage() {
         </p>
       </header>
 
+      <Section title="Active" description="One main quest, one side quest.">
+        <ActiveQuests main={active.data?.main} side={active.data?.side} />
+      </Section>
+
       {/*
-        The tech tree used to hang off this page, on the reasoning that
-        "what should I do next" and "what am I saving up for" are the same
-        question at two horizons. They are not: one is a list of things to
-        do and the other is a list of things to buy, and the only thing
-        actually joining them was that the navigation had no room. It has
-        a tab of its own now.
+        The recommendation stopped being the top of this page and became a
+        suggestion under it.
+
+        The engine is unchanged — priority, the blocker graph, the deadline
+        ramp — but what it is *for* moved. It could always tell you which
+        quest scored highest; what it could never know is which one you
+        mean to be working on. So it proposes something to activate, and
+        you ignore it or you do not.
       */}
-      <Section title="Next" description="One thing, and why it is that one.">
-        {recommendation.data !== undefined && <NextAction recommendation={recommendation.data} />}
+      <Section
+        title="Suggested"
+        description="What the scoring would pick, if you want a second opinion."
+      >
+        {recommendation.data !== undefined && (
+          <>
+            <NextAction recommendation={recommendation.data} />
+            {suggested !== undefined && (
+              <Button
+                className="mt-2"
+                full
+                onClick={() => {
+                  setActive.mutate({ id: suggested.id, kind: kindOf(suggested) })
+                }}
+              >
+                Make this my {QUEST_KIND_LABELS[kindOf(suggested)].toLowerCase()} quest
+              </Button>
+            )}
+          </>
+        )}
       </Section>
 
       <Section
@@ -346,7 +413,7 @@ export function ProjectsPage() {
             if (name.trim() === '') return
 
             add.mutate(
-              { name },
+              { name, kind },
               {
                 onSuccess: () => {
                   setName('')
@@ -364,6 +431,33 @@ export function ProjectsPage() {
               setName(event.target.value)
             }}
           />
+          {/*
+            Side is the default, and this toggle is how something becomes a
+            main quest. Deliberately two buttons rather than a select: it is
+            a binary, and a two-option dropdown is a tap and a decision
+            where a tap would do.
+          */}
+          <div className="flex shrink-0 gap-1">
+            {(['side', 'main'] as const).map((option) => (
+              <button
+                key={option}
+                type="button"
+                aria-label={`${QUEST_KIND_LABELS[option]} quest`}
+                aria-pressed={kind === option}
+                className={[
+                  'tap-target rounded-lg border px-2 text-xs font-medium',
+                  kind === option
+                    ? 'border-accent-500 bg-accent-500/15 text-accent-400'
+                    : 'border-ink-800 text-ink-500',
+                ].join(' ')}
+                onClick={() => {
+                  setKind(option)
+                }}
+              >
+                {QUEST_KIND_LABELS[option]}
+              </button>
+            ))}
+          </div>
           <Button type="submit" disabled={add.isPending}>
             <Plus size={16} aria-hidden /> Add
           </Button>

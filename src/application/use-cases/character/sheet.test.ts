@@ -207,3 +207,75 @@ describe('the exploration ladder on the sheet', () => {
     expect(places?.ladders[0]?.reading?.level).toBe('Untrained')
   })
 })
+
+describe('what a quest step is worth', () => {
+  const withAction = (kind: 'main' | 'side' | undefined, closedAs: 'main' | 'side' | undefined) =>
+    ({
+      id: 'q1',
+      name: 'A quest',
+      status: 'active',
+      ...(kind === undefined ? {} : { kind }),
+      actions: [
+        {
+          id: 'a1',
+          description: 'A step',
+          status: 'done',
+          order: 0,
+          createdAt: '2026-08-01T00:00:00.000Z',
+          completedAt: '2026-08-10T00:00:00.000Z',
+          ...(closedAs === undefined ? {} : { completedAsKind: closedAs }),
+        },
+      ],
+    }) as unknown as Project
+
+  it('pays more for a main quest step', async () => {
+    const sheet = await characterSheet(harness({ projects: [withAction('main', 'main')] }))
+
+    expect(sheet.areas.find((area) => area.area === 'projects')?.xp).toBe(40)
+  })
+
+  it('pays less for a side quest step', async () => {
+    const sheet = await characterSheet(harness({ projects: [withAction('side', 'side')] }))
+
+    expect(sheet.areas.find((area) => area.area === 'projects')?.xp).toBe(20)
+  })
+
+  /*
+   * The whole reason the kind is stamped on the action rather than read
+   * off the quest. Demote a main quest and the work already done must keep
+   * what it earned — XP is a record of effort, and a record of effort that
+   * goes *down* because you renamed something is not a record of anything.
+   */
+  it('keeps what was earned when the quest is demoted afterwards', async () => {
+    const demoted = withAction('side', 'main')
+
+    const sheet = await characterSheet(harness({ projects: [demoted] }))
+
+    expect(sheet.areas.find((area) => area.area === 'projects')?.xp).toBe(40)
+  })
+
+  /*
+   * And the reverse: promoting a quest must not retroactively enrich work
+   * that was done while it was a side quest.
+   */
+  it('does not repay old work when the quest is promoted', async () => {
+    const promoted = withAction('main', 'side')
+
+    const sheet = await characterSheet(harness({ projects: [promoted] }))
+
+    expect(sheet.areas.find((area) => area.area === 'projects')?.xp).toBe(20)
+  })
+
+  /*
+   * An action closed before quests had kinds carries no stamp, and counts
+   * as a side quest — the same thing `kindOf` says about a quest with no
+   * kind.
+   */
+  it('treats an unstamped closure as a side quest step', async () => {
+    const legacy = withAction(undefined, undefined)
+
+    const sheet = await characterSheet(harness({ projects: [legacy] }))
+
+    expect(sheet.areas.find((area) => area.area === 'projects')?.xp).toBe(20)
+  })
+})

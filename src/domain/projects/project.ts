@@ -26,6 +26,23 @@ import type { ActionId, ProjectId } from '@/domain/ids/ids'
  * full ISO timestamps.
  */
 
+/**
+ * Main or side, and nothing in between.
+ *
+ * A label about your attention rather than about the work: a side quest is
+ * not smaller or easier, it is the one you are not currently making the
+ * story about. Two kinds because one active of each is the whole point —
+ * a third would need a third active slot and there is no question a third
+ * answers.
+ */
+export const QUEST_KINDS = ['main', 'side'] as const
+export type QuestKind = (typeof QUEST_KINDS)[number]
+
+export const QUEST_KIND_LABELS: Readonly<Record<QuestKind, string>> = {
+  main: 'Main',
+  side: 'Side',
+}
+
 export const PROJECT_STATUSES = ['active', 'blocked', 'paused', 'completed'] as const
 export type ProjectStatus = (typeof PROJECT_STATUSES)[number]
 
@@ -54,6 +71,19 @@ export interface ActionItem {
   readonly availableFrom?: string
   readonly createdAt: string
   readonly completedAt?: string
+  /**
+   * Which kind of quest this belonged to when it was closed.
+   *
+   * Written at completion and never recomputed, because XP differs by kind
+   * and the kind is a label you can change. Reading the quest's *current*
+   * kind would mean promoting a side quest silently rewrote every hour you
+   * had already logged against it — and demoting one would make your XP go
+   * **down**, which a record of effort must never do.
+   *
+   * Same principle as a `WorkoutLog` embedding its own prescription: a log
+   * describes itself, so history never needs the thing that produced it.
+   */
+  readonly completedAsKind?: QuestKind
 }
 
 export interface Project {
@@ -68,6 +98,32 @@ export interface Project {
   readonly effort: number
 
   readonly status: ProjectStatus
+
+  /**
+   * Absent means side.
+   *
+   * Optional rather than required so records written before quests had
+   * kinds read as side rather than as broken — which is also the right
+   * default for a quest somebody added without thinking about it. Read it
+   * through `kindOf`, never directly.
+   */
+  readonly kind?: QuestKind
+
+  /**
+   * When this was last made the active quest of its kind.
+   *
+   * A stamp rather than a boolean, and that is the load-bearing choice.
+   * Two devices each activating a different quest while apart would both
+   * set a boolean, and last-write-wins would leave two quests claiming to
+   * be active with nothing to break the tie. A timestamp always has a
+   * greatest element, so `activeQuest` picks a winner deterministically
+   * however many stamps survive a merge.
+   *
+   * The write still tries to keep exactly one: activating clears the
+   * others. The derivation is what makes it safe when that does not
+   * survive the trip.
+   */
+  readonly activatedAt?: string
 
   /**
    * Blocked by something that is not another tracked project — "waiting on

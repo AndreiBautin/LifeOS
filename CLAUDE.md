@@ -350,6 +350,34 @@ worth keeping. Doing it later would have meant a migration, or a database
 called `lift` inside an app called LifeOS forever. `LiftTracker` in the
 archaeology is a different repository and keeps its name.
 
+**A quest is main or side, and "active" is derived from a stamp.**
+`domain/projects/active.ts`. `activatedAt` rather than an `isActive`
+boolean, because two devices each activating a different quest while apart
+would both set a boolean and last-write-wins has no tie-break — a
+timestamp always has a greatest element, so `activeQuest` picks one
+deterministically however many stamps survive a merge. The write still
+clears the others; the derivation is what makes it safe when that clearing
+does not survive the trip. Absent `kind` means side, read through
+`kindOf`.
+
+**A closed action records the kind it was closed as.**
+`ActionItem.completedAsKind`, written once at completion and never
+recomputed. Main quest steps pay 40 XP and side ones 20, and the kind is a
+label a person can change — so reading the quest's _current_ kind would
+mean promoting a side quest silently repriced everything already done
+against it, and demoting one would make XP go **down**. A record of effort
+must never shrink. Same principle as a `WorkoutLog` embedding its own
+prescription: a log describes itself. Verified by demoting a main quest in
+the store and watching the total stay at 75.
+
+**The recommendation is an advisor now, not the answer.**
+`getRecommendation` and the whole priority engine are unchanged and still
+run — what moved is what they are _for_. The Quests page leads with the
+two quests you chose and offers the scoring underneath as a suggestion of
+what to activate. Do not restore it to the top of the page: the engine can
+say which quest scores highest and can never know which one you mean to be
+working on.
+
 **Dailies are the one area where the screen and the code agree.** Quests
 sit over `Project`, Codex over `backlog`, Tech tree over `upgrades` — and
 `domain/dailies/` is called dailies on both sides, because the MMO word
