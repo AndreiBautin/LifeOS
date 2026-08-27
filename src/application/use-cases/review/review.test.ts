@@ -232,9 +232,58 @@ describe('the monthly review', () => {
     const { deps, friendList, snapshotStore } = harness()
     friendList.push({ id: asFriendId('a'), name: 'A', lastHangout: '2026-08-01', createdAt: '' })
 
-    await saveReview({ 'social.contacts-in-month': 99 }, deps)
+    await saveReview({ 'social.contact': 99 }, deps)
 
-    expect(snapshotStore.get('2026-08')?.values['social.contacts-in-month']).toBe(1)
+    expect(snapshotStore.get('2026-08')?.values['social.contact']).toBe(1)
+  })
+
+  /*
+   * Measured values arrive keyed by *source* and must be stored keyed by
+   * *metric*, because a metric is what reads them back. Getting this wrong
+   * is silent and total: every measured area reads as never recorded while
+   * the snapshot sits there full of numbers. It was, until the app was
+   * driven and every area said "not enough data" with three months on
+   * file.
+   */
+  it('stores a measured value under the metric that reads it, not the source', async () => {
+    const { deps, friendList, snapshotStore } = harness()
+    friendList.push({ id: asFriendId('a'), name: 'A', lastHangout: '2026-08-01', createdAt: '' })
+
+    await saveReview({}, deps)
+
+    const values = snapshotStore.get('2026-08')?.values ?? {}
+    expect(values['social.contact']).toBe(1)
+    expect(values['social.contacts-in-month']).toBeUndefined()
+  })
+
+  /*
+   * The end-to-end claim, against a measured area rather than a
+   * hand-defined one: two months of counting produce a judgement with
+   * nobody having typed a number.
+   */
+  it('judges a measured area from two months of counting', async () => {
+    const { deps, friendList, snapshotStore } = harness()
+    friendList.push(
+      { id: asFriendId('a'), name: 'A', lastHangout: '2026-08-01', createdAt: '' },
+      { id: asFriendId('b'), name: 'B', lastHangout: '2026-08-02', createdAt: '' },
+      { id: asFriendId('c'), name: 'C', lastHangout: '2026-08-03', createdAt: '' },
+      { id: asFriendId('d'), name: 'D', lastHangout: '2026-08-04', createdAt: '' },
+      { id: asFriendId('e'), name: 'E', lastHangout: '2026-08-05', createdAt: '' },
+    )
+
+    // Last month the circle was below the threshold of four.
+    snapshotStore.set('2026-07', {
+      month: '2026-07',
+      values: { 'social.contact': 2 },
+      createdAt: '',
+    })
+    await saveReview({}, deps)
+
+    const social = (await readout(deps)).areas.find((area) => area.area === 'social')
+
+    // Five active now, threshold four: crossed back over, so improved.
+    expect(social?.metrics[0]?.latest).toBe(5)
+    expect(social?.metrics[0]?.outcome).toBe('improved')
   })
 
   it('carries entered values forward into the next draft of the same month', async () => {

@@ -244,6 +244,25 @@ filter on floating point eventually disagrees with itself. Two of its
 rules had a database behind them and no longer do: `wouldCreateCycle`, and
 the refusal to delete anything with dependents still attached.
 
+**No area scores itself.** `domain/review/` is the spine and
+`from-registry.ts` is the join: a rating declared in
+`domain/game/registry.ts` becomes a metric the evaluators judge. Do not add
+scoring to a domain — declare the rating and let the spine do it, or there
+are two answers to "is this going well" within a release.
+
+**A measured value is stored under its metric id, not its source id.** The
+two names are separate on purpose — a source produces a number, a metric
+judges it — and `seriesFor` looks up by metric. Storing it the other way is
+silent and total: every measured area reads as never recorded while the
+snapshot sits there full of numbers. That shipped once and was caught by
+driving the app, not by a test; there is one now.
+
+**Absent, never zero, everywhere in the review.** A source with nothing to
+count reports nothing, `seriesFor` skips unrecorded months, `blend` ignores
+what had nothing to say. A zero turns an honest blank into an accusation,
+and it compounds — one fabricated reading makes the next month's trend a
+lie too.
+
 **A rule nothing can reach is a rule nobody can trust.** Both the quest
 log's cycle guard and the tree's were briefly unreachable from the UI —
 the domain refused correctly and no screen could ask it to. Adding a

@@ -180,13 +180,36 @@ export async function saveReview(
 ): Promise<MonthlySnapshot> {
   const month = toMonthKey(deps.clock.now())
 
-  const [existing, measured] = await Promise.all([deps.review.snapshot(month), measureAll(deps)])
+  const [existing, measured, defined] = await Promise.all([
+    deps.review.snapshot(month),
+    measureAll(deps),
+    deps.review.metrics(),
+  ])
+
+  /*
+   * Measured values arrive keyed by *source* and are stored keyed by
+   * *metric*, because a metric is what reads them back — `seriesFor` walks
+   * the months looking for a metric's id, and a snapshot keyed the other
+   * way is one every measured area reads as never recorded.
+   *
+   * The two are separate names on purpose. A source is what produces a
+   * number and a metric is what judges it, and the same source could one
+   * day feed two metrics judged differently.
+   */
+  const byMetric = Object.fromEntries(
+    allMetrics(defined).flatMap((metric) => {
+      if (metric.source === undefined) return []
+
+      const value = measured[metric.source]
+      return value === undefined ? [] : [[metric.id, value] as const]
+    }),
+  )
 
   const snapshot: MonthlySnapshot = {
     month,
     // Measured last, so nothing typed in can shadow a number the app
     // counted for itself.
-    values: { ...existing?.values, ...entered, ...measured },
+    values: { ...existing?.values, ...entered, ...byMetric },
     createdAt: existing?.createdAt ?? deps.clock.now().toISOString(),
   }
 

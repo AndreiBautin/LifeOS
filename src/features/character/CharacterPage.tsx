@@ -1,9 +1,12 @@
 import { useQuery } from '@tanstack/react-query'
+import { CalendarCheck } from 'lucide-react'
+import { Link } from 'react-router-dom'
 
 import { useServices, useSettings } from '@/app/context'
 import { buildCharacter, LEVELS, type Attribute } from '@/domain/game/character'
 import { totalWorkingSets } from '@/domain/logging/workout-log'
 import { Badge, Card, Section } from '@/components/shared/primitives'
+import { buttonStyles } from '@/components/shared/styles'
 import { cn } from '@/lib/cn'
 
 /**
@@ -50,11 +53,24 @@ export function CharacterPage() {
 
   return (
     <div>
-      <header className="mb-6">
-        <h1 className="text-ink-50 text-2xl font-semibold tracking-tight">Character</h1>
-        <p className="text-ink-500 mt-0.5 text-sm">
-          Levels are real standards, as multiples of your bodyweight
-        </p>
+      {/*
+        The monthly review is reached from here rather than from the
+        navigation, and the cadence is the reason: a screen you open ten
+        minutes a month does not earn a permanent tab on a phone. Phase 7
+        merges the two properly — this page becomes the readout for every
+        area, not only for strength.
+      */}
+      <header className="mb-6 flex items-end justify-between gap-3">
+        <div>
+          <h1 className="text-ink-50 text-2xl font-semibold tracking-tight">Character</h1>
+          <p className="text-ink-500 mt-0.5 text-sm">
+            Levels are real standards, as multiples of your bodyweight
+          </p>
+        </div>
+        <Link to="/review" className={buttonStyles({ variant: 'ghost', size: 'sm' })}>
+          <CalendarCheck size={16} aria-hidden />
+          Review
+        </Link>
       </header>
 
       <Section title={`Level ${String(character.xpLevel)}`}>

@@ -221,6 +221,41 @@ Money is integer minor units throughout. JavaScript has no decimal type,
 and a budget filter on binary floating point eventually disagrees with
 itself about what is affordable.
 
+## The scoring spine — the piece the other areas plug into
+
+Dashboard is not an area. It is the machinery by which areas are scored,
+and absorbing it is what stopped five of them scoring themselves.
+
+`domain/review/` holds the shape: **area → metric → evaluator**, all data
+rather than enums. `from-registry.ts` is the join — every rating declared
+in `domain/game/registry.ts` becomes a metric this spine judges, with
+nothing restated, so the registry stays the single declaration and adding a
+tracked area is a row.
+
+Two kinds of metric live in one list, differing only in where the number
+comes from. **Measured** ones name a `source`, and
+`application/use-cases/review/measure.ts` is the one place those names turn
+into numbers — the only file that knows about every area at once, which is
+deliberate: the alternative is five files that each have to remember to
+agree with the registry. **Entered** ones are typed in at the monthly
+review, because nothing here can know a credit score.
+
+Three rules run through all of it:
+
+**Absent, never zero.** A source with nothing to count reports nothing;
+`seriesFor` skips months a metric was not recorded in; `blend` leaves out
+what had nothing to say. A zero turns every honest blank into an
+accusation.
+
+**Areas are blended, not metrics.** Otherwise an area with nine tracked
+numbers outvotes one with a single important one, which says how much you
+happen to measure rather than how things are going.
+
+**Cadence is part of the model.** A monthly rating renders its last
+judgement; it does not acquire a streak because the page was opened. That
+is why the review is reached from the character sheet rather than from the
+navigation — a screen you open ten minutes a month has not earned a tab.
+
 ## Autoregulation
 
 Check-ins are **recorded events**, and adjusting a volume landmark is a

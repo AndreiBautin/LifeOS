@@ -2,6 +2,7 @@ import { createBrowserRouter, Navigate } from 'react-router-dom'
 
 import { BacklogPage } from '@/features/backlog/BacklogPage'
 import { ProjectsPage } from '@/features/projects/ProjectsPage'
+import { ReviewPage } from '@/features/review/ReviewPage'
 import { UpgradesPage } from '@/features/upgrades/UpgradesPage'
 import { CharacterPage } from '@/features/character/CharacterPage'
 import { HistoryPage } from '@/features/history/HistoryPage'
@@ -38,6 +39,7 @@ export const router = createBrowserRouter(
         { path: 'backlog', element: <BacklogPage /> },
         { path: 'upgrades', element: <UpgradesPage /> },
         { path: 'character', element: <CharacterPage /> },
+        { path: 'review', element: <ReviewPage /> },
         { path: 'history', element: <HistoryPage /> },
         { path: 'settings', element: <SettingsPage /> },
         { path: '*', element: <NotFoundPage /> },
