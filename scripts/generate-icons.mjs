@@ -18,11 +18,23 @@ import { fileURLToPath } from 'node:url'
 const OUT_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', 'public', 'icons')
 
 const BACKGROUND = [0x0a, 0x0a, 0x0b, 0xff]
-const BAR = [0xef, 0xf1, 0xf5, 0xff]
-const PLATE = [0xe8, 0x7a, 0x3c, 0xff]
+/** Levels already reached. */
+const CLIMBED = [0xe8, 0x7a, 0x3c, 0xff]
+/** The one you are on. */
+const CURRENT = [0xef, 0xf1, 0xf5, 0xff]
 
 /**
- * A barbell, drawn from rectangles.
+ * Four ascending bars: a level, going up.
+ *
+ * It was a barbell, which stopped being right when five other areas were
+ * absorbed and the app stopped being about training. What every area now
+ * has in common is a level that rises, so that is what the icon shows —
+ * three bars in the accent for ground covered and a taller one in white
+ * for where you are.
+ *
+ * Four bars rather than six-for-six-areas, deliberately. A favicon is
+ * sixteen pixels across and six bars at that size is a smear; the icon has
+ * to survive being small far more than it needs to be a diagram.
  *
  * `safeInset` shrinks the glyph for the maskable variant: Android crops a
  * maskable icon to whatever shape the launcher uses, and anything outside
@@ -52,17 +64,25 @@ function drawIcon(size, { safeInset = 0 } = {}) {
     }
   }
 
-  // Bar
-  rect(0.12, 0.47, 0.76, 0.06, BAR)
-  // Inner plates
-  rect(0.24, 0.34, 0.08, 0.32, PLATE)
-  rect(0.68, 0.34, 0.08, 0.32, PLATE)
-  // Outer plates
-  rect(0.15, 0.39, 0.06, 0.22, PLATE)
-  rect(0.79, 0.39, 0.06, 0.22, PLATE)
-  // Collars
-  rect(0.33, 0.44, 0.03, 0.12, BAR)
-  rect(0.64, 0.44, 0.03, 0.12, BAR)
+  /*
+   * Bottom-aligned on one baseline, 0.13 wide with 0.06 between them, so
+   * the group spans 0.15 to 0.85 and sits centred without a magic offset.
+   *
+   * Those two numbers are what a 16-pixel favicon can hold: 0.13 is very
+   * nearly two pixels and 0.06 is very nearly one, which is the narrowest
+   * gap that still separates four bars instead of merging them into a
+   * block. Widening the bars costs the gaps and vice versa — there is no
+   * slack here at all.
+   */
+  const BASE = 0.82
+  const bar = (x, height, colour) => {
+    rect(x, BASE - height, 0.13, height, colour)
+  }
+
+  bar(0.15, 0.2, CLIMBED)
+  bar(0.34, 0.34, CLIMBED)
+  bar(0.53, 0.48, CLIMBED)
+  bar(0.72, 0.62, CURRENT)
 
   return pixels
 }
@@ -124,13 +144,13 @@ function crc32(buffer) {
   return crc ^ -1
 }
 
+// The same four bars, at the same coordinates times 100.
 const FAVICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
   <rect width="100" height="100" rx="22" fill="#0a0a0b"/>
-  <rect x="12" y="47" width="76" height="6" fill="#eff1f5"/>
-  <rect x="24" y="34" width="8" height="32" fill="#e87a3c"/>
-  <rect x="68" y="34" width="8" height="32" fill="#e87a3c"/>
-  <rect x="15" y="39" width="6" height="22" fill="#e87a3c"/>
-  <rect x="79" y="39" width="6" height="22" fill="#e87a3c"/>
+  <rect x="15" y="62" width="13" height="20" fill="#e87a3c"/>
+  <rect x="34" y="48" width="13" height="34" fill="#e87a3c"/>
+  <rect x="53" y="34" width="13" height="48" fill="#e87a3c"/>
+  <rect x="72" y="20" width="13" height="62" fill="#eff1f5"/>
 </svg>
 `
 
