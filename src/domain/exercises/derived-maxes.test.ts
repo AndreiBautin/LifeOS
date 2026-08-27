@@ -11,13 +11,19 @@ const CLOSE = asExerciseId('close-grip-bench-press')
 const maxes = (entries: Partial<Record<ExerciseId, number>>) => withDerivedMaxes(entries)
 
 describe('estimating a variation nobody has measured', () => {
-  it('derives the bench variations from the competition bench', () => {
+  it('derives the touch-and-go bench from the competition bench', () => {
     // Touch-and-go is *heavier* than the paused version: no pause means
     // no loss of the stretch reflex, so its factor is above one.
-    const derived = maxes({ [PAUSED]: 300 })
+    expect(maxes({ [PAUSED]: 300 })[TOUCH_AND_GO]).toBe(315)
+  })
 
-    expect(derived[TOUCH_AND_GO]).toBe(315)
-    expect(derived[CLOSE]).toBe(285)
+  /*
+   * And the close grip is not derived at all any more. It left the bench
+   * rotation when the bench dropped to two sessions, and a ratio for an
+   * exercise no rotation reaches derives a max nothing ever loads.
+   */
+  it('does not derive a variation that left its rotation', () => {
+    expect(maxes({ [PAUSED]: 300 })[CLOSE]).toBeUndefined()
   })
 
   it('never overrides a measured estimate', () => {
@@ -56,20 +62,26 @@ describe('estimating a variation nobody has measured', () => {
     expect(derived).toEqual({ [press]: 155 })
   })
 
-  it('derives a high bar squat from the low bar one', () => {
-    // Low bar allows more for most people, so the factor is below one.
-    // A starting position for the first session, not a claim — the first
-    // top set logged against the slug replaces it.
-    const lowBar = asExerciseId('low-bar-squat')
+  /*
+   * The high bar squat used to be derived here and is not any more: it
+   * left the squat's rotation when both lower days went to low bar, and a
+   * hypertrophy exercise is loaded by RPE rather than from a max.
+   * `conventional-deadlift` took its place as the variation with a ratio.
+   */
+  it('derives a conventional deadlift from the sumo one', () => {
+    // Five per cent below for someone who competes sumo — a weaker claim
+    // than the squat's was, since the gap between the two pulls is mostly
+    // build. A starting position, replaced by the first top set logged.
+    const sumo = asExerciseId('sumo-deadlift')
 
-    expect(maxes({ [lowBar]: 400 })[asExerciseId('high-bar-squat')]).toBe(360)
+    expect(maxes({ [sumo]: 400 })[asExerciseId('conventional-deadlift')]).toBe(380)
   })
 
-  it('leaves a measured high bar squat alone', () => {
-    const lowBar = asExerciseId('low-bar-squat')
-    const highBar = asExerciseId('high-bar-squat')
+  it('leaves a measured conventional deadlift alone', () => {
+    const sumo = asExerciseId('sumo-deadlift')
+    const conventional = asExerciseId('conventional-deadlift')
 
-    expect(maxes({ [lowBar]: 400, [highBar]: 385 })[highBar]).toBe(385)
+    expect(maxes({ [sumo]: 400, [conventional]: 415 })[conventional]).toBe(415)
   })
 })
 

@@ -193,14 +193,26 @@ rule nothing could reach that this file warns about elsewhere. If
 autoregulated volume comes back, the thing to move is a muscle's level,
 and it needs a screen the same day it needs a function.
 
-**Priority buys strength frequency too, not a bigger fatigue
-allowance.** `strengthSessionsFor` — tier 1 three sessions a week, tier 2
-two, tier 3 one — and `assignStrengthLifts` places them on the days whose
-`carries` matches the lift, choosing the **emptiest** eligible day each
-time. Spacing each lift across its own eligible days is the obvious
-implementation and is wrong the moment two lifts share a pool: a squat
-and a deadlift wanting one session each from the same two lower days both
+**Each lift carries its own sessions a week**, `liftSessions` in
+settings, two by default. `assignStrengthLifts` places them on the days
+whose `carries` matches the lift, choosing the **emptiest** eligible day
+each time. Spacing each lift across its own eligible days is the obvious
+implementation and is wrong the moment two lifts share a pool: a squat and
+a deadlift wanting one session each from the same two lower days both
 computed the same index and landed on Tuesday.
+
+**A day holding two lifts runs them in `STRENGTH_LIFTS` order**, so the
+squat opens every lower day and the deadlift always follows it. This used
+to alternate, and the reason it did has not stopped being true: whichever
+lift is second is second after a full top set and its back-offs, every
+session, for the whole block, and never gets a day where it is the
+priority. The alternation was removed because squat-then-pull was asked
+for, and the order of two lifts in a session is a training preference
+rather than a correctness property. **The cost is real, unmeasured and
+invisible on every screen — if the pull stalls while the squat does not,
+suspect this first.** `rp-assemble.test.ts` → "opens every lower day with
+the squat" is the record, inverted rather than deleted so that quietly
+restoring the alternation has to be said out loud.
 
 **The fatigue allowance equals the load drop, always.** One setting —
 `settings.fatiguePercent`, 5 by default and adjustable from 5 to 10 — read
@@ -781,18 +793,28 @@ log, but both _label_ as "Hypertrophy".
 
 **A lift rotates through variations; the competition version is always
 first.** `STRENGTH_VARIATIONS` in `domain/exercises/catalogue.ts`. The
-bench runs **paused, touch-and-go** across its two sessions and the squat
-runs **low bar, high bar** across its two. The close grip left with the
-third bench day: a rotation longer than the frequency never reaches its
-own end, so the entry was describing a session that does not happen. The deadlift has
-one entry on purpose: `strengthSlugFor` takes the ordinal modulo the
-rotation length, so a lift whose rotation is shorter than its frequency
-repeats rather than running off the end, and pulling sumo on both lower
-days is the intent rather than an omission. Adding a variation is adding a
-row here — but it is also converting that exercise to `intent: 'strength'`
-with `loadBasis: 'estimated-1rm'`, which takes it out of the hypertrophy
-pool, and adding a `VARIATION_OF` ratio so the first session has a load to
-suggest.
+bench runs **paused, touch-and-go** and the deadlift **sumo,
+conventional**, each across its two sessions. The squat has one entry and
+runs **low bar** on both lower days.
+
+**A rotation shorter than the frequency repeats, and that is how "always
+the competition version" is said.** `strengthSlugFor` takes the session
+ordinal modulo the rotation length, so a single entry is a deliberate
+statement rather than an omission — the squat is written that way now,
+and the deadlift used to be.
+
+Adding a variation is adding a row here, and three more things: converting
+that exercise to `intent: 'strength'` with `loadBasis: 'estimated-1rm'`,
+which takes it out of the hypertrophy pool; adding a `VARIATION_OF` ratio
+so the first session has a load to suggest; and checking what the
+hypertrophy pool just lost. **Removing one is the same list backwards**,
+and the backwards direction is the one that goes wrong quietly: a
+strength-intent exercise no rotation names is scheduled by nothing at all,
+so leaving it converted retires it from the catalogue without saying so.
+The high bar squat made that round trip — into the rotation when the squat
+had two entries, back to hypertrophy when it did not — and two
+`VARIATION_OF` ratios outlived their rotations before anyone noticed
+(close-grip bench, high bar squat), each deriving a max nothing loads.
 
 Which variation a session gets is picked by the lift's session ordinal —
 not by the day. Index 0 is the competition version so that dropping a lift

@@ -70,13 +70,24 @@ export const STRENGTH_LIFT_SLUGS = {
  * first two; raise it and it takes all three.
  */
 export const STRENGTH_VARIATIONS: Record<keyof typeof STRENGTH_LIFT_SLUGS, readonly string[]> = {
-  squat: ['low-bar-squat', 'high-bar-squat'],
+  /*
+   * One entry, so both lower days squat low bar.
+   *
+   * A rotation shorter than the frequency repeats rather than running off
+   * the end — `strengthSlugFor` takes the ordinal modulo its length — so
+   * this is the deliberate way to say "always the competition version".
+   * The high bar squat was the second entry and is back in the hypertrophy
+   * pool.
+   */
+  squat: ['low-bar-squat'],
   // Two sessions, two variations. The close grip left the rotation with
   // the third bench day — a rotation longer than the frequency simply
   // never reaches its own end, so the entry was describing a session that
   // does not happen.
   bench: ['paused-bench-press', 'bench-press'],
-  deadlift: ['sumo-deadlift'],
+  // Sumo is the competition pull and conventional is the variation, so
+  // lower day 1 pulls sumo and lower day 2 pulls conventional.
+  deadlift: ['sumo-deadlift', 'conventional-deadlift'],
 }
 
 /**
@@ -97,15 +108,23 @@ export const VARIATION_OF: Readonly<
   // loss of stretch reflex — so this factor is above one. It reads wrong
   // until you remember which lift is the reference.
   'bench-press': { of: 'paused-bench-press', factor: 1.05 },
-  'close-grip-bench-press': { of: 'paused-bench-press', factor: 0.95 },
   /*
-   * Low bar allows more than high bar for most people — shorter moment arm
-   * at the hip, more posterior chain — so the factor is below one. Ten per
-   * cent is the middle of the range usually quoted, and it is a starting
-   * position rather than a claim: the first top set logged against this
-   * slug replaces it, and a measured number always wins.
+   * Two entries left with the rotations that named them: the close-grip
+   * bench when the bench dropped to two sessions, and the high bar squat
+   * when both lower days went to low bar. A ratio for an exercise no
+   * rotation reaches derives a max nothing ever loads.
    */
-  'high-bar-squat': { of: 'low-bar-squat', factor: 0.9 },
+  /*
+   * Conventional against sumo, for someone who competes sumo.
+   *
+   * Five per cent below, which is a weaker claim than the squat's ten:
+   * the gap between the two pulls is mostly a matter of build — femur
+   * and torso length decide it — and for plenty of lifters conventional
+   * is the *stronger* pull. It is a starting position and nothing more.
+   * The first top set logged against this slug replaces it, and a
+   * measured number always wins.
+   */
+  'conventional-deadlift': { of: 'sumo-deadlift', factor: 0.95 },
 }
 
 /**
@@ -597,23 +616,25 @@ const ENTRIES: readonly CatalogueEntry[] = [
     pattern: 'squat',
     isCompound: true,
     /*
-     * Strength rather than hypertrophy, because this is the squat's second
-     * variation and a rotation member is run the same way the competition
-     * lift is: a top set of reps at an RPE, with back-offs derived from it.
+     * Back to hypertrophy, and the round trip is the thing to notice.
      *
-     * The cost is that the quads lose one of their two direct hypertrophy
-     * options and are left with the front squat. That is affordable here
-     * and worth stating: both squats name the quads as their *primary*
-     * muscle, so the strength work already pays them heavily before the
-     * fill chooses anything, and the fill subtracts what it spent.
+     * It was converted to strength when it became the squat's second
+     * rotation entry — a rotation member is run the way the competition
+     * lift is — and it left the rotation when both lower days went to low
+     * bar. A strength-intent exercise no rotation names is scheduled by
+     * nothing at all, so leaving it converted would have quietly retired
+     * it from the catalogue.
+     *
+     * The quads get it back as a direct option, which costs nothing today
+     * because they are on zero sessions, and is there the moment they are
+     * turned on.
      */
-    intent: 'strength',
-    // Unchanged from when this was an accessory. High bar genuinely is
-    // slightly cheaper than low bar — more upright, less hip — and the
-    // assembler should go on believing that.
+    intent: 'hypertrophy',
+    // Unchanged across both conversions. High bar genuinely is slightly
+    // cheaper than low bar — more upright, less hip — and the assembler
+    // should go on believing that whichever pool it sits in.
     sfr: 2,
     systemicCost: 0.8,
-    loadBasis: 'estimated-1rm',
     defaultRestSeconds: REST_HEAVY,
   },
   {
@@ -639,7 +660,20 @@ const ENTRIES: readonly CatalogueEntry[] = [
     equipment: 'barbell',
     pattern: 'hinge',
     isCompound: true,
-    intent: 'hypertrophy',
+    /*
+     * Strength rather than hypertrophy, because it is the deadlift's
+     * second rotation entry and a rotation member is run the way the
+     * competition lift is: a top set of reps at an RPE with back-offs
+     * derived from it.
+     *
+     * This takes it out of the hypertrophy pool, which costs the
+     * hamstrings their only compound option there. They are on zero
+     * sessions by default so nothing changes today — but turn them on and
+     * the picker has a Romanian deadlift and a good morning to choose
+     * from rather than three.
+     */
+    intent: 'strength',
+    loadBasis: 'estimated-1rm',
     sfr: 1,
     systemicCost: 0.95,
     defaultRestSeconds: REST_HEAVY,

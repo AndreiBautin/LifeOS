@@ -510,30 +510,26 @@ function assignStrengthLifts(
   }
 
   /*
-   * When a day hosts two competition lifts, alternate which one opens it.
+   * A day that hosts two competition lifts runs them in `STRENGTH_LIFTS`
+   * order — squat, bench, deadlift — so the squat always opens a lower
+   * day and the deadlift always follows it.
    *
-   * A tier-2 squat and a tier-2 deadlift both want two sessions and there
-   * are only two lower days, so they share both. Left alone the order is
-   * whatever `STRENGTH_LIFTS` happens to list, which means the same lift
-   * opens fresh every time and the other one is always second, always
-   * after five heavy sets. Over a block that is not a small difference —
-   * the second lift never gets a session where it is the priority.
+   * **This used to alternate, and the reason it did is still true.** With
+   * the squat and the deadlift sharing both lower days, whichever lift is
+   * second is second after a full top set and its back-offs, every
+   * session, for the whole block: it never gets a day where it is the
+   * priority. Swapping the pair on alternate days cost nothing and fixed
+   * that.
    *
-   * Alternating is counted across the days that actually hold a pair
-   * rather than by day index, so the two lower days swap even when they
-   * are Tuesday and Thursday with an untouched Wednesday between them.
-   *
-   * Deterministic, which matters: assembly must produce a byte-identical
-   * program for the same settings, and a workout in progress refers to
-   * its sets by index.
+   * It is gone because squat-then-pull was asked for directly, and the
+   * order of two lifts in a session is a training preference rather than
+   * a correctness property — plenty of programmes squat first on every
+   * lower day on purpose. What is lost is real and unmeasured: the
+   * deadlift is now permanently the tired lift of the two. If the pull
+   * stalls while the squat does not, this is the first thing to suspect,
+   * and restoring the alternation is a four-line change.
    */
-  let paired = 0
-  return perDay.map((lifts) => {
-    if (lifts.length < 2) return lifts
-
-    paired += 1
-    return paired % 2 === 0 ? [...lifts].reverse() : lifts
-  })
+  return perDay
 }
 
 /**

@@ -134,25 +134,26 @@ describe('the assembled block', () => {
     ])
 
     /*
-     * Six sessions across four days. Every lift is building and wants two
-     * sessions: the bench takes both upper days, and the squat and the
-     * deadlift share both lower ones.
+     * Six sessions across four days. Every lift wants two sessions: the
+     * bench takes both upper days, and the squat and the deadlift share
+     * both lower ones.
      *
      * The order is the interesting part. Tuesday opens with the squat and
      * Thursday with the deadlift, because a lift that is always second is
      * a lift that is never trained fresh. See `assignStrengthLifts`.
      *
-     * Thursday's squat is the **high bar**, which is the squat's second
-     * variation. The deadlift repeats sumo on both days because it has
-     * only one — `strengthSlugFor` takes the ordinal modulo the rotation
-     * length, so a rotation shorter than the frequency repeats rather than
-     * running off the end.
+     * The squat repeats low bar on both days because its rotation has
+     * only one entry — `strengthSlugFor` takes the ordinal modulo the
+     * rotation length, so a rotation shorter than the frequency repeats
+     * rather than running off the end, and a single entry is how "always
+     * the competition version" is expressed. The deadlift rotates sumo
+     * then conventional.
      */
     expect(mains).toEqual([
       ['paused-bench-press'],
       ['low-bar-squat', 'sumo-deadlift'],
       ['bench-press'],
-      ['sumo-deadlift', 'high-bar-squat'],
+      ['low-bar-squat', 'conventional-deadlift'],
     ])
   })
 
@@ -201,18 +202,22 @@ describe('the assembled block', () => {
     expect([...new Set(benches)]).toEqual(['paused-bench-press'])
   })
 
-  it('alternates which lift opens a day that hosts two', () => {
-    /*
-     * Guarding the property rather than the arrangement: whatever two
-     * lifts share a pair of days, they must not appear in the same order
-     * on both. Five heavy sets before the second one is a real cost, and
-     * paying it always with the same lift is the failure.
-     *
-     * Compared as **lifts** rather than as exercise ids. Those were the
-     * same thing until the squat gained a second variation, and comparing
-     * slugs now reads a rotation as a different lift — the day is still
-     * squatting whether the bar is high or low.
-     */
+  /*
+   * The squat opens every lower day, and this test is the record of what
+   * that costs.
+   *
+   * It used to assert the opposite — that two lifts sharing a pair of
+   * days must not appear in the same order on both — because whichever
+   * lift is second is second after a full top set and its back-offs,
+   * every session, and never gets a day where it is the priority.
+   *
+   * Squat-then-pull was asked for directly, and the order of two lifts in
+   * a session is a training preference rather than a correctness
+   * property. So the assertion is inverted rather than deleted: the
+   * arrangement is deliberate and a future change that quietly
+   * reintroduces alternation should have to say so here.
+   */
+  it('opens every lower day with the squat', () => {
     const liftOf = (slug: string): string =>
       Object.entries(STRENGTH_VARIATIONS).find(([, slugs]) => slugs.includes(slug))?.[0] ?? slug
     const week = block?.weeks[0]
@@ -229,8 +234,9 @@ describe('the assembled block', () => {
       .filter((lifts) => lifts.length > 1)
 
     expect(pairs.length).toBeGreaterThan(1)
-    expect(pairs[0]).not.toEqual(pairs[1])
-    expect([...(pairs[0] ?? [])].sort()).toEqual([...(pairs[1] ?? [])].sort())
+    for (const pair of pairs) {
+      expect(pair).toEqual(['squat', 'deadlift'])
+    }
   })
 
   /*
@@ -370,17 +376,18 @@ describe('naming a day after what is in it', () => {
     /*
      * A day can hold two, and it used to name whichever came last — so a
      * session opening with the squat described itself as a deadlift day.
-     * The order here is not cosmetic: it is the order the lifter will do
-     * them in, and Thursday's is deliberately the reverse of Tuesday's.
+     * The order is not cosmetic: it is the order the lifter will do them
+     * in.
      */
     const tuesday = week.days[1]
-    const thursday = week.days[3]
+    const friday = week.days[3]
 
     expect(tuesday?.focus).toMatch(/^Low Bar Squat and Sumo Deadlift, then /)
-    // Thursday names the high bar, because that is the squat it actually
-    // holds — a description that said "Low Bar Squat" on the day the bar
-    // sits high would be the hardcoded-label failure in a new place.
-    expect(thursday?.focus).toMatch(/^Sumo Deadlift and High Bar Squat, then /)
+    // Friday names the conventional pull, because that is the deadlift it
+    // actually holds — a description saying "Sumo Deadlift" on the day
+    // the stance is narrow would be the hardcoded-label failure in a new
+    // place.
+    expect(friday?.focus).toMatch(/^Low Bar Squat and Conventional Deadlift, then /)
 
     // Without the parenthetical variant, which is catalogue bookkeeping.
     expect(tuesday?.focus).not.toContain('(')
