@@ -14,17 +14,18 @@ import {
 } from '@/domain/backup/envelope'
 import { checksumOf, verifyChecksum } from '@/domain/backup/checksum'
 import type { AppSettings } from '@/domain/settings/settings'
-import type { Exercise } from '@/domain/exercises/exercise'
-import type { CheckIn } from '@/domain/autoregulation/check-in'
-import type { WorkoutLog } from '@/domain/logging/workout-log'
 import type { Tombstone } from '@/domain/sync/tombstone'
 import { indexTombstones, shouldAccept } from '@/domain/sync/tombstone'
-import type {
-  CheckInRepository,
-  ExerciseRepository,
-  TombstoneRepository,
-  WorkoutRepository,
-} from '@/domain/repositories/ports'
+import {
+  COLLECTIONS,
+  COLLECTION_KEYS,
+  localCells,
+  restoreCells,
+  type BackupRepositories,
+  type CollectionKey,
+} from './collections'
+
+export type { BackupRepositories } from './collections'
 
 /**
  * Export and import.
@@ -37,13 +38,6 @@ import type {
  * reproduces the app exactly.
  */
 
-export interface BackupRepositories {
-  readonly exercises: ExerciseRepository
-  readonly workouts: WorkoutRepository
-  readonly checkIns: CheckInRepository
-  readonly tombstones: TombstoneRepository
-}
-
 export interface ExportOptions {
   readonly settings: AppSettings
   readonly appVersion: string
@@ -54,19 +48,23 @@ export async function buildBackup(
   repositories: BackupRepositories,
   options: ExportOptions,
 ): Promise<BackupEnvelope> {
-  const [exercises, workouts, checkIns, tombstones] = await Promise.all([
-    repositories.exercises.all(),
-    repositories.workouts.all(),
-    repositories.checkIns.all(),
+  const [gathered, tombstones, cells] = await Promise.all([
+    Promise.all(COLLECTION_KEYS.map((key) => COLLECTIONS[key].local(repositories))),
     repositories.tombstones.all(),
+    localCells(repositories),
   ])
 
+  const sections = Object.fromEntries(
+    COLLECTION_KEYS.map((key, index) => [key, gathered[index] ?? []]),
+  ) as unknown as Omit<BackupData, 'settings' | 'tombstones' | 'exploredCells'>
+
   const data: BackupData = {
+    ...sections,
     settings: options.settings,
-    exercises,
-    workouts,
-    checkIns,
     tombstones,
+    // Sorted so two exports of the same ground produce the same file,
+    // which is what makes a checksum worth having.
+    exploredCells: [...cells].sort(),
   }
 
   return {
@@ -152,57 +150,57 @@ export async function previewMerge(
   envelope: BackupEnvelope,
   repositories: BackupRepositories,
 ): Promise<MergeEffect> {
-  const [exercises, workouts, checkIns, localTombstones] = await Promise.all([
-    repositories.exercises.all(),
-    repositories.workouts.all(),
-    repositories.checkIns.all(),
-    repositories.tombstones.all(),
-  ])
+  const localTombstones = await repositories.tombstones.all()
 
   // Counted the way it will be applied, or the preview is a different
   // answer to the one the button gives.
   const accepted = acceptable(envelope, localTombstones)
 
-  const existing = {
-    exercises: new Set(exercises.map((item) => item.id as string)),
-    workouts: new Set(workouts.map((item) => item.id as string)),
-    checkIns: new Set(checkIns.map((item) => item.id as string)),
-  }
+  const added = emptyCounts()
+  const updated = emptyCounts()
+  const unchanged = emptyCounts()
 
-  const added: Record<keyof BackupCounts, number> = {
+  await Promise.all(
+    COLLECTION_KEYS.map(async (key) => {
+      const collection = COLLECTIONS[key]
+      const existing = new Set((await collection.local(repositories)).map(collection.idOf))
+
+      for (const row of accepted[key]) {
+        if (existing.has(collection.idOf(row))) updated[key] += 1
+        else added[key] += 1
+      }
+
+      unchanged[key] = existing.size - updated[key]
+    }),
+  )
+
+  /*
+   * Ground merges by union, so nothing is ever updated and nothing is
+   * ever lost: a cell in the file is either new here or already walked.
+   */
+  const cells = await localCells(repositories)
+  const incoming = envelope.data.exploredCells ?? []
+  added.exploredCells = incoming.filter((cell) => !cells.has(cell as never)).length
+  unchanged.exploredCells = cells.size
+
+  return { added, updated, unchanged }
+}
+
+function emptyCounts(): Record<keyof BackupCounts, number> {
+  return {
     exercises: 0,
     workouts: 0,
     checkIns: 0,
+    items: 0,
+    projects: 0,
+    upgrades: 0,
+    friends: 0,
+    metrics: 0,
+    reviews: 0,
+    places: 0,
+    trips: 0,
+    exploredCells: 0,
   }
-  const updated: Record<keyof BackupCounts, number> = { ...added }
-
-  const tally = (key: keyof BackupCounts, ids: readonly string[]): void => {
-    for (const id of ids) {
-      if (existing[key].has(id)) updated[key] += 1
-      else added[key] += 1
-    }
-  }
-
-  tally(
-    'exercises',
-    accepted.exercises.map((item) => item.id),
-  )
-  tally(
-    'workouts',
-    accepted.workouts.map((item) => item.id),
-  )
-  tally(
-    'checkIns',
-    accepted.checkIns.map((item) => item.id),
-  )
-
-  const unchanged: BackupCounts = {
-    exercises: existing.exercises.size - updated.exercises,
-    workouts: existing.workouts.size - updated.workouts,
-    checkIns: existing.checkIns.size - updated.checkIns,
-  }
-
-  return { added, updated, unchanged }
 }
 
 export interface ImportResult {
@@ -242,12 +240,19 @@ export async function applyBackup(
 
   const accepted = acceptable(envelope, localTombstones)
 
-  await repositories.exercises.restoreMany(accepted.exercises)
-  await repositories.workouts.restoreMany(accepted.workouts)
-  await repositories.checkIns.restoreMany(accepted.checkIns)
+  for (const key of COLLECTION_KEYS) {
+    await COLLECTIONS[key].restore(repositories, accepted[key])
+  }
+
+  // Union, always. Ground has no tombstone because there is no such thing
+  // as un-walking it, so an import can only ever add.
+  await restoreCells(repositories, data.exploredCells ?? [])
 
   return {
-    imported: countsFor({ ...data, ...accepted }),
+    imported: {
+      ...countsFor({ ...data, ...toSections(accepted) }),
+      exploredCells: (data.exploredCells ?? []).length,
+    },
     // Settings are only adopted on a full replace. Merging someone else's
     // training maxes into a live setup would silently rewrite every
     // percentage the program prescribes.
@@ -255,27 +260,48 @@ export async function applyBackup(
   }
 }
 
+type Accepted = Readonly<Record<CollectionKey, readonly unknown[]>>
+
+function toSections(accepted: Accepted): Partial<BackupData> {
+  return Object.fromEntries(COLLECTION_KEYS.map((key) => [key, accepted[key]]))
+}
+
 /**
  * The subset of a backup that survives this device's deletions.
  *
- * Shared by the preview and the apply so the count shown on the button
- * is the count the button produces. They were separate walks over the
- * same data once, which is exactly the shape of thing that drifts.
+ * Shared by the preview and the apply so the count shown on the button is
+ * the count the button produces. They were separate walks over the same
+ * data once, which is exactly the shape of thing that drifts.
  */
-function acceptable(
-  envelope: BackupEnvelope,
-  localTombstones: readonly Tombstone[],
-): {
-  readonly exercises: readonly Exercise[]
-  readonly workouts: readonly WorkoutLog[]
-  readonly checkIns: readonly CheckIn[]
-} {
+function acceptable(envelope: BackupEnvelope, localTombstones: readonly Tombstone[]): Accepted {
   const index = indexTombstones(localTombstones)
   const { data } = envelope
 
-  return {
-    exercises: data.exercises.filter((item) => shouldAccept(item, 'exercises', item.id, index)),
-    workouts: data.workouts.filter((item) => shouldAccept(item, 'workouts', item.id, index)),
-    checkIns: data.checkIns.filter((item) => shouldAccept(item, 'checkIns', item.id, index)),
-  }
+  return Object.fromEntries(
+    COLLECTION_KEYS.map((key) => {
+      const collection = COLLECTIONS[key]
+      const rows = collection.fromFile(data)
+      const name = collection.tombstoneCollection
+
+      return [
+        key,
+        // A collection nothing can delete from has nothing to veto its
+        // rows, so every row is accepted rather than checked against a
+        // tombstone that could never exist.
+        name === undefined
+          ? rows
+          : rows.filter((row) =>
+              // `shouldAccept` only reads `updatedAt`, and the table has
+              // already erased each row's type — asserting the one field
+              // it looks at is narrower than asserting the record.
+              shouldAccept(
+                row as { readonly updatedAt?: string },
+                name,
+                collection.idOf(row),
+                index,
+              ),
+            ),
+      ]
+    }),
+  ) as Accepted
 }

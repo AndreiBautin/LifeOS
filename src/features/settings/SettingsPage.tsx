@@ -1,4 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
+
+import type { BackupCounts } from '@/domain/backup/envelope'
 import { AlertTriangle, Download, HardDrive, Upload } from 'lucide-react'
 import { useId, useRef, useState } from 'react'
 
@@ -446,6 +448,22 @@ interface ImportPanelProps {
   readonly busy: boolean
 }
 
+/** What each collection is called, in the order a person would read it. */
+const COUNT_LABELS: readonly (readonly [keyof BackupCounts, string])[] = [
+  ['workouts', 'workouts'],
+  ['exercises', 'exercises'],
+  ['checkIns', 'check-ins'],
+  ['items', 'backlog items'],
+  ['projects', 'projects'],
+  ['upgrades', 'upgrades'],
+  ['friends', 'people'],
+  ['places', 'places'],
+  ['trips', 'trips'],
+  ['reviews', 'monthly reviews'],
+  ['metrics', 'tracked metrics'],
+  ['exploredCells', 'squares of walked ground'],
+]
+
 const REPLACE_PHRASE = 'replace'
 
 function ImportPanel({
@@ -475,9 +493,19 @@ function ImportPanel({
         <>
           <p className="text-ink-50 text-sm font-medium">Ready to import</p>
           <ul className="text-ink-300 numeric space-y-0.5 text-xs">
-            <li>{preview.counts?.workouts ?? 0} workouts</li>
-            <li>{preview.counts?.exercises ?? 0} exercises</li>
-            <li>{preview.counts?.checkIns ?? 0} check-ins</li>
+            {/*
+              Every collection with something in it, rather than the three
+              that used to be listed. A file whose backlog and places went
+              unmentioned looked like a training-only backup, which is
+              exactly what it used to be.
+            */}
+            {COUNT_LABELS.filter(([key]) => (preview.counts?.[key] ?? 0) > 0).map(
+              ([key, label]) => (
+                <li key={key}>
+                  {preview.counts?.[key] ?? 0} {label}
+                </li>
+              ),
+            )}
             {preview.dateRange !== undefined && (
               <li className="text-ink-500">
                 {preview.dateRange.from} to {preview.dateRange.to}

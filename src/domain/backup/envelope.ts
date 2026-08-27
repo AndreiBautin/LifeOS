@@ -1,4 +1,11 @@
+import type { Place } from '@/domain/atlas/place/Place'
+import type { Trip } from '@/domain/atlas/trip/Trip'
 import type { CheckIn } from '@/domain/autoregulation/check-in'
+import type { Item } from '@/domain/backlog/item'
+import type { Project } from '@/domain/projects/project'
+import type { MetricDefinition, MonthlySnapshot } from '@/domain/review/metric'
+import type { Friend } from '@/domain/social/circle'
+import type { Upgrade } from '@/domain/upgrades/upgrade'
 import type { Exercise } from '@/domain/exercises/exercise'
 import type { WorkoutLog } from '@/domain/logging/workout-log'
 import type { AppSettings } from '@/domain/settings/settings'
@@ -28,14 +35,22 @@ import type { Tombstone } from '@/domain/sync/tombstone'
  */
 
 /**
- * Version 2 adds `tombstones`.
+ * Version 2 added `tombstones`. Version 3 adds the absorbed areas.
  *
- * A version 1 file has no record of what was deleted, so importing one
- * still resurrects anything removed since it was written — there is no
- * fixing that from this side, and the reader treats a missing section as
- * an empty one rather than refusing the file.
+ * The rule at the top of this file — a restore from one file must
+ * reproduce the app exactly — stopped being true the moment this hub
+ * gained a backlog, a quest log, a tech tree, a circle, a review and an
+ * atlas. Five areas' worth of records were outside the only export the
+ * app has, on a device whose storage a browser can clear without asking.
+ * A partial backup is worse than none, because it is trusted.
+ *
+ * Older files stay readable. Every section added here is optional on
+ * read and a missing one is treated as empty, which is the same
+ * concession version 2 made for `tombstones` — importing a version 1 file
+ * still resurrects anything deleted since it was written, and there is no
+ * fixing that from this side.
  */
-export const BACKUP_SCHEMA_VERSION = 2
+export const BACKUP_SCHEMA_VERSION = 3
 
 export const BACKUP_MAGIC = 'lift.backup'
 
@@ -55,6 +70,16 @@ export interface BackupCounts {
   readonly exercises: number
   readonly workouts: number
   readonly checkIns: number
+  readonly items: number
+  readonly projects: number
+  readonly upgrades: number
+  readonly friends: number
+  readonly metrics: number
+  readonly reviews: number
+  readonly places: number
+  readonly trips: number
+  /** Geohash cells of walked ground. Counted, though it is a set of ids. */
+  readonly exploredCells: number
 }
 
 export interface BackupData {
@@ -68,6 +93,28 @@ export interface BackupData {
    * Optional on read for version 1 files. Always written.
    */
   readonly tombstones?: readonly Tombstone[]
+
+  /*
+   * The absorbed areas. All optional on read: a version 1 or 2 file
+   * predates them and a missing section means "none", never "delete what
+   * is here".
+   */
+  readonly items?: readonly Item[]
+  readonly projects?: readonly Project[]
+  readonly upgrades?: readonly Upgrade[]
+  readonly friends?: readonly Friend[]
+  readonly metrics?: readonly MetricDefinition[]
+  readonly reviews?: readonly MonthlySnapshot[]
+  readonly places?: readonly Place[]
+  readonly trips?: readonly Trip[]
+  /**
+   * Walked ground, as bare cell ids.
+   *
+   * A set rather than records, and it merges by union on the way back in
+   * — the same reason it has no tombstone anywhere else in the hub. There
+   * is no such thing as un-walking ground.
+   */
+  readonly exploredCells?: readonly string[]
 }
 
 export function countsFor(data: BackupData): BackupCounts {
@@ -75,8 +122,33 @@ export function countsFor(data: BackupData): BackupCounts {
     exercises: data.exercises.length,
     workouts: data.workouts.length,
     checkIns: data.checkIns.length,
+    items: data.items?.length ?? 0,
+    projects: data.projects?.length ?? 0,
+    upgrades: data.upgrades?.length ?? 0,
+    friends: data.friends?.length ?? 0,
+    metrics: data.metrics?.length ?? 0,
+    reviews: data.reviews?.length ?? 0,
+    places: data.places?.length ?? 0,
+    trips: data.trips?.length ?? 0,
+    exploredCells: data.exploredCells?.length ?? 0,
   }
 }
+
+/** Every collection a backup carries, for anything that walks them all. */
+export const BACKUP_COUNT_KEYS = [
+  'exercises',
+  'workouts',
+  'checkIns',
+  'items',
+  'projects',
+  'upgrades',
+  'friends',
+  'metrics',
+  'reviews',
+  'places',
+  'trips',
+  'exploredCells',
+] as const satisfies readonly (keyof BackupCounts)[]
 
 /* -------------------------------------------------------------------- */
 /* Import                                                                */

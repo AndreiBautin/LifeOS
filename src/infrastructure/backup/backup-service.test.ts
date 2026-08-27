@@ -12,11 +12,27 @@ import {
 } from '@/infrastructure/db/database'
 import {
   createCheckInRepository,
+  createBacklogItemRepository,
+  createExploredAreaRepository,
+  createFriendRepository,
+  createPlaceRepository,
+  createProjectRepository,
+  createReviewRepository,
   createTombstoneRepository,
+  createTripRepository,
+  createUpgradeRepository,
   createExerciseRepository,
   createWorkoutRepository,
 } from '@/infrastructure/db/repositories'
 import { anEntry, aPostCheckIn, aWorkout, SQUAT } from '@/test/builders/workout'
+import { createItem } from '@/domain/backlog/item'
+import { asFriendId } from '@/domain/ids/ids'
+import { countsFor } from '@/domain/backup/envelope'
+
+const anItemDeps = {
+  clock: { now: () => new Date('2026-08-24T12:00:00.000Z') },
+  ids: { next: () => 'item-1' },
+}
 
 import {
   applyBackup,
@@ -44,6 +60,14 @@ beforeEach(async () => {
     workouts: createWorkoutRepository(db, testClock),
     checkIns: createCheckInRepository(db, testClock),
     tombstones: createTombstoneRepository(db),
+    items: createBacklogItemRepository(db, testClock),
+    projects: createProjectRepository(db, testClock),
+    upgrades: createUpgradeRepository(db, testClock),
+    friends: createFriendRepository(db, testClock),
+    review: createReviewRepository(db, testClock),
+    places: createPlaceRepository(db, testClock),
+    trips: createTripRepository(db, testClock),
+    explored: createExploredAreaRepository(db),
   }
 })
 
@@ -269,5 +293,130 @@ describe('the checksum', () => {
 
   it('distinguishes an empty array from an absent field', () => {
     expect(checksumOf({ items: [] })).not.toBe(checksumOf({}))
+  })
+})
+
+/**
+ * The absorbed areas, which for five versions of this file were not in it.
+ *
+ * The envelope's own contract is that a restore from one file reproduces
+ * the app exactly, and the moment this hub gained a backlog, a quest log,
+ * a tech tree, a circle, a review and an atlas, that stopped being true —
+ * five areas of records outside the only export the app has, on a device
+ * whose storage a browser can clear without asking. A partial backup is
+ * worse than none, because it is trusted.
+ */
+async function populateEverything(): Promise<void> {
+  await populate()
+
+  await repositories.items.save(createItem({ title: 'Dune', category: 'books' }, anItemDeps))
+  await repositories.friends.save({
+    id: asFriendId('friend-1'),
+    name: 'Sam',
+    cadenceDays: 30,
+    lastHangout: '2026-08-01',
+    createdAt: '2026-01-01T00:00:00.000Z',
+  } as never)
+  await repositories.places.save({
+    id: 'place-1',
+    name: 'Kiln',
+    categoryId: 'food',
+    status: 'wantToVisit',
+    location: { coordinates: { latitude: 51.5, longitude: -0.1 } },
+    favorite: false,
+    tags: [],
+    dateAdded: '2026-08-01T00:00:00.000Z',
+  } as never)
+  await repositories.trips.save({
+    id: 'trip-1',
+    name: 'Lisbon',
+    location: 'Portugal',
+    placeIds: [],
+  } as never)
+  await repositories.explored.reveal(['gcpvj0u' as never, 'gcpvj0v' as never])
+}
+
+describe('everything the hub holds, not only the training half', () => {
+  it('carries every collection through a round trip', async () => {
+    await populateEverything()
+
+    const file = serialiseBackup(await buildBackup(repositories, exportOptions))
+    await clearAllStores(db)
+    const parsed = parseBackup(file)
+    if (parsed.envelope === undefined) throw new Error('the file did not parse')
+    await applyBackup(parsed.envelope, repositories, 'replace')
+
+    expect(await repositories.items.all()).toHaveLength(1)
+    expect(await repositories.friends.all()).toHaveLength(1)
+    expect(await repositories.places.all()).toHaveLength(1)
+    expect(await repositories.trips.all()).toHaveLength(1)
+    expect((await repositories.explored.all()).size).toBe(2)
+  })
+
+  it('counts what it carried, so the number on the button is true', async () => {
+    await populateEverything()
+
+    const envelope = await buildBackup(repositories, exportOptions)
+
+    expect(envelope.counts).toMatchObject({
+      items: 1,
+      friends: 1,
+      places: 1,
+      trips: 1,
+      exploredCells: 2,
+    })
+  })
+
+  /*
+   * Walked ground merges by union and never by replacement — there is no
+   * such thing as un-walking it, which is why it has no tombstone anywhere
+   * else in the hub either. An import that replaced the set would erase a
+   * morning the other device walked.
+   */
+  it('adds walked ground rather than replacing it', async () => {
+    await repositories.explored.reveal(['gcpvj0u' as never])
+    const file = serialiseBackup(await buildBackup(repositories, exportOptions))
+
+    await repositories.explored.clear()
+    await repositories.explored.reveal(['gcpuvxx' as never])
+
+    const parsed = parseBackup(file)
+    if (parsed.envelope === undefined) throw new Error('the file did not parse')
+    await applyBackup(parsed.envelope, repositories, 'merge')
+
+    expect((await repositories.explored.all()).size).toBe(2)
+  })
+
+  /*
+   * The concession every added section makes: an older file simply has no
+   * such section, and a missing one means "none" rather than "delete what
+   * is here". A version 2 file has to keep importing, or every backup
+   * taken before today becomes unreadable.
+   */
+  it('accepts a file written before these sections existed', async () => {
+    await populateEverything()
+    const envelope = await buildBackup(repositories, exportOptions)
+
+    const older = {
+      ...envelope,
+      schemaVersion: 2,
+      data: {
+        settings: envelope.data.settings,
+        exercises: envelope.data.exercises,
+        workouts: envelope.data.workouts,
+        checkIns: envelope.data.checkIns,
+        tombstones: envelope.data.tombstones,
+      },
+    }
+    const legacy = serialiseBackup({
+      ...older,
+      checksum: checksumOf(older.data),
+      counts: countsFor(older.data as never),
+    } as never)
+
+    const parsed = parseBackup(legacy)
+
+    expect(parsed.preview.problems.filter((one) => one.severity === 'error')).toHaveLength(0)
+    expect(parsed.envelope).toBeDefined()
   })
 })
