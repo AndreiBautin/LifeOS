@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { CalendarCheck, Settings } from 'lucide-react'
+import { Settings } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
 import { useServices, useSettings } from '@/app/context'
@@ -85,25 +85,20 @@ export function CharacterPage() {
             Where you stand, everywhere it is being tracked
           </p>
         </div>
-        <div className="flex items-center gap-1">
-          <Link to="/review" className={buttonStyles({ variant: 'ghost', size: 'sm' })}>
-            <CalendarCheck size={16} aria-hidden />
-            Monthly review
-          </Link>
-          {/*
-            Settings lives here rather than in the navigation, which the
-            tech tree took its seat in. Icon-only because the label would
-            crowd the review link on a phone, and it is the one destination
-            whose icon nobody has to be taught.
-          */}
-          <Link
-            to="/settings"
-            aria-label="Settings"
-            className={buttonStyles({ variant: 'ghost', size: 'sm' })}
-          >
-            <Settings size={16} aria-hidden />
-          </Link>
-        </div>
+        {/*
+          Settings lives here rather than in the navigation, which the tech
+          tree took its seat in. The monthly review used to sit beside it
+          and has moved to Today, next to the season: both answer "how is
+          this stretch going", and a link on a screen you open weekly was
+          the only prompt to do a thing that wants doing monthly.
+        */}
+        <Link
+          to="/settings"
+          aria-label="Settings"
+          className={buttonStyles({ variant: 'ghost', size: 'sm' })}
+        >
+          <Settings size={16} aria-hidden />
+        </Link>
       </header>
 
       <Section title={`Level ${String(standing?.level ?? 1)}`}>

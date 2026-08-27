@@ -1,4 +1,5 @@
 import { CalendarRange } from 'lucide-react'
+import type { ReactNode } from 'react'
 
 import type { SeasonProgress } from '@/application/use-cases/character/season-progress'
 import { Card, Section } from '@/components/shared/primitives'
@@ -36,7 +37,19 @@ function monthLabel(key: string): string {
   return MONTH_NAMES[month - 1] ?? key
 }
 
-export function SeasonCard({ progress }: { readonly progress: SeasonProgress }) {
+export function SeasonCard({
+  progress,
+  action,
+}: {
+  readonly progress: SeasonProgress
+  /**
+   * Rendered in the section header. The monthly review lives here: a
+   * season and a month are both "how is this stretch going", and putting
+   * the two apart meant the only prompt to do the review was a link on a
+   * screen you had no reason to open.
+   */
+  readonly action?: ReactNode
+}) {
   const { target } = progress
   const fill = target === undefined ? 0 : Math.min(100, Math.round((progress.xp / target) * 100))
   const beaten = target !== undefined && progress.xp >= target
@@ -48,6 +61,7 @@ export function SeasonCard({ progress }: { readonly progress: SeasonProgress }) 
   return (
     <Section
       title={progress.label}
+      {...(action === undefined ? {} : { action })}
       description={
         progress.daysLeft === 0
           ? 'This season is over.'

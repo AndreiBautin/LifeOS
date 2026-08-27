@@ -431,6 +431,13 @@ describe now, so they live on Today; levels, ladders and ratings describe
 where you have got to, so they live on You. The season was on You first
 and was wrong there — a season is a chapter you are _in_.
 
+The monthly review's link sits with the season for the same reason: both
+answer "how is this stretch going", and a link buried on a screen opened
+weekly was the only prompt to do a thing that wants doing monthly. It says
+`File 2026-08` or `2026-08 filed` rather than "Review" — a link that
+cannot tell you whether there is anything to do is a link you stop
+noticing.
+
 Within Today the order is work first, readout last: the season sits below
 everything actionable, because a progress bar above the checkboxes makes
 the first thing you see each morning a score rather than a task.

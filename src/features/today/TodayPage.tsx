@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 
 import type { AgendaItem, Urgency } from '@/application/use-cases/today/agenda'
 import { Badge, Card, Empty, Section } from '@/components/shared/primitives'
+import { buttonStyles } from '@/components/shared/styles'
 import { ActiveQuests } from '@/features/projects/ActiveQuests'
 import { useActiveQuests } from '@/features/projects/hooks'
 import { toDayKey } from '@/domain/time/day'
@@ -11,6 +12,7 @@ import { useServices } from '@/app/context'
 import { Dailies } from './Dailies'
 import { SeasonCard } from '@/features/character/SeasonCard'
 import { useSeasonProgress } from '@/features/character/hooks'
+import { useReviewDraft } from '@/features/review/hooks'
 
 import { useAgenda } from './hooks'
 
@@ -67,6 +69,7 @@ export function TodayPage() {
   const agenda = useAgenda()
   const active = useActiveQuests()
   const season = useSeasonProgress()
+  const review = useReviewDraft()
   const services = useServices()
 
   const rows = agenda.data ?? []
@@ -123,7 +126,26 @@ export function TodayPage() {
         checkboxes would make the first thing you see each morning a score
         rather than a task.
       */}
-      {season.data !== undefined && <SeasonCard progress={season.data} />}
+      {season.data !== undefined && (
+        <SeasonCard
+          progress={season.data}
+          action={
+            <Link to="/review" className={buttonStyles({ variant: 'ghost', size: 'sm' })}>
+              <CalendarCheck size={16} aria-hidden />
+              {/*
+                Says which month and whether it is done, rather than just
+                "Review". A link that cannot tell you there is anything to
+                do is a link you stop noticing.
+              */}
+              {review.data === undefined
+                ? 'Review'
+                : review.data.started
+                  ? `${review.data.month} filed`
+                  : `File ${review.data.month}`}
+            </Link>
+          }
+        />
+      )}
     </>
   )
 }
