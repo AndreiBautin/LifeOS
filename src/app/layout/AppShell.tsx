@@ -14,12 +14,23 @@ import { UpdatePrompt } from '@/features/pwa/UpdatePrompt'
  * at the top-left corner of a six-inch screen.
  */
 
+/*
+ * Character first, because it is now the readout for every area rather
+ * than a strength sheet. It sat fifth on reasoning that expired: when this
+ * order was set it showed bodyweight multiples and an XP bar fed only by
+ * workouts, which is not something to open an app to.
+ *
+ * The labels say what the model says. "Quests" and "Tech tree" are the
+ * words the domain and the docs have used since the game model was
+ * written; the screens were the only place still calling them Projects and
+ * Upgrades.
+ */
 const NAV = [
-  { to: '/next', label: 'Next', Icon: Target },
+  { to: '/character', label: 'Character', Icon: User },
   { to: '/train', label: 'Train', Icon: Dumbbell },
+  { to: '/quests', label: 'Quests', Icon: Target },
   { to: '/backlog', label: 'Backlog', Icon: Library },
-  { to: '/map', label: 'Map', Icon: Map },
-  { to: '/character', label: 'You', Icon: User },
+  { to: '/map', label: 'Atlas', Icon: Map },
   { to: '/settings', label: 'Settings', Icon: Settings },
 ] as const
 

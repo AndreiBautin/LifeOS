@@ -302,7 +302,7 @@ describe('getRecommendation', () => {
 
     expect(result.projectName).toBe('high')
     expect(result.actionDescription).toBe('do the big thing')
-    expect(result.reason).toBe('Highest priority active project')
+    expect(result.reason).toBe('Highest priority active quest')
   })
 
   it('skips a project with no next action', () => {
@@ -359,7 +359,7 @@ describe('getRecommendation', () => {
     )
 
     expect(result.projectName).toBe('blocked')
-    expect(result.reason).toBe('Unblocks a high-priority project')
+    expect(result.reason).toBe('Unblocks a high-priority quest')
   })
 
   /*

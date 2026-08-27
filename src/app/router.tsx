@@ -35,8 +35,16 @@ export const router = createBrowserRouter(
         // The hub opens on what to do next, not on the training screen. That
         // is the change from a training app to a hub: the first thing on the
         // first screen should be the answer to "what now".
-        { index: true, element: <Navigate to="/next" replace /> },
-        { path: 'next', element: <ProjectsPage /> },
+        { index: true, element: <Navigate to="/character" replace /> },
+        { path: 'quests', element: <ProjectsPage /> },
+        /*
+         * Kept as a redirect rather than deleted. The PWA manifest shipped
+         * a "What next" shortcut pointing here, and a shortcut is
+         * registered with the operating system when the app is installed —
+         * an installed copy goes on asking for this path long after the
+         * manifest stops mentioning it.
+         */
+        { path: 'next', element: <Navigate to="/quests" replace /> },
         { path: 'train', element: <TrainPage /> },
         { path: 'plan', element: <PlanPage /> },
         { path: 'program', element: <ProgramPage /> },

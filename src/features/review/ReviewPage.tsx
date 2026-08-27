@@ -298,6 +298,20 @@ export function ReviewPage() {
 
   return (
     <>
+      {/*
+        A header, because this is now something you arrive at deliberately
+        from the home screen rather than a panel that appeared under a
+        corner link. It has no tab of its own and should not: a screen
+        opened ten minutes a month has not earned one.
+      */}
+      <header className="mb-6">
+        <h1 className="text-ink-50 text-2xl font-semibold tracking-tight">Season review</h1>
+        <p className="text-ink-500 mt-0.5 text-sm">
+          Once a month, on purpose. A rating that moved because a page was opened would not be a
+          monthly rating.
+        </p>
+      </header>
+
       <Section
         title="How it is going"
         /*

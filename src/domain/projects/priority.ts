@@ -226,13 +226,13 @@ export function getRecommendation(projects: readonly Project[], today: Date): Re
       actionDescription: nextAction.description,
       reason:
         project.status === 'blocked'
-          ? 'Unblocks a high-priority project'
-          : 'Highest priority active project',
+          ? 'Unblocks a high-priority quest'
+          : 'Highest priority active quest',
     }
   }
 
   return {
     reason:
-      'Nothing actionable right now. Add a next action to a blocked project, add a new project, or check back once a waiting item’s date arrives.',
+      'Nothing actionable right now. Add a next step to a blocked quest, add a new quest, or check back once a waiting item’s date arrives.',
   }
 }

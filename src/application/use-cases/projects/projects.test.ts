@@ -308,7 +308,7 @@ describe('the recommendation', () => {
 
     const first = await recommendation(deps)
     expect(first.actionDescription).toBe('find the old one')
-    expect(first.reason).toBe('Highest priority active project')
+    expect(first.reason).toBe('Highest priority active quest')
 
     await setActionStatus(project.id, firstAction.id, true, deps)
 

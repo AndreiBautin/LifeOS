@@ -300,7 +300,7 @@ export function ProjectsPage() {
         action={
           <Link to="/upgrades" className={buttonStyles({ variant: 'ghost', size: 'sm' })}>
             <Sparkles size={16} aria-hidden />
-            Upgrades
+            Tech tree
           </Link>
         }
       >
@@ -308,7 +308,7 @@ export function ProjectsPage() {
       </Section>
 
       <Section
-        title="Projects"
+        title="Quests"
         description={
           projects.data === undefined
             ? undefined
@@ -334,7 +334,7 @@ export function ProjectsPage() {
           <input
             className={FIELD}
             value={name}
-            aria-label="New project name"
+            aria-label="New quest name"
             placeholder="Something you are trying to get done"
             onChange={(event) => {
               setName(event.target.value)

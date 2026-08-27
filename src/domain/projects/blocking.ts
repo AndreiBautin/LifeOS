@@ -64,7 +64,7 @@ export function validateBlockers(
   const ids = [...new Set(blockerIds)]
   if (ids.length === 0) return undefined
 
-  if (ids.includes(projectId)) return 'A project cannot block itself.'
+  if (ids.includes(projectId)) return 'A quest cannot block itself.'
 
   const byId = indexProjects(projects)
 
@@ -75,7 +75,7 @@ export function validateBlockers(
     // If the blocker already depends on this project, adding "this project
     // depends on the blocker" closes the loop.
     if (dependsOn(byId, blockerId, projectId)) {
-      return 'That would create a circular dependency between projects.'
+      return 'That would create a circular dependency between quests.'
     }
   }
 

@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { CalendarCheck } from 'lucide-react'
+import { CalendarCheck, Target } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
 import { useServices, useSettings } from '@/app/context'
@@ -10,6 +10,9 @@ import { totalWorkingSets } from '@/domain/logging/workout-log'
 import { Badge, Card, Section } from '@/components/shared/primitives'
 import { buttonStyles } from '@/components/shared/styles'
 import { cn } from '@/lib/cn'
+
+import { NextAction } from '@/features/projects/NextAction'
+import { useRecommendation } from '@/features/projects/hooks'
 
 import { useCharacterSheet } from './hooks'
 
@@ -54,6 +57,7 @@ export function CharacterPage() {
   })
 
   const sheet = useCharacterSheet()
+  const recommendation = useRecommendation()
 
   /*
    * XP is the whole hub's now, not training's. `buildCharacter` still
@@ -72,22 +76,22 @@ export function CharacterPage() {
   return (
     <div>
       {/*
-        The monthly review is reached from here rather than from the
+        The season review is still reached from here rather than from the
         navigation, and the cadence is the reason: a screen you open ten
-        minutes a month does not earn a permanent tab on a phone. Phase 7
-        merges the two properly — this page becomes the readout for every
-        area, not only for strength.
+        minutes a month does not earn a permanent tab on a phone. What
+        changed is that this page is now the home screen, so "from here" is
+        one tap from anywhere instead of two.
       */}
       <header className="mb-6 flex items-end justify-between gap-3">
         <div>
           <h1 className="text-ink-50 text-2xl font-semibold tracking-tight">Character</h1>
           <p className="text-ink-500 mt-0.5 text-sm">
-            Levels are real standards, as multiples of your bodyweight
+            Where you stand, everywhere it is being tracked
           </p>
         </div>
         <Link to="/review" className={buttonStyles({ variant: 'ghost', size: 'sm' })}>
           <CalendarCheck size={16} aria-hidden />
-          Review
+          Season review
         </Link>
       </header>
 
@@ -112,6 +116,32 @@ export function CharacterPage() {
             a number stops being a record of effort.
           </p>
         </Card>
+      </Section>
+
+      {/*
+        The one actionable thing on an otherwise reflective screen.
+        A home screen you open to admire your levels is a home screen that
+        rewards opening the app, which is precisely what the XP model
+        refuses to do — so the first thing under the level is what to
+        actually go and do.
+      */}
+      <Section
+        title="Next quest"
+        description="One thing, and why it is that one."
+        action={
+          <Link to="/quests" className={buttonStyles({ variant: 'ghost', size: 'sm' })}>
+            <Target size={16} aria-hidden />
+            All quests
+          </Link>
+        }
+      >
+        {recommendation.data === undefined ? (
+          <Card>
+            <p className="text-ink-500 text-sm">Nothing on the board yet.</p>
+          </Card>
+        ) : (
+          <NextAction recommendation={recommendation.data} />
+        )}
       </Section>
 
       <Section title="Strength" description="Squat, bench and deadlift make the total">

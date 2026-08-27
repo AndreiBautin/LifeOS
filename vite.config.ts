@@ -90,10 +90,10 @@ export default defineConfig(({ mode }) => {
         },
 
         manifest: {
-          name: 'Lift — training, backlog, projects and upgrades',
+          name: 'Lift — training, quests, backlog and atlas',
           short_name: 'Lift',
           description:
-            'One place for what you are training, reading, building and saving up for. Works fully offline; your data never leaves the device.',
+            'Six things worth tracking, scored by one model: what you are training, building, reading, saving up for, who you are seeing and where you have been.',
           /*
            * `id`, `start_url` and `scope` all derive from `base` and must
            * not move until the repository is renamed — changing any of
@@ -108,7 +108,7 @@ export default defineConfig(({ mode }) => {
           orientation: 'portrait',
           background_color: '#0a0a0b',
           theme_color: '#0a0a0b',
-          categories: ['health', 'fitness', 'sports'],
+          categories: ['health', 'fitness', 'productivity'],
           icons: [
             { src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png' },
             { src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png' },
@@ -143,7 +143,7 @@ export default defineConfig(({ mode }) => {
            * link was wrong.
            */
           shortcuts: [
-            { name: 'What next', url: `${base}next`, description: 'The next thing to do' },
+            { name: 'Quests', url: `${base}quests`, description: 'The next thing to do' },
             {
               name: 'Start workout',
               url: `${base}train`,
