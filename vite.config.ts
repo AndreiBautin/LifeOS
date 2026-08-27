@@ -120,6 +120,22 @@ export default defineConfig(({ mode }) => {
             },
           ],
           /*
+           * "Share → Lift" from a maps app. A GET target, so the share
+           * arrives as an ordinary navigation the router already handles
+           * and nothing needs a POST handler in the service worker.
+           *
+           * The three parameters are not filled in consistently by the
+           * apps that do the sharing — Android tends to put the name in
+           * `text` and the link in `url`, others put both in `text` — so
+           * the page reads all three rather than trusting one.
+           */
+          share_target: {
+            action: `${base}map/share`,
+            method: 'GET',
+            params: { title: 'title', text: 'text', url: 'url' },
+          },
+
+          /*
            * The long-press menu. `Programs` used to point at `programs`,
            * which is not a route — the page is `program`, singular — so
            * the shortcut landed on Not Found. Fixed here rather than by

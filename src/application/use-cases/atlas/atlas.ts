@@ -1,6 +1,6 @@
 import { toCellId, type CellId } from '@/domain/atlas/exploration/GeoCell'
 import type { Coordinates } from '@/domain/atlas/place/Coordinates'
-import type { Place } from '@/domain/atlas/place/Place'
+import { isResolved, type Place } from '@/domain/atlas/place/Place'
 import { createPlaceId } from '@/domain/atlas/place/PlaceId'
 import type { PlaceId } from '@/domain/atlas/place/PlaceId'
 import {
@@ -17,6 +17,8 @@ import type { IdGenerator } from '@/domain/ids/ids'
 import type { Clock, ExploredAreaRepository, PlaceRepository } from '@/domain/repositories/ports'
 
 import { allExploredCells, revealCell, summarizeExploration } from './exploration'
+import { parseBulkCapture, type BulkCaptureParseResult } from './ParseBulkCapture'
+import { parseSharedLocation, type SharedLocation } from './ParseSharedLocation'
 
 /**
  * The atlas, from the application's side.
@@ -124,6 +126,118 @@ export async function removePlace(id: PlaceId, deps: AtlasDeps): Promise<void> {
 
 export async function listPlaces(deps: AtlasDeps): Promise<readonly Place[]> {
   return deps.places.all()
+}
+
+export interface BulkAddResult {
+  readonly added: number
+  readonly skipped: BulkCaptureParseResult
+}
+
+/**
+ * A pasted list of names, saved as name-only places.
+ *
+ * No points, deliberately. This is the "mind dump" path — twelve
+ * restaurants somebody listed in a message — and demanding a coordinate
+ * for each would turn a thirty-second paste into an evening. They land
+ * unresolved and can be given a point later.
+ *
+ * The parse decides what is worth saving; everything it rejected comes
+ * back so the screen can say *why* rather than silently saving nine of
+ * twelve.
+ */
+export async function bulkAddPlaces(
+  text: string,
+  categoryId: CategoryId,
+  deps: AtlasDeps,
+): Promise<BulkAddResult> {
+  const existing = await deps.places.all()
+  const parsed = parseBulkCapture(text, { existingNames: existing.map((place) => place.name) })
+
+  let added = 0
+  for (const entry of parsed.entries) {
+    const result = await addPlace({ name: entry.name, categoryId }, deps)
+    if (result.place !== undefined) added += 1
+  }
+
+  return { added, skipped: parsed }
+}
+
+/**
+ * Something shared into the app from a maps application.
+ *
+ * The parse is local and offline — it reads a Google, Apple, OSM or `geo:`
+ * link for a point and a name. What it cannot do is follow a shortened
+ * link: `maps.app.goo.gl` only resolves behind an HTTP redirect a browser
+ * cannot follow cross-origin, so those come back with `needsRedirect` and
+ * whatever name was in the text, which is still enough to save something
+ * and place it later.
+ */
+/**
+ * A saved place of the same name still waiting for a point.
+ *
+ * Matched on name, case-insensitively, and only when it has no coordinates
+ * — the pair of features above make this the common case rather than an
+ * edge one. You paste a list of twelve names from a message, and weeks
+ * later share the link for one of them from a maps app. Adding a second
+ * "Kiln" beside the first is the wrong answer to that; the share is the
+ * missing half of a place already on the list.
+ *
+ * A place that *has* a point is left alone, because then the share really
+ * is about somewhere else with the same name — two branches of the same
+ * chain, which is a thing that exists.
+ */
+function unresolvedNamed(places: readonly Place[], name: string): Place | undefined {
+  const wanted = name.trim().toLowerCase()
+  return places.find((place) => place.name.trim().toLowerCase() === wanted && !isResolved(place))
+}
+
+export async function addSharedLocation(
+  input: { readonly text: string; readonly categoryId: CategoryId; readonly name?: string },
+  deps: AtlasDeps,
+): Promise<AtlasResult & { readonly shared: SharedLocation }> {
+  const shared = parseSharedLocation(input.text)
+  const categoryId = input.categoryId
+
+  // A `geo:` URI or a pasted pair of numbers carries a point and no name at
+  // all, so the form's name wins where there is one. Something has to ask
+  // for a category regardless, which is why there is a form to ask in.
+  const name = (input.name ?? shared.name ?? '').trim()
+  if (name === '') {
+    return { error: 'Nothing in that share looked like a place.', shared }
+  }
+
+  if (shared.coordinates !== undefined) {
+    const waiting = unresolvedNamed(await deps.places.all(), name)
+    if (waiting !== undefined) {
+      const placed = await editPlace(
+        waiting.id,
+        {
+          latitude: shared.coordinates.latitude,
+          longitude: shared.coordinates.longitude,
+          ...(shared.url === undefined ? {} : { website: shared.url }),
+        },
+        deps,
+      )
+      return { ...placed, shared }
+    }
+  }
+
+  const result = await addPlace(
+    {
+      name,
+      categoryId,
+      ...(shared.coordinates === undefined
+        ? {}
+        : {
+            latitude: shared.coordinates.latitude,
+            longitude: shared.coordinates.longitude,
+          }),
+      ...(shared.url === undefined ? {} : { website: shared.url }),
+    },
+    deps,
+  )
+
+  return { ...result, shared }
 }
 
 export interface AtlasView {

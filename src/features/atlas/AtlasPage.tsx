@@ -1,14 +1,17 @@
-import { Check, Footprints, Heart, MapPin, Plus, Trash2 } from 'lucide-react'
+import { Check, ClipboardList, Footprints, Heart, MapPin, Plus, Trash2 } from 'lucide-react'
 import { lazy, Suspense, useMemo, useState } from 'react'
 
 import type { MapMarker } from '@/application/use-cases/atlas/MapAdapterProps'
 import { ATLAS_CATEGORIES } from '@/application/use-cases/atlas/atlas'
 import { exploredBounds, formatArea } from '@/application/use-cases/atlas/exploration'
+import { filterPlaces } from '@/application/use-cases/atlas/FilterPlaces'
+import { sortPlaces, type PlaceSortOption } from '@/application/use-cases/atlas/SortPlaces'
 import { Badge, Button, Card, Empty, Section } from '@/components/shared/primitives'
 import type { CategoryId } from '@/domain/atlas/category/CategoryDefinition'
 import type { Coordinates } from '@/domain/atlas/place/Coordinates'
 import { isResolved, type Place } from '@/domain/atlas/place/Place'
 
+import { PasteList } from './PasteList'
 import {
   useAddPlace,
   useAtlas,
@@ -194,10 +197,22 @@ function AddPlace({ at }: { readonly at?: Coordinates }) {
   )
 }
 
+const SORT_LABELS: Record<PlaceSortOption, string> = {
+  recentlyAdded: 'Newest first',
+  recentlyVisited: 'Recently visited',
+  alphabetical: 'A to Z',
+  distance: 'Nearest',
+  priority: 'Priority',
+}
+
 export function AtlasPage() {
   const atlas = useAtlas()
   const walk = useWalk()
   const [adding, setAdding] = useState(false)
+  const [pasting, setPasting] = useState(false)
+  const [search, setSearch] = useState('')
+  const [category, setCategory] = useState<string>('')
+  const [sortBy, setSortBy] = useState<PlaceSortOption>('recentlyAdded')
 
   // Stabilised, so the marker memo below is not rebuilt on every render by
   // a fresh empty array — which following, once a second, would do.
@@ -212,9 +227,31 @@ export function AtlasPage() {
    */
   const fog = useMemo(() => (cells === undefined ? [] : exploredBounds(cells)), [cells])
 
+  /*
+   * Sorting by distance needs somewhere to measure from, and the only
+   * honest answer is where you actually are. With no fix the option still
+   * works — `sortPlaces` puts every place it cannot measure last — it just
+   * cannot order the ones it can.
+   */
+  const shown = useMemo(
+    () =>
+      sortPlaces(
+        filterPlaces(places, {
+          ...(search.trim() === '' ? {} : { searchText: search }),
+          ...(category === '' ? {} : { categoryIds: [category as CategoryId] }),
+        }),
+        sortBy,
+        walk.fix?.coordinates,
+      ),
+    [places, search, category, sortBy, walk.fix],
+  )
+
+  // Deliberately built from the filtered list rather than from everything:
+  // a map still showing forty pins while the list underneath shows three
+  // reads as a bug, whichever one you happen to trust.
   const markers: readonly MapMarker[] = useMemo(
     () =>
-      places.filter(isResolved).map((place) => ({
+      shown.filter(isResolved).map((place) => ({
         id: place.id,
         coordinates: place.location.coordinates,
         categoryId: place.categoryId,
@@ -223,7 +260,7 @@ export function AtlasPage() {
         visited: place.status === 'visited',
         favorite: place.favorite,
       })),
-    [places],
+    [shown],
   )
 
   /*
@@ -301,29 +338,90 @@ export function AtlasPage() {
           .filter((place) => place.status === 'visited')
           .length.toString()} visited`}
         action={
-          <Button
-            size="sm"
-            onClick={() => {
-              setAdding(!adding)
-            }}
-          >
-            <MapPin size={16} aria-hidden />
-            {adding ? 'Close' : 'Add'}
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              onClick={() => {
+                setPasting(!pasting)
+                setAdding(false)
+              }}
+            >
+              <ClipboardList size={16} aria-hidden />
+              {pasting ? 'Close' : 'Paste'}
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => {
+                setAdding(!adding)
+                setPasting(false)
+              }}
+            >
+              <MapPin size={16} aria-hidden />
+              {adding ? 'Close' : 'Add'}
+            </Button>
+          </div>
         }
       >
         {adding && <AddPlace {...(walk.fix === undefined ? {} : { at: walk.fix.coordinates })} />}
+        {pasting && <PasteList />}
 
         {places.length === 0 ? (
           <Empty title="Nowhere yet">
             Add somewhere you mean to go, or start a walk and clear some ground.
           </Empty>
         ) : (
-          <Card className="divide-ink-800 divide-y py-0">
-            {places.map((place) => (
-              <PlaceRow key={place.id} place={place} />
-            ))}
-          </Card>
+          <>
+            <div className="mb-3 flex gap-2">
+              <input
+                className={FIELD}
+                value={search}
+                aria-label="Search places"
+                placeholder="Search"
+                onChange={(event) => {
+                  setSearch(event.target.value)
+                }}
+              />
+              <select
+                className={FIELD}
+                value={category}
+                aria-label="Filter by kind"
+                onChange={(event) => {
+                  setCategory(event.target.value)
+                }}
+              >
+                <option value="">All kinds</option>
+                {ATLAS_CATEGORIES.map((one) => (
+                  <option key={one.id} value={one.id}>
+                    {one.label}
+                  </option>
+                ))}
+              </select>
+              <select
+                className={FIELD}
+                value={sortBy}
+                aria-label="Sort places"
+                onChange={(event) => {
+                  setSortBy(event.target.value as PlaceSortOption)
+                }}
+              >
+                {Object.entries(SORT_LABELS).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {shown.length === 0 ? (
+              <Empty title="Nothing matches">Try a different search or kind.</Empty>
+            ) : (
+              <Card className="divide-ink-800 divide-y py-0">
+                {shown.map((place) => (
+                  <PlaceRow key={place.id} place={place} />
+                ))}
+              </Card>
+            )}
+          </>
         )}
       </Section>
     </>

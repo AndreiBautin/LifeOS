@@ -5,7 +5,15 @@ import type { Coordinates } from '@/domain/atlas/place/Coordinates'
 import type { Place } from '@/domain/atlas/place/Place'
 import type { Clock, ExploredAreaRepository, PlaceRepository } from '@/domain/repositories/ports'
 
-import { addPlace, atlasView, recordPosition, visitPlace, type AtlasDeps } from './atlas'
+import {
+  addPlace,
+  addSharedLocation,
+  atlasView,
+  bulkAddPlaces,
+  recordPosition,
+  visitPlace,
+  type AtlasDeps,
+} from './atlas'
 
 /**
  * The atlas from the application's side.
@@ -191,5 +199,143 @@ describe('adding a place', () => {
     const result = await addPlace({ name: 'Somewhere', categoryId: 'nonsense' as never }, deps)
 
     expect(result.error).toMatch(/category/i)
+  })
+})
+
+describe('a pasted list of places', () => {
+  /*
+   * The mind-dump path: twelve restaurants from a message, saved without a
+   * coordinate each. What matters is that nothing goes missing quietly —
+   * the parse reports what it dropped, and this carries that back out.
+   */
+  it('saves every usable line and says what it skipped', async () => {
+    const { deps } = harness()
+    await addPlace({ name: 'Kiln', categoryId: 'food' as never }, deps)
+
+    const result = await bulkAddPlaces(
+      ['1. Kiln', '- Brat', '', 'Smoking Goat', 'Brat'].join('\n'),
+      'food' as never,
+      deps,
+    )
+
+    expect(result.added).toBe(2)
+    expect(result.skipped.alreadySaved).toEqual(['Kiln'])
+    expect(result.skipped.duplicates).toEqual(['Brat'])
+  })
+
+  it('saves them without a point rather than refusing them', async () => {
+    const { deps, store } = harness()
+
+    await bulkAddPlaces('That bar Sam mentioned', 'food' as never, deps)
+
+    const saved = [...store.values()][0]
+    expect(saved?.location.coordinates).toBeUndefined()
+  })
+})
+
+describe('a location shared in from a maps app', () => {
+  it('saves the name and the point out of a Google share', async () => {
+    const { deps } = harness()
+
+    const result = await addSharedLocation(
+      {
+        text: 'https://www.google.com/maps/place/Kiln/@51.5129,-0.1345,17z/data=!3d51.5129!4d-0.1345',
+        categoryId: 'food' as never,
+      },
+      deps,
+    )
+
+    expect(result.place?.name).toBe('Kiln')
+    expect(result.place?.location.coordinates).toMatchObject({ latitude: 51.5129 })
+  })
+
+  /*
+   * The awkward one. A short link's target only exists behind a redirect a
+   * browser cannot follow cross-origin, so there is no point to save — but
+   * Android puts the name above the link, and a named place with no point
+   * is a place this app is happy to hold.
+   */
+  it('still saves the name when the link cannot be resolved', async () => {
+    const { deps } = harness()
+
+    const result = await addSharedLocation(
+      { text: 'Smoking Goat\nhttps://maps.app.goo.gl/abc123', categoryId: 'food' as never },
+      deps,
+    )
+
+    expect(result.shared.needsRedirect).toBe(true)
+    expect(result.place?.name).toBe('Smoking Goat')
+    expect(result.place?.location.coordinates).toBeUndefined()
+  })
+
+  it('takes a typed name for a share that is only a point', async () => {
+    const { deps } = harness()
+
+    // A `geo:` URI is coordinates and nothing else. Refusing it outright
+    // would throw away the one thing the share did carry.
+    const result = await addSharedLocation(
+      { text: 'geo:51.5074,-0.1278', categoryId: 'food' as never, name: 'The bench' },
+      deps,
+    )
+
+    expect(result.place?.name).toBe('The bench')
+    expect(result.place?.location.coordinates).toMatchObject({ latitude: 51.5074 })
+  })
+
+  it('refuses a share with nothing nameable in it', async () => {
+    const { deps } = harness()
+
+    const result = await addSharedLocation({ text: '   ', categoryId: 'food' as never }, deps)
+
+    expect(result.error).toMatch(/Nothing in that share/)
+  })
+})
+
+describe('a share for somewhere already on the list', () => {
+  /*
+   * The workflow the paste and the share make between them: twelve names
+   * pasted out of a message, and weeks later the link for one of them
+   * shared from a maps app. A second "Kiln" beside the first is the wrong
+   * answer — the share is the missing half of a place already saved.
+   */
+  it('places the one that was waiting rather than adding another', async () => {
+    const { deps, store } = harness()
+    await bulkAddPlaces('Kiln\nBrat', 'food' as never, deps)
+
+    const result = await addSharedLocation(
+      { text: 'kiln\ngeo:51.5129,-0.1345', categoryId: 'food' as never, name: 'kiln' },
+      deps,
+    )
+
+    expect(store.size).toBe(2)
+    expect(result.place?.location.coordinates).toMatchObject({ latitude: 51.5129 })
+  })
+
+  it('adds a second one when the first already has a point', async () => {
+    const { deps, store } = harness()
+    await addPlace(
+      { name: 'Kiln', categoryId: 'food' as never, latitude: 51.5, longitude: -0.1 },
+      deps,
+    )
+
+    // Two branches of the same chain is a thing that exists, so a place
+    // that is already placed is left alone.
+    await addSharedLocation(
+      { text: 'Kiln\ngeo:51.6,-0.2', categoryId: 'food' as never, name: 'Kiln' },
+      deps,
+    )
+
+    expect(store.size).toBe(2)
+  })
+
+  it('leaves a nameless share alone when there is nothing to match', async () => {
+    const { deps, store } = harness()
+
+    await addSharedLocation(
+      { text: 'geo:51.5,-0.1', categoryId: 'food' as never, name: 'Somewhere new' },
+      deps,
+    )
+
+    expect(store.size).toBe(1)
   })
 })

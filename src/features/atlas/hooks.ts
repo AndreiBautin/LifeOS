@@ -4,14 +4,19 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useServices } from '@/app/context'
 import {
   addPlace,
+  addSharedLocation,
   atlasView,
+  bulkAddPlaces,
   editPlace,
   favouritePlace,
   recordPosition,
   removePlace,
   visitPlace,
   type AtlasResult,
+  type BulkAddResult,
 } from '@/application/use-cases/atlas/atlas'
+import type { SharedLocation } from '@/application/use-cases/atlas/ParseSharedLocation'
+import type { CategoryId } from '@/domain/atlas/category/CategoryDefinition'
 import type { CreatePlaceInput, UpdatePlaceInput } from '@/domain/atlas/place/PlaceFactory'
 import type { PlaceId } from '@/domain/atlas/place/PlaceId'
 import type { GeolocationError, GeolocationFix } from '@/domain/atlas/Geolocation'
@@ -80,6 +85,20 @@ export function useRemovePlace() {
   return useAtlasMutation<PlaceId, undefined>('atlas.place-removed', (id, services) =>
     removePlace(id, services).then(() => undefined),
   )
+}
+
+export function useBulkAddPlaces() {
+  return useAtlasMutation<{ text: string; categoryId: CategoryId }, BulkAddResult>(
+    'atlas.places-bulk-added',
+    ({ text, categoryId }, services) => bulkAddPlaces(text, categoryId, services),
+  )
+}
+
+export function useAddSharedLocation() {
+  return useAtlasMutation<
+    { text: string; categoryId: CategoryId; name?: string },
+    AtlasResult & { readonly shared: SharedLocation }
+  >('atlas.shared-location-added', (input, services) => addSharedLocation(input, services))
 }
 
 export interface WalkState {

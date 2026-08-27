@@ -1,6 +1,7 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom'
 
 import { AtlasPage } from '@/features/atlas/AtlasPage'
+import { SharePage } from '@/features/atlas/SharePage'
 import { BacklogPage } from '@/features/backlog/BacklogPage'
 import { ProjectsPage } from '@/features/projects/ProjectsPage'
 import { ReviewPage } from '@/features/review/ReviewPage'
@@ -40,6 +41,7 @@ export const router = createBrowserRouter(
         { path: 'backlog', element: <BacklogPage /> },
         { path: 'upgrades', element: <UpgradesPage /> },
         { path: 'map', element: <AtlasPage /> },
+        { path: 'map/share', element: <SharePage /> },
         { path: 'character', element: <CharacterPage /> },
         { path: 'review', element: <ReviewPage /> },
         { path: 'history', element: <HistoryPage /> },
