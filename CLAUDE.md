@@ -96,10 +96,29 @@ anyway. This was the opposite under 5/3/1, where the percentage _was_
 the prescription and an estimate would have silently changed what a cycle
 meant — which is why training maxes existed and why they went with it.
 
-**Assistance subtracts what the framework spent.** `domain/assembly/`
-counts the volume the strength work already contributed before filling
-anything. Removing that subtraction turns one coherent program into a
-powerlifting block with a bodybuilding routine stapled to it.
+**Strength sets are not hypertrophy volume, and this reverses a rule that
+stood for a long time.** The fill used to subtract what the competition
+lifting had already paid a muscle — `committed` started at the week's
+strength spend, `added` at the day's — on the reasoning that not doing so
+turns one coherent programme into a powerlifting block with a
+bodybuilding routine stapled to it. That reasoning was sound while a top
+set was five reps.
+
+Triples broke it. A top set of three plus three back-off triples is
+twelve reps at high load: a real strength dose and close to nothing as
+hypertrophy, which the accounting still called eight sets. Eight covered
+the chest's entire six-set target, so **the week scheduled no chest work
+at all** — no dips anywhere, on a split whose first exercise is a bench
+press.
+
+They are counted apart now. A muscle's setting is a claim about the
+accessory work scheduled _for_ it, and the competition lifting sits on
+top: the chest asks for six, gets six of dips, and receives fourteen sets
+in total. The cost the old comment named is real and is now the lifter's
+to manage by setting a muscle to fewer sessions, rather than the
+assembler's to hide. Any test comparing delivery against a target must
+use `hypertrophyVolume` rather than `weeklyVolume`, or it is measuring two
+things against a number that describes one.
 
 **Incidental credit is spent once.** The fill budgets **compounds before
 isolation** (two passes over the same muscles, the first restricted to
@@ -762,6 +781,21 @@ wrong for deciding _when_. `inSessionOrder` is a separate pass:
 warm-ups, the competition lift, compounds heaviest-first, isolation,
 conditioning. Without it a day opened with a maximal deadlift, went to a
 calf raise, and came back to a squat.
+
+**The accessories run backwards on alternate sessions of a region.**
+Compounds still precede isolation — each block is reversed within itself,
+never across the boundary — so what changes is which muscle meets a fresh
+lifter. A fixed order spends the fresh part of every session on the same
+muscle for a whole block: the row opened both upper days and the lateral
+raise closed both, every week.
+
+The cost is the mirror of the rule it bends, and it is why this
+alternates rather than applying to every day. Compounds are ordered
+heaviest-first so the work that most needs a fresh lifter gets one, and on
+the reversed day the heaviest compound goes last — each arrangement is had
+half the time. The parity is counted per _region_ rather than from the day
+index, for the reason the exercise rotation had to be: the two upper days
+of a four-day split are indices 0 and 2, both even.
 
 **Names are derived, never written.** `describeDay` reads a day's `label`
 and `focus` off its finished slots; `describeBlock` reads the block's name

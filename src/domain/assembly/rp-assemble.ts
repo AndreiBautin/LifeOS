@@ -16,6 +16,7 @@ import type {
   ProgramTemplate,
   ProgramWeek,
   Slot,
+  SlotRole,
 } from '@/domain/programs/program'
 import { DEFAULT_PROGRAM_SETTINGS } from '@/domain/programs/program'
 import type { LiftSessions, StrengthLift } from '@/domain/priority/tiers'
@@ -277,14 +278,31 @@ function buildWeek(
       spent: built.reduce<VolumeMap>((total, one) => addInto(total, one.spent), emptyVolumeMap()),
     }
   })
-  const strengthWeekSpend = strengthByDay.reduce<VolumeMap>(
-    (total, built) => addInto(total, built.spent),
-    emptyVolumeMap(),
-  )
-
   const targets = weeklyTargets(recipe, isDeload)
 
-  let committed = strengthWeekSpend
+  /*
+   * Starts empty. The strength work does not pay a hypertrophy target.
+   *
+   * It used to start at `strengthWeekSpend` and the reasoning was sound
+   * while a top set was five reps: a bench session credited the chest six
+   * or so sets, and filling as though the chest were untouched stapled a
+   * bodybuilding routine onto a powerlifting block.
+   *
+   * Triples changed the arithmetic under it. A top set of three and three
+   * back-off triples is twelve reps at high load — a real strength dose
+   * and close to nothing as hypertrophy — but the accounting still called
+   * it eight sets, which covered the chest's entire six-set target and
+   * scheduled no chest work at all. **No dips anywhere in the week, on a
+   * split whose first exercise is a bench press.**
+   *
+   * So the two are counted apart now: strength sets buy strength, and a
+   * muscle's hypertrophy target is met by work chosen for it. The cost is
+   * the one the old comment named — the chest is pressed heavily on Monday
+   * and then given its own six sets — and it is now the lifter's to manage
+   * by setting the chest to fewer sessions rather than the assembler's to
+   * hide.
+   */
+  let committed = emptyVolumeMap()
 
   /*
    * Days *already built* on which each muscle received work.
@@ -319,6 +337,17 @@ function buildWeek(
   // Everything the week has used so far, so a later day can reach for
   // something else while anything else remains.
   const usedThisWeek = new Set<ExerciseId>()
+
+  /*
+   * How many days of each region have been built, so the second upper day
+   * can run its accessories in the opposite order from the first.
+   *
+   * Counted rather than read off the day index, for the reason the
+   * exercise rotation had to be: the two upper days of a four-day split
+   * are indices 0 and 2, both even, so any parity taken from the index is
+   * the same on both.
+   */
+  const regionSessions = new Map<string, number>()
 
   for (const [dayIndex, splitDay] of split.days.entries()) {
     const strength = strengthByDay[dayIndex]
@@ -395,7 +424,16 @@ function buildWeek(
     slots.push(...filled.slots)
     slots.push(...conditioning)
 
-    const ordered = inSessionOrder(slots, deps.exercises, recipe.muscleVolumes)
+    const region = (splitDay.carries ?? []).join('|')
+    const regionOrdinal = regionSessions.get(region) ?? 0
+    regionSessions.set(region, regionOrdinal + 1)
+
+    const ordered = inSessionOrder(
+      slots,
+      deps.exercises,
+      recipe.muscleVolumes,
+      regionOrdinal % 2 === 1,
+    )
 
     days.push({
       index: dayIndex,
@@ -746,6 +784,9 @@ function fillHypertrophy(args: FillArgs): BuiltSlots {
    * Today's spend has to come off today.
    */
   let added = args.existingSlots.reduce((total, slot) => {
+    // Strength slots excluded: they are not hypertrophy volume and do not
+    // reduce what a muscle is owed. See `committed` in `buildWeek`.
+    if (slot.role === 'strength') return total
     const ref = slot.exercise
     if (ref.kind !== 'specific') return total
     const exercise = deps.exercises.find((candidate) => candidate.id === ref.exerciseId)
@@ -1776,6 +1817,7 @@ function inSessionOrder(
   slots: readonly Slot[],
   library: readonly Exercise[],
   volumes: MuscleVolumes,
+  reverseAccessories = false,
 ): readonly Slot[] {
   const rank = (slot: Slot): number => {
     switch (slot.role) {
@@ -1821,7 +1863,7 @@ function inSessionOrder(
     return exercise === undefined ? 0 : -volumes[exercise.primaryMuscle].sessionsPerWeek
   }
 
-  return [...slots]
+  const sorted = [...slots]
     .map((slot, index) => ({ slot, index }))
     .sort((a, b) => {
       const byRank = rank(a.slot) - rank(b.slot)
@@ -1871,6 +1913,50 @@ function inSessionOrder(
       return a.index - b.index
     })
     .map((entry) => entry.slot)
+
+  if (!reverseAccessories) return sorted
+
+  /*
+   * On alternate sessions of a region, the accessories run backwards.
+   *
+   * Compounds still come before isolation — each block is reversed within
+   * itself, never across the boundary — so what changes is which muscle
+   * meets a fresh lifter and which one is last.
+   *
+   * That matters for the same reason the competition lifts used to
+   * alternate: every slot after the first is performed more tired than the
+   * one before it, and a fixed order spends that freshness on the same
+   * muscle every session for the whole block. With two upper days the row
+   * opened both of them and the lateral raise closed both of them, every
+   * week.
+   *
+   * The cost is the mirror of the rule it bends. Compounds are ordered
+   * heaviest-first so the work that most needs a fresh lifter gets one, and
+   * on the reversed day the heaviest compound goes last. That is a real
+   * trade and the reason the reversal alternates rather than being applied
+   * to every day: each arrangement is had half the time.
+   */
+  const flip = (role: SlotRole): readonly Slot[] =>
+    sorted.filter((slot) => slot.role === role).reverse()
+
+  const compounds = flip('hypertrophy')
+  const isolation = flip('assistance')
+  let nextCompound = 0
+  let nextIsolation = 0
+
+  return sorted.map((slot) => {
+    if (slot.role === 'hypertrophy') {
+      const replacement = compounds[nextCompound]
+      nextCompound += 1
+      return replacement ?? slot
+    }
+    if (slot.role === 'assistance') {
+      const replacement = isolation[nextIsolation]
+      nextIsolation += 1
+      return replacement ?? slot
+    }
+    return slot
+  })
 }
 
 function addInto(target: VolumeMap, addition: VolumeMap): VolumeMap {

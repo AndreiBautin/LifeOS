@@ -75,12 +75,40 @@ function weekAt(program: ProgramTemplate, index: number): ProgramWeek {
   return week
 }
 
+/** Everything a week does to a muscle, competition lifting included. */
 function weeklyVolume(week: ProgramWeek): Record<MuscleGroup, number> {
   return sumVolume(
     week.days.map((day) =>
       volumeForSlots(
         day.slots.flatMap((slot) =>
           slot.exercise.kind === 'specific'
+            ? [{ exerciseId: slot.exercise.exerciseId, sets: slot.sets }]
+            : [],
+        ),
+        (id) => lookup(id),
+      ),
+    ),
+  )
+}
+
+/**
+ * Only the work chosen *for* a muscle — no strength slots.
+ *
+ * The two came apart when strength stopped paying a hypertrophy target. A
+ * muscle's setting is a claim about the accessory work scheduled for it,
+ * and the competition lifting sits on top of that rather than inside it:
+ * the chest is set to six sets and receives fourteen, six of them dips
+ * and eight of them bench triples. Any test comparing delivery against a
+ * target has to use this one or it is measuring two things against a
+ * number that describes one.
+ */
+function hypertrophyVolume(week: ProgramWeek): Record<MuscleGroup, number> {
+  return sumVolume(
+    week.days.map((day) =>
+      volumeForSlots(
+        day.slots.flatMap((slot) =>
+          slot.exercise.kind === 'specific' &&
+          (slot.role === 'hypertrophy' || slot.role === 'assistance')
             ? [{ exerciseId: slot.exercise.exerciseId, sets: slot.sets }]
             : [],
         ),
@@ -849,8 +877,21 @@ describe('the order a session is performed in', () => {
     expect(firstWorking?.role).toBe('strength')
   })
 
-  it('does the heaviest compound first among the accessories', () => {
-    // Whatever most needs a fresh lifter should get one.
+  /*
+   * Heaviest compound first, or last — never shuffled.
+   *
+   * Whatever most needs a fresh lifter should get one, and that was the
+   * whole rule until the accessories began alternating their order between
+   * the two sessions of a region. On the reversed day the heaviest
+   * compound goes last, which is the cost of not having the same muscle
+   * open every session for a whole block.
+   *
+   * So what is asserted is that the sequence is *sorted*, in one direction
+   * or the other. A day whose compounds run 0.3, 0.45, 0.3 has lost the
+   * ordering rather than reversed it, and that is the failure this still
+   * catches.
+   */
+  it('orders the compounds by cost, forwards or backwards', () => {
     const costOf = (id: string): number => lookup(id)?.systemicCost ?? 0
 
     for (const [index, day] of week.days.entries()) {
@@ -860,11 +901,43 @@ describe('the order a session is performed in', () => {
           slot.exercise.kind === 'specific' ? [costOf(slot.exercise.exerciseId)] : [],
         )
 
-      expect(
-        [...costs].sort((a, b) => b - a),
-        day.label,
-      ).toEqual(costs)
+      const heaviestFirst = [...costs].sort((a, b) => b - a)
+      const sorted =
+        JSON.stringify(costs) === JSON.stringify(heaviestFirst) ||
+        JSON.stringify(costs) === JSON.stringify([...heaviestFirst].reverse())
+
+      expect(sorted, `${day.label}: ${costs.join(', ')}`).toBe(true)
     }
+  })
+
+  /*
+   * And the two upper days are not in the same order, which is the point
+   * of the alternation: a fixed order spends the fresh part of every
+   * session on the same muscle for the whole block.
+   */
+  it('runs the two sessions of a region in opposite orders', () => {
+    const upper = week.days.filter((day) => day.label.includes('Upper'))
+    expect(upper).toHaveLength(2)
+
+    const musclesOf = (day: (typeof upper)[number]): string[] =>
+      day.slots
+        .filter((slot) => slot.role === 'hypertrophy' || slot.role === 'assistance')
+        .flatMap((slot) =>
+          slot.exercise.kind === 'specific'
+            ? [lookup(slot.exercise.exerciseId)?.primaryMuscle ?? '?']
+            : [],
+        )
+
+    const [firstDay, secondDay] = upper
+    if (firstDay === undefined || secondDay === undefined) throw new Error('missing upper day')
+
+    const first = musclesOf(firstDay)
+    const second = musclesOf(secondDay)
+
+    expect(first.length).toBeGreaterThan(2)
+    expect(second).not.toEqual(first)
+    // The same muscles, in a different sequence — not a different session.
+    expect([...second].sort()).toEqual([...first].sort())
   })
 
   it('keeps the warm-ups in the order they were prescribed', () => {
@@ -908,7 +981,7 @@ describe('the order a session is performed in', () => {
     }
   })
 
-  it('does not let a tier list reorder the compounds', () => {
+  it('does not let a volume setting reorder the compounds', () => {
     /*
      * The guard on the rule above. Ordering isolation by priority is a
      * cheap trade; doing it to the compounds would put a curl ahead of a
@@ -922,6 +995,10 @@ describe('the order a session is performed in', () => {
      * of Dips on Wednesday, which stopped being true when Dips moved to
      * another day — a test about *ordering* failing because the
      * *composition* changed is a test measuring the wrong thing.
+     *
+     * Sorted in either direction, because the accessories alternate their
+     * order between the two sessions of a region. What would fail is a
+     * sequence that is neither — cost giving way to something else.
      */
     for (const day of week.days) {
       const costs = day.slots
@@ -932,10 +1009,12 @@ describe('the order a session is performed in', () => {
             : [],
         )
 
-      expect(
-        [...costs].sort((a, b) => b - a),
-        day.label,
-      ).toEqual(costs)
+      const heaviestFirst = [...costs].sort((a, b) => b - a)
+      const sorted =
+        JSON.stringify(costs) === JSON.stringify(heaviestFirst) ||
+        JSON.stringify(costs) === JSON.stringify([...heaviestFirst].reverse())
+
+      expect(sorted, `${day.label}: ${costs.join(', ')}`).toBe(true)
     }
   })
 
@@ -1240,7 +1319,7 @@ describe('tiers driving volume', () => {
    */
   it('does not overshoot a muscle’s own target by more than a session', () => {
     for (const [index, week] of (program.blocks[0]?.weeks ?? []).entries()) {
-      const volume = weeklyVolume(week)
+      const volume = hypertrophyVolume(week)
 
       for (const muscle of MUSCLE_GROUPS) {
         const target = targetFor(muscle)
@@ -1290,7 +1369,10 @@ describe('the split', () => {
       for (const slot of day.slots) {
         if (slot.exercise.kind !== 'specific') continue
         const exercise = lookup(slot.exercise.exerciseId)
-        if (exercise === undefined || slot.role === 'conditioning') continue
+        if (exercise === undefined) continue
+        // Strength and conditioning are not hypertrophy volume and are
+        // not bounded by a hypertrophy per-session ceiling.
+        if (slot.role !== 'hypertrophy' && slot.role !== 'assistance') continue
         const working = slot.sets.filter((set) => set.isWarmup !== true).length
         perMuscle.set(
           exercise.primaryMuscle,
