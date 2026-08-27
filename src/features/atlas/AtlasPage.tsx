@@ -1,5 +1,15 @@
-import { Check, ClipboardList, Footprints, Heart, MapPin, Plus, Trash2 } from 'lucide-react'
+import {
+  CalendarDays,
+  Check,
+  ClipboardList,
+  Footprints,
+  Heart,
+  MapPin,
+  Plus,
+  Trash2,
+} from 'lucide-react'
 import { lazy, Suspense, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 
 import type { MapMarker } from '@/application/use-cases/atlas/MapAdapterProps'
 import { ATLAS_CATEGORIES } from '@/application/use-cases/atlas/atlas'
@@ -7,6 +17,7 @@ import { exploredBounds, formatArea } from '@/application/use-cases/atlas/explor
 import { filterPlaces } from '@/application/use-cases/atlas/FilterPlaces'
 import { sortPlaces, type PlaceSortOption } from '@/application/use-cases/atlas/SortPlaces'
 import { Badge, Button, Card, Empty, Section } from '@/components/shared/primitives'
+import { buttonStyles } from '@/components/shared/styles'
 import type { CategoryId } from '@/domain/atlas/category/CategoryDefinition'
 import type { Coordinates } from '@/domain/atlas/place/Coordinates'
 import { isResolved, type Place } from '@/domain/atlas/place/Place'
@@ -281,14 +292,20 @@ export function AtlasPage() {
             : `${formatArea(atlas.data.areaKm2)} covered · ${atlas.data.cellCount.toString()} squares`
         }
         action={
-          <Button
-            size="sm"
-            variant={walk.following ? 'danger' : 'primary'}
-            onClick={walk.following ? walk.stop : walk.start}
-          >
-            <Footprints size={16} aria-hidden />
-            {walk.following ? 'Stop' : 'Walk'}
-          </Button>
+          <div className="flex gap-2">
+            <Link to="/trips" className={buttonStyles({ variant: 'ghost', size: 'sm' })}>
+              <CalendarDays size={16} aria-hidden />
+              Trips
+            </Link>
+            <Button
+              size="sm"
+              variant={walk.following ? 'danger' : 'primary'}
+              onClick={walk.following ? walk.stop : walk.start}
+            >
+              <Footprints size={16} aria-hidden />
+              {walk.following ? 'Stop' : 'Walk'}
+            </Button>
+          </div>
         }
       >
         <Card className="h-80 overflow-hidden p-0">
