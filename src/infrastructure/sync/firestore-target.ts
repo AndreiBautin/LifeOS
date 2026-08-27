@@ -21,6 +21,7 @@ import type { MetricDefinition, MonthlySnapshot } from '@/domain/review/metric'
 import type { Friend } from '@/domain/social/circle'
 import type { Place } from '@/domain/atlas/place/Place'
 import type { Trip } from '@/domain/atlas/trip/Trip'
+import type { Daily } from '@/domain/dailies/daily'
 import type { Exercise } from '@/domain/exercises/exercise'
 import type { WorkoutLog } from '@/domain/logging/workout-log'
 import type { SyncTarget } from '@/domain/repositories/ports'
@@ -64,6 +65,7 @@ const COLLECTIONS = {
   reviews: 'reviews',
   places: 'places',
   trips: 'trips',
+  dailies: 'dailies',
   /*
    * One document holding the whole set, not a document per cell. A
    * thousand-cell walk would otherwise be a thousand writes, and the set
@@ -131,6 +133,7 @@ export function createFirestoreSyncTarget(options: FirestoreTargetOptions): Sync
         reviews,
         places,
         trips,
+        dailies,
         cells,
         tombstones,
         settings,
@@ -146,6 +149,7 @@ export function createFirestoreSyncTarget(options: FirestoreTargetOptions): Sync
         readSince(root(COLLECTIONS.reviews), after),
         readSince(root(COLLECTIONS.places), after),
         readSince(root(COLLECTIONS.trips), after),
+        readSince(root(COLLECTIONS.dailies), after),
         readSince(root(COLLECTIONS.exploredCells), after),
         readSince(root(COLLECTIONS.tombstones), after),
         readSince(root(COLLECTIONS.settings), after),
@@ -213,6 +217,7 @@ export function createFirestoreSyncTarget(options: FirestoreTargetOptions): Sync
           reviews: reviews.records as readonly MonthlySnapshot[],
           places: places.records as readonly Place[],
           trips: trips.records as readonly Trip[],
+          dailies: dailies.records as readonly Daily[],
           exploredCells: cells.records.flatMap(
             (record) => (record as { cells?: readonly string[] }).cells ?? [],
           ),

@@ -313,14 +313,17 @@ the domain refused correctly and no screen could ask it to. Adding a
 domain rule means adding the control that can trip it, or the guard is
 decoration with a test attached.
 
-**The bottom navigation is full at six**, and a seventh displaces one.
-It has now actually happened: the tech tree earned a tab and **Settings**
-gave up its seat, becoming a gear in the Character header. Settings was
-the only entry that was not a place you go to _do_ something, and the
-tech tree had been reached through Quests — which coupled two screens
-sharing nothing but the word "planning". History is a link on Train,
-Trips and the inbox are links from the Map, and the monthly review is a
-link from Character. If a seventh area ever arrives, something else goes.
+**The navigation is seven, and the labels paid for the seventh.**
+Character became "You" and the tech tree moved to a link, because seven
+cells on a 375-pixel screen are 53 pixels wide and "Character" measures
+53 — exactly the width, nothing left for padding. The longest remaining
+label is 38. Measure before adding an eighth: at 46 pixels a cell, every
+label but "Map" is at risk.
+
+Settings, the tech tree and the monthly review are links from You, which
+is the hub. That is the line worth keeping: **a tab is somewhere you act,
+a link on the hub is somewhere you decide.** History hangs off Train,
+Trips and the inbox off the Map.
 
 **The screens and the code use different words, on purpose.** Quests over
 `Project`, Codex over `backlog`, Tech tree over `upgrades`, Map over
@@ -347,6 +350,42 @@ worth keeping. Doing it later would have meant a migration, or a database
 called `lift` inside an app called LifeOS forever. `LiftTracker` in the
 archaeology is a different repository and keeps its name.
 
+**A habit cannot ring, and the design is built around that.** iOS gives
+a PWA no way to schedule a local notification, and Web Push needs a
+server this app does not have. So `domain/dailies/` earns its place by
+being the first thing on the home screen rather than by finding you.
+Anything proposed here that assumes an alarm is proposing a server.
+
+**A streak has two humane rules and both are load-bearing.** A day the
+habit was not expected on does not break it — otherwise every cadence
+but every-day reads as a streak of one forever. And **today does not
+break it until the day is over**: opening the app on Tuesday morning to
+be told a twelve-day run is finished, because you have not yet done the
+thing you are about to do, is the single most discouraging thing a habit
+tracker can do. `streakFor` has tests for both.
+
+**Completions are a set of day keys, merged by union.** `unionDone` in
+`domain/sync/payload.ts`, beside `unionProgress` for the same reason:
+tick Tuesday on the phone and Wednesday on the desktop with neither
+having heard from the other, and a record-level winner keeps one — which
+on a streak reads as a day missed and a run broken that never was. There
+is no amount to take a maximum of, unlike the backlog, because a day is
+either done or it is not.
+
+**`isEmpty` and `payloadSize` have to know about every collection.**
+Adding `dailies` to the payload without adding it to `isEmpty` meant a
+push containing _only_ habit ticks was discarded as empty — so a device
+whose sole change that day was keeping a habit synced nothing at all.
+Caught by the union test, which never saw a batch reach the server.
+
+**XP is paid per completion, never per streak.** A streak is an outcome
+— it is what happened to have worked — and paying a currency from it
+would break the rule against feeding XP from outcomes in the one area
+where the temptation is strongest.
+
+**Habits retire rather than delete.** `retiredAt` makes them expected on
+no day, so they leave the list and their kept days survive. Eighty days
+of a habit you have finished with is a thing that happened.
 **The season and the review are two different questions.** The season
 (`domain/game/season.ts`, `use-cases/character/season-progress.ts`) is
 live progress through Winter, Spring, Summer or Autumn, and needs no

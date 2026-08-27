@@ -59,6 +59,7 @@ function harness(
     workouts: list([]),
     friends: list([]),
     places: list(seed.places ?? []),
+    dailies: list([]),
     explored: {
       all: () => Promise.resolve(new Set()),
       reveal: () => Promise.resolve(0),

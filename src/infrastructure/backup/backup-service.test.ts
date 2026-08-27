@@ -13,6 +13,7 @@ import {
 import {
   createCheckInRepository,
   createBacklogItemRepository,
+  createDailyRepository,
   createExploredAreaRepository,
   createFriendRepository,
   createPlaceRepository,
@@ -68,6 +69,7 @@ beforeEach(async () => {
     places: createPlaceRepository(db, testClock),
     trips: createTripRepository(db, testClock),
     explored: createExploredAreaRepository(db),
+    dailies: createDailyRepository(db, testClock),
   }
 })
 

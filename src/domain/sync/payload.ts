@@ -8,6 +8,7 @@ import type { MetricDefinition, MonthlySnapshot } from '@/domain/review/metric'
 import type { Friend } from '@/domain/social/circle'
 import type { Place } from '@/domain/atlas/place/Place'
 import type { Trip } from '@/domain/atlas/trip/Trip'
+import type { Daily } from '@/domain/dailies/daily'
 import type { WorkoutLog } from '@/domain/logging/workout-log'
 
 import type { SyncedSettings } from '@/domain/settings/synced'
@@ -41,6 +42,7 @@ export interface SyncPayload {
   readonly reviews: readonly MonthlySnapshot[]
   readonly places: readonly Place[]
   readonly trips: readonly Trip[]
+  readonly dailies: readonly Daily[]
   /**
    * Ground you have walked, as geohash cells.
    *
@@ -78,6 +80,7 @@ export const EMPTY_PAYLOAD: SyncPayload = {
   reviews: [],
   places: [],
   trips: [],
+  dailies: [],
   exploredCells: [],
   tombstones: [],
 }
@@ -95,6 +98,7 @@ export function isEmpty(payload: SyncPayload): boolean {
     payload.reviews.length === 0 &&
     payload.places.length === 0 &&
     payload.trips.length === 0 &&
+    payload.dailies.length === 0 &&
     payload.exploredCells.length === 0 &&
     payload.tombstones.length === 0 &&
     payload.settings === undefined
@@ -114,6 +118,7 @@ export function payloadSize(payload: SyncPayload): number {
     payload.reviews.length +
     payload.places.length +
     payload.trips.length +
+    payload.dailies.length +
     // Counted as one, because that is what it is to a reader: the fog
     // moved, once, however many cells were in the batch.
     (payload.exploredCells.length === 0 ? 0 : 1) +
@@ -162,6 +167,25 @@ export function unionProgress(
   return [...byDate]
     .map(([date, amount]) => ({ date, amount }))
     .sort((a, b) => a.date.localeCompare(b.date))
+}
+
+/**
+ * Merges two devices' completions for one habit.
+ *
+ * The same problem the backlog's progress log has, in its simplest form.
+ * Tick Tuesday on the phone and Wednesday on the desktop with neither
+ * having heard from the other, and whole-record last-write-wins keeps one
+ * day and silently drops the other — which on a habit tracker means a
+ * broken streak that was never broken.
+ *
+ * A set of day keys unions cleanly and needs no reconciliation at all: a
+ * day is either done or it is not, and nobody can un-do a day on one
+ * device in a way the other should respect. That is also why there is no
+ * amount here, unlike `unionProgress` — there is nothing to take a
+ * maximum of.
+ */
+export function unionDone(mine: readonly string[], theirs: readonly string[]): readonly string[] {
+  return [...new Set([...mine, ...theirs])].sort()
 }
 
 /**
@@ -215,6 +239,7 @@ export function acceptableFrom(
    * already gone.
    */
   localItems: readonly Item[] = [],
+  localDailies: readonly Daily[] = [],
 ): SyncPayload {
   const index = indexTombstones([...localTombstones, ...incoming.tombstones])
   const localById = new Map(localItems.map((item) => [item.id, item]))
@@ -241,6 +266,14 @@ export function acceptableFrom(
     reviews: incoming.reviews.filter((item) => shouldAccept(item, 'reviews', item.month, index)),
     places: incoming.places.filter((item) => shouldAccept(item, 'places', item.id, index)),
     trips: incoming.trips.filter((item) => shouldAccept(item, 'trips', item.id, index)),
+    dailies: incoming.dailies
+      .filter((item) => shouldAccept(item, 'dailies', item.id, index))
+      .map((daily) => {
+        const local = localDailies.find((one) => one.id === daily.id)
+        if (local === undefined) return daily
+
+        return { ...daily, done: unionDone(local.done, daily.done) }
+      }),
     // Exempt on purpose. There is no tombstone that could apply to ground
     // somebody walked, so there is nothing here to filter against.
     exploredCells: incoming.exploredCells,

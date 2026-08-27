@@ -121,11 +121,12 @@ export async function tallyActs(
   deps: SheetDeps,
   within: Within = ALWAYS,
 ): Promise<Readonly<Record<string, number>>> {
-  const [workouts, items, projects, places] = await Promise.all([
+  const [workouts, items, projects, places, dailies] = await Promise.all([
     deps.workouts.recent(500),
     deps.items.all(),
     deps.projects.all(),
     deps.places.all(),
+    deps.dailies.all(),
   ])
 
   /** No date, no act — see the note above on why this holds even all-time. */
@@ -173,6 +174,15 @@ export async function tallyActs(
      * to the social domain and a migration. Until then this costs 0 XP
      * rather than a wrong amount of it.
      */
+    /*
+     * One act per day kept, and every completion is a day key — so a
+     * habit's XP lands in the season it was kept in rather than all of it
+     * in whichever season you happen to be reading.
+     */
+    'dailies.completed': dailies.reduce(
+      (total, daily) => total + daily.done.filter((day) => within(day)).length,
+      0,
+    ),
     'places.place-visited': places.filter(
       (place) => place.status === 'visited' && isResolved(place) && dated(place.dateVisited),
     ).length,

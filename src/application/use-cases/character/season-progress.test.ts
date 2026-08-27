@@ -53,6 +53,7 @@ function harness(places: Place[], now: Date) {
     workouts: list([]),
     friends: list([]),
     places: list(places),
+    dailies: list([]),
     explored: {
       all: () => Promise.resolve(new Set()),
       reveal: () => Promise.resolve(0),

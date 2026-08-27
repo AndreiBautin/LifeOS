@@ -8,6 +8,7 @@ import { useRecommendation } from '@/features/projects/hooks'
 import { toDayKey } from '@/domain/time/day'
 import { useServices } from '@/app/context'
 
+import { Dailies } from './Dailies'
 import { useAgenda } from './hooks'
 
 /**
@@ -73,6 +74,10 @@ export function TodayPage() {
         <h1 className="text-ink-50 text-2xl font-semibold tracking-tight">Today</h1>
         <p className="text-ink-500 numeric mt-0.5 text-sm">{today}</p>
       </header>
+
+      <Section title="Habits" description="A checkbox and a streak.">
+        <Dailies />
+      </Section>
 
       <Section
         title="Next quest"

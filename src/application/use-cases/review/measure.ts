@@ -1,12 +1,14 @@
 import { getGoalsStats } from '@/domain/backlog/goals-stats'
 import { STRENGTH_LIFT_SLUGS } from '@/domain/exercises/catalogue'
 import { asExerciseId } from '@/domain/ids/ids'
+import { isDoneOn, isExpectedOn, shiftDay } from '@/domain/dailies/daily'
 import { isActive } from '@/domain/social/circle'
 import type {
   BacklogItemRepository,
   Clock,
   ExploredAreaRepository,
   FriendRepository,
+  DailyRepository,
   PlaceRepository,
   ProjectRepository,
   SettingsRepository,
@@ -36,6 +38,7 @@ export interface MeasureDeps {
   readonly workouts: WorkoutRepository
   readonly friends: FriendRepository
   readonly places: PlaceRepository
+  readonly dailies: DailyRepository
   readonly explored: ExploredAreaRepository
   readonly settings: SettingsRepository
   readonly clock: Clock
@@ -96,6 +99,31 @@ export async function measureAll(deps: MeasureDeps): Promise<Readonly<Record<str
     measured['social.contacts-in-month'] = friends.filter((friend) =>
       isActive(friend, 12, asOf),
     ).length
+  }
+
+  /*
+   * The share of expected days a habit was actually kept, this month.
+   *
+   * Expected days rather than calendar days: a weekday habit that is kept
+   * every weekday is 100 per cent, not 71. Scoring it against the calendar
+   * would make every cadence but every-day look like a failure, which is
+   * the same mistake the streak avoids.
+   */
+  const dailies = await deps.dailies.all()
+  const month = toMonth(now)
+  let expected = 0
+  let kept = 0
+  for (const daily of dailies) {
+    for (let back = 0; back < 31; back += 1) {
+      const day = shiftDay(toDay(now), -back)
+      if (day.slice(0, 7) !== month) break
+      if (!isExpectedOn(daily, day)) continue
+      expected += 1
+      if (isDoneOn(daily, day)) kept += 1
+    }
+  }
+  if (expected > 0) {
+    measured['dailies.kept-share-in-month'] = Math.round((100 * kept) / expected)
   }
 
   /*

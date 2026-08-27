@@ -27,6 +27,7 @@ export const LIFE_AREAS = [
   'upgrades',
   'social',
   'places',
+  'dailies',
   'jobs',
 ] as const
 
@@ -198,6 +199,38 @@ export const SCORING: readonly AreaScoring[] = [
       },
     ],
     acts: [{ id: 'social.hangout-logged', area: 'social', label: 'Saw somebody', points: 40 }],
+    hasTree: false,
+  },
+  {
+    area: 'dailies',
+    name: 'Habits',
+    phase: 9,
+    /*
+     * No ladder, and no external anchor to hang one on. Nobody publishes
+     * what share of your habits a person ought to keep, and a threshold
+     * invented here would be the "scale the app can move" this model
+     * refuses everywhere else. What a habit has instead is a streak, which
+     * is not a level: it says how long, not how far.
+     */
+    ladders: [],
+    ratings: [
+      {
+        id: 'dailies.kept',
+        source: 'dailies.kept-share-in-month',
+        name: 'Kept',
+        unit: '% of days expected',
+        direction: 'stay-above',
+        cadence: 'monthly',
+        threshold: 80,
+      },
+    ],
+    /*
+     * Paid per completion, not per streak. A streak is an *outcome* — it
+     * is what happened to have worked — and paying XP for it would be the
+     * rule against feeding a currency from an outcome, broken in the one
+     * area where the temptation is strongest.
+     */
+    acts: [{ id: 'dailies.completed', area: 'dailies', label: 'Kept a habit', points: 15 }],
     hasTree: false,
   },
   {

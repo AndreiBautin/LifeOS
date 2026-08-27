@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
 
+import type { Daily } from '@/domain/dailies/daily'
+import { asDailyId } from '@/domain/ids/ids'
+
 import type { CheckIn } from '@/domain/autoregulation/check-in'
 import type { Item } from '@/domain/backlog/item'
 import type { Exercise } from '@/domain/exercises/exercise'
@@ -8,20 +11,21 @@ import type { CellId } from '@/domain/atlas/exploration/GeoCell'
 import type { WorkoutLog } from '@/domain/logging/workout-log'
 import type {
   BacklogItemRepository,
-  ProjectRepository,
-  UpgradeRepository,
-  PlaceRepository,
-  TripRepository,
-  ExploredAreaRepository,
-  FriendRepository,
-  ReviewRepository,
   CheckInRepository,
   Clock,
+  DailyRepository,
   ExerciseRepository,
-  SyncState,
+  ExploredAreaRepository,
+  FriendRepository,
+  PlaceRepository,
+  ProjectRepository,
+  ReviewRepository,
   SettingsRepository,
+  SyncState,
   SyncStateRepository,
   TombstoneRepository,
+  TripRepository,
+  UpgradeRepository,
   WorkoutRepository,
 } from '@/domain/repositories/ports'
 import type { AppSettings } from '@/domain/settings/settings'
@@ -66,6 +70,7 @@ function advancingClock(): Clock {
 }
 
 interface Device extends SynchroniseDeps {
+  readonly dailyStore: Map<string, Daily>
   readonly backlog: Map<string, Item>
   readonly walked: Set<CellId>
   readonly log: Map<string, WorkoutLog>
@@ -228,6 +233,35 @@ function device(clock: Clock): Device {
   }
 
   /*
+   * A real double, for the reason the backlog has one: a habit's
+   * completions merge by union, and a stub that answers with an empty
+   * list would let that pass against an implementation that replaced.
+   */
+  const dailyStore = new Map<string, Daily>()
+  const dailies: DailyRepository = {
+    all: () => Promise.resolve([...dailyStore.values()]),
+    byId: (id) => Promise.resolve(dailyStore.get(id)),
+    save: (daily) => {
+      // Stamped like the real repository. Without this `changedSince`
+      // drops the record and the device pushes nothing at all.
+      dailyStore.set(daily.id, { ...daily, updatedAt: clock.now().toISOString() })
+      return Promise.resolve()
+    },
+    restoreMany: (rows) => {
+      for (const row of rows) dailyStore.set(row.id, row)
+      return Promise.resolve()
+    },
+    remove: (id) => {
+      dailyStore.delete(id)
+      return Promise.resolve()
+    },
+    purge: (id) => {
+      dailyStore.delete(id)
+      return Promise.resolve()
+    },
+  }
+
+  /*
    * A real double, like the backlog. The fog is the one thing in this
    * payload merged by union rather than by a record winner, and a stub
    * would let that test pass against an implementation that replaced.
@@ -292,6 +326,8 @@ function device(clock: Clock): Device {
   }
 
   return {
+    dailies,
+    dailyStore,
     exercises,
     workouts,
     checkIns,
@@ -637,6 +673,35 @@ describe('a backlog item’s progress log', () => {
       { date: '2026-08-24', amount: 1 },
       { date: '2026-08-25', amount: 1 },
     ])
+  })
+
+  /*
+   * The same failure a habit makes visible faster than a backlog does.
+   * Tick Tuesday on the phone and Wednesday on the desktop, and a
+   * record-level winner keeps one of them — which on a streak reads as a
+   * day missed and a run broken that never was.
+   */
+  it('keeps both devices’ ticks on the same habit', async () => {
+    const clock = advancingClock()
+    const server = createMemorySyncServer()
+    const phone = device(clock)
+    const desk = device(clock)
+
+    const habit: Daily = {
+      id: asDailyId('d1'),
+      title: 'Stretch',
+      cadence: { kind: 'every-day' },
+      done: [],
+      createdAt: '2026-08-01T00:00:00.000Z',
+    }
+
+    await phone.dailies.save({ ...habit, done: ['2026-08-25'] })
+    await desk.dailies.save({ ...habit, done: ['2026-08-26'] })
+
+    await synchronise(createMemorySyncTarget(server, 'phone'), phone)
+    await synchronise(createMemorySyncTarget(server, 'desk'), desk)
+
+    expect((await desk.dailies.byId(habit.id))?.done).toEqual(['2026-08-25', '2026-08-26'])
   })
 
   it('takes the larger count when both devices logged the same day', async () => {

@@ -10,6 +10,7 @@ import type {
   ReviewRepository,
   TombstoneRepository,
   TripRepository,
+  DailyRepository,
   UpgradeRepository,
   WorkoutRepository,
 } from '@/domain/repositories/ports'
@@ -44,6 +45,7 @@ export interface BackupRepositories {
   readonly review: ReviewRepository
   readonly places: PlaceRepository
   readonly trips: TripRepository
+  readonly dailies: DailyRepository
   readonly explored: ExploredAreaRepository
 }
 
@@ -168,6 +170,13 @@ export const COLLECTIONS: Readonly<Record<CollectionKey, Collection>> = {
     idOf: (row) => row.id,
     restore: (r, rows) => r.trips.restoreMany(rows),
     tombstoneCollection: 'trips',
+  }),
+  dailies: define({
+    local: (r) => r.dailies.all(),
+    fromFile: (data) => data.dailies ?? [],
+    idOf: (row) => row.id,
+    restore: (r, rows) => r.dailies.restoreMany(rows),
+    tombstoneCollection: 'dailies',
   }),
 }
 

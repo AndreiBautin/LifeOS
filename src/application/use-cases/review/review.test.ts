@@ -104,6 +104,7 @@ function harness(
     workouts: stub(workoutList) as unknown as WorkoutRepository,
     friends: stub(friendList),
     places: stub(placeList),
+    dailies: stub([]),
     explored: {
       all: () => Promise.resolve(new Set(walkedCells)),
       reveal: () => Promise.resolve(0),

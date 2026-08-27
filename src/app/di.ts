@@ -4,38 +4,40 @@ import type { IdGenerator } from '@/domain/ids/ids'
 import type {
   BacklogItemRepository,
   BacklogSettingsRepository,
-  ProjectRepository,
-  UpgradeRepository,
-  FriendRepository,
-  ReviewRepository,
-  PlaceRepository,
-  TripRepository,
-  ExploredAreaRepository,
   CheckInRepository,
   Clock,
+  DailyRepository,
   ExerciseRepository,
+  ExploredAreaRepository,
+  FriendRepository,
+  PlaceRepository,
   PositionRepository,
+  ProjectRepository,
+  ReviewRepository,
   SettingsRepository,
   SyncStateRepository,
   SyncTarget,
   TombstoneRepository,
+  TripRepository,
+  UpgradeRepository,
   WorkoutRepository,
 } from '@/domain/repositories/ports'
 import { DATABASE_NAME } from '@/config/storage-keys'
 import { openDatabase, type AppDatabase } from '@/infrastructure/db/database'
 import {
   createBacklogItemRepository,
-  createProjectRepository,
-  createFriendRepository,
-  createReviewRepository,
+  createCheckInRepository,
+  createDailyRepository,
+  createExerciseRepository,
   createExploredAreaRepository,
+  createFriendRepository,
   createPlaceRepository,
+  createPositionRepository,
+  createProjectRepository,
+  createReviewRepository,
+  createTombstoneRepository,
   createTripRepository,
   createUpgradeRepository,
-  createCheckInRepository,
-  createExerciseRepository,
-  createPositionRepository,
-  createTombstoneRepository,
   createWorkoutRepository,
 } from '@/infrastructure/db/repositories'
 import { createBacklogSettingsStore } from '@/infrastructure/storage/backlog-settings-store'
@@ -78,6 +80,7 @@ export interface AppServices {
   readonly review: ReviewRepository
   readonly places: PlaceRepository
   readonly trips: TripRepository
+  readonly dailies: DailyRepository
   readonly explored: ExploredAreaRepository
   /** The device's own position, behind a port so a test can fake it. */
   readonly geolocation: Geolocation
@@ -138,6 +141,7 @@ export async function bootstrap(): Promise<BootstrapResult> {
     review: createReviewRepository(db, systemClock),
     places: createPlaceRepository(db, systemClock),
     trips: createTripRepository(db, systemClock),
+    dailies: createDailyRepository(db, systemClock),
     explored: createExploredAreaRepository(db),
     geolocation: createBrowserGeolocation(),
     placeSearch: new NominatimSearchProvider(),

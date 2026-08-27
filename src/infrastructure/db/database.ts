@@ -9,6 +9,7 @@ import type { MetricDefinition, MonthlySnapshot } from '@/domain/review/metric'
 import type { Friend } from '@/domain/social/circle'
 import type { Place } from '@/domain/atlas/place/Place'
 import type { Trip } from '@/domain/atlas/trip/Trip'
+import type { Daily } from '@/domain/dailies/daily'
 import type { Tombstone } from '@/domain/sync/tombstone'
 import type { Exercise } from '@/domain/exercises/exercise'
 import type { WorkoutLog } from '@/domain/logging/workout-log'
@@ -58,7 +59,7 @@ export const DB_NAME = 'lifeos'
  * a device that already ran it will not run it again, so changing one
  * leaves two devices with different schemas and no way to tell.
  */
-export const DB_VERSION = 8
+export const DB_VERSION = 9
 
 /**
  * A workout as it is stored, which is not quite a workout as the domain
@@ -234,6 +235,18 @@ export interface LiftDB extends DBSchema {
     value: Trip
   }
   /**
+   * Habits, and the days they were done.
+   *
+   * Completions live on the record as a set of day keys rather than in a
+   * store of their own. They are small, always read with the habit, and
+   * merge by union — which is what makes two devices ticking the same
+   * Tuesday converge instead of counting it twice.
+   */
+  dailies: {
+    key: string
+    value: Daily
+  }
+  /**
    * Ground you have walked, one row per geohash cell.
    *
    * A store rather than the single blob it arrived as, and that is the
@@ -383,6 +396,10 @@ export function openDatabase(name = DB_NAME): Promise<AppDatabase> {
         db.createObjectStore('trips', { keyPath: 'id' })
         db.createObjectStore('exploredCells', { keyPath: 'id' })
       }
+
+      if (oldVersion < 9) {
+        db.createObjectStore('dailies', { keyPath: 'id' })
+      }
     },
 
     blocked() {
@@ -438,6 +455,7 @@ export async function clearAllStores(db: AppDatabase): Promise<void> {
       'reviews',
       'places',
       'trips',
+      'dailies',
       'exploredCells',
     ],
     'readwrite',
@@ -456,6 +474,7 @@ export async function clearAllStores(db: AppDatabase): Promise<void> {
     tx.objectStore('reviews').clear(),
     tx.objectStore('places').clear(),
     tx.objectStore('trips').clear(),
+    tx.objectStore('dailies').clear(),
     tx.objectStore('exploredCells').clear(),
     tx.done,
   ])

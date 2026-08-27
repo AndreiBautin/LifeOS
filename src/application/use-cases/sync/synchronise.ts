@@ -1,28 +1,30 @@
 import {
   asBacklogItemId,
   asCheckInId,
+  asDailyId,
   asExerciseId,
+  asFriendId,
   asProjectId,
   asUpgradeId,
-  asFriendId,
   asWorkoutId,
 } from '@/domain/ids/ids'
 import type {
   BacklogItemRepository,
   CheckInRepository,
-  ProjectRepository,
-  UpgradeRepository,
-  FriendRepository,
-  ReviewRepository,
-  PlaceRepository,
-  TripRepository,
-  ExploredAreaRepository,
   Clock,
+  DailyRepository,
   ExerciseRepository,
+  ExploredAreaRepository,
+  FriendRepository,
+  PlaceRepository,
+  ProjectRepository,
+  ReviewRepository,
   SettingsRepository,
   SyncStateRepository,
   SyncTarget,
   TombstoneRepository,
+  TripRepository,
+  UpgradeRepository,
   WorkoutRepository,
 } from '@/domain/repositories/ports'
 import { mergeSettings, projectForSync } from '@/domain/settings/synced'
@@ -74,6 +76,7 @@ export interface SynchroniseDeps {
   readonly review: ReviewRepository
   readonly places: PlaceRepository
   readonly trips: TripRepository
+  readonly dailies: DailyRepository
   readonly explored: ExploredAreaRepository
   readonly tombstones: TombstoneRepository
   readonly syncState: SyncStateRepository
@@ -116,7 +119,12 @@ export async function synchronise(target: SyncTarget, deps: SynchroniseDeps): Pr
    * `unionProgress` for why a per-day log is the one thing in this app
    * that a record-level winner gets wrong.
    */
-  const accepted = acceptableFrom(incoming, localTombstones, await deps.items.all())
+  const accepted = acceptableFrom(
+    incoming,
+    localTombstones,
+    await deps.items.all(),
+    await deps.dailies.all(),
+  )
 
   /*
    * Deletions land before records do.
@@ -142,6 +150,7 @@ export async function synchronise(target: SyncTarget, deps: SynchroniseDeps): Pr
   await deps.review.restoreSnapshots(accepted.reviews)
   await deps.places.restoreMany(accepted.places)
   await deps.trips.restoreMany(accepted.trips)
+  await deps.dailies.restoreMany(accepted.dailies)
   // Union, never replace. See `unionCells`.
   await deps.explored.reveal(accepted.exploredCells as CellId[])
 
@@ -196,6 +205,7 @@ export async function synchronise(target: SyncTarget, deps: SynchroniseDeps): Pr
     accepted.reviews.length +
     accepted.places.length +
     accepted.trips.length +
+    accepted.dailies.length +
     (settingsMoved ? 1 : 0)
 
   const offered =
@@ -210,6 +220,7 @@ export async function synchronise(target: SyncTarget, deps: SynchroniseDeps): Pr
     incoming.reviews.length +
     incoming.places.length +
     incoming.trips.length +
+    incoming.dailies.length +
     (accepted.settings === undefined ? 0 : 1)
 
   return {
@@ -237,6 +248,7 @@ async function collectLocal(
     reviews,
     places,
     trips,
+    dailies,
     explored,
     tombstones,
     settings,
@@ -252,6 +264,7 @@ async function collectLocal(
     deps.review.snapshots(),
     deps.places.all(),
     deps.trips.all(),
+    deps.dailies.all(),
     deps.explored.all(),
     deps.tombstones.all(),
     deps.settings.get(),
@@ -295,6 +308,7 @@ async function collectLocal(
     reviews: changedSince(reviews, watermark),
     places: changedSince(places, watermark),
     trips: changedSince(trips, watermark),
+    dailies: changedSince(dailies, watermark),
     /*
      * The whole set, every time, rather than what changed since the
      * watermark. There is nothing to compare against — a cell carries no
@@ -385,6 +399,13 @@ async function applyDeletions(
         const local = await deps.places.byId(id.value)
         if (local !== undefined && !survives(local, tombstone)) {
           await deps.places.purge(id.value)
+        }
+        break
+      }
+      case 'dailies': {
+        const local = await deps.dailies.byId(asDailyId(tombstone.id))
+        if (local !== undefined && !survives(local, tombstone)) {
+          await deps.dailies.purge(asDailyId(tombstone.id))
         }
         break
       }

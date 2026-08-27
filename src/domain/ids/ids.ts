@@ -29,6 +29,7 @@ export type ActionId = Branded<'ActionId'>
 export type UpgradeId = Branded<'UpgradeId'>
 export type MetricId = Branded<'MetricId'>
 export type FriendId = Branded<'FriendId'>
+export type DailyId = Branded<'DailyId'>
 
 export const asExerciseId = (value: string): ExerciseId => value as ExerciseId
 export const asProgramId = (value: string): ProgramId => value as ProgramId
@@ -42,6 +43,7 @@ export const asActionId = (value: string): ActionId => value as ActionId
 export const asUpgradeId = (value: string): UpgradeId => value as UpgradeId
 export const asMetricId = (value: string): MetricId => value as MetricId
 export const asFriendId = (value: string): FriendId => value as FriendId
+export const asDailyId = (value: string): DailyId => value as DailyId
 
 /**
  * Generating an id is a side effect, so the domain takes it as a

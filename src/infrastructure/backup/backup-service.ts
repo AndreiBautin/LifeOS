@@ -199,6 +199,7 @@ function emptyCounts(): Record<keyof BackupCounts, number> {
     reviews: 0,
     places: 0,
     trips: 0,
+    dailies: 0,
     exploredCells: 0,
   }
 }

@@ -7,6 +7,7 @@ import type { Friend } from '@/domain/social/circle'
 import type { Place } from '@/domain/atlas/place/Place'
 import type { PlaceId } from '@/domain/atlas/place/PlaceId'
 import type { Trip } from '@/domain/atlas/trip/Trip'
+import type { Daily } from '@/domain/dailies/daily'
 import type { TripId } from '@/domain/atlas/trip/TripId'
 import type { CellId } from '@/domain/atlas/exploration/GeoCell'
 import type { ProgramPosition } from '@/domain/programs/position'
@@ -16,6 +17,7 @@ import { resolveLibrary } from '@/domain/exercises/library'
 import type {
   BacklogItemId,
   CheckInId,
+  DailyId,
   ExerciseId,
   FriendId,
   MetricId,
@@ -28,16 +30,17 @@ import type {
   BacklogItemRepository,
   CheckInRepository,
   Clock,
+  DailyRepository,
   ExerciseRepository,
-  PositionRepository,
-  FriendRepository,
   ExploredAreaRepository,
+  FriendRepository,
   PlaceRepository,
+  PositionRepository,
   ProjectRepository,
-  TripRepository,
   ReviewRepository,
-  UpgradeRepository,
   TombstoneRepository,
+  TripRepository,
+  UpgradeRepository,
   WorkoutQuery,
   WorkoutRepository,
 } from '@/domain/repositories/ports'
@@ -474,6 +477,31 @@ export function createPlaceRepository(db: AppDatabase, clock: Clock): PlaceRepos
     },
     async count() {
       return db.count('places')
+    },
+  }
+}
+
+export function createDailyRepository(db: AppDatabase, clock: Clock): DailyRepository {
+  return {
+    async all() {
+      return db.getAll('dailies')
+    },
+    async byId(id: DailyId) {
+      return db.get('dailies', id)
+    },
+    async save(daily: Daily) {
+      await db.put('dailies', stamp(daily, clock))
+    },
+    async restoreMany(dailies: readonly Daily[]) {
+      const tx = db.transaction('dailies', 'readwrite')
+      await Promise.all([...dailies.map((daily) => tx.store.put(daily)), tx.done])
+    },
+    async remove(id: DailyId) {
+      await db.delete('dailies', id)
+      await bury(db, clock, 'dailies', id)
+    },
+    async purge(id: DailyId) {
+      await db.delete('dailies', id)
     },
   }
 }
