@@ -14,6 +14,9 @@ import type {
   UpgradeRepository,
   FriendRepository,
   ReviewRepository,
+  PlaceRepository,
+  TripRepository,
+  ExploredAreaRepository,
   Clock,
   ExerciseRepository,
   SettingsRepository,
@@ -30,6 +33,9 @@ import {
   payloadSize,
   type SyncPayload,
 } from '@/domain/sync/payload'
+import type { CellId } from '@/domain/atlas/exploration/GeoCell'
+import { createPlaceId } from '@/domain/atlas/place/PlaceId'
+import { createTripId } from '@/domain/atlas/trip/TripId'
 import type { Tombstone } from '@/domain/sync/tombstone'
 
 /**
@@ -66,6 +72,9 @@ export interface SynchroniseDeps {
   readonly upgrades: UpgradeRepository
   readonly friends: FriendRepository
   readonly review: ReviewRepository
+  readonly places: PlaceRepository
+  readonly trips: TripRepository
+  readonly explored: ExploredAreaRepository
   readonly tombstones: TombstoneRepository
   readonly syncState: SyncStateRepository
   readonly settings: SettingsRepository
@@ -131,6 +140,10 @@ export async function synchronise(target: SyncTarget, deps: SynchroniseDeps): Pr
   await deps.friends.restoreMany(accepted.friends)
   await deps.review.restoreMetrics(accepted.metrics)
   await deps.review.restoreSnapshots(accepted.reviews)
+  await deps.places.restoreMany(accepted.places)
+  await deps.trips.restoreMany(accepted.trips)
+  // Union, never replace. See `unionCells`.
+  await deps.explored.reveal(accepted.exploredCells as CellId[])
 
   /*
    * Settings last, and only if they are newer.
@@ -181,6 +194,8 @@ export async function synchronise(target: SyncTarget, deps: SynchroniseDeps): Pr
     accepted.friends.length +
     accepted.metrics.length +
     accepted.reviews.length +
+    accepted.places.length +
+    accepted.trips.length +
     (settingsMoved ? 1 : 0)
 
   const offered =
@@ -193,6 +208,8 @@ export async function synchronise(target: SyncTarget, deps: SynchroniseDeps): Pr
     incoming.friends.length +
     incoming.metrics.length +
     incoming.reviews.length +
+    incoming.places.length +
+    incoming.trips.length +
     (accepted.settings === undefined ? 0 : 1)
 
   return {
@@ -218,6 +235,9 @@ async function collectLocal(
     friends,
     metrics,
     reviews,
+    places,
+    trips,
+    explored,
     tombstones,
     settings,
   ] = await Promise.all([
@@ -230,6 +250,9 @@ async function collectLocal(
     deps.friends.all(),
     deps.review.metrics(),
     deps.review.snapshots(),
+    deps.places.all(),
+    deps.trips.all(),
+    deps.explored.all(),
     deps.tombstones.all(),
     deps.settings.get(),
   ])
@@ -270,6 +293,16 @@ async function collectLocal(
     friends: changedSince(friends, watermark),
     metrics: changedSince(metrics, watermark),
     reviews: changedSince(reviews, watermark),
+    places: changedSince(places, watermark),
+    trips: changedSince(trips, watermark),
+    /*
+     * The whole set, every time, rather than what changed since the
+     * watermark. There is nothing to compare against — a cell carries no
+     * stamp — and it is cheap: a year of walking is a few thousand short
+     * strings, and the receiving side unions, so re-sending costs nothing
+     * but bytes.
+     */
+    exploredCells: [...explored],
     tombstones: deletedSince(tombstones, watermark),
     ...(settingsChanged ? { settings: projectForSync(settings) } : {}),
   }
@@ -331,6 +364,37 @@ async function applyDeletions(
         const local = await deps.review.snapshot(tombstone.id)
         if (local !== undefined && !survives(local, tombstone)) {
           await deps.review.purgeSnapshot(tombstone.id)
+        }
+        break
+      }
+      /*
+       * The atlas returns `Result` where the rest of this app throws, and
+       * this is the boundary where the two meet — see `domain/atlas/`.
+       * Adapting here rather than rewriting fifteen thousand lines is the
+       * deal: `Result` stays inside that directory, and the use-case layer
+       * unwraps it.
+       *
+       * A tombstone naming an id the domain refuses is a deletion of
+       * something that could never have existed, so there is nothing to
+       * purge and skipping is the whole of the handling.
+       */
+      case 'places': {
+        const id = createPlaceId(tombstone.id)
+        if (!id.ok) break
+
+        const local = await deps.places.byId(id.value)
+        if (local !== undefined && !survives(local, tombstone)) {
+          await deps.places.purge(id.value)
+        }
+        break
+      }
+      case 'trips': {
+        const id = createTripId(tombstone.id)
+        if (!id.ok) break
+
+        const local = await deps.trips.byId(id.value)
+        if (local !== undefined && !survives(local, tombstone)) {
+          await deps.trips.purge(id.value)
         }
         break
       }

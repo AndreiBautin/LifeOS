@@ -19,6 +19,8 @@ import type { Project } from '@/domain/projects/project'
 import type { Upgrade } from '@/domain/upgrades/upgrade'
 import type { MetricDefinition, MonthlySnapshot } from '@/domain/review/metric'
 import type { Friend } from '@/domain/social/circle'
+import type { Place } from '@/domain/atlas/place/Place'
+import type { Trip } from '@/domain/atlas/trip/Trip'
 import type { Exercise } from '@/domain/exercises/exercise'
 import type { WorkoutLog } from '@/domain/logging/workout-log'
 import type { SyncTarget } from '@/domain/repositories/ports'
@@ -60,6 +62,15 @@ const COLLECTIONS = {
   friends: 'friends',
   metrics: 'metrics',
   reviews: 'reviews',
+  places: 'places',
+  trips: 'trips',
+  /*
+   * One document holding the whole set, not a document per cell. A
+   * thousand-cell walk would otherwise be a thousand writes, and the set
+   * has no per-cell metadata worth a row — the merge is a union either
+   * way.
+   */
+  exploredCells: 'exploredCells',
   tombstones: 'tombstones',
   /*
    * One document, not a collection. There is one settings blob, and it is
@@ -118,6 +129,9 @@ export function createFirestoreSyncTarget(options: FirestoreTargetOptions): Sync
         friends,
         metrics,
         reviews,
+        places,
+        trips,
+        cells,
         tombstones,
         settings,
       ] = await Promise.all([
@@ -130,11 +144,40 @@ export function createFirestoreSyncTarget(options: FirestoreTargetOptions): Sync
         readSince(root(COLLECTIONS.friends), after),
         readSince(root(COLLECTIONS.metrics), after),
         readSince(root(COLLECTIONS.reviews), after),
+        readSince(root(COLLECTIONS.places), after),
+        readSince(root(COLLECTIONS.trips), after),
+        readSince(root(COLLECTIONS.exploredCells), after),
         readSince(root(COLLECTIONS.tombstones), after),
         readSince(root(COLLECTIONS.settings), after),
       ])
 
-      const pages = [exercises, workouts, checkIns, items, projects, upgrades, tombstones, settings]
+      /*
+       * **Every** page, and the completeness is load-bearing.
+       *
+       * `reached` is the high-water mark of what actually came back, and a
+       * collection left out of this list cannot advance it. That fails
+       * safe — the cursor stays put and the next pull re-reads — but it
+       * fails permanently: if the only thing that ever changes is a
+       * collection missing from here, the cursor never moves and every
+       * pull re-reads the entire history from that point, forever. Three
+       * collections were missing when the atlas was added.
+       */
+      const pages = [
+        exercises,
+        workouts,
+        checkIns,
+        items,
+        projects,
+        upgrades,
+        friends,
+        metrics,
+        reviews,
+        places,
+        trips,
+        cells,
+        tombstones,
+        settings,
+      ]
 
       /*
        * The cursor advances to the newest document actually read, and no
@@ -168,6 +211,11 @@ export function createFirestoreSyncTarget(options: FirestoreTargetOptions): Sync
           friends: friends.records as readonly Friend[],
           metrics: metrics.records as readonly MetricDefinition[],
           reviews: reviews.records as readonly MonthlySnapshot[],
+          places: places.records as readonly Place[],
+          trips: trips.records as readonly Trip[],
+          exploredCells: cells.records.flatMap(
+            (record) => (record as { cells?: readonly string[] }).cells ?? [],
+          ),
           tombstones: tombstones.records as readonly Tombstone[],
           ...(latestSettings === undefined ? {} : { settings: latestSettings as SyncedSettings }),
         },

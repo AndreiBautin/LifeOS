@@ -6,6 +6,8 @@ import type { Project } from '@/domain/projects/project'
 import type { Upgrade } from '@/domain/upgrades/upgrade'
 import type { MetricDefinition, MonthlySnapshot } from '@/domain/review/metric'
 import type { Friend } from '@/domain/social/circle'
+import type { Place } from '@/domain/atlas/place/Place'
+import type { Trip } from '@/domain/atlas/trip/Trip'
 import type { WorkoutLog } from '@/domain/logging/workout-log'
 
 import type { SyncedSettings } from '@/domain/settings/synced'
@@ -37,6 +39,17 @@ export interface SyncPayload {
   readonly friends: readonly Friend[]
   readonly metrics: readonly MetricDefinition[]
   readonly reviews: readonly MonthlySnapshot[]
+  readonly places: readonly Place[]
+  readonly trips: readonly Trip[]
+  /**
+   * Ground you have walked, as geohash cells.
+   *
+   * A grow-only set rather than a collection of records — see
+   * `unionCells`. It carries no stamps and no tombstones because neither
+   * question arises: two copies are merged by union, and nothing can
+   * un-walk ground.
+   */
+  readonly exploredCells: readonly string[]
   readonly tombstones: readonly Tombstone[]
   /**
    * The travelling half of the settings, when they have changed.
@@ -63,6 +76,9 @@ export const EMPTY_PAYLOAD: SyncPayload = {
   friends: [],
   metrics: [],
   reviews: [],
+  places: [],
+  trips: [],
+  exploredCells: [],
   tombstones: [],
 }
 
@@ -77,6 +93,9 @@ export function isEmpty(payload: SyncPayload): boolean {
     payload.friends.length === 0 &&
     payload.metrics.length === 0 &&
     payload.reviews.length === 0 &&
+    payload.places.length === 0 &&
+    payload.trips.length === 0 &&
+    payload.exploredCells.length === 0 &&
     payload.tombstones.length === 0 &&
     payload.settings === undefined
   )
@@ -93,6 +112,11 @@ export function payloadSize(payload: SyncPayload): number {
     payload.friends.length +
     payload.metrics.length +
     payload.reviews.length +
+    payload.places.length +
+    payload.trips.length +
+    // Counted as one, because that is what it is to a reader: the fog
+    // moved, once, however many cells were in the batch.
+    (payload.exploredCells.length === 0 ? 0 : 1) +
     payload.tombstones.length +
     // Counted as one record, because that is what a lifter reading "sent
     // 3" is being told: three things moved, one of which was their
@@ -141,6 +165,35 @@ export function unionProgress(
 }
 
 /**
+ * Merges two devices' explored ground.
+ *
+ * The one thing in this payload that is neither a record nor a blob, and
+ * the reason it needs its own treatment is what it is: a set of cells you
+ * have physically stood in.
+ *
+ * Down the record path it would be a single blob under one stamp — walk on
+ * the phone, sync from the desktop, and the phone's morning is erased,
+ * because the desktop's copy is newer and does not contain it. That is not
+ * a merge going wrong; it is a merge with no way to go right.
+ *
+ * A set of revealed cells is **grow-only**, so union is not a compromise
+ * between two answers — it is the answer. No timestamps are needed and
+ * none are stored, because there is no ordering question to settle. No
+ * tombstone is possible either: you cannot un-walk ground, and a deletion
+ * would be a claim nobody is in a position to make.
+ *
+ * It is therefore exempt from `acceptableFrom` entirely. Every other
+ * collection is filtered through the tombstone index on the way in; this
+ * one has nothing to filter against.
+ */
+export function unionCells(mine: readonly string[], theirs: readonly string[]): readonly string[] {
+  // Sorted so two devices that walked the same ground in a different order
+  // produce byte-identical records, and the exchange stops re-sending a
+  // set that has not actually changed.
+  return [...new Set([...mine, ...theirs])].sort()
+}
+
+/**
  * The part of an incoming batch that survives everything known to be
  * deleted — both what this device deleted and what the batch itself says
  * was deleted.
@@ -186,6 +239,11 @@ export function acceptableFrom(
     // by a deletion travelling. It is deactivated rather than deleted.
     metrics: incoming.metrics,
     reviews: incoming.reviews.filter((item) => shouldAccept(item, 'reviews', item.month, index)),
+    places: incoming.places.filter((item) => shouldAccept(item, 'places', item.id, index)),
+    trips: incoming.trips.filter((item) => shouldAccept(item, 'trips', item.id, index)),
+    // Exempt on purpose. There is no tombstone that could apply to ground
+    // somebody walked, so there is nothing here to filter against.
+    exploredCells: incoming.exploredCells,
     tombstones: incoming.tombstones,
     // Passed through untouched. Settings cannot be deleted, so there is
     // no tombstone that could apply to them.

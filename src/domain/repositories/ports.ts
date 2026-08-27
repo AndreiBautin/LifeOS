@@ -4,6 +4,11 @@ import type { Project } from '@/domain/projects/project'
 import type { Upgrade } from '@/domain/upgrades/upgrade'
 import type { MetricDefinition, MonthlySnapshot } from '@/domain/review/metric'
 import type { Friend } from '@/domain/social/circle'
+import type { Place } from '@/domain/atlas/place/Place'
+import type { PlaceId } from '@/domain/atlas/place/PlaceId'
+import type { Trip } from '@/domain/atlas/trip/Trip'
+import type { TripId } from '@/domain/atlas/trip/TripId'
+import type { CellId } from '@/domain/atlas/exploration/GeoCell'
 import type { BacklogSettings } from '@/domain/backlog/settings'
 import type { Exercise } from '@/domain/exercises/exercise'
 import type {
@@ -286,6 +291,45 @@ export interface ReviewRepository {
   restoreSnapshots(snapshots: readonly MonthlySnapshot[]): Promise<void>
   removeSnapshot(month: string): Promise<void>
   purgeSnapshot(month: string): Promise<void>
+}
+
+/** Places worth going to. */
+export interface PlaceRepository {
+  all(): Promise<readonly Place[]>
+  byId(id: PlaceId): Promise<Place | undefined>
+  save(place: Place): Promise<void>
+  restoreMany(places: readonly Place[]): Promise<void>
+  remove(id: PlaceId): Promise<void>
+  purge(id: PlaceId): Promise<void>
+  count(): Promise<number>
+}
+
+export interface TripRepository {
+  all(): Promise<readonly Trip[]>
+  byId(id: TripId): Promise<Trip | undefined>
+  save(trip: Trip): Promise<void>
+  restoreMany(trips: readonly Trip[]): Promise<void>
+  remove(id: TripId): Promise<void>
+  purge(id: TripId): Promise<void>
+}
+
+/**
+ * Ground you have walked.
+ *
+ * The only repository here with no `remove` and no `purge`, and the
+ * absence is the design: a revealed cell is a fact about where you have
+ * physically been, so there is no deletion to model. `reveal` adds and
+ * nothing takes away.
+ *
+ * `clear` exists for the wipe-and-restore import path alone, which is
+ * gated behind a typed confirmation — the same reason the backlog has one.
+ */
+export interface ExploredAreaRepository {
+  all(): Promise<ReadonlySet<CellId>>
+  /** Adds cells, ignoring any already known. Returns how many were new. */
+  reveal(cells: readonly CellId[]): Promise<number>
+  clear(): Promise<void>
+  count(): Promise<number>
 }
 
 /**

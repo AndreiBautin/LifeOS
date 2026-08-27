@@ -6,6 +6,9 @@ import type {
   UpgradeRepository,
   FriendRepository,
   ReviewRepository,
+  PlaceRepository,
+  TripRepository,
+  ExploredAreaRepository,
   CheckInRepository,
   Clock,
   ExerciseRepository,
@@ -23,6 +26,9 @@ import {
   createProjectRepository,
   createFriendRepository,
   createReviewRepository,
+  createExploredAreaRepository,
+  createPlaceRepository,
+  createTripRepository,
   createUpgradeRepository,
   createCheckInRepository,
   createExerciseRepository,
@@ -66,6 +72,9 @@ export interface AppServices {
   readonly upgrades: UpgradeRepository
   readonly friends: FriendRepository
   readonly review: ReviewRepository
+  readonly places: PlaceRepository
+  readonly trips: TripRepository
+  readonly explored: ExploredAreaRepository
   readonly backlogSettings: BacklogSettingsRepository
   readonly tombstones: TombstoneRepository
   readonly settings: SettingsRepository
@@ -115,6 +124,9 @@ export async function bootstrap(): Promise<BootstrapResult> {
     upgrades: createUpgradeRepository(db, systemClock),
     friends: createFriendRepository(db, systemClock),
     review: createReviewRepository(db, systemClock),
+    places: createPlaceRepository(db, systemClock),
+    trips: createTripRepository(db, systemClock),
+    explored: createExploredAreaRepository(db),
     backlogSettings: createBacklogSettingsStore(),
     tombstones: createTombstoneRepository(db),
     settings: createSettingsStore(),

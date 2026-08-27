@@ -4,11 +4,15 @@ import type { CheckIn } from '@/domain/autoregulation/check-in'
 import type { Item } from '@/domain/backlog/item'
 import type { Exercise } from '@/domain/exercises/exercise'
 import type { BacklogItemId, WorkoutId } from '@/domain/ids/ids'
+import type { CellId } from '@/domain/atlas/exploration/GeoCell'
 import type { WorkoutLog } from '@/domain/logging/workout-log'
 import type {
   BacklogItemRepository,
   ProjectRepository,
   UpgradeRepository,
+  PlaceRepository,
+  TripRepository,
+  ExploredAreaRepository,
   FriendRepository,
   ReviewRepository,
   CheckInRepository,
@@ -63,6 +67,7 @@ function advancingClock(): Clock {
 
 interface Device extends SynchroniseDeps {
   readonly backlog: Map<string, Item>
+  readonly walked: Set<CellId>
   readonly log: Map<string, WorkoutLog>
 }
 
@@ -203,6 +208,45 @@ function device(clock: Clock): Device {
     purgeSnapshot: () => Promise.resolve(),
   }
 
+  const places: PlaceRepository = {
+    all: () => Promise.resolve([]),
+    byId: () => Promise.resolve(undefined),
+    save: () => Promise.resolve(),
+    restoreMany: () => Promise.resolve(),
+    remove: () => Promise.resolve(),
+    purge: () => Promise.resolve(),
+    count: () => Promise.resolve(0),
+  }
+
+  const trips: TripRepository = {
+    all: () => Promise.resolve([]),
+    byId: () => Promise.resolve(undefined),
+    save: () => Promise.resolve(),
+    restoreMany: () => Promise.resolve(),
+    remove: () => Promise.resolve(),
+    purge: () => Promise.resolve(),
+  }
+
+  /*
+   * A real double, like the backlog. The fog is the one thing in this
+   * payload merged by union rather than by a record winner, and a stub
+   * would let that test pass against an implementation that replaced.
+   */
+  const walked = new Set<CellId>()
+  const explored: ExploredAreaRepository = {
+    all: () => Promise.resolve(new Set(walked)),
+    reveal: (cells) => {
+      const before = walked.size
+      for (const cell of cells) walked.add(cell)
+      return Promise.resolve(walked.size - before)
+    },
+    clear: () => {
+      walked.clear()
+      return Promise.resolve()
+    },
+    count: () => Promise.resolve(walked.size),
+  }
+
   const upgrades: UpgradeRepository = {
     all: () => Promise.resolve([]),
     byId: () => Promise.resolve(undefined),
@@ -256,6 +300,10 @@ function device(clock: Clock): Device {
     upgrades,
     friends,
     review,
+    places,
+    trips,
+    explored,
+    walked,
     tombstones,
     syncState,
     settings,
@@ -633,5 +681,76 @@ describe('a backlog item’s progress log', () => {
     await synchronise(createMemorySyncTarget(server, 'desk'), desk)
 
     expect(await desk.items.byId(shared.id)).toBeUndefined()
+  })
+})
+
+/*
+ * The fog, which is the one thing here that is neither a record nor a
+ * blob.
+ *
+ * As a single blob under one stamp — which is how it arrived — a
+ * record-level winner erases whichever device walked less recently. There
+ * is no version of that which works: both copies are true, and the newer
+ * one is not the fuller one. So it is a grow-only set, merged by union,
+ * exempt from the tombstone filter, and these are the tests that say so.
+ */
+describe('ground you have walked', () => {
+  const cells = (...ids: string[]) => ids as CellId[]
+
+  it('accumulates on both devices rather than one erasing the other', async () => {
+    const clock = advancingClock()
+    const server = createMemorySyncServer()
+    const phone = device(clock)
+    const desk = device(clock)
+
+    // A morning walk on the phone, an afternoon one at the desk, neither
+    // having heard from the other.
+    await phone.explored.reveal(cells('gcpuvpk', 'gcpuvps'))
+    await desk.explored.reveal(cells('gcpuvpu', 'gcpuvpv'))
+
+    await synchronise(createMemorySyncTarget(server, 'phone'), phone)
+    await synchronise(createMemorySyncTarget(server, 'desk'), desk)
+    await synchronise(createMemorySyncTarget(server, 'phone'), phone)
+
+    const onDesk = [...(await desk.explored.all())].sort()
+    const onPhone = [...(await phone.explored.all())].sort()
+
+    expect(onDesk).toEqual(['gcpuvpk', 'gcpuvps', 'gcpuvpu', 'gcpuvpv'])
+    expect(onPhone).toEqual(onDesk)
+  })
+
+  /*
+   * The failure the union exists to prevent, stated as a test: the desk
+   * walked *later*, and under a record-level winner its copy — which never
+   * contained the phone's morning — would be the one that survived.
+   */
+  it('does not let the later device’s copy erase the earlier one’s ground', async () => {
+    const clock = advancingClock()
+    const server = createMemorySyncServer()
+    const phone = device(clock)
+    const desk = device(clock)
+
+    await phone.explored.reveal(cells('gcpuvpk'))
+    await synchronise(createMemorySyncTarget(server, 'phone'), phone)
+
+    await desk.explored.reveal(cells('gcpuvpu'))
+    await synchronise(createMemorySyncTarget(server, 'desk'), desk)
+
+    expect([...(await desk.explored.all())].sort()).toEqual(['gcpuvpk', 'gcpuvpu'])
+  })
+
+  it('is idempotent — walking the same ground twice changes nothing', async () => {
+    const clock = advancingClock()
+    const server = createMemorySyncServer()
+    const phone = device(clock)
+    const desk = device(clock)
+
+    await phone.explored.reveal(cells('gcpuvpk'))
+    await desk.explored.reveal(cells('gcpuvpk'))
+
+    await synchronise(createMemorySyncTarget(server, 'phone'), phone)
+    await synchronise(createMemorySyncTarget(server, 'desk'), desk)
+
+    expect(await desk.explored.count()).toBe(1)
   })
 })

@@ -4,6 +4,11 @@ import type { Project } from '@/domain/projects/project'
 import type { Upgrade } from '@/domain/upgrades/upgrade'
 import type { MetricDefinition, MonthlySnapshot } from '@/domain/review/metric'
 import type { Friend } from '@/domain/social/circle'
+import type { Place } from '@/domain/atlas/place/Place'
+import type { PlaceId } from '@/domain/atlas/place/PlaceId'
+import type { Trip } from '@/domain/atlas/trip/Trip'
+import type { TripId } from '@/domain/atlas/trip/TripId'
+import type { CellId } from '@/domain/atlas/exploration/GeoCell'
 import type { ProgramPosition } from '@/domain/programs/position'
 import { builtInExercises } from '@/domain/exercises/catalogue'
 import type { Exercise } from '@/domain/exercises/exercise'
@@ -26,7 +31,10 @@ import type {
   ExerciseRepository,
   PositionRepository,
   FriendRepository,
+  ExploredAreaRepository,
+  PlaceRepository,
   ProjectRepository,
+  TripRepository,
   ReviewRepository,
   UpgradeRepository,
   TombstoneRepository,
@@ -438,6 +446,94 @@ export function createReviewRepository(db: LiftDatabase, clock: Clock): ReviewRe
     },
     async purgeSnapshot(month: string) {
       await db.delete('reviews', month)
+    },
+  }
+}
+
+export function createPlaceRepository(db: LiftDatabase, clock: Clock): PlaceRepository {
+  return {
+    async all() {
+      return db.getAll('places')
+    },
+    async byId(id: PlaceId) {
+      return db.get('places', id)
+    },
+    async save(place: Place) {
+      await db.put('places', stamp(place, clock))
+    },
+    async restoreMany(places: readonly Place[]) {
+      const tx = db.transaction('places', 'readwrite')
+      await Promise.all([...places.map((place) => tx.store.put(place)), tx.done])
+    },
+    async remove(id: PlaceId) {
+      await db.delete('places', id)
+      await bury(db, clock, 'places', id)
+    },
+    async purge(id: PlaceId) {
+      await db.delete('places', id)
+    },
+    async count() {
+      return db.count('places')
+    },
+  }
+}
+
+export function createTripRepository(db: LiftDatabase, clock: Clock): TripRepository {
+  return {
+    async all() {
+      return db.getAll('trips')
+    },
+    async byId(id: TripId) {
+      return db.get('trips', id)
+    },
+    async save(trip: Trip) {
+      await db.put('trips', stamp(trip, clock))
+    },
+    async restoreMany(trips: readonly Trip[]) {
+      const tx = db.transaction('trips', 'readwrite')
+      await Promise.all([...trips.map((trip) => tx.store.put(trip)), tx.done])
+    },
+    async remove(id: TripId) {
+      await db.delete('trips', id)
+      await bury(db, clock, 'trips', id)
+    },
+    async purge(id: TripId) {
+      await db.delete('trips', id)
+    },
+  }
+}
+
+/**
+ * Ground you have walked.
+ *
+ * No stamping and no tombstones, and both absences are the point. There is
+ * nothing to order — a cell is either revealed or it is not, and two
+ * devices merge by union — and nothing to delete, because you cannot
+ * un-walk ground.
+ *
+ * `reveal` reports how many were genuinely new so a caller can skip a
+ * write and a re-render when a reading lands in a cell already cleared,
+ * which on a walk is most readings.
+ */
+export function createExploredAreaRepository(db: LiftDatabase): ExploredAreaRepository {
+  return {
+    async all() {
+      return new Set((await db.getAllKeys('exploredCells')) as CellId[])
+    },
+    async reveal(cells: readonly CellId[]) {
+      const known = await this.all()
+      const fresh = cells.filter((cell) => !known.has(cell))
+      if (fresh.length === 0) return 0
+
+      const tx = db.transaction('exploredCells', 'readwrite')
+      await Promise.all([...fresh.map((id) => tx.store.put({ id })), tx.done])
+      return fresh.length
+    },
+    async clear() {
+      await db.clear('exploredCells')
+    },
+    async count() {
+      return db.count('exploredCells')
     },
   }
 }

@@ -7,6 +7,8 @@ import type { Project } from '@/domain/projects/project'
 import type { Upgrade } from '@/domain/upgrades/upgrade'
 import type { MetricDefinition, MonthlySnapshot } from '@/domain/review/metric'
 import type { Friend } from '@/domain/social/circle'
+import type { Place } from '@/domain/atlas/place/Place'
+import type { Trip } from '@/domain/atlas/trip/Trip'
 import type { Tombstone } from '@/domain/sync/tombstone'
 import type { Exercise } from '@/domain/exercises/exercise'
 import type { WorkoutLog } from '@/domain/logging/workout-log'
@@ -45,7 +47,7 @@ export const DB_NAME = 'lift'
  * a device that already ran it will not run it again, so changing one
  * leaves two devices with different schemas and no way to tell.
  */
-export const DB_VERSION = 7
+export const DB_VERSION = 8
 
 /**
  * A workout as it is stored, which is not quite a workout as the domain
@@ -210,6 +212,33 @@ export interface LiftDB extends DBSchema {
     key: string
     value: MonthlySnapshot
   }
+  /** Places worth going to, visited or not. */
+  places: {
+    key: string
+    value: Place
+    indexes: { 'by-status': string; 'by-category': string }
+  }
+  trips: {
+    key: string
+    value: Trip
+  }
+  /**
+   * Ground you have walked, one row per geohash cell.
+   *
+   * A store rather than the single blob it arrived as, and that is the
+   * whole of step 5c. As one blob it is one record under one stamp, and a
+   * record-level winner erases whichever device walked less recently. As
+   * rows it is a grow-only set: two devices union, nothing is lost, and
+   * the question of which copy is newer never comes up.
+   *
+   * The cell id is the key and there is nothing else in the row. That is
+   * not minimalism — there is genuinely nothing else to say about a cell
+   * beyond the fact that you stood in it.
+   */
+  exploredCells: {
+    key: string
+    value: { readonly id: string }
+  }
 }
 
 export type LiftDatabase = IDBPDatabase<LiftDB>
@@ -327,6 +356,22 @@ export function openLiftDatabase(name = DB_NAME): Promise<LiftDatabase> {
         db.createObjectStore('metrics', { keyPath: 'id' })
         db.createObjectStore('reviews', { keyPath: 'month' })
       }
+
+      /*
+       * Version 8 brings the atlas in.
+       *
+       * `exploredCells` is one row per cell rather than the single blob it
+       * arrived as — see the store's own note. That shape is the reason
+       * the fog can sync at all.
+       */
+      if (oldVersion < 8) {
+        const places = db.createObjectStore('places', { keyPath: 'id' })
+        places.createIndex('by-status', 'status')
+        places.createIndex('by-category', 'categoryId')
+
+        db.createObjectStore('trips', { keyPath: 'id' })
+        db.createObjectStore('exploredCells', { keyPath: 'id' })
+      }
     },
 
     blocked() {
@@ -380,6 +425,9 @@ export async function clearAllStores(db: LiftDatabase): Promise<void> {
       'friends',
       'metrics',
       'reviews',
+      'places',
+      'trips',
+      'exploredCells',
     ],
     'readwrite',
   )
@@ -395,6 +443,9 @@ export async function clearAllStores(db: LiftDatabase): Promise<void> {
     tx.objectStore('friends').clear(),
     tx.objectStore('metrics').clear(),
     tx.objectStore('reviews').clear(),
+    tx.objectStore('places').clear(),
+    tx.objectStore('trips').clear(),
+    tx.objectStore('exploredCells').clear(),
     tx.done,
   ])
 }
