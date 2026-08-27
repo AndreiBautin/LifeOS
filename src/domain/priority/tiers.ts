@@ -1,5 +1,6 @@
 import { invariant } from '@/domain/errors/domain-error'
 import type { MuscleGroup } from '@/domain/exercises/taxonomy'
+import { reachableWeeklySets } from '@/domain/volume/frequency'
 import type { VolumeLandmarks } from '@/domain/volume/landmarks'
 
 /**
@@ -92,8 +93,29 @@ export const BOTTOM_TIER_POSITION = 0.15
  * landmarks.
  */
 export function priorityPosition<T extends string>(tiers: readonly Tier<T>[], member: T): number {
-  const populated = tiers.filter((tier) => tier.members.length > 0)
-  const ordered = [...populated].sort((a, b) => a.rank - b.rank)
+  /*
+   * Every declared tier counts, empty ones included.
+   *
+   * This used to filter to the tiers with members in them, so the
+   * ordering was the one you had *expressed* rather than the one you had
+   * *declared*. Defensible in isolation and wrong beside
+   * `TIER_FREQUENCY`, which has always read the declared rank: with the
+   * top tier emptied, one function called tier 2 the top of the ordering
+   * and handed it a near-MAV target while the other called it rank 2 and
+   * bought two sessions. Thirteen sets asked, ten deliverable, and no
+   * amount of training fixes a disagreement between two rules.
+   *
+   * The visible consequence is that emptying a tier now means something.
+   * Moving every muscle from tier 1 to tier 2 used to change nothing at
+   * all — the relative ordering was identical, so every target was — and
+   * "these are all secondary now" is a sentence a lifter is entitled to
+   * be able to say.
+   *
+   * It also fixes the mirror case, which was live and silent: declaring
+   * three tiers and leaving the *bottom* one empty put the building
+   * muscles at maintenance volume.
+   */
+  const ordered = [...tiers].sort((a, b) => a.rank - b.rank)
 
   const index = ordered.findIndex((tier) => tier.members.includes(member))
   // Anything not placed in a tier is treated as lowest priority rather
@@ -190,13 +212,46 @@ function justUnder(landmarks: VolumeLandmarks): number {
  * parameters would have left every call site claiming a dependency that
  * no longer exists.
  */
-export function weeklyTargetForWeek(
+/** Which tier a member sits in. Unplaced members are treated as bottom. */
+export function tierRankOf<T extends string>(tiers: readonly Tier<T>[], member: T): number {
+  return tiers.find((tier) => tier.members.includes(member))?.rank ?? tiers.length
+}
+
+/**
+ * The target for one member of a tier list — position *and* reach.
+ *
+ * The only entry point callers should use. {@link weeklyTargetFor} is the
+ * primitive underneath it and knows nothing about frequency, which is
+ * exactly the gap this closes: a position says how hard to push inside a
+ * band, and a rank says how many sessions there are to push in. Both are
+ * needed and only one of them was being asked.
+ *
+ * Written as one function rather than a clamp each caller applies because
+ * there are three call sites — the assembler, the explanation and the tier
+ * editor — and a rule living in each of them is a rule the next one will
+ * miss. That failure would be quiet in the worst way: the editor would
+ * promise thirteen sets, the assembler would deliver ten, and the Plan
+ * screen would report the difference as the lifter's week being too
+ * small.
+ */
+export function weeklyTargetForMember<T extends string>(
+  tiers: readonly Tier<T>[],
+  member: T,
   landmarks: VolumeLandmarks,
-  position: number,
+  options: VolumeTargetOptions = {},
+): number {
+  const target = weeklyTargetFor(landmarks, priorityPosition(tiers, member), options)
+  return Math.min(target, reachableWeeklySets(tierRankOf(tiers, member)))
+}
+
+export function weeklyTargetForWeek<T extends string>(
+  tiers: readonly Tier<T>[],
+  member: T,
+  landmarks: VolumeLandmarks,
   isDeload: boolean,
 ): number {
   if (isDeload) return Math.max(0, Math.round(landmarks.mv))
-  return weeklyTargetFor(landmarks, position)
+  return weeklyTargetForMember(tiers, member, landmarks)
 }
 
 /* -------------------------------------------------------------------- */
@@ -262,8 +317,17 @@ export const DEFAULT_STRENGTH_TIERS: StrengthTiers = [
    * and how many quad sets it happens to pay is a consequence the
    * capacity report on the Plan screen will show either way.
    */
-  { rank: 1, members: ['bench'], label: 'Specialising' },
-  { rank: 2, members: ['squat', 'deadlift'], label: 'Building' },
+  /*
+   * Nothing specialised, and there is no room for it.
+   *
+   * Tier 1 buys three sessions a week and the four-day split has two
+   * upper days and two lower ones, so a specialised lift would ask for a
+   * third session that does not exist. The tier is empty rather than
+   * unused: it is what a fifth day would buy, and leaving it visible is
+   * how that trade stays legible.
+   */
+  { rank: 1, members: [], label: 'Specialising' },
+  { rank: 2, members: ['bench', 'squat', 'deadlift'], label: 'Building' },
   { rank: 3, members: [], label: 'Maintaining' },
 ]
 
@@ -289,44 +353,46 @@ export const DEFAULT_MUSCLE_TIERS: MuscleTiers = [
    * The fix, if the lats ever do want specialising, is a third pull
    * variant in the catalogue — not a higher number here.
    */
-  { rank: 1, members: ['chest', 'side-delts', 'biceps'], label: 'Specialising' },
-  // Front delts sit here rather than in the bottom tier so the overhead
-  // press keeps a real allocation. Its primary muscle is what decides how
-  // many sets it gets, and at tier 3 a lift meant to stay in the rotation
-  // was receiving maintenance volume.
   /*
-   * Core sits here rather than in maintenance.
-   *
-   * At tier 3 it asked for two sets a week and the squat and deadlift
-   * paid that in bracing alone, so it never received a slot of its own —
-   * technically satisfied, never actually trained. The lower days have
-   * the room, and abs are the one thing a maintained lower body should
-   * still be working directly.
+   * Empty, and for the same reason the strength tier above is: three
+   * sessions of an upper muscle need three upper days and the split has
+   * two. Anything put here would ask for a session that does not exist
+   * and land on the capacity report every week.
    */
+  { rank: 1, members: [], label: 'Specialising' },
   {
     rank: 2,
     members: [
+      'chest',
+      'side-delts',
+      'biceps',
       'front-delts',
       'rear-delts',
       'triceps',
       'lats',
       'upper-back',
-      'traps',
-      'forearms',
       'calves',
-      'core',
     ],
     label: 'Building',
   },
   /*
-   * The legs, maintained — for *volume*.
+   * Maintained, which here means no dedicated slot at all.
    *
-   * The tier most likely to be misread now that the squat and the
-   * deadlift are trained twice a week. It is not a contradiction: these
-   * numbers decide how much dedicated leg work the week schedules, and
-   * the answer is none beyond what the competition lifts already pay.
+   * The legs were already here and the reasoning now extends to the trunk
+   * and the grip: the squat and the deadlift are the quads, hamstrings and
+   * glutes, and they are also most of what the core and the forearms get.
+   * Traps join them because nothing in a four-day week is short of pulling.
+   *
+   * Worth being exact, because "maintaining" is easy to read as "a little
+   * bit of work". It is a *volume* tier: it decides how much dedicated
+   * work the week schedules, and at the bottom the answer is what the
+   * competition lifts already pay and nothing more.
    */
-  { rank: 3, members: ['quads', 'hamstrings', 'glutes'], label: 'Maintaining' },
+  {
+    rank: 3,
+    members: ['quads', 'hamstrings', 'glutes', 'core', 'forearms', 'traps'],
+    label: 'Maintaining',
+  },
 ]
 
 /* -------------------------------------------------------------------- */

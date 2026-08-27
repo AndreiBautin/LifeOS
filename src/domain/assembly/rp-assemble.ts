@@ -22,10 +22,10 @@ import type { MuscleTiers, StrengthLift, StrengthTiers } from '@/domain/priority
 import {
   DEFAULT_MUSCLE_TIERS,
   DEFAULT_STRENGTH_TIERS,
-  priorityPosition,
   strengthSessionsFor,
   STRENGTH_LIFTS,
   validateTiers,
+  tierRankOf,
   weeklyTargetForWeek,
 } from '@/domain/priority/tiers'
 import { describeBlock } from '@/domain/priority/explain'
@@ -132,7 +132,22 @@ export function defaultRpRecipe(overrides: Partial<RpRecipe> = {}): RpRecipe {
      * per-session dose and this, so leaving one at five made the other
      * decorative.
      */
-    maxSetsPerSlot: 8,
+    /*
+     * Three, and it is a different cap from the per-session ceiling.
+     *
+     * `MAX_DIRECT_SETS_PER_SESSION` bounds what a *muscle* takes in a
+     * session; this bounds what one *exercise* takes. Five and five
+     * collapsed the distinction — a muscle's whole session dose went into
+     * a single movement — so the pairing that actually trains a muscle
+     * well, a compound and then an isolation, could not be expressed. At
+     * three the ceiling still fills, in two slots instead of one.
+     *
+     * It was eight, under a comment claiming it matched the per-session
+     * ceiling. It matched an older value of it and had been decorative
+     * since: `shareOwed` takes the lower of the two, so the session dose
+     * had been the real cap for some time.
+     */
+    maxSetsPerSlot: 3,
     excludedExercises: [],
     settings: DEFAULT_PROGRAM_SETTINGS,
     ...overrides,
@@ -371,8 +386,12 @@ function weeklyTargets(recipe: RpRecipe, isDeload: boolean): Record<MuscleGroup,
   const targets = {} as Record<MuscleGroup, number>
 
   for (const muscle of Object.keys(recipe.landmarks) as MuscleGroup[]) {
-    const position = priorityPosition(recipe.muscleTiers, muscle)
-    targets[muscle] = weeklyTargetForWeek(recipe.landmarks[muscle], position, isDeload)
+    targets[muscle] = weeklyTargetForWeek(
+      recipe.muscleTiers,
+      muscle,
+      recipe.landmarks[muscle],
+      isDeload,
+    )
   }
 
   return targets
@@ -1181,9 +1200,6 @@ const HEAVY_HYPERTROPHY_REPS = 6
 export const STRENGTH_BACKOFF_CAP = 3
 
 /** Which tier a muscle sits in; the bottom tier if it is unplaced. */
-function tierRankOf(tiers: MuscleTiers, muscle: MuscleGroup): number {
-  return tiers.find((tier) => tier.members.includes(muscle))?.rank ?? tiers.length
-}
 
 /** Sessions in the whole week's split that are accountable for a muscle. */
 function daysAvailableFor(muscle: MuscleGroup, split: RpSplit): number {
@@ -1509,12 +1525,8 @@ function describeDay(
   const indirect = emptyVolumeMap()
 
   const strengthNames: string[] = []
-  let hasStrength = false
-  let hasHypertrophy = false
-  let hasConditioning = false
 
   for (const slot of slots) {
-    if (slot.role === 'conditioning') hasConditioning = true
     if (slot.exercise.kind !== 'specific') continue
     const exercise = lookup(slot.exercise.exerciseId)
     if (exercise === undefined) continue
@@ -1532,9 +1544,7 @@ function describeDay(
        * — and naming it twice reads as a stutter.
        */
       if (!strengthNames.includes(exercise.name)) strengthNames.push(exercise.name)
-      hasStrength = true
     }
-    if (slot.role === 'hypertrophy' || slot.role === 'assistance') hasHypertrophy = true
     if (slot.role === 'warmup' || slot.role === 'conditioning') continue
 
     const working = slot.sets.filter(countsAsWorking).length
@@ -1599,23 +1609,14 @@ function describeDay(
       : strengthNames.map((name) => name.replace(/\s*\([^)]*\)\s*/g, '').trim()).join(' and ')
 
   /*
-   * What kind of session it is — the headline, named from the roles
-   * actually present rather than from what the split meant to put there.
+   * The heading is which half of the body, and which time through.
    *
-   * This is the first thing worth knowing about a day and it used to be
-   * buried on the second line behind a list of muscles. "Is today a
-   * strength day" is answered by three words; which muscles those three
-   * words imply is a longer answer that belongs underneath.
-   *
-   * Each kind is capitalised and the conjunction is not: they are the
-   * names of the three sorts of work this app does, and "and" is not one
-   * of them.
+   * It used to name the kinds of work present — "Strength, Hypertrophy and
+   * Conditioning" — which was informative while days differed and said
+   * nothing once every day carried all three. A heading identical on every
+   * day of the week is a heading nobody reads. "Upper 2" answers the
+   * question somebody actually has on a Thursday morning.
    */
-  const kinds = [
-    hasStrength ? 'Strength' : '',
-    hasHypertrophy ? 'Hypertrophy' : '',
-    hasConditioning ? 'Conditioning' : '',
-  ].filter((kind) => kind !== '')
 
   /*
    * The detail line, written as sentences rather than as delimited
@@ -1646,7 +1647,7 @@ function describeDay(
   const focus = [opening, aside].filter((part): part is string => part !== undefined).join(' ')
 
   return {
-    label: kinds.length > 0 ? `${splitDay.label} — ${joinAnd(kinds)}` : splitDay.label,
+    label: `${splitDay.label} — ${splitDay.focusName}`,
     ...(focus !== '' ? { focus } : {}),
   }
 }

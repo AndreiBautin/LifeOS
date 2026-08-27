@@ -43,6 +43,11 @@ describe('deriving the program', () => {
           { rank: 2, members: ['lats'], label: 'Building' },
           { rank: 3, members: ['biceps'], label: 'Maintaining' },
         ],
+        strengthTiers: [
+          { rank: 1, members: ['bench'], label: 'Specialising' },
+          { rank: 2, members: ['squat', 'deadlift'], label: 'Building' },
+          { rank: 3, members: [], label: 'Maintaining' },
+        ],
       },
       library,
     )

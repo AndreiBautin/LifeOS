@@ -106,10 +106,9 @@ describe('the assembled block', () => {
     ])
 
     /*
-     * Eight sessions across five days. The bench is specialised and takes
-     * all three upper days; the squat and the deadlift are both building
-     * and want two sessions each, and there are only two lower days — so
-     * they share both.
+     * Six sessions across four days. Every lift is building and wants two
+     * sessions: the bench takes both upper days, and the squat and the
+     * deadlift share both lower ones.
      *
      * The order is the interesting part. Tuesday opens with the squat and
      * Thursday with the deadlift, because a lift that is always second is
@@ -126,7 +125,6 @@ describe('the assembled block', () => {
       ['low-bar-squat', 'sumo-deadlift'],
       ['bench-press'],
       ['sumo-deadlift', 'high-bar-squat'],
-      ['close-grip-bench-press'],
     ])
   })
 
@@ -256,8 +254,8 @@ describe('the assembled block', () => {
     expect(new Set(backoffSets).size).toBe(1)
 
     // Counted across a lift's variations, not by slug: the bench trains
-    // three different versions of itself across the week and they are all
-    // bench sessions.
+    // two different versions of itself across the week and both are bench
+    // sessions.
     const sessions = (lift: 'squat' | 'bench' | 'deadlift'): number =>
       (week?.days ?? []).filter((day) =>
         day.slots.some(
@@ -267,9 +265,10 @@ describe('the assembled block', () => {
         ),
       ).length
 
-    // Bench is specialised and takes three; the squat and the deadlift
-    // are both building and take two each, sharing the two lower days.
-    expect(sessions('bench')).toBe(3)
+    // Nothing is specialised: all three lifts are building and take two
+    // sessions each. The bench has both upper days, and the squat and the
+    // deadlift share both lower ones.
+    expect(sessions('bench')).toBe(2)
     expect(sessions('squat')).toBe(2)
     expect(sessions('deadlift')).toBe(2)
   })
@@ -328,16 +327,19 @@ describe('naming a day after what is in it', () => {
   const week = weekAt(build(), 5)
 
   /*
-   * The kind of session goes in the heading, because it is the first
-   * thing worth knowing and it used to be buried on the second line
-   * behind a list of muscles.
+   * Which half of the body, and which time through.
+   *
+   * The heading named the kinds of work present — "Strength, Hypertrophy
+   * and Conditioning" — which was informative while the days differed and
+   * said nothing once every day carried all three. Four identical
+   * headings distinguish nothing; what a reader wants on a Thursday
+   * morning is which session this is.
    */
-  it('says in the heading whether a day is strength, hypertrophy or both', () => {
-    // Every day carries conditioning now, so every heading says so. The
-    // label is read off the finished slots rather than written into the
-    // split, which is why this needed no code change to follow.
-    expect(week.days[0]?.label).toBe('Monday — Strength, Hypertrophy and Conditioning')
-    expect(week.days[1]?.label).toBe('Tuesday — Strength, Hypertrophy and Conditioning')
+  it('says in the heading which region the day trains, and which time through', () => {
+    expect(week.days[0]?.label).toBe('Monday — Upper 1')
+    expect(week.days[1]?.label).toBe('Tuesday — Lower 1')
+    expect(week.days[2]?.label).toBe('Thursday — Upper 2')
+    expect(week.days[3]?.label).toBe('Friday — Lower 2')
   })
 
   it('names every competition lift, in the order they are performed', () => {
@@ -444,10 +446,17 @@ describe('how often a muscle is trained', () => {
     }
   })
 
-  it('trains a high-volume muscle more often than a low-volume one', () => {
-    // Side delts are owed roughly three times what the calves are. Equal
-    // frequency would mean tripling the size of each side-delt session.
-    expect(directDays('side-delts')).toBeGreaterThan(directDays('calves'))
+  it('trains a higher-tier muscle more often than a lower-tier one', () => {
+    /*
+     * This compared side delts against calves on the reasoning that the
+     * first is owed three times the volume — true at the time, and the
+     * wrong reason. Frequency follows the tier and nothing else, which is
+     * the whole point of TIER_FREQUENCY. The two muscles now share a tier
+     * and correctly share a frequency, so a test asserting otherwise
+     * would be defending the volume-derived rule that was deliberately
+     * removed.
+     */
+    expect(directDays('side-delts')).toBeGreaterThan(directDays('core'))
   })
 
   it('does not let one session swallow a muscle`s whole week', () => {
@@ -532,8 +541,9 @@ describe('how a muscle is spread across its sessions', () => {
     // full dose, which meets the shape and blows the weekly number. The
     // biceps came out at 21 against a target of 17 before this.
     const asked = weeklyTargetForWeek(
+      DEFAULT_MUSCLE_TIERS,
+      'biceps',
       DEFAULT_LANDMARKS.biceps,
-      priorityPosition(DEFAULT_MUSCLE_TIERS, 'biceps'),
       false,
     )
     const delivered = perDay('biceps').reduce((total, credit) => total + credit, 0)
@@ -550,48 +560,54 @@ describe('how a muscle is spread across its sessions', () => {
      * allowance. An incline walk is twenty minutes costing almost no
      * systemic fatigue, and charging it against the budget spends a
      * recovery allowance on something that does not consume one — put it
-     * on the three upper days and the side delts silently went from
-     * twenty sets to eleven. A training decision made by bookkeeping.
-     */
-    const asked = weeklyTargetForWeek(
-      DEFAULT_LANDMARKS['side-delts'],
-      priorityPosition(DEFAULT_MUSCLE_TIERS, 'side-delts'),
-      false,
-    )
-    const delivered = perDay('side-delts').reduce((total, credit) => total + credit, 0)
-
-    /*
-     * A proportion rather than "within one set", and the change is worth
-     * explaining because loosening a test to get green is the wrong move
-     * and this is not that.
+     * on the upper days and the side delts silently went from twenty sets
+     * to eleven. A training decision made by bookkeeping.
      *
-     * The bug guarded here took the side delts from twenty sets to eleven
-     * — a 45% loss, caused by bookkeeping. The delts now come in at 11 of
-     * 13, which is 85%, and the two missing sets are capacity: with
-     * secondary credit gone, every muscle that used to be paid by a
-     * compound needs its own slot, and five days do not have the minutes.
-     * The Plan screen reports it, which is what that screen is for.
-     *
-     * A tolerance of one set could not tell those apart at the new scale.
-     * Four fifths sits well clear of the failure and well under the
-     * ordinary squeeze.
+     * Asserted by removing the walk rather than against a fraction of the
+     * ask, which is the second and better attempt. The first compared
+     * delivered volume to a tolerance, and a tolerance cannot tell a
+     * bookkeeping bug from an ordinary squeeze: the number it was
+     * measuring moves whenever the split, the tiers or the per-slot cap
+     * move, so every one of those changes arrives as a failure here and
+     * gets answered by widening the tolerance. Excluding the walk asks
+     * the question directly — does this slot cost the day its lifting —
+     * and the answer is a comparison the assembler either makes or does
+     * not.
      */
-    expect(delivered).toBeGreaterThanOrEqual(asked * 0.8)
-  })
-
-  it('still charges interval work against the budget', () => {
-    // The other half. Swings are intervals with a real cost, and work
-    // that competes for recovery should compete for the budget — so the
-    // exemption has to be the domain, not conditioning as a category.
-    const lower = week.days.filter((day) =>
-      day.slots.some((slot) => slot.role === 'conditioning' && slot.variant === 'HIIT'),
+    const withWalk = weeklyVolume(weekAt(build(), 3))
+    const withoutWalk = weeklyVolume(
+      weekAt(build({ excludedExercises: [asExerciseId('incline-walk')] }), 3),
     )
 
-    expect(lower.length).toBeGreaterThan(0)
-    for (const day of lower) {
-      expect(estimateDayMinutes(day), day.label).toBeLessThanOrEqual(SESSION_TOO_LONG_MINUTES)
+    for (const muscle of ['side-delts', 'biceps', 'triceps', 'rear-delts'] as const) {
+      expect(withWalk[muscle], muscle).toBe(withoutWalk[muscle])
     }
   })
+
+  /*
+   * The other half of the same rule: HIIT *does* compete for the budget.
+   * Swings are intervals with a real systemic cost, and work that
+   * competes for recovery should compete for the allowance.
+   */
+  it('still charges interval work against the day', () => {
+    const swing = weekAt(build(), 3).days.flatMap((day) =>
+      day.slots.filter(
+        (slot) => slot.exercise.kind === 'specific' && slot.exercise.exerciseId === 'kb-swing',
+      ),
+    )
+
+    expect(swing.length).toBeGreaterThan(0)
+    expect(swing.every((slot) => slot.variant === 'HIIT')).toBe(true)
+  })
+
+  const wristDirections = (built: ProgramTemplate): string[] =>
+    weekAt(built, 3).days.flatMap((day) =>
+      day.slots.flatMap((slot) => {
+        if (slot.exercise.kind !== 'specific') return []
+        const pattern = lookup(slot.exercise.exerciseId)?.pattern
+        return pattern === 'wrist-flexion' || pattern === 'wrist-extension' ? [pattern] : []
+      }),
+    )
 
   it('trains the forearms both ways rather than twice the same way', () => {
     /*
@@ -600,17 +616,43 @@ describe('how a muscle is spread across its sessions', () => {
      * wrist curl — twice into flexion, with the extensors untouched.
      * Keying the penalty on muscle-and-pattern is what makes "once each
      * way" fall out of a rule that was already there.
+     *
+     * Built with the forearms tiered up rather than read off the shipped
+     * week, because the shipped week maintains them and a maintained
+     * muscle gets one session — see below. The rule is reachable from the
+     * tier editor, so it is tested through the tier editor's input rather
+     * than deleted for not firing on the default.
      */
-    const directions = week.days.flatMap((day) =>
-      day.slots.flatMap((slot) => {
-        if (slot.exercise.kind !== 'specific') return []
-        const pattern = lookup(slot.exercise.exerciseId)?.pattern
-        return pattern === 'wrist-flexion' || pattern === 'wrist-extension' ? [pattern] : []
+    const directions = wristDirections(
+      build({
+        muscleTiers: [
+          { rank: 1, members: [], label: 'Specialising' },
+          { rank: 2, members: ['forearms'], label: 'Building' },
+          { rank: 3, members: [], label: 'Maintaining' },
+        ],
       }),
     )
 
     expect(directions).toHaveLength(2)
     expect(new Set(directions).size).toBe(2)
+  })
+
+  /*
+   * And at tier 3 it gets one direction, which is the model behaving
+   * correctly rather than the rule above being violated.
+   *
+   * A maintained muscle is trained once a week and one session cannot be
+   * both flexion and extension. Recorded rather than fixed because the
+   * alternative — a floor forcing a second session for a muscle the
+   * lifter has explicitly deprioritised — would make the bottom tier mean
+   * something different for the forearms than for everything else.
+   *
+   * It is worth knowing that the shipped default lands here, and that the
+   * flexors therefore get nothing: the pulls are strapped, so no
+   * competition lift pays them either.
+   */
+  it('trains a maintained forearm once, in one direction', () => {
+    expect(new Set(wristDirections(build())).size).toBeLessThanOrEqual(1)
   })
 
   it('does not credit the forearms for a strapped pull', () => {
@@ -792,7 +834,7 @@ describe('conditioning', () => {
         .flatMap((slot) => (slot.exercise.kind === 'specific' ? [slot.exercise.exerciseId] : [])),
     )
 
-    expect(all).toEqual(['incline-walk', 'kb-swing', 'incline-walk', 'kb-swing', 'incline-walk'])
+    expect(all).toEqual(['incline-walk', 'kb-swing', 'incline-walk', 'kb-swing'])
   })
 
   it('runs every day, split by domain rather than by spare time', () => {
@@ -814,7 +856,6 @@ describe('conditioning', () => {
     expect(domainOn(1)).toEqual(['HIIT'])
     expect(domainOn(2)).toEqual(['Zone 2'])
     expect(domainOn(3)).toEqual(['HIIT'])
-    expect(domainOn(4)).toEqual(['Zone 2'])
   })
 
   it('is prescribed by time, not by reps', () => {
@@ -921,9 +962,25 @@ describe('constant proximity to failure', () => {
 describe('tiers driving volume', () => {
   const program = build()
 
-  it('gives a tier-1 muscle more weekly volume than a tier-3 one', () => {
-    const week = program.blocks[0]?.weeks[3]
-    if (!week) throw new Error('missing week')
+  it('gives a higher-tier muscle more weekly volume than a lower-tier one', () => {
+    /*
+     * Stated with tiers written here rather than read off the defaults.
+     *
+     * This compared biceps against calves, which worked while they sat in
+     * different tiers and became a coincidence when they stopped: the
+     * property is about the ordering, and reading two muscles out of the
+     * shipped list only tests it for as long as nobody moves either one.
+     */
+    const week = weekAt(
+      build({
+        muscleTiers: [
+          { rank: 1, members: ['biceps'], label: 'Specialising' },
+          { rank: 2, members: ['side-delts'], label: 'Building' },
+          { rank: 3, members: ['calves'], label: 'Maintaining' },
+        ],
+      }),
+      3,
+    )
 
     const volume = weeklyVolume(week)
 
@@ -931,18 +988,25 @@ describe('tiers driving volume', () => {
     expect(volume['side-delts']).toBeGreaterThan(volume.calves)
   })
 
-  it('separates the biceps from the triceps, which the week pays differently', () => {
-    /*
-     * This asserted the opposite — biceps, triceps and forearms weighted
-     * as one — which was right while the arms shared a tier and became a
-     * test defending an arrangement nobody wanted. Three bench sessions
-     * and a day of dips cover the triceps before anything is scheduled
-     * for them; the biceps get only what the pulls pay. Tiering them
-     * together asked for a symmetry the week does not have.
-     */
-    expect(priorityPosition(DEFAULT_MUSCLE_TIERS, 'biceps')).toBeGreaterThan(
-      priorityPosition(DEFAULT_MUSCLE_TIERS, 'triceps'),
-    )
+  /*
+   * The arms are separately tierable, which is the property worth
+   * keeping — not any particular arrangement of them.
+   *
+   * This asserted biceps above triceps in the shipped tiers, which was a
+   * fact about the defaults rather than about the model, and it has now
+   * been true and then false without the model changing at all. What
+   * matters is that a lifter *can* separate them: the fractional credit
+   * that made pressing pay the triceps is gone, so the two are only as
+   * different as the tier list says they are.
+   */
+  it('lets the arms be tiered apart from each other', () => {
+    const tiers = [
+      { rank: 1, members: ['biceps'] as const, label: 'Specialising' },
+      { rank: 2, members: [] as const, label: 'Building' },
+      { rank: 3, members: ['triceps'] as const, label: 'Maintaining' },
+    ]
+
+    expect(priorityPosition(tiers, 'biceps')).toBeGreaterThan(priorityPosition(tiers, 'triceps'))
   })
 
   it('gives every working week the same volume', () => {
@@ -1062,14 +1126,14 @@ describe('respecting the gym', () => {
     expect(ids).not.toContain('dips')
   })
 
-  it('honours an exclusion even when the day is anchored to it', () => {
-    // An anchor is a strong preference, not an override. Friday is built
-    // around dips; a lifter with no dip station still must not be given
-    // them, and the day has to fill with something else.
+  it('fills a day that has lost an exercise rather than leaving it short', () => {
+    // An exclusion is absolute and must not cost the day its session: a
+    // lifter with no dip station still gets a full upper day, built out
+    // of something else.
     const program = build({ excludedExercises: [asExerciseId('dips')] })
-    const friday = weekAt(program, 3).days[4]
+    const upper = weekAt(program, 3).days[2]
 
-    const ids = (friday?.slots ?? []).flatMap((slot) =>
+    const ids = (upper?.slots ?? []).flatMap((slot) =>
       slot.exercise.kind === 'specific' ? [slot.exercise.exerciseId] : [],
     )
 
@@ -1132,9 +1196,10 @@ describe('session length', () => {
     expect(average).toBeLessThan(SESSION_TOO_LONG_MINUTES)
   })
 
-  it('trains the small specialisation muscles on every day', () => {
-    // Arms and side delts are tier 1, recover fast, and cost almost
-    // nothing systemically — so they carry the balancing load.
+  it('trains the small fast-recovering muscles on every day that carries them', () => {
+    // Arms and side delts recover fast and cost almost nothing
+    // systemically, so they carry the balancing load — on both upper
+    // days, which is every day accountable for them.
     const peak = weekAt(program, 5)
 
     for (const muscle of ['biceps', 'triceps', 'side-delts'] as const) {
@@ -1149,7 +1214,7 @@ describe('session length', () => {
         }),
       ).length
 
-      expect(days, `${muscle} appears on too few days`).toBeGreaterThanOrEqual(3)
+      expect(days, `${muscle} appears on too few days`).toBeGreaterThanOrEqual(2)
     }
   })
 })

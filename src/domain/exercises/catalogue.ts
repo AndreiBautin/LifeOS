@@ -73,7 +73,11 @@ export const STRENGTH_LIFT_SLUGS = {
  */
 export const STRENGTH_VARIATIONS: Record<keyof typeof STRENGTH_LIFT_SLUGS, readonly string[]> = {
   squat: ['low-bar-squat', 'high-bar-squat'],
-  bench: ['paused-bench-press', 'bench-press', 'close-grip-bench-press'],
+  // Two sessions, two variations. The close grip left the rotation with
+  // the third bench day — a rotation longer than the frequency simply
+  // never reaches its own end, so the entry was describing a session that
+  // does not happen.
+  bench: ['paused-bench-press', 'bench-press'],
   deadlift: ['sumo-deadlift'],
 }
 
@@ -484,7 +488,22 @@ const ENTRIES: readonly CatalogueEntry[] = [
     primaryMuscle: 'forearms',
     secondaryMuscles: ['biceps'],
     equipment: 'ez-bar',
-    pattern: 'isolation',
+    /*
+     * Extension, not generic isolation.
+     *
+     * A reverse curl is a pronated-grip elbow flexion: the wrist
+     * extensors hold the bar against gravity for every rep, which is the
+     * same side of the forearm a reverse wrist curl trains. Under
+     * `isolation` it collided with nothing, so the repeat penalty — keyed
+     * on `primaryMuscle|pattern` — could not see that it and a reverse
+     * wrist curl are one movement, and the week scheduled both. Two
+     * extensor slots, the flexors untrained, and a forearm target
+     * reported as met.
+     *
+     * The same bug the wrist patterns were introduced to fix; this
+     * exercise was simply not named when they were.
+     */
+    pattern: 'wrist-extension',
     isCompound: false,
     intent: 'hypertrophy',
     sfr: 5,

@@ -31,7 +31,7 @@ export const MAX_DAYS_PER_WEEK = 6
  * and a block built from settings quietly came out a different shape from
  * the built-in of the same name.
  */
-export const DEFAULT_DAYS_PER_WEEK = 5
+export const DEFAULT_DAYS_PER_WEEK = 4
 
 /**
  * Sessions running past this are a sign there are too few of them.

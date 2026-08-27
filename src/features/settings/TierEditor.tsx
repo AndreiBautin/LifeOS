@@ -1,9 +1,8 @@
 import { MUSCLE_GROUPS, MUSCLE_GROUP_LABELS, type MuscleGroup } from '@/domain/exercises/taxonomy'
 import {
-  priorityPosition,
   STRENGTH_LIFT_LABELS,
   STRENGTH_LIFTS,
-  weeklyTargetFor,
+  weeklyTargetForMember,
   type MuscleTiers,
   type StrengthLift,
   type StrengthTiers,
@@ -114,9 +113,9 @@ export function TierEditor({
         </ul>
 
         <p className="text-ink-500 mt-3 text-xs">
-          Three tiers, as with the muscles. Tier 1 earns the highest fatigue target and so the most
-          back-off volume; tier 2 still progresses, just more slowly; tier 3 takes the top set and
-          little else.
+          Three tiers, as with the muscles — and what they buy is sessions a week, not a longer
+          session. Every lift stops at the same 5%, so a tier decides how often you meet it: three
+          times, twice, or once.
         </p>
       </Card>
 
@@ -126,13 +125,15 @@ export function TierEditor({
         <p className="text-ink-500 mb-3 text-xs">
           Tier 1 sits at the top of a muscle's adaptive range, tier 3 at maintenance. Each number
           depends on that muscle's tier and its own landmarks — moving one muscle never changes
-          another's. Whether the total fits in your week is on the Plan screen.
+          another's. A tier also caps the number: it buys the sessions to deliver it, and a session
+          holds five direct sets, so tier 2 tops out at ten however high the band goes. Whether the
+          total fits in your week is on the Plan screen.
         </p>
 
         <ul className="space-y-1.5">
           {MUSCLE_GROUPS.map((muscle) => {
             const rank = rankOf(muscle)
-            const target = weeklyTargetFor(landmarks[muscle], priorityPosition(muscleTiers, muscle))
+            const target = weeklyTargetForMember(muscleTiers, muscle, landmarks[muscle])
 
             return (
               <li key={muscle} className="flex items-center justify-between gap-3">

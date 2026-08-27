@@ -212,14 +212,19 @@ export function ProgramPage() {
       >
         <Card>
           <p className="text-ink-500 mb-3 text-xs">
-            An exercise counts one set to the muscle it trains directly and half a set to each
-            muscle it trains indirectly. That is why a chest total can land on a half, and why the
-            pressing you do for triceps shows up under chest as well.
+            A set counts once, for the muscle it is programmed for. A bench press is chest and
+            nothing else — the triceps it also works have to be trained on their own, which is why
+            they get their own slot rather than credit for the pressing.
           </p>
 
           <ul className="space-y-1">
             {attribution
-              .filter((entry) => entry.total > 0)
+              .filter(
+                (entry) =>
+                  entry.total > 0 ||
+                  (targets.muscles.find((muscle) => muscle.muscle === entry.muscle)?.weeklySets ??
+                    0) > 0,
+              )
               .sort((a, b) => b.total - a.total)
               .map((entry) => (
                 <AttributionRow

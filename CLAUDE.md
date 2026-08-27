@@ -131,9 +131,16 @@ avoid.
 **Priority maps straight onto frequency.** Tier 1 is trained three times
 a week, tier 2 twice, tier 3 once — `TIER_FREQUENCY` in
 `domain/volume/frequency.ts`, capped only by how many days are
-accountable for the muscle. `setsPerSession` then divides the weekly
-target across those sessions and caps it at
-`MAX_DIRECT_SETS_PER_SESSION`.
+accountable for the muscle.
+
+`setsPerSession` then divides the weekly target across those sessions and
+caps it at `MAX_DIRECT_SETS_PER_SESSION`.
+
+The shipped tiers top out at 2, and tier 1 is deliberately empty rather
+than deleted. A four-day upper/lower week has two upper days and two lower
+ones, so tier 1 would buy a third session that does not exist; leaving the
+tier visible is what keeps the trade legible — it is what a fifth day
+would buy.
 
 It has been wrong twice in opposite directions, which is why it is
 stated so plainly now. First it was volume-driven — divide the target by
@@ -154,6 +161,26 @@ the citation, `DEFAULT_LANDMARKS` is what the app uses. Above fifteen
 describes volume this app will never schedule, and a target nothing can
 reach is a permanent shortfall on the Plan screen that trains you to
 ignore the screen.
+
+**The same clamp applies one tier down, and forgetting that was a real
+bug.** `reachableWeeklySets(rank)` is the tier's frequency times the
+per-session ceiling — fifteen, ten, five — and
+`weeklyTargetForMember` is the only way to ask for a target, so no
+caller can skip it. Clamping only at the top stayed invisible while the
+top tier had members: `priorityPosition` promoted the highest _populated_
+tier to the top of the band while `TIER_FREQUENCY` read the _declared_
+rank, so with tier 1 emptied the side delts were asked for thirteen sets
+and bought two sessions to deliver ten in. Three sets short, permanently,
+and nothing a lifter could do about it — a disagreement between two rules
+wearing a capacity problem's clothes.
+
+**An empty tier still occupies its place in the ordering.**
+`priorityPosition` counts every declared tier. Filtering to the populated
+ones meant moving every muscle from tier 1 to tier 2 changed nothing at
+all — the relative ordering was identical, so every target was — and
+"these are all secondary now" is a sentence a lifter is entitled to say.
+The mirror case was live and silent: declaring three tiers and leaving the
+_bottom_ one empty gave the building muscles maintenance volume.
 
 **MAV lands a set below MRV, not on it.** Clamping both to fifteen was
 the first attempt and it collapsed the gap `justUnder` depends on: with
@@ -188,12 +215,28 @@ by deficit, not by the order muscles happen to appear in `RpDay.muscles`;
 that array is grouped by region, and walking it verbatim left the side
 delts last in `UPPER` and finishing blocks ten sets short.
 
+**Two caps, and they are different things.**
+`MAX_DIRECT_SETS_PER_SESSION` bounds what a _muscle_ takes in a session;
+`maxSetsPerSlot` bounds what one _exercise_ takes, and it is three. Equal
+values collapse the distinction — a muscle's whole session dose goes into
+one movement — so the pairing that actually trains a muscle well, a
+compound and then an isolation, becomes inexpressible. At three the
+session ceiling still fills, in two slots rather than one.
+
 **There is no minimum session length.** Deliberately, after there was.
 Enforcing one took three mechanisms in the assembler — a grace period
 letting the frequency backfill overrun, a top-up pass scheduling muscles
 already at their target, and a loop lengthening existing slots one set at
 a time — all to move a thirty-nine minute session to forty-one. Each had
 to be reasoned about again every time anything else moved.
+
+**The bottom tier is maintenance volume, not zero.** Easy to expect
+otherwise, because it _looks_ like zero for the legs: quads, hamstrings
+and glutes are maintained and receive no dedicated slot, since the squat
+and the deadlift already pay them past the ask. Core, forearms and traps
+are maintained too and nothing pays them — no competition lift trains
+them directly and secondary credit is gone — so they each get a small
+direct slot instead. Same rule, different arithmetic.
 
 A short day is information. A deadlift day with the legs on maintenance
 runs twenty-five minutes because that is what the tiers asked for, and
@@ -510,7 +553,7 @@ and was tried first: it queues correctly and then does not drain when an
 observer unmounts mid-queue — which a hot reload does — leaving the row
 permanently dead with no error anywhere. Four lines of promise chain has
 no such failure mode.
-**Upper, lower, upper, lower, upper — and no borrowing.** `RpDay.muscles`,
+**Upper, lower, upper, lower — and no borrowing.** `RpDay.muscles`,
 one list, one fill pass. Two earlier attempts at balancing the week are
 in the git history and both were wrong: listing the arms on every day
 (heavy pulls followed by upright rows) and an `overflowMuscles` list a
@@ -628,9 +671,11 @@ claim that goes stale the moment a tier moves. The `focus` line separates
 direct work from what the day only pays incidentally, ranked by share of
 each muscle's weekly target — merging the two named an upper day after
 the core, because pull-ups pay it a fraction and its target is small
-enough for that fraction to win. The _kind_ of work — strength,
-hypertrophy, conditioning — is the heading; the muscles are the sentence
-under it. **Every muscle with direct work is named**, uncapped: a reader
+enough for that fraction to win. The heading is **which half of the body, and which time
+through** — "Thursday — Upper 2", from `RpDay.focusName`; the muscles are
+the sentence under it. It named the kinds of work present until every day
+carried all three, at which point four identical headings distinguished
+nothing. **Every muscle with direct work is named**, uncapped: a reader
 who can see a curl in the session and no biceps in the description has
 found a bug whatever the arithmetic said.
 
@@ -649,8 +694,10 @@ log, but both _label_ as "Hypertrophy".
 
 **A lift rotates through variations; the competition version is always
 first.** `STRENGTH_VARIATIONS` in `domain/exercises/catalogue.ts`. The
-bench runs **paused, touch-and-go, close-grip** across its three sessions
-and the squat runs **low bar, high bar** across its two. The deadlift has
+bench runs **paused, touch-and-go** across its two sessions and the squat
+runs **low bar, high bar** across its two. The close grip left with the
+third bench day: a rotation longer than the frequency never reaches its
+own end, so the entry was describing a session that does not happen. The deadlift has
 one entry on purpose: `strengthSlugFor` takes the ordinal modulo the
 rotation length, so a lift whose rotation is shorter than its frequency
 repeats rather than running off the end, and pulling sumo on both lower
@@ -752,6 +799,22 @@ minimum has to exceed what a session holds or the fill trains one
 direction and calls the muscle done. `TWO_SESSION_MUSCLES` floors it at
 `MAX_DIRECT_SETS_PER_SESSION + 1`, derived rather than picked. Scaling it
 with everything else broke exactly this and a test caught it.
+
+**At tier 3 the forearms get one session and therefore one direction**,
+and the shipped tiers put them there. That is the model behaving
+correctly, not the rule above being violated — but it is worth knowing
+that the flexors then get nothing at all, because the pulls are strapped
+and no competition lift pays them either. The rule is still reachable from
+the tier editor and is tested through it.
+
+**The repeat penalty only sees movements it has been told about.** A
+reverse curl is pronated-grip elbow flexion — the wrist extensors hold the
+bar every rep — and it was catalogued as `pattern: 'isolation'`, so it
+collided with nothing. The week scheduled a reverse wrist curl _and_ a
+reverse curl, two extensor slots, and reported the forearm target as met
+with the flexors untrained. Exactly the bug the wrist patterns were
+introduced to fix; that one exercise had not been named. Adding a forearm
+or grip exercise means giving it `wrist-flexion` or `wrist-extension`.
 
 **Credit has one implementation.** `attributeWeek` asks `slotVolume`
 rather than repeating the arithmetic. It used to carry a copy — same
@@ -863,8 +926,15 @@ both `upper-back` while training almost nothing in common, so rowing
 satisfied a target a shrug was then scheduled to fill. Traps carry a low
 MEV because nearly everything pays them — every deadlift, row and heavy
 carry loads them isometrically, and naming that credit is the point of
-the split. The shipped week now delivers 7.5 trap sets against a
-maintenance ask of 2, entirely incidentally, and schedules no shrug.
+the split.
+
+That credit is now zero, which is the thing to know before reading the
+low MEV as a mistake. The shipped week delivered 7.5 trap sets
+incidentally against a maintenance ask of 2 and scheduled no shrug;
+removing fractional credit for secondary movers took the 7.5 to 0, so the
+traps are the one muscle the four-day week cannot reach at all — 0 of 2,
+reported on the Plan screen. Raising the landmark would not help: nothing
+is short of trap _stimulus_, only of trap sets the accounting can see.
 
 The trap that came with it: `MUSCLE_GROUP_LABELS` and
 `DEFAULT_LANDMARKS` are `Record<MuscleGroup, …>` so a new group fails the

@@ -2,6 +2,7 @@ import { MUSCLE_GROUPS } from '@/domain/exercises/taxonomy'
 import { describe, expect, it } from 'vitest'
 
 import type { MuscleGroup } from '@/domain/exercises/taxonomy'
+import { MAX_DIRECT_SETS_PER_SESSION, reachableWeeklySets } from '@/domain/volume/frequency'
 import { DEFAULT_LANDMARKS } from '@/domain/volume/landmarks'
 
 import {
@@ -12,6 +13,7 @@ import {
   TOP_TIER_POSITION,
   validateTiers,
   weeklyTargetFor,
+  weeklyTargetForMember,
   weeklyTargetForWeek,
   type MuscleTiers,
 } from './tiers'
@@ -73,22 +75,46 @@ describe('a muscle tier changes that muscle and nothing else', () => {
 
 describe('priority position', () => {
   it('puts the top tier high and the bottom tier low', () => {
-    // Taken from the tiers rather than named, so moving a muscle between
-    // tiers cannot break a test that is about the ordering.
-    const memberOf = (rank: number) => {
-      const member = DEFAULT_MUSCLE_TIERS.find((tier) => tier.rank === rank)?.members[0]
-      if (member === undefined) throw new Error(`tier ${String(rank)} is empty`)
-      return member
-    }
+    const tiers: MuscleTiers = [tier(1, ['chest']), tier(2, ['lats']), tier(3, ['calves'])]
 
-    const top = priorityPosition(DEFAULT_MUSCLE_TIERS, memberOf(1))
-    const middle = priorityPosition(DEFAULT_MUSCLE_TIERS, memberOf(2))
-    const bottom = priorityPosition(DEFAULT_MUSCLE_TIERS, memberOf(3))
+    const top = priorityPosition(tiers, 'chest')
+    const middle = priorityPosition(tiers, 'lats')
+    const bottom = priorityPosition(tiers, 'calves')
 
     expect(top).toBeGreaterThan(middle)
     expect(middle).toBeGreaterThan(bottom)
     expect(top).toBeGreaterThan(0.5)
     expect(bottom).toBeLessThan(0.5)
+  })
+
+  /*
+   * An empty tier still occupies its place in the ordering.
+   *
+   * This filtered empty tiers out, so the ordering was the one you had
+   * expressed rather than the one you had declared — and moving every
+   * muscle down from tier 1 to tier 2 changed nothing at all, because the
+   * relative ordering was identical. `TIER_FREQUENCY` meanwhile read the
+   * declared rank the whole time, so the two disagreed about what a tier
+   * was: one handed tier 2 a top-of-band target and the other bought it
+   * two sessions to deliver it in.
+   */
+  it('lowers what is below an emptied tier rather than promoting it', () => {
+    const withTop: MuscleTiers = [tier(1, ['chest']), tier(2, ['lats']), tier(3, ['calves'])]
+    const topEmptied: MuscleTiers = [tier(1, []), tier(2, ['lats']), tier(3, ['calves'])]
+
+    expect(priorityPosition(topEmptied, 'lats')).toBe(priorityPosition(withTop, 'lats'))
+    expect(priorityPosition(topEmptied, 'lats')).toBeLessThan(TOP_TIER_POSITION)
+  })
+
+  /*
+   * The mirror case, which was live and silent: declare three tiers,
+   * leave the bottom one empty, and the muscles you called "building"
+   * were given maintenance volume.
+   */
+  it('does not drop the middle tier to the floor when the bottom is empty', () => {
+    const bottomEmpty: MuscleTiers = [tier(1, ['chest']), tier(2, ['lats']), tier(3, [])]
+
+    expect(priorityPosition(bottomEmpty, 'lats')).toBeGreaterThan(BOTTOM_TIER_POSITION)
   })
 
   it('treats every member of a tier identically', () => {
@@ -149,20 +175,23 @@ describe('turning a position into a weekly target', () => {
 
 describe('the target, week by week', () => {
   const biceps = DEFAULT_LANDMARKS.biceps
-  const position = priorityPosition(DEFAULT_MUSCLE_TIERS, 'biceps')
 
   it('is the same in every working week', () => {
-    const weeks = [0, 1, 2, 3, 4, 5].map(() => weeklyTargetForWeek(biceps, position, false))
+    const weeks = [0, 1, 2, 3, 4, 5].map(() =>
+      weeklyTargetForWeek(DEFAULT_MUSCLE_TIERS, 'biceps', biceps, false),
+    )
 
     expect(new Set(weeks).size).toBe(1)
   })
 
   it('is the target the priority asked for, with no week-dependent discount', () => {
-    expect(weeklyTargetForWeek(biceps, position, false)).toBe(weeklyTargetFor(biceps, position))
+    expect(weeklyTargetForWeek(DEFAULT_MUSCLE_TIERS, 'biceps', biceps, false)).toBe(
+      weeklyTargetForMember(DEFAULT_MUSCLE_TIERS, 'biceps', biceps),
+    )
   })
 
   it('never overreaches past maximum recoverable volume', () => {
-    const peak = weeklyTargetForWeek(biceps, 1, false)
+    const peak = weeklyTargetForWeek([tier(1, ['biceps'])], 'biceps', biceps, false)
 
     // The ramp used to spend its last working week above MAV and touch
     // MRV exactly once. Flat means the ceiling is the ceiling: the top
@@ -172,18 +201,39 @@ describe('the target, week by week', () => {
   })
 
   it('drops to maintenance on the deload', () => {
-    expect(weeklyTargetForWeek(biceps, position, true)).toBe(biceps.mv)
+    expect(weeklyTargetForWeek(DEFAULT_MUSCLE_TIERS, 'biceps', biceps, true)).toBe(biceps.mv)
   })
 
   it('keeps a deprioritised muscle near maintenance', () => {
     const calves = DEFAULT_LANDMARKS.calves
-    const low = priorityPosition(DEFAULT_MUSCLE_TIERS, 'calves')
 
-    const weeks = [0, 2, 5].map(() => weeklyTargetForWeek(calves, low, false))
+    const weeks = [0, 2, 5].map(() =>
+      weeklyTargetForWeek(DEFAULT_MUSCLE_TIERS, 'quads', calves, false),
+    )
 
     for (const target of weeks) {
       expect(target).toBeLessThan(calves.mav)
     }
+  })
+
+  /*
+   * The ask is bounded by the week that has to deliver it.
+   *
+   * A tier buys a frequency and a session holds five direct sets, so a
+   * tier-2 muscle can be handed ten sets and no more however high its
+   * landmarks reach. Without this the tier editor promised thirteen, the
+   * assembler delivered ten, and the Plan screen reported the difference
+   * as a capacity problem — three sets a lifter could not have found
+   * anywhere, because they did not exist.
+   */
+  it('never asks for more volume than the tier’s frequency can deliver', () => {
+    const sideDelts = DEFAULT_LANDMARKS['side-delts']
+    const tiers: MuscleTiers = [tier(1, []), tier(2, ['side-delts']), tier(3, [])]
+
+    expect(weeklyTargetForMember(tiers, 'side-delts', sideDelts)).toBeLessThanOrEqual(
+      reachableWeeklySets(2),
+    )
+    expect(reachableWeeklySets(2)).toBe(MAX_DIRECT_SETS_PER_SESSION * 2)
   })
 })
 

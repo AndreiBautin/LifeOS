@@ -14,13 +14,38 @@ import { describeBlock, explainVolume } from './explain'
  */
 
 describe('naming a block from its tiers', () => {
+  /*
+   * The shipped tiers specialise nothing, so the shipped block is
+   * general — and says so rather than borrowing a name from the tier
+   * below.
+   *
+   * Reads the defaults back, so it fails when they move. That is the
+   * point: the name is the one line describing them and nobody would
+   * otherwise notice it had gone stale.
+   */
   it('names it after what is actually specialised', () => {
     const described = describeBlock(DEFAULT_MUSCLE_TIERS, DEFAULT_STRENGTH_TIERS)
 
-    // Reads the shipped tiers back, so it fails when the defaults move —
-    // which is the point: the name is the one line describing them and
-    // nobody would otherwise notice it had gone stale.
-    expect(described.name).toBe('Chest, side delts and biceps · Bench press strength')
+    expect(described.name).toBe('General')
+    expect(described.description).toContain(
+      'Back, chest, side delts, biceps, front delts, rear delts, triceps and calves building.',
+    )
+    expect(described.description).toContain(
+      'Quads, hamstrings, glutes, core, forearms and traps maintained.',
+    )
+  })
+
+  /*
+   * A default block leads with no lift, because all three are building.
+   * The sentence has to be absent rather than name one of them — "bench
+   * press leads the strength work" would be a claim about a decision the
+   * lifter has not made.
+   */
+  it('claims no lead lift when none is specialised', () => {
+    const described = describeBlock(DEFAULT_MUSCLE_TIERS, DEFAULT_STRENGTH_TIERS)
+
+    expect(described.description).not.toContain('leads the strength work')
+    expect(described.focus.lifts).toBeUndefined()
   })
 
   it('follows a tier when it moves', () => {
@@ -32,7 +57,10 @@ describe('naming a block from its tiers', () => {
         { rank: 2, members: ['triceps'], label: 'Building' },
         { rank: 3, members: ['biceps'], label: 'Maintaining' },
       ],
-      DEFAULT_STRENGTH_TIERS,
+      [
+        { rank: 1, members: ['bench'], label: 'Specialising' },
+        { rank: 2, members: ['squat', 'deadlift'], label: 'Building' },
+      ],
     )
 
     expect(chestFocus.name).toBe('Chest · Bench press strength')
@@ -44,7 +72,10 @@ describe('naming a block from its tiers', () => {
   it('collapses a full muscle group into one word', () => {
     const armsAndLegs = describeBlock(
       [{ rank: 1, members: ['biceps', 'triceps', 'forearms'], label: 'Specialising' }],
-      DEFAULT_STRENGTH_TIERS,
+      [
+        { rank: 1, members: ['bench'], label: 'Specialising' },
+        { rank: 2, members: ['squat', 'deadlift'], label: 'Building' },
+      ],
     )
 
     expect(armsAndLegs.name).toBe('Arms · Bench press strength')
@@ -55,14 +86,20 @@ describe('naming a block from its tiers', () => {
     // would misdescribe the block in the direction of flattery.
     const bicepsOnly = describeBlock(
       [{ rank: 1, members: ['biceps', 'triceps'], label: 'Specialising' }],
-      DEFAULT_STRENGTH_TIERS,
+      [
+        { rank: 1, members: ['bench'], label: 'Specialising' },
+        { rank: 2, members: ['squat', 'deadlift'], label: 'Building' },
+      ],
     )
 
     expect(bicepsOnly.name).toBe('Biceps and triceps · Bench press strength')
   })
 
   it('names the lift leading the strength work', () => {
-    const described = describeBlock(DEFAULT_MUSCLE_TIERS, DEFAULT_STRENGTH_TIERS)
+    const described = describeBlock(DEFAULT_MUSCLE_TIERS, [
+      { rank: 1, members: ['bench'], label: 'Specialising' },
+      { rank: 2, members: ['squat', 'deadlift'], label: 'Building' },
+    ])
 
     expect(described.description).toContain('Bench press leads the strength work.')
   })
@@ -131,10 +168,9 @@ describe('explaining the volume', () => {
 
   /*
    * Three tiers exist so the middle one can say "still progressing, just
-   * not the priority". Nothing sits there by default any more — the
-   * bench is specialised and the other two are maintained while it is —
-   * but the band has to keep describing itself correctly for whoever
-   * moves a lift into it.
+   * not the priority". All three lifts sit there by default now, which
+   * makes this the ordinary case rather than the spare one — but it is
+   * still worth pinning that a lift moved *out* of it reads differently.
    */
   it('describes a middle-tier lift as building rather than maintained', () => {
     const middle = explainVolume(

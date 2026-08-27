@@ -6,7 +6,7 @@ import {
   strengthSessionsFor,
   STRENGTH_LIFT_LABELS,
   STRENGTH_LIFTS,
-  weeklyTargetFor,
+  weeklyTargetForMember,
 } from '@/domain/priority/tiers'
 import type { LandmarkSet } from '@/domain/volume/landmarks'
 
@@ -213,7 +213,7 @@ export function explainVolume(
     const rank = tier?.rank ?? tierCount
     const position = priorityPosition(muscleTiers, muscle)
     const marks = landmarks[muscle]
-    const weeklySets = weeklyTargetFor(marks, position)
+    const weeklySets = weeklyTargetForMember(muscleTiers, muscle, marks)
     const band = bandFor(position)
     const shareSize = tier?.members.length ?? 0
 

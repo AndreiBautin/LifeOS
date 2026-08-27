@@ -119,6 +119,19 @@ afterEach(async () => {
 })
 
 /**
+ * The days in one week of the derived program.
+ *
+ * Read rather than counted, so a test about rolling into the next week
+ * follows the split instead of pinning it. Three of these broke on the
+ * move from five days to four, all saying the same thing in a literal.
+ */
+function trainingDays(): readonly unknown[] {
+  const days = program.blocks[0]?.weeks[0]?.days
+  if (days === undefined) throw new Error('the derived program has no first week')
+  return days
+}
+
+/**
  * There is nothing to begin.
  *
  * The program is derived from settings, so a lifter simply has one. The
@@ -303,9 +316,10 @@ describe('finishing a session', () => {
   it('rolls into the next week after the last day', async () => {
     const deps = beginProgram()
 
-    // Five training days in this split, so five finished sessions should
-    // land on week 2 day 1.
-    for (let day = 0; day < 5; day += 1) {
+    // Four training days in this split, so four finished sessions should
+    // land on week 2 day 1. Read from the program rather than counted, so
+    // this follows the split instead of pinning it.
+    for (const _day of trainingDays()) {
       const started = await startWorkout({ athlete, program, roundingIncrement: 5 }, deps)
       if (started.kind !== 'started') throw new Error('expected a started workout')
       await finishWorkout(started.workout.id, deps)
@@ -401,7 +415,9 @@ describe('skipping a session', () => {
 
   it('rolls into the next week like finishing does', async () => {
     const deps = beginProgram()
-    for (let day = 0; day < 5; day += 1) await skipSession(deps)
+    // Read from the program rather than counted, so this follows the
+    // split instead of pinning it.
+    for (const _day of trainingDays()) await skipSession(deps)
 
     const instance = await deps.position.get()
     expect(instance?.weekIndex).toBe(1)

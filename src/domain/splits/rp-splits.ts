@@ -25,6 +25,17 @@ export interface RpDay {
    * worse than no label.
    */
   readonly label: string
+  /**
+   * What the day *is* — "Upper 1", "Lower 2".
+   *
+   * The label used to be followed by the kinds of work present, which
+   * stopped saying anything once every day carried strength, hypertrophy
+   * and conditioning: "Strength, Hypertrophy and Conditioning" on all four
+   * days is a heading that distinguishes nothing. Which half of the body
+   * it is, and which time through, is the thing you actually want to know
+   * on Thursday morning.
+   */
+  readonly focusName: string
   /** Muscles this day is accountable for filling toward their weekly target. */
   readonly muscles: readonly MuscleGroup[]
   /**
@@ -113,6 +124,7 @@ const FULL_BODY_2: RpSplit = {
     {
       index: 0,
       label: 'Full body — squat',
+      focusName: 'Full body 1',
       muscles: [...UPPER, ...LOWER],
       carries: ['upper', 'lower'],
       warmUp: 'lower',
@@ -120,6 +132,7 @@ const FULL_BODY_2: RpSplit = {
     {
       index: 1,
       label: 'Full body — bench and deadlift',
+      focusName: 'Full body 2',
       muscles: [...UPPER, ...LOWER],
       carries: ['upper', 'lower'],
       warmUp: 'lower',
@@ -136,6 +149,7 @@ const FULL_BODY_3: RpSplit = {
     {
       index: 0,
       label: 'Full body — squat',
+      focusName: 'Full body 1',
       muscles: [...UPPER, ...LOWER],
       carries: ['upper', 'lower'],
       warmUp: 'lower',
@@ -143,6 +157,7 @@ const FULL_BODY_3: RpSplit = {
     {
       index: 1,
       label: 'Full body — bench',
+      focusName: 'Full body 2',
       muscles: [...UPPER, ...LOWER],
       carries: ['upper', 'lower'],
       warmUp: 'upper',
@@ -150,6 +165,7 @@ const FULL_BODY_3: RpSplit = {
     {
       index: 2,
       label: 'Full body — deadlift',
+      focusName: 'Full body 3',
       muscles: [...UPPER, ...LOWER],
       carries: ['upper', 'lower'],
       warmUp: 'lower',
@@ -182,6 +198,7 @@ const WEEK_5: RpSplit = {
     {
       index: 0,
       label: 'Monday',
+      focusName: 'Upper 1',
       muscles: UPPER,
       carries: ['upper'],
       conditioning: ['incline-walk'],
@@ -190,6 +207,7 @@ const WEEK_5: RpSplit = {
     {
       index: 1,
       label: 'Tuesday',
+      focusName: 'Lower 1',
       muscles: LOWER,
       carries: ['lower'],
       /*
@@ -215,6 +233,7 @@ const WEEK_5: RpSplit = {
     {
       index: 2,
       label: 'Wednesday',
+      focusName: 'Upper 2',
       muscles: UPPER,
       carries: ['upper'],
       conditioning: ['incline-walk'],
@@ -223,6 +242,7 @@ const WEEK_5: RpSplit = {
     {
       index: 3,
       label: 'Thursday',
+      focusName: 'Lower 2',
       muscles: LOWER,
       carries: ['lower'],
       conditioning: ['kb-swing'],
@@ -231,6 +251,7 @@ const WEEK_5: RpSplit = {
     {
       index: 4,
       label: 'Friday',
+      focusName: 'Lower 3',
       /*
        * Accountable for the whole upper body, not only for arms.
        *
@@ -249,7 +270,67 @@ const WEEK_5: RpSplit = {
   ],
 }
 
-export const RP_SPLITS: readonly RpSplit[] = [FULL_BODY_2, FULL_BODY_3, WEEK_5]
+/**
+ * Four days, upper and lower twice each, with Wednesday off.
+ *
+ * The default. Five was chosen when the arms were specialised and the
+ * upper days were long; with nothing above tier 2 the week's volume fits
+ * in four sittings, and a mid-week rest day is worth more than a fifth
+ * session that exists to hold work the other four could carry.
+ *
+ * Two of each region is also what makes the tiers say something: a tier-2
+ * muscle wants two sessions and gets exactly two, so priority maps onto
+ * frequency with nothing left over. There is no room for a tier-1 muscle
+ * here at all — three sessions of an upper muscle need three upper days —
+ * which is why the shipped tiers top out at 2.
+ */
+const WEEK_4: RpSplit = {
+  id: 'rp-week-4',
+  name: '4-day upper/lower',
+  description:
+    'Upper, lower, rest, upper, lower. Every day opens with competition lifting. Wednesday and the weekend off.',
+  daysPerWeek: 4,
+  days: [
+    {
+      index: 0,
+      label: 'Monday',
+      focusName: 'Upper 1',
+      muscles: UPPER,
+      carries: ['upper'],
+      conditioning: ['incline-walk'],
+      warmUp: 'upper',
+    },
+    {
+      index: 1,
+      label: 'Tuesday',
+      focusName: 'Lower 1',
+      muscles: LOWER,
+      carries: ['lower'],
+      conditioning: ['kb-swing'],
+      warmUp: 'lower',
+    },
+    {
+      index: 2,
+      label: 'Thursday',
+      focusName: 'Upper 2',
+      muscles: UPPER,
+      carries: ['upper'],
+      conditioning: ['incline-walk'],
+      warmUp: 'upper',
+    },
+    {
+      index: 3,
+      label: 'Friday',
+      focusName: 'Lower 2',
+      muscles: LOWER,
+      carries: ['lower'],
+      conditioning: ['kb-swing'],
+      warmUp: 'lower',
+    },
+  ],
+}
+
+export const RP_SPLITS: readonly RpSplit[] = [FULL_BODY_2, FULL_BODY_3, WEEK_4, WEEK_5]
 
 export function rpSplitForDays(daysPerWeek: number): RpSplit {
   const found = RP_SPLITS.find((split) => split.daysPerWeek === daysPerWeek)

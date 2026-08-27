@@ -104,3 +104,27 @@ export function setsPerSession(weeklyTarget: number, frequency: number): number 
   if (frequency <= 0) return 0
   return Math.min(MAX_DIRECT_SETS_PER_SESSION, Math.ceil(weeklyTarget / frequency))
 }
+
+/**
+ * The most weekly volume a tier can actually be given.
+ *
+ * Frequency times the per-session ceiling, and nothing else. A tier-2
+ * muscle is trained twice and a session holds five direct sets, so ten is
+ * the whole of what a week can hand it however high its landmarks go.
+ *
+ * This generalises a clamp that already existed at the top: the published
+ * landmarks are held to `MAX_WEEKLY_DIRECT_SETS` because fifteen is three
+ * sessions of five, and describing volume the app will never schedule
+ * turns the Plan screen into a permanent complaint. The same sentence is
+ * true one tier down and was not being applied there — which stayed
+ * invisible only while the top tier had members in it.
+ *
+ * With the top tier empty, `priorityPosition` promotes tier 2 to the top
+ * of the *expressed* ordering and hands it a near-MAV target, while
+ * `TIER_FREQUENCY` reads the declared rank and buys two sessions. Thirteen
+ * sets asked, ten deliverable, and the gap is not a capacity problem the
+ * lifter can solve by training harder — it is two rules disagreeing.
+ */
+export function reachableWeeklySets(tierRank: number): number {
+  return requiredFrequency(tierRank, MAX_FREQUENCY) * MAX_DIRECT_SETS_PER_SESSION
+}
