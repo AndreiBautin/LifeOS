@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { CalendarCheck, Settings, Target } from 'lucide-react'
+import { CalendarCheck, Settings } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
 import { useServices, useSettings } from '@/app/context'
@@ -11,11 +11,7 @@ import { Badge, Card, Section } from '@/components/shared/primitives'
 import { buttonStyles } from '@/components/shared/styles'
 import { cn } from '@/lib/cn'
 
-import { NextAction } from '@/features/projects/NextAction'
-import { useRecommendation } from '@/features/projects/hooks'
-
-import { SeasonCard } from './SeasonCard'
-import { useCharacterSheet, useSeasonProgress } from './hooks'
+import { useCharacterSheet } from './hooks'
 
 /**
  * The lifter as a character sheet.
@@ -58,8 +54,6 @@ export function CharacterPage() {
   })
 
   const sheet = useCharacterSheet()
-  const season = useSeasonProgress()
-  const recommendation = useRecommendation()
 
   /*
    * XP is the whole hub's now, not training's. `buildCharacter` still
@@ -133,34 +127,6 @@ export function CharacterPage() {
             a number stops being a record of effort.
           </p>
         </Card>
-      </Section>
-
-      {season.data !== undefined && <SeasonCard progress={season.data} />}
-
-      {/*
-        The one actionable thing on an otherwise reflective screen.
-        A home screen you open to admire your levels is a home screen that
-        rewards opening the app, which is precisely what the XP model
-        refuses to do — so the first thing under the level is what to
-        actually go and do.
-      */}
-      <Section
-        title="Next quest"
-        description="One thing, and why it is that one."
-        action={
-          <Link to="/quests" className={buttonStyles({ variant: 'ghost', size: 'sm' })}>
-            <Target size={16} aria-hidden />
-            All quests
-          </Link>
-        }
-      >
-        {recommendation.data === undefined ? (
-          <Card>
-            <p className="text-ink-500 text-sm">Nothing on the board yet.</p>
-          </Card>
-        ) : (
-          <NextAction recommendation={recommendation.data} />
-        )}
       </Section>
 
       <Section title="Strength" description="Squat, bench and deadlift make the total">

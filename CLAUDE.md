@@ -425,6 +425,16 @@ where the temptation is strongest.
 **Habits retire rather than delete.** `retiredAt` makes them expected on
 no day, so they leave the list and their kept days survive. Eighty days
 of a habit you have finished with is a thing that happened.
+**Today is present tense, You is standing.** That line decides where a
+thing goes. Dailies, the active quests, what is due and the season all
+describe now, so they live on Today; levels, ladders and ratings describe
+where you have got to, so they live on You. The season was on You first
+and was wrong there — a season is a chapter you are _in_.
+
+Within Today the order is work first, readout last: the season sits below
+everything actionable, because a progress bar above the checkboxes makes
+the first thing you see each morning a score rather than a task.
+
 **The season and the review are two different questions.** The season
 (`domain/game/season.ts`, `use-cases/character/season-progress.ts`) is
 live progress through Winter, Spring, Summer or Autumn, and needs no

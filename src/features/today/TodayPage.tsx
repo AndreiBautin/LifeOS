@@ -9,6 +9,9 @@ import { toDayKey } from '@/domain/time/day'
 import { useServices } from '@/app/context'
 
 import { Dailies } from './Dailies'
+import { SeasonCard } from '@/features/character/SeasonCard'
+import { useSeasonProgress } from '@/features/character/hooks'
+
 import { useAgenda } from './hooks'
 
 /**
@@ -63,6 +66,7 @@ function AgendaRow({ item }: { readonly item: AgendaItem }) {
 export function TodayPage() {
   const agenda = useAgenda()
   const active = useActiveQuests()
+  const season = useSeasonProgress()
   const services = useServices()
 
   const rows = agenda.data ?? []
@@ -108,6 +112,18 @@ export function TodayPage() {
           </Card>
         )}
       </Section>
+
+      {/*
+        The season sits last, after the work.
+
+        It belongs on this screen rather than on the character sheet —
+        which is where it was — because a season is present tense and the
+        character sheet is about where you stand overall. But it is a
+        readout, not a thing to do, and putting a progress bar above the
+        checkboxes would make the first thing you see each morning a score
+        rather than a task.
+      */}
+      {season.data !== undefined && <SeasonCard progress={season.data} />}
     </>
   )
 }
