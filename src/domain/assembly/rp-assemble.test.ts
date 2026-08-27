@@ -113,12 +113,18 @@ describe('the assembled block', () => {
      * The order is the interesting part. Tuesday opens with the squat and
      * Thursday with the deadlift, because a lift that is always second is
      * a lift that is never trained fresh. See `assignStrengthLifts`.
+     *
+     * Thursday's squat is the **high bar**, which is the squat's second
+     * variation. The deadlift repeats sumo on both days because it has
+     * only one — `strengthSlugFor` takes the ordinal modulo the rotation
+     * length, so a rotation shorter than the frequency repeats rather than
+     * running off the end.
      */
     expect(mains).toEqual([
       ['paused-bench-press'],
       ['low-bar-squat', 'sumo-deadlift'],
       ['bench-press'],
-      ['sumo-deadlift', 'low-bar-squat'],
+      ['sumo-deadlift', 'high-bar-squat'],
       ['close-grip-bench-press'],
     ])
   })
@@ -178,7 +184,14 @@ describe('the assembled block', () => {
      * lifts share a pair of days, they must not appear in the same order
      * on both. Five heavy sets before the second one is a real cost, and
      * paying it always with the same lift is the failure.
+     *
+     * Compared as **lifts** rather than as exercise ids. Those were the
+     * same thing until the squat gained a second variation, and comparing
+     * slugs now reads a rotation as a different lift — the day is still
+     * squatting whether the bar is high or low.
      */
+    const liftOf = (slug: string): string =>
+      Object.entries(STRENGTH_VARIATIONS).find(([, slugs]) => slugs.includes(slug))?.[0] ?? slug
     const week = block?.weeks[0]
     const pairs = (week?.days ?? [])
       .map((day) => [
@@ -186,7 +199,7 @@ describe('the assembled block', () => {
           day.slots
             .filter((slot) => slot.role === 'strength')
             .flatMap((slot) =>
-              slot.exercise.kind === 'specific' ? [slot.exercise.exerciseId] : [],
+              slot.exercise.kind === 'specific' ? [liftOf(slot.exercise.exerciseId)] : [],
             ),
         ),
       ])
@@ -337,7 +350,10 @@ describe('naming a day after what is in it', () => {
     const thursday = week.days[3]
 
     expect(tuesday?.focus).toMatch(/^Low Bar Squat and Sumo Deadlift, then /)
-    expect(thursday?.focus).toMatch(/^Sumo Deadlift and Low Bar Squat, then /)
+    // Thursday names the high bar, because that is the squat it actually
+    // holds — a description that said "Low Bar Squat" on the day the bar
+    // sits high would be the hardcoded-label failure in a new place.
+    expect(thursday?.focus).toMatch(/^Sumo Deadlift and High Bar Squat, then /)
 
     // Without the parenthetical variant, which is catalogue bookkeeping.
     expect(tuesday?.focus).not.toContain('(')

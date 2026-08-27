@@ -46,11 +46,30 @@ describe('estimating a variation nobody has measured', () => {
     expect(withDerivedMaxes(original)).toBe(original)
   })
 
-  it('does not touch unrelated lifts', () => {
-    const squat = asExerciseId('low-bar-squat')
-    const derived = maxes({ [squat]: 405 })
+  it('does not touch a lift with no variations', () => {
+    // The squat used to serve as the unrelated lift here, which stopped
+    // being true the moment it gained a high-bar rotation. The overhead
+    // press is neither a key nor a parent in `VARIATION_OF`.
+    const press = asExerciseId('overhead-press')
+    const derived = maxes({ [press]: 155 })
 
-    expect(derived).toEqual({ [squat]: 405 })
+    expect(derived).toEqual({ [press]: 155 })
+  })
+
+  it('derives a high bar squat from the low bar one', () => {
+    // Low bar allows more for most people, so the factor is below one.
+    // A starting position for the first session, not a claim — the first
+    // top set logged against the slug replaces it.
+    const lowBar = asExerciseId('low-bar-squat')
+
+    expect(maxes({ [lowBar]: 400 })[asExerciseId('high-bar-squat')]).toBe(360)
+  })
+
+  it('leaves a measured high bar squat alone', () => {
+    const lowBar = asExerciseId('low-bar-squat')
+    const highBar = asExerciseId('high-bar-squat')
+
+    expect(maxes({ [lowBar]: 400, [highBar]: 385 })[highBar]).toBe(385)
   })
 })
 
@@ -82,10 +101,12 @@ describe('moving a bench estimate when the competition lift changed', () => {
     expect(migrateBenchEstimate({})).toEqual({})
   })
 
-  it('does not touch unrelated lifts', () => {
+  it('does not touch lifts that are not the bench', () => {
+    // This was a duplicate of the derivation test above, in the wrong
+    // block and calling the wrong function. The migration's own property
+    // is that it moves one estimate and nothing else.
     const squat = asExerciseId('low-bar-squat')
-    const derived = maxes({ [squat]: 405 })
 
-    expect(derived).toEqual({ [squat]: 405 })
+    expect(migrateBenchEstimate({ [squat]: 405 })).toEqual({ [squat]: 405 })
   })
 })

@@ -72,7 +72,7 @@ export const STRENGTH_LIFT_SLUGS = {
  * first two; raise it and it takes all three.
  */
 export const STRENGTH_VARIATIONS: Record<keyof typeof STRENGTH_LIFT_SLUGS, readonly string[]> = {
-  squat: ['low-bar-squat'],
+  squat: ['low-bar-squat', 'high-bar-squat'],
   bench: ['paused-bench-press', 'bench-press', 'close-grip-bench-press'],
   deadlift: ['sumo-deadlift'],
 }
@@ -96,6 +96,14 @@ export const VARIATION_OF: Readonly<
   // until you remember which lift is the reference.
   'bench-press': { of: 'paused-bench-press', factor: 1.05 },
   'close-grip-bench-press': { of: 'paused-bench-press', factor: 0.95 },
+  /*
+   * Low bar allows more than high bar for most people — shorter moment arm
+   * at the hip, more posterior chain — so the factor is below one. Ten per
+   * cent is the middle of the range usually quoted, and it is a starting
+   * position rather than a claim: the first top set logged against this
+   * slug replaces it, and a measured number always wins.
+   */
+  'high-bar-squat': { of: 'low-bar-squat', factor: 0.9 },
 }
 
 /**
@@ -623,11 +631,26 @@ const ENTRIES: readonly CatalogueEntry[] = [
     equipment: 'barbell',
     pattern: 'squat',
     isCompound: true,
-    intent: 'hypertrophy',
+    /*
+     * Strength rather than hypertrophy, because this is the squat's second
+     * variation and a rotation member is run the same way the competition
+     * lift is: a top set of reps at an RPE, with back-offs derived from it.
+     *
+     * The cost is that the quads lose one of their two direct hypertrophy
+     * options and are left with the front squat. That is affordable here
+     * and worth stating: both squats name the quads as their *primary*
+     * muscle, so the strength work already pays them heavily before the
+     * fill chooses anything, and the fill subtracts what it spent.
+     */
+    intent: 'strength',
+    // Unchanged from when this was an accessory. High bar genuinely is
+    // slightly cheaper than low bar — more upright, less hip — and the
+    // assembler should go on believing that.
     sfr: 2,
     systemicCost: 0.8,
     safeToFail: false,
-    defaultRepRange: { low: 6, high: 10 },
+    loadBasis: 'estimated-1rm',
+    defaultRepRange: { low: 3, high: 6 },
     defaultRestSeconds: REST_HEAVY,
   },
   {

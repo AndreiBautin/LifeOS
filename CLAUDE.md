@@ -531,11 +531,21 @@ log, but both _label_ as "Hypertrophy".
 
 **A lift rotates through variations; the competition version is always
 first.** `STRENGTH_VARIATIONS` in `domain/exercises/catalogue.ts`. The
-bench runs **paused, touch-and-go, close-grip** across its three sessions,
-picked by the lift's session ordinal — not by the day. Index 0 is the
-competition version so that dropping the bench a tier, which buys fewer
-sessions, costs the variations rather than the lift the total is measured
-on.
+bench runs **paused, touch-and-go, close-grip** across its three sessions
+and the squat runs **low bar, high bar** across its two. The deadlift has
+one entry on purpose: `strengthSlugFor` takes the ordinal modulo the
+rotation length, so a lift whose rotation is shorter than its frequency
+repeats rather than running off the end, and pulling sumo on both lower
+days is the intent rather than an omission. Adding a variation is adding a
+row here — but it is also converting that exercise to `intent: 'strength'`
+with `loadBasis: 'estimated-1rm'`, which takes it out of the hypertrophy
+pool, and adding a `VARIATION_OF` ratio so the first session has a load to
+suggest.
+
+Which variation a session gets is picked by the lift's session ordinal —
+not by the day. Index 0 is the competition version so that dropping a lift
+a tier, which buys fewer sessions, costs the variations rather than the
+lift the total is measured on.
 
 **The paused bench is the competition lift**, because a raw meet bench is
 judged on a pause and a touch-and-go single measures something else.
