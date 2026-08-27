@@ -277,6 +277,21 @@ last-write-wins fixes that.
 a bad reading cannot be put back, for the same reason there is no
 tombstone. Do not relax it to make the map feel more responsive indoors.
 
+**The atlas makes no network calls, and the gap is deliberate.**
+Map's inbox is built around a Nominatim search that turns "Kiln, London"
+into coordinates. That is a third-party request, and this hub's stated
+identity is that it makes none — so `features/atlas/InboxPage.tsx` ships
+the local half only: paste a link, a `geo:` URI or a pair of numbers, or
+say you are standing there. If a geocoder is ever added it is a decision
+about what this app is, not a feature to slip in behind a search box.
+
+**The exploration ladder's denominator comes from a person, not the app.**
+`exploredRegionKm2` in settings. The ladder is only a ladder because a
+named region has a real boundary, and nothing in the app knows which
+region is meant — so with none set, `places.explored-share` is _absent_
+rather than zero. Absent readings are skipped by the spine on purpose; a
+zero would be the claim that a month's exploration came to nothing.
+
 **A rule nothing can reach is a rule nobody can trust.** Both the quest
 log's cycle guard and the tree's were briefly unreachable from the UI —
 the domain refused correctly and no screen could ask it to. Adding a

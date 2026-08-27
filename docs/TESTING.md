@@ -130,3 +130,20 @@ Naming these is the point of the section.
   tested is everything the screen calls: the rules in `domain/backlog/`,
   the operations in `application/use-cases/backlog/`, and the
   progress-log merge in `synchronise.test.ts`.
+- **The map itself, and the fog as it clears on a walk.** Leaflet is a
+  dependency and jsdom has no layout, so what a unit test could assert
+  about `LeafletMapAdapter` is that it called a library. The parts that
+  can be wrong on their own — the geohash cells, the 100 m accuracy gate,
+  the union merge, the derivation of a visited place's ground — are all
+  tested away from the map. The rest of it has a "done when" that no
+  suite can satisfy: **verified by walking**, on a phone, outdoors. That
+  is still outstanding, and no green suite here should be read as
+  evidence of it.
+- **The share target as the operating system delivers it.** The parse is
+  tested hard, because the parse is where the interesting mistakes live —
+  a short link with no readable point, a `geo:0,0?q=` placeholder taken
+  literally, a name left with the URI still inside it. What is _not_
+  tested is that Android's share sheet fills `title`, `text` and `url`
+  the way this app expects. That is a claim about somebody else's
+  software, and the only way to check it is to share something into an
+  installed copy.

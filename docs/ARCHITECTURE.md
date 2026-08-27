@@ -256,6 +256,48 @@ judgement; it does not acquire a streak because the page was opened. That
 is why the review is reached from the character sheet rather than from the
 navigation — a screen you open ten minutes a month has not earned a tab.
 
+## The atlas, and the one thing it will not do
+
+Places, trips and the fog live in `domain/atlas/`, which is the only
+domain in the hub that returns `Result<T, E>` where everything else
+throws. That was deliberate on absorption: rewriting fifteen thousand
+lines to match would have been a large change with no behavioural payoff,
+so `Result` stays inside `domain/atlas/` and is unwrapped once, at
+`application/use-cases/atlas/atlas.ts`. Everything above that boundary
+sees `{ error }` — the same shape the quest log and the tech tree use.
+
+The fog is the part worth understanding. Ground is stored as geohash
+cells at precision 7 (~153 m), and it is a **grow-only set**: no stamp, no
+tombstone, merged between devices by union. That is not an optimisation,
+it is the only merge that can be correct, because there is no such thing
+as un-walking ground — last-write-wins would let the device that walked
+less recently erase a morning. It is the single collection exempt from
+`acceptableFrom`. The same asymmetry is why `revealCell` refuses any fix
+worse than 100 m: fog cleared by a bad reading cannot be put back.
+
+A visited place's ground is **derived** from the place rather than stored
+beside it, so editing or un-visiting one stays correct with no second copy
+to drift.
+
+Three ways in, and none of them touches the network. Type one; paste a
+list of names (`ParseBulkCapture`); or share a link from a maps app into
+`/map/share` (`ParseSharedLocation`, which reads Google, Apple, OSM,
+`geo:` and bare coordinates). Names saved without a point pile up on
+purpose — demanding a coordinate per line would turn a thirty-second
+capture into an evening — and `/map/inbox` is where that pile gets
+cleared, either from a pasted link or from a single position reading.
+
+**What is missing is a search box, and it is missing on purpose.** Map's
+own inbox resolves a name by asking Nominatim for coordinates. That is a
+third-party network call, and it sits directly against this app's stated
+identity. Adding it is a decision about what the hub _is_; it is not a
+feature to slip in behind a text field.
+
+The same honesty governs the exploration ladder. Its `places.explored-share`
+source divides walked area by the area of the region being explored — and
+nothing in the app knows which region is meant, so that number is typed
+into settings. Until it is, the ladder reads _absent_ rather than zero.
+
 ## Autoregulation
 
 Check-ins are **recorded events**, and adjusting a volume landmark is a
