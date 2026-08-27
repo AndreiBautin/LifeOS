@@ -251,6 +251,41 @@ export function SettingsPage() {
         </Card>
       </Section>
 
+      <Section title="The map" description="How much ground counts as all of it.">
+        <Card className="space-y-2">
+          <label className="block">
+            <span className="text-ink-500 mb-1 block text-xs font-medium tracking-wide uppercase">
+              Region area (km²)
+            </span>
+            <input
+              type="number"
+              inputMode="decimal"
+              min={1}
+              className="bg-ink-850 border-ink-800 text-ink-50 placeholder:text-ink-700 h-11 w-full rounded-xl border px-3 text-sm"
+              value={settings.exploredRegionKm2?.toString() ?? ''}
+              placeholder="e.g. 1572 for Greater London"
+              onChange={(event) => {
+                const next = Number(event.target.value)
+                // Blank clears it rather than storing zero: absent means the
+                // ladder says nothing, and zero would be a division nobody
+                // asked for.
+                update(
+                  event.target.value.trim() === '' || !Number.isFinite(next) || next <= 0
+                    ? { exploredRegionKm2: undefined }
+                    : { exploredRegionKm2: next },
+                )
+              }}
+            />
+          </label>
+          <p className="text-ink-500 text-xs">
+            The exploration ladder measures the ground you have walked against the region you are
+            exploring. Nobody publishes what share of a city counts as “Advanced”, so the boundary
+            has to come from you — until it does, that ladder reads nothing rather than scoring you
+            against a made-up figure.
+          </p>
+        </Card>
+      </Section>
+
       {/* ---------------------------------------------------------------- */}
 
       <MaxesEditor

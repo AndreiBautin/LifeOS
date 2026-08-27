@@ -3,12 +3,16 @@ import { isActive } from '@/domain/social/circle'
 import type {
   BacklogItemRepository,
   Clock,
+  ExploredAreaRepository,
   FriendRepository,
+  PlaceRepository,
   ProjectRepository,
+  SettingsRepository,
   UpgradeRepository,
   WorkoutRepository,
 } from '@/domain/repositories/ports'
 import { isOwned, isOpen } from '@/domain/upgrades/upgrade'
+import { atlasView } from '@/application/use-cases/atlas/atlas'
 
 /**
  * Reading this month's numbers out of the hub's own data.
@@ -29,6 +33,9 @@ export interface MeasureDeps {
   readonly upgrades: UpgradeRepository
   readonly workouts: WorkoutRepository
   readonly friends: FriendRepository
+  readonly places: PlaceRepository
+  readonly explored: ExploredAreaRepository
+  readonly settings: SettingsRepository
   readonly clock: Clock
 }
 
@@ -90,12 +97,33 @@ export async function measureAll(deps: MeasureDeps): Promise<Readonly<Record<str
   }
 
   /*
-   * Left out on purpose, and worth saying which. `places.explored-share`
-   * and the two job-search sources belong to areas that have not been
-   * absorbed yet — phases 5 and 6. They are declared in the registry
-   * because the model was decided in one go; they produce no reading here
-   * until there is something to read, and an absent reading is exactly
-   * what the spine expects.
+   * The exploration ladder's denominator is the one number the app cannot
+   * work out for itself — see `exploredRegionKm2`. Without it there is no
+   * share to report, and an absent reading is exactly what the spine
+   * expects: no region set means the ladder says nothing, rather than
+   * scoring somebody against a figure nobody chose.
+   */
+  const settings = await deps.settings.get()
+  const region = settings.exploredRegionKm2
+  if (region !== undefined && region > 0) {
+    const view = await atlasView({
+      places: deps.places,
+      explored: deps.explored,
+      clock: deps.clock,
+      // `atlasView` reads; nothing here creates a place, so no id is ever
+      // asked for.
+      ids: { next: () => '' },
+    })
+    // Capped: walking more ground than the region you named means the
+    // region was named too small, not that you are 140 per cent explored.
+    measured['places.explored-share'] = Math.min(1, view.areaKm2 / region)
+  }
+
+  /*
+   * The two job-search sources are still left out on purpose. They belong
+   * to an area that has not been absorbed yet — phase 6 — and are declared
+   * in the registry because the model was decided in one go. They produce
+   * no reading until there is something to read.
    */
   return measured
 }

@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest'
 
 import { createItem } from '@/domain/backlog/item'
+import type { CellId } from '@/domain/atlas/exploration/GeoCell'
+import type { Place } from '@/domain/atlas/place/Place'
+import type { AppSettings } from '@/domain/settings/settings'
+import { DEFAULT_SETTINGS } from '@/domain/settings/settings'
 import { SCORING } from '@/domain/game/registry'
 import { asFriendId, asMetricId, asProjectId, asUpgradeId, type MetricId } from '@/domain/ids/ids'
 import type { Item } from '@/domain/backlog/item'
@@ -29,7 +33,11 @@ import {
  * itself**. Every rating comes from `domain/review/`, and every
  * measurement from one place that reads the hub's own stores.
  */
-function harness(at = new Date(2026, 7, 26, 9, 0)) {
+function harness(
+  at = new Date(2026, 7, 26, 9, 0),
+  settingsOverride: Partial<AppSettings> = {},
+  walkedCells: CellId[] = [],
+) {
   const clock: Clock = { now: () => at }
 
   const backlog: Item[] = []
@@ -40,6 +48,8 @@ function harness(at = new Date(2026, 7, 26, 9, 0)) {
 
   const definedMetrics = new Map<string, MetricDefinition>()
   const snapshotStore = new Map<string, MonthlySnapshot>()
+
+  const placeList: Place[] = []
 
   const stub = <T>(list: T[]) => ({
     all: () => Promise.resolve(list),
@@ -84,11 +94,33 @@ function harness(at = new Date(2026, 7, 26, 9, 0)) {
     upgrades: stub(upgradeList),
     workouts: stub(workoutList) as unknown as WorkoutRepository,
     friends: stub(friendList),
+    places: stub(placeList),
+    explored: {
+      all: () => Promise.resolve(new Set(walkedCells)),
+      reveal: () => Promise.resolve(0),
+      clear: () => Promise.resolve(),
+      count: () => Promise.resolve(walkedCells.length),
+    },
+    // No region by default, so the exploration ladder reads nothing —
+    // which is what every test here that predates the map expects.
+    settings: {
+      get: () => Promise.resolve({ ...DEFAULT_SETTINGS, ...settingsOverride }),
+      save: () => Promise.resolve(),
+    },
     review,
     clock,
   }
 
-  return { deps, backlog, projectList, upgradeList, friendList, workoutList, snapshotStore }
+  return {
+    deps,
+    backlog,
+    projectList,
+    upgradeList,
+    friendList,
+    workoutList,
+    placeList,
+    snapshotStore,
+  }
 }
 
 const anItemDeps = {
