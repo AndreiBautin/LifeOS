@@ -90,11 +90,11 @@ export function TodayPage() {
       </Section>
 
       <Section
-        title="Wants something"
+        title="Due"
         description={rows.length === 0 ? undefined : `${rows.length.toString()} across your areas`}
       >
         {rows.length === 0 ? (
-          <Empty title="Nothing is due">
+          <Empty title="Nothing outstanding">
             <span className="inline-flex items-center gap-2">
               <CalendarCheck size={16} aria-hidden />
               No deadlines, no goals outstanding, nobody overdue.
