@@ -4,7 +4,6 @@ import { MUSCLE_GROUP_LABELS, MUSCLE_GROUPS } from '@/domain/exercises/taxonomy'
 import type { ExerciseId } from '@/domain/ids/ids'
 import type { ProgramWeek, SlotRole } from '@/domain/programs/program'
 import { nominalReps } from '@/domain/programs/prescription'
-import { SECONDARY_SET_FRACTION } from '@/domain/volume/landmarks'
 import { countsAsWorking, slotVolume } from '@/domain/volume/accounting'
 
 /**
@@ -112,15 +111,13 @@ export function attributeWeek(
 
       for (const secondary of exercise.secondaryMuscles) {
         if (secondary === exercise.primaryMuscle) continue
-        add(
-          secondary,
-          exercise,
-          slot.role,
-          working.length,
-          reps,
-          credited * SECONDARY_SET_FRACTION,
-          'secondary',
-        )
+        /*
+         * Listed at zero. The row still says a bench press works the
+         * triceps, which is true and useful on a breakdown screen; what it
+         * no longer does is put a number against it that a target is
+         * measured by.
+         */
+        add(secondary, exercise, slot.role, working.length, reps, 0, 'secondary')
       }
     }
   }

@@ -1,43 +1,81 @@
 import { describe, expect, it } from 'vitest'
 
-import { hypertrophyCredit } from '@/domain/volume/accounting'
+import type { Exercise } from '@/domain/exercises/exercise'
+import type { SetPrescription } from '@/domain/programs/prescription'
 
-/*
- * Proximity to failure, alongside reps.
+import { countsAsWorking, slotVolume } from './accounting'
+
+/**
+ * One set, one muscle, one count.
  *
- * The case that forced this: fifteen bench sets at RPE 8 covered a
- * twelve-set chest target on their own, so the assembler concluded the
- * chest needed no direct work at all. Five reps at RPE 8 and five at
- * RPE 10 are not the same evidence and were counted the same.
+ * This file used to test two layers of fractional credit — a set scaled by
+ * reps and proximity to failure, then paid out again at half to every
+ * secondary mover. Both are gone, and what is worth testing now is that
+ * nothing crept back in: the arithmetic is a filter and a length, and the
+ * only way it goes wrong is by counting something it should not.
  */
-describe('crediting a set by how close to failure it ends', () => {
-  it('gives a set at one rep in reserve full credit', () => {
-    // The landmarks are published in hard sets, and a hard set in that
-    // literature is one taken to about a rep short. Discounting RPE 9
-    // would change the unit every target is expressed in.
-    expect(hypertrophyCredit(5, 9)).toBe(1)
-    expect(hypertrophyCredit(12, 9)).toBe(1)
+const bench = {
+  id: 'bench-press',
+  slug: 'bench-press',
+  name: 'Bench Press',
+  primaryMuscle: 'chest',
+  secondaryMuscles: ['triceps', 'front-delts'],
+} as unknown as Exercise
+
+const working = (reps: number, rpe?: number): SetPrescription =>
+  ({
+    reps: { kind: 'fixed', reps },
+    load: rpe === undefined ? { kind: 'none' } : { kind: 'rpe', target: rpe },
+  }) as unknown as SetPrescription
+
+const warmup = (): SetPrescription =>
+  ({
+    reps: { kind: 'fixed', reps: 5 },
+    load: { kind: 'none' },
+    isWarmup: true,
+  }) as unknown as SetPrescription
+
+describe('what a slot is worth', () => {
+  it('counts each working set once, for the muscle it is for', () => {
+    expect(slotVolume(bench, [working(8), working(8), working(8)]).chest).toBe(3)
   })
 
-  it('gives a set taken to failure full credit too', () => {
-    expect(hypertrophyCredit(5, 10)).toBe(1)
+  /*
+   * The change this file exists to pin. A heavy triple and a set of ten
+   * are both one set now — the first used to be worth less, and an RPE 8
+   * set less again. Two coefficients, neither checkable against a
+   * training log.
+   */
+  it('counts a heavy triple the same as a set of ten', () => {
+    expect(slotVolume(bench, [working(3, 8)]).chest).toBe(
+      slotVolume(bench, [working(10, 10)]).chest,
+    )
   })
 
-  it('discounts a set that stops further out', () => {
-    expect(hypertrophyCredit(5, 8)).toBeCloseTo(0.8, 2)
-    expect(hypertrophyCredit(5, 7)).toBeCloseTo(0.6, 2)
+  /*
+   * A bench press pays the triceps nothing. That is a real loss of
+   * fidelity, taken deliberately: it is now visible on the Plan screen as
+   * triceps work that has to be scheduled, rather than hidden in a 0.5
+   * that nobody could audit.
+   */
+  it('pays a secondary muscle nothing at all', () => {
+    const volume = slotVolume(bench, [working(8), working(8)])
+
+    expect(volume.chest).toBe(2)
+    expect(volume.triceps).toBe(0)
+    expect(volume['front-delts']).toBe(0)
   })
 
-  it('still discounts a low-rep set, and compounds the two', () => {
-    // A heavy triple stopped two short is short on both counts.
-    expect(hypertrophyCredit(3, 10)).toBeCloseTo(0.6, 2)
-    expect(hypertrophyCredit(3, 8)).toBeCloseTo(0.6, 2)
-    expect(hypertrophyCredit(2, 8)).toBeCloseTo(0.4, 2)
+  it('ignores warm-ups', () => {
+    expect(slotVolume(bench, [warmup(), warmup(), working(8)]).chest).toBe(1)
   })
 
-  it('credits a set in full when no RPE is prescribed', () => {
-    // Guessing at a set the program says nothing about would be
-    // inventing evidence rather than reading it.
-    expect(hypertrophyCredit(5)).toBe(1)
+  it('is empty when a slot is all warm-up', () => {
+    expect(slotVolume(bench, [warmup()]).chest).toBe(0)
+  })
+
+  it('knows a warm-up from a working set', () => {
+    expect(countsAsWorking(working(8))).toBe(true)
+    expect(countsAsWorking(warmup())).toBe(false)
   })
 })

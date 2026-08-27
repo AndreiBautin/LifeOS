@@ -3,7 +3,6 @@ import type { MuscleGroup } from '@/domain/exercises/taxonomy'
 import type { ExerciseId } from '@/domain/ids/ids'
 import type { LogEntry, LoggedSet, WorkoutLog } from '@/domain/logging/workout-log'
 import { countsAsWorking, slotVolume } from '@/domain/volume/accounting'
-import { SECONDARY_SET_FRACTION } from '@/domain/volume/landmarks'
 
 /**
  * Resizing the accessory work to whatever the strength work actually
@@ -196,12 +195,12 @@ function projected(
       counted.map((set) => set.prescription),
     )[exercise.primaryMuscle]
 
+    // Primary only, matching `slotVolume`. A replan that credited
+    // secondaries would size the accessories against a different total
+    // than the one the plan was built from, which is the two-implementations
+    // failure this file already avoids by asking `slotVolume` for the
+    // primary figure rather than recomputing it.
     total[exercise.primaryMuscle] = (total[exercise.primaryMuscle] ?? 0) + credit
-
-    for (const secondary of exercise.secondaryMuscles) {
-      if (secondary === exercise.primaryMuscle) continue
-      total[secondary] = (total[secondary] ?? 0) + credit * SECONDARY_SET_FRACTION
-    }
   }
 
   return total

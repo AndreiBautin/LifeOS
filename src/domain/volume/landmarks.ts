@@ -1,6 +1,6 @@
 import { invariant } from '@/domain/errors/domain-error'
 import type { MuscleGroup } from '@/domain/exercises/taxonomy'
-import { MAX_WEEKLY_DIRECT_SETS } from '@/domain/volume/frequency'
+import { MAX_DIRECT_SETS_PER_SESSION, MAX_WEEKLY_DIRECT_SETS } from '@/domain/volume/frequency'
 import { MUSCLE_GROUPS } from '@/domain/exercises/taxonomy'
 
 /**
@@ -113,7 +113,33 @@ const PUBLISHED_LANDMARKS: LandmarkSet = {
 }
 
 /**
- * The published set, brought under what a week can actually deliver.
+ * What a published figure becomes once only direct work counts.
+ *
+ * The published landmarks are *total* volume: they assume a bench press
+ * pays the triceps and a row pays the biceps, because every source that
+ * produces them counts secondary involvement. This app stopped — a set is
+ * one set for the muscle it is programmed for — so the same numbers now
+ * ask for that whole total to be scheduled directly, and five days do not
+ * have the minutes. Measured before this existed: eight muscles short by
+ * twenty-seven sets a week, against four before.
+ *
+ * Two thirds, applied uniformly. It is a judgement and it is this app's
+ * judgement rather than a citation, which is exactly why the published
+ * figures are kept intact above rather than edited in place — the
+ * provenance of one and the opinion of the other stay separable.
+ *
+ * A uniform factor is the crude part and is chosen deliberately over
+ * per-muscle tuning: the muscles that lost most were the ones paid mostly
+ * indirectly, and hand-fitting each one would produce fifteen numbers
+ * nobody could argue with because nobody could see where they came from.
+ * The Plan screen reports what the week actually delivers, so a bad factor
+ * shows up as a shortfall rather than hiding.
+ */
+const DIRECT_ONLY = 2 / 3
+
+/**
+ * The published set as direct-set targets, brought under what a week can
+ * actually deliver.
  *
  * Five direct sets a session on at most three sessions is fifteen, so
  * every landmark above fifteen describes volume this app will never
@@ -139,30 +165,50 @@ const PUBLISHED_LANDMARKS: LandmarkSet = {
  * fifteen, which also keeps the hardest week deliverable — fourteen sets
  * across three sessions is 5/5/4.
  */
-function underCeiling(marks: VolumeLandmarks): VolumeLandmarks {
+/**
+ * Muscles that cannot be trained properly in a single session.
+ *
+ * The forearms are the only one, and the reason is structural rather than
+ * about volume: flexion and extension are different movements and one
+ * session cannot be both, so a minimum effective volume that fits in one
+ * session lets the fill schedule one direction and call the muscle
+ * trained. The published MEV of 6 was chosen for exactly this, which is
+ * why scaling it with everything else broke it — two thirds of six is
+ * four, four fits in one session, and the extensors went untrained.
+ *
+ * The floor is derived from the per-session ceiling rather than picked:
+ * one more than a session can hold is the smallest number that forces a
+ * second session.
+ */
+const TWO_SESSION_MUSCLES: readonly MuscleGroup[] = ['forearms']
+const TWO_SESSION_MEV = MAX_DIRECT_SETS_PER_SESSION + 1
+
+function underCeiling(published: VolumeLandmarks, muscle: MuscleGroup): VolumeLandmarks {
+  const marks = {
+    // MV is a maintenance floor and already small; scaling it down turns
+    // "keep it alive" into "do almost nothing", which is not what
+    // maintenance means.
+    mv: published.mv,
+    mev: TWO_SESSION_MUSCLES.includes(muscle)
+      ? Math.max(TWO_SESSION_MEV, Math.round(published.mev * DIRECT_ONLY))
+      : Math.round(published.mev * DIRECT_ONLY),
+    mav: Math.round(published.mav * DIRECT_ONLY),
+    mrv: Math.round(published.mrv * DIRECT_ONLY),
+  }
+
   const mrv = Math.min(marks.mrv, MAX_WEEKLY_DIRECT_SETS)
-  const mav = Math.min(marks.mav, mrv - 1)
+  const mav = Math.max(marks.mev, Math.min(marks.mav, mrv - 1))
   const mev = Math.min(marks.mev, mav)
 
   return { mv: Math.min(marks.mv, mev), mev, mav, mrv }
 }
 
 export const DEFAULT_LANDMARKS: LandmarkSet = Object.fromEntries(
-  Object.entries(PUBLISHED_LANDMARKS).map(([muscle, marks]) => [muscle, underCeiling(marks)]),
+  Object.entries(PUBLISHED_LANDMARKS).map(([muscle, marks]) => [
+    muscle,
+    underCeiling(marks, muscle as MuscleGroup),
+  ]),
 ) as LandmarkSet
-
-/**
- * How much of a set "counts" toward a muscle that the exercise trains but
- * is not programmed for.
- *
- * A close-grip bench is a chest set and roughly half a triceps set. A
- * conventional deadlift is a hamstring/glute set and something less than
- * that for the upper back. Counting secondary work at full value inflates
- * every total and makes the landmarks meaningless; counting it at zero
- * is how lifters end up with twenty "real" triceps sets a week on top of
- * five pressing days.
- */
-export const SECONDARY_SET_FRACTION = 0.5
 
 /**
  * The target number of sets for a muscle in a given week of a mesocycle.

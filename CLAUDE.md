@@ -718,20 +718,40 @@ case — failing a top-heavy triple costs what a max costs. The overhead
 press carried both the note "one rep in reserve, not a max" and a last
 set at RPE 10.
 
-**A set is credited by its reps _and_ by how close to failure it ends.**
-`hypertrophyCredit(reps, rpe)` in `domain/volume/accounting.ts`. Reps
-came first: counting a top-set single as one hard set let the
-competition lifts overshoot a maintained muscle on their own. RPE came
-second, for the same reason one level up — fifteen bench sets at RPE 8
-covered a twelve-set chest target, so the assembler concluded the chest
-needed no direct work at all.
+**A set is one set, for the muscle it is programmed for.** No fractions,
+in either direction: not scaled by reps or proximity to failure, and not
+paid out at half to secondary movers. Both existed, both were defensible,
+and between them one set of dumbbell bench landed as 0.6 chest, 0.3
+triceps and 0.3 front delts — three numbers arrived at by two
+multiplications nobody could see and nobody could check against a
+training log.
 
-**`FREE_RIR` is why this does not rescale everything.** The landmarks
-are published in _hard sets_, and a hard set there means one taken to
-about a rep short — so RPE 9 keeps full credit and discounting starts
-past it. Without that the unit every target is expressed in changes
-silently and every number in the app shifts underneath it; the first
-attempt did exactly that and put six muscles under target at once.
+What it costs is real: a heavy triple counts the same as a set of ten, and
+a bench press pays the triceps nothing. Both errors are now visible on the
+Plan screen as work that has to be scheduled, rather than hidden in a
+coefficient. That is the trade — a model you can audit by counting rows in
+a session, over one that was more nearly right and opaque.
+
+**The landmarks had to follow, and the measurement is the argument.**
+Published landmarks are _total_ volume: every source producing them counts
+secondary involvement. Keeping them while crediting only direct work asked
+the week to schedule that whole total directly — measured at **eight
+muscles short by twenty-seven sets**, against four before. `DIRECT_ONLY`
+in `landmarks.ts` scales them to two thirds, which brought it back to
+five. It is this app's judgement rather than a citation, which is exactly
+why `PUBLISHED_LANDMARKS` is kept intact beside it.
+
+**`FREE_RIR` and `hypertrophyCredit` are gone**, and the note that used to
+be here explained why RPE-scaling mattered. It did. It also could not be
+checked by a person holding a training log, which turned out to matter
+more.
+
+**The forearms' MEV is structural, not a volume figure.** Flexion and
+extension are different movements and one session cannot be both, so the
+minimum has to exceed what a session holds or the fill trains one
+direction and calls the muscle done. `TWO_SESSION_MUSCLES` floors it at
+`MAX_DIRECT_SETS_PER_SESSION + 1`, derived rather than picked. Scaling it
+with everything else broke exactly this and a test caught it.
 
 **Credit has one implementation.** `attributeWeek` asks `slotVolume`
 rather than repeating the arithmetic. It used to carry a copy — same

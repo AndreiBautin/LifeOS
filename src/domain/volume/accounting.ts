@@ -2,9 +2,8 @@ import type { Exercise } from '@/domain/exercises/exercise'
 import type { MuscleGroup } from '@/domain/exercises/taxonomy'
 import type { ExerciseId } from '@/domain/ids/ids'
 import type { SetPrescription } from '@/domain/programs/prescription'
-import { MAX_RPE, nominalReps } from '@/domain/programs/prescription'
 
-import { emptyVolumeMap, SECONDARY_SET_FRACTION } from './landmarks'
+import { emptyVolumeMap } from './landmarks'
 
 /**
  * Counting hard sets per muscle.
@@ -33,114 +32,30 @@ export function countsAsWorking(set: SetPrescription): boolean {
 }
 
 /**
- * How close to failure a set has to be taken to be worth a full one.
+ * A working set counts as one set for the muscle it is programmed for.
  *
- * Five reps, and what is counted is the reps taken *within five of
- * failure* rather than the reps performed. Those are the ones the
- * stimulus tracks; a set that stops well short contains fewer of them
- * whatever its rep count says.
- */
-export const FULL_CREDIT_REPS = 5
-
-/**
- * Reps in reserve that cost a set nothing.
+ * It used to count fractionally, twice over: scaled by reps and proximity
+ * to failure, and paid out again at half value to every secondary mover.
+ * Both were defensible and both are gone, because between them a single
+ * set of dumbbell bench could land as 0.6 chest, 0.3 triceps and 0.3 front
+ * delts — three numbers nobody could check against a training log,
+ * arrived at by two multiplications nobody could see.
  *
- * The landmarks are published in *hard sets*, and a hard set in that
- * literature means one taken to roughly a rep short of failure — not one
- * taken to failure. So a set at RPE 9 has to keep full credit, or the
- * unit the targets are expressed in quietly changes and every number in
- * the app shifts underneath them.
- *
- * Discounting starts past that. It is the difference between saying "a
- * set stopped well short of failure is worth less" and saying "every set
- * anybody actually programs is worth less", and only the first is a
- * claim about training.
- */
-const FREE_RIR = 1
-
-/**
- * How much of a hard set this is worth, from its reps and its RPE.
- *
- * Two things shorten a set's contribution and they are easy to conflate.
- * **Reps** was already here: a heavy triple simply contains fewer
- * stimulating reps than a set of eight. **Proximity to failure** was not,
- * and it is what made a competition lift's volume read wrong — five reps
- * at RPE 8 and five at RPE 10 both counted as one full set, so fifteen
- * bench sets covered a chest target on their own and the assembler
- * concluded the chest needed no direct work at all.
- *
- * The fix is not "strength work counts half". Half is a number with
- * nothing behind it, and it would discount a heavy set of five taken to
- * failure — which really is a full hypertrophy set — by the same amount
- * as one stopped two reps short. What actually differs is where the set
- * ends: at 2 RIR the last five reps span 6 to 2 away from failure, and
- * only three of them are inside the window. That is 0.6, arrived at
- * rather than chosen.
- *
- * Capped at one, because a set of twenty is not four sets: past the
- * window the limit is fatigue, not stimulus.
- */
-export function hypertrophyCredit(reps: number, rpe?: number): number {
-  if (reps <= 0) return 0
-
-  const rir = rpe === undefined ? 0 : Math.max(0, MAX_RPE - rpe)
-  const stimulating = Math.min(reps, FULL_CREDIT_REPS - Math.max(0, rir - FREE_RIR))
-
-  return Math.max(0, Math.min(1, stimulating / FULL_CREDIT_REPS))
-}
-
-/**
- * The RPE a set is expected to finish at, where that is knowable.
- *
- * A back-off block has no prescribed RPE — the whole point is that the
- * reading is an output — but it does have a *stopping* RPE, which is
- * where the last set lands and a fair stand-in for the block. Anything
- * with no RPE at all is credited in full rather than guessed at.
- */
-function expectedRpe(load: SetPrescription['load']): number | undefined {
-  switch (load.kind) {
-    case 'rpe':
-      return load.target
-    case 'rts-backoff':
-      return load.stopRpe
-    case 'percent-e1rm':
-    case 'bodyweight':
-    case 'absolute':
-    case 'open':
-      return undefined
-  }
-}
-
-/**
- * What one slot's worth of sets contributes, per muscle.
- *
- * Two fractions apply, for different reasons. The primary muscle gets
- * full credit and muscles the exercise trains incidentally get half:
- * counting secondaries at full value inflates every total until the
- * landmarks are meaningless, and counting them at zero tells a lifter
- * benching four times a week that their triceps need more direct work.
- *
- * On top of that, a low-rep set is worth less than a full one — see
- * {@link hypertrophyCredit}. That is what stops a heavy triple counting
- * the same as a set of ten toward a muscle's weekly growth target.
+ * What is lost is real and worth naming. A heavy triple now counts the
+ * same as a set of ten, and a bench press pays the triceps nothing. The
+ * first makes strength work look like more hypertrophy volume than it is;
+ * the second makes pressing look like none for the triceps. Both errors
+ * are now visible on the Plan screen rather than buried in a coefficient,
+ * which is the trade: a model you can check by counting rows in a session,
+ * instead of one that was more nearly right and impossible to audit.
  */
 export function slotVolume(exercise: Exercise, sets: readonly SetPrescription[]): VolumeMap {
   const volume = emptyVolumeMap()
 
-  const credited = sets
-    .filter(countsAsWorking)
-    .reduce(
-      (total, set) => total + hypertrophyCredit(nominalReps(set.reps), expectedRpe(set.load)),
-      0,
-    )
+  const working = sets.filter(countsAsWorking).length
+  if (working === 0) return volume
 
-  if (credited === 0) return volume
-
-  volume[exercise.primaryMuscle] += credited
-  for (const secondary of exercise.secondaryMuscles) {
-    if (secondary === exercise.primaryMuscle) continue
-    volume[secondary] += credited * SECONDARY_SET_FRACTION
-  }
+  volume[exercise.primaryMuscle] += working
 
   return volume
 }

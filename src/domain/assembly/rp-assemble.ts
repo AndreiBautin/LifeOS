@@ -33,7 +33,7 @@ import type { RpDay, RpSplit } from '@/domain/splits/rp-splits'
 import { rpFrequency, rpSplitForDays } from '@/domain/splits/rp-splits'
 import { countsAsWorking, slotVolume, type VolumeMap } from '@/domain/volume/accounting'
 import { requiredFrequency, setsPerSession } from '@/domain/volume/frequency'
-import { emptyVolumeMap, SECONDARY_SET_FRACTION } from '@/domain/volume/landmarks'
+import { emptyVolumeMap } from '@/domain/volume/landmarks'
 import type { LandmarkSet } from '@/domain/volume/landmarks'
 import { DEFAULT_LANDMARKS } from '@/domain/volume/landmarks'
 
@@ -1541,9 +1541,16 @@ function describeDay(
     if (working === 0) continue
 
     direct[exercise.primaryMuscle] += working
+
+    /*
+     * Counted as whole sets, and only so the day can *name* what it also
+     * works. Nothing here reaches a volume target — secondary involvement
+     * stopped being credited when the fractions went — but "some traps and
+     * upper back" is still true and still worth saying about a rowing day.
+     */
     for (const muscle of exercise.secondaryMuscles) {
       if (muscle === exercise.primaryMuscle) continue
-      indirect[muscle] += working * SECONDARY_SET_FRACTION
+      indirect[muscle] += working
     }
   }
 

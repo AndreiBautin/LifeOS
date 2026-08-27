@@ -3,7 +3,21 @@ import type { TrainingIntent } from '@/domain/exercises/loading'
 import { SYSTEMIC_COST_BY_EQUIPMENT } from '@/domain/exercises/loading'
 import type { MuscleGroup } from '@/domain/exercises/taxonomy'
 import { MUSCLE_GROUPS } from '@/domain/exercises/taxonomy'
-import { SECONDARY_SET_FRACTION } from '@/domain/volume/landmarks'
+/**
+ * How much of a set's *fatigue* a secondary mover carries.
+ *
+ * Volume stopped counting secondaries at all — a set is one set for the
+ * muscle it is for — and this deliberately did not follow. The two answer
+ * different questions: volume asks what a muscle was trained by, which is
+ * a claim about a training log, and fatigue asks what it was loaded by,
+ * which is a claim about recovery. A bench press really does fatigue the
+ * triceps, and nothing here feeds a target anybody reads — it moves
+ * landmarks on accumulated check-in evidence, slowly and within bounds.
+ *
+ * It lived in `volume/landmarks.ts` until volume stopped using it. One
+ * consumer, so it lives with that consumer.
+ */
+const SECONDARY_SET_FRACTION = 0.5
 
 /**
  * Two kinds of tired, tracked separately because they behave differently.

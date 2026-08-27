@@ -62,22 +62,23 @@ function workout(sets: readonly LoggedSet[]): WorkoutLog {
 const chest = (log: WorkoutLog) => loggedVolume(log, lookup).chest
 
 describe('crediting a logged set', () => {
-  it('counts a set taken short for what it was', () => {
-    // Planned five at RPE 9, taken for three. Credited as five was the
-    // bug: the app would report the chest covered on work not done.
+  /*
+   * A set is a set, whatever it came in at.
+   *
+   * Reps and proximity to failure used to scale the credit, and both are
+   * gone. What that costs is stated plainly rather than hidden: a set
+   * planned for five and taken for three now counts the same, so the log
+   * can report a muscle covered on work that fell short. The compensation
+   * is that the number on the screen is one anybody can check by counting
+   * rows, which the old one was not.
+   */
+  it('counts a set for one however it went', () => {
     const planned = chest(workout([set()]))
     const short = chest(workout([set({ actualReps: 3, actualRpe: 9 })]))
-
-    expect(short).toBeLessThan(planned)
-  })
-
-  it('counts a set stopped well short of failure for less', () => {
-    // Proximity to failure is half of what credit measures, so an easy
-    // set is worth less even at the prescribed reps.
-    const hard = chest(workout([set({ actualReps: 5, actualRpe: 9 })]))
     const easy = chest(workout([set({ actualReps: 5, actualRpe: 6 })]))
 
-    expect(easy).toBeLessThan(hard)
+    expect(short).toBe(planned)
+    expect(easy).toBe(planned)
   })
 
   it('gives a set done as prescribed exactly what the plan expected', () => {
@@ -107,9 +108,10 @@ describe('crediting a logged set', () => {
     expect(chest(log)).toBe(0)
   })
 
-  it('pays a secondary muscle half of whatever the primary earned', () => {
+  it('pays a secondary muscle nothing', () => {
     const volume = loggedVolume(workout([set({ actualReps: 3, actualRpe: 9 })]), lookup)
 
-    expect(volume.triceps).toBe(volume.chest / 2)
+    expect(volume.chest).toBe(1)
+    expect(volume.triceps).toBe(0)
   })
 })
