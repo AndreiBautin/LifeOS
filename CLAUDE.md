@@ -970,6 +970,17 @@ the forearms trained: twice into flexion, extensors untouched. Naming
 `wrist-flexion` and `wrist-extension` as patterns is what makes "once
 each way" fall out of the rule rather than needing a special case.
 
+**The rotation counts a muscle's own sessions, not the day's index.**
+`args.directDays[muscle] % pool.length`. Counting by day index looks
+equivalent and is not: on a four-day split the two upper days are indices
+0 and 2, both even, so `index % 2` was zero on both and **every
+two-option pool handed out the same exercise twice a week**. The triceps
+have exactly two and got the French press on Monday and again on Thursday.
+It hid for a long time because the muscles with four options varied
+normally, so the rotation looked like it worked everywhere. A per-muscle
+counter has no parity to collide with. `rp-assemble.test.ts` → "does not
+repeat an exercise across a muscle's sessions when it has a choice".
+
 It is a soft sort, never a filter: side delts have two hypertrophy
 options and calves have one, so banning a repeat would drop the muscle
 from the day instead.

@@ -665,6 +665,62 @@ describe('how a muscle is spread across its sessions', () => {
       }),
     )
 
+  /*
+   * A muscle with more than one option does not get the same exercise on
+   * both of its sessions.
+   *
+   * The rotation counted by the day's index in the split, which looks
+   * equivalent to counting sessions and is not: the two upper days of a
+   * four-day split are indices 0 and 2, both even, so `index % 2` was
+   * zero on both and **every two-option pool handed out the same exercise
+   * twice a week**. The triceps have exactly two and got the French press
+   * on Monday and again on Thursday.
+   *
+   * It hid well because the muscles with four options varied normally, so
+   * the rotation looked like it was working everywhere.
+   */
+  it('does not repeat an exercise across a muscle’s sessions when it has a choice', () => {
+    const week = weekAt(build(), 3)
+    const byMuscle = new Map<MuscleGroup, string[]>()
+
+    for (const day of week.days) {
+      for (const slot of day.slots) {
+        if (slot.role !== 'hypertrophy' && slot.role !== 'assistance') continue
+        if (slot.exercise.kind !== 'specific') continue
+
+        const exercise = lookup(slot.exercise.exerciseId)
+        if (exercise === undefined) continue
+
+        byMuscle.set(exercise.primaryMuscle, [
+          ...(byMuscle.get(exercise.primaryMuscle) ?? []),
+          exercise.id,
+        ])
+      }
+    }
+
+    expect(byMuscle.size).toBeGreaterThan(0)
+
+    for (const [muscle, used] of byMuscle) {
+      if (used.length < 2) continue
+
+      /*
+       * Only where a choice exists. A muscle the catalogue gives one
+       * hypertrophy option repeats it and should — dropping the muscle
+       * from the day would be the worse outcome, which is why the weekly
+       * penalty is a soft sort rather than a filter.
+       */
+      const options = exercises.filter(
+        (candidate) =>
+          candidate.intent === 'hypertrophy' &&
+          candidate.primaryMuscle === muscle &&
+          !candidate.isArchived,
+      ).length
+      if (options < used.length) continue
+
+      expect(new Set(used).size, `${muscle}: ${used.join(', ')}`).toBe(used.length)
+    }
+  })
+
   it('trains the forearms both ways rather than twice the same way', () => {
     /*
      * Four wrist exercises are two movements, and an id-level repeat

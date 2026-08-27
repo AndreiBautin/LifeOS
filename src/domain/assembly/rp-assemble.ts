@@ -1386,14 +1386,31 @@ function pickHypertrophyExercise(
     return a.name.localeCompare(b.name)
   })
 
-  // Rotate slightly by day so the same muscle does not get the identical
-  // exercise every session of the week — but rotate only within the
-  // candidates the week has not used, or the rotation would land back on
-  // one and undo the penalty above.
+  /*
+   * Rotate so a muscle does not get the identical exercise every session,
+   * and rotate only within what the week has not used — otherwise the
+   * rotation lands back on a used movement and undoes the penalty above.
+   */
   const fresh = ordered.filter((exercise) => !usedMovements.has(movement(exercise)))
   const pool = fresh.length > 0 ? fresh : ordered
 
-  return pool[args.splitDay.index % pool.length] ?? pool[0]
+  /*
+   * Counted by how many times this muscle has already been trained this
+   * week, not by the day's index in the split.
+   *
+   * The day index looks equivalent and is not, and the way it failed is
+   * worth keeping: on a four-day split the two upper days are indices 0
+   * and 2. Both even — so `index % 2` is zero on both, and **every
+   * two-option pool handed out the same exercise twice a week**. The
+   * triceps have exactly two options and got the French press on Monday
+   * and again on Thursday; the biceps have four and varied, which is why
+   * the rotation looked like it worked.
+   *
+   * A per-muscle counter has no parity to collide with: the first session
+   * takes the first candidate, the second takes the second, whichever days
+   * those land on.
+   */
+  return pool[args.directDays[muscle] % pool.length] ?? pool[0]
 }
 
 const STUB: SetPrescription = {
