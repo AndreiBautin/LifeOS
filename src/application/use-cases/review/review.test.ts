@@ -173,12 +173,22 @@ describe('measuring the hub', () => {
    * wrong that looks like good news.
    */
   it('measures strength as a multiple of bodyweight', async () => {
-    const { deps } = harness()
+    /*
+     * Both numbers are stated here rather than inherited from
+     * `DEFAULT_SETTINGS`. This test is about the *ratio* — that a load is
+     * divided by a bodyweight before it reaches a ladder — and reading the
+     * squat off the shipped default made it fail the day that default
+     * moved, which is a true fact about a constant it does not own and
+     * says nothing about the arithmetic under test.
+     */
+    const { deps } = harness(undefined, {
+      bodyweight: 200,
+      estimatedMaxes: { [asExerciseId('low-bar-squat')]: 300 },
+    })
 
     const measured = await measureAll(deps)
 
-    // 303 lb squat at 200 lb bodyweight.
-    expect(measured['training.squat-e1rm']).toBeCloseTo(1.515, 3)
+    expect(measured['training.squat-e1rm']).toBeCloseTo(1.5, 3)
   })
 
   it('says nothing about strength without a bodyweight to divide by', async () => {

@@ -209,13 +209,24 @@ export const DEFAULT_SETTINGS: AppSettings = {
   // in it: 260x5, 195x5, 315x5 and 130x5. A starting point for the RTS
   // suggestions, not a claim — the top set corrects them the first time
   // each lift is trained.
+  /*
+   * Read back through the RPE chart from real top sets rather than
+   * guessed: 305 x 3 and 205 x 3 at RPE 8, which the chart puts at 86.3%
+   * of max for a triple.
+   *
+   * **A change here reaches nobody who has already opened the app.**
+   * `settings-store` takes stored maxes wholesale when there are any, so
+   * this is the fresh-install figure and nothing else — see the note on
+   * `SETTINGS_SCHEMA_VERSION`. Anyone with the app already installed
+   * updates theirs from a finished session or by hand.
+   */
   estimatedMaxes: {
-    [asExerciseId('low-bar-squat')]: 303,
+    [asExerciseId('low-bar-squat')]: 353,
     // The paused bench is the competition lift and the one the character
     // sheet scores; the touch-and-go number is the same bar without the
     // pause, so it sits about five per cent higher.
-    [asExerciseId('paused-bench-press')]: 217,
-    [asExerciseId('bench-press')]: 228,
+    [asExerciseId('paused-bench-press')]: 226,
+    [asExerciseId('bench-press')]: 238,
     [asExerciseId('sumo-deadlift')]: 368,
     [asExerciseId('overhead-press')]: 152,
   },

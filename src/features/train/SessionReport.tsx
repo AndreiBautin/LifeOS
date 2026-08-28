@@ -4,6 +4,7 @@ import type { WorkoutReport } from '@/application/use-cases/training/finish-work
 import { MUSCLE_GROUP_LABELS } from '@/domain/exercises/taxonomy'
 import { formatLoad, type WeightUnit } from '@/domain/units/weight'
 import { Badge, Button, Card, Section } from '@/components/shared/primitives'
+import { useSettings } from '@/app/context'
 
 /**
  * What happened, immediately after finishing.
@@ -21,6 +22,91 @@ interface Props {
   readonly report: WorkoutReport
   readonly units: WeightUnit
   readonly onDismiss: () => void
+}
+
+/**
+ * The estimate this session just measured, offered to the setting it is
+ * the basis for.
+ *
+ * The number was already on this screen and there was no way to keep it.
+ * `estimatedMaxes` drives every suggested load in the app, the session
+ * had just produced a better reading of it than the stored one, and the
+ * only route between the two was reading the figure off here and typing
+ * it into Settings from memory. That is the same defect as a rule
+ * nothing can reach, wearing the clothes of a completed feature.
+ *
+ * **Offered, never applied.** It is a proposal with its evidence beside
+ * it — the same stance the file import takes, and the same one
+ * `adjust-landmarks` was built with. An estimate that moved on its own
+ * after every session would make the loads shift for reasons the lifter
+ * did not choose and could not see.
+ *
+ * Unreliable readings are excluded rather than shown with a warning: a
+ * set of fifteen produces a number the formula is not fitted for, and
+ * writing it into the basis for every future load is worse than leaving
+ * the basis alone.
+ */
+function ApplyEstimates({ progress }: { readonly progress: WorkoutReport['progress'] }) {
+  const { settings, update } = useSettings()
+
+  const worth = progress.filter((entry) => {
+    if (entry.estimate?.isReliable !== true) return false
+
+    const stored = settings.estimatedMaxes[entry.exerciseId]
+    if (stored === undefined) return true
+
+    // A pound either way is the rounding, not a stronger lifter.
+    return Math.abs(entry.estimate.value - stored) >= 1
+  })
+
+  if (worth.length === 0) return null
+
+  return (
+    <div className="border-ink-800 mt-3 border-t pt-3">
+      <p className="text-ink-500 mb-2 text-xs">
+        {worth.length === 1 ? 'This reading differs' : 'These readings differ'} from what your
+        suggested loads are based on. Nothing changes unless you say so.
+      </p>
+
+      <ul className="mb-2 space-y-1">
+        {worth.map((entry) => {
+          const stored = settings.estimatedMaxes[entry.exerciseId]
+
+          return (
+            <li key={entry.exerciseId} className="flex justify-between gap-3 text-xs">
+              <span className="text-ink-300 truncate">{entry.name}</span>
+              <span className="text-ink-500 numeric shrink-0">
+                {stored === undefined ? 'not set' : formatLoad(stored, settings.units)} →{' '}
+                <span className="text-ink-100">
+                  {formatLoad(Math.round(entry.estimate?.value ?? 0), settings.units)}
+                </span>
+              </span>
+            </li>
+          )
+        })}
+      </ul>
+
+      <Button
+        variant="outline"
+        size="sm"
+        full
+        onClick={() => {
+          update({
+            estimatedMaxes: {
+              ...settings.estimatedMaxes,
+              ...Object.fromEntries(
+                worth.map(
+                  (entry) => [entry.exerciseId, Math.round(entry.estimate?.value ?? 0)] as const,
+                ),
+              ),
+            },
+          })
+        }}
+      >
+        Use {worth.length === 1 ? 'this estimate' : 'these estimates'}
+      </Button>
+    </div>
+  )
 }
 
 export function SessionReport({ report, units, onDismiss }: Props) {
@@ -82,6 +168,8 @@ export function SessionReport({ report, units, onDismiss }: Props) {
                 * Estimated from a high-rep set, where the formulas lose accuracy.
               </p>
             )}
+
+            <ApplyEstimates progress={report.progress} />
           </Card>
         </Section>
       )}

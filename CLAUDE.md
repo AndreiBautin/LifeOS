@@ -108,6 +108,34 @@ progression, `percent-training-max`, training maxes. It is in the git
 history if it is ever wanted back. Do not reintroduce a second framework
 without deciding to carry two of everything again.
 
+**A session measures the estimate it is derived from, and until now
+nothing could keep the reading.** The report showed "e1RM 353" and the
+only route from there to `estimatedMaxes` — which drives every suggested
+load in the app — was reading the figure off the screen and typing it
+into Settings from memory. `ApplyEstimates` in `SessionReport.tsx` closes
+it: **offered, never applied**, with the old and new numbers side by
+side, the same stance the file import takes and the one
+`adjust-landmarks` was built with. An estimate that moved on its own
+after every session would shift the loads for reasons the lifter did not
+choose and cannot see.
+
+Unreliable readings are excluded rather than shown with a warning. A set
+of fifteen produces a number the formula is not fitted for, and writing
+that into the basis for every future load is worse than leaving the basis
+alone.
+
+**Changing `DEFAULT_SETTINGS.estimatedMaxes` reaches nobody who has
+opened the app.** `settings-store` takes stored maxes wholesale whenever
+there are any, so the constant is the fresh-install figure and nothing
+more — the same trap `SETTINGS_SCHEMA_VERSION` exists for, and the reason
+the apply path above had to exist rather than a bumped default.
+
+**A test about a ratio must state its own numerator.**
+`review.test.ts` → "measures strength as a multiple of bodyweight" read
+the squat off `DEFAULT_SETTINGS` and asserted 1.515, so it failed the day
+that default moved — a true fact about a constant it does not own, and
+nothing about the division it exists to check. It states both numbers now.
+
 **A suggested load is never the prescription.** `estimatedMaxes` (in
 settings) is the basis for every suggestion, and an estimate is
 acceptable _because_ RTS asks for reps at an RPE: get the number wrong
