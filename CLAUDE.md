@@ -416,6 +416,41 @@ whose job is to show movement. Consistency levelled the session count,
 which XP already spends. Nothing measures conditioning, so nothing scores
 it; that is the same rule every other area follows.
 
+**The avatar re-presents the sheet and adds nothing to it.**
+`domain/game/avatar.ts`. The temptation in a portrait is to give it a
+number of its own — a power rating, a gear score — and that would be a
+fourth currency where the model has three on purpose. Every field is
+traceable: the level is the XP level, the calling is whichever area has
+paid the most XP, the gear is upgrades actually bought.
+
+**The ring is the level bar, not a frame around one.** XP into the
+current level over what the level costs — a real denominator — so the
+decoration and the measurement are the same object. It replaced the bar
+that used to sit in the Level card rather than joining it, because
+drawing one quantity twice on one screen is how two figures start
+disagreeing after somebody edits one.
+
+**XP is the only honest basis for a class.** It is the one quantity
+comparable across areas, which is the whole reason it is a single
+currency; ladders cannot answer "what am I mostly", because Advanced on
+the squat and Advanced at exploration are anchored to different external
+standards. The calling always shows its **share**, so a reader who
+distrusts "Devotee" can see it means 100% of earned XP came from
+dailies — the difference between a label and a claim. No calling at all
+before anything has been done.
+
+**Gear needed no new field.** `isOwned` excludes a wishlist and
+`isOwnArea` excludes the house, which is the split the Base screen
+already makes: a dishwasher upgrades the place you live and a belt
+upgrades you. Slots are the upgrade's own `category`.
+
+**The figure is geometric because there is nothing to illustrate
+honestly.** Gear is user-typed titles, so drawing a belt on a character
+means guessing what an upgrade depicts and guessing wrong on most of
+them. Items are named beside the portrait instead. The whole portrait
+carries one `aria-label` rather than being `aria-hidden` — level,
+calling and season are information, not ornament.
+
 **An area with nothing to say says nothing.** `AreaStanding.silent` on the
 character sheet, and `insufficient-data` counts as silence — it is the
 absence of a judgement rather than a bad one. Treating it as something

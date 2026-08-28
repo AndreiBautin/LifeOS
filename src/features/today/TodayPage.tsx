@@ -14,6 +14,7 @@ import { SeasonCard } from '@/features/character/SeasonCard'
 import { useSeasonProgress } from '@/features/character/hooks'
 import { useReviewDraft } from '@/features/review/hooks'
 import { VitalsCard } from '@/features/vitals/VitalsCard'
+import { TodayAvatar } from '@/features/character/TodayAvatar'
 
 import { useAgenda } from './hooks'
 
@@ -78,9 +79,18 @@ export function TodayPage() {
 
   return (
     <>
-      <header className="mb-6">
-        <h1 className="text-ink-50 text-2xl font-semibold tracking-tight">Today</h1>
-        <p className="text-ink-500 numeric mt-0.5 text-sm">{today}</p>
+      {/*
+        The portrait sits in the header as a link to the sheet, small and
+        without its gear. Today is present tense and a character sheet is
+        standing, so what belongs here is the glance — who you are and
+        how far through the level — rather than the readout.
+      */}
+      <header className="mb-6 flex items-center gap-3">
+        <TodayAvatar />
+        <div className="min-w-0">
+          <h1 className="text-ink-50 text-2xl font-semibold tracking-tight">Today</h1>
+          <p className="text-ink-500 numeric mt-0.5 text-sm">{today}</p>
+        </div>
       </header>
 
       {/*

@@ -9,6 +9,8 @@ import type { AreaStanding } from '@/application/use-cases/character/sheet'
 import { totalWorkingSets } from '@/domain/logging/workout-log'
 import { Badge, Card, Section } from '@/components/shared/primitives'
 import { buttonStyles } from '@/components/shared/styles'
+
+import { AvatarCard } from './AvatarCard'
 import { cn } from '@/lib/cn'
 
 import { useCharacterSheet } from './hooks'
@@ -62,8 +64,6 @@ export function CharacterPage() {
    * either of them alone.
    */
   const standing = sheet.data?.standing
-  const xpFill =
-    standing === undefined ? 0 : Math.round((standing.into / Math.max(1, standing.needed)) * 100)
 
   // Training keeps its own section below, which shows real loads in pounds
   // rather than the ratios the ladder is scored on.
@@ -101,27 +101,15 @@ export function CharacterPage() {
         </Link>
       </header>
 
+      {/*
+        The portrait replaces the bar that used to be here rather than
+        sitting above it. The ring **is** the XP bar — same numerator,
+        same denominator — and drawing the one quantity twice on one
+        screen is how two figures start disagreeing after somebody edits
+        one of them.
+      */}
       <Section title={`Level ${String(standing?.level ?? 1)}`}>
-        <Card>
-          <div className="flex items-baseline justify-between gap-2">
-            <span className="text-ink-300 text-sm">Experience</span>
-            <span className="numeric text-ink-50 text-sm font-semibold">
-              {standing?.into ?? 0}
-              <span className="text-ink-500 font-normal"> / {standing?.needed ?? 0}</span>
-            </span>
-          </div>
-          <div className="bg-ink-850 mt-2 h-2 overflow-hidden rounded-full">
-            <div
-              className="bg-accent-500 h-full rounded-full"
-              style={{ width: `${String(xpFill)}%` }}
-            />
-          </div>
-          <p className="text-ink-500 mt-2 text-xs">
-            {standing?.xp ?? 0} XP all time, across everything you track. Paid for doing the thing,
-            never for it having worked — getting stronger moves a ladder, and paying it twice is how
-            a number stops being a record of effort.
-          </p>
-        </Card>
+        <AvatarCard xp={standing?.xp ?? 0} />
       </Section>
 
       <Section title="Strength" description="Squat, bench and deadlift make the total">

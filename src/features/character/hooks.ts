@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 
 import { useServices } from '@/app/context'
 import { seasonProgressFor } from '@/application/use-cases/character/season-progress'
+import { avatarFor } from '@/application/use-cases/character/avatar'
 import { characterSheet } from '@/application/use-cases/character/sheet'
 
 /**
@@ -26,6 +27,20 @@ export function useCharacterSheet() {
  * records but answers a different question, and a screen showing one
  * without the other should not pay for both.
  */
+/**
+ * The portrait.
+ *
+ * Its own query, keyed under `character` so everything that already
+ * invalidates the sheet invalidates this too — it is derived from the
+ * same tally, and a portrait a level behind the page it sits on would be
+ * a bug with no obvious owner.
+ */
+export function useAvatar() {
+  const services = useServices()
+
+  return useQuery({ queryKey: ['character', 'avatar'], queryFn: () => avatarFor(services) })
+}
+
 export function useSeasonProgress() {
   const services = useServices()
 
