@@ -9,7 +9,7 @@ import {
   SESSION_TOO_LONG_MINUTES,
   SESSION_TOO_SHORT_MINUTES,
 } from '@/domain/autoregulation/schedule'
-import { estimateDayMinutes } from '@/domain/programs/program'
+import { estimateDayMinutes, setSeconds } from '@/domain/programs/program'
 import { slotVolume, sumVolume, volumeForSlots } from '@/domain/volume/accounting'
 import type { MuscleVolumes, VolumeLevel } from '@/domain/volume/levels'
 import {
@@ -947,7 +947,13 @@ describe('the order a session is performed in', () => {
       .filter((slot) => slot.role === 'warmup')
       .flatMap((slot) => (slot.exercise.kind === 'specific' ? [slot.exercise.exerciseId] : []))
 
-    expect(monday).toEqual(['shoulder-dislocation', 'rotator-cuff-plate', 'band-pull-apart'])
+    expect(monday).toEqual([
+      'roll-upper-back',
+      'roll-lats',
+      'shoulder-dislocation',
+      'rotator-cuff-plate',
+      'band-pull-apart',
+    ])
   })
 
   it('runs the isolation work in tier order, priority first', () => {
@@ -1067,11 +1073,59 @@ describe('conditioning', () => {
     expect(domainOn(3)).toEqual(['HIIT'])
   })
 
-  it('is prescribed by time, not by reps', () => {
+  /*
+   * Conditioning is prescribed the way it is actually performed, which is
+   * a clock for some of it and sets for the rest.
+   *
+   * This asserted "time, always". True while every modality was a block
+   * of continuous work, and false for a protocol that is sets: thirty
+   * minutes of swings is not one thirty-minute effort, it is sets of ten
+   * on the minute, and the session screen logs *sets*. A single timed row
+   * gives one thing to tick at the end of half an hour.
+   *
+   * What is still guarded is that a rep-prescribed modality carries the
+   * load to use — a set of ten with no bell named is not a prescription.
+   */
+  it('prescribes a clock or sets, and names the load when it is sets', () => {
     for (const day of week.days) {
       for (const slot of day.slots.filter((candidate) => candidate.role === 'conditioning')) {
-        expect(slot.sets[0]?.reps.kind).toBe('time')
+        const first = slot.sets[0]
+        if (first === undefined) continue
+
+        if (first.reps.kind === 'time') continue
+
+        expect(
+          first.reps.kind,
+          slot.exercise.kind === 'specific' ? slot.exercise.exerciseId : '',
+        ).toBe('fixed')
+        expect(first.load.kind).toBe('absolute')
       }
+    }
+  })
+
+  /*
+   * And the set count matches the clock. The two are derived from one
+   * interval rather than written down separately, so a plan cannot say
+   * "thirty minutes" and hand out a number of sets that takes longer.
+   */
+  it('fills its stated duration when prescribed as sets', () => {
+    const swings = week.days
+      .flatMap((day) => day.slots)
+      .filter(
+        (slot) =>
+          slot.role === 'conditioning' &&
+          slot.exercise.kind === 'specific' &&
+          slot.exercise.exerciseId === 'kb-swing',
+      )
+
+    expect(swings.length).toBeGreaterThan(0)
+
+    for (const slot of swings) {
+      const seconds = slot.sets.reduce(
+        (total, set) => total + setSeconds(set, slot.restSeconds ?? 0),
+        0,
+      )
+      expect(Math.round(seconds / 60)).toBe(30)
     }
   })
 

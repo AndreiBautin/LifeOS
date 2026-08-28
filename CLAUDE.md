@@ -825,6 +825,14 @@ position in the pair cannot be read off `role` at all. The roles stay
 `hypertrophy` and `assistance` because they are written into every stored
 log, but both _label_ as "Hypertrophy".
 
+**A variation shares its `pattern` with the movement it varies.** The
+underhand barbell row is `horizontal-pull` like the overhand one, and the
+chin-up is `vertical-pull` like the pull-up. The weekly repeat penalty
+keys on `primaryMuscle|pattern`, so giving a variation its own pattern
+would let the week schedule both and count the muscle trained twice under
+two names — which is the bug that key exists to stop. Sharing it makes
+them one movement the rotation alternates between.
+
 **A lift rotates through variations; the competition version is always
 first.** `STRENGTH_VARIATIONS` in `domain/exercises/catalogue.ts`. The
 bench runs **paused, touch-and-go** and the deadlift **sumo,
@@ -1041,6 +1049,27 @@ removed every per-muscle landmark, so that correction now lives only as a
 reason to be careful: **strapping a lift silently removes a muscle's only
 source of work**, and nothing in the landmark numbers records which
 muscles depend on which lifts.
+
+**A warm-up is one row per thing you do.** The lower routine was a single
+"Foam Rolling" slot whose note listed seven areas. Accurate, and unusable
+where it matters: the session screen ticks off _slots_, so seven areas
+inside one are seven things you remember or skip together. Six rows now,
+one per area, and the lats and upper back moved to the upper routine
+because that is the day they are about to be worked.
+
+**Conditioning is prescribed as a clock or as sets, whichever it actually
+is.** `ConditioningPlan.asSets` in `rp-assemble.ts`. An incline walk is
+twenty minutes with nothing to count; thirty minutes of swings is sets of
+ten on the minute with a named bell, and a single timed row would give the
+lifter one thing to tick at the end of half an hour.
+
+**The unit is the interval, not the rest.** `intervalSeconds`, with the
+set count and the rest both derived from it. Storing the rest instead
+makes the same protocol cost more the heavier the set gets — thirty sets
+of ten with a minute's rest is forty-five minutes, not thirty — so the
+stated duration and the set count drift apart. That is exactly what
+happened the first time, and the day estimate said 83 minutes for a
+68-minute session.
 
 **A set is costed by its reps, and a timed set by its duration.**
 `setSeconds` in `domain/programs/program.ts`, at `SECONDS_PER_REP` = 3

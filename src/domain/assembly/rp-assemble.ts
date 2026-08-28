@@ -18,7 +18,7 @@ import type {
   Slot,
   SlotRole,
 } from '@/domain/programs/program'
-import { DEFAULT_PROGRAM_SETTINGS } from '@/domain/programs/program'
+import { DEFAULT_PROGRAM_SETTINGS, SECONDS_PER_REP } from '@/domain/programs/program'
 import type { LiftSessions, StrengthLift } from '@/domain/priority/tiers'
 import {
   DEFAULT_LIFT_SESSIONS,
@@ -1578,6 +1578,38 @@ function conditioningSlots(
     // conditioning week of the block.
     const minutes = isDeload ? Math.max(10, Math.round(plan.minutes / 2)) : plan.minutes
 
+    /*
+     * Sets of reps at a load, when the plan says so, and one block of time
+     * otherwise.
+     *
+     * The set count is the minutes divided by the rest interval rather
+     * than a number written down beside them — a plan carrying both "30
+     * minutes" and "30 sets" has two places to change and one of them
+     * will be missed. It also means the deload halving the clock halves
+     * the swings for free.
+     */
+    const sets: readonly SetPrescription[] =
+      plan.asSets === undefined
+        ? [{ load: { kind: 'open' }, reps: { kind: 'time', seconds: minutes * 60 } }]
+        : Array.from(
+            { length: Math.max(1, Math.round((minutes * 60) / plan.asSets.intervalSeconds)) },
+            () => ({
+              load: { kind: 'absolute' as const, load: plan.asSets?.load ?? 0 },
+              reps: { kind: 'fixed' as const, reps: plan.asSets?.reps ?? 10 },
+            }),
+          )
+
+    /*
+     * Rest is what is left of the interval once the work is done, so the
+     * slot costs the half hour it says. Derived rather than written down
+     * beside the interval: two numbers for one protocol is two places to
+     * change and one of them gets missed.
+     */
+    const restSeconds =
+      plan.asSets === undefined
+        ? 0
+        : Math.max(0, plan.asSets.intervalSeconds - plan.asSets.reps * SECONDS_PER_REP)
+
     return [
       {
         id: asSlotId(deps.ids.next()),
@@ -1595,8 +1627,8 @@ function conditioningSlots(
          */
         variant: plan.style,
         exercise: { kind: 'specific', exerciseId: exercise.id },
-        sets: [{ load: { kind: 'open' }, reps: { kind: 'time', seconds: minutes * 60 } }],
-        restSeconds: 0,
+        sets,
+        restSeconds,
         notes: plan.note,
       },
     ]
@@ -1611,18 +1643,54 @@ function conditioningSlots(
  * is steady aerobic work, and an incline walk is deliberately low enough
  * to cost nothing at all.
  */
-const CONDITIONING_PLANS: Readonly<
-  Record<string, { minutes: number; note: string; style: string }>
-> = {
+interface ConditioningPlan {
+  readonly minutes: number
+  readonly note: string
+  readonly style: string
+  /**
+   * Prescribed as sets of reps at a load rather than as one block of
+   * time.
+   *
+   * Some conditioning is a clock — you walk on an incline for twenty
+   * minutes and there is nothing to count. Some of it is sets, and the
+   * clock is only how long you keep taking them: thirty minutes of swings
+   * is not one thirty-minute effort, it is sets of ten with a bell,
+   * repeated until the half hour is up.
+   *
+   * The distinction is worth carrying because the session screen logs
+   * *sets*. A single timed row gives a lifter one thing to tick at the end
+   * of half an hour; rows of ten give them the thing they are actually
+   * counting, and a load to load.
+   */
+  readonly asSets?: {
+    readonly reps: number
+    readonly load: number
+    /**
+     * How often a set starts, not how long you rest between them.
+     *
+     * "On the minute" is an interval: the work and the rest together fill
+     * it. Storing the rest instead makes the same protocol cost more the
+     * heavier the set gets — thirty sets of ten with a minute's rest is
+     * forty-five minutes, not thirty — so the duration and the set count
+     * would quietly disagree with each other.
+     */
+    readonly intervalSeconds: number
+  }
+}
+
+const CONDITIONING_PLANS: Readonly<Record<string, ConditioningPlan>> = {
   'incline-walk': {
     minutes: 20,
     style: ZONE_2_VARIANT,
     note: 'Steep incline, easy pace. You should be able to hold a conversation.',
   },
   'kb-swing': {
-    minutes: 12,
+    minutes: 30,
     style: 'HIIT',
-    note: 'Intervals: 30 seconds hard, 30 seconds rest. Hips, not arms.',
+    // A minute a set: ten swings, then rest what is left of the minute.
+    // Thirty of those is the session.
+    asSets: { reps: 10, load: 60, intervalSeconds: 60 },
+    note: 'Sets of ten on the minute with the 60 lb bell. Hips, not arms.',
   },
 }
 

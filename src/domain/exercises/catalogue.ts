@@ -316,6 +316,32 @@ const ENTRIES: readonly CatalogueEntry[] = [
     notes: 'Doubles as biceps volume, which matters when arms are tier 1.',
   },
   {
+    slug: 'underhand-barbell-row',
+    name: 'Underhand Barbell Row',
+    primaryMuscle: 'upper-back',
+    secondaryMuscles: ['lats', 'biceps', 'rear-delts'],
+    equipment: 'barbell',
+    /*
+     * The same pattern as the overhand row on purpose.
+     *
+     * The weekly repeat penalty keys on `primaryMuscle|pattern`, so
+     * calling this something else would let the week schedule both rows
+     * and count the upper back trained twice by two names — which is the
+     * bug the pattern key exists to stop. Sharing the pattern makes them
+     * one movement that the rotation alternates between, exactly as the
+     * chin-up and the pull-up do for the lats.
+     */
+    pattern: 'horizontal-pull',
+    isCompound: true,
+    intent: 'hypertrophy',
+    // A supinated grip puts the biceps in a stronger position and the lats
+    // in a longer one, so the row is marginally cheaper for the same bar.
+    sfr: 3,
+    systemicCost: 0.45,
+    defaultRestSeconds: REST_HEAVY,
+    notes: 'Underhand grip. Elbows tight to the ribs, bar to the navel.',
+  },
+  {
     slug: 'barbell-row',
     name: 'Barbell Row',
     primaryMuscle: 'upper-back',
@@ -850,7 +876,121 @@ const ENTRIES: readonly CatalogueEntry[] = [
     sfr: 5,
     systemicCost: 0,
     defaultRestSeconds: 0,
-    notes: 'Lower-day warm-up. Contributes no training volume.',
+    /*
+     * Kept, unscheduled, because logs refer to it.
+     *
+     * It was the single lower-day warm-up until the routine was split into
+     * one row per area. No routine names it now, so nothing schedules it —
+     * and deleting it outright would leave every session already logged
+     * against this slug unable to resolve its own exercise.
+     */
+    notes: 'Superseded by the per-area rolling. Kept so old sessions resolve.',
+  },
+
+  /* ---- Rolling, one area per row ------------------------------------ */
+  {
+    slug: 'roll-upper-back',
+    name: 'Roll Upper Back',
+    primaryMuscle: 'upper-back',
+    equipment: 'other',
+    pattern: 'conditioning',
+    isCompound: false,
+    intent: 'conditioning',
+    sfr: 5,
+    systemicCost: 0,
+    defaultRestSeconds: 0,
+    notes: 'Foam roller under the shoulder blades. Ten passes each side.',
+  },
+  {
+    slug: 'roll-lats',
+    name: 'Roll Lats',
+    primaryMuscle: 'lats',
+    equipment: 'other',
+    pattern: 'conditioning',
+    isCompound: false,
+    intent: 'conditioning',
+    sfr: 5,
+    systemicCost: 0,
+    defaultRestSeconds: 0,
+    notes: 'On your side, roller under the armpit. Ten passes each side.',
+  },
+  {
+    slug: 'roll-calves',
+    name: 'Roll Calves',
+    primaryMuscle: 'calves',
+    equipment: 'other',
+    pattern: 'conditioning',
+    isCompound: false,
+    intent: 'conditioning',
+    sfr: 5,
+    systemicCost: 0,
+    defaultRestSeconds: 0,
+    notes: 'Ten passes each side.',
+  },
+  {
+    slug: 'roll-hamstrings',
+    name: 'Roll Hamstrings',
+    primaryMuscle: 'hamstrings',
+    equipment: 'other',
+    pattern: 'conditioning',
+    isCompound: false,
+    intent: 'conditioning',
+    sfr: 5,
+    systemicCost: 0,
+    defaultRestSeconds: 0,
+    notes: 'Ten passes each side.',
+  },
+  {
+    slug: 'roll-it-band',
+    name: 'Roll IT Band',
+    primaryMuscle: 'quads',
+    equipment: 'other',
+    pattern: 'conditioning',
+    isCompound: false,
+    intent: 'conditioning',
+    sfr: 5,
+    systemicCost: 0,
+    defaultRestSeconds: 0,
+    notes: 'Outside of the thigh, hip to knee. Ten passes each side.',
+  },
+  {
+    slug: 'roll-quads',
+    name: 'Roll Quads',
+    primaryMuscle: 'quads',
+    equipment: 'other',
+    pattern: 'conditioning',
+    isCompound: false,
+    intent: 'conditioning',
+    sfr: 5,
+    systemicCost: 0,
+    defaultRestSeconds: 0,
+    notes: 'Ten passes each side.',
+  },
+  {
+    slug: 'roll-groin',
+    name: 'Roll Groin',
+    primaryMuscle: 'glutes',
+    equipment: 'other',
+    pattern: 'conditioning',
+    isCompound: false,
+    intent: 'conditioning',
+    sfr: 5,
+    systemicCost: 0,
+    defaultRestSeconds: 0,
+    notes: 'Inner thigh, face down with the leg out. Ten passes each side.',
+  },
+  {
+    slug: 'roll-hips',
+    name: 'Roll Hips',
+    primaryMuscle: 'glutes',
+    equipment: 'other',
+    pattern: 'conditioning',
+    isCompound: false,
+    intent: 'conditioning',
+    sfr: 5,
+    systemicCost: 0,
+    defaultRestSeconds: 0,
+    notes: 'Ball or roller under the glute. Ten passes each side.',
   },
 ]
 
@@ -924,23 +1064,51 @@ export function conditioningExercises(): readonly Exercise[] {
  */
 export const WARM_UPS = {
   upper: [
-    { slug: 'shoulder-dislocation', sets: 1, reps: 20 },
-    { slug: 'rotator-cuff-plate', sets: 1, reps: 20, note: 'Twenty each side.' },
-    { slug: 'band-pull-apart', sets: 1, reps: 20 },
+    { slug: 'roll-upper-back', sets: 1, reps: 10, note: 'Ten passes each side.' },
+    { slug: 'roll-lats', sets: 1, reps: 10, note: 'Ten passes each side.' },
+    { slug: 'shoulder-dislocation', sets: 1, reps: 10 },
+    { slug: 'rotator-cuff-plate', sets: 1, reps: 10, note: 'Ten each side.' },
+    { slug: 'band-pull-apart', sets: 1, reps: 10 },
   ],
+  /*
+   * One row per area rather than one row listing seven of them.
+   *
+   * This was a single "Foam Rolling" slot whose note read "hamstrings,
+   * quads, IT band, groin, lats, upper back, calves — twenty passes
+   * each". Accurate, and unusable at the moment it matters: a note is one
+   * line of small text and the session screen ticks off *slots*, so seven
+   * areas inside one slot are seven things you either remember or skip
+   * together. Split, each one is a row you tick.
+   *
+   * The lats and upper back moved to the upper routine with the same
+   * reasoning — that is the day they are about to be worked.
+   */
   lower: [
-    {
-      slug: 'foam-roll',
-      sets: 1,
-      reps: 20,
-      note: 'Hamstrings, quads, IT band, groin, lats, upper back, calves — twenty passes each.',
-    },
+    { slug: 'roll-calves', sets: 1, reps: 10, note: 'Ten passes each side.' },
+    { slug: 'roll-hamstrings', sets: 1, reps: 10, note: 'Ten passes each side.' },
+    { slug: 'roll-it-band', sets: 1, reps: 10, note: 'Ten passes each side.' },
+    { slug: 'roll-quads', sets: 1, reps: 10, note: 'Ten passes each side.' },
+    { slug: 'roll-groin', sets: 1, reps: 10, note: 'Ten passes each side.' },
+    { slug: 'roll-hips', sets: 1, reps: 10, note: 'Ten passes each side.' },
   ],
 } as const
 
 export const WARM_UP_SLUGS = {
-  upper: ['shoulder-dislocation', 'rotator-cuff-plate', 'band-pull-apart'],
-  lower: ['foam-roll'],
+  upper: [
+    'roll-upper-back',
+    'roll-lats',
+    'shoulder-dislocation',
+    'rotator-cuff-plate',
+    'band-pull-apart',
+  ],
+  lower: [
+    'roll-calves',
+    'roll-hamstrings',
+    'roll-it-band',
+    'roll-quads',
+    'roll-groin',
+    'roll-hips',
+  ],
 } as const
 
 export const BUILT_IN_EXERCISE_COUNT = ENTRIES.length
