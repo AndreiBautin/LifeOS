@@ -419,9 +419,19 @@ it; that is the same rule every other area follows.
 **Every screen's header comes from `PageHeader`.** It was seventeen
 copies of one class string, and the duplication was the smaller half of
 the problem: a heading over a grey line is what a settings pane looks
-like, so every screen in the app opened the way a form does. The lit rule
-above the title is the accent the section headings carry, turned
-horizontal, so a page and a panel read as the same family at two sizes.
+like, so every screen in the app opened the way a form does.
+
+It briefly carried a lit accent rule above the title, and that is gone
+again — asked about, within a day, by the person using it. **Decoration
+that means nothing has to at least read as structure**, and this did not:
+it sat above whatever `leading` put first, which on Today is the
+portrait, aligned to the container edge with nothing tying it to the
+heading. So it floated in a corner looking like an artifact. The section
+rules work because they are _attached_ — a vertical bar directly beside
+the words it belongs to — and the accent bar now means "section", once,
+everywhere. A page title is the largest thing on its screen and needs no
+badge.
+
 `leading` and `action` exist because three screens already needed
 them — Today's portrait, Character's settings link, Train's two links —
 and a component that could not hold those would have left three headers

@@ -6,9 +6,21 @@ import type { ReactNode } from 'react'
  * It was seventeen copies of the same class string, and the duplication
  * was the smaller half of the problem: a heading and a grey line is what
  * a settings pane looks like, so every screen in the app opened the same
- * way a form does. The lit rule above the title is the same accent the
- * section headings carry, turned horizontal, so a page and a panel are
- * visibly the same family at two different sizes.
+ * way a form does.
+ *
+ * It briefly carried a lit accent rule above the title, and that is gone
+ * again. **A mark that means nothing has to at least read as structure,
+ * and this one read as a stray artifact**: it sat above whatever `leading`
+ * put first — the portrait, on Today — aligned to the container edge with
+ * nothing tying it to the heading, so it floated in the corner. The
+ * section rules work because they are attached: a vertical bar directly
+ * beside the words it belongs to.
+ *
+ * The hierarchy is better without it, which is the part worth keeping. A
+ * page title is already the largest thing on the screen and needs no
+ * badge; the accent bar now means "section", once, and every screen reads
+ * the same way. The test it failed is the only one decoration has: it was
+ * asked about.
  *
  * `leading` and `action` exist because three screens already had them —
  * Today's portrait, Character's settings link, Train's Plan and History
@@ -28,12 +40,6 @@ export function PageHeader({
 }) {
   return (
     <header className="mb-6">
-      <span
-        aria-hidden
-        className="bg-accent-500 mb-2.5 block h-0.5 w-8 rounded-full"
-        style={{ boxShadow: '0 0 10px -1px var(--color-accent-500)' }}
-      />
-
       <div className="flex items-end justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
           {leading}
