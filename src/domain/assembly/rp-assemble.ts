@@ -276,7 +276,7 @@ function buildWeek(
    * demand. So a paired day takes one of each, and which lift shows its
    * competition version alternates.
    *
-   * Lower 1 is low bar and conventional; Lower 2 is high bar and sumo.
+   * Lower 1 is low bar and conventional; Lower 2 is sumo and high bar.
    */
   let pairedDays = 0
 
@@ -286,21 +286,40 @@ function buildWeek(
     const pairIndex = paired ? pairedDays : 0
     if (paired) pairedDays += 1
 
-    const built = lifts.map((lift, position) => {
+    /*
+     * The competition lift opens a paired day, and the variation follows.
+     *
+     * The lift being *measured* is the one that should meet a fresh
+     * lifter: a top set is a reading before it is training, and taking it
+     * after another lift's top set and back-offs reads low for a reason
+     * that has nothing to do with strength. The variation is the one that
+     * can afford to be second.
+     *
+     * This also settles a question left open twice. The order was
+     * alternating, then fixed to squat-first on request, and the note
+     * against fixing it was that whichever lift is second is second every
+     * session for a whole block — the deadlift became permanently the
+     * tired lift. Ordering by which lift is competing today alternates
+     * naturally, because *that* alternates: neither lift is always second
+     * and neither is always the one being measured.
+     */
+    const ordered = paired && pairIndex % 2 === 1 ? [...lifts].reverse() : lifts
+
+    const built = ordered.map((lift, position) => {
       const session = sessionsSoFar.get(lift) ?? 0
       sessionsSoFar.set(lift, session + 1)
 
       /*
-       * On its own, a lift walks its rotation in order and index 0 is the
-       * competition version — which is what makes dropping a lift to one
-       * session a week cost the variations rather than the lift the total
-       * is measured on.
+       * A lift alone on its day walks its rotation in order, and index 0
+       * is the competition version — which is what makes dropping a lift
+       * to one session a week cost the variations rather than the lift the
+       * total is measured on.
        *
-       * On a paired day the position in the pair shifts it, so the two
-       * lifts are never on the same footing: the first takes the pair's
-       * index and the second takes the one after it.
+       * On a paired day the index is the position: the lift that opens is
+       * competing and takes index 0, the one that follows takes its
+       * variation.
        */
-      const variation = paired ? pairIndex + position : session
+      const variation = paired ? position : session
 
       return buildStrengthSlots(recipe, deps, lift, variation, isDeload)
     })

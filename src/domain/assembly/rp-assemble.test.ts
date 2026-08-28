@@ -171,17 +171,18 @@ describe('the assembled block', () => {
      * a lift that is never trained fresh. See `assignStrengthLifts`.
      *
      * A day with two competition lifts runs one at its competition
-     * version and the other at its variation, and which one alternates.
-     * Two maximal efforts in one session is the thing being avoided.
+     * version and the other at its variation, and the competing lift goes
+     * first. Two maximal efforts in one session is the thing avoided; a
+     * top set taken after another lift's is the other.
      *
-     * So Tuesday is low bar and conventional, Friday is high bar and sumo.
-     * The bench, alone on its days, walks its rotation in order.
+     * So Tuesday is low bar then conventional, Friday is sumo then high
+     * bar. The bench, alone on its days, walks its rotation in order.
      */
     expect(mains).toEqual([
       ['paused-bench-press'],
       ['low-bar-squat', 'conventional-deadlift'],
       ['bench-press'],
-      ['high-bar-squat', 'sumo-deadlift'],
+      ['sumo-deadlift', 'high-bar-squat'],
     ])
   })
 
@@ -267,40 +268,42 @@ describe('the assembled block', () => {
   })
 
   /*
-   * The squat opens every lower day, and this test is the record of what
-   * that costs.
+   * The competition lift opens a paired day.
    *
-   * It used to assert the opposite — that two lifts sharing a pair of
-   * days must not appear in the same order on both — because whichever
-   * lift is second is second after a full top set and its back-offs,
-   * every session, and never gets a day where it is the priority.
+   * The lift being *measured* should meet a fresh lifter: a top set is a
+   * reading before it is training, and taking it after another lift's top
+   * set and back-offs reads low for a reason that has nothing to do with
+   * strength.
    *
-   * Squat-then-pull was asked for directly, and the order of two lifts in
-   * a session is a training preference rather than a correctness
-   * property. So the assertion is inverted rather than deleted: the
-   * arrangement is deliberate and a future change that quietly
-   * reintroduces alternation should have to say so here.
+   * This has been three things. It alternated by day, then was fixed to
+   * squat-first on request — which left a note that whichever lift is
+   * second is second every session for a whole block, making the deadlift
+   * permanently the tired lift. Ordering by which lift is competing today
+   * alternates on its own, because that alternates, so the concern the
+   * note recorded is answered rather than accepted.
    */
-  it('opens every lower day with the squat', () => {
-    const liftOf = (slug: string): string =>
-      Object.entries(STRENGTH_VARIATIONS).find(([, slugs]) => slugs.includes(slug))?.[0] ?? slug
+  it('opens a paired day with the lift that is competing', () => {
     const week = block?.weeks[0]
-    const pairs = (week?.days ?? [])
-      .map((day) => [
+    let paired = 0
+
+    for (const day of week?.days ?? []) {
+      const mains = [
         ...new Set(
           day.slots
             .filter((slot) => slot.role === 'strength')
             .flatMap((slot) =>
-              slot.exercise.kind === 'specific' ? [liftOf(slot.exercise.exerciseId)] : [],
+              slot.exercise.kind === 'specific' ? [slot.exercise.exerciseId] : [],
             ),
         ),
-      ])
-      .filter((lifts) => lifts.length > 1)
+      ]
+      if (mains.length < 2) continue
 
-    expect(pairs.length).toBeGreaterThan(1)
-    for (const pair of pairs) {
-      expect(pair).toEqual(['squat', 'deadlift'])
+      paired += 1
+
+      expect(lookup(mains[0] ?? '')?.isCompetition, `${day.label}: ${mains.join(', ')}`).toBe(true)
     }
+
+    expect(paired).toBeGreaterThan(1)
   })
 
   /*
@@ -447,10 +450,12 @@ describe('naming a day after what is in it', () => {
     const friday = week.days[3]
 
     expect(tuesday?.focus).toMatch(/^Low Bar Squat and Conventional Deadlift, then /)
-    // Friday names the high bar and the sumo, because those are what it
-    // actually holds — a description saying "Low Bar Squat" on the day the
-    // bar sits high would be the hardcoded-label failure in a new place.
-    expect(friday?.focus).toMatch(/^High Bar Squat and Sumo Deadlift, then /)
+    // Friday names the sumo first and then the high bar, because that is
+    // the order it holds them in — a description saying "Low Bar Squat" on
+    // the day the bar sits high would be the hardcoded-label failure in a
+    // new place, and one naming them out of order would be a smaller
+    // version of it.
+    expect(friday?.focus).toMatch(/^Sumo Deadlift and High Bar Squat, then /)
 
     // Without the parenthetical variant, which is catalogue bookkeeping.
     expect(tuesday?.focus).not.toContain('(')

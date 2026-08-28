@@ -851,18 +851,27 @@ first.** `STRENGTH_VARIATIONS` in `domain/exercises/catalogue.ts`. The
 bench runs **paused, touch-and-go**, the squat **low bar, high bar**, the
 deadlift **sumo, conventional**.
 
-**A day holding two competition lifts runs one comp and one variation.**
-Two maximal efforts in one session is the thing avoided, and the variation
-exists partly so the second lift of a day is a slightly different demand.
-Which lift shows its competition version alternates between the paired
-days, so neither is always the one being measured: **Lower 1 is low bar
-and conventional, Lower 2 is high bar and sumo.**
+**A day holding two competition lifts runs one comp and one variation,
+and the competing lift goes first.** Two maximal efforts in one session is
+one thing avoided; a top set taken _after_ another lift's top set and
+back-offs is the other — a top set is a reading before it is training, and
+that one reads low for a reason that has nothing to do with strength.
+**Lower 1 is low bar then conventional, Lower 2 is sumo then high bar.**
 
 That is why a paired day takes its variation index from its position in
-the pair rather than from the lift's own session ordinal. A lift alone on
-its day still walks the rotation in order — which is what makes dropping a
-lift to one session a week cost the variations rather than the lift the
-total is measured on.
+the pair rather than from the lift's own session ordinal: the lift that
+opens is competing and takes index 0. A lift alone on its day still walks
+the rotation in order — which is what makes dropping a lift to one session
+a week cost the variations rather than the lift the total is measured on.
+
+**The within-day order has been three things, and the third answers the
+objection the second one recorded.** It alternated by day; then it was
+fixed to squat-first, with a note that whichever lift is second is second
+every session for a whole block, making the deadlift permanently the tired
+lift. Ordering by which lift is competing today alternates on its own,
+because that alternates — so neither lift is always second and neither is
+always the one being measured. `rp-assemble.test.ts` → "opens a paired day
+with the lift that is competing".
 
 **A rotation shorter than the frequency repeats.** `strengthSlugFor` takes
 the index modulo the rotation length, so a single entry is a deliberate
