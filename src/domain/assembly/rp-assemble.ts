@@ -2056,8 +2056,64 @@ function inSessionOrder(
     })
     .map((entry) => entry.slot)
 
-  if (!reverseAccessories) return sorted
+  const ordered = reverseAccessories ? reverseAccessoryBlocks(sorted) : sorted
 
+  return trailingLast(ordered, library)
+}
+
+/**
+ * The grip and the trunk go last, after every other lift and before the
+ * conditioning.
+ *
+ * Both are prime movers in work they are not the point of. Forearms hold
+ * every row, chin-up and deadlift, and a session that curls the wrists
+ * first arrives at its pulling with a grip that gives out before the lats
+ * do. The trunk braces every squat and every press for the same reason.
+ * Whatever else a session gets wrong, it should not spend these two
+ * before the work that depends on them.
+ *
+ * Applied *after* the alternating reversal rather than inside the sort,
+ * because the reversal would otherwise flip them to the front on every
+ * second session — which is exactly the arrangement this exists to
+ * prevent, arriving by a route that looks like variety.
+ *
+ * Conditioning is untouched and stays at the end: it is the one thing
+ * after these, and a Zone 2 walk asks nothing of a grip.
+ */
+const TRAILING_MUSCLES: readonly MuscleGroup[] = ['forearms', 'core']
+
+function trailingLast(slots: readonly Slot[], library: readonly Exercise[]): readonly Slot[] {
+  const isTrailing = (slot: Slot): boolean => {
+    if (slot.role !== 'hypertrophy' && slot.role !== 'assistance') return false
+
+    const ref = slot.exercise
+    if (ref.kind !== 'specific') return false
+
+    const exercise = library.find((candidate) => candidate.id === ref.exerciseId)
+
+    return exercise !== undefined && TRAILING_MUSCLES.includes(exercise.primaryMuscle)
+  }
+
+  const trailing = slots.filter(isTrailing)
+  if (trailing.length === 0) return slots
+
+  /*
+   * Reinserted at the last accessory position rather than appended, so
+   * the conditioning stays where `rank` put it. Appending would move a
+   * kettlebell swing ahead of a wrist curl and quietly undo "finishes
+   * with conditioning".
+   */
+  const rest = slots.filter((slot) => !isTrailing(slot))
+  const lastAccessory = rest.reduce(
+    (at, slot, index) =>
+      slot.role === 'hypertrophy' || slot.role === 'assistance' ? index + 1 : at,
+    0,
+  )
+
+  return [...rest.slice(0, lastAccessory), ...trailing, ...rest.slice(lastAccessory)]
+}
+
+function reverseAccessoryBlocks(sorted: readonly Slot[]): readonly Slot[] {
   /*
    * On alternate sessions of a region, the accessories run backwards.
    *

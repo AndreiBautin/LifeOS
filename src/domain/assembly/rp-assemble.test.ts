@@ -1122,6 +1122,80 @@ describe('the order a session is performed in', () => {
     }
   })
 
+  /*
+   * The grip and the trunk go last, after every other lift.
+   *
+   * Both are prime movers in work they are not the point of: forearms
+   * hold every row, chin-up and deadlift, and the trunk braces every
+   * squat and press. A session that curls the wrists first arrives at its
+   * pulling with a grip that gives out before the lats do.
+   *
+   * Built with them turned on, because the shipped settings train neither
+   * — a rule that only fires on a configuration nobody runs is a rule
+   * nobody is testing.
+   */
+  it('puts the forearms and the trunk after everything else they hold', () => {
+    const week = weekAt(
+      build({
+        muscleVolumes: {
+          ...DEFAULT_MUSCLE_VOLUMES,
+          forearms: { sessionsPerWeek: 2, level: 'low' },
+          core: { sessionsPerWeek: 2, level: 'low' },
+        },
+      }),
+      3,
+    )
+
+    let seen = 0
+
+    for (const day of week.days) {
+      const accessories = day.slots.filter(
+        (slot) => slot.role === 'hypertrophy' || slot.role === 'assistance',
+      )
+
+      const trailing = accessories.flatMap((slot, index) => {
+        if (slot.exercise.kind !== 'specific') return []
+        const muscle = lookup(slot.exercise.exerciseId)?.primaryMuscle
+        return muscle === 'forearms' || muscle === 'core' ? [index] : []
+      })
+      if (trailing.length === 0) continue
+
+      seen += 1
+
+      // Every one of them sits in the final positions of the block.
+      const expected = accessories.length - trailing.length
+      expect(trailing, day.label).toEqual(trailing.map((_unused, offset) => expected + offset))
+    }
+
+    expect(seen).toBeGreaterThan(1)
+  })
+
+  /*
+   * And the conditioning still comes after them. Appending the trailing
+   * muscles rather than reinserting them would put a kettlebell swing
+   * ahead of a wrist curl and quietly undo the rule below.
+   */
+  it('keeps conditioning after the trailing muscles', () => {
+    const week = weekAt(
+      build({
+        muscleVolumes: {
+          ...DEFAULT_MUSCLE_VOLUMES,
+          forearms: { sessionsPerWeek: 2, level: 'low' },
+          core: { sessionsPerWeek: 2, level: 'low' },
+        },
+      }),
+      3,
+    )
+
+    for (const day of week.days) {
+      const roles = day.slots.map((slot) => slot.role)
+      const conditioning = roles.indexOf('conditioning')
+      if (conditioning === -1) continue
+
+      expect(conditioning, day.label).toBe(roles.length - 1)
+    }
+  })
+
   it('finishes with conditioning', () => {
     for (const [index, day] of week.days.entries()) {
       const roles = rolesOn(index)

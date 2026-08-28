@@ -856,6 +856,26 @@ warm-ups, the competition lift, compounds heaviest-first, isolation,
 conditioning. Without it a day opened with a maximal deadlift, went to a
 calf raise, and came back to a squat.
 
+**The grip and the trunk go last.** `TRAILING_MUSCLES` — forearms and
+core — sort after every other lift and before the conditioning. Both are
+prime movers in work they are not the point of: the forearms hold every
+row, chin-up and deadlift, and the trunk braces every squat and press. A
+session that curls the wrists first arrives at its pulling with a grip
+that gives out before the lats do.
+
+Applied **after** the alternating reversal rather than inside the sort,
+because the reversal would otherwise flip them to the front on every
+second session — the exact arrangement this prevents, arriving by a route
+that looks like variety. And reinserted at the last accessory position
+rather than appended, or a kettlebell swing ends up ahead of a wrist curl
+and "finishes with conditioning" is quietly undone.
+
+Worth knowing where they land: **the forearms are on upper days and the
+core is on lower ones** (`LOWER` in `rp-splits.ts`), so the rule shows up
+as a wrist curl closing an upper session and ab work closing a lower one.
+Both are at zero sessions by default, so neither is scheduled until
+somebody turns them on.
+
 **The accessories run backwards on alternate sessions of a region.**
 Compounds still precede isolation — each block is reversed within itself,
 never across the boundary — so what changes is which muscle meets a fresh
