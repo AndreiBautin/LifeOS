@@ -139,7 +139,31 @@ export interface AppSettings {
   readonly schemaVersion: number
 }
 
-export const SETTINGS_SCHEMA_VERSION = 1
+/**
+ * Bumped when a stored setting can no longer express what the app means
+ * by it, so the parse can re-seed that field instead of carrying an
+ * answer to a question that has changed.
+ *
+ * **2** — the overhead press became a fourth strength lift and the bench
+ * dropped to one session a week. A `liftSessions` map written before that
+ * has no `press` key and a `bench` of 2.
+ *
+ * This exists because of a gap worth naming: settings are persisted on
+ * first run, so **the store cannot tell a value the lifter chose from a
+ * default it saved on their behalf.** `completeLiftSessions` correctly
+ * refuses to overwrite either, which meant a shipped change to the
+ * defaults reached nobody who had ever opened the app — the programme on
+ * the device went on using numbers from the version it was installed
+ * under, and the only way out was a button on the Settings screen that
+ * nobody knew to press.
+ *
+ * The version is the narrow fix: it re-seeds one named field, once, when
+ * the meaning of that field has actually changed. It is not a licence to
+ * reset settings whenever the defaults move — a lifter who has chosen
+ * something keeps it, and the divergence card on the Settings screen is
+ * still how *that* is surfaced.
+ */
+export const SETTINGS_SCHEMA_VERSION = 2
 
 export const DEFAULT_SETTINGS: AppSettings = {
   units: 'lb',

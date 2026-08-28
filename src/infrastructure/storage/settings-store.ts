@@ -202,9 +202,7 @@ function mergeWithDefaults(parsed: unknown): AppSettings {
     muscleVolumes: isRecord(stored.muscleVolumes)
       ? completeMuscleVolumes(stored.muscleVolumes)
       : DEFAULT_SETTINGS.muscleVolumes,
-    liftSessions: isRecord(stored.liftSessions)
-      ? completeLiftSessions(stored.liftSessions)
-      : DEFAULT_SETTINGS.liftSessions,
+    liftSessions: liftSessionsOf(stored),
     fatiguePercent: clampFatiguePercent(stored.fatiguePercent),
     daysPerWeek: asBoundedNumber(stored.daysPerWeek, 2, 6, DEFAULT_SETTINGS.daysPerWeek),
     weeksBeforeDeload: asBoundedNumber(
@@ -250,6 +248,31 @@ function mergeWithDefaults(parsed: unknown): AppSettings {
     ...(typeof stored.lastExportAt === 'string' ? { lastExportAt: stored.lastExportAt } : {}),
     schemaVersion: SETTINGS_SCHEMA_VERSION,
   }
+}
+
+/**
+ * The stored lift sessions, re-seeded when they predate the fourth lift.
+ *
+ * A map written before the overhead press joined `STRENGTH_LIFTS` cannot
+ * express the arrangement the app now ships: it has no `press` key, and
+ * its `bench` of 2 was the shipped default at the time rather than a
+ * choice anybody made. `completeLiftSessions` would fill the press in and
+ * keep the bench at 2, which is neither the old programme nor the new one
+ * — the bench takes both upper days and the press has nowhere to go.
+ *
+ * So a stored copy older than schema 2 is replaced wholesale rather than
+ * completed. That does overwrite a genuine choice, once, for anyone who
+ * had deliberately set the bench to twice a week — which is the cost of
+ * not being able to tell that apart from a default, and is why the
+ * version is bumped for a *change of meaning* rather than for every
+ * change of value.
+ */
+function liftSessionsOf(stored: Record<string, unknown>): AppSettings['liftSessions'] {
+  const version = typeof stored.schemaVersion === 'number' ? stored.schemaVersion : 0
+
+  if (version < 2 || !isRecord(stored.liftSessions)) return DEFAULT_SETTINGS.liftSessions
+
+  return completeLiftSessions(stored.liftSessions)
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

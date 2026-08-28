@@ -663,6 +663,28 @@ Winter is named for the year it **ends** in, so December 2025 and January
 2026 are both Winter 2026 — the one case in here worth a test, and it has
 several.
 
+**A shipped change to a default reaches nobody who has already opened the
+app, and `SETTINGS_SCHEMA_VERSION` is the way out.** Settings are
+persisted on first run, so **the store cannot tell a value the lifter
+chose from a default it saved on their behalf.** `completeLiftSessions`
+and `completeMuscleVolumes` correctly refuse to overwrite either — which
+meant the overhead press shipped and nobody saw it, because every stored
+copy had `bench: 2` and no `press` key. The programme on the device went
+on using numbers from the version it was installed under, and the only
+way out was a button on the Settings screen nobody knew to press.
+
+The version was stored and never read, deciding nothing. It now gates
+`liftSessionsOf` in `settings-store.ts`: a copy older than schema 2 is
+re-seeded wholesale rather than completed, because completing it produces
+neither the old programme nor the new one — the bench keeps both upper
+days and the press has nowhere to go.
+
+**Bump it for a change of _meaning_, not for every change of value.** It
+overwrites a real choice, once, for anyone who had deliberately set the
+bench to twice a week; that is the price of not being able to tell that
+apart from a default. A default that merely moves is still surfaced by the
+divergence card rather than forced.
+
 **A field added to `AppSettings` must be added to the parse.**
 `infrastructure/storage/settings-store.ts` builds its result field by
 field rather than spreading, which is what makes an unknown blob safe —
