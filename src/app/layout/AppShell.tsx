@@ -107,17 +107,44 @@ export function AppShell() {
         <ul className="mx-auto flex max-w-2xl">
           {NAV.map(({ to, label, Icon }) => (
             <li key={to} className="flex-1">
+              {/*
+                The active tab is lit rather than merely recoloured.
+
+                A colour change alone is the weakest signal a navigation
+                can give, and it was the only one here — on a dark bar,
+                one label in orange among seven greys reads as a slightly
+                different grey at a glance. The rail above the icon and
+                the halo behind it are both anchored to the tab, so the
+                answer to "where am I" survives being seen out of the
+                corner of an eye in a gym.
+              */}
               <NavLink
                 to={to}
                 className={({ isActive }) =>
                   [
-                    'tap-target flex flex-col items-center justify-center gap-1 py-2.5 text-xs font-medium transition-colors',
+                    'tap-target relative flex flex-col items-center justify-center gap-1 py-2.5 text-xs font-medium transition-colors',
                     isActive ? 'text-accent-400' : 'text-ink-500 hover:text-ink-300',
                   ].join(' ')
                 }
               >
                 {({ isActive }) => (
                   <>
+                    {isActive && (
+                      <span
+                        aria-hidden
+                        className="bg-accent-500 absolute inset-x-3 top-0 h-0.5 rounded-full"
+                        style={{ boxShadow: '0 0 8px var(--color-accent-500)' }}
+                      />
+                    )}
+                    <span
+                      aria-hidden
+                      className="pointer-events-none absolute top-1.5 h-8 w-8 rounded-full transition-opacity"
+                      style={{
+                        background:
+                          'radial-gradient(closest-side, color-mix(in oklab, var(--color-accent-500) 30%, transparent), transparent)',
+                        opacity: isActive ? 1 : 0,
+                      }}
+                    />
                     <Icon size={20} aria-hidden strokeWidth={isActive ? 2.4 : 1.8} />
                     <span>{label}</span>
                   </>

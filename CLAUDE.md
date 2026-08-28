@@ -416,6 +416,31 @@ whose job is to show movement. Consistency levelled the session count,
 which XP already spends. Nothing measures conditioning, so nothing scores
 it; that is the same rule every other area follows.
 
+**Visual work has to land on what is always on screen, and the first
+attempt did not.** A whole pass went into a weight chart, meters and
+motion, and the honest report from the person using it was that it looked
+the same. It did, and the reason is worth keeping: **almost all of it was
+conditional on data.** The chart needs two weigh-ins inside twenty-eight
+days, the season bar needs a previous season to beat, the meters replaced
+bars that already existed, and a gradient on a six-pixel bar is invisible.
+Meanwhile `body` was a flat colour and `.card` was a flat colour with a
+hairline border — the two rules that render on every route, untouched.
+
+So the ordering rule: **change the always-visible surfaces first, and the
+data-conditional ones after.** Page background, card, navigation,
+section heading, primary button. Those five are on screen on an empty
+database, and they are what "does it look different" actually means.
+
+**A card reads as a panel through three cheap things**: a vertical
+gradient so the surface is not uniform, an inset hairline along the top
+so it catches light, and a shadow so it sits above the page. None of them
+is `backdrop-filter`, which must stay off the surface that scrolls.
+
+**The sheen and shadow are tokens because they invert.** A highlight is
+white on dark and _nothing_ on white, so a hardcoded
+`rgba(255,255,255,…)` would draw a bright smear along the top of every
+card in the light theme. `--card-sheen` is transparent there.
+
 **`Meter` takes `value` and `of`, and there is no `percent` prop.**
 `components/shared/Meter.tsx`. A percentage is where a denominator goes
 to hide: a bar at 70% of a threshold this app invented looks exactly like

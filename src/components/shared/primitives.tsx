@@ -35,7 +35,16 @@ export function Section({ title, description, action, children }: SectionProps) 
   return (
     <section className="mb-8">
       <div className="mb-3 flex items-end justify-between gap-3">
-        <div>
+        {/*
+          A lit rule beside the heading, so a section reads as a panel
+          rather than as a paragraph that happens to be bold. It is
+          `aria-hidden` and carries no meaning — the heading is still the
+          heading, and a screen reader gets exactly what it did before.
+        */}
+        <div
+          className="min-w-0 border-l-2 pl-2.5"
+          style={{ borderColor: 'var(--color-accent-500)' }}
+        >
           <h2 className="text-ink-50 text-lg font-semibold tracking-tight">{title}</h2>
           {description !== undefined && (
             <p className="text-ink-500 mt-0.5 text-sm">{description}</p>
