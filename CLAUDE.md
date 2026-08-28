@@ -1091,6 +1091,35 @@ last-write-wins fixes that.
 a bad reading cannot be put back, for the same reason there is no
 tombstone. Do not relax it to make the map feel more responsive indoors.
 
+**The geocoder is on the add form now, and the reason it was not is
+worth keeping.** `usePlaceSearch` was complete from the start — debounced,
+rate-limited, tested — and reachable from exactly one screen: the inbox,
+where it _repairs_ a place saved without a point. So the ordinary path,
+the one everybody actually takes (open the map, press Add, type a name),
+had no geocoding at all and produced either a pin dropped wherever you
+happened to be standing or an entry with no location to go and fix
+somewhere else. **A capability reachable from one screen that nobody
+starts on is, from the outside, a capability the app does not have** —
+the same shape as a rule nothing can trip, and it took a report of "it
+doesn't autofill like Google Maps would" to find it.
+
+**Results are biased by `near`, and that is most of what makes it feel
+like a map.** "The coffee place" near you and "the coffee place" in
+another country are different answers and only one is ever wanted. The
+map's own centre is passed in.
+
+**A chosen result beats the GPS fix.** Both answer "where is this" and
+only one was chosen deliberately; filing a searched-for restaurant at
+your own front door because the device had a fix is the worse of the two
+by a wide margin.
+
+**Picking is optional, and must stay optional.** A place with no point is
+a deliberate, supported entry — a name you mean to resolve later — so the
+suggestions are an offer, not a gate, and a name the geocoder has never
+heard of still adds. **The pick is dropped the moment the text changes**,
+or "Blue Bottle" edited into "Blue Mountain" would file the second name
+at the first one's coordinates.
+
 **The atlas talks to OpenStreetMap, and only to OpenStreetMap.**
 Tiles from `tile.openstreetmap.org`, and geocoding from Nominatim in the
 inbox's search. Both are rate-limited services run on donations: Nominatim

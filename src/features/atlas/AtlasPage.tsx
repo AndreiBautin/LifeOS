@@ -16,6 +16,7 @@ import { Link } from 'react-router-dom'
 import type { MapMarker } from '@/application/use-cases/atlas/MapAdapterProps'
 import { ATLAS_CATEGORIES } from '@/application/use-cases/atlas/atlas'
 import { exploredBounds, formatArea } from '@/application/use-cases/atlas/exploration'
+import type { PlaceSearchResult } from '@/domain/atlas/PlaceSearch'
 import { filterPlaces } from '@/application/use-cases/atlas/FilterPlaces'
 import { sortPlaces, type PlaceSortOption } from '@/application/use-cases/atlas/SortPlaces'
 import { Badge, Button, Card, Empty, Section } from '@/components/shared/primitives'
@@ -25,6 +26,10 @@ import type { Coordinates } from '@/domain/atlas/place/Coordinates'
 import { isResolved, type Place } from '@/domain/atlas/place/Place'
 
 import { PasteList } from './PasteList'
+// The geocoder lives with the inbox because that is where it was first
+// needed. It is the same hook, the same debounce and the same rate
+// floor — this screen just had no way to reach it.
+import { usePlaceSearch } from './inbox-hooks'
 import {
   useAddPlace,
   useAtlas,
@@ -132,10 +137,102 @@ function PlaceRow({ place }: { readonly place: Place }) {
   )
 }
 
-function AddPlace({ at }: { readonly at?: Coordinates }) {
+/**
+ * Adding a place, with the geocoder that was already here.
+ *
+ * The search existed from the start and was reachable from exactly one
+ * screen: the inbox, where it *repairs* a place saved without a point.
+ * So the ordinary path — open the map, press Add, type a name — had no
+ * geocoding at all, and produced either a pin dropped wherever you were
+ * standing or an entry with no location that you had to go and fix
+ * somewhere else. The machinery was complete; nothing connected it to
+ * the form people actually use.
+ *
+ * **Picking a suggestion is optional and always was.** A place with no
+ * point is a deliberate, supported entry — a name you mean to resolve
+ * later — so the suggestions sit under the field as an offer rather than
+ * a requirement, and typing a name nobody has heard of still adds it.
+ */
+/**
+ * Suggestions under the name field.
+ *
+ * Biased toward where the map is looking, which is most of what makes
+ * this feel like a map rather than a search engine: "the coffee place"
+ * near you and "the coffee place" in another country are different
+ * answers, and only one of them is ever wanted.
+ *
+ * Silent until there is something to say. `usePlaceSearch` will not fire
+ * below three characters and debounces for half a second — Nominatim is
+ * run on donations and allows one request a second — so an empty list
+ * here usually means "still typing" rather than "nothing exists", and
+ * saying either would be wrong.
+ */
+function AddSuggestions({
+  query,
+  near,
+  onPick,
+}: {
+  readonly query: string
+  readonly near?: Coordinates
+  readonly onPick: (result: PlaceSearchResult) => void
+}) {
+  const search = usePlaceSearch(query, near)
+
+  if (query.trim().length < 3) return null
+  if (search.isFetching) return <p className="text-ink-600 mt-1.5 text-xs">Looking…</p>
+
+  if (search.error !== null) {
+    return (
+      <p role="alert" className="text-bad-500 mt-1.5 text-xs">
+        {search.error.message}
+      </p>
+    )
+  }
+
+  if (search.data === undefined) return null
+
+  if (search.data.length === 0) {
+    return (
+      <p className="text-ink-600 mt-1.5 text-xs">
+        Nothing found by that name — you can still add it and place it later.
+      </p>
+    )
+  }
+
+  return (
+    <ul className="divide-ink-800 border-ink-800 mt-1.5 divide-y rounded-lg border">
+      {search.data.slice(0, 5).map((result) => (
+        <li key={`${result.providerId}:${result.providerPlaceId}`}>
+          <button
+            type="button"
+            className="hover:bg-ink-850 w-full px-2 py-2 text-left"
+            onClick={() => {
+              onPick(result)
+            }}
+          >
+            <span className="text-ink-100 block truncate text-sm">{result.name}</span>
+            <span className="text-ink-600 block truncate text-xs">{result.displayName}</span>
+          </button>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+function AddPlace({ at, near }: { readonly at?: Coordinates; readonly near?: Coordinates }) {
   const add = useAddPlace()
   const [name, setName] = useState('')
   const [categoryId, setCategoryId] = useState<string>('other')
+
+  /*
+   * What the geocoder returned for the name in the box, if anything was
+   * chosen. Cleared the moment the text changes again: a pin from
+   * "Blue Bottle" must not survive being edited to "Blue Mountain", which
+   * would file the second name at the first one's coordinates.
+   */
+  const [picked, setPicked] = useState<
+    { readonly coordinates: Coordinates; readonly label: string } | undefined
+  >(undefined)
 
   return (
     <Card className="mb-3">
@@ -145,36 +242,67 @@ function AddPlace({ at }: { readonly at?: Coordinates }) {
           event.preventDefault()
           if (name.trim() === '') return
 
+          /*
+           * A chosen result wins over where you are standing. Both are
+           * real answers to "where is this", and only one of them was
+           * chosen deliberately — dropping a searched-for restaurant at
+           * your own front door because the GPS had a fix would be the
+           * worse of the two by a wide margin.
+           */
+          const point = picked?.coordinates ?? at
+
           add.mutate(
             {
               name,
               categoryId: categoryId as CategoryId,
-              /*
-               * Captured at wherever the map is looking, when it is
-               * looking somewhere real. A place with no point is a
-               * perfectly good entry — it is a name you mean to resolve
-               * later — so this is not required.
-               */
-              ...(at === undefined ? {} : { latitude: at.latitude, longitude: at.longitude }),
+              ...(point === undefined
+                ? {}
+                : { latitude: point.latitude, longitude: point.longitude }),
             },
             {
               onSuccess: (result) => {
                 if (result.error !== undefined) return
                 setName('')
+                setPicked(undefined)
               },
             },
           )
         }}
       >
-        <input
-          className={FIELD}
-          value={name}
-          aria-label="Somewhere to go"
-          placeholder="Somewhere you want to go"
-          onChange={(event) => {
-            setName(event.target.value)
-          }}
-        />
+        <div>
+          <input
+            className={FIELD}
+            value={name}
+            aria-label="Somewhere to go"
+            placeholder="Somewhere you want to go"
+            autoComplete="off"
+            onChange={(event) => {
+              setName(event.target.value)
+              setPicked(undefined)
+            }}
+          />
+
+          {picked === undefined ? (
+            <AddSuggestions
+              query={name}
+              {...(near === undefined ? {} : { near })}
+              onPick={(result) => {
+                setName(result.name)
+                setPicked({ coordinates: result.coordinates, label: result.displayName })
+              }}
+            />
+          ) : (
+            /*
+             * What was chosen, spelled out. Two results can share a name
+             * three streets apart, so the confirmation has to be the
+             * provider's full label rather than a tick.
+             */
+            <p className="text-ink-600 mt-1.5 flex items-start gap-1.5 text-xs">
+              <MapPin size={12} className="mt-0.5 shrink-0" aria-hidden />
+              <span className="min-w-0">{picked.label}</span>
+            </p>
+          )}
+        </div>
 
         <div className="flex gap-2">
           <label className="flex-1">
@@ -203,7 +331,7 @@ function AddPlace({ at }: { readonly at?: Coordinates }) {
 
         <Button type="submit" variant="primary" full disabled={add.isPending}>
           <Plus size={16} aria-hidden />
-          Add {at === undefined ? 'a place' : 'here'}
+          {picked !== undefined ? 'Add this one' : at === undefined ? 'Add a place' : 'Add here'}
         </Button>
       </form>
     </Card>
@@ -393,7 +521,12 @@ export function AtlasPage() {
           </div>
         }
       >
-        {adding && <AddPlace {...(walk.fix === undefined ? {} : { at: walk.fix.coordinates })} />}
+        {adding && (
+          <AddPlace
+            {...(walk.fix === undefined ? {} : { at: walk.fix.coordinates })}
+            near={centre}
+          />
+        )}
         {pasting && <PasteList />}
 
         {places.length === 0 ? (
