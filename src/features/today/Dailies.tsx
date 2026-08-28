@@ -31,14 +31,27 @@ const FIELD =
 const WEEKDAY_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S']
 const WEEKDAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 
+/** 1st, 2nd, 3rd, 4th — for reading a day of the month back. */
+function ordinal(day: number): string {
+  const tens = day % 100
+  if (tens >= 11 && tens <= 13) return `${String(day)}th`
+
+  const suffix = ['th', 'st', 'nd', 'rd'][day % 10] ?? 'th'
+
+  return `${String(day)}${suffix}`
+}
+
 function cadenceLabel(cadence: Cadence): string {
   if (cadence.kind === 'every-day') return 'Every day'
   if (cadence.days.length === 0) return 'No days set'
 
-  return [...cadence.days]
-    .sort((a, b) => a - b)
-    .map((day) => WEEKDAY_LABELS[day] ?? '?')
-    .join(' ')
+  const sorted = [...cadence.days].sort((a, b) => a - b)
+
+  if (cadence.kind === 'days-of-month') {
+    return sorted.map(ordinal).join(', ')
+  }
+
+  return sorted.map((day) => WEEKDAY_LABELS[day] ?? '?').join(' ')
 }
 
 function DailyRow({ view }: { readonly view: DailyView }) {
@@ -114,6 +127,11 @@ function AddDaily({ onDone }: { readonly onDone: () => void }) {
   const add = useAddDaily()
   const [title, setTitle] = useState('')
   const [days, setDays] = useState<readonly number[]>([])
+  const [monthly, setMonthly] = useState(false)
+
+  const toggle = (day: number): void => {
+    setDays(days.includes(day) ? days.filter((one) => one !== day) : [...days, day])
+  }
 
   return (
     <Card className="mb-3">
@@ -126,7 +144,12 @@ function AddDaily({ onDone }: { readonly onDone: () => void }) {
               title,
               // No days picked means every day, which is what somebody who
               // ignored this row meant by ignoring it.
-              cadence: days.length === 0 ? { kind: 'every-day' } : { kind: 'days-of-week', days },
+              cadence:
+                days.length === 0
+                  ? { kind: 'every-day' }
+                  : monthly
+                    ? { kind: 'days-of-month', days }
+                    : { kind: 'days-of-week', days },
             },
             { onSuccess: onDone },
           )
@@ -142,33 +165,92 @@ function AddDaily({ onDone }: { readonly onDone: () => void }) {
           }}
         />
 
-        <div>
-          <span className="text-ink-500 mb-1 block text-xs font-medium tracking-wide uppercase">
-            Which days · none for every day
-          </span>
+        <div className="space-y-2">
           <div className="flex gap-1">
-            {WEEKDAY_LABELS.map((label, index) => (
+            {[false, true].map((isMonthly) => (
               <button
-                key={WEEKDAY_NAMES[index]}
+                key={String(isMonthly)}
                 type="button"
-                aria-label={WEEKDAY_NAMES[index] ?? ''}
-                aria-pressed={days.includes(index)}
+                aria-pressed={monthly === isMonthly}
                 className={[
-                  'tap-target h-10 flex-1 rounded-lg border text-xs font-medium',
-                  days.includes(index)
+                  'tap-target flex-1 rounded-lg border px-3 text-xs font-medium',
+                  monthly === isMonthly
                     ? 'border-accent-500 bg-accent-500/15 text-accent-400'
                     : 'border-ink-800 text-ink-500',
                 ].join(' ')}
                 onClick={() => {
-                  setDays(
-                    days.includes(index) ? days.filter((one) => one !== index) : [...days, index],
-                  )
+                  setMonthly(isMonthly)
+                  setDays([])
                 }}
               >
-                {label}
+                {isMonthly ? 'Days of the month' : 'Days of the week'}
               </button>
             ))}
           </div>
+
+          <span className="text-ink-500 mb-1 block text-xs font-medium tracking-wide uppercase">
+            Which days · none for every day
+          </span>
+
+          {monthly ? (
+            /*
+             * 1 to 31. A day past the end of a short month simply does not
+             * occur that month rather than sliding to the 28th, so the
+             * note says which choices are safe for a chore that must
+             * happen every month.
+             */
+            <>
+              <div className="grid grid-cols-7 gap-1">
+                {Array.from({ length: 31 }, (_unused, index) => index + 1).map((day) => (
+                  <button
+                    key={day}
+                    type="button"
+                    aria-label={ordinal(day)}
+                    aria-pressed={days.includes(day)}
+                    className={[
+                      'tap-target h-10 rounded-lg border text-xs font-medium',
+                      days.includes(day)
+                        ? 'border-accent-500 bg-accent-500/15 text-accent-400'
+                        : 'border-ink-800 text-ink-500',
+                    ].join(' ')}
+                    onClick={() => {
+                      toggle(day)
+                    }}
+                  >
+                    {day}
+                  </button>
+                ))}
+              </div>
+              {days.some((day) => day > 28) && (
+                <p className="text-ink-500 text-xs">
+                  The 29th to 31st are skipped in months that are too short, rather than sliding
+                  earlier. Pick the 28th or lower for something that must happen every month.
+                </p>
+              )}
+            </>
+          ) : (
+            <div className="flex gap-1">
+              {WEEKDAY_LABELS.map((label, index) => (
+                <button
+                  key={WEEKDAY_NAMES[index]}
+                  type="button"
+                  aria-label={WEEKDAY_NAMES[index] ?? ''}
+                  aria-pressed={days.includes(index)}
+                  className={[
+                    'tap-target h-10 flex-1 rounded-lg border text-xs font-medium',
+                    days.includes(index)
+                      ? 'border-accent-500 bg-accent-500/15 text-accent-400'
+                      : 'border-ink-800 text-ink-500',
+                  ].join(' ')}
+                  onClick={() => {
+                    toggle(index)
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         <Button type="submit" variant="primary" full disabled={add.isPending}>

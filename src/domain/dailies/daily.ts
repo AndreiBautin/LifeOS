@@ -15,22 +15,47 @@ import type { DailyId } from '@/domain/ids/ids'
  * twice on two devices is one completion, which is also just true.
  */
 
-export const CADENCE_KINDS = ['every-day', 'days-of-week'] as const
+export const CADENCE_KINDS = ['every-day', 'days-of-week', 'days-of-month'] as const
 
 export type CadenceKind = (typeof CADENCE_KINDS)[number]
 
 /**
  * When a daily is expected.
  *
- * Deliberately only two kinds. "Every N days" needs an anchor date to be
- * meaningful, and an anchor is a thing that drifts when you miss one —
- * every-N-days habits quietly become every-N-days-from-the-last-time-you
- * -managed-it, which is a different habit and a worse one to be scored on.
+ * Three kinds, and all three answer the question the same way: **given a
+ * date, was this expected on it?** That is what makes a streak
+ * computable by walking backwards a day at a time, and it is why the
+ * fourth obvious kind is missing.
+ *
+ * "Every N days" needs an anchor to be meaningful, and an anchor drifts
+ * every time you miss one — an every-three-days habit quietly becomes
+ * every-three-days-from-the-last-time-you-managed-it, which is a
+ * different habit and a worse one to be scored on. "Once a month,
+ * whenever" has the same shape of problem from the other end: every day
+ * is expected until you do it and none after, so the answer depends on
+ * the completions rather than on the date, and a streak stops being a
+ * walk backwards.
+ *
+ * `days-of-month` is monthly without either flaw. The 1st is monthly;
+ * the 1st and the 15th is twice a month. It is a property of the date
+ * alone, exactly like `days-of-week`.
  */
 export type Cadence =
   | { readonly kind: 'every-day' }
   /** `0` is Sunday, matching `Date.getDay()`. */
   | { readonly kind: 'days-of-week'; readonly days: readonly number[] }
+  /**
+   * `1` to `31`. A day past the end of a short month simply does not
+   * occur that month — the 31st is expected seven times a year, and
+   * February skips it rather than sliding it to the 28th.
+   *
+   * Sliding is the tempting alternative and it breaks the same property
+   * every other cadence keeps: "was this expected on the 28th" would
+   * depend on which month the 28th was in, and a streak walk would have
+   * to know about month lengths to stay correct. Choosing the 28th or
+   * lower is the answer for a chore that must happen every month.
+   */
+  | { readonly kind: 'days-of-month'; readonly days: readonly number[] }
 
 export interface Daily {
   readonly id: DailyId
@@ -74,9 +99,14 @@ export function isExpectedOn(daily: Daily, day: string): boolean {
   if (daily.retiredAt !== undefined && daily.retiredAt <= day) return false
   if (daily.cadence.kind === 'every-day') return true
 
-  // `getUTCDay` rather than `getDay`: the key was built from a local date
-  // and parsed back as UTC midnight, so UTC is what round-trips it.
-  return daily.cadence.days.includes(parseDay(day).getUTCDay())
+  // `getUTC*` rather than the local getters: the key was built from a
+  // local date and parsed back as UTC midnight, so UTC is what
+  // round-trips it.
+  const date = parseDay(day)
+
+  return daily.cadence.kind === 'days-of-week'
+    ? daily.cadence.days.includes(date.getUTCDay())
+    : daily.cadence.days.includes(date.getUTCDate())
 }
 
 export function isDoneOn(daily: Daily, day: string): boolean {

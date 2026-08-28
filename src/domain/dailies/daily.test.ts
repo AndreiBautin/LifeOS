@@ -185,3 +185,66 @@ describe('what is due', () => {
     expect(isDueToday(aDaily({ cadence: WEEKDAYS }), '2026-08-29')).toBe(false)
   })
 })
+
+/**
+ * Monthly, without the flaw that kept "every N days" out.
+ *
+ * Every cadence here answers one question — given a date, was this
+ * expected on it? — and that is what lets a streak be a walk backwards, a
+ * day at a time. `days-of-month` keeps the property: it reads the date
+ * and nothing else.
+ */
+describe('a monthly cadence', () => {
+  const monthly = (days: readonly number[]): Daily => ({
+    id: asDailyId('chore'),
+    title: 'Deep clean',
+    cadence: { kind: 'days-of-month', days },
+    done: [],
+    createdAt: '2026-01-01T00:00:00.000Z',
+  })
+
+  it('is expected on its day of the month and no other', () => {
+    const first = monthly([1])
+
+    expect(isExpectedOn(first, '2026-03-01')).toBe(true)
+    expect(isExpectedOn(first, '2026-04-01')).toBe(true)
+    expect(isExpectedOn(first, '2026-03-02')).toBe(false)
+    expect(isExpectedOn(first, '2026-03-31')).toBe(false)
+  })
+
+  it('takes more than one day a month', () => {
+    const twice = monthly([1, 15])
+
+    expect(isExpectedOn(twice, '2026-03-01')).toBe(true)
+    expect(isExpectedOn(twice, '2026-03-15')).toBe(true)
+    expect(isExpectedOn(twice, '2026-03-08')).toBe(false)
+  })
+
+  /*
+   * The deliberate edge. Sliding the 31st to the 28th in February would
+   * make "was this expected on the 28th" depend on which month the 28th
+   * was in, and the streak walk would have to know about month lengths to
+   * stay correct. Skipping keeps the cadence a property of the date.
+   */
+  it('skips a month too short to contain its day rather than sliding it', () => {
+    const late = monthly([31])
+
+    expect(isExpectedOn(late, '2026-01-31')).toBe(true)
+    expect(isExpectedOn(late, '2026-02-28')).toBe(false)
+    expect(isExpectedOn(late, '2026-04-30')).toBe(false)
+  })
+
+  /*
+   * And the streak still walks. A day the chore was not expected on does
+   * not break it, which is what makes a monthly run of three months read
+   * as three rather than as one.
+   */
+  it('counts a run of months as a streak', () => {
+    const kept: Daily = {
+      ...monthly([1]),
+      done: ['2026-01-01', '2026-02-01', '2026-03-01'],
+    }
+
+    expect(streakFor(kept, '2026-03-15')).toBe(3)
+  })
+})
