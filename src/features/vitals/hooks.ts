@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
-import { useServices } from '@/app/context'
+import { useServices, useSettings } from '@/app/context'
 import {
   addVice,
   clearWeighIn,
@@ -47,8 +47,26 @@ function useInvalidating<TArgs, TResult>(run: (args: TArgs) => Promise<TResult>,
 
 export function useVitalsToday() {
   const services = useServices()
+  const { settings } = useSettings()
 
-  return useQuery({ queryKey: ['today', 'vitals'], queryFn: () => vitalsToday(services) })
+  /*
+   * The settings go **in the key**, the same way `useProgram` carries
+   * them, because this read model is derived from them: the phase, the
+   * target band and the stated intake all reach it through
+   * `vitalsToday`.
+   *
+   * Invalidating by hand on every settings write is the alternative and
+   * is the version that goes wrong. It did, here, and it looked exactly
+   * like the fatigue percent that was decorative for two commits — the
+   * intake field wrote a real value, the phase text updated because it
+   * reads settings directly, and the macro targets went on being derived
+   * from the previous number. A control that appears to work and decides
+   * nothing is worse than one that is obviously missing.
+   */
+  return useQuery({
+    queryKey: ['today', 'vitals', settings],
+    queryFn: () => vitalsToday(services),
+  })
 }
 
 export function useVices() {

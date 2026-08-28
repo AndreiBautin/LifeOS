@@ -5,6 +5,7 @@ import { Badge, Button, Card } from '@/components/shared/primitives'
 import { buttonStyles } from '@/components/shared/styles'
 import type { PhaseView, PoolView } from '@/application/use-cases/vitals/vitals'
 import { PHASE_LABELS, PHASE_VERDICT_LABELS } from '@/domain/vitals/weight'
+import type { MacroTargets } from '@/domain/vitals/macros'
 import { cn } from '@/lib/cn'
 
 import { useServices } from '@/app/context'
@@ -112,7 +113,13 @@ function PoolRow({ pool, now }: { readonly pool: PoolView; readonly now: Date })
   )
 }
 
-function PhaseLine({ phase }: { readonly phase: PhaseView }) {
+function PhaseLine({
+  phase,
+  macros,
+}: {
+  readonly phase: PhaseView
+  readonly macros?: MacroTargets | undefined
+}) {
   const rate = phase.trend?.ratePerWeek
 
   return (
@@ -150,6 +157,19 @@ function PhaseLine({ phase }: { readonly phase: PhaseView }) {
           </>
         )}
       </p>
+
+      {/*
+        One line, and only when there is something to say. The full macro
+        breakdown lives on the Vitals screen — what belongs on Today is
+        the correction, because that is the part that changes what you do
+        at the next meal.
+      */}
+      {macros?.adjustment !== undefined && macros.adjustment !== 0 && (
+        <p className="text-ink-500 numeric mt-1 text-sm">
+          about {Math.abs(macros.adjustment)} {macros.adjustment < 0 ? 'fewer' : 'more'} a day
+          {macros.calories !== undefined && ` · ${String(macros.calories)} kcal`}
+        </p>
+      )}
     </div>
   )
 }
@@ -213,7 +233,7 @@ export function VitalsCard() {
           day feels.
         </p>
       ) : (
-        <PhaseLine phase={phase} />
+        <PhaseLine phase={phase} macros={vitals.data.macros} />
       )}
     </Card>
   )

@@ -18,6 +18,7 @@ import {
   type Vice,
 } from '@/domain/vitals/charges'
 import { conditionFraction, type DayCondition } from '@/domain/vitals/condition'
+import { macroTargets, type MacroTargets } from '@/domain/vitals/macros'
 import {
   phaseVerdict,
   weightTrend,
@@ -67,6 +68,14 @@ export interface PhaseView {
 }
 
 export interface VitalsToday {
+  /**
+   * What to eat, or as much of it as the inputs support.
+   *
+   * Absent when there is no bodyweight to derive from — settings hold
+   * one and a weigh-in supplies a better one, and with neither there is
+   * nothing here that would not be invented.
+   */
+  readonly macros?: MacroTargets
   readonly pools: readonly PoolView[]
   /**
    * Absent rather than neutral when nothing has been recorded today.
@@ -106,9 +115,34 @@ export async function vitalsToday(deps: VitalsDeps): Promise<VitalsToday> {
   const trend = weightTrend(weighIns, now)
   const todayWeight = weighIns.find((row) => row.day === today)?.weight
   const condition = conditions.find((row) => row.day === today)
+  const verdict = phaseVerdict(trend, settings.phaseRate)
+
+  /*
+   * The smoothed weight in preference to the one in settings.
+   *
+   * Settings hold a single figure a lifter typed once; the trend is an
+   * average of what the scale actually said this week. Preferring the
+   * stale one would quietly derive a whole cut's protein target from a
+   * bodyweight the lifter has since moved away from — which is precisely
+   * what weighing in was meant to fix.
+   */
+  const bodyweight = trend?.current ?? settings.bodyweight
+  const macros =
+    bodyweight === undefined
+      ? undefined
+      : macroTargets({
+          bodyweight,
+          units: settings.units,
+          phase: settings.phase,
+          range: settings.phaseRate,
+          verdict,
+          ...(settings.dailyCalories === undefined ? {} : { intake: settings.dailyCalories }),
+          ...(trend === undefined ? {} : { trend }),
+        })
 
   return {
     pools,
+    ...(macros === undefined ? {} : { macros }),
     ...(condition === undefined
       ? {}
       : {
@@ -121,7 +155,7 @@ export async function vitalsToday(deps: VitalsDeps): Promise<VitalsToday> {
       phase: settings.phase,
       range: settings.phaseRate,
       ...(trend === undefined ? {} : { trend }),
-      verdict: phaseVerdict(trend, settings.phaseRate),
+      verdict,
       ...(todayWeight === undefined ? {} : { today: todayWeight }),
     },
   }

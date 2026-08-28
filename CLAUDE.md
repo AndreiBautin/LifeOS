@@ -615,6 +615,47 @@ the last known weight repeated, because a carried value shows a rate of
 exactly zero for a fortnight of not weighing in and that reads as a
 perfectly held maintenance phase.
 
+**Macro targets are derived from the scale, not from a formula, and the
+lifter supplies the one number the app cannot know.** `domain/vitals/
+macros.ts`. Computing a TDEE needs intake data, and intake lives in
+another app that already does it well — a second food log here would
+duplicate that one and be the first thing to fall behind, which would
+make everything derived from it quietly wrong. So `settings.dailyCalories`
+is **what you are already eating to**, and the app corrects it from the
+two things the other app cannot see: the smoothed trend and the phase
+band. Same bargain RTS makes with loads. Mifflin-St Jeor plus an activity
+multiplier was the alternative, and it wants height, age and sex to
+produce a figure within about 15% that the trend then has to correct
+anyway.
+
+**The correction aims at the nearest edge of the band, never its middle.**
+A band is a range of acceptable answers, so the smallest change that
+lands inside it is the right advice; aiming at the centre tells a lifter
+losing at 0.45%/wk against a 0.5–1.0% target to cut six times what the
+situation calls for.
+
+**`MAX_DAILY_ADJUSTMENT` is 500 and it is a safety rail, not a tidy-up.**
+One bad reading in a window produces an arithmetically correct
+instruction to eat 1,400 fewer a day. If the true correction really is
+larger, arriving there over two weeks is how it should be done.
+
+Protein is g/kg (2.2 on a cut, 1.8 otherwise) because that is how the
+literature states it, converted at the edge; fat is a **floor** off
+bodyweight rather than a share of calories, because above the floor the
+fat/carb split is preference rather than physiology; carbohydrate is the
+remainder. When the floors exceed the calorie figure that is **surfaced,
+not resolved** — a negative remainder is not "eat zero carbs", it is the
+calorie number and the phase disagreeing.
+
+**`useVitalsToday` carries `settings` in its query key**, the way
+`useProgram` does, and this is why: the read model is derived from the
+phase, the band and the stated intake, so invalidating by hand on each
+settings write is a step somebody forgets. It _was_ forgotten — the
+intake field wrote a real value, the phase text updated because it reads
+settings directly, and the macros went on being derived from the old
+number. The same shape as the fatigue percent that was decorative for
+two commits, found the same way: by driving the app.
+
 **Vitals pays no XP at all, and it is the first area that measures
 without paying.** Every candidate falls on the wrong side of the act/
 outcome line: not drinking is an _outcome_, so paying for it is the

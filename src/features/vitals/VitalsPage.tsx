@@ -191,6 +191,139 @@ function PhaseEditor() {
   )
 }
 
+/**
+ * What to eat, derived from the scale rather than from a formula.
+ *
+ * The one field here is the calorie target the lifter is *already*
+ * eating to, taken from whichever app tracks their food. Everything else
+ * follows: protein and the fat floor off bodyweight, the total corrected
+ * by the weight trend, carbohydrate as the remainder.
+ *
+ * The correction is the part worth the screen space, because it is the
+ * only thing here the calorie app could not have told them.
+ */
+function MacroTargetsCard() {
+  const { settings, update } = useSettings()
+  const vitals = useVitalsToday()
+  const [intake, setIntake] = useState('')
+
+  const macros = vitals.data?.macros
+  const stated = settings.dailyCalories
+
+  return (
+    <Card>
+      <form
+        className="mb-3 flex gap-2"
+        onSubmit={(event) => {
+          event.preventDefault()
+          const value = Number(intake)
+          if (!Number.isFinite(value) || value <= 0) return
+          update({ dailyCalories: value })
+          setIntake('')
+        }}
+      >
+        <input
+          className="bg-ink-900 border-ink-700 text-ink-50 numeric tap-target min-w-0 flex-1 rounded-lg border px-3 text-sm"
+          inputMode="decimal"
+          placeholder={
+            stated === undefined ? 'What you eat now (kcal)' : `Eating ${String(stated)} kcal`
+          }
+          aria-label="Calories you are currently eating"
+          value={intake}
+          onChange={(event) => {
+            setIntake(event.target.value)
+          }}
+        />
+        <Button type="submit" variant="outline">
+          Set
+        </Button>
+      </form>
+
+      {macros === undefined ? (
+        <p className="text-ink-500 text-sm">
+          Log a weight and these follow from it — protein and fat off bodyweight, the total
+          corrected by what the scale actually does.
+        </p>
+      ) : (
+        <>
+          {/*
+            The correction leads, because it is the only line here the
+            calorie app could not have produced. Absent and zero read
+            differently on purpose: "on track" is a judgement, "not
+            enough readings" is the absence of one.
+          */}
+          <div className="border-ink-800 mb-3 border-b pb-3">
+            {macros.adjustment === undefined ? (
+              <p className="text-ink-500 text-sm">
+                Two weeks of weigh-ins and this starts advising.
+              </p>
+            ) : macros.adjustment === 0 ? (
+              <p className="text-good-500 text-sm">
+                The scale is doing what the phase asked — hold the intake where it is.
+              </p>
+            ) : (
+              <p className="text-ink-50 text-sm">
+                About{' '}
+                <span className="numeric font-semibold">
+                  {Math.abs(macros.adjustment)} {macros.adjustment < 0 ? 'fewer' : 'more'}
+                </span>{' '}
+                a day
+                <span className="text-ink-500"> — the smallest change that reaches the band.</span>
+              </p>
+            )}
+          </div>
+
+          <dl className="space-y-1.5">
+            {macros.calories !== undefined && (
+              <div className="flex items-baseline justify-between gap-3">
+                <dt className="text-ink-300 text-sm">Calories</dt>
+                <dd className="text-ink-50 numeric text-sm font-semibold">{macros.calories}</dd>
+              </div>
+            )}
+            <div className="flex items-baseline justify-between gap-3">
+              <dt className="text-ink-300 text-sm">Protein</dt>
+              <dd className="text-ink-50 numeric text-sm">{macros.protein} g</dd>
+            </div>
+            <div className="flex items-baseline justify-between gap-3">
+              <dt className="text-ink-300 text-sm">
+                Fat <span className="text-ink-700 text-xs">floor</span>
+              </dt>
+              <dd className="text-ink-50 numeric text-sm">{macros.fat} g</dd>
+            </div>
+            {macros.carbs !== undefined && (
+              <div className="flex items-baseline justify-between gap-3">
+                <dt className="text-ink-300 text-sm">
+                  Carbs <span className="text-ink-700 text-xs">the remainder</span>
+                </dt>
+                <dd className="text-ink-50 numeric text-sm">{macros.carbs} g</dd>
+              </div>
+            )}
+          </dl>
+
+          {/*
+            Surfaced rather than resolved: a negative remainder is not
+            "eat zero carbs", it is the calorie figure and the phase
+            disagreeing.
+          */}
+          {macros.floorsExceedCalories && (
+            <p className="text-bad-500 mt-3 text-sm">
+              Protein and the fat floor alone come to more than that calorie figure. One of the two
+              needs to move.
+            </p>
+          )}
+
+          {macros.calories === undefined && (
+            <p className="text-ink-500 mt-3 text-sm">
+              Set what you eat now and this gets a calorie total and a carb target — a remainder
+              needs something to be left over from.
+            </p>
+          )}
+        </>
+      )}
+    </Card>
+  )
+}
+
 function AddVice() {
   const add = useAddVice()
   const [name, setName] = useState('')
@@ -349,6 +482,10 @@ export function VitalsPage() {
 
       <Section title="Phase" description="Where the scale is meant to be going">
         <PhaseEditor />
+      </Section>
+
+      <Section title="Macros" description="Derived from the scale, not from a formula">
+        <MacroTargetsCard />
       </Section>
 
       <Section title="Condition" description="How the day feels, and what it does to the session">
