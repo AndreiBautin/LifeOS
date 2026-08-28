@@ -2,6 +2,7 @@ import { HeartPulse, Minus, Plus } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
 import { Badge, Button, Card } from '@/components/shared/primitives'
+import { Meter } from '@/components/shared/Meter'
 import { buttonStyles } from '@/components/shared/styles'
 import type { PhaseView, PoolView } from '@/application/use-cases/vitals/vitals'
 import { PHASE_LABELS, PHASE_VERDICT_LABELS } from '@/domain/vitals/weight'
@@ -210,12 +211,12 @@ export function VitalsCard() {
             <span className="text-ink-700 text-xs tracking-wide uppercase">Condition</span>
             <span className="text-ink-700 text-xs">as you reported it</span>
           </div>
-          <div className="bg-ink-800 h-2 w-full overflow-hidden rounded-full">
-            <div
-              className="bg-good-500 h-full rounded-full"
-              style={{ width: `${String(Math.round(condition.fraction * 100))}%` }}
-            />
-          </div>
+          <Meter
+            value={condition.fraction}
+            of={1}
+            tone="good"
+            label="How you rated today, across five factors"
+          />
         </div>
       )}
 

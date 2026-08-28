@@ -175,6 +175,48 @@
     font-family: var(--font-mono);
     font-variant-numeric: tabular-nums;
   }
+
+  /* A bar or a column growing into place.
+
+     Not gated here: the `prefers-reduced-motion: reduce` block above
+     already collapses every transition in the app to 0.01ms, so one rule
+     covers everything and there is no per-component gate to forget. The
+     easing is decelerating on purpose — a bar that arrives and settles
+     reads as a value being reported, where a linear one reads as
+     something still loading. */
+  .meter-fill {
+    transition:
+      width 520ms cubic-bezier(0.16, 1, 0.3, 1),
+      height 520ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  /* Press feedback, and it is deliberately tiny.
+
+     This app is used one-handed between sets, so the job of the effect is
+     to confirm the tap landed — not to delay it. Nothing here holds up
+     the action: the scale is instantaneous on press and eases back on
+     release, so a mis-tap is obvious and a good tap costs nothing. */
+  .tap-target {
+    transition: transform 120ms ease-out;
+  }
+
+  .tap-target:active {
+    transform: scale(0.96);
+  }
+
+  /* Frosted, and only where the blur is paid once.
+
+     `backdrop-filter` is among the most expensive things a mobile browser
+     can be asked for, and it costs most on a surface that moves — every
+     scrolled frame re-samples what is behind it. The navigation is fixed
+     and composited once, so it is the one place in the app where this is
+     nearly free. **It does not belong on cards**, which is where it would
+     be asked for next and where a gym app would pay for it every frame of
+     every list. */
+  .glass {
+    backdrop-filter: blur(14px) saturate(140%);
+    -webkit-backdrop-filter: blur(14px) saturate(140%);
+  }
 }
 
 /* Screen-reader-only text that becomes visible when focused, for the

@@ -17,6 +17,8 @@ import {
   TREND_DAYS,
 } from '@/domain/vitals/weight'
 import { readCharges } from '@/domain/vitals/charges'
+import { projectCorridor } from '@/domain/vitals/weight'
+import { TrendChart } from '@/components/shared/TrendChart'
 
 import {
   useAddVice,
@@ -55,6 +57,27 @@ const FACTORS: readonly { key: keyof ReadinessFactors; label: string }[] = [
 ]
 
 const LEVEL_LABELS: Record<ReadinessLevel, string> = { poor: 'Poor', ok: 'OK', good: 'Good' }
+
+/** How much of the history the chart shows. Four weeks is two trend windows. */
+const CHART_DAYS = 28
+
+const DAY_MS = 24 * 60 * 60 * 1000
+
+/**
+ * `YYYY-MM-DD` this many days before `now`.
+ *
+ * Takes the clock as a parameter rather than reading it. `Date.now()`
+ * slips past the lint rule — which bans bare `new Date()` — and it is
+ * the same defect the rule exists to catch: a window that cannot be held
+ * still is a chart no test can assert about.
+ */
+function sinceDay(days: number, now: Date): string {
+  return new Date(now.getTime() - days * DAY_MS).toISOString().slice(0, 10)
+}
+
+function daysBetween(from: string, to: string): number {
+  return Math.round((Date.parse(to) - Date.parse(from)) / DAY_MS)
+}
 
 function ConditionEditor() {
   const vitals = useVitalsToday()
@@ -101,13 +124,41 @@ function ConditionEditor() {
 
 function PhaseEditor() {
   const { settings, update } = useSettings()
+  const now = useServices().clock.now()
   const vitals = useVitalsToday()
   const weighIns = useWeighIns()
   const record = useRecordWeighIn()
   const [weight, setWeight] = useState('')
 
   const phase = vitals.data?.phase
-  const history = [...(weighIns.data ?? [])].reverse().slice(0, 10)
+
+  /*
+   * The window is fixed rather than "the last ten readings", so the x
+   * axis is time and not reading-count. Ten readings taken daily and ten
+   * taken monthly are different stories, and a chart indexed by position
+   * draws them identically.
+   */
+  const shown = (weighIns.data ?? []).filter((row) => row.day >= sinceDay(CHART_DAYS, now))
+  const first = shown[0]
+  const latest = shown[shown.length - 1]
+
+  const plot = shown.map((row) => ({
+    x: daysBetween(first?.day ?? row.day, row.day),
+    y: row.weight,
+  }))
+
+  /*
+   * Anchored on the earliest reading shown, which is the honest
+   * limitation: one unrepresentative morning shifts the whole corridor.
+   * It is guidance drawn behind the line, and `phaseVerdict` — which
+   * reads the smoothed fortnight — remains the judgement.
+   */
+  const corridor =
+    first === undefined || latest === undefined
+      ? []
+      : projectCorridor(first.weight, daysBetween(first.day, latest.day), settings.phaseRate).map(
+          (point) => ({ x: point.day, low: point.low, high: point.high }),
+        )
 
   return (
     <Card>
@@ -174,18 +225,38 @@ function PhaseEditor() {
         </p>
       )}
 
-      {history.length > 0 && (
+      {/*
+        A line rather than the column of numbers that was here.
+        Bodyweight is a time series and printing it as a list made the
+        reader do the plotting — which is exactly the work a chart is
+        for, and the reason this was the first thing to change.
+      */}
+      {plot.length >= 2 && (
         <div className="border-ink-800 mt-3 border-t pt-3">
-          <p className="text-ink-700 mb-1 text-xs tracking-wide uppercase">Recent</p>
-          <ul className="divide-ink-800 divide-y">
-            {history.map((row) => (
-              <li key={row.day} className="text-ink-300 numeric flex justify-between py-1 text-sm">
-                <span>{row.day}</span>
-                <span>{row.weight.toFixed(1)}</span>
-              </li>
-            ))}
-          </ul>
+          <div className="mb-1 flex items-baseline justify-between gap-2">
+            <p className="text-ink-700 text-xs tracking-wide uppercase">
+              Last {String(CHART_DAYS)} days
+            </p>
+            <p className="text-ink-700 text-xs">green is the phase target</p>
+          </div>
+
+          <TrendChart
+            points={plot}
+            corridor={corridor}
+            label={`Bodyweight over the last ${String(CHART_DAYS)} days, against the ${PHASE_LABELS[
+              settings.phase
+            ].toLowerCase()} target corridor`}
+          />
+
+          <div className="text-ink-700 numeric mt-1 flex justify-between text-xs">
+            <span>{first?.day.slice(5)}</span>
+            <span>{latest?.day.slice(5)}</span>
+          </div>
         </div>
+      )}
+
+      {plot.length === 1 && (
+        <p className="text-ink-500 mt-3 text-sm">One reading. A second gives it a line to draw.</p>
       )}
     </Card>
   )

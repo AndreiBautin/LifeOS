@@ -416,6 +416,54 @@ whose job is to show movement. Consistency levelled the session count,
 which XP already spends. Nothing measures conditioning, so nothing scores
 it; that is the same rule every other area follows.
 
+**`Meter` takes `value` and `of`, and there is no `percent` prop.**
+`components/shared/Meter.tsx`. A percentage is where a denominator goes
+to hide: a bar at 70% of a threshold this app invented looks exactly like
+a bar at 70% of your own last season, and only one of those is a
+measurement. Making both numbers required forces every call site to name
+what it divides by, which is the question `docs/GAME_MODEL.md` answers.
+`of <= 0` draws the track alone — nothing over nothing is not complete.
+`BarSeries` takes its scale the same way rather than normalising to the
+tallest bar present, which would make a season where nothing happened
+look exactly like one where a great deal did.
+
+**The weight chart's corridor is projected, because the target is a
+rate.** `projectCorridor` in `domain/vitals/weight.ts`. A rate is not a
+range of weights until it is anchored to a starting point and a length of
+time, so the band is two lines spreading from the earliest reading shown.
+Its limitation is real and stated on the screen: one unrepresentative
+first weigh-in shifts the whole corridor. **`phaseVerdict` remains the
+judgement** — it reads the smoothed fortnight — and the corridor is
+guidance drawn behind the line. `low` and `high` are named by value, not
+by which edge of the band produced them: on a cut both edges are negative
+and `min` is the lower weight, on a bulk `min` is the upper one, so a
+caller assuming otherwise draws one phase inside out.
+
+**A trend chart is scaled to its data; a bar series is anchored at zero.**
+A weight chart from zero is a flat line near the top of the box, because
+the interesting range is the three pounds it moved. That reasoning is
+exactly wrong for a count, which is why the two are separate components
+rather than one with a flag.
+
+**Motion is gated once, globally, and never per component.** The
+`prefers-reduced-motion: reduce` block in `index.css` collapses every
+transition in the app to 0.01ms with `!important`, so a new animated
+thing is covered by construction and there is no per-component gate to
+forget.
+
+**`backdrop-filter` belongs on fixed surfaces only.** It is among the
+most expensive things a mobile browser can be asked for and it costs most
+on a surface that moves, because every scrolled frame re-samples what is
+behind it. The navigation is fixed and composited once. **It does not go
+on cards** — that is where it would be asked for next, and a gym app
+would pay for it on every frame of every list.
+
+**`Date.now()` slips past the no-`new Date()` lint rule, and it is the
+same defect.** The chart's window was written with it and had to be
+changed to take the clock: a window that cannot be held still is a chart
+no test can assert about. If a component needs the time, it takes
+`useServices().clock.now()`.
+
 **The avatar re-presents the sheet and adds nothing to it.**
 `domain/game/avatar.ts`. The temptation in a portrait is to give it a
 number of its own — a power rating, a gear score — and that would be a

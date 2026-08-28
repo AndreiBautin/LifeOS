@@ -10,6 +10,8 @@ import { totalWorkingSets } from '@/domain/logging/workout-log'
 import { Badge, Card, Section } from '@/components/shared/primitives'
 import { buttonStyles } from '@/components/shared/styles'
 
+import { Meter } from '@/components/shared/Meter'
+
 import { AvatarCard } from './AvatarCard'
 import { cn } from '@/lib/cn'
 
@@ -193,12 +195,7 @@ function AttributeRow({
         </div>
       </div>
 
-      <div className="bg-ink-850 mt-1.5 h-1.5 overflow-hidden rounded-full">
-        <div
-          className="bg-accent-500 h-full rounded-full"
-          style={{ width: `${String(percent)}%` }}
-        />
-      </div>
+      <Meter className="mt-1.5" value={percent} of={100} height={6} label={attribute.name} />
 
       <p className="text-ink-500 mt-1 text-xs">
         {attribute.detail}
@@ -253,12 +250,13 @@ function AreaCard({ area }: { readonly area: AreaStanding }) {
 
           {ladder.reading !== undefined && (
             <>
-              <div className="bg-ink-850 mt-1.5 h-1.5 overflow-hidden rounded-full">
-                <div
-                  className="bg-accent-500 h-full rounded-full"
-                  style={{ width: `${String(Math.round(ladder.reading.progress * 100))}%` }}
-                />
-              </div>
+              <Meter
+                className="mt-1.5"
+                value={ladder.reading.progress}
+                of={1}
+                height={6}
+                label={`${ladder.name}, toward the next level`}
+              />
               <p className="text-ink-500 mt-1 text-xs">
                 {formatLadderValue(ladder.value, ladder.unit)} · anchored to {ladder.anchor}
               </p>

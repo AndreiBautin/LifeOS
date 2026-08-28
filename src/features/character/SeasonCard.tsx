@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 
 import type { SeasonProgress } from '@/application/use-cases/character/season-progress'
 import { Card, Section } from '@/components/shared/primitives'
+import { BarSeries, Meter } from '@/components/shared/Meter'
 
 /**
  * The season you are in, as a battle pass rather than a verdict.
@@ -51,7 +52,6 @@ export function SeasonCard({
   readonly action?: ReactNode
 }) {
   const { target } = progress
-  const fill = target === undefined ? 0 : Math.min(100, Math.round((progress.xp / target) * 100))
   const beaten = target !== undefined && progress.xp >= target
 
   // Each month's bar is drawn against the busiest month, so the three are
@@ -87,12 +87,14 @@ export function SeasonCard({
             </p>
           ) : (
             <>
-              <div className="bg-ink-850 mt-2 h-2 overflow-hidden rounded-full">
-                <div
-                  className={`h-full rounded-full ${beaten ? 'bg-good-500' : 'bg-accent-500'}`}
-                  style={{ width: `${String(fill)}%` }}
-                />
-              </div>
+              <Meter
+                className="mt-2"
+                value={progress.xp}
+                of={target}
+                tone={beaten ? 'good' : 'accent'}
+                glow
+                label={`${String(progress.xp)} XP against last season's ${String(target)}`}
+              />
               <p className="text-ink-500 mt-2 text-xs">
                 {beaten
                   ? 'Past last season already.'
@@ -107,18 +109,27 @@ export function SeasonCard({
           <span className="text-ink-500 mb-2 block text-xs font-medium tracking-wide uppercase">
             By month
           </span>
-          <div className="flex items-end gap-2">
+          {/*
+            Against the busiest month, which is the caller naming its own
+            scale rather than the component picking one. Three months of a
+            season are being compared with each other and with nothing
+            else, so the tallest of the three is the honest denominator —
+            and it is passed in, so it is visible at the call site rather
+            than hidden in a chart.
+          */}
+          <BarSeries
+            of={busiest}
+            bars={progress.months.map((month) => ({
+              key: month.month,
+              value: month.xp,
+              label: monthLabel(month.month),
+            }))}
+          />
+          <div className="mt-0.5 flex gap-2">
             {progress.months.map((month) => (
-              <div key={month.month} className="flex-1">
-                <div
-                  className="bg-accent-500/70 w-full rounded-sm"
-                  style={{ height: `${String(Math.max(2, (month.xp / busiest) * 48))}px` }}
-                />
-                <p className="text-ink-500 numeric mt-1 text-center text-xs">
-                  {monthLabel(month.month)}
-                </p>
-                <p className="text-ink-600 numeric text-center text-xs">{month.xp}</p>
-              </div>
+              <p key={month.month} className="text-ink-700 numeric flex-1 text-center text-xs">
+                {month.xp}
+              </p>
             ))}
           </div>
         </div>

@@ -95,9 +95,11 @@ export function AppShell() {
 
       <nav
         aria-label="Main"
-        className="fixed inset-x-0 bottom-0 z-40 border-t backdrop-blur"
+        className="glass fixed inset-x-0 bottom-0 z-40 border-t"
         style={{
-          backgroundColor: 'color-mix(in oklab, var(--surface-raised) 92%, transparent)',
+          // Let more through now the blur is stronger. At 92% opaque the
+          // frost had nothing to work with and the effect was invisible.
+          backgroundColor: 'color-mix(in oklab, var(--surface-raised) 72%, transparent)',
           borderColor: 'var(--border-subtle)',
           paddingBottom: 'var(--safe-bottom)',
         }}

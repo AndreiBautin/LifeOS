@@ -171,3 +171,51 @@ export const PHASE_VERDICT_LABELS: Record<PhaseVerdict, string> = {
   'too-slow': 'Moving too slowly',
   unknown: 'Not enough readings',
 }
+
+export interface CorridorPoint {
+  /** Days since the first reading in the window. */
+  readonly day: number
+  readonly low: number
+  readonly high: number
+}
+
+/**
+ * Where the scale *would* be, had the phase been held from day one.
+ *
+ * A corridor rather than a band, because the target is a **rate** and a
+ * rate does not become a range of weights until it is anchored to a
+ * starting point and a length of time. Two lines projected from the
+ * first reading — one at each edge of the band — spread apart as the
+ * weeks pass, and the actual line either stays between them or leaves.
+ *
+ * The anchor is the earliest reading in the window shown, and that is
+ * the honest limitation to state: a single unrepresentative first
+ * weigh-in shifts the whole corridor, so it is drawn as guidance beside
+ * the trend rather than as a verdict. **`phaseVerdict` remains the
+ * judgement**, and it reads the smoothed rate over the last fortnight
+ * rather than a projection from one morning weeks ago. The corridor is
+ * for looking at; the verdict is for deciding.
+ */
+export function projectCorridor(
+  anchorWeight: number,
+  days: number,
+  range: { readonly min: number; readonly max: number },
+): readonly CorridorPoint[] {
+  if (!Number.isFinite(anchorWeight) || anchorWeight <= 0 || days <= 0) return []
+
+  const at = (weeks: number, ratePercent: number) => anchorWeight * (1 + ratePercent / 100) ** weeks
+
+  return Array.from({ length: days + 1 }, (_, day) => {
+    const weeks = day / 7
+    const a = at(weeks, range.min)
+    const b = at(weeks, range.max)
+
+    /*
+     * Sorted rather than assumed. On a cut both edges are negative and
+     * `min` is the *lower* weight; on a bulk both are positive and `min`
+     * is the *upper* one. Naming them low and high by value keeps the
+     * caller from having to know which phase it is drawing.
+     */
+    return { day, low: Math.min(a, b), high: Math.max(a, b) }
+  })
+}

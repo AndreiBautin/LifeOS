@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { PHASE_RATES, phaseVerdict, weightTrend, type WeighIn } from './weight'
+import { PHASE_RATES, phaseVerdict, projectCorridor, weightTrend, type WeighIn } from './weight'
 
 /**
  * The trend is two windows compared, and almost every way of getting
@@ -128,5 +128,46 @@ describe('judging a phase', () => {
     expect(phaseVerdict(trendAt(0), PHASE_RATES.maintain)).toBe('on-track')
     expect(phaseVerdict(trendAt(0.6), PHASE_RATES.maintain)).toBe('too-fast')
     expect(phaseVerdict(trendAt(-0.6), PHASE_RATES.maintain)).toBe('too-fast')
+  })
+})
+
+describe('the target corridor', () => {
+  it('opens from a single point as the weeks pass', () => {
+    const corridor = projectCorridor(200, 28, PHASE_RATES.cut)
+
+    // Day zero is the anchor itself: no time has passed, so there is no
+    // spread yet and both edges sit on the starting weight.
+    expect(corridor[0]?.low).toBeCloseTo(200, 5)
+    expect(corridor[0]?.high).toBeCloseTo(200, 5)
+
+    const last = corridor[corridor.length - 1]
+    expect((last?.high ?? 0) - (last?.low ?? 0)).toBeGreaterThan(0)
+  })
+
+  it('descends on a cut and climbs on a bulk', () => {
+    const cutting = projectCorridor(200, 14, PHASE_RATES.cut)
+    const bulking = projectCorridor(200, 14, PHASE_RATES.bulk)
+
+    expect(cutting[14]?.high ?? 0).toBeLessThan(200)
+    expect(bulking[14]?.low ?? 0).toBeGreaterThan(200)
+  })
+
+  /*
+   * Named by value rather than by which end of the band they came from.
+   * On a cut both edges are negative and `min` is the lower weight; on a
+   * bulk both are positive and `min` is the upper one, so a caller
+   * assuming otherwise would draw one of the two phases inside out.
+   */
+  it('always reports low below high, whichever way the phase runs', () => {
+    for (const phase of ['cut', 'maintain', 'bulk'] as const) {
+      for (const point of projectCorridor(200, 21, PHASE_RATES[phase])) {
+        expect(point.low).toBeLessThanOrEqual(point.high)
+      }
+    }
+  })
+
+  it('has nothing to draw without an anchor or a span', () => {
+    expect(projectCorridor(0, 14, PHASE_RATES.cut)).toEqual([])
+    expect(projectCorridor(200, 0, PHASE_RATES.cut)).toEqual([])
   })
 })
