@@ -1091,6 +1091,33 @@ last-write-wins fixes that.
 a bad reading cannot be put back, for the same reason there is no
 tombstone. Do not relax it to make the map feel more responsive indoors.
 
+**A shipped change reaches an installed PWA only when something asks for
+it.** `registerType: 'prompt'` decides what happens once a new version is
+_found_ and does nothing about finding one; the browser checks on a full
+page load, and a PWA on a phone is rarely loaded again — it is resumed
+from the background for weeks. So a green deploy could sit undelivered
+indefinitely with no banner and nothing visibly wrong, which is what was
+behind every "it hasn't updated" in this project's history. `UpdatePrompt`
+now calls `registration.update()` whenever the app becomes visible.
+Resuming is the right moment: the check is a conditional request for one
+small file, and it lands when the user has just come back rather than
+mid-set.
+
+**Form fields are 16px on coarse pointers, and it is a bug fix.** Mobile
+Safari zooms the whole page when a focused input's font is under 16px,
+and the viewport meta deliberately sets no `maximum-scale` — suppressing
+the zoom that way disables pinch-zoom, which is an accessibility control
+and not ours to remove. It does not zoom back out, so one tap on a search
+box left the layout scrolled sideways with the heading clipped on one
+edge and the navigation clipped on both. It reads as a broken app; the
+cause is two pixels of font size.
+
+**That rule lives outside `@layer` on purpose.** Unlayered CSS outranks
+every layered rule, and the fields carry Tailwind's `text-sm` from the
+utilities layer, which is emitted after `components` — so the same rule
+written there loses and the zoom returns. It is not a specificity trick
+awaiting a tidy-up; it is the only place it can sit and win.
+
 **The geocoder is on the add form now, and the reason it was not is
 worth keeping.** `usePlaceSearch` was complete from the start — debounced,
 rate-limited, tested — and reachable from exactly one screen: the inbox,

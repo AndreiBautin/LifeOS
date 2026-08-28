@@ -20,8 +20,32 @@ export function UpdatePrompt() {
     needRefresh: [needRefresh, setNeedRefresh],
     updateServiceWorker,
   } = useRegisterSW({
-    onRegisteredSW(url) {
+    onRegisteredSW(url, registration) {
       logger.debug('sw.registered', { url })
+
+      /*
+       * Ask again whenever the app comes back to the front.
+       *
+       * `registerType: 'prompt'` decides what happens *once a new version
+       * is found*; it does nothing about finding one. The browser checks
+       * on a full page load, and an installed PWA on a phone is rarely
+       * loaded again — it is resumed from the background for weeks. So a
+       * shipped change could sit undelivered indefinitely with no banner
+       * and nothing wrong, which is exactly what kept happening.
+       *
+       * Resuming is the right moment because it is free: the check is a
+       * conditional request for one small file, and it happens when the
+       * user has just returned rather than while they are mid-set.
+       */
+      if (registration === undefined) return
+
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState !== 'visible') return
+        void registration.update().catch((error: unknown) => {
+          // Offline is the ordinary case here, not a fault worth a banner.
+          logger.debug('sw.update-check-failed', { message: String(error) })
+        })
+      })
     },
     onRegisterError(error) {
       logger.error('sw.register-failed', error)

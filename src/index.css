@@ -343,3 +343,31 @@
   animation: skeleton-sweep 1400ms linear infinite;
   border-radius: 0.5rem;
 }
+
+/* Form fields are 16px on a touch device, and this is a bug fix rather than
+   a preference.
+
+   Mobile Safari zooms the whole page in when a focused input's font is
+   under 16px, and the viewport meta deliberately sets no `maximum-scale` —
+   suppressing the zoom that way also disables pinch-zoom, which is an
+   accessibility control and not ours to take away. The page does not zoom
+   back out afterwards either, so one tap on a search box leaves the layout
+   scrolled sideways with the heading clipped on one edge and the navigation
+   clipped on both. It reads as the app being broken, and the cause is two
+   pixels of font size.
+
+   **Deliberately outside `@layer`.** Unlayered rules outrank every layered
+   one, and the fields carry Tailwind's `text-sm` from the utilities layer —
+   which is emitted after `components`, so the same rule written there loses
+   and the zoom comes back. That is not a specificity trick to be tidied up
+   later; it is the only place this can sit and win.
+
+   Scoped to coarse pointers so the denser type survives on a desktop, where
+   no such zoom happens. */
+@media (pointer: coarse) {
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
