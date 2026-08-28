@@ -1,4 +1,5 @@
 import { HeartPulse, Minus, Plus } from 'lucide-react'
+import { Skeleton } from '@/components/shared/Skeleton'
 import { Link } from 'react-router-dom'
 
 import { Badge, Button, Card } from '@/components/shared/primitives'
@@ -181,7 +182,22 @@ export function VitalsCard() {
   // is derived from it, so a test can hold time still.
   const now = useServices().clock.now()
 
-  if (vitals.data === undefined) return null
+  /*
+   * The card's own shape while it loads, rather than nothing. This one
+   * sits above the dailies, so rendering nothing meant the first
+   * checkbox started under the thumb and then jumped down the screen
+   * once the pools arrived.
+   */
+  if (vitals.data === undefined) {
+    return (
+      <Card>
+        <Skeleton className="h-4 w-20" label="Loading your vitals" />
+        <Skeleton className="mt-3 h-2 w-full" />
+        <Skeleton className="mt-3 h-6 w-full" />
+        <Skeleton className="mt-2 h-6 w-full" />
+      </Card>
+    )
+  }
 
   const { pools, condition, phase } = vitals.data
   const nothingSetUp = pools.length === 0 && condition === undefined && phase.trend === undefined

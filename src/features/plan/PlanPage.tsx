@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { PageHeader } from '@/components/shared/PageHeader'
 
 import { useSettings } from '@/app/context'
 import { shortfalls, type Shortfall } from '@/domain/priority/capacity'
@@ -120,9 +121,7 @@ export function PlanPage() {
         History how many sessions exist — and neither is a description of
         the page.
       */}
-      <header className="mb-6">
-        <h1 className="text-ink-50 text-2xl font-semibold tracking-tight">Plan</h1>
-      </header>
+      <PageHeader title="Plan" />
 
       {/*
         The block's identity is not on this page any more.

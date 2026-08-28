@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { Skeleton } from '@/components/shared/Skeleton'
 
 import { AvatarPortrait } from './AvatarPortrait'
 import { useAvatar } from './hooks'
@@ -18,7 +19,12 @@ import { useAvatar } from './hooks'
 export function TodayAvatar() {
   const avatar = useAvatar()
 
-  if (avatar.data === undefined) return null
+  /*
+   * A circle of the right size rather than nothing, because this one is
+   * in the page header: an absent portrait let the title sit left, and
+   * it slid across as soon as the query landed.
+   */
+  if (avatar.data === undefined) return <Skeleton className="h-14 w-14 rounded-full" />
 
   return (
     <Link

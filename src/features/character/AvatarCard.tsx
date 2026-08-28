@@ -1,4 +1,5 @@
 import { Wrench } from 'lucide-react'
+import { Skeleton } from '@/components/shared/Skeleton'
 import { Link } from 'react-router-dom'
 
 import { Badge, Card } from '@/components/shared/primitives'
@@ -22,7 +23,20 @@ import { useAvatar } from './hooks'
 export function AvatarCard({ xp }: { readonly xp: number }) {
   const avatar = useAvatar()
 
-  if (avatar.data === undefined) return null
+  if (avatar.data === undefined) {
+    return (
+      <Card>
+        <div className="flex items-center gap-4">
+          <Skeleton className="h-[120px] w-[120px] rounded-full" label="Loading your character" />
+          <div className="min-w-0 flex-1">
+            <Skeleton className="h-5 w-28" />
+            <Skeleton className="mt-2 h-3 w-40" />
+            <Skeleton className="mt-3 h-5 w-20" />
+          </div>
+        </div>
+      </Card>
+    )
+  }
 
   const { calling, gear, gearCount, into, needed, season } = avatar.data
 

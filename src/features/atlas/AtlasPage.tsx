@@ -1,3 +1,4 @@
+import { PageHeader } from '@/components/shared/PageHeader'
 import {
   CalendarDays,
   Check,
@@ -289,12 +290,7 @@ export function AtlasPage() {
 
   return (
     <>
-      <header className="mb-6">
-        <h1 className="text-ink-50 text-2xl font-semibold tracking-tight">Map</h1>
-        <p className="text-ink-500 mt-0.5 text-sm">
-          Places worth going, and the ground you have covered.
-        </p>
-      </header>
+      <PageHeader title="Map" subtitle="Places worth going, and the ground you have covered." />
 
       <Section
         title="The world"

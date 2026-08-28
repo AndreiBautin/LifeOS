@@ -1,3 +1,4 @@
+import { PageHeader } from '@/components/shared/PageHeader'
 import {
   ChevronDown,
   ChevronRight,
@@ -113,22 +114,22 @@ export function TrainPage() {
         every absorbed app — so the tabs are for what is opened daily, and
         training's two review screens are reached from the training screen.
       */}
-      <header className="mb-6 flex items-end justify-between gap-3">
-        <div>
-          <h1 className="text-ink-50 text-2xl font-semibold tracking-tight">Train</h1>
-          <p className="text-ink-500 mt-0.5 text-sm">{program.data?.name ?? 'Loading…'}</p>
-        </div>
-        <div className="flex shrink-0 gap-1">
-          <Link to="/plan" className={buttonStyles({ variant: 'ghost', size: 'sm' })}>
-            <ListChecks size={16} aria-hidden />
-            Plan
-          </Link>
-          <Link to="/history" className={buttonStyles({ variant: 'ghost', size: 'sm' })}>
-            <History size={16} aria-hidden />
-            History
-          </Link>
-        </div>
-      </header>
+      <PageHeader
+        title="Train"
+        subtitle={program.data?.name ?? 'Loading…'}
+        action={
+          <>
+            <Link to="/plan" className={buttonStyles({ variant: 'ghost', size: 'sm' })}>
+              <ListChecks size={16} aria-hidden />
+              Plan
+            </Link>
+            <Link to="/history" className={buttonStyles({ variant: 'ghost', size: 'sm' })}>
+              <History size={16} aria-hidden />
+              History
+            </Link>
+          </>
+        }
+      />
 
       {nextDay !== undefined ? (
         <Section title="Next session" description={week?.label}>

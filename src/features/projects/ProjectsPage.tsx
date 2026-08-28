@@ -1,4 +1,5 @@
 import { Check, ChevronDown, ChevronRight, Home, Plus, Trash2, Undo2 } from 'lucide-react'
+import { PageHeader } from '@/components/shared/PageHeader'
 import { useState } from 'react'
 
 import { useServices } from '@/app/context'
@@ -375,12 +376,10 @@ export function ProjectsPage() {
 
   return (
     <>
-      <header className="mb-6">
-        <h1 className="text-ink-50 text-2xl font-semibold tracking-tight">Quests</h1>
-        <p className="text-ink-500 mt-0.5 text-sm">
-          What you are trying to get done, and what is blocking what.
-        </p>
-      </header>
+      <PageHeader
+        title="Quests"
+        subtitle="What you are trying to get done, and what is blocking what."
+      />
 
       <Section title="Active" description="One main quest, one side quest.">
         <ActiveQuests main={active.data?.main} side={active.data?.side} />

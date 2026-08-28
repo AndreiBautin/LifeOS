@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import { PageHeader } from '@/components/shared/PageHeader'
 import { Settings } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
@@ -80,28 +81,26 @@ export function CharacterPage() {
         changed is that this page is now the home screen, so "from here" is
         one tap from anywhere instead of two.
       */}
-      <header className="mb-6 flex items-end justify-between gap-3">
-        <div>
-          <h1 className="text-ink-50 text-2xl font-semibold tracking-tight">Character</h1>
-          <p className="text-ink-500 mt-0.5 text-sm">
-            Where you stand, everywhere it is being tracked
-          </p>
-        </div>
-        {/*
-          Settings lives here rather than in the navigation, which the tech
-          tree took its seat in. The monthly review used to sit beside it
-          and has moved to Today, next to the season: both answer "how is
-          this stretch going", and a link on a screen you open weekly was
-          the only prompt to do a thing that wants doing monthly.
-        */}
-        <Link
-          to="/settings"
-          aria-label="Settings"
-          className={buttonStyles({ variant: 'ghost', size: 'sm' })}
-        >
-          <Settings size={16} aria-hidden />
-        </Link>
-      </header>
+      {/*
+        Settings lives here rather than in the navigation, which the tech
+        tree took its seat in. The monthly review used to sit beside it and
+        has moved to Today, next to the season: both answer "how is this
+        stretch going", and a link on a screen you open weekly was the only
+        prompt to do a thing that wants doing monthly.
+      */}
+      <PageHeader
+        title="Character"
+        subtitle="Where you stand, everywhere it is being tracked"
+        action={
+          <Link
+            to="/settings"
+            aria-label="Settings"
+            className={buttonStyles({ variant: 'ghost', size: 'sm' })}
+          >
+            <Settings size={16} aria-hidden />
+          </Link>
+        }
+      />
 
       {/*
         The portrait replaces the bar that used to be here rather than

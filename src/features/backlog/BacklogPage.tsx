@@ -1,4 +1,5 @@
 import { Plus, Trash2 } from 'lucide-react'
+import { PageHeader } from '@/components/shared/PageHeader'
 import { useState } from 'react'
 
 import { Badge, Button, Card, Empty, Section } from '@/components/shared/primitives'
@@ -157,12 +158,7 @@ export function BacklogPage() {
 
   return (
     <>
-      <header className="mb-6">
-        <h1 className="text-ink-50 text-2xl font-semibold tracking-tight">Codex</h1>
-        <p className="text-ink-500 mt-0.5 text-sm">
-          Games, books, shows and films you are working through.
-        </p>
-      </header>
+      <PageHeader title="Codex" subtitle="Games, books, shows and films you are working through." />
 
       <Section
         title="Today"

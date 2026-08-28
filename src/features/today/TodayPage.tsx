@@ -1,4 +1,5 @@
 import { BookMarked, CalendarCheck, Map, Target, Users } from 'lucide-react'
+import { PageHeader } from '@/components/shared/PageHeader'
 import { Link } from 'react-router-dom'
 
 import type { AgendaItem, Urgency } from '@/application/use-cases/today/agenda'
@@ -85,13 +86,11 @@ export function TodayPage() {
         standing, so what belongs here is the glance — who you are and
         how far through the level — rather than the readout.
       */}
-      <header className="mb-6 flex items-center gap-3">
-        <TodayAvatar />
-        <div className="min-w-0">
-          <h1 className="text-ink-50 text-2xl font-semibold tracking-tight">Today</h1>
-          <p className="text-ink-500 numeric mt-0.5 text-sm">{today}</p>
-        </div>
-      </header>
+      <PageHeader
+        title="Today"
+        leading={<TodayAvatar />}
+        subtitle={<span className="numeric">{today}</span>}
+      />
 
       {/*
         Vitals sits above the dailies because it is the most present-tense

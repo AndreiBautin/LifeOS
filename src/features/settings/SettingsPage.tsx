@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import { PageHeader } from '@/components/shared/PageHeader'
 
 import type { BackupCounts } from '@/domain/backup/envelope'
 import { AlertTriangle, Download, HardDrive, Upload } from 'lucide-react'
@@ -61,9 +62,7 @@ export function SettingsPage() {
 
   return (
     <div>
-      <header className="mb-6">
-        <h1 className="text-ink-50 text-2xl font-semibold tracking-tight">Settings</h1>
-      </header>
+      <PageHeader title="Settings" />
 
       <Section title="Units">
         <Card className="space-y-4">

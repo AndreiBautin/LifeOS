@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import { PageHeader } from '@/components/shared/PageHeader'
 import { RotateCcw, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -92,20 +93,22 @@ export function HistoryPage() {
 
   return (
     <div>
-      <header className="mb-6">
-        <h1 className="text-ink-50 text-2xl font-semibold tracking-tight">History</h1>
-        {/*
-          Counted separately, because they are different claims. A
-          finished session is one you completed; an abandoned one is work
-          that happened inside a session you walked away from. Adding them
-          into a single total would overstate the first, and leaving the
-          second out entirely is what made this screen look empty.
-        */}
-        <p className="text-ink-500 mt-0.5 text-sm">
-          {completed.length} session{completed.length === 1 ? '' : 's'} logged
-          {abandoned.length > 0 && ` · ${String(abandoned.length)} abandoned`}
-        </p>
-      </header>
+      {/*
+        Counted separately, because they are different claims. A finished
+        session is one you completed; an abandoned one is work that
+        happened inside a session you walked away from. Adding them into a
+        single total would overstate the first, and leaving the second out
+        entirely is what made this screen look empty.
+      */}
+      <PageHeader
+        title="History"
+        subtitle={
+          <>
+            {completed.length} session{completed.length === 1 ? '' : 's'} logged
+            {abandoned.length > 0 && ` · ${String(abandoned.length)} abandoned`}
+          </>
+        }
+      />
 
       {weekVolume !== undefined && (
         <Section title="This week" description="Hard sets against your landmarks">

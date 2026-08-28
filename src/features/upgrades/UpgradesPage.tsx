@@ -1,4 +1,5 @@
 import { Check, Lock, Plus, Trash2, Wallet } from 'lucide-react'
+import { PageHeader } from '@/components/shared/PageHeader'
 import { useState } from 'react'
 
 import { Badge, Button, Card, Empty, Section } from '@/components/shared/primitives'
@@ -355,12 +356,7 @@ export function UpgradesPage() {
 
   return (
     <>
-      <header className="mb-6">
-        <h1 className="text-ink-50 text-2xl font-semibold tracking-tight">Tech tree</h1>
-        <p className="text-ink-500 mt-0.5 text-sm">
-          What you are saving up for, and what unlocks what.
-        </p>
-      </header>
+      <PageHeader title="Tech tree" subtitle="What you are saving up for, and what unlocks what." />
 
       <Section
         title="What you can get today"

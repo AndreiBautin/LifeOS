@@ -1,4 +1,5 @@
 import { Flame, Undo2, Wrench } from 'lucide-react'
+import { PageHeader } from '@/components/shared/PageHeader'
 import { Link } from 'react-router-dom'
 
 import { Badge, Button, Card, Empty, Section } from '@/components/shared/primitives'
@@ -135,10 +136,7 @@ export function BasePage() {
 
   return (
     <div className="space-y-4">
-      <header>
-        <h1 className="text-ink-50 text-2xl font-semibold">Base</h1>
-        <p className="text-ink-500 text-sm">The place you live, and what it is asking for</p>
-      </header>
+      <PageHeader title="Base" subtitle="The place you live, and what it is asking for" />
 
       <Section title="Chores" description="What the house wants today">
         <Card>

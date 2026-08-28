@@ -1,4 +1,5 @@
 import { ArrowDown, ArrowUp, Check, Minus, Plus } from 'lucide-react'
+import { PageHeader } from '@/components/shared/PageHeader'
 import { useState } from 'react'
 
 import type { AreaReading, MetricReading } from '@/application/use-cases/review/review'
@@ -168,15 +169,17 @@ export function ReviewPage() {
         corner link. It has no tab of its own and should not: a screen
         opened ten minutes a month has not earned one.
       */}
-      <header className="mb-6">
-        <h1 className="text-ink-50 text-2xl font-semibold tracking-tight">Monthly review</h1>
-        <p className="text-ink-500 mt-0.5 text-sm">
-          Once a month, on purpose — a rating that moved because a page was opened would not be a
-          monthly rating. The <strong className="text-ink-300">season</strong> on the character
-          sheet is the other half of this: that one is live progress, this one is the record that
-          lets a direction be judged at all.
-        </p>
-      </header>
+      <PageHeader
+        title="Monthly review"
+        subtitle={
+          <>
+            Once a month, on purpose — a rating that moved because a page was opened would not be a
+            monthly rating. The <strong className="text-ink-300">season</strong> on the character
+            sheet is the other half of this: that one is live progress, this one is the record that
+            lets a direction be judged at all.
+          </>
+        }
+      />
 
       <Section
         title="How it is going"

@@ -1,4 +1,5 @@
 import { Check, Trash2, UserPlus } from 'lucide-react'
+import { PageHeader } from '@/components/shared/PageHeader'
 import { useState } from 'react'
 
 import { useServices } from '@/app/context'
@@ -155,12 +156,10 @@ function Circle() {
 export function PartyPage() {
   return (
     <>
-      <header className="mb-6">
-        <h1 className="text-ink-50 text-2xl font-semibold tracking-tight">Party</h1>
-        <p className="text-ink-500 mt-0.5 text-sm">
-          The people worth keeping up with, longest unseen first.
-        </p>
-      </header>
+      <PageHeader
+        title="Party"
+        subtitle="The people worth keeping up with, longest unseen first."
+      />
 
       <Section title="Your circle">
         <Circle />

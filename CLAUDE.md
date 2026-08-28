@@ -416,6 +416,454 @@ whose job is to show movement. Consistency levelled the session count,
 which XP already spends. Nothing measures conditioning, so nothing scores
 it; that is the same rule every other area follows.
 
+**Every screen's header comes from `PageHeader`.** It was seventeen
+copies of one class string, and the duplication was the smaller half of
+the problem: a heading over a grey line is what a settings pane looks
+like, so every screen in the app opened the way a form does. The lit rule
+above the title is the accent the section headings carry, turned
+horizontal, so a page and a panel read as the same family at two sizes.
+`leading` and `action` exist because three screens already needed
+them — Today's portrait, Character's settings link, Train's two links —
+and a component that could not hold those would have left three headers
+hand-rolled and defeated the point.
+
+Two traps came out of migrating them, both worth knowing. A regex of
+`^import .*# Working on LifeOS
+
+A client-only React + TypeScript PWA covering six areas — training,
+quests, a backlog, a tech tree, a circle and an atlas — scored by one
+game model. **No server of ours, and no database of ours.**
+Persistence is IndexedDB behind a repository interface. That constraint is
+the product, not a limitation — see
+[docs/PERSISTENCE.md](docs/PERSISTENCE.md).
+
+The honest qualifier: the map talks to OpenStreetMap. Tiles come from
+`tile.openstreetmap.org` on every pan, and the inbox's search asks
+Nominatim to turn a name into coordinates. Both are the same third party,
+both are opt-in in the sense that they only happen on the map screens, and
+neither carries a record — but "no network calls" was never true once
+Leaflet was rendering live tiles, and claiming it made the _other_
+requests look like a bigger step than they are. Firebase sync, when
+configured, is the other one.
+
+## Before you finish anything
+
+```bash
+pnpm verify    # typecheck + lint + format:check + test:run + build
+```
+
+A pre-push hook runs this and refuses the push if it fails. The same
+command gates the deploy. If `pnpm verify` is green the change is
+shippable; if it is not, it is not — there is no third state.
+
+## The layer rule
+
+Dependencies point **inward only**, enforced by ESLint
+(`no-restricted-imports` in `eslint.config.js`), so breaking it fails the
+build with a message explaining why.
+
+```
+features/  →  application/  →  domain/  ←  infrastructure/
+```
+
+| Layer               | May import         | Never imports                                     |
+| ------------------- | ------------------ | ------------------------------------------------- |
+| `domain/`           | nothing but itself | React, browser APIs, any library, any other layer |
+| `application/`      | `domain/`          | `infrastructure/`, `features/`, React             |
+| `infrastructure/`   | `domain/`          | `features/`, `app/`, React                        |
+| `features/`, `app/` | anything           | —                                                 |
+
+If a use-case needs something concrete — a repository, a clock, an id
+generator — **take it as a parameter** and wire it in `src/app/di.ts`.
+That file is the only place allowed to name a concrete implementation.
+
+## Load-bearing invariants
+
+These are each enforced by a lint rule or a test. They are listed here so
+you know _why_ before you meet the error.
+
+**The program is never the log.** A `ProgramTemplate` stores intent and a
+`WorkoutLog` stores what happened. Never write a result back into a
+template. All three predecessor apps collapsed these, and that single
+decision is why editing a program corrupted history in every one of them.
+Here it cannot happen at all: the template is derived rather than stored,
+so there is nothing to write back into.
+
+**Resolution is pure.** `domain/resolution/resolve.ts` turns a
+prescription into a number with no I/O and no clock. Keep it that way; it
+is where nearly all the tests live.
+
+**Strength is RTS, and only RTS.** Four lifts are run by reps at an RPE
+with back-off work driven by measured fatigue percentages
+(`domain/framework/rts.ts`) — and **only three of them are a total.**
+
+The overhead press is the fourth. It was removed as a main lift because
+5/3/1 wanted one and it contributes nothing to a powerlifting total; the
+second half is still true, and was never an argument against training it
+heavy. `measure.ts` names squat, bench and deadlift explicitly and
+`isCompetition` is false on the press, so it gets a top set and back-offs
+without entering the score. **Do not compute the total from
+`STRENGTH_LIFTS`** — that was safe while the two were the same three
+lifts and is exactly the kind of thing that looks like a tidy-up later.
+
+**One bench, and it is the touch-and-go one under its plain name.** Three
+bench variations existed to fill three sessions a week; at one session a
+week a rotation has nowhere to go. `bench-press` is the tracked lift again
+— the slug never moved, because it is written into every filed log — and
+the paused and close-grip versions keep `VARIATION_OF` ratios off it so a
+lifter picking one by hand gets a suggested load.
+
+The cost is real and belongs on the record: **this number is no longer a
+competition bench.** A touch-and-go single is worth more than a paused
+one, so the character sheet's bench standard and the total both read a
+little high against a meet. `migrateBenchEstimate` has now pointed both
+ways for this reason and is documented in the direction it currently
+runs.
+
+**The top set is a triple.** `topSetReps` is 3. The top set is a
+measurement before it is training — reps at an RPE, read back through the
+chart as an implied max — and a triple sits closer to the single the total
+is scored on, so less of the chart's error lies between what was lifted
+and what it claims you can lift.
+
+It costs the other job the top set was doing, and that cost is not
+recorded anywhere on a screen: five reps at RPE 8 is a real hypertrophy
+stimulus for the muscles the lift trains, and three is much less. The
+back-offs carry that alone now. If the chest or the quads start looking
+thin, this is the change to suspect first — the bench and the squat pay
+them less than they did.
+
+5/3/1 was removed wholesale — framework, assembler, recipes, splits,
+progression, `percent-training-max`, training maxes. It is in the git
+history if it is ever wanted back. Do not reintroduce a second framework
+without deciding to carry two of everything again.
+
+**A suggested load is never the prescription.** `estimatedMaxes` (in
+settings) is the basis for every suggestion, and an estimate is
+acceptable _because_ RTS asks for reps at an RPE: get the number wrong
+and the lifter corrects it by loading the bar they were going to load
+anyway. This was the opposite under 5/3/1, where the percentage _was_
+the prescription and an estimate would have silently changed what a cycle
+meant — which is why training maxes existed and why they went with it.
+
+**Strength sets are not hypertrophy volume, and this reverses a rule that
+stood for a long time.** The fill used to subtract what the competition
+lifting had already paid a muscle — `committed` started at the week's
+strength spend, `added` at the day's — on the reasoning that not doing so
+turns one coherent programme into a powerlifting block with a
+bodybuilding routine stapled to it. That reasoning was sound while a top
+set was five reps.
+
+Triples broke it. A top set of three plus three back-off triples is
+twelve reps at high load: a real strength dose and close to nothing as
+hypertrophy, which the accounting still called eight sets. Eight covered
+the chest's entire six-set target, so **the week scheduled no chest work
+at all** — no dips anywhere, on a split whose first exercise is a bench
+press.
+
+They are counted apart now. A muscle's setting is a claim about the
+accessory work scheduled _for_ it, and the competition lifting sits on
+top: the chest asks for six, gets six of dips, and is benched heavily
+twice besides. The cost the old comment named is real and is now the
+lifter's to manage by setting a muscle to fewer sessions, rather than the
+assembler's to hide.
+
+**`countsAsHypertrophy` is the one predicate, and conditioning is on the
+wrong side of it too.** Volume tracking counts `hypertrophy` and
+`assistance` slots and nothing else — not warm-ups, not the competition
+lifts, not conditioning. The conditioning case is the one that shows why
+this is a _role_ check rather than a judgement about set counts: thirty
+sets of ten kettlebell swings arrived as **sixty glute sets a week**
+against a target of zero, and it only became absurd once the swings were
+prescribed as sets rather than as a block of time. Nothing about the work
+had changed. A twenty-minute walk was quietly adding two calf sets by the
+same route.
+
+Any test comparing delivery against a target uses `hypertrophyVolume`
+rather than `weeklyVolume`, or it is measuring two things against a number
+that describes one.
+
+**Incidental credit is spent once.** The fill budgets **compounds before
+isolation** (two passes over the same muscles, the first restricted to
+`isCompound`), and `shareOwed` subtracts what the day has already paid a
+muscle from that day's share **in full**, not diluted across the sessions
+that follow.
+
+Both halves are needed and the bug they fix is invisible from the totals.
+Monday sized six curl sets against an unpaid biceps target and _then_
+placed chin-ups for the lats, which paid the biceps another two and a
+half: the day delivered 8.5 against a fair share of 5.7, the week
+delivered 21 against a target of 17, and Wednesday — the crowded day —
+got the two sets that were left. It reads as a scheduling quirk and is
+actually the same credit being spent twice.
+
+**That subtraction starts from the day's strength work, not from zero.**
+`added` is seeded with the volume of `existingSlots` — the competition
+lifting is the largest thing in the session, and a Monday bench pays the
+chest about six credited sets before any accessory is chosen. Seeding it
+empty told the fill the chest was untouched, so it added a full share on
+top, and the muscles sorted below it got whatever minutes were left. The
+rear delts were the visible casualty: 7.5 against a target of 11, fixed
+to exactly 11 by this one line.
+
+**A session's share is the remainder divided by the sessions left, not
+`target / frequency`.** The fixed share is the cleaner-sounding rule and
+is worse, which is recorded here because it will be proposed again: it
+spreads the _plan_ evenly and cannot absorb an error, so a day that
+over-delivers leaves the whole overshoot on the last session — biceps
+7.5 / 5.5 / 3 against 5.5 / 6 / 5.5 for the remainder rule. What matters
+is that sessions-left is a **count of days that train the muscle**, not a
+measure of how long any of them ran: two sessions with the same muscles
+get the same share whether one finished in forty minutes and the other
+in eighty.
+
+The backfill has a slot grace of **one**, not just a time grace. A
+two-set frequency slot costs four minutes, so a day with time left will
+take four or five of them and arrive at thirteen exercises of two sets —
+inside the minute budget, and the shape splitting the volume was meant to
+avoid.
+
+**The whole volume model is one multiplication.**
+
+```
+  weekly sets = sessions a week × sets per session for its level
+```
+
+Each muscle carries a `sessionsPerWeek` and a `level`; the levels are four
+shared numbers — deload 2, low 3, medium 4, high 5 — and a deload swaps
+the level for the deload number while keeping the frequency. Each
+competition lift carries a `sessionsPerWeek` of its own.
+`domain/volume/levels.ts` and `DEFAULT_LIFT_SESSIONS` in
+`domain/priority/tiers.ts`. **Nothing is derived from anything else, and
+no number depends on any other muscle.**
+
+Zero sessions is a first-class answer, not a bottom tier. It means the
+muscle gets no dedicated work and lives on what the competition lifts pay
+it, and it is what most muscles are set to.
+
+**Five sets and three sets are `MAX_SETS_PER_SESSION` and
+`minSetsPerSlot`.** With one exercise per muscle per session a level is
+choosing how long that single exercise runs, so the high level and the
+slot ceiling are the same number by construction. If they drift apart a
+level will ask for a slot the fill cannot build.
+
+**What this replaced, so nobody rebuilds it by accident.** Four eras of
+increasingly elaborate derivation, each a reasonable fix for the last:
+per-muscle RP landmarks (MV/MEV/MAV/MRV, fifteen rows) scaled by a
+two-thirds factor for direct-only credit and clamped to what a week could
+schedule; a priority _tier_ that chose a position between 0 and 1; that
+position lerped through the four landmarks; and the result clamped again
+by a frequency the same tier had chosen. Gone with it: `Tier`,
+`priorityPosition`, `weeklyTargetFor`, `TIER_FREQUENCY`,
+`reachableWeeklySets`, `VolumeLandmarks`, `DEFAULT_LANDMARKS`,
+`adjust-landmarks.ts`, and the four position constants.
+
+What is genuinely lost is worth naming because it will look like an
+oversight. A landmark is a claim about a **muscle** — side delts recover
+faster than quads and can take more — and a level is a claim about a
+**session**, shared by everything assigned to it. Per-muscle difference is
+now expressed by assigning a different level, which is coarser and is a
+decision a person can see and make. If evidence ever justifies real
+per-muscle numbers, that is a new field on `MuscleVolume`, not a return to
+interpolation.
+
+**The check-in loop went with the landmarks, and it was never wired up.**
+`adjust-landmarks.ts` turned check-in history into a proposal to move MAV
+— three sessions of evidence, clamped to the band, never applied silently
+— and `proposeLandmarks` had no caller outside its own test. It was the
+rule nothing could reach that this file warns about elsewhere. If
+autoregulated volume comes back, the thing to move is a muscle's level,
+and it needs a screen the same day it needs a function.
+
+**Each lift carries its own sessions a week**, `liftSessions` in
+settings, two by default. `assignStrengthLifts` places them on the days
+whose `carries` matches the lift, choosing the **emptiest** eligible day
+each time. Spacing each lift across its own eligible days is the obvious
+implementation and is wrong the moment two lifts share a pool: a squat and
+a deadlift wanting one session each from the same two lower days both
+computed the same index and landed on Tuesday.
+
+**A day holding two lifts runs them in `STRENGTH_LIFTS` order**, so the
+squat opens every lower day and the deadlift always follows it. This used
+to alternate, and the reason it did has not stopped being true: whichever
+lift is second is second after a full top set and its back-offs, every
+session, for the whole block, and never gets a day where it is the
+priority. The alternation was removed because squat-then-pull was asked
+for, and the order of two lifts in a session is a training preference
+rather than a correctness property. **The cost is real, unmeasured and
+invisible on every screen — if the pull stalls while the squat does not,
+suspect this first.** `rp-assemble.test.ts` → "opens every lower day with
+the squat" is the record, inverted rather than deleted so that quietly
+restoring the alternation has to be said out loud.
+
+**The fatigue allowance equals the load drop, always.** One setting —
+`settings.fatiguePercent`, 5 by default and adjustable from 5 to 10 — read
+as both. That
+equality is what makes the stopping rule sayable: at matched reps and
+RPE an implied max is proportional to bar weight, so stopping at a 5%
+drop in implied max _is_ the moment the 5%-lighter bar feels like the
+top set did. One sentence, no arithmetic, true on every lift. Varying
+the allowance by tier (2% to 7%) was coherent and made that sentence false
+for every tier but one, which is why the setting is a single number rather
+than a pair: two fields would let a lifter set a 5% bar and a 9% target
+and there would be no sentence left to say.
+
+**The setting is RTS's published scale and nothing else** — 0 none, 2
+minimal, 5 moderate, 7 high, in `FATIGUE_CHOICES`. It was a free integer
+from 5 to 10 on the reasoning that a lifter who has run 7% knows something
+a general scale cannot. True, and it made the control a slider over
+numbers that mean nothing individually: these are four _named amounts of
+work_, not samples from a continuum, and "moderate" is a decision a lifter
+can make where 5 is a number they can only accept.
+
+`nearestFatigueChoice` snaps a stored value rather than clamping it,
+because devices hold 8s and 9s from the old range — a 9 reads as "high"
+rather than being dragged to the top of a range it was never on.
+
+**None means no back-off slot at all**, not three the stopping rule
+immediately cancels. The cap is materialised as slots and counted as
+volume, so a plan that is only correct if you skip most of it is not
+correct.
+
+**The setting was decorative for two commits and that is the lesson.**
+`settings.fatiguePercent` existed, the editor changed it, and
+`recipeFromSettings` went on passing `DEFAULT_RTS` — so the control
+decided nothing while looking like it worked. A rule nothing can reach is
+a rule nobody can trust; a _control_ nothing can reach is worse, because
+the lifter believes they changed something. Two tests now assert the
+number arrives.
+**Frequency is a means to volume, never a goal.** The backfill will not
+schedule a muscle already at its weekly target, secondary credit
+included. This is the one exception to "every muscle gets the sessions it
+asked for", and it is why `rp-assemble.test.ts` → "trains every muscle as
+often as its tier asks" exempts a muscle already at target — a second
+session for a muscle at its number buys fatigue and no stimulus. Without that guard the two-session floor applied to the front
+delts — asking for three sets while the bench press and dips paid them
+ten — and put an overhead press on every Friday to satisfy an arithmetic
+minimum for a muscle at three times its target. The backfill also orders
+by deficit, not by the order muscles happen to appear in `RpDay.muscles`;
+that array is grouped by region, and walking it verbatim left the side
+delts last in `UPPER` and finishing blocks ten sets short.
+
+**One exercise per muscle per session, three to five sets, or the muscle
+is not trained today.** `alreadyCovered` in `pickHypertrophyExercise` keys
+on `primaryMuscle` alone. It keyed on muscle _and_ pattern, which let the
+compound pass place a row for the upper back and the isolation pass a
+shrug, so one muscle's session dose arrived split across two movements and
+two ramp-ups. The pattern half is subsumed — two movements for one muscle
+are barred whether they share a pattern or not. Day-scoped, because
+`placed` is: the _weekly_ repeat penalty still keys on muscle-and-pattern,
+and that is what gives the forearms flexion one session and extension the
+other.
+
+`minSetsPerSlot` is 3 and `maxSetsPerSlot` is `MAX_DIRECT_SETS_PER_SESSION`.
+Those two now describe the same quantity rather than bounding a slot and a
+muscle separately, which is what one-exercise-per-muscle makes true — keep
+them in step. The floor is the load-bearing half: a one-set slot costs a
+warm-up and a machine and delivers almost nothing, and the fill will
+happily produce a dozen of them to make a total come out. Below three the
+muscle waits for a session that can do it properly.
+
+**There is no session length at all — no minimum and no maximum.** The
+minimum went first, and enforcing it had taken three mechanisms: a grace
+period letting the frequency backfill overrun, a top-up pass scheduling
+muscles already at their target, and a loop lengthening existing slots one
+set at a time, all to move a thirty-nine minute session to forty-one.
+
+The ceiling outlived it by a while, as `SESSION_MINUTES_CAP = 70`,
+defended as a recovery budget rather than a clock — "one day must not
+claim the whole week". That defence stopped holding once a muscle's weekly
+target was itself clamped to what its tier's frequency can deliver. **The
+target is the recovery budget now**, and the ceiling was a second one laid
+on top: a day could satisfy every landmark it was accountable for and be
+cut off mid-fill regardless.
+
+What it cost is the reason it is worth a paragraph rather than a line,
+because it read as a cap nobody reached right up until the split changed.
+Four days with nine tier-2 muscles ran the upper days out of clock at six
+accessory slots, so the side delts and the triceps got one session where
+their tier asked for two and the traps got nothing at all — a training
+decision made by a constant, invisible on every screen and unreachable
+from any setting. Removing it took the week from three muscles short to
+**zero**, at the price of upper days that run about ninety minutes of
+lifting.
+
+**Nothing bounds a day now except the arithmetic that produced its
+volume**, and that is genuinely a bound rather than an absence of one: one
+exercise per muscle per session, at most five sets, over a muscle list the
+split fixes. `estimateDayMinutes` still reports how long a day takes —
+reporting is not enforcing — and `SESSION_TOO_LONG_MINUTES` survives as a
+line the suite holds the assembler to, not as anything the assembler
+consults. If a session comes out too long the answer is fewer muscles at
+tier 2 or more days, decisions a person makes and can see, rather than a
+constant quietly declining to schedule the last two exercises.
+
+Gone with it: `maxHypertrophySlotsPerDay`, `BACKFILL_TIME_GRACE`,
+`BACKFILL_SLOT_GRACE`, `slotMinutes` and `isEasyConditioning`. That last
+one is worth knowing about if you go looking for it — it kept the Zone 2
+walk out of the accessory budget, because charging twenty minutes of
+walking against a recovery allowance it does not consume had once halved
+the side delts. With no budget to charge against, it had nothing left to
+decide.
+
+A short day is information. A deadlift day with the legs on maintenance
+runs fifty minutes because that is what the tiers asked for, and the Plan
+screen reports what the week does and does not deliver.
+
+**Zero sessions is zero, and one muscle pays for that.** Quads and
+glutes are maintained and fine, because the squat and the deadlift are
+scheduled _for_ them and pay well past what maintenance would ask. The
+trunk and the grip are maintained and get nothing, which is the intent.
+
+The hamstrings are the case to know about: no competition lift has them as
+its primary muscle, and secondary credit is gone, so at tier 3 they
+receive **literally nothing** — the Romanian deadlift that used to cover
+them was a tier-3 slot and tier 3 no longer has slots. If that is not
+wanted, the fix is to move them to tier 2 rather than to reintroduce a
+maintenance dose.
+
+**Every working week is identical.** `weeklyTargetForWeek` returns the
+target the priority asked for, and MV on the deload. There is no ramp.
+
+There was: week one opened near MEV, the target climbed across the block,
+and the last working week touched MRV. That is defensible periodisation
+and it cost more than it paid. Every measurement of the program had to
+name a week to mean anything, every screen showing volume had to pick
+one, and the Program page carried a tab per week that differed only by a
+gradient nobody had asked to see. What the ramp was for is autoregulated
+instead — RTS moves the loads set by set, the check-ins move the
+landmarks on evidence.
+
+The consequence the UI depends on: the Program page shows **one** working
+week and the deload, and says that is the whole block. If the weeks ever
+diverge again that screen becomes a lie, which is what
+`rp-assemble.test.ts` → "gives every working week the same volume" is
+guarding.
+
+**Conditioning is programmed but not scored.** It was a mile time nobody
+was running, so it sat at Untrained permanently — a fixed zero on a screen
+whose job is to show movement. Consistency levelled the session count,
+which XP already spends. Nothing measures conditioning, so nothing scores
+it; that is the same rule every other area follows.
+
+matches `import {` — the _first line of a multi-line
+import_ — so inserting after it splits the statement. And **a JSX comment
+cannot sit inside an attribute expression**: moving a commented block
+into `action={…}` is a syntax error, and the note has to move above the
+element instead.
+
+**A skeleton reserves the layout; it is not decoration.** Screens
+rendered nothing until their query resolved, so opening the app was a
+blank page snapping into a full one — and worse than the flicker is that
+whatever you were reaching for moved under your thumb as the real content
+pushed it down. Verified by the thing that actually matters: Today's
+`h1` sits at the same x before and after the portrait loads.
+
+The sweep animates `background-position`, which the compositor handles
+without re-laying-out, and the reduced-motion block collapses it to a
+flat block — the correct still version, rather than a gradient frozen
+mid-sweep.
+
 **The act acknowledgement reports; it does not reward.**
 `app/xp-award.ts` and `components/shared/XpAwards.tsx`. Ticking a habit
 changed a checkbox and finishing a session navigated away — the XP was

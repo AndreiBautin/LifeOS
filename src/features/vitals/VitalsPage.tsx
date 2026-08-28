@@ -1,4 +1,5 @@
 import { Plus, Scale, Trash2 } from 'lucide-react'
+import { PageHeader } from '@/components/shared/PageHeader'
 import { useState } from 'react'
 
 import { Badge, Button, Card, Empty, Section } from '@/components/shared/primitives'
@@ -465,10 +466,7 @@ export function VitalsPage() {
 
   return (
     <div className="space-y-4">
-      <header>
-        <h1 className="text-ink-50 text-2xl font-semibold tracking-tight">Vitals</h1>
-        <p className="text-ink-500 text-sm">What the body is doing, and what you have left</p>
-      </header>
+      <PageHeader title="Vitals" subtitle="What the body is doing, and what you have left" />
 
       <Section
         title="Charges"
