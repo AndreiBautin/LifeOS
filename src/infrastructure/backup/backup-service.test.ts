@@ -13,6 +13,7 @@ import {
 import {
   createCheckInRepository,
   createBacklogItemRepository,
+  createConditionRepository,
   createDailyRepository,
   createExploredAreaRepository,
   createFriendRepository,
@@ -21,6 +22,8 @@ import {
   createReviewRepository,
   createTombstoneRepository,
   createTripRepository,
+  createViceRepository,
+  createWeighInRepository,
   createUpgradeRepository,
   createExerciseRepository,
   createWorkoutRepository,
@@ -70,6 +73,9 @@ beforeEach(async () => {
     trips: createTripRepository(db, testClock),
     explored: createExploredAreaRepository(db),
     dailies: createDailyRepository(db, testClock),
+    vices: createViceRepository(db, testClock),
+    weighIns: createWeighInRepository(db, testClock),
+    conditions: createConditionRepository(db, testClock),
   }
 })
 

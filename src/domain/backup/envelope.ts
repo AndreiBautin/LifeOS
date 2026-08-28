@@ -1,6 +1,9 @@
 import type { Place } from '@/domain/atlas/place/Place'
 import type { Trip } from '@/domain/atlas/trip/Trip'
 import type { Daily } from '@/domain/dailies/daily'
+import type { Vice } from '@/domain/vitals/charges'
+import type { WeighIn } from '@/domain/vitals/weight'
+import type { DayCondition } from '@/domain/vitals/condition'
 import type { CheckIn } from '@/domain/autoregulation/check-in'
 import type { Item } from '@/domain/backlog/item'
 import type { Project } from '@/domain/projects/project'
@@ -91,6 +94,9 @@ export interface BackupCounts {
   readonly places: number
   readonly trips: number
   readonly dailies: number
+  readonly vices: number
+  readonly weighIns: number
+  readonly conditions: number
   /** Geohash cells of walked ground. Counted, though it is a set of ids. */
   readonly exploredCells: number
 }
@@ -122,6 +128,16 @@ export interface BackupData {
   readonly trips?: readonly Trip[]
   readonly dailies?: readonly Daily[]
   /**
+   * Optional, like everything added after the first envelope shipped.
+   *
+   * A file written before these existed carries no key, and the reader
+   * has to treat that as *no records* rather than as an error — which is
+   * the whole reason these are optional and the older fields are not.
+   */
+  readonly vices?: readonly Vice[]
+  readonly weighIns?: readonly WeighIn[]
+  readonly conditions?: readonly DayCondition[]
+  /**
    * Walked ground, as bare cell ids.
    *
    * A set rather than records, and it merges by union on the way back in
@@ -145,6 +161,9 @@ export function countsFor(data: BackupData): BackupCounts {
     places: data.places?.length ?? 0,
     trips: data.trips?.length ?? 0,
     dailies: data.dailies?.length ?? 0,
+    vices: data.vices?.length ?? 0,
+    weighIns: data.weighIns?.length ?? 0,
+    conditions: data.conditions?.length ?? 0,
     exploredCells: data.exploredCells?.length ?? 0,
   }
 }
@@ -163,6 +182,9 @@ export const BACKUP_COUNT_KEYS = [
   'places',
   'trips',
   'dailies',
+  'vices',
+  'weighIns',
+  'conditions',
   'exploredCells',
 ] as const satisfies readonly (keyof BackupCounts)[]
 

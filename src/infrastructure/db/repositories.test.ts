@@ -36,6 +36,7 @@ describe('the schema', () => {
   it('creates every store the app writes to', () => {
     expect([...db.objectStoreNames].sort()).toEqual([
       'checkIns',
+      'conditions',
       'dailies',
       'exercises',
       'exploredCells',
@@ -49,6 +50,8 @@ describe('the schema', () => {
       'tombstones',
       'trips',
       'upgrades',
+      'vices',
+      'weighIns',
       'workouts',
     ])
   })

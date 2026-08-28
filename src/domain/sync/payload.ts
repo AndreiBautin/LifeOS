@@ -9,6 +9,9 @@ import type { Friend } from '@/domain/social/circle'
 import type { Place } from '@/domain/atlas/place/Place'
 import type { Trip } from '@/domain/atlas/trip/Trip'
 import type { Daily } from '@/domain/dailies/daily'
+import type { Vice } from '@/domain/vitals/charges'
+import type { WeighIn } from '@/domain/vitals/weight'
+import type { DayCondition } from '@/domain/vitals/condition'
 import type { WorkoutLog } from '@/domain/logging/workout-log'
 
 import type { SyncedSettings } from '@/domain/settings/synced'
@@ -43,6 +46,9 @@ export interface SyncPayload {
   readonly places: readonly Place[]
   readonly trips: readonly Trip[]
   readonly dailies: readonly Daily[]
+  readonly vices: readonly Vice[]
+  readonly weighIns: readonly WeighIn[]
+  readonly conditions: readonly DayCondition[]
   /**
    * Ground you have walked, as geohash cells.
    *
@@ -82,6 +88,9 @@ export const EMPTY_PAYLOAD: SyncPayload = {
   trips: [],
   dailies: [],
   exploredCells: [],
+  vices: [],
+  weighIns: [],
+  conditions: [],
   tombstones: [],
 }
 
@@ -99,6 +108,9 @@ export function isEmpty(payload: SyncPayload): boolean {
     payload.places.length === 0 &&
     payload.trips.length === 0 &&
     payload.dailies.length === 0 &&
+    payload.vices.length === 0 &&
+    payload.weighIns.length === 0 &&
+    payload.conditions.length === 0 &&
     payload.exploredCells.length === 0 &&
     payload.tombstones.length === 0 &&
     payload.settings === undefined
@@ -119,6 +131,9 @@ export function payloadSize(payload: SyncPayload): number {
     payload.places.length +
     payload.trips.length +
     payload.dailies.length +
+    payload.vices.length +
+    payload.weighIns.length +
+    payload.conditions.length +
     // Counted as one, because that is what it is to a reader: the fog
     // moved, once, however many cells were in the batch.
     (payload.exploredCells.length === 0 ? 0 : 1) +
@@ -240,6 +255,12 @@ export function acceptableFrom(
    */
   localItems: readonly Item[] = [],
   localDailies: readonly Daily[] = [],
+  /**
+   * The local pools, for the same reason as the dailies above: the
+   * spends have to be unioned *before* a record-level winner is picked,
+   * or the losing copy's charges are gone by the time the merge runs.
+   */
+  localVices: readonly Vice[] = [],
 ): SyncPayload {
   const index = indexTombstones([...localTombstones, ...incoming.tombstones])
   const localById = new Map(localItems.map((item) => [item.id, item]))
@@ -274,6 +295,36 @@ export function acceptableFrom(
 
         return { ...daily, done: unionDone(local.done, daily.done) }
       }),
+    /*
+     * The spends union, and the record-level winner decides everything
+     * else about the pool — its name, its capacity, its cooldown.
+     *
+     * The same shape as a daily's completions and for a sharper reason:
+     * `readCharges` counts *entries* in this list, so a merge that kept
+     * only one device's copy would silently give back charges that were
+     * genuinely spent. Two coffees on the phone and a beer on the laptop
+     * is three spends, whichever device syncs first.
+     */
+    vices: incoming.vices
+      .filter((item) => shouldAccept(item, 'vices', item.id, index))
+      .map((vice) => {
+        const local = localVices.find((one) => one.id === vice.id)
+        if (local === undefined) return vice
+
+        return { ...vice, spent: unionDone(local.spent, vice.spent) }
+      }),
+    /*
+     * Whole-record last-write-wins, and correct rather than lazy. Both
+     * are keyed by the day, so two devices holding a row for the same
+     * day are two opinions about **one fact** — this morning's weight,
+     * how today felt — and the later answer is the one to keep. There is
+     * nothing to union: unlike a set of completions, a second reading is
+     * a correction rather than an addition.
+     */
+    weighIns: incoming.weighIns.filter((item) => shouldAccept(item, 'weighIns', item.day, index)),
+    conditions: incoming.conditions.filter((item) =>
+      shouldAccept(item, 'conditions', item.day, index),
+    ),
     // Exempt on purpose. There is no tombstone that could apply to ground
     // somebody walked, so there is nothing here to filter against.
     exploredCells: incoming.exploredCells,

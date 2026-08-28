@@ -13,6 +13,7 @@ import { Dailies } from './Dailies'
 import { SeasonCard } from '@/features/character/SeasonCard'
 import { useSeasonProgress } from '@/features/character/hooks'
 import { useReviewDraft } from '@/features/review/hooks'
+import { VitalsCard } from '@/features/vitals/VitalsCard'
 
 import { useAgenda } from './hooks'
 
@@ -81,6 +82,16 @@ export function TodayPage() {
         <h1 className="text-ink-50 text-2xl font-semibold tracking-tight">Today</h1>
         <p className="text-ink-500 numeric mt-0.5 text-sm">{today}</p>
       </header>
+
+      {/*
+        Vitals sits above the dailies because it is the most present-tense
+        thing on a present-tense screen — what you have left right now —
+        and because spending a charge is the one action here that happens
+        at an arbitrary moment rather than once in the morning.
+      */}
+      <Section title="Vitals" description="What you have left, and how the day feels.">
+        <VitalsCard />
+      </Section>
 
       <Section title="Dailies" description="A checkbox and a streak.">
         <Dailies />

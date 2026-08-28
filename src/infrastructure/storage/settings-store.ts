@@ -3,6 +3,7 @@ import { DEFAULT_SETTINGS, SETTINGS_SCHEMA_VERSION } from '@/domain/settings/set
 import { completeLiftSessions } from '@/domain/priority/tiers'
 import { nearestFatigueChoice } from '@/domain/framework/rts'
 import { completeMuscleVolumes } from '@/domain/volume/levels'
+import { PHASE_RATES, PHASES, type Phase } from '@/domain/vitals/weight'
 import type { SettingsRepository } from '@/domain/repositories/ports'
 import { migrateBenchEstimate } from '@/domain/exercises/derived-maxes'
 import { syncedPartChanged } from '@/domain/settings/synced'
@@ -44,6 +45,31 @@ export interface SettingsReadResult {
  * to the top of a range it was never on; snapping reads it as the "high"
  * it was closest to all along.
  */
+/**
+ * The target band, defaulting to the phase's published range.
+ *
+ * Both ends have to be numbers *and* ordered, because a stored band with
+ * min above max can never be satisfied — a rate would be simultaneously
+ * too fast and too slow — and the phase would read as failing forever
+ * with nothing on any screen explaining why.
+ */
+function phaseRateOf(stored: Record<string, unknown>): { min: number; max: number } {
+  const phase = PHASES.includes(stored.phase as Phase)
+    ? (stored.phase as Phase)
+    : DEFAULT_SETTINGS.phase
+  const fallback = PHASE_RATES[phase]
+  const band = stored.phaseRate
+
+  if (typeof band !== 'object' || band === null) return { ...fallback }
+
+  const { min, max } = band as { min?: unknown; max?: unknown }
+
+  if (typeof min !== 'number' || typeof max !== 'number') return { ...fallback }
+  if (!Number.isFinite(min) || !Number.isFinite(max) || min > max) return { ...fallback }
+
+  return { min, max }
+}
+
 function clampFatiguePercent(value: unknown): number {
   if (typeof value !== 'number' || !Number.isFinite(value)) {
     return DEFAULT_SETTINGS.fatiguePercent
@@ -249,6 +275,20 @@ function mergeWithDefaults(parsed: unknown): AppSettings {
     stored.exploredRegionKm2 > 0
       ? { exploredRegionKm2: stored.exploredRegionKm2 }
       : {}),
+    /*
+     * Parsed rather than spread, like every other field here — this file
+     * builds its result key by key, which is what makes an unknown blob
+     * safe and what has twice caught a new field vanishing on the way
+     * back in.
+     *
+     * A phase this build does not recognise degrades to maintenance
+     * rather than throwing: configuration is a layer, and bad input gets
+     * a documented default.
+     */
+    phase: PHASES.includes(stored.phase as Phase)
+      ? (stored.phase as Phase)
+      : DEFAULT_SETTINGS.phase,
+    phaseRate: phaseRateOf(stored),
     ...(typeof stored.updatedAt === 'string' ? { updatedAt: stored.updatedAt } : {}),
     ...(typeof stored.lastExportAt === 'string' ? { lastExportAt: stored.lastExportAt } : {}),
     schemaVersion: SETTINGS_SCHEMA_VERSION,

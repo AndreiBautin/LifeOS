@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest'
 
 import type { Daily } from '@/domain/dailies/daily'
-import { asDailyId } from '@/domain/ids/ids'
+import { readCharges, type Vice } from '@/domain/vitals/charges'
+import type { WeighIn } from '@/domain/vitals/weight'
+import type { DayCondition } from '@/domain/vitals/condition'
+import { asDailyId, asViceId } from '@/domain/ids/ids'
 
 import type { CheckIn } from '@/domain/autoregulation/check-in'
 import type { Item } from '@/domain/backlog/item'
@@ -13,6 +16,7 @@ import type {
   BacklogItemRepository,
   CheckInRepository,
   Clock,
+  ConditionRepository,
   DailyRepository,
   ExerciseRepository,
   ExploredAreaRepository,
@@ -24,6 +28,8 @@ import type {
   SyncState,
   SyncStateRepository,
   TombstoneRepository,
+  ViceRepository,
+  WeighInRepository,
   TripRepository,
   UpgradeRepository,
   WorkoutRepository,
@@ -262,6 +268,83 @@ function device(clock: Clock): Device {
   }
 
   /*
+   * A real double for the same reason as the dailies above: a pool's
+   * spends merge by union, and a stub answering with an empty list would
+   * let that pass against an implementation that replaced. It is the
+   * sharper case of the two — `readCharges` counts entries, so a lost
+   * merge silently hands back charges that were genuinely spent.
+   */
+  const viceStore = new Map<string, Vice>()
+  const vices: ViceRepository = {
+    all: () => Promise.resolve([...viceStore.values()]),
+    byId: (id) => Promise.resolve(viceStore.get(id)),
+    save: (vice) => {
+      viceStore.set(vice.id, { ...vice, updatedAt: clock.now().toISOString() })
+      return Promise.resolve()
+    },
+    restoreMany: (rows) => {
+      for (const row of rows) viceStore.set(row.id, row)
+      return Promise.resolve()
+    },
+    remove: (id) => {
+      viceStore.delete(id)
+      return Promise.resolve()
+    },
+    purge: (id) => {
+      viceStore.delete(id)
+      return Promise.resolve()
+    },
+  }
+
+  /*
+   * Both keyed by the day, and both plain last-write-wins — which is the
+   * thing worth checking rather than stubbing past. Two devices with a
+   * row for the same day hold two opinions about one fact, so the later
+   * one is meant to win outright and nothing is meant to be unioned.
+   */
+  const weighInStore = new Map<string, WeighIn>()
+  const weighIns: WeighInRepository = {
+    all: () => Promise.resolve([...weighInStore.values()]),
+    save: (row) => {
+      weighInStore.set(row.day, { ...row, updatedAt: clock.now().toISOString() })
+      return Promise.resolve()
+    },
+    restoreMany: (rows) => {
+      for (const row of rows) weighInStore.set(row.day, row)
+      return Promise.resolve()
+    },
+    remove: (day) => {
+      weighInStore.delete(day)
+      return Promise.resolve()
+    },
+    purge: (day) => {
+      weighInStore.delete(day)
+      return Promise.resolve()
+    },
+  }
+
+  const conditionStore = new Map<string, DayCondition>()
+  const conditions: ConditionRepository = {
+    all: () => Promise.resolve([...conditionStore.values()]),
+    save: (row) => {
+      conditionStore.set(row.day, { ...row, updatedAt: clock.now().toISOString() })
+      return Promise.resolve()
+    },
+    restoreMany: (rows) => {
+      for (const row of rows) conditionStore.set(row.day, row)
+      return Promise.resolve()
+    },
+    remove: (day) => {
+      conditionStore.delete(day)
+      return Promise.resolve()
+    },
+    purge: (day) => {
+      conditionStore.delete(day)
+      return Promise.resolve()
+    },
+  }
+
+  /*
    * A real double, like the backlog. The fog is the one thing in this
    * payload merged by union rather than by a record winner, and a stub
    * would let that test pass against an implementation that replaced.
@@ -327,6 +410,9 @@ function device(clock: Clock): Device {
 
   return {
     dailies,
+    vices,
+    weighIns,
+    conditions,
     dailyStore,
     exercises,
     workouts,
@@ -702,6 +788,71 @@ describe('a backlog item’s progress log', () => {
     await synchronise(createMemorySyncTarget(server, 'desk'), desk)
 
     expect((await desk.dailies.byId(habit.id))?.done).toEqual(['2026-08-25', '2026-08-26'])
+  })
+
+  /*
+   * The same union as a habit's completions, and the consequence of
+   * getting it wrong is sharper here.
+   *
+   * `readCharges` counts *entries* in `spent`, so a record-level winner
+   * would not merely lose a row — it would hand back a charge that was
+   * genuinely spent, and the pool would read as fuller than it is on the
+   * device that synced second.
+   */
+  it('keeps both devices’ spends on the same pool', async () => {
+    const clock = advancingClock()
+    const server = createMemorySyncServer()
+    const phone = device(clock)
+    const desk = device(clock)
+
+    const pool: Vice = {
+      id: asViceId('coffee'),
+      name: 'Coffee',
+      capacity: 3,
+      regenHours: 12,
+      spent: [],
+      createdAt: '2026-08-01T00:00:00.000Z',
+    }
+
+    await phone.vices.save({ ...pool, spent: ['2026-08-27T07:00:00.000Z'] })
+    await desk.vices.save({ ...pool, spent: ['2026-08-27T09:00:00.000Z'] })
+
+    await synchronise(createMemorySyncTarget(server, 'phone'), phone)
+    await synchronise(createMemorySyncTarget(server, 'desk'), desk)
+
+    const merged = await desk.vices.byId(pool.id)
+
+    expect(merged?.spent).toEqual(['2026-08-27T07:00:00.000Z', '2026-08-27T09:00:00.000Z'])
+    expect(merged).toBeDefined()
+    if (merged === undefined) return
+    // Two spends against a capacity of three, on both devices.
+    expect(readCharges(merged, new Date('2026-08-27T10:00:00.000Z')).available).toBe(1)
+  })
+
+  /*
+   * The other half, and the reason weigh-ins are *not* unioned. Two
+   * devices holding a reading for the same morning are two opinions
+   * about one fact, so the later one wins outright — unioning would
+   * leave both and quietly average a correction with the thing it was
+   * correcting.
+   */
+  it('lets the later weigh-in for a day replace the earlier one', async () => {
+    const clock = advancingClock()
+    const server = createMemorySyncServer()
+    const phone = device(clock)
+    const desk = device(clock)
+
+    await phone.weighIns.save({ day: '2026-08-27', weight: 181 })
+    await desk.weighIns.save({ day: '2026-08-27', weight: 182.4 })
+
+    await synchronise(createMemorySyncTarget(server, 'phone'), phone)
+    await synchronise(createMemorySyncTarget(server, 'desk'), desk)
+    await synchronise(createMemorySyncTarget(server, 'phone'), phone)
+
+    const rows = await phone.weighIns.all()
+
+    expect(rows).toHaveLength(1)
+    expect(rows[0]?.weight).toBe(182.4)
   })
 
   it('takes the larger count when both devices logged the same day', async () => {

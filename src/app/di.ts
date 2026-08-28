@@ -6,6 +6,7 @@ import type {
   BacklogSettingsRepository,
   CheckInRepository,
   Clock,
+  ConditionRepository,
   DailyRepository,
   ExerciseRepository,
   ExploredAreaRepository,
@@ -19,6 +20,8 @@ import type {
   SyncTarget,
   TombstoneRepository,
   TripRepository,
+  ViceRepository,
+  WeighInRepository,
   UpgradeRepository,
   WorkoutRepository,
 } from '@/domain/repositories/ports'
@@ -27,6 +30,7 @@ import { openDatabase, type AppDatabase } from '@/infrastructure/db/database'
 import {
   createBacklogItemRepository,
   createCheckInRepository,
+  createConditionRepository,
   createDailyRepository,
   createExerciseRepository,
   createExploredAreaRepository,
@@ -37,6 +41,8 @@ import {
   createReviewRepository,
   createTombstoneRepository,
   createTripRepository,
+  createViceRepository,
+  createWeighInRepository,
   createUpgradeRepository,
   createWorkoutRepository,
 } from '@/infrastructure/db/repositories'
@@ -81,6 +87,9 @@ export interface AppServices {
   readonly places: PlaceRepository
   readonly trips: TripRepository
   readonly dailies: DailyRepository
+  readonly vices: ViceRepository
+  readonly weighIns: WeighInRepository
+  readonly conditions: ConditionRepository
   readonly explored: ExploredAreaRepository
   /** The device's own position, behind a port so a test can fake it. */
   readonly geolocation: Geolocation
@@ -142,6 +151,9 @@ export async function bootstrap(): Promise<BootstrapResult> {
     places: createPlaceRepository(db, systemClock),
     trips: createTripRepository(db, systemClock),
     dailies: createDailyRepository(db, systemClock),
+    vices: createViceRepository(db, systemClock),
+    weighIns: createWeighInRepository(db, systemClock),
+    conditions: createConditionRepository(db, systemClock),
     explored: createExploredAreaRepository(db),
     geolocation: createBrowserGeolocation(),
     placeSearch: new NominatimSearchProvider(),

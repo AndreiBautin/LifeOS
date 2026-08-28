@@ -44,6 +44,8 @@ function harness(region: number | undefined, cells: readonly Coordinates[]) {
     friends: empty,
     places: empty,
     dailies: empty,
+    vices: empty,
+    weighIns: empty,
     explored: {
       all: () => Promise.resolve(walked),
       reveal: () => Promise.resolve(0),

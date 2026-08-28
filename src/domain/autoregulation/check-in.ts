@@ -126,7 +126,19 @@ export interface SessionAdjustment {
 
 const READINESS_SCORE: Record<ReadinessLevel, number> = { poor: -1, ok: 0, good: 1 }
 
-export function sessionAdjustmentFor(readiness: ReadinessFactors): SessionAdjustment {
+/** The worst and best `readinessScore` can return: five factors, ±1 each. */
+export const READINESS_RANGE = { min: -5, max: 5 } as const
+
+/**
+ * The five factors added up, once.
+ *
+ * Exported because two things now read it — the session adjustment
+ * below, and the condition bar on Today — and a second copy of this sum
+ * is exactly the drift `attributeWeek` and `slotVolume` were merged to
+ * avoid. A bar disagreeing with the adjustment it is supposed to explain
+ * would be worse than having no bar.
+ */
+export function readinessScore(readiness: ReadinessFactors): number {
   const factors = [
     readiness.sleep,
     readiness.nutrition,
@@ -134,7 +146,12 @@ export function sessionAdjustmentFor(readiness: ReadinessFactors): SessionAdjust
     readiness.stress,
     readiness.motivation,
   ]
-  const score = factors.reduce((sum, level) => sum + READINESS_SCORE[level], 0)
+
+  return factors.reduce((sum, level) => sum + READINESS_SCORE[level], 0)
+}
+
+export function sessionAdjustmentFor(readiness: ReadinessFactors): SessionAdjustment {
+  const score = readinessScore(readiness)
 
   if (score <= -3) {
     return {

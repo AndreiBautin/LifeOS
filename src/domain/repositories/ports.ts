@@ -22,12 +22,16 @@ import type {
   ProjectId,
   UpgradeId,
   WorkoutId,
+  ViceId,
 } from '@/domain/ids/ids'
 import type { WorkoutLog } from '@/domain/logging/workout-log'
 import type { ProgramPosition } from '@/domain/programs/position'
 import type { AppSettings } from '@/domain/settings/settings'
 import type { SyncPayload } from '@/domain/sync/payload'
 import type { Tombstone } from '@/domain/sync/tombstone'
+import type { Vice } from '@/domain/vitals/charges'
+import type { WeighIn } from '@/domain/vitals/weight'
+import type { DayCondition } from '@/domain/vitals/condition'
 
 /**
  * The ports the application layer talks to.
@@ -320,6 +324,47 @@ export interface DailyRepository {
   restoreMany(dailies: readonly Daily[]): Promise<void>
   remove(id: DailyId): Promise<void>
   purge(id: DailyId): Promise<void>
+}
+
+/**
+ * The pools, with every charge ever spent on them.
+ *
+ * `remove` is here and buries a tombstone like everything else, but the
+ * screen offers retiring instead — a deleted pool takes its record of
+ * what you actually drank with it, and that record is the only reason
+ * any of this is worth keeping.
+ */
+export interface ViceRepository {
+  all(): Promise<readonly Vice[]>
+  byId(id: ViceId): Promise<Vice | undefined>
+  save(vice: Vice): Promise<void>
+  restoreMany(vices: readonly Vice[]): Promise<void>
+  remove(id: ViceId): Promise<void>
+  purge(id: ViceId): Promise<void>
+}
+
+/**
+ * Bodyweight readings, keyed by the day they were taken.
+ *
+ * No `byId` — the key *is* the day, and every caller either wants all of
+ * them (to draw a trend) or wants to write today's. There is no case for
+ * fetching one historical morning on its own.
+ */
+export interface WeighInRepository {
+  all(): Promise<readonly WeighIn[]>
+  save(weighIn: WeighIn): Promise<void>
+  restoreMany(weighIns: readonly WeighIn[]): Promise<void>
+  remove(day: string): Promise<void>
+  purge(day: string): Promise<void>
+}
+
+/** How the day felt, keyed by the day, for the same reasons. */
+export interface ConditionRepository {
+  all(): Promise<readonly DayCondition[]>
+  save(condition: DayCondition): Promise<void>
+  restoreMany(conditions: readonly DayCondition[]): Promise<void>
+  remove(day: string): Promise<void>
+  purge(day: string): Promise<void>
 }
 
 export interface TripRepository {

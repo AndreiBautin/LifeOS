@@ -60,6 +60,8 @@ function harness(
     friends: list([]),
     places: list(seed.places ?? []),
     dailies: list([]),
+    vices: list([]),
+    weighIns: list([]),
     explored: {
       all: () => Promise.resolve(new Set()),
       reveal: () => Promise.resolve(0),

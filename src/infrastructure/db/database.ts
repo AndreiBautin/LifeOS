@@ -10,6 +10,9 @@ import type { Friend } from '@/domain/social/circle'
 import type { Place } from '@/domain/atlas/place/Place'
 import type { Trip } from '@/domain/atlas/trip/Trip'
 import type { Daily } from '@/domain/dailies/daily'
+import type { Vice } from '@/domain/vitals/charges'
+import type { WeighIn } from '@/domain/vitals/weight'
+import type { DayCondition } from '@/domain/vitals/condition'
 import type { Tombstone } from '@/domain/sync/tombstone'
 import type { Exercise } from '@/domain/exercises/exercise'
 import type { WorkoutLog } from '@/domain/logging/workout-log'
@@ -59,7 +62,7 @@ export const DB_NAME = 'lifeos'
  * a device that already ran it will not run it again, so changing one
  * leaves two devices with different schemas and no way to tell.
  */
-export const DB_VERSION = 9
+export const DB_VERSION = 10
 
 /**
  * A workout as it is stored, which is not quite a workout as the domain
@@ -247,6 +250,38 @@ export interface LiftDB extends DBSchema {
     value: Daily
   }
   /**
+   * Things you mean to have less of, and every charge ever spent.
+   *
+   * The spends live on the record as a list of timestamps, for the reason
+   * a daily's completions do: they are small, never read without the
+   * pool they belong to, and merge by union. A separate store would make
+   * two devices' spends a set of rows to reconcile rather than a list to
+   * concatenate and dedupe.
+   */
+  vices: {
+    key: string
+    value: Vice
+  }
+  /**
+   * One bodyweight reading per day, keyed by the day.
+   *
+   * The day is the key rather than a generated id, which is what makes
+   * weighing twice on one morning a *correction* rather than two data
+   * points. Two devices holding a reading for the same day are two
+   * opinions about one fact, and last-write-wins is the right answer to
+   * that — unlike a set of rows, where both would survive and quietly
+   * average.
+   */
+  weighIns: {
+    key: string
+    value: WeighIn
+  }
+  /** How the day felt, one reading a day, keyed the same way and for the same reason. */
+  conditions: {
+    key: string
+    value: DayCondition
+  }
+  /**
    * Ground you have walked, one row per geohash cell.
    *
    * A store rather than the single blob it arrived as, and that is the
@@ -400,6 +435,13 @@ export function openDatabase(name = DB_NAME): Promise<AppDatabase> {
       if (oldVersion < 9) {
         db.createObjectStore('dailies', { keyPath: 'id' })
       }
+
+      if (oldVersion < 10) {
+        db.createObjectStore('vices', { keyPath: 'id' })
+        // Keyed by day, so a second weigh-in replaces the first.
+        db.createObjectStore('weighIns', { keyPath: 'day' })
+        db.createObjectStore('conditions', { keyPath: 'day' })
+      }
     },
 
     blocked() {
@@ -457,6 +499,9 @@ export async function clearAllStores(db: AppDatabase): Promise<void> {
       'trips',
       'dailies',
       'exploredCells',
+      'vices',
+      'weighIns',
+      'conditions',
     ],
     'readwrite',
   )
@@ -476,6 +521,9 @@ export async function clearAllStores(db: AppDatabase): Promise<void> {
     tx.objectStore('trips').clear(),
     tx.objectStore('dailies').clear(),
     tx.objectStore('exploredCells').clear(),
+    tx.objectStore('vices').clear(),
+    tx.objectStore('weighIns').clear(),
+    tx.objectStore('conditions').clear(),
     tx.done,
   ])
 }

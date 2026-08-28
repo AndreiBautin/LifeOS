@@ -8,6 +8,9 @@ import type { Place } from '@/domain/atlas/place/Place'
 import type { PlaceId } from '@/domain/atlas/place/PlaceId'
 import type { Trip } from '@/domain/atlas/trip/Trip'
 import type { Daily } from '@/domain/dailies/daily'
+import type { Vice } from '@/domain/vitals/charges'
+import type { WeighIn } from '@/domain/vitals/weight'
+import type { DayCondition } from '@/domain/vitals/condition'
 import type { TripId } from '@/domain/atlas/trip/TripId'
 import type { CellId } from '@/domain/atlas/exploration/GeoCell'
 import type { ProgramPosition } from '@/domain/programs/position'
@@ -23,6 +26,7 @@ import type {
   MetricId,
   ProjectId,
   UpgradeId,
+  ViceId,
   WorkoutId,
 } from '@/domain/ids/ids'
 import type { WorkoutLog } from '@/domain/logging/workout-log'
@@ -38,9 +42,12 @@ import type {
   PositionRepository,
   ProjectRepository,
   ReviewRepository,
+  ConditionRepository,
   TombstoneRepository,
   TripRepository,
   UpgradeRepository,
+  ViceRepository,
+  WeighInRepository,
   WorkoutQuery,
   WorkoutRepository,
 } from '@/domain/repositories/ports'
@@ -502,6 +509,75 @@ export function createDailyRepository(db: AppDatabase, clock: Clock): DailyRepos
     },
     async purge(id: DailyId) {
       await db.delete('dailies', id)
+    },
+  }
+}
+
+export function createViceRepository(db: AppDatabase, clock: Clock): ViceRepository {
+  return {
+    async all() {
+      return db.getAll('vices')
+    },
+    async byId(id: ViceId) {
+      return db.get('vices', id)
+    },
+    async save(vice: Vice) {
+      await db.put('vices', stamp(vice, clock))
+    },
+    async restoreMany(vices: readonly Vice[]) {
+      const tx = db.transaction('vices', 'readwrite')
+      await Promise.all([...vices.map((vice) => tx.store.put(vice)), tx.done])
+    },
+    async remove(id: ViceId) {
+      await db.delete('vices', id)
+      await bury(db, clock, 'vices', id)
+    },
+    async purge(id: ViceId) {
+      await db.delete('vices', id)
+    },
+  }
+}
+
+export function createWeighInRepository(db: AppDatabase, clock: Clock): WeighInRepository {
+  return {
+    async all() {
+      return db.getAll('weighIns')
+    },
+    async save(weighIn: WeighIn) {
+      await db.put('weighIns', stamp(weighIn, clock))
+    },
+    async restoreMany(weighIns: readonly WeighIn[]) {
+      const tx = db.transaction('weighIns', 'readwrite')
+      await Promise.all([...weighIns.map((weighIn) => tx.store.put(weighIn)), tx.done])
+    },
+    async remove(day: string) {
+      await db.delete('weighIns', day)
+      await bury(db, clock, 'weighIns', day)
+    },
+    async purge(day: string) {
+      await db.delete('weighIns', day)
+    },
+  }
+}
+
+export function createConditionRepository(db: AppDatabase, clock: Clock): ConditionRepository {
+  return {
+    async all() {
+      return db.getAll('conditions')
+    },
+    async save(condition: DayCondition) {
+      await db.put('conditions', stamp(condition, clock))
+    },
+    async restoreMany(conditions: readonly DayCondition[]) {
+      const tx = db.transaction('conditions', 'readwrite')
+      await Promise.all([...conditions.map((row) => tx.store.put(row)), tx.done])
+    },
+    async remove(day: string) {
+      await db.delete('conditions', day)
+      await bury(db, clock, 'conditions', day)
+    },
+    async purge(day: string) {
+      await db.delete('conditions', day)
     },
   }
 }

@@ -567,6 +567,83 @@ history that retyping would throw away. XP already earned stays where it
 was paid; the record simply stops paying its old area from the day it
 moves.
 
+**Vitals is two bars that are never averaged, and that is the whole
+design.** `domain/vitals/`. The charges are a count of things that
+happened; the condition is how you said you felt. A single "HP" number
+would let the half you can simply decide move the half that is a record —
+and it would be exactly the invented scale `domain/game/` refuses
+everywhere else. They sit side by side on Today, labelled as the
+different kinds of thing they are.
+
+**A charge comes back exactly `regenHours` after the spend that consumed
+it**, so three coffees at eight in the morning on a twelve-hour timer are
+all three back at eight in the evening. The alternative — a token bucket
+refilling at one per `regenHours`, which is what most games actually do
+with charge abilities — is what somebody will propose, and it cannot be
+built here: **a bucket has to remember when it last refilled, and a
+remembered refill time is device state with no correct merge.** Deriving
+the reading from the spend list has no such state, so `readCharges` is
+pure and two devices that have seen the same spends agree whatever order
+those arrived in. The mechanic was chosen to fit the merge, which is the
+right way round.
+
+That makes `spent` a **union over the string**, like a daily's
+completions and for a sharper reason: `readCharges` counts _entries_, so
+a record-level winner would not merely lose a row — it would hand back a
+charge that was genuinely spent.
+
+**Spending is never refused, and going over is recorded rather than
+clamped.** An app that refused would be asking to be lied to, and a log
+you lie to is worth nothing. `ChargeReading.over` is separate from
+`available` so the bar can clamp at empty while the record does not —
+otherwise the one day worth noticing looks exactly like a day at the
+limit.
+
+**Weigh-ins and conditions are keyed by the day, and are last-write-wins
+rather than unioned.** Two devices holding a row for one day are two
+opinions about **one fact**, so the later answer wins outright; a second
+reading is a correction, not an addition. That is the opposite of
+`spent` and of `done`, and the difference is the whole reason both rules
+are written down.
+
+**The weight trend is two windows compared, never a line fitted through
+the phase.** A regression over ten weeks is dominated by the first ones
+and barely moves when the current week goes wrong, and what a lifter
+needs on a Tuesday is whether _this_ week is going where it should.
+**Nothing is carried forward** — a week with no readings is absent, not
+the last known weight repeated, because a carried value shows a rate of
+exactly zero for a fortnight of not weighing in and that reads as a
+perfectly held maintenance phase.
+
+**Vitals pays no XP at all, and it is the first area that measures
+without paying.** Every candidate falls on the wrong side of the act/
+outcome line: not drinking is an _outcome_, so paying for it is the
+streak mistake in a new costume, and the only real _acts_ are spending a
+charge and standing on a scale — paying XP for logging a beer is
+perverse, and paying it for weighing in turns a measurement into a chore
+with a score attached. An area with no acts is not an incomplete area.
+
+**No ladder either, and bodyweight is where one is most tempting.** BMI
+and body-fat brackets are published, and every one of them is a claim
+about _health_ rather than about the thing being measured: a lifter
+deliberately at 15% on a bulk is not worse at anything. The direction is
+the phase, and the phase is a decision.
+
+**`readinessScore` was extracted rather than copied.** The condition bar
+and `sessionAdjustmentFor` read the same sum, because a bar disagreeing
+with the adjustment it is supposed to explain would be worse than no bar.
+`ReadinessFactors` itself is reused rather than reinvented — it existed
+and was **unreachable from any screen**, asked only before a workout by a
+check-in that has no UI.
+
+**Vitals is a link from Today, not a ninth tab, and that was measured.**
+Every nav cell carries `.tap-target` (`min-width: 44px`), so nine cells
+need 396 pixels and a 375-pixel iPhone has 375 — a ninth tab overflows
+the _common_ width, not merely the 320 the note below warns about. It
+would need a horizontally scrolling nav. It belongs on Today anyway:
+Today is present tense, and spending a charge is the one action in the
+app that happens at an arbitrary moment.
+
 **The navigation is eight, and the eighth was measured rather than
 argued about.**
 Character became "You" and the tech tree moved to a link, because seven

@@ -22,6 +22,9 @@ import type { Friend } from '@/domain/social/circle'
 import type { Place } from '@/domain/atlas/place/Place'
 import type { Trip } from '@/domain/atlas/trip/Trip'
 import type { Daily } from '@/domain/dailies/daily'
+import type { Vice } from '@/domain/vitals/charges'
+import type { WeighIn } from '@/domain/vitals/weight'
+import type { DayCondition } from '@/domain/vitals/condition'
 import type { Exercise } from '@/domain/exercises/exercise'
 import type { WorkoutLog } from '@/domain/logging/workout-log'
 import type { SyncTarget } from '@/domain/repositories/ports'
@@ -66,6 +69,9 @@ const COLLECTIONS = {
   places: 'places',
   trips: 'trips',
   dailies: 'dailies',
+  vices: 'vices',
+  weighIns: 'weighIns',
+  conditions: 'conditions',
   /*
    * One document holding the whole set, not a document per cell. A
    * thousand-cell walk would otherwise be a thousand writes, and the set
@@ -134,6 +140,9 @@ export function createFirestoreSyncTarget(options: FirestoreTargetOptions): Sync
         places,
         trips,
         dailies,
+        vices,
+        weighIns,
+        conditions,
         cells,
         tombstones,
         settings,
@@ -150,6 +159,9 @@ export function createFirestoreSyncTarget(options: FirestoreTargetOptions): Sync
         readSince(root(COLLECTIONS.places), after),
         readSince(root(COLLECTIONS.trips), after),
         readSince(root(COLLECTIONS.dailies), after),
+        readSince(root(COLLECTIONS.vices), after),
+        readSince(root(COLLECTIONS.weighIns), after),
+        readSince(root(COLLECTIONS.conditions), after),
         readSince(root(COLLECTIONS.exploredCells), after),
         readSince(root(COLLECTIONS.tombstones), after),
         readSince(root(COLLECTIONS.settings), after),
@@ -218,6 +230,9 @@ export function createFirestoreSyncTarget(options: FirestoreTargetOptions): Sync
           places: places.records as readonly Place[],
           trips: trips.records as readonly Trip[],
           dailies: dailies.records as readonly Daily[],
+          vices: vices.records as readonly Vice[],
+          weighIns: weighIns.records as readonly WeighIn[],
+          conditions: conditions.records as readonly DayCondition[],
           exploredCells: cells.records.flatMap(
             (record) => (record as { cells?: readonly string[] }).cells ?? [],
           ),

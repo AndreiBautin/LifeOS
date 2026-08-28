@@ -15,9 +15,12 @@ import type {
   ProjectRepository,
   SettingsRepository,
   UpgradeRepository,
+  ViceRepository,
+  WeighInRepository,
   WorkoutRepository,
 } from '@/domain/repositories/ports'
 import { isOwned, isOpen } from '@/domain/upgrades/upgrade'
+import { phaseVerdict, weightTrend } from '@/domain/vitals/weight'
 import { atlasView } from '@/application/use-cases/atlas/atlas'
 
 /**
@@ -43,6 +46,8 @@ export interface MeasureDeps {
   readonly dailies: DailyRepository
   readonly explored: ExploredAreaRepository
   readonly settings: SettingsRepository
+  readonly vices: ViceRepository
+  readonly weighIns: WeighInRepository
   readonly clock: Clock
 }
 
@@ -148,6 +153,63 @@ export async function measureAll(deps: MeasureDeps): Promise<Readonly<Record<str
 
   const choreShare = shareKept(dailies.filter(isBase))
   if (choreShare !== undefined) measured['base.chore-share-in-month'] = choreShare
+
+  /*
+   * The share of days this month that stayed inside every pool.
+   *
+   * Counted across the pools together rather than one rating per vice,
+   * because the rating is about the habit of staying inside a budget and
+   * not about coffee specifically — and a rating per pool would mean the
+   * registry grew a row every time somebody added one, which a registry
+   * of *declared* metrics cannot do.
+   *
+   * A day is over the limit if any pool spent more than its capacity on
+   * that day. That is a per-day reading rather than the cooldown window
+   * the bar uses, and the difference is deliberate: the bar answers "can
+   * I have one now", which is a question about the last twelve hours,
+   * and the month answers "how often did I go past what I meant to",
+   * which is a question about days.
+   */
+  const vices = (await deps.vices.all()).filter((vice) => vice.retiredAt === undefined)
+
+  if (vices.length > 0) {
+    const daysSoFar = Number(toDay(now).slice(8, 10))
+    let within = 0
+
+    for (let back = 0; back < daysSoFar; back += 1) {
+      const day = shiftDay(toDay(now), -back)
+      if (day.slice(0, 7) !== month) break
+
+      const overAny = vices.some(
+        (vice) => vice.spent.filter((stamp) => stamp.slice(0, 10) === day).length > vice.capacity,
+      )
+
+      if (!overAny) within += 1
+    }
+
+    measured['vitals.days-within-limits'] = Math.round((100 * within) / Math.max(1, daysSoFar))
+  }
+
+  /*
+   * The share of this month's weeks whose weight trend sat in the band.
+   *
+   * Absent when there are not two windows of readings to compare, which
+   * is the same rule `weightTrend` follows and for the same reason: a
+   * month with no weigh-ins is not a month that held its phase perfectly.
+   */
+  const weighIns = await deps.weighIns.all()
+  const phaseSettings = await deps.settings.get()
+  const weeks = [0, 7, 14, 21]
+    .map((back) => weightTrend(weighIns, new Date(now.getTime() - back * 24 * 60 * 60 * 1000)))
+    .filter((trend) => trend?.ratePerWeek !== undefined)
+
+  if (weeks.length > 0) {
+    const held = weeks.filter(
+      (trend) => phaseVerdict(trend, phaseSettings.phaseRate) === 'on-track',
+    ).length
+
+    measured['vitals.weeks-in-band'] = Math.round((100 * held) / weeks.length)
+  }
 
   /*
    * The strength ladders, as **multiples of bodyweight** rather than as

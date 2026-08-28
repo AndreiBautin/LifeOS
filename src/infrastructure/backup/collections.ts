@@ -12,6 +12,9 @@ import type {
   TripRepository,
   DailyRepository,
   UpgradeRepository,
+  ViceRepository,
+  WeighInRepository,
+  ConditionRepository,
   WorkoutRepository,
 } from '@/domain/repositories/ports'
 import type { CellId } from '@/domain/atlas/exploration/GeoCell'
@@ -46,6 +49,9 @@ export interface BackupRepositories {
   readonly places: PlaceRepository
   readonly trips: TripRepository
   readonly dailies: DailyRepository
+  readonly vices: ViceRepository
+  readonly weighIns: WeighInRepository
+  readonly conditions: ConditionRepository
   readonly explored: ExploredAreaRepository
 }
 
@@ -177,6 +183,33 @@ export const COLLECTIONS: Readonly<Record<CollectionKey, Collection>> = {
     idOf: (row) => row.id,
     restore: (r, rows) => r.dailies.restoreMany(rows),
     tombstoneCollection: 'dailies',
+  }),
+  vices: define({
+    local: (r) => r.vices.all(),
+    fromFile: (data) => data.vices ?? [],
+    idOf: (row) => row.id,
+    restore: (r, rows) => r.vices.restoreMany(rows),
+    tombstoneCollection: 'vices',
+  }),
+  /*
+   * Both keyed by the day rather than by a generated id, so `idOf` reads
+   * `day`. That is not a quirk of the backup — it is the same key the
+   * store uses, and it is what makes re-importing a file idempotent
+   * instead of duplicating every morning you ever weighed yourself.
+   */
+  weighIns: define({
+    local: (r) => r.weighIns.all(),
+    fromFile: (data) => data.weighIns ?? [],
+    idOf: (row) => row.day,
+    restore: (r, rows) => r.weighIns.restoreMany(rows),
+    tombstoneCollection: 'weighIns',
+  }),
+  conditions: define({
+    local: (r) => r.conditions.all(),
+    fromFile: (data) => data.conditions ?? [],
+    idOf: (row) => row.day,
+    restore: (r, rows) => r.conditions.restoreMany(rows),
+    tombstoneCollection: 'conditions',
   }),
 }
 

@@ -33,6 +33,9 @@ export const TOMBSTONED_COLLECTIONS = [
   'places',
   'trips',
   'dailies',
+  'vices',
+  'weighIns',
+  'conditions',
 ] as const
 
 export type TombstonedCollection = (typeof TOMBSTONED_COLLECTIONS)[number]

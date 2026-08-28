@@ -30,6 +30,7 @@ export const LIFE_AREAS = [
   'dailies',
   'jobs',
   'base',
+  'vitals',
 ] as const
 
 export type LifeArea = (typeof LIFE_AREAS)[number]
@@ -312,6 +313,64 @@ export const SCORING: readonly AreaScoring[] = [
      * `registry.test.ts` → "has exactly one tree" is what holds that, and
      * it caught this the first time it was written the other way.
      */
+    hasTree: false,
+  },
+  {
+    area: 'vitals',
+    name: 'Vitals',
+    phase: 11,
+    /*
+     * No ladder, and this is the area where one is most tempting.
+     *
+     * Bodyweight has published standards — BMI, body-fat brackets — and
+     * every one of them is a claim about *health* rather than about the
+     * thing being measured here. A lifter deliberately at 15% on a bulk
+     * is not worse at anything than the same lifter at 10%, and a ladder
+     * saying so would be the app inventing a direction its user did not
+     * choose. The direction is the phase, and the phase is a decision.
+     *
+     * The charges are the clearer case: nobody publishes how much coffee
+     * a person ought to drink, and a threshold invented here would be
+     * exactly the scale this model refuses everywhere.
+     */
+    ladders: [],
+    ratings: [
+      {
+        id: 'vitals.phase-held',
+        source: 'vitals.weeks-in-band',
+        name: 'Phase held',
+        unit: '% of weeks in the target band',
+        direction: 'stay-above',
+        cadence: 'monthly',
+        threshold: 60,
+      },
+      {
+        id: 'vitals.within-limits',
+        source: 'vitals.days-within-limits',
+        name: 'Kept inside the limits',
+        unit: '% of days',
+        direction: 'stay-above',
+        cadence: 'monthly',
+        threshold: 80,
+      },
+    ],
+    /*
+     * **No act pays XP here, and that is the whole point.**
+     *
+     * XP is paid per act and never per outcome, and every candidate in
+     * this area falls on the wrong side of that line. Not drinking is an
+     * outcome — it is what happened — so paying for it would be the same
+     * mistake as paying a streak. And the only actual *acts* available
+     * are spending a charge and stepping on a scale, neither of which is
+     * something to reward: paying XP for logging a beer is perverse, and
+     * paying it for weighing in turns a measurement into a chore with a
+     * score attached, which is how a number stops being honest.
+     *
+     * So this area measures and never pays. It is the first one that
+     * does, and it should stay that way — an area with no acts is not an
+     * incomplete area.
+     */
+    acts: [],
     hasTree: false,
   },
   {

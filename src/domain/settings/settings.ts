@@ -1,3 +1,4 @@
+import { PHASE_RATES, type Phase } from '@/domain/vitals/weight'
 import { DEFAULT_RTS } from '@/domain/framework/rts'
 import { asExerciseId, type ExerciseId } from '@/domain/ids/ids'
 import type { E1rmFormula } from '@/domain/strength/one-rep-max'
@@ -116,6 +117,23 @@ export interface AppSettings {
    */
   readonly exploredRegionKm2?: number | undefined
 
+  /**
+   * Which way the scale is meant to be going, and how fast.
+   *
+   * The rate is a band rather than a number because that is what
+   * `stay-within-range` judges and because a single target can only ever
+   * be missed: bodyweight moves several pounds a day on water alone, and
+   * a phase satisfied by one exact figure would read as failing every
+   * month it was actually going fine.
+   *
+   * Stored as a percentage of bodyweight per week. A pound a week is a
+   * different ask at 150 lb and at 250, and the percentage is the form
+   * that stays true as the lifter changes — which is the whole point of
+   * a phase that runs for months.
+   */
+  readonly phase: Phase
+  readonly phaseRate: { readonly min: number; readonly max: number }
+
   readonly theme: 'system' | 'light' | 'dark'
   /**
    * ISO timestamp of the last successful export. Drives the backup
@@ -193,6 +211,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   fatiguePercent: DEFAULT_RTS.loadDropPercent ?? 5,
   daysPerWeek: DEFAULT_DAYS_PER_WEEK,
   weeksBeforeDeload: DEFAULT_WEEKS_BEFORE_DELOAD,
+  phase: 'maintain',
+  phaseRate: PHASE_RATES.maintain,
   e1rmFormula: 'epley',
   restTimerEnabled: true,
   keepScreenAwake: true,

@@ -30,6 +30,13 @@ export type UpgradeId = Branded<'UpgradeId'>
 export type MetricId = Branded<'MetricId'>
 export type FriendId = Branded<'FriendId'>
 export type DailyId = Branded<'DailyId'>
+/**
+ * Something you mean to have less of — coffee, a beer — held as a pool of
+ * charges rather than as a rule. Named for the thing rather than
+ * `LimitId`, because the limit is a setting on it and this is what
+ * carries the record.
+ */
+export type ViceId = Branded<'ViceId'>
 
 export const asExerciseId = (value: string): ExerciseId => value as ExerciseId
 export const asProgramId = (value: string): ProgramId => value as ProgramId
@@ -44,6 +51,7 @@ export const asUpgradeId = (value: string): UpgradeId => value as UpgradeId
 export const asMetricId = (value: string): MetricId => value as MetricId
 export const asFriendId = (value: string): FriendId => value as FriendId
 export const asDailyId = (value: string): DailyId => value as DailyId
+export const asViceId = (value: string): ViceId => value as ViceId
 
 /**
  * Generating an id is a side effect, so the domain takes it as a
