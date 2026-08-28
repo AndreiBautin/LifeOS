@@ -1231,6 +1231,43 @@ and it would be exactly the invented scale `domain/game/` refuses
 everywhere else. They sit side by side on Today, labelled as the
 different kinds of thing they are.
 
+**A pool refills on a rolling window or at a calendar boundary, and
+people genuinely hold both.** `ChargeCycle` in `domain/vitals/charges.ts`.
+Coffee is the case the rolling window was built for: two at a time, and
+stating it in hours is what stops midnight handing you a third. Beer is
+the case that made hours read as nonsense — four a week, which nobody
+computes as "one back every forty-two hours". The report was "beers
+recharge on the weekly so hours don't make a lot of sense", and it was
+right.
+
+**A calendar reset does not weaken the merge rule below — it satisfies
+it.** The constraint is that no refill _time_ may be stored, and "how
+many spends since Monday" is a pure function of the timestamps and the
+clock, exactly like a daily's cadence being a property of the date alone.
+Both shapes go through one cutoff and share everything after it.
+
+**The week starts on Monday, and here that is not a style choice.** A
+weekly drink allowance has to hold Friday, Saturday and Sunday together;
+a Sunday-start week splits the weekend across two allowances, so a
+Saturday beer and a Sunday beer land in different weeks.
+
+**Nothing migrates old pools.** A stored `regenHours` is already a
+complete, correct statement of a rolling window, so `cycleOf` is the one
+place that reads both shapes and every caller goes through it. Rewriting
+records would be churn that risks a merge for no gain.
+
+**"+1" and "resets" are different claims.** A rolling pool returns one
+charge; a calendar pool returns all of them. Saying "+1 in 3d" under a
+weekly allowance with three spent would have somebody expecting one drink
+on Monday when they have four.
+
+**Editing a pool had no screen for three commits.** `editVice` existed
+from the day pools did and nothing called it — the third time in this app
+a working capability was invisible because nothing reached it. It became
+load-bearing the moment cycles arrived: without it the only way to put an
+existing beer pool on a weekly allowance was to retire it and start
+again, discarding every spend it had recorded.
+
 **A charge comes back exactly `regenHours` after the spend that consumed
 it**, so three coffees at eight in the morning on a twelve-hour timer are
 all three back at eight in the evening. The alternative — a token bucket

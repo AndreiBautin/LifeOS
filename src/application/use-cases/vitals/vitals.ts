@@ -9,6 +9,7 @@ import type {
   WeighInRepository,
 } from '@/domain/repositories/ports'
 import type { ReadinessFactors } from '@/domain/autoregulation/check-in'
+import type { ChargeCycle } from '@/domain/vitals/charges'
 import {
   isActive,
   readCharges,
@@ -169,10 +170,15 @@ export async function listWeighIns(deps: VitalsDeps): Promise<readonly WeighIn[]
   return [...(await deps.weighIns.all())].sort((a, b) => a.day.localeCompare(b.day))
 }
 
+/** A rolling window of zero hours would make a pool that never refills. */
+function sane(cycle: ChargeCycle): ChargeCycle {
+  return cycle.kind === 'rolling' ? { kind: 'rolling', hours: Math.max(1, cycle.hours) } : cycle
+}
+
 export interface NewVice {
   readonly name: string
   readonly capacity: number
-  readonly regenHours: number
+  readonly cycle: ChargeCycle
 }
 
 export async function addVice(input: NewVice, deps: VitalsDeps): Promise<Vice> {
@@ -180,7 +186,7 @@ export async function addVice(input: NewVice, deps: VitalsDeps): Promise<Vice> {
     id: asViceId(deps.ids.next()),
     name: input.name.trim(),
     capacity: Math.max(1, Math.round(input.capacity)),
-    regenHours: Math.max(1, input.regenHours),
+    cycle: sane(input.cycle),
     spent: [],
     createdAt: deps.clock.now().toISOString(),
   }
@@ -229,7 +235,7 @@ export async function editVice(
     ...vice,
     name: input.name.trim(),
     capacity: Math.max(1, Math.round(input.capacity)),
-    regenHours: Math.max(1, input.regenHours),
+    cycle: sane(input.cycle),
   }))
 }
 

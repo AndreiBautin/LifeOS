@@ -1,4 +1,4 @@
-import { Plus, Scale, Trash2 } from 'lucide-react'
+import { Pencil, Plus, Scale, Trash2 } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { useState } from 'react'
 
@@ -17,12 +17,22 @@ import {
   PHASES,
   TREND_DAYS,
 } from '@/domain/vitals/weight'
-import { readCharges } from '@/domain/vitals/charges'
+import {
+  cycleOf,
+  describeCycle,
+  readCharges,
+  rollingHours,
+  type ChargeCycle,
+  type Vice,
+} from '@/domain/vitals/charges'
 import { projectCorridor } from '@/domain/vitals/weight'
 import { TrendChart } from '@/components/shared/TrendChart'
 
+import type { NewVice } from '@/application/use-cases/vitals/vitals'
+
 import {
   useAddVice,
+  useEditVice,
   useRecordCondition,
   useRecordWeighIn,
   useRetireVice,
@@ -42,11 +52,19 @@ import {
  * is room on the *screen*: a tab is somewhere you act.
  */
 
-/** The three the request named, offered rather than seeded. */
-const SUGGESTIONS: readonly { name: string; capacity: number; regenHours: number }[] = [
-  { name: 'Coffee', capacity: 2, regenHours: 12 },
-  { name: 'Kush', capacity: 1, regenHours: 24 },
-  { name: 'Beer', capacity: 4, regenHours: 42 },
+/**
+ * The three the request named, offered rather than seeded — and each on
+ * the cycle people actually hold it on.
+ *
+ * Coffee is the case that earns the rolling window: two a day resetting
+ * at midnight invites a third at eleven at night, and twelve hours does
+ * not. Beer is the case that made hours read as nonsense — nobody
+ * budgets four a week as "one back every forty-two hours".
+ */
+const SUGGESTIONS: readonly NewVice[] = [
+  { name: 'Coffee', capacity: 2, cycle: { kind: 'rolling', hours: 12 } },
+  { name: 'Kush', capacity: 1, cycle: { kind: 'calendar', period: 'day' } },
+  { name: 'Beer', capacity: 4, cycle: { kind: 'calendar', period: 'week' } },
 ]
 
 const FACTORS: readonly { key: keyof ReadinessFactors; label: string }[] = [
@@ -396,10 +414,195 @@ function MacroTargetsCard() {
   )
 }
 
+/** The four shapes offered, in the order people reach for them. */
+const CYCLE_CHOICES: readonly {
+  readonly id: string
+  readonly label: string
+  readonly cycle: ChargeCycle
+}[] = [
+  { id: 'day', label: 'a day', cycle: { kind: 'calendar', period: 'day' } },
+  { id: 'week', label: 'a week', cycle: { kind: 'calendar', period: 'week' } },
+  { id: 'month', label: 'a month', cycle: { kind: 'calendar', period: 'month' } },
+  { id: 'rolling', label: 'rolling', cycle: { kind: 'rolling', hours: 12 } },
+]
+
+/** Which of `CYCLE_CHOICES` a stored cycle corresponds to. */
+function choiceFor(vice: Vice): string {
+  const cycle = cycleOf(vice)
+  return cycle.kind === 'rolling' ? 'rolling' : cycle.period
+}
+
+/**
+ * One pool, editable in place.
+ *
+ * Editing existed in the use-case from the day pools did and no screen
+ * reached it — the third time in this app that a working capability was
+ * invisible because nothing called it. It mattered here the moment
+ * cycles arrived: a pool written before them is a rolling one, and
+ * without this the only way to put beer on a weekly allowance was to
+ * retire it and start again, throwing away every spend it had recorded.
+ */
+function ViceRow({ vice, now }: { readonly vice: Vice; readonly now: Date }) {
+  const edit = useEditVice()
+  const retire = useRetireVice()
+  const [open, setOpen] = useState(false)
+  const [name, setName] = useState(vice.name)
+  const [capacity, setCapacity] = useState(String(vice.capacity))
+  const [choice, setChoice] = useState(choiceFor(vice))
+  const [hours, setHours] = useState(String(rollingHours(vice)))
+
+  const reading = readCharges(vice, now)
+
+  if (open) {
+    return (
+      <li className="py-2">
+        <form
+          className="space-y-2"
+          onSubmit={(event) => {
+            event.preventDefault()
+            const picked = CYCLE_CHOICES.find((one) => one.id === choice)?.cycle ?? cycleOf(vice)
+
+            edit.mutate(
+              {
+                id: vice.id,
+                input: {
+                  name,
+                  capacity: Number(capacity),
+                  cycle:
+                    picked.kind === 'rolling' ? { kind: 'rolling', hours: Number(hours) } : picked,
+                },
+              },
+              {
+                onSuccess: () => {
+                  setOpen(false)
+                },
+              },
+            )
+          }}
+        >
+          <input
+            className="bg-ink-900 border-ink-700 text-ink-50 tap-target w-full rounded-lg border px-3 text-sm"
+            aria-label={`Name for ${vice.name}`}
+            value={name}
+            onChange={(event) => {
+              setName(event.target.value)
+            }}
+          />
+          <div className="flex items-center gap-2">
+            <input
+              className="bg-ink-900 border-ink-700 text-ink-50 numeric tap-target w-16 shrink-0 rounded-lg border px-2 text-sm"
+              inputMode="decimal"
+              aria-label={`How many ${vice.name}`}
+              value={capacity}
+              onChange={(event) => {
+                setCapacity(event.target.value)
+              }}
+            />
+            <select
+              className="bg-ink-900 border-ink-700 text-ink-50 tap-target min-w-0 flex-1 rounded-lg border px-2 text-sm"
+              aria-label={`How often ${vice.name} refills`}
+              value={choice}
+              onChange={(event) => {
+                setChoice(event.target.value)
+              }}
+            >
+              {CYCLE_CHOICES.map((one) => (
+                <option key={one.id} value={one.id}>
+                  {one.label}
+                </option>
+              ))}
+            </select>
+            <Button type="submit" variant="primary" size="sm" disabled={edit.isPending}>
+              Save
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setOpen(false)
+              }}
+            >
+              Cancel
+            </Button>
+          </div>
+          {choice === 'rolling' && (
+            <label className="text-ink-500 flex items-center gap-2 text-xs">
+              One back every
+              <input
+                className="bg-ink-900 border-ink-700 text-ink-50 numeric tap-target w-20 rounded-lg border px-2 text-sm"
+                inputMode="decimal"
+                aria-label={`Hours until a ${vice.name} charge returns`}
+                value={hours}
+                onChange={(event) => {
+                  setHours(event.target.value)
+                }}
+              />
+              hours
+            </label>
+          )}
+          {/*
+            Said out loud, because it is the one edit here that changes
+            what the pool has already recorded. The spends are untouched;
+            what changes is which of them still count.
+          */}
+          <p className="text-ink-700 text-xs">
+            Changing this re-reads the {vice.spent.length} spend
+            {vice.spent.length === 1 ? '' : 's'} already recorded. None are lost.
+          </p>
+        </form>
+      </li>
+    )
+  }
+
+  return (
+    <li className="flex items-center gap-3 py-2">
+      <div className="min-w-0 flex-1">
+        <p className="text-ink-50 truncate text-sm font-medium">{vice.name}</p>
+        <p className="text-ink-700 numeric text-xs">
+          {/* `describeCycle` states the whole limit — "4 a week", "2, one
+              back every 12h" — so the sentence that used to wrap it is
+              gone rather than doubled. */}
+          {describeCycle(vice)} · {vice.spent.length} spent all told
+        </p>
+      </div>
+      <Badge tone={reading.over > 0 ? 'bad' : 'neutral'}>
+        {reading.over > 0 ? `${String(reading.over)} over` : `${String(reading.available)} left`}
+      </Badge>
+      <Button
+        variant="ghost"
+        size="sm"
+        aria-label={`Edit ${vice.name}`}
+        onClick={() => {
+          setOpen(true)
+        }}
+      >
+        <Pencil size={14} aria-hidden />
+      </Button>
+      {/*
+        Retire, not delete. Months of spends are a true account of a
+        stretch of your life, and deleting the pool takes them with it.
+      */}
+      <Button
+        variant="ghost"
+        size="sm"
+        aria-label={`Retire ${vice.name}`}
+        disabled={retire.isPending}
+        onClick={() => {
+          retire.mutate(vice.id)
+        }}
+      >
+        <Trash2 size={14} aria-hidden />
+      </Button>
+    </li>
+  )
+}
+
 function AddVice() {
   const add = useAddVice()
   const [name, setName] = useState('')
   const [capacity, setCapacity] = useState('2')
+  const [choice, setChoice] = useState('week')
   const [hours, setHours] = useState('12')
 
   return (
@@ -408,7 +611,16 @@ function AddVice() {
       onSubmit={(event) => {
         event.preventDefault()
         if (name.trim() === '') return
-        add.mutate({ name, capacity: Number(capacity), regenHours: Number(hours) })
+        const picked = CYCLE_CHOICES.find((one) => one.id === choice)?.cycle ?? {
+          kind: 'calendar' as const,
+          period: 'week' as const,
+        }
+
+        add.mutate({
+          name,
+          capacity: Number(capacity),
+          cycle: picked.kind === 'rolling' ? { kind: 'rolling', hours: Number(hours) } : picked,
+        })
         setName('')
       }}
     >
@@ -421,23 +633,53 @@ function AddVice() {
           setName(event.target.value)
         }}
       />
-      <div className="flex gap-2">
-        <label className="text-ink-500 flex flex-1 items-center gap-2 text-xs">
-          Charges
+      {/*
+        Read as a sentence — "4 a week" — because that is how the limit is
+        held in the first place. The old pair of boxes asked for a count
+        and a number of hours, which is the right question for coffee and
+        a translation exercise for anything weekly.
+      */}
+      <div className="flex items-center gap-2">
+        <input
+          className="bg-ink-900 border-ink-700 text-ink-50 numeric tap-target w-16 shrink-0 rounded-lg border px-2 text-sm"
+          inputMode="decimal"
+          aria-label="How many"
+          value={capacity}
+          onChange={(event) => {
+            setCapacity(event.target.value)
+          }}
+        />
+        <select
+          className="bg-ink-900 border-ink-700 text-ink-50 tap-target min-w-0 flex-1 rounded-lg border px-2 text-sm"
+          aria-label="How often the pool refills"
+          value={choice}
+          onChange={(event) => {
+            setChoice(event.target.value)
+          }}
+        >
+          {CYCLE_CHOICES.map((one) => (
+            <option key={one.id} value={one.id}>
+              {one.label}
+            </option>
+          ))}
+        </select>
+        <Button type="submit" variant="primary" disabled={add.isPending}>
+          <Plus size={16} aria-hidden />
+          Add
+        </Button>
+      </div>
+
+      {/*
+        Only asked for when it is the answer. A rolling window is the one
+        shape that needs a number, and putting that box on screen
+        permanently was what made every pool look like it was measured in
+        hours.
+      */}
+      {choice === 'rolling' && (
+        <label className="text-ink-500 flex items-center gap-2 text-xs">
+          One back every
           <input
-            className="bg-ink-900 border-ink-700 text-ink-50 numeric tap-target w-full min-w-0 rounded-lg border px-2 text-sm"
-            inputMode="decimal"
-            aria-label="Charges"
-            value={capacity}
-            onChange={(event) => {
-              setCapacity(event.target.value)
-            }}
-          />
-        </label>
-        <label className="text-ink-500 flex flex-1 items-center gap-2 text-xs">
-          Back in (h)
-          <input
-            className="bg-ink-900 border-ink-700 text-ink-50 numeric tap-target w-full min-w-0 rounded-lg border px-2 text-sm"
+            className="bg-ink-900 border-ink-700 text-ink-50 numeric tap-target w-20 rounded-lg border px-2 text-sm"
             inputMode="decimal"
             aria-label="Hours until a charge returns"
             value={hours}
@@ -445,12 +687,9 @@ function AddVice() {
               setHours(event.target.value)
             }}
           />
+          hours
         </label>
-        <Button type="submit" variant="primary" disabled={add.isPending}>
-          <Plus size={16} aria-hidden />
-          Add
-        </Button>
-      </div>
+      )}
     </form>
   )
 }
@@ -458,7 +697,6 @@ function AddVice() {
 export function VitalsPage() {
   const vices = useVices()
   const add = useAddVice()
-  const retire = useRetireVice()
   const now = useServices().clock.now()
 
   const taken = new Set((vices.data ?? []).map((vice) => vice.name.toLowerCase()))
@@ -481,42 +719,9 @@ export function VitalsPage() {
             </Empty>
           ) : (
             <ul className="divide-ink-800 mb-3 divide-y">
-              {vices.data.map((vice) => {
-                const reading = readCharges(vice, now)
-
-                return (
-                  <li key={vice.id} className="flex items-center gap-3 py-2">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-ink-50 truncate text-sm font-medium">{vice.name}</p>
-                      <p className="text-ink-700 numeric text-xs">
-                        {vice.capacity} charge{vice.capacity === 1 ? '' : 's'} · one back every{' '}
-                        {vice.regenHours}h · {vice.spent.length} spent all told
-                      </p>
-                    </div>
-                    <Badge tone={reading.over > 0 ? 'bad' : 'neutral'}>
-                      {reading.over > 0
-                        ? `${String(reading.over)} over`
-                        : `${String(reading.available)} left`}
-                    </Badge>
-                    {/*
-                      Retire, not delete. Months of spends are a true
-                      account of a stretch of your life, and deleting the
-                      pool takes them with it.
-                    */}
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      aria-label={`Retire ${vice.name}`}
-                      disabled={retire.isPending}
-                      onClick={() => {
-                        retire.mutate(vice.id)
-                      }}
-                    >
-                      <Trash2 size={14} aria-hidden />
-                    </Button>
-                  </li>
-                )
-              })}
+              {vices.data.map((vice) => (
+                <ViceRow key={vice.id} vice={vice} now={now} />
+              ))}
             </ul>
           )}
 

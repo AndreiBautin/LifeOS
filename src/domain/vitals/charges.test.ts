@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { readCharges, spendCharge, undoLastCharge, type Vice } from './charges'
+import { cycleOf, readCharges, spendCharge, undoLastCharge, type Vice } from './charges'
 import { asViceId } from '@/domain/ids/ids'
 
 /**
@@ -195,5 +195,134 @@ describe('the reading depends on the spends and the clock alone', () => {
   it('ignores a stamp it cannot parse rather than counting it', () => {
     // A malformed row must not silently consume a charge forever.
     expect(readCharges(coffee(['not-a-date']), at('2026-08-27T10:00:00.000Z')).available).toBe(3)
+  })
+})
+
+describe('a calendar cycle', () => {
+  const beer = (spent: readonly string[]): Vice => ({
+    id: asViceId('beer'),
+    name: 'Beer',
+    capacity: 4,
+    cycle: { kind: 'calendar', period: 'week' },
+    spent,
+    createdAt: '2026-01-01T00:00:00.000Z',
+  })
+
+  // A Thursday, so the Monday boundary is three days behind it.
+  const thursday = new Date(2026, 7, 27, 19, 0)
+
+  it('counts what has been spent since the period began', () => {
+    const reading = readCharges(
+      beer([
+        new Date(2026, 7, 25, 20, 0).toISOString(), // Tuesday
+        new Date(2026, 7, 26, 21, 0).toISOString(), // Wednesday
+      ]),
+      thursday,
+    )
+
+    expect(reading.available).toBe(2)
+  })
+
+  /*
+   * The whole point of the calendar shape: last week's drinking is not
+   * on this week's allowance, however recently it happened. Under a
+   * rolling window a Sunday-night beer would still be counted on Monday
+   * morning, which is the thing that made hours read as nonsense here.
+   */
+  it('ignores spends from the period before, however recent', () => {
+    const sundayNight = new Date(2026, 7, 23, 23, 30).toISOString()
+    const mondayMorning = new Date(2026, 7, 24, 9, 0)
+
+    expect(readCharges(beer([sundayNight]), mondayMorning).available).toBe(4)
+  })
+
+  /*
+   * The load-bearing reason the week starts on Monday: a weekly drink
+   * allowance has to hold the weekend together. On a Sunday-start week a
+   * Saturday beer and a Sunday beer fall in different weeks.
+   */
+  it('keeps Friday, Saturday and Sunday on one allowance', () => {
+    const spends = [
+      new Date(2026, 7, 28, 20, 0).toISOString(), // Friday
+      new Date(2026, 7, 29, 20, 0).toISOString(), // Saturday
+      new Date(2026, 7, 30, 20, 0).toISOString(), // Sunday
+    ]
+
+    // Read on the Sunday night, after all three.
+    expect(readCharges(beer(spends), new Date(2026, 7, 30, 23, 0)).available).toBe(1)
+  })
+
+  it('names the reset rather than a single charge returning', () => {
+    const reading = readCharges(
+      beer([
+        new Date(2026, 7, 25, 20, 0).toISOString(),
+        new Date(2026, 7, 25, 21, 0).toISOString(),
+        new Date(2026, 7, 25, 22, 0).toISOString(),
+        new Date(2026, 7, 26, 20, 0).toISOString(),
+      ]),
+      thursday,
+    )
+
+    expect(reading.available).toBe(0)
+    // The following Monday, when the whole pool returns at once.
+    expect(reading.nextBackAt?.getDay()).toBe(1)
+    expect(reading.nextBackAt?.getDate()).toBe(31)
+  })
+
+  it('still records going over, and clears it at the boundary', () => {
+    const five = Array.from({ length: 5 }, (_, i) => new Date(2026, 7, 25, 18 + i, 0).toISOString())
+
+    expect(readCharges(beer(five), thursday).over).toBe(1)
+    // Next Monday: the overrun is last week's, not this week's.
+    expect(readCharges(beer(five), new Date(2026, 7, 31, 9, 0)).over).toBe(0)
+  })
+
+  it('resets a daily pool at local midnight', () => {
+    const daily: Vice = { ...beer([]), capacity: 1, cycle: { kind: 'calendar', period: 'day' } }
+    const lastNight = new Date(2026, 7, 26, 23, 0).toISOString()
+
+    expect(
+      readCharges({ ...daily, spent: [lastNight] }, new Date(2026, 7, 26, 23, 30)).available,
+    ).toBe(0)
+    expect(
+      readCharges({ ...daily, spent: [lastNight] }, new Date(2026, 7, 27, 0, 30)).available,
+    ).toBe(1)
+  })
+})
+
+describe('pools written before cycles existed', () => {
+  /*
+   * These are on a device right now. `cycleOf` is the one place that
+   * knows both shapes, and nothing migrates them — a stored `regenHours`
+   * is already a complete statement of a rolling window.
+   */
+  it('reads a stored regenHours as the rolling window it always was', () => {
+    const old: Vice = {
+      id: asViceId('coffee'),
+      name: 'Coffee',
+      capacity: 2,
+      regenHours: 12,
+      spent: ['2026-08-27T08:00:00.000Z'],
+      createdAt: '2026-01-01T00:00:00.000Z',
+    }
+
+    expect(cycleOf(old)).toEqual({ kind: 'rolling', hours: 12 })
+    expect(readCharges(old, new Date('2026-08-27T10:00:00.000Z')).available).toBe(1)
+    expect(readCharges(old, new Date('2026-08-27T21:00:00.000Z')).available).toBe(2)
+  })
+
+  it('prefers the cycle when a record carries both', () => {
+    // Not a shape this writes, but one a merge could produce.
+    const both: Vice = {
+      id: asViceId('beer'),
+      name: 'Beer',
+      capacity: 4,
+      regenHours: 42,
+      cycle: { kind: 'calendar', period: 'week' },
+      spent: [],
+      createdAt: '2026-01-01T00:00:00.000Z',
+    }
+
+    expect(cycleOf(both).kind).toBe('calendar')
   })
 })

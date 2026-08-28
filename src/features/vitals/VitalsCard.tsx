@@ -7,6 +7,7 @@ import { Meter } from '@/components/shared/Meter'
 import { buttonStyles } from '@/components/shared/styles'
 import type { PhaseView, PoolView } from '@/application/use-cases/vitals/vitals'
 import { PHASE_LABELS, PHASE_VERDICT_LABELS } from '@/domain/vitals/weight'
+import { cycleOf, type Vice } from '@/domain/vitals/charges'
 import type { MacroTargets } from '@/domain/vitals/macros'
 import { cn } from '@/lib/cn'
 
@@ -56,6 +57,32 @@ function Pips({ reading }: { readonly reading: PoolView['reading'] }) {
   )
 }
 
+/**
+ * What the countdown is counting towards, in the pool's own terms.
+ *
+ * A rolling pool gets back one charge and a calendar pool gets back all
+ * of them, so "+1 in 9h" is true of the first and a lie about the
+ * second. Saying "resets" instead is not a wording preference — under a
+ * weekly allowance with three spent, "+1" would have somebody expecting
+ * one drink on Monday when they have four.
+ */
+function whenBack(vice: Vice, at: Date, now: Date): string {
+  const cycle = cycleOf(vice)
+
+  if (cycle.kind === 'rolling') return `+1 in ${backIn(at, now)}`
+
+  /*
+   * A day away or less reads better as a duration; further out, the day
+   * itself is what a person is actually asking about — "Monday" answers
+   * "when can I have another" and "in 3d 4h" makes them count.
+   */
+  const hoursAway = (at.getTime() - now.getTime()) / (60 * 60 * 1000)
+
+  return hoursAway <= 24
+    ? `resets in ${backIn(at, now)}`
+    : `resets ${at.toLocaleDateString(undefined, { weekday: 'long' })}`
+}
+
 function backIn(at: Date, now: Date): string {
   const minutes = Math.max(0, Math.round((at.getTime() - now.getTime()) / 60000))
   if (minutes < 60) return `${String(minutes)}m`
@@ -79,7 +106,7 @@ function PoolRow({ pool, now }: { readonly pool: PoolView; readonly now: Date })
           {reading.over > 0
             ? `${String(reading.over)} over`
             : `${String(reading.available)} of ${String(reading.capacity)}`}
-          {reading.nextBackAt !== undefined && ` · +1 in ${backIn(reading.nextBackAt, now)}`}
+          {reading.nextBackAt !== undefined && ` · ${whenBack(vice, reading.nextBackAt, now)}`}
         </p>
       </div>
 
