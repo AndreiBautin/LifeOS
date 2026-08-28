@@ -22,37 +22,42 @@ import type { ExerciseId } from '@/domain/ids/ids'
  * decide what a load is based on, and they would disagree.
  */
 /**
- * Moves a bench estimate onto the paused bench when the competition lift
- * changed underneath it.
+ * Fills the tracked bench from the paused one when the tracked lift moved
+ * back underneath it.
  *
- * `bench-press` used to be the competition lift and is now the
- * touch-and-go variation. A lifter who had an estimate under that slug
- * has one for a lift that is no longer scored, and nothing at all for the
- * one that is — so the character sheet would report no bench and the
- * total would lose a third of itself, from settings nobody touched.
+ * This has now pointed both ways, which is the thing to know before
+ * editing it. `bench-press` was the competition lift; then the paused
+ * version was, and this moved estimates onto it at 95%; now `bench-press`
+ * is again — one bench, at one session a week, under the slug every log
+ * already uses.
  *
- * **Discounted by the same ratio the derivation uses.** The stored number
- * was measured on a bar with no pause, whatever the exercise was called
- * at the time, so copying it across verbatim would credit a paused max
- * nobody has pressed. Five per cent is the same figure
- * {@link VARIATION_OF} uses in the other direction, so the two agree.
+ * A lifter who ran the middle version has estimates under both slugs and
+ * nothing to do. One who corrected only the paused number would otherwise
+ * have a tracked lift with no estimate, and the character sheet would
+ * report no bench while the total lost a third of itself, from settings
+ * nobody touched.
  *
- * Runs once and is idempotent: it does nothing once a paused estimate
- * exists, including one the lifter has since corrected. Corrections are
- * the point — this is a starting position, not a claim.
+ * **Scaled by the same ratio the derivation uses**, in the other
+ * direction: a paused max is 95% of a touch-and-go one, so the touch-and-go
+ * is the paused figure divided by 0.95. Deriving it any other way would
+ * let the migration and {@link VARIATION_OF} disagree about the same two
+ * lifts.
+ *
+ * Idempotent: it does nothing once a tracked estimate exists, including
+ * one the lifter has since corrected. Corrections are the point.
  */
 export function migrateBenchEstimate(
   estimatedMaxes: Readonly<Partial<Record<ExerciseId, number>>>,
 ): Readonly<Partial<Record<ExerciseId, number>>> {
   const paused = 'paused-bench-press' as ExerciseId
-  const touchAndGo = 'bench-press' as ExerciseId
+  const tracked = 'bench-press' as ExerciseId
 
-  if (estimatedMaxes[paused] !== undefined) return estimatedMaxes
+  if (estimatedMaxes[tracked] !== undefined) return estimatedMaxes
 
-  const previous = estimatedMaxes[touchAndGo]
+  const previous = estimatedMaxes[paused]
   if (previous === undefined) return estimatedMaxes
 
-  return { ...estimatedMaxes, [paused]: Math.round(previous * 0.95) }
+  return { ...estimatedMaxes, [tracked]: Math.round(previous / 0.95) }
 }
 
 export function withDerivedMaxes(

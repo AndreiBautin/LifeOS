@@ -49,6 +49,8 @@ export interface Exercise {
    * thought about yet.
    */
   readonly systemicCost?: SystemicCost
+  /** Overrides the rep range implied by `isCompound`. See the catalogue. */
+  readonly repRange?: { readonly low: number; readonly high: number }
   readonly defaultRestSeconds?: number
   readonly notes?: string
   /** Built-in exercises ship with the app and cannot be deleted, only hidden. */

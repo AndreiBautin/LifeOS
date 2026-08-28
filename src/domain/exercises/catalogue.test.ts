@@ -55,8 +55,17 @@ describe('what the catalogue no longer ships', () => {
    * something better — should stay withdrawn, and the fix for wanting it
    * is to change the reason, not to delete the line.
    */
+  /*
+   * The upright row was on this list, withdrawn because "the lateral raise
+   * covers the side delts", and it is back — restored deliberately so the
+   * side delts have two movements to alternate between rather than the same
+   * one twice a week.
+   *
+   * That is the second restore to come through here, which is the list
+   * working: a withdrawal has to be undone in one visible place rather than
+   * an exercise quietly reappearing in the catalogue.
+   */
   const withdrawn: readonly (readonly [string, string])[] = [
-    ['upright-row', 'the lateral raise covers the side delts'],
     ['kb-single-leg-rdl', 'hard to load'],
     ['incline-push-up', 'hard to load without an adjustable bench'],
     ['lunge', 'withdrawn earlier'],

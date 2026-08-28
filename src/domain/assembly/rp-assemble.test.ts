@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { builtInExercises, STRENGTH_VARIATIONS } from '@/domain/exercises/catalogue'
+import type { StrengthLift } from '@/domain/priority/tiers'
 import { MAX_DIRECT_SETS_PER_SESSION } from '@/domain/volume/frequency'
 import { MUSCLE_GROUPS, type MuscleGroup } from '@/domain/exercises/taxonomy'
 import { asExerciseId, asProgramId, type IdGenerator } from '@/domain/ids/ids'
@@ -151,7 +152,7 @@ describe('the assembled block', () => {
     expect([...kinds].sort()).toEqual(['rpe', 'rts-backoff'])
   })
 
-  it('benches three times and shares the lower days between squat and deadlift', () => {
+  it('presses once on each upper day and shares the lower days', () => {
     const week = block?.weeks[0]
     const mains = (week?.days ?? []).map((day) => [
       ...new Set(
@@ -162,9 +163,9 @@ describe('the assembled block', () => {
     ])
 
     /*
-     * Six sessions across four days. Every lift wants two sessions: the
-     * bench takes both upper days, and the squat and the deadlift share
-     * both lower ones.
+     * Six sessions across four days. The bench and the overhead press take
+     * one upper day each; the squat and the deadlift want two each and
+     * share both lower days.
      *
      * The order is the interesting part. Tuesday opens with the squat and
      * Thursday with the deadlift, because a lift that is always second is
@@ -179,9 +180,9 @@ describe('the assembled block', () => {
      * bar. The bench, alone on its days, walks its rotation in order.
      */
     expect(mains).toEqual([
-      ['paused-bench-press'],
-      ['low-bar-squat', 'conventional-deadlift'],
       ['bench-press'],
+      ['low-bar-squat', 'conventional-deadlift'],
+      ['overhead-press'],
       ['sumo-deadlift', 'high-bar-squat'],
     ])
   })
@@ -250,7 +251,7 @@ describe('the assembled block', () => {
     // get the thing being measured; a rotation that started anywhere else
     // would silently stop tracking the competition lift.
     const once = build({
-      liftSessions: { squat: 1, bench: 1, deadlift: 1 },
+      liftSessions: { squat: 1, bench: 1, deadlift: 1, press: 1 },
     })
 
     const benches = weekAt(once, 0).days.flatMap((day) =>
@@ -264,7 +265,7 @@ describe('the assembled block', () => {
         ),
     )
 
-    expect([...new Set(benches)]).toEqual(['paused-bench-press'])
+    expect([...new Set(benches)]).toEqual(['bench-press'])
   })
 
   /*
@@ -353,7 +354,7 @@ describe('the assembled block', () => {
     // Counted across a lift's variations, not by slug: the bench trains
     // two different versions of itself across the week and both are bench
     // sessions.
-    const sessions = (lift: 'squat' | 'bench' | 'deadlift'): number =>
+    const sessions = (lift: StrengthLift): number =>
       (week?.days ?? []).filter((day) =>
         day.slots.some(
           (slot) =>
@@ -362,10 +363,10 @@ describe('the assembled block', () => {
         ),
       ).length
 
-    // Nothing is specialised: all three lifts are building and take two
-    // sessions each. The bench has both upper days, and the squat and the
-    // deadlift share both lower ones.
-    expect(sessions('bench')).toBe(2)
+    // The bench and the press take one upper day each; the squat and the
+    // deadlift take two, sharing both lower days.
+    expect(sessions('bench')).toBe(1)
+    expect(sessions('press')).toBe(1)
     expect(sessions('squat')).toBe(2)
     expect(sessions('deadlift')).toBe(2)
   })
@@ -1282,7 +1283,13 @@ describe('rep ranges', () => {
           expect(set.reps.kind).toBe('range')
           if (set.reps.kind !== 'range') continue
 
-          const expected = exercise.isCompound ? { low: 5, high: 8 } : { low: 15, high: 30 }
+          /*
+           * The override wins where one exists. A feet-elevated push-up is
+           * a compound with no load to vary, so 5–8 would mean stopping a
+           * set with twenty reps left in it.
+           */
+          const expected =
+            exercise.repRange ?? (exercise.isCompound ? { low: 5, high: 8 } : { low: 15, high: 30 })
           expect({ low: set.reps.low, high: set.reps.high }, exercise.name).toEqual(expected)
           seen.set(exercise.isCompound ? 'compound' : 'isolation', exercise.name)
         }

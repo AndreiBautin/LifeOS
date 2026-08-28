@@ -61,7 +61,7 @@ describe('the character sheet', () => {
   const base = {
     estimatedMaxes: {
       [asExerciseId('low-bar-squat')]: 303,
-      [asExerciseId('paused-bench-press')]: 228,
+      [asExerciseId('bench-press')]: 228,
       [asExerciseId('sumo-deadlift')]: 368,
     },
     bodyweight: 183,

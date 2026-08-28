@@ -548,6 +548,7 @@ const STRENGTH_REGION: Record<StrengthLift, 'upper' | 'lower'> = {
   squat: 'lower',
   bench: 'upper',
   deadlift: 'lower',
+  press: 'upper',
 }
 
 /**
@@ -1373,7 +1374,7 @@ function daysAvailableFor(muscle: MuscleGroup, split: RpSplit): number {
  * nothing reads is a field somebody will assume still does something.
  */
 function hypertrophySets(exercise: Exercise, count: number): readonly SetPrescription[] {
-  const range = exercise.isCompound ? COMPOUND_REPS : ISOLATION_REPS
+  const range = exercise.repRange ?? (exercise.isCompound ? COMPOUND_REPS : ISOLATION_REPS)
 
   return Array.from({ length: count }, (_unused, index) => {
     const isLast = index === count - 1

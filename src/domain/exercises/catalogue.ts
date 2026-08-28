@@ -32,6 +32,21 @@ interface CatalogueEntry {
   readonly intent: TrainingIntent
   readonly sfr: Sfr
   readonly systemicCost?: SystemicCost
+  /**
+   * Overrides the rep range the movement would otherwise get.
+   *
+   * Compounds run 5–8 and isolations 15–30, chosen by `isCompound`,
+   * because load is the variable on one and local fatigue on the other.
+   * That is right for every exercise here but one.
+   *
+   * A per-exercise `defaultRepRange` existed before and was removed for
+   * good reason: fifteen hand-set pairs whose differences nobody could
+   * account for, drifting as the catalogue grew. This is the same field
+   * with a much narrower remit — **an exception for a movement the rule
+   * gets wrong, not a place to tune every exercise.** If a third or fourth
+   * entry appears here, the rule is what needs changing.
+   */
+  readonly repRange?: { readonly low: number; readonly high: number }
   readonly isUnilateral?: boolean
   readonly isCompetition?: boolean
   readonly loadBasis?: LoadBasis
@@ -50,8 +65,31 @@ interface CatalogueEntry {
  */
 export const STRENGTH_LIFT_SLUGS = {
   squat: 'low-bar-squat',
-  bench: 'paused-bench-press',
+  /*
+   * The touch-and-go bench, and it is simply "Bench Press" again.
+   *
+   * The paused version was the tracked lift on the reasoning that a raw
+   * meet bench is judged on a pause — true, and the wrong trade here.
+   * Three bench variations existed to fill three sessions a week, and at
+   * one session a week a rotation has nowhere to go. One bench, pressed
+   * the way it is trained, under the slug every existing log already uses.
+   *
+   * The cost is real and worth stating: **this number is no longer a
+   * competition bench.** A touch-and-go single is worth more than a paused
+   * one, so the character sheet's bench standard and the powerlifting
+   * total both read a little high against a meet.
+   */
+  bench: 'bench-press',
   deadlift: 'sumo-deadlift',
+  /*
+   * The overhead press is a strength lift now, reversing a decision this
+   * file used to argue for. It was dropped as a main lift because 5/3/1
+   * wanted a fourth one and it contributes nothing to a powerlifting
+   * total — both still true, and neither an argument against training it
+   * heavy. `measure.ts` names the three total lifts explicitly, so the
+   * score does not move.
+   */
+  press: 'overhead-press',
 } as const
 
 /**
@@ -71,11 +109,11 @@ export const STRENGTH_LIFT_SLUGS = {
  */
 export const STRENGTH_VARIATIONS: Record<keyof typeof STRENGTH_LIFT_SLUGS, readonly string[]> = {
   squat: ['low-bar-squat', 'high-bar-squat'],
-  // Two sessions, two variations. The close grip left the rotation with
-  // the third bench day — a rotation longer than the frequency simply
-  // never reaches its own end, so the entry was describing a session that
-  // does not happen.
-  bench: ['paused-bench-press', 'bench-press'],
+  // One session, one version. The paused and close-grip benches left with
+  // the second and third bench days — a rotation longer than the frequency
+  // never reaches its own end.
+  bench: ['bench-press'],
+  press: ['overhead-press'],
   // Sumo is the competition pull and conventional is the variation, so
   // lower day 1 pulls sumo and lower day 2 pulls conventional.
   deadlift: ['sumo-deadlift', 'conventional-deadlift'],
@@ -95,10 +133,20 @@ export const STRENGTH_VARIATIONS: Record<keyof typeof STRENGTH_LIFT_SLUGS, reado
 export const VARIATION_OF: Readonly<
   Record<string, { readonly of: string; readonly factor: number }>
 > = {
-  // Touch-and-go is *heavier* than the paused version — no pause means no
-  // loss of stretch reflex — so this factor is above one. It reads wrong
-  // until you remember which lift is the reference.
-  'bench-press': { of: 'paused-bench-press', factor: 1.05 },
+  /*
+   * The touch-and-go bench is the reference now, so the paused and
+   * close-grip versions derive from it rather than the other way round.
+   * Both are below one — a pause costs the stretch reflex, a close grip
+   * costs leverage — where the paused-as-reference version had the
+   * touch-and-go above one and read wrong until you remembered which was
+   * which.
+   *
+   * Neither is in a rotation, so neither is scheduled. They are kept
+   * because they are real exercises a lifter may pick by hand, and a ratio
+   * means the first one has a load to suggest.
+   */
+  'paused-bench-press': { of: 'bench-press', factor: 0.95 },
+  'close-grip-bench-press': { of: 'bench-press', factor: 0.9 },
   /*
    * Low bar allows more than high bar for most people — shorter moment arm
    * at the hip, more posterior chain — so the factor is below one. Ten per
@@ -161,13 +209,20 @@ const ENTRIES: readonly CatalogueEntry[] = [
   /* ---- The total ---------------------------------------------------- */
   {
     slug: 'bench-press',
-    name: 'Touch-and-Go Bench Press',
+    name: 'Bench Press',
     primaryMuscle: 'chest',
     secondaryMuscles: ['triceps', 'front-delts'],
     equipment: 'barbell',
     pattern: 'horizontal-push',
     isCompound: true,
     intent: 'strength',
+    /*
+     * The tracked bench, and it is the touch-and-go one under its plain
+     * name. The slug never moved, which is the point: it is written into
+     * every log already filed, and renaming an id to follow a change of
+     * meaning is how history stops resolving.
+     */
+    isCompetition: true,
     sfr: 3,
     systemicCost: 0.55,
     // No spotter in a garage. A failed rep here is an emergency.
@@ -263,6 +318,33 @@ const ENTRIES: readonly CatalogueEntry[] = [
 
   /* ---- Chest -------------------------------------------------------- */
   {
+    slug: 'feet-elevated-push-up',
+    name: 'Feet-Elevated Push-Up',
+    primaryMuscle: 'chest',
+    secondaryMuscles: ['triceps', 'front-delts'],
+    equipment: 'bodyweight',
+    // Shares the dip's pattern, so the two alternate rather than both
+    // being scheduled and counting the chest trained twice.
+    pattern: 'horizontal-push',
+    isCompound: true,
+    intent: 'hypertrophy',
+    sfr: 4,
+    systemicCost: 0.25,
+    /*
+     * The one exercise the compound rep range gets wrong.
+     *
+     * Compounds run 5–8 because load is the variable that matters on
+     * them. This one has no load to vary — the bar is your body and the
+     * only adjustment is how high the feet go — so 5–8 would mean stopping
+     * a set with twenty reps left in it. See `repRange` on
+     * `CatalogueEntry` for why this is an override rather than a general
+     * rule about bodyweight work: dips and pull-ups are bodyweight too and
+     * are genuinely 5–8 movements for most people.
+     */
+    repRange: { low: 15, high: 30 },
+    defaultRestSeconds: REST,
+  },
+  {
     slug: 'dips',
     name: 'Dips',
     primaryMuscle: 'chest',
@@ -357,13 +439,42 @@ const ENTRIES: readonly CatalogueEntry[] = [
     equipment: 'barbell',
     pattern: 'vertical-push',
     isCompound: true,
-    // Heavy, but not part of the total. Trained at 3–6 for hypertrophy.
-    intent: 'hypertrophy',
+    /*
+     * A strength lift, run RTS-style on the second upper day.
+     *
+     * It was hypertrophy work on the reasoning that it contributes nothing
+     * to a powerlifting total — still true, and never an argument against
+     * training it heavy. `measure.ts` names squat, bench and deadlift
+     * explicitly, so the total does not move.
+     *
+     * `isCompetition` stays false, which is what keeps it out of the
+     * total while still giving it a top set and back-offs.
+     */
+    intent: 'strength',
     sfr: 3,
     systemicCost: 0.5,
     loadBasis: 'estimated-1rm',
     defaultRestSeconds: REST_HEAVY,
-    notes: 'Heavy hypertrophy, not a strength lift. Volume counts toward front delts and triceps.',
+  },
+  {
+    slug: 'upright-row',
+    name: 'Upright Row',
+    primaryMuscle: 'side-delts',
+    secondaryMuscles: ['traps', 'biceps'],
+    equipment: 'barbell',
+    /*
+     * The same pattern as the lateral raise, so the weekly repeat penalty
+     * treats them as one movement and the rotation alternates between
+     * them rather than scheduling both and calling the side delts trained
+     * twice.
+     */
+    pattern: 'isolation',
+    isCompound: false,
+    intent: 'hypertrophy',
+    sfr: 4,
+    systemicCost: 0.2,
+    defaultRestSeconds: REST,
+    notes: 'Elbows lead, bar close to the body. Stop at chest height if the shoulder complains.',
   },
   {
     slug: 'db-lateral-raise',
@@ -399,6 +510,20 @@ const ENTRIES: readonly CatalogueEntry[] = [
     systemicCost: 0.05,
     defaultRestSeconds: REST,
     notes: 'Largely redundant with pressing. Rarely needed unless front delts are prioritised.',
+  },
+  {
+    slug: 'ez-bar-rear-delt-raise',
+    name: 'EZ Bar Rear Delt Raise',
+    primaryMuscle: 'rear-delts',
+    secondaryMuscles: ['upper-back'],
+    equipment: 'ez-bar',
+    pattern: 'isolation',
+    isCompound: false,
+    intent: 'hypertrophy',
+    sfr: 4,
+    systemicCost: 0.15,
+    defaultRestSeconds: REST,
+    notes: 'Bent over, bar raised behind you toward the ceiling. Arms straight, no shrug.',
   },
   {
     slug: 'rear-delt-raise',
@@ -1009,6 +1134,7 @@ export function builtInExercises(): readonly Exercise[] {
     loadBasis: entry.loadBasis ?? 'absolute-only',
     intent: entry.intent,
     sfr: entry.sfr,
+    ...(entry.repRange !== undefined ? { repRange: entry.repRange } : {}),
     ...(entry.systemicCost !== undefined ? { systemicCost: entry.systemicCost } : {}),
     ...(entry.defaultRestSeconds !== undefined
       ? { defaultRestSeconds: entry.defaultRestSeconds }

@@ -63,12 +63,32 @@ so there is nothing to write back into.
 prescription into a number with no I/O and no clock. Keep it that way; it
 is where nearly all the tests live.
 
-**Strength is RTS, and only RTS.** The three lifts are run by reps at an
-RPE, with back-off work driven by measured fatigue percentages
-(`domain/framework/rts.ts`). The overhead press is **not** a strength
-lift — it was a main lift under 5/3/1 only because that framework wanted
-a fourth one, and it contributes nothing to a total. It is a hypertrophy
-compound and runs 5–8 like every other one.
+**Strength is RTS, and only RTS.** Four lifts are run by reps at an RPE
+with back-off work driven by measured fatigue percentages
+(`domain/framework/rts.ts`) — and **only three of them are a total.**
+
+The overhead press is the fourth. It was removed as a main lift because
+5/3/1 wanted one and it contributes nothing to a powerlifting total; the
+second half is still true, and was never an argument against training it
+heavy. `measure.ts` names squat, bench and deadlift explicitly and
+`isCompetition` is false on the press, so it gets a top set and back-offs
+without entering the score. **Do not compute the total from
+`STRENGTH_LIFTS`** — that was safe while the two were the same three
+lifts and is exactly the kind of thing that looks like a tidy-up later.
+
+**One bench, and it is the touch-and-go one under its plain name.** Three
+bench variations existed to fill three sessions a week; at one session a
+week a rotation has nowhere to go. `bench-press` is the tracked lift again
+— the slug never moved, because it is written into every filed log — and
+the paused and close-grip versions keep `VARIATION_OF` ratios off it so a
+lifter picking one by hand gets a suggested load.
+
+The cost is real and belongs on the record: **this number is no longer a
+competition bench.** A touch-and-go single is worth more than a paused
+one, so the character sheet's bench standard and the total both read a
+little high against a meet. `migrateBenchEstimate` has now pointed both
+ways for this reason and is documented in the direction it currently
+runs.
 
 **The top set is a triple.** `topSetReps` is 3. The top set is a
 measurement before it is training — reps at an RPE, read back through the
@@ -943,12 +963,19 @@ sort and both rank the same. **`previousSetFor` must take the variant**:
 matching on the exercise alone hands the first back-off the previous
 session's _top set_ as its "last time".
 
-**Two rep ranges, chosen by the movement.** Compounds run 5–8, isolations
-15–30, and no exercise carries its own. `COMPOUND_REPS` and
-`ISOLATION_REPS` in `domain/assembly/rp-assemble.ts`. Every exercise used
-to hold a `defaultRepRange` — fifteen or so hand-set pairs whose
-differences nobody could account for and which drifted as the catalogue
-grew. The field is gone rather than ignored.
+**Two rep ranges, chosen by the movement, and one exception.** Compounds
+run 5–8 and isolations 15–30 — `COMPOUND_REPS` and `ISOLATION_REPS` in
+`domain/assembly/rp-assemble.ts`. Every exercise used to hold a
+`defaultRepRange`: fifteen or so hand-set pairs whose differences nobody
+could account for and which drifted as the catalogue grew.
+
+`repRange` is that field back with a much narrower remit — **an exception
+for a movement the rule gets wrong, not a place to tune every exercise.**
+There is one entry, the feet-elevated push-up: a compound with no load to
+vary, where 5–8 means stopping a set with twenty reps left in it. Note
+that this is _not_ a rule about bodyweight work — dips and pull-ups are
+bodyweight and are genuinely 5–8 movements. **If a third or fourth entry
+appears, the rule is what needs changing.**
 
 Worth being concrete about what it did, because "adjusted the rep ranges"
 undersells it: this is roughly two and a half times the reps and

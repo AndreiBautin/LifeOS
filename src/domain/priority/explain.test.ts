@@ -33,8 +33,8 @@ const only = (
     ]),
   ) as MuscleVolumes
 
-const evenLifts: LiftSessions = { squat: 2, bench: 2, deadlift: 2 }
-const benchLed: LiftSessions = { squat: 1, bench: 3, deadlift: 1 }
+const evenLifts: LiftSessions = { squat: 2, bench: 2, deadlift: 2, press: 2 }
+const benchLed: LiftSessions = { squat: 1, bench: 3, deadlift: 1, press: 1 }
 
 describe('naming a block from its settings', () => {
   /*
@@ -49,16 +49,27 @@ describe('naming a block from its settings', () => {
   it('names it after what actually stands out', () => {
     const described = describeBlock(DEFAULT_MUSCLE_VOLUMES, sets, DEFAULT_LIFT_SESSIONS)
 
-    expect(described.name).toBe('General')
+    expect(described.focus.muscles).toBe('General')
     expect(described.description).toContain('at low volume.')
     expect(described.description).toContain('left to the competition lifts.')
   })
 
   it('claims no lead lift when every lift is trained the same', () => {
-    const described = describeBlock(DEFAULT_MUSCLE_VOLUMES, sets, DEFAULT_LIFT_SESSIONS)
+    const described = describeBlock(DEFAULT_MUSCLE_VOLUMES, sets, evenLifts)
 
     expect(described.description).not.toContain('leads the strength work')
     expect(described.focus.lifts).toBeUndefined()
+  })
+
+  /*
+   * The shipped sessions are not uniform any more — the squat and the
+   * deadlift take two each while the bench and the press take one — so the
+   * default block does name its lead lifts.
+   */
+  it('names the lifts the shipped week leads with', () => {
+    const described = describeBlock(DEFAULT_MUSCLE_VOLUMES, sets, DEFAULT_LIFT_SESSIONS)
+
+    expect(described.name).toBe('General · Squat and deadlift strength')
   })
 
   /*
@@ -126,7 +137,7 @@ describe('naming a block from its settings', () => {
     }
 
     const bench = describeBlock(volumes, sets, benchLed)
-    const deadlift = describeBlock(volumes, sets, { squat: 1, bench: 1, deadlift: 3 })
+    const deadlift = describeBlock(volumes, sets, { squat: 1, bench: 1, deadlift: 3, press: 1 })
 
     expect(bench.name).toBe('Chest · Bench press strength')
     expect(deadlift.name).toBe('Chest · Deadlift strength')
@@ -137,9 +148,21 @@ describe('naming a block from its settings', () => {
       squat: 3,
       bench: 1,
       deadlift: 3,
+      press: 1,
     })
 
     expect(twoLifts.name).toContain('Squat and deadlift strength')
+  })
+
+  it('names the overhead press when it leads', () => {
+    const pressLed = describeBlock(DEFAULT_MUSCLE_VOLUMES, sets, {
+      squat: 1,
+      bench: 1,
+      deadlift: 1,
+      press: 3,
+    })
+
+    expect(pressLed.name).toContain('Overhead press strength')
   })
 
   it('falls back to the volume focus alone when no lift leads', () => {
@@ -189,7 +212,12 @@ describe('explaining the volume', () => {
   })
 
   it('describes a lift that is not trained at all', () => {
-    const none = explainVolume(DEFAULT_MUSCLE_VOLUMES, sets, { squat: 0, bench: 2, deadlift: 2 })
+    const none = explainVolume(DEFAULT_MUSCLE_VOLUMES, sets, {
+      squat: 0,
+      bench: 2,
+      deadlift: 2,
+      press: 1,
+    })
     const squat = none.lifts.find((lift) => lift.lift === 'squat')
 
     expect(squat?.sessionsPerWeek).toBe(0)

@@ -11,18 +11,31 @@ const CLOSE = asExerciseId('close-grip-bench-press')
 const maxes = (entries: Partial<Record<ExerciseId, number>>) => withDerivedMaxes(entries)
 
 describe('estimating a variation nobody has measured', () => {
-  it('derives the touch-and-go bench from the competition bench', () => {
-    // Touch-and-go is *heavier* than the paused version: no pause means
-    // no loss of the stretch reflex, so its factor is above one.
-    expect(maxes({ [PAUSED]: 300 })[TOUCH_AND_GO]).toBe(315)
+  /*
+   * The reference reversed when the tracked bench did. `bench-press` is
+   * the lift now, so the paused and close-grip versions derive from it
+   * rather than the other way round — and both factors are below one,
+   * where the touch-and-go-from-paused factor was above one and read
+   * wrong until you remembered which was which.
+   */
+  it('derives the paused bench from the tracked one', () => {
+    expect(maxes({ [TOUCH_AND_GO]: 300 })[PAUSED]).toBe(285)
+  })
+
+  it('derives the close grip from the tracked bench too', () => {
+    // Ten per cent below: a close grip costs leverage where a pause costs
+    // the stretch reflex, so it sits under the paused version.
+    expect(maxes({ [TOUCH_AND_GO]: 300 })[CLOSE]).toBe(270)
   })
 
   /*
-   * And the close grip is not derived at all any more. It left the bench
-   * rotation when the bench dropped to two sessions, and a ratio for an
-   * exercise no rotation reaches derives a max nothing ever loads.
+   * Neither is scheduled — the bench rotation is one entry — and both keep
+   * a ratio anyway, because a lifter may pick either by hand and a
+   * suggestion beats an empty field. What would be wrong is a ratio whose
+   * *parent* nothing measures, which is why they hang off the tracked lift
+   * rather than off each other.
    */
-  it('does not derive a variation that left its rotation', () => {
+  it('derives nothing for a variation whose parent has no estimate', () => {
     expect(maxes({ [PAUSED]: 300 })[CLOSE]).toBeUndefined()
   })
 
@@ -86,27 +99,30 @@ describe('estimating a variation nobody has measured', () => {
 })
 
 describe('moving a bench estimate when the competition lift changed', () => {
-  it('discounts the old number rather than copying it across', () => {
-    /*
-     * `bench-press` used to be the competition lift and is now the
-     * touch-and-go variation, so a stored estimate under that slug was
-     * measured on a bar with no pause whatever it was called at the time.
-     * Copying it verbatim would credit a paused max nobody has pressed.
-     */
-    const moved = migrateBenchEstimate({ [TOUCH_AND_GO]: 300 })
+  /*
+   * This has pointed both ways, which is why it is tested in the direction
+   * it currently runs rather than by naming the lifts abstractly.
+   * `bench-press` was the tracked lift, then the paused version was and
+   * estimates moved onto it at 95%, and now `bench-press` is again.
+   */
+  it('scales the paused number up rather than copying it across', () => {
+    // A paused max is 95% of a touch-and-go one, so the touch-and-go is
+    // the paused figure divided by 0.95. Copying it verbatim would report
+    // a tracked bench lighter than the lifter presses.
+    const moved = migrateBenchEstimate({ [PAUSED]: 285 })
 
-    expect(moved[PAUSED]).toBe(285)
     expect(moved[TOUCH_AND_GO]).toBe(300)
+    expect(moved[PAUSED]).toBe(285)
   })
 
-  it('leaves a paused estimate that already exists alone', () => {
+  it('leaves a tracked estimate that already exists alone', () => {
     // Idempotent, and — more importantly — it never overwrites a
-    // correction. Running twice must not compound the discount.
-    const once = migrateBenchEstimate({ [TOUCH_AND_GO]: 300 })
+    // correction. Running twice must not compound the scaling.
+    const once = migrateBenchEstimate({ [PAUSED]: 285 })
     const twice = migrateBenchEstimate(once)
 
-    expect(twice[PAUSED]).toBe(285)
-    expect(migrateBenchEstimate({ [TOUCH_AND_GO]: 300, [PAUSED]: 260 })[PAUSED]).toBe(260)
+    expect(twice[TOUCH_AND_GO]).toBe(300)
+    expect(migrateBenchEstimate({ [PAUSED]: 285, [TOUCH_AND_GO]: 260 })[TOUCH_AND_GO]).toBe(260)
   })
 
   it('does nothing when there was no bench estimate to move', () => {

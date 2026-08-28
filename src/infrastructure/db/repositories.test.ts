@@ -179,9 +179,7 @@ describe('the exercise library', () => {
     const exercises = createExerciseRepository(db, testClock)
 
     expect(await exercises.count()).toBe(builtInExercises().length)
-    expect((await exercises.byId(asExerciseId('bench-press')))?.name).toBe(
-      'Touch-and-Go Bench Press',
-    )
+    expect((await exercises.byId(asExerciseId('bench-press')))?.name).toBe('Bench Press')
   })
 
   it('prefers the catalogue over a stale copy on the device', async () => {
@@ -191,9 +189,7 @@ describe('the exercise library', () => {
     const exercises = createExerciseRepository(db, testClock)
     await exercises.save(anExercise({ id: asExerciseId('bench-press'), name: 'Bench Presses' }))
 
-    expect((await exercises.byId(asExerciseId('bench-press')))?.name).toBe(
-      'Touch-and-Go Bench Press',
-    )
+    expect((await exercises.byId(asExerciseId('bench-press')))?.name).toBe('Bench Press')
   })
 
   it('keeps a withdrawn built-in, archived, so history still resolves', async () => {

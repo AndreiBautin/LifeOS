@@ -43,7 +43,7 @@ describe('deriving the program', () => {
           ...DEFAULT_SETTINGS.muscleVolumes,
           chest: { sessionsPerWeek: 2, level: 'high' },
         },
-        liftSessions: { squat: 1, bench: 2, deadlift: 1 },
+        liftSessions: { squat: 1, bench: 2, deadlift: 1, press: 1 },
       },
       library,
     )

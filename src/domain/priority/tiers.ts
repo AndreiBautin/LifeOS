@@ -27,37 +27,50 @@ import { MAX_SESSIONS_PER_WEEK } from '@/domain/volume/levels'
  */
 
 /**
- * The three lifts that make up the powerlifting total.
+ * The lifts run as strength work, which is four — and only three of them
+ * are a total.
  *
- * Three, not four. The overhead press was a main lift only because 5/3/1
- * needed a fourth one to fill a four-day week; it contributes nothing to
- * a total and is trained here as hypertrophy work in the 3–6 range like
- * any other pressing movement.
+ * The overhead press was removed as a main lift because 5/3/1 wanted a
+ * fourth one and it contributes nothing to a powerlifting total. The
+ * second half is still true and is why this list and the total are
+ * separate things: `measure.ts` names squat, bench and deadlift
+ * explicitly, and `isCompetition` is false on the press, so adding it
+ * here gives it a top set and back-offs without putting it in the score.
+ *
+ * **Do not compute the total from this array.** It was safe to conflate
+ * the two while they were the same three lifts, and it is exactly the
+ * kind of thing that looks like a tidy-up later.
  */
-export const STRENGTH_LIFTS = ['squat', 'bench', 'deadlift'] as const
+export const STRENGTH_LIFTS = ['squat', 'bench', 'deadlift', 'press'] as const
 export type StrengthLift = (typeof STRENGTH_LIFTS)[number]
 
 export const STRENGTH_LIFT_LABELS: Record<StrengthLift, string> = {
   squat: 'Squat',
   bench: 'Bench press',
   deadlift: 'Deadlift',
+  press: 'Overhead press',
 }
 
 /** Sessions a week for each competition lift. */
 export type LiftSessions = Readonly<Record<StrengthLift, number>>
 
 /**
- * Two each, which is what the shipped split has room for.
+ * What the shipped split has room for: two lower days shared by the squat
+ * and the deadlift, and two upper days holding one press each.
  *
- * Two upper days and two lower ones: the bench takes both upper days, and
- * the squat and the deadlift share both lower days. A third session for
- * any of them would need a day that does not exist, and
- * `assignStrengthLifts` would quietly drop it.
+ * The bench drops to one session a week and the overhead press takes the
+ * other upper day. That is a real reduction in bench frequency and the
+ * trade is the point — one heavy horizontal press and one heavy vertical
+ * press, rather than the same movement twice.
+ *
+ * A third session for any of these would need a day that does not exist,
+ * and `assignStrengthLifts` quietly drops it.
  */
 export const DEFAULT_LIFT_SESSIONS: LiftSessions = {
   squat: 2,
-  bench: 2,
+  bench: 1,
   deadlift: 2,
+  press: 1,
 }
 
 /** How many sessions a week this lift should be trained. */
