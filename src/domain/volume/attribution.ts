@@ -4,7 +4,7 @@ import { MUSCLE_GROUP_LABELS, MUSCLE_GROUPS } from '@/domain/exercises/taxonomy'
 import type { ExerciseId } from '@/domain/ids/ids'
 import type { ProgramWeek, SlotRole } from '@/domain/programs/program'
 import { nominalReps } from '@/domain/programs/prescription'
-import { countsAsWorking, slotVolume } from '@/domain/volume/accounting'
+import { countsAsHypertrophy, countsAsWorking, slotVolume } from '@/domain/volume/accounting'
 
 /**
  * Which exercises produced a muscle's weekly volume, and how much each
@@ -87,6 +87,10 @@ export function attributeWeek(
   for (const day of week.days) {
     for (const slot of day.slots) {
       if (slot.exercise.kind !== 'specific') continue
+
+      // Strength and conditioning are not hypertrophy volume, so they do
+      // not appear in a breakdown of it. See `countsAsHypertrophy`.
+      if (!countsAsHypertrophy(slot.role)) continue
 
       const exercise = lookup(slot.exercise.exerciseId)
       if (exercise === undefined) continue

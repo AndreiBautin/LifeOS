@@ -2,6 +2,7 @@ import type { Exercise } from '@/domain/exercises/exercise'
 import type { MuscleGroup } from '@/domain/exercises/taxonomy'
 import type { ExerciseId } from '@/domain/ids/ids'
 import type { SetPrescription } from '@/domain/programs/prescription'
+import type { SlotRole } from '@/domain/programs/program'
 
 import { emptyVolumeMap } from './landmarks'
 
@@ -49,6 +50,31 @@ export function countsAsWorking(set: SetPrescription): boolean {
  * which is the trade: a model you can check by counting rows in a session,
  * instead of one that was more nearly right and impossible to audit.
  */
+/**
+ * Whether a slot's sets count as hypertrophy volume.
+ *
+ * Only work chosen *for* a muscle does. Three kinds of set are excluded
+ * and each was miscounted before this existed:
+ *
+ *   - **Warm-ups**, already flagged on the set itself.
+ *   - **Strength work.** A top set and three back-off triples is twelve
+ *     reps at high load — a strength dose, close to nothing as
+ *     hypertrophy — and counting it as eight sets covered the chest's
+ *     whole target and left the week with no chest work at all.
+ *   - **Conditioning.** Thirty sets of ten kettlebell swings is a half
+ *     hour of conditioning, and it was arriving as *sixty glute sets a
+ *     week* against a target of zero. A twenty-minute walk was quietly
+ *     adding two sets of calves for the same reason.
+ *
+ * The conditioning case is the one that shows why a role check beats
+ * judging by set count: the swings only became absurd when they were
+ * prescribed as sets rather than as a block of time, and nothing about
+ * the work had changed.
+ */
+export function countsAsHypertrophy(role: SlotRole): boolean {
+  return role === 'hypertrophy' || role === 'assistance'
+}
+
 export function slotVolume(exercise: Exercise, sets: readonly SetPrescription[]): VolumeMap {
   const volume = emptyVolumeMap()
 

@@ -113,12 +113,25 @@ press.
 
 They are counted apart now. A muscle's setting is a claim about the
 accessory work scheduled _for_ it, and the competition lifting sits on
-top: the chest asks for six, gets six of dips, and receives fourteen sets
-in total. The cost the old comment named is real and is now the lifter's
-to manage by setting a muscle to fewer sessions, rather than the
-assembler's to hide. Any test comparing delivery against a target must
-use `hypertrophyVolume` rather than `weeklyVolume`, or it is measuring two
-things against a number that describes one.
+top: the chest asks for six, gets six of dips, and is benched heavily
+twice besides. The cost the old comment named is real and is now the
+lifter's to manage by setting a muscle to fewer sessions, rather than the
+assembler's to hide.
+
+**`countsAsHypertrophy` is the one predicate, and conditioning is on the
+wrong side of it too.** Volume tracking counts `hypertrophy` and
+`assistance` slots and nothing else — not warm-ups, not the competition
+lifts, not conditioning. The conditioning case is the one that shows why
+this is a _role_ check rather than a judgement about set counts: thirty
+sets of ten kettlebell swings arrived as **sixty glute sets a week**
+against a target of zero, and it only became absurd once the swings were
+prescribed as sets rather than as a block of time. Nothing about the work
+had changed. A twenty-minute walk was quietly adding two calf sets by the
+same route.
+
+Any test comparing delivery against a target uses `hypertrophyVolume`
+rather than `weeklyVolume`, or it is measuring two things against a number
+that describes one.
 
 **Incidental credit is spent once.** The fill budgets **compounds before
 isolation** (two passes over the same muscles, the first restricted to

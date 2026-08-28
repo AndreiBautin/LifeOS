@@ -5,7 +5,7 @@ import { builtInExercises } from '@/domain/exercises/catalogue'
 import type { Exercise } from '@/domain/exercises/exercise'
 import type { ExerciseId } from '@/domain/ids/ids'
 import { DEFAULT_SETTINGS } from '@/domain/settings/settings'
-import { sumVolume, volumeForSlots } from '@/domain/volume/accounting'
+import { countsAsHypertrophy, sumVolume, volumeForSlots } from '@/domain/volume/accounting'
 
 import { attributeWeek } from './attribution'
 
@@ -28,12 +28,17 @@ if (week === undefined) throw new Error('expected a working week')
 const attribution = attributeWeek(week, lookup)
 
 describe('attributing a week', () => {
+  /*
+   * The breakdown explains a number, so it has to be the same number.
+   * Compared against the hypertrophy slots only, because that is what the
+   * breakdown now covers — see `countsAsHypertrophy`.
+   */
   it('totals exactly what the volume map totals, muscle for muscle', () => {
     const counted = sumVolume(
       week.days.map((day) =>
         volumeForSlots(
           day.slots.flatMap((slot) =>
-            slot.exercise.kind === 'specific'
+            slot.exercise.kind === 'specific' && countsAsHypertrophy(slot.role)
               ? [{ exerciseId: slot.exercise.exerciseId, sets: slot.sets }]
               : [],
           ),
@@ -91,16 +96,36 @@ describe('attributing a week', () => {
     }
   })
 
-  it('shows the strength lift paying the muscles it trains', () => {
-    // A squat is not only quads, and the back-off sets count too. Without
-    // this the lifter cannot see why their hamstrings need so little
-    // dedicated work.
-    const quads = attribution.find((entry) => entry.muscle === 'quads')
-    const squat = quads?.contributions.find((entry) => entry.exerciseId === 'low-bar-squat')
+  /*
+   * The competition lifts used to appear here, and the note said it was so
+   * a lifter could see why their hamstrings need so little dedicated work.
+   * That reasoning belonged to a model where the strength work paid a
+   * hypertrophy target; it no longer does, so a breakdown of hypertrophy
+   * volume that listed the squat would be explaining a number the squat
+   * does not contribute to.
+   *
+   * Conditioning goes for the same reason and a louder one. Thirty sets of
+   * ten kettlebell swings arrived as **sixty glute sets a week** against a
+   * target of zero, purely because the swings were prescribed as sets
+   * rather than as a block of time — nothing about the work had changed.
+   */
+  it('leaves the competition lifts and the conditioning out of it', () => {
+    for (const entry of attribution) {
+      for (const contribution of entry.contributions) {
+        expect(
+          countsAsHypertrophy(contribution.role),
+          `${entry.label}: ${contribution.name} (${contribution.role})`,
+        ).toBe(true)
+      }
+    }
+  })
 
-    expect(squat?.role).toBe('strength')
-    expect(squat?.kind).toBe('primary')
-    expect(squat?.sets).toBeGreaterThan(1)
+  it('reports nothing for a muscle only the lifts and conditioning touch', () => {
+    // Quads are squatted heavily every lower day and have no hypertrophy
+    // slot, so their hypertrophy volume is zero and the breakdown says so.
+    const quads = attribution.find((entry) => entry.muscle === 'quads')
+
+    expect(quads?.total).toBe(0)
   })
 
   it('orders the largest contributor first', () => {
@@ -122,14 +147,22 @@ describe('attributing a week', () => {
 })
 
 describe('crediting the competition lifts', () => {
-  it('counts the competition lifts as whole sets in the block that ships', () => {
-    // They used to be discounted for being low-rep — five sets at a
-    // triple counted as three. They count as five now, which is the
-    // number that decides how much accessory work the legs still need.
-    const quads = attribution.find((entry) => entry.muscle === 'quads')
-    const squat = quads?.contributions.find((entry) => entry.exerciseId === 'low-bar-squat')
+  /*
+   * A set is a set. This was written about the competition lifts, which
+   * were discounted for being low-rep — five sets at a triple counted as
+   * three — and they are no longer in the breakdown at all. The rule it
+   * was really guarding is that nothing is discounted, so it is asserted
+   * where the breakdown still reaches.
+   */
+  it('counts a working set as one whole set', () => {
+    const rows = attribution.flatMap((entry) =>
+      entry.contributions.filter((contribution) => contribution.kind === 'primary'),
+    )
 
-    expect(squat).toBeDefined()
-    expect(squat?.counted).toBe(squat?.sets)
+    expect(rows.length).toBeGreaterThan(0)
+
+    for (const row of rows) {
+      expect(row.counted, row.name).toBe(row.sets)
+    }
   })
 })

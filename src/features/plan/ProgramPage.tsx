@@ -216,11 +216,10 @@ export function ProgramPage() {
       >
         <Card>
           <p className="text-ink-500 mb-3 text-xs">
-            A set counts once, for the muscle it is programmed for. A bench press is chest and
-            nothing else — the triceps it also works have to be trained on their own, which is why
-            they get their own slot rather than credit for the pressing. The competition lifting is
-            shown apart from the target, because the target is what the accessory work is set to
-            deliver and the lifting happens on top of it.
+            Hypertrophy work only, and a set counts once for the muscle it is programmed for. The
+            competition lifting and the conditioning are not counted here — they are training, not
+            volume toward these numbers — and a bench press is chest rather than part triceps, so
+            the triceps get their own slot instead of credit for the pressing.
           </p>
 
           <ul className="space-y-1">
@@ -362,33 +361,12 @@ function AttributionRow({
   readonly onToggle: () => void
 }) {
   /*
-   * The target describes accessory work, so that is what is measured
-   * against it — and the competition lifting is reported beside it
-   * rather than added to it.
-   *
-   * They used to be one number, correctly, because the strength work
-   * paid a hypertrophy target. It no longer does, and leaving the row as
-   * a single total made the chest read "14 / 6" — six sets of dips
-   * exactly on target, plus eight bench triples, shown as though the
-   * week had more than doubled its ask. **Two things measured against a
-   * number that describes one.**
+   * Over target is worth showing, not only under — a slot sized to a
+   * remainder can round up past the ask, and a screen that only
+   * colours shortfalls makes that invisible.
    */
-  const fromLifting = entry.contributions
-    .filter((contribution) => contribution.role === 'strength' || contribution.role === 'main')
-    .reduce((total, contribution) => total + contribution.counted, 0)
-
-  const scheduled = Math.round((entry.total - fromLifting) * 10) / 10
-
-  /*
-   * Over target is worth showing, not only under. A muscle with no
-   * dedicated work routinely runs above nothing because the competition
-   * lifts pay it anyway — squats and deadlifts put the quads and glutes
-   * well past what they ask for. That is not a fault, it is the reason
-   * those muscles need no slot, and it is invisible if only shortfalls
-   * are coloured.
-   */
-  const short = target > 0 && scheduled < target - 0.5
-  const over = target > 0 && scheduled > target + 0.5
+  const short = target > 0 && entry.total < target - 0.5
+  const over = target > 0 && entry.total > target + 0.5
 
   return (
     <li>
@@ -396,12 +374,9 @@ function AttributionRow({
         <span className="text-ink-300 text-sm">{entry.label}</span>
         <span className="numeric text-sm">
           <span className={short ? 'text-warn-500' : over ? 'text-good-500' : 'text-ink-50'}>
-            {scheduled}
+            {entry.total}
           </span>
           <span className="text-ink-500"> / {target}</span>
-          {fromLifting > 0 && (
-            <span className="text-ink-500"> · +{Math.round(fromLifting * 10) / 10} lifting</span>
-          )}
         </span>
       </Button>
 
