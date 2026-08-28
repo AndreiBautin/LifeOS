@@ -848,15 +848,26 @@ them one movement the rotation alternates between.
 
 **A lift rotates through variations; the competition version is always
 first.** `STRENGTH_VARIATIONS` in `domain/exercises/catalogue.ts`. The
-bench runs **paused, touch-and-go** and the deadlift **sumo,
-conventional**, each across its two sessions. The squat has one entry and
-runs **low bar** on both lower days.
+bench runs **paused, touch-and-go**, the squat **low bar, high bar**, the
+deadlift **sumo, conventional**.
 
-**A rotation shorter than the frequency repeats, and that is how "always
-the competition version" is said.** `strengthSlugFor` takes the session
-ordinal modulo the rotation length, so a single entry is a deliberate
-statement rather than an omission — the squat is written that way now,
-and the deadlift used to be.
+**A day holding two competition lifts runs one comp and one variation.**
+Two maximal efforts in one session is the thing avoided, and the variation
+exists partly so the second lift of a day is a slightly different demand.
+Which lift shows its competition version alternates between the paired
+days, so neither is always the one being measured: **Lower 1 is low bar
+and conventional, Lower 2 is high bar and sumo.**
+
+That is why a paired day takes its variation index from its position in
+the pair rather than from the lift's own session ordinal. A lift alone on
+its day still walks the rotation in order — which is what makes dropping a
+lift to one session a week cost the variations rather than the lift the
+total is measured on.
+
+**A rotation shorter than the frequency repeats.** `strengthSlugFor` takes
+the index modulo the rotation length, so a single entry is a deliberate
+way to say "always the competition version" rather than an omission. The
+squat was written that way for a while and the deadlift before it.
 
 Adding a variation is adding a row here, and three more things: converting
 that exercise to `intent: 'strength'` with `loadBasis: 'estimated-1rm'`,

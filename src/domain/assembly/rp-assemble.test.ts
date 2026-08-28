@@ -170,19 +170,55 @@ describe('the assembled block', () => {
      * Thursday with the deadlift, because a lift that is always second is
      * a lift that is never trained fresh. See `assignStrengthLifts`.
      *
-     * The squat repeats low bar on both days because its rotation has
-     * only one entry — `strengthSlugFor` takes the ordinal modulo the
-     * rotation length, so a rotation shorter than the frequency repeats
-     * rather than running off the end, and a single entry is how "always
-     * the competition version" is expressed. The deadlift rotates sumo
-     * then conventional.
+     * A day with two competition lifts runs one at its competition
+     * version and the other at its variation, and which one alternates.
+     * Two maximal efforts in one session is the thing being avoided.
+     *
+     * So Tuesday is low bar and conventional, Friday is high bar and sumo.
+     * The bench, alone on its days, walks its rotation in order.
      */
     expect(mains).toEqual([
       ['paused-bench-press'],
-      ['low-bar-squat', 'sumo-deadlift'],
-      ['bench-press'],
       ['low-bar-squat', 'conventional-deadlift'],
+      ['bench-press'],
+      ['high-bar-squat', 'sumo-deadlift'],
     ])
+  })
+
+  /*
+   * A day with two competition lifts runs one of them at its competition
+   * version and the other at its variation.
+   *
+   * Two maximal efforts in one session is the thing being avoided, and
+   * the variation exists partly so the second lift of a day is a slightly
+   * different demand. Which lift gets the competition version alternates
+   * between the paired days, so neither is always the one being measured
+   * and neither is always the one being varied.
+   */
+  it('pairs a competition lift with a variation on a day that holds two', () => {
+    const week = block?.weeks[0]
+    let paired = 0
+
+    for (const day of week?.days ?? []) {
+      const mains = [
+        ...new Set(
+          day.slots
+            .filter((slot) => slot.role === 'strength')
+            .flatMap((slot) =>
+              slot.exercise.kind === 'specific' ? [slot.exercise.exerciseId] : [],
+            ),
+        ),
+      ]
+      if (mains.length < 2) continue
+
+      paired += 1
+
+      const competition = mains.filter((id) => lookup(id)?.isCompetition === true)
+
+      expect(competition.length, `${day.label}: ${mains.join(', ')}`).toBe(1)
+    }
+
+    expect(paired).toBeGreaterThan(1)
   })
 
   it('rotates the bench through its variations, competition version first', () => {
@@ -410,12 +446,11 @@ describe('naming a day after what is in it', () => {
     const tuesday = week.days[1]
     const friday = week.days[3]
 
-    expect(tuesday?.focus).toMatch(/^Low Bar Squat and Sumo Deadlift, then /)
-    // Friday names the conventional pull, because that is the deadlift it
-    // actually holds — a description saying "Sumo Deadlift" on the day
-    // the stance is narrow would be the hardcoded-label failure in a new
-    // place.
-    expect(friday?.focus).toMatch(/^Low Bar Squat and Conventional Deadlift, then /)
+    expect(tuesday?.focus).toMatch(/^Low Bar Squat and Conventional Deadlift, then /)
+    // Friday names the high bar and the sumo, because those are what it
+    // actually holds — a description saying "Low Bar Squat" on the day the
+    // bar sits high would be the hardcoded-label failure in a new place.
+    expect(friday?.focus).toMatch(/^High Bar Squat and Sumo Deadlift, then /)
 
     // Without the parenthetical variant, which is catalogue bookkeeping.
     expect(tuesday?.focus).not.toContain('(')

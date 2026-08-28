@@ -70,16 +70,7 @@ export const STRENGTH_LIFT_SLUGS = {
  * first two; raise it and it takes all three.
  */
 export const STRENGTH_VARIATIONS: Record<keyof typeof STRENGTH_LIFT_SLUGS, readonly string[]> = {
-  /*
-   * One entry, so both lower days squat low bar.
-   *
-   * A rotation shorter than the frequency repeats rather than running off
-   * the end — `strengthSlugFor` takes the ordinal modulo its length — so
-   * this is the deliberate way to say "always the competition version".
-   * The high bar squat was the second entry and is back in the hypertrophy
-   * pool.
-   */
-  squat: ['low-bar-squat'],
+  squat: ['low-bar-squat', 'high-bar-squat'],
   // Two sessions, two variations. The close grip left the rotation with
   // the third bench day — a rotation longer than the frequency simply
   // never reaches its own end, so the entry was describing a session that
@@ -109,11 +100,13 @@ export const VARIATION_OF: Readonly<
   // until you remember which lift is the reference.
   'bench-press': { of: 'paused-bench-press', factor: 1.05 },
   /*
-   * Two entries left with the rotations that named them: the close-grip
-   * bench when the bench dropped to two sessions, and the high bar squat
-   * when both lower days went to low bar. A ratio for an exercise no
-   * rotation reaches derives a max nothing ever loads.
+   * Low bar allows more than high bar for most people — shorter moment arm
+   * at the hip, more posterior chain — so the factor is below one. Ten per
+   * cent is the middle of the range usually quoted, and it is a starting
+   * position rather than a claim: the first top set logged against this
+   * slug replaces it, and a measured number always wins.
    */
+  'high-bar-squat': { of: 'low-bar-squat', factor: 0.9 },
   /*
    * Conventional against sumo, for someone who competes sumo.
    *
@@ -642,25 +635,28 @@ const ENTRIES: readonly CatalogueEntry[] = [
     pattern: 'squat',
     isCompound: true,
     /*
-     * Back to hypertrophy, and the round trip is the thing to notice.
+     * Strength, because it is the squat's variation and a rotation member
+     * is run the way the competition lift is: a top set of reps at an RPE
+     * with back-offs derived from it.
      *
-     * It was converted to strength when it became the squat's second
-     * rotation entry — a rotation member is run the way the competition
-     * lift is — and it left the rotation when both lower days went to low
-     * bar. A strength-intent exercise no rotation names is scheduled by
-     * nothing at all, so leaving it converted would have quietly retired
-     * it from the catalogue.
+     * This has now made the round trip twice — into strength, back to
+     * hypertrophy when both lower days went to low bar, and into strength
+     * again for the comp-and-variation pairing. Worth knowing that the
+     * conversion is four things and not one: `intent`, `loadBasis`, a row
+     * in `STRENGTH_VARIATIONS` and a `VARIATION_OF` ratio. Miss the last
+     * and the first session has no suggested load; miss the third and a
+     * strength-intent exercise is scheduled by nothing at all.
      *
-     * The quads get it back as a direct option, which costs nothing today
-     * because they are on zero sessions, and is there the moment they are
-     * turned on.
+     * The cost is that the quads lose it as a hypertrophy option. They are
+     * on zero sessions, so nothing changes today.
      */
-    intent: 'hypertrophy',
-    // Unchanged across both conversions. High bar genuinely is slightly
+    intent: 'strength',
+    // Unchanged across every conversion. High bar genuinely is slightly
     // cheaper than low bar — more upright, less hip — and the assembler
     // should go on believing that whichever pool it sits in.
     sfr: 2,
     systemicCost: 0.8,
+    loadBasis: 'estimated-1rm',
     defaultRestSeconds: REST_HEAVY,
   },
   {

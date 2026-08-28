@@ -267,11 +267,42 @@ function buildWeek(
    */
   const sessionsSoFar = new Map<StrengthLift, number>()
 
+  /*
+   * Days holding two competition lifts, counted separately.
+   *
+   * A day with two of them should not run both at their competition
+   * version: that is two maximal efforts in one session, and the variation
+   * exists partly so the second lift of a day is a slightly different
+   * demand. So a paired day takes one of each, and which lift shows its
+   * competition version alternates.
+   *
+   * Lower 1 is low bar and conventional; Lower 2 is high bar and sumo.
+   */
+  let pairedDays = 0
+
   const strengthByDay = split.days.map((_day, index) => {
-    const built = (liftsByDay[index] ?? []).map((lift) => {
+    const lifts = liftsByDay[index] ?? []
+    const paired = lifts.length > 1
+    const pairIndex = paired ? pairedDays : 0
+    if (paired) pairedDays += 1
+
+    const built = lifts.map((lift, position) => {
       const session = sessionsSoFar.get(lift) ?? 0
       sessionsSoFar.set(lift, session + 1)
-      return buildStrengthSlots(recipe, deps, lift, session, isDeload)
+
+      /*
+       * On its own, a lift walks its rotation in order and index 0 is the
+       * competition version — which is what makes dropping a lift to one
+       * session a week cost the variations rather than the lift the total
+       * is measured on.
+       *
+       * On a paired day the position in the pair shifts it, so the two
+       * lifts are never on the same footing: the first takes the pair's
+       * index and the second takes the one after it.
+       */
+      const variation = paired ? pairIndex + position : session
+
+      return buildStrengthSlots(recipe, deps, lift, variation, isDeload)
     })
     return {
       slots: built.flatMap((one) => one.slots),
