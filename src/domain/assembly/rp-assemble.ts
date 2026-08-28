@@ -1680,7 +1680,7 @@ interface ConditioningPlan {
 
 const CONDITIONING_PLANS: Readonly<Record<string, ConditioningPlan>> = {
   'incline-walk': {
-    minutes: 20,
+    minutes: 30,
     style: ZONE_2_VARIANT,
     note: 'Steep incline, easy pace. You should be able to hold a conversation.',
   },
