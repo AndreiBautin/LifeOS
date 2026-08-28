@@ -34,7 +34,7 @@ import { useUpgradeTree } from '../upgrades/hooks'
  */
 
 function ChoreRow({ view }: { readonly view: DailyView }) {
-  const keep = useKeepToday()
+  const keep = useKeepToday('base.chore-kept')
   const undo = useUndoToday()
 
   const { daily, doneToday, expectedToday } = view

@@ -416,6 +416,40 @@ whose job is to show movement. Consistency levelled the session count,
 which XP already spends. Nothing measures conditioning, so nothing scores
 it; that is the same rule every other area follows.
 
+**The act acknowledgement reports; it does not reward.**
+`app/xp-award.ts` and `components/shared/XpAwards.tsx`. Ticking a habit
+changed a checkbox and finishing a session navigated away — the XP was
+real the whole time and nothing said so at the moment it was earned. The
+badge reads its number from `actById` in the registry, so it can never
+announce a figure `tallyActs` will not agree with; a component holding
+its own copy of "a daily is 15" would drift silently, with the sheet and
+the badge both looking authoritative. `registry.test.ts` holds that
+coupling.
+
+It fires on an **act**, never on an outcome, which is the line XP itself
+is paid along. **Undo pays nothing** — not a negative badge and not a
+silent one; it takes the day back and the sheet shows that at the next
+read.
+
+**Which act a habit performs is the caller's answer, not the hook's.** A
+chore pays `base.chore-kept` and a daily pays `dailies.completed` — the
+same fifteen points under different names — and `tallyActs` already
+splits them by `belongsTo`. The screen calling `useKeepToday` _is_ the
+area, so it names the act; deriving it inside would mean re-fetching the
+record to find out what was just done to it.
+
+**Its lifetime is a timer, not `animationend`.** The reduced-motion block
+collapses every animation to 0.01ms with `!important`, so a toast that
+removed itself when its animation finished would flash and vanish for
+exactly the people who asked for less movement. The timer decides when it
+goes; the animation only decides how.
+
+**`Empty` is a slot, not an apology.** On a database that is mostly empty
+— which every database is for its first weeks — empty states are the
+majority of what is on screen, so "this app looks unfinished" and "this
+app is new" are the same picture unless that one component separates
+them. A dashed edge and a marked centre read as a space with a shape.
+
 **Visual work has to land on what is always on screen, and the first
 attempt did not.** A whole pass went into a weight chart, meters and
 motion, and the honest report from the person using it was that it looked

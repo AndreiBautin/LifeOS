@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import { LEVELS } from './character'
 import { RATING_CADENCES, RATING_DIRECTIONS } from './rating'
-import { ALL_ACTS, ALL_LADDERS, ALL_RATINGS, LIFE_AREAS, SCORING } from './registry'
+import { actById, ALL_ACTS, ALL_LADDERS, ALL_RATINGS, LIFE_AREAS, SCORING } from './registry'
 
 /*
  * The three rules of docs/GAME_MODEL.md, checked against the table rather
@@ -126,5 +126,45 @@ describe('rule three — nothing is counted twice', () => {
         expect(rating.source.startsWith(`${area.area}.`), rating.source).toBe(true)
       }
     }
+  })
+})
+
+describe('looking an act up to acknowledge it', () => {
+  /*
+   * The acknowledgement on screen reads its number from here, so this is
+   * the coupling that keeps it from disagreeing with `tallyActs`. A
+   * component with its own copy of "a daily is 15" would drift silently:
+   * the sheet would say one thing and the badge another, both looking
+   * authoritative.
+   */
+  it('returns the registry’s own label and points', () => {
+    const daily = actById('dailies.completed')
+
+    expect(daily?.points).toBe(15)
+    expect(daily?.label).toBe('Kept a daily')
+  })
+
+  /*
+   * The same fifteen points under a different name, because a chore is a
+   * daily filed under Base. `tallyActs` already splits them this way, and
+   * the acknowledgement has to agree or the two halves of one act would
+   * read as different things.
+   */
+  it('distinguishes a chore from a daily while paying the same', () => {
+    const chore = actById('base.chore-kept')
+    const daily = actById('dailies.completed')
+
+    expect(chore?.points).toBe(daily?.points)
+    expect(chore?.label).not.toBe(daily?.label)
+  })
+
+  it('says nothing about an act it does not know', () => {
+    // Silence rather than a guessed value: an unknown id must not become
+    // a plausible-looking number on screen.
+    expect(actById('nonsense.invented')).toBeUndefined()
+  })
+
+  it('can find every act the registry declares', () => {
+    for (const act of ALL_ACTS) expect(actById(act.id)).toBe(act)
   })
 })

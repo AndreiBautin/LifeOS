@@ -94,6 +94,19 @@ export function NumberField({ label, hint, className, id, ...props }: NumberFiel
   )
 }
 
+/**
+ * A slot waiting to be filled, rather than a paragraph apologising.
+ *
+ * Worth more care than it looks: on a database that is mostly empty —
+ * which every database is for the first weeks — these are the majority
+ * of what is on screen, so "the app looks unfinished" and "the app is
+ * new" are the same picture unless this one component distinguishes
+ * them. A dashed edge and a marked centre read as a space with a shape,
+ * the way an empty inventory slot does.
+ *
+ * The dashed border replaces the card's own solid one, so an empty state
+ * never reads as a filled panel that happens to contain a sentence.
+ */
 export function Empty({
   title,
   children,
@@ -102,10 +115,25 @@ export function Empty({
   readonly children?: ReactNode
 }) {
   return (
-    <Card className="text-center">
+    <div
+      className="flex flex-col items-center rounded-[0.875rem] border border-dashed px-4 py-6 text-center"
+      style={{
+        borderColor: 'color-mix(in oklab, var(--color-accent-500) 22%, var(--border-subtle))',
+        backgroundImage:
+          'radial-gradient(80% 60% at 50% 0%, color-mix(in oklab, var(--color-accent-500) 6%, transparent), transparent 70%)',
+      }}
+    >
+      <span
+        aria-hidden
+        className="border-ink-700 text-ink-700 mb-3 flex h-8 w-8 items-center justify-center rounded-full border border-dashed text-lg leading-none"
+      >
+        +
+      </span>
       <p className="text-ink-100 font-medium">{title}</p>
-      {children !== undefined && <div className="text-ink-500 mt-2 text-sm">{children}</div>}
-    </Card>
+      {children !== undefined && (
+        <div className="text-ink-500 mt-1.5 max-w-prose text-sm">{children}</div>
+      )}
+    </div>
   )
 }
 

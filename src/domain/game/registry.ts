@@ -441,3 +441,17 @@ export const SCORING: readonly AreaScoring[] = [
 export const ALL_LADDERS: readonly Ladder[] = SCORING.flatMap((area) => area.ladders)
 export const ALL_RATINGS: readonly Rating[] = SCORING.flatMap((area) => area.ratings)
 export const ALL_ACTS: readonly ActDefinition[] = SCORING.flatMap((area) => area.acts)
+
+/**
+ * One act, by id.
+ *
+ * The registry is the only place an act's worth is written down, so
+ * anything that wants to *show* what something paid has to read it from
+ * here rather than restating the number. A screen with its own copy of
+ * "a daily is 15" is a second answer waiting to disagree with
+ * `tallyActs`, and it would disagree silently — the sheet would say one
+ * thing and the acknowledgement another, both looking authoritative.
+ */
+export function actById(id: string): ActDefinition | undefined {
+  return ALL_ACTS.find((act) => act.id === id)
+}

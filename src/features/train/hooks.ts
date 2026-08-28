@@ -21,6 +21,7 @@ import {
 import { deriveProgram, jumpToWeek } from '@/application/use-cases/programs/current-program'
 import type { ProgramTemplate } from '@/domain/programs/program'
 import { useServices, useSettings } from '@/app/context'
+import { useXpAward } from '@/app/xp-award'
 import { logger } from '@/shared/logging/logger'
 
 /**
@@ -172,6 +173,7 @@ export function useFinishWorkout() {
   const services = useServices()
   const program = useProgram()
   const client = useQueryClient()
+  const { award } = useXpAward()
 
   return useMutation<WorkoutReport, Error, WorkoutId>({
     mutationFn: (workoutId) => {
@@ -183,6 +185,11 @@ export function useFinishWorkout() {
         workingSets: report.workingSets,
         durationMinutes: report.durationMinutes,
       })
+      // The session itself. The per-set XP is real too and is
+      // deliberately not announced set by set — a badge on every logged
+      // set would be noise in the one place the app has to stay out of
+      // the way.
+      award('training.session-finished')
       void client.invalidateQueries({ queryKey: keys.activeWorkout })
       void client.invalidateQueries({ queryKey: ['position'] })
       void client.invalidateQueries({ queryKey: ['workouts'] })

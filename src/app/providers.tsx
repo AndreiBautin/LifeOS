@@ -1,4 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+
+import { XpAwardProvider } from '@/components/shared/XpAwards'
 import { useMemo, useState, type ReactNode } from 'react'
 
 import type { AthleteState } from '@/domain/resolution/resolve'
@@ -76,7 +78,9 @@ export function AppProviders({ services, children }: Props) {
   return (
     <QueryClientProvider client={queryClient}>
       <ServicesContext value={services}>
-        <SettingsContext value={value}>{children}</SettingsContext>
+        <SettingsContext value={value}>
+          <XpAwardProvider>{children}</XpAwardProvider>
+        </SettingsContext>
       </ServicesContext>
     </QueryClientProvider>
   )

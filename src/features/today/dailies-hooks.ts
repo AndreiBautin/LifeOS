@@ -11,6 +11,7 @@ import {
 } from '@/application/use-cases/dailies/dailies'
 import type { Cadence } from '@/domain/dailies/daily'
 import type { DailyId } from '@/domain/ids/ids'
+import { useXpAward } from '@/app/xp-award'
 import { logger } from '@/shared/logging/logger'
 
 /**
@@ -41,14 +42,18 @@ export function useChores() {
 function useDailyMutation<TVariables>(
   event: string,
   run: (variables: TVariables, services: ReturnType<typeof useServices>) => Promise<unknown>,
+  /** The act this performs, when it performs one. Read from the registry. */
+  actId?: string,
 ) {
   const services = useServices()
   const client = useQueryClient()
+  const { award } = useXpAward()
 
   return useMutation<unknown, Error, TVariables>({
     mutationFn: (variables) => run(variables, services),
     onSuccess: () => {
       logger.info(event, {})
+      if (actId !== undefined) award(actId)
       for (const key of KEYS) void client.invalidateQueries({ queryKey: key })
     },
   })
@@ -61,8 +66,22 @@ export function useAddDaily() {
   )
 }
 
-export function useKeepToday() {
-  return useDailyMutation<DailyId>('dailies.kept', (id, services) => keepToday(id, services))
+/**
+ * Which act this is depends on where the habit lives, so the caller says.
+ *
+ * A chore pays `base.chore-kept` and a daily pays `dailies.completed` —
+ * the same fifteen points under different names, and `tallyActs` already
+ * splits them by `belongsTo` for exactly this reason. The screen calling
+ * this *is* the area, so it is the honest place for the answer; deriving
+ * it here would mean fetching the record to find out what was just done
+ * to it.
+ *
+ * **Undo pays nothing.** Not a negative award and not a silent one — it
+ * takes the day back, and the sheet will show that at the next read. An
+ * acknowledgement is for acts.
+ */
+export function useKeepToday(actId = 'dailies.completed') {
+  return useDailyMutation<DailyId>('dailies.kept', (id, services) => keepToday(id, services), actId)
 }
 
 export function useUndoToday() {
