@@ -1,4 +1,12 @@
-import { History, ListChecks, Play, Plus, SkipForward } from 'lucide-react'
+import {
+  ChevronDown,
+  ChevronRight,
+  History,
+  ListChecks,
+  Play,
+  Plus,
+  SkipForward,
+} from 'lucide-react'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 
@@ -6,7 +14,9 @@ import type { WorkoutReport } from '@/application/use-cases/training/finish-work
 import { useSettings } from '@/app/context'
 import type { MuscleGroup } from '@/domain/exercises/taxonomy'
 import { MUSCLE_GROUP_LABELS } from '@/domain/exercises/taxonomy'
+import type { Exercise } from '@/domain/exercises/exercise'
 import type { ProgramDay } from '@/domain/programs/program'
+import { inSections } from '@/domain/programs/program'
 import type { SetPrescription } from '@/domain/programs/prescription'
 import { describeReps } from '@/domain/programs/prescription'
 import { clampPosition, dayAt, weekAt } from '@/application/use-cases/programs/current-program'
@@ -136,22 +146,7 @@ export function TrainPage() {
               </div>
             </div>
 
-            <ul className="mb-4 space-y-1.5">
-              {nextDay.slots.map((slot) => (
-                <li key={slot.id} className="text-ink-300 flex justify-between gap-3 text-sm">
-                  <span className="truncate">
-                    {slot.exercise.kind === 'specific'
-                      ? (exercises.data?.find(
-                          (exercise) =>
-                            slot.exercise.kind === 'specific' &&
-                            exercise.id === slot.exercise.exerciseId,
-                        )?.name ?? 'Unknown exercise')
-                      : slot.exercise.label}
-                  </span>
-                  <span className="text-ink-500 numeric shrink-0">{describeSlot(slot.sets)}</span>
-                </li>
-              ))}
-            </ul>
+            <SessionOutline day={nextDay} library={exercises.data ?? []} />
 
             <VolumeTargets day={nextDay} />
 
@@ -268,6 +263,109 @@ function VolumeTargets({ day }: { day: ProgramDay }) {
  * counted as volume, so the week is planned against the ceiling rather
  * than against a session that stops early.
  */
+/**
+ * The next session, cut into the parts it is performed in.
+ *
+ * A flat list was right at nine rows and stopped being right at sixteen.
+ * Splitting the warm-up into a row per movement was the change that did
+ * it — correct, because the session screen ticks off slots and seven
+ * areas inside one row are seven things you skip together, but it put a
+ * third of the preview in front of the part a lifter is actually
+ * checking.
+ *
+ * The headings come from `inSections`, which groups **consecutive** runs
+ * and therefore cannot reorder anything. This screen is a preview of a
+ * session whose order three separate passes argued about; it has no
+ * business holding a fourth opinion.
+ */
+function SessionOutline({
+  day,
+  library,
+}: {
+  readonly day: ProgramDay
+  readonly library: readonly Exercise[]
+}) {
+  /*
+   * The warm-up folds and nothing else does.
+   *
+   * It is the one part that is the same every session and asks for no
+   * decision — you are not scanning it to find out what today is. Every
+   * other section is; folding those would hide the answer behind a tap.
+   * The count stays visible so a folded section still says how much is
+   * in it, and the player walks every slot regardless of what is folded
+   * here.
+   */
+  const [warmupOpen, setWarmupOpen] = useState(false)
+
+  const nameOf = (slot: ProgramDay['slots'][number]): string => {
+    if (slot.exercise.kind !== 'specific') return slot.exercise.label
+    const id = slot.exercise.exerciseId
+    return library.find((exercise) => exercise.id === id)?.name ?? 'Unknown exercise'
+  }
+
+  return (
+    <div className="mb-4 space-y-3">
+      {inSections(day.slots).map((section, index) => {
+        const folds = section.title === 'Warm-up'
+        const open = !folds || warmupOpen
+        const count = `${String(section.slots.length)} ${section.slots.length === 1 ? 'movement' : 'movements'}`
+
+        const title = (
+          <span className="text-ink-700 text-xs tracking-wide uppercase">{section.title}</span>
+        )
+
+        return (
+          <div key={`${section.title}-${String(index)}`}>
+            {folds ? (
+              /*
+               * The chevron sits on the right, with the count.
+               *
+               * Leading it would indent this heading past the four that
+               * do not fold, and a ragged left edge across five headings
+               * is a worse trade than a disclosure arrow in an
+               * unconventional corner. The count is what earns the right
+               * side here — folded, it is the only thing saying how much
+               * is behind the tap.
+               */
+              <button
+                type="button"
+                aria-expanded={open}
+                className="tap-target flex w-full items-center justify-between gap-2 text-left"
+                onClick={() => {
+                  setWarmupOpen(!warmupOpen)
+                }}
+              >
+                {title}
+                <span className="text-ink-700 flex items-center gap-1 text-xs">
+                  {count}
+                  {open ? (
+                    <ChevronDown size={14} aria-hidden />
+                  ) : (
+                    <ChevronRight size={14} aria-hidden />
+                  )}
+                </span>
+              </button>
+            ) : (
+              title
+            )}
+
+            {open && (
+              <ul className="mt-1.5 space-y-1.5">
+                {section.slots.map((slot) => (
+                  <li key={slot.id} className="text-ink-300 flex justify-between gap-3 text-sm">
+                    <span className="truncate">{nameOf(slot)}</span>
+                    <span className="text-ink-500 numeric shrink-0">{describeSlot(slot.sets)}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 function describeSlot(sets: readonly SetPrescription[]): string {
   const first = sets.find((set) => set.isWarmup !== true) ?? sets[0]
   if (first === undefined) return '—'

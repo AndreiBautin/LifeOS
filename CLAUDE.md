@@ -935,6 +935,28 @@ as a wrist curl closing an upper session and ab work closing a lower one.
 Both are at zero sessions by default, so neither is scheduled until
 somebody turns them on.
 
+**The session preview groups consecutive runs, and must never group
+by role.** `inSections` in `domain/programs/program.ts`, used by the Train
+screen's next-session card. Splitting the warm-up into a row per movement
+took that card from nine rows to sixteen, a third of them the same five
+things every session, so it reads as sections now — Warm-up, Strength,
+Compounds, Isolation, Conditioning — with the warm-up folded.
+
+Grouping by role would look identical almost always and would be **a
+fourth opinion about session order**, competing with `inSessionOrder`,
+`reverseAccessoryBlocks` and `trailingLast`. The last one is where it
+breaks: it moves the grip and trunk work to the end of the accessory
+block _past slots of another role_, and a by-role pass would quietly pull
+a wrist curl back above the isolation it was deliberately placed after.
+Consecutive runs cannot reorder anything, at the price of a heading that
+can repeat — which is honest rather than a defect.
+
+The headings are deliberately not `SLOT_ROLE_LABELS`: that map answers
+"what kind of work is this row" for a badge and therefore collapses
+`hypertrophy` and `assistance` into one word, which is exactly the split
+a heading needs. Only the warm-up folds, because it is the one part that
+is the same every session and asks for no decision.
+
 **The accessories run backwards on alternate sessions of a region.**
 Compounds still precede isolation — each block is reversed within itself,
 never across the boundary — so what changes is which muscle meets a fresh

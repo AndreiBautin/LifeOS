@@ -114,6 +114,77 @@ export function slotRoleTone(role: string): BadgeTone {
   return (SLOT_ROLE_TONES as Partial<Record<string, BadgeTone>>)[role] ?? 'neutral'
 }
 
+/**
+ * The heading a slot reads under when a session is shown as sections.
+ *
+ * Deliberately *not* `SLOT_ROLE_LABELS`. That map answers "what kind of
+ * work is this row" for a badge sitting beside one exercise, and it
+ * collapses `hypertrophy` and `assistance` into one word because from a
+ * single row's point of view they are the same kind of work. A heading
+ * answers a different question — "what is this part of the session" —
+ * and there the split is the whole point: the compounds are the part
+ * done fresh and the isolation is the part done after them.
+ *
+ * The strength pair goes the other way for the same reason. A top set
+ * and its back-offs are two badges on two rows and one trip to the rack,
+ * so they read as one heading.
+ */
+const SECTION_TITLES: Record<SlotRole, string> = {
+  warmup: 'Warm-up',
+  main: 'Strength',
+  strength: 'Strength',
+  hypertrophy: 'Compounds',
+  assistance: 'Isolation',
+  conditioning: 'Conditioning',
+}
+
+export function sectionTitle(role: string): string {
+  return (SECTION_TITLES as Partial<Record<string, string>>)[role] ?? 'Work'
+}
+
+export interface SlotSection<T> {
+  readonly title: string
+  readonly slots: readonly T[]
+}
+
+/**
+ * A session cut into the parts a person performs it in.
+ *
+ * Presentation only, and it must stay that way: **the runs are
+ * consecutive, so this cannot reorder anything.** Grouping by role
+ * instead — collecting every warm-up, then every compound — would look
+ * identical almost always and would silently be a second opinion about
+ * session order, competing with `inSessionOrder` and with
+ * `trailingLast`. The latter is the case that would break: it moves the
+ * grip and trunk work to the end of the accessory block *past* slots of
+ * another role, and a by-role grouping would quietly pull a wrist curl
+ * back up above the isolation it was deliberately placed after.
+ *
+ * The visible consequence of consecutive runs is that a heading can
+ * repeat if a session interleaves roles. That is honest: two blocks of
+ * compound work with isolation between them is something a reader should
+ * see, not something a tidy heading should hide.
+ */
+export function inSections<T extends { readonly role: string }>(
+  slots: readonly T[],
+): readonly SlotSection<T>[] {
+  const sections: SlotSection<T>[] = []
+
+  for (const slot of slots) {
+    const title = sectionTitle(slot.role)
+    const last = sections[sections.length - 1]
+
+    if (last?.title === title) {
+      sections[sections.length - 1] = { title, slots: [...last.slots, slot] }
+      continue
+    }
+
+    sections.push({ title, slots: [slot] })
+  }
+
+  return sections
+}
+
 export const SLOT_ROLE_TONES: Record<SlotRole, BadgeTone> = {
   // Its own hue, on the same level as strength and conditioning. Grey now
   // belongs to the sub-category badges, and a grey warm-up read as one.
