@@ -1,3 +1,4 @@
+import { keepFor, type HomeFilter, type RecordHome } from '@/domain/base/base'
 import { asUpgradeId, type IdGenerator, type UpgradeId } from '@/domain/ids/ids'
 import type { Clock, UpgradeRepository } from '@/domain/repositories/ports'
 import {
@@ -194,13 +195,63 @@ export async function deleteUpgrade(
 }
 
 /** The tree, ranked, with today's budget applied. */
+/**
+ * The tree, for one side of the Base split.
+ *
+ * Ranked *after* filtering rather than before, which is the load-bearing
+ * order: `rankTree` promotes an upgrade that unblocks others, and a
+ * prerequisite chain that crosses the split would otherwise let a house
+ * upgrade raise a gear upgrade's rank on a screen that never shows it.
+ * Each side ranks against itself.
+ *
+ * The cost, stated because it is a real one: a chain that genuinely
+ * crosses — a workbench in the garage that a lifting rack depends on —
+ * is now two chains that cannot see each other, and the dependent will
+ * read as unblocked. Keep such pairs on the same side.
+ */
 export async function upgradeTree(
   availableMinorUnits: number,
   deps: UpgradeDeps,
+  home: HomeFilter,
 ): Promise<readonly TreeEntry[]> {
-  return rankTree(await deps.upgrades.all(), availableMinorUnits)
+  return rankTree(keepFor(await deps.upgrades.all(), home), availableMinorUnits)
 }
 
-export async function listUpgrades(deps: UpgradeDeps): Promise<readonly Upgrade[]> {
-  return deps.upgrades.all()
+/**
+ * Moves a record between Base and its own area.
+ *
+ * A *move*, not a create-and-delete, and that is the whole reason this
+ * exists rather than a checkbox on the add form. The common case is a
+ * quest log that has quietly filled up with house work — the leaking tap
+ * has been on the list for a month, with its steps and its history — and
+ * retyping it into a new home would throw away the part that took effort
+ * to record.
+ *
+ * One field changes. Nothing about the record's identity, steps or
+ * completions moves with it, so XP already earned stays earned in
+ * whichever area paid it: `tallyActs` reads the *current* home, and a
+ * quest moved to Base today stops paying `projects.*` from today. That is
+ * the honest reading of a reclassification — you have not un-done the
+ * work, you have changed what it is filed under — and it is the same
+ * trade `completedAsKind` makes for main and side quests, in the other
+ * direction, for the same reason.
+ */
+export async function moveUpgradeHome(
+  id: UpgradeId,
+  home: RecordHome | undefined,
+  deps: UpgradeDeps,
+): Promise<void> {
+  const existing = (await deps.upgrades.all()).find((upgrade) => upgrade.id === id)
+  if (existing === undefined) return
+
+  const { belongsTo: _dropped, ...rest } = existing
+
+  await deps.upgrades.save(home === undefined ? rest : { ...rest, belongsTo: home })
+}
+
+export async function listUpgrades(
+  deps: UpgradeDeps,
+  home: HomeFilter,
+): Promise<readonly Upgrade[]> {
+  return keepFor(await deps.upgrades.all(), home)
 }

@@ -1,3 +1,4 @@
+import { keepFor, type HomeFilter, type RecordHome } from '@/domain/base/base'
 import { activate, activeQuest, kindOf, standDown } from '@/domain/projects/active'
 import {
   asActionId,
@@ -314,8 +315,44 @@ export async function recommendation(deps: ProjectDeps): Promise<Recommendation>
   return getRecommendation(await deps.projects.all(), deps.clock.now())
 }
 
-export async function listProjects(deps: ProjectDeps): Promise<readonly Project[]> {
-  return deps.projects.all()
+/**
+ * Moves a record between Base and its own area.
+ *
+ * A *move*, not a create-and-delete, and that is the whole reason this
+ * exists rather than a checkbox on the add form. The common case is a
+ * quest log that has quietly filled up with house work — the leaking tap
+ * has been on the list for a month, with its steps and its history — and
+ * retyping it into a new home would throw away the part that took effort
+ * to record.
+ *
+ * One field changes. Nothing about the record's identity, steps or
+ * completions moves with it, so XP already earned stays earned in
+ * whichever area paid it: `tallyActs` reads the *current* home, and a
+ * quest moved to Base today stops paying `projects.*` from today. That is
+ * the honest reading of a reclassification — you have not un-done the
+ * work, you have changed what it is filed under — and it is the same
+ * trade `completedAsKind` makes for main and side quests, in the other
+ * direction, for the same reason.
+ */
+export async function moveProjectHome(
+  id: ProjectId,
+  home: RecordHome | undefined,
+  deps: ProjectDeps,
+): Promise<Project> {
+  const existing = await require(id, deps)
+  const { belongsTo: _dropped, ...rest } = existing
+  const moved: Project = home === undefined ? rest : { ...rest, belongsTo: home }
+
+  await deps.projects.save(moved)
+
+  return moved
+}
+
+export async function listProjects(
+  deps: ProjectDeps,
+  home: HomeFilter,
+): Promise<readonly Project[]> {
+  return keepFor(await deps.projects.all(), home)
 }
 
 export { dependentsOf }

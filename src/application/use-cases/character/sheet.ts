@@ -1,4 +1,6 @@
 import { isResolved } from '@/domain/atlas/place/Place'
+import { isBase, isOwnArea } from '@/domain/base/base'
+import type { Daily } from '@/domain/dailies/daily'
 import type { Project, QuestKind } from '@/domain/projects/project'
 import { readLadder, type LadderReading } from '@/domain/game/ladder'
 import { ALL_ACTS, SCORING } from '@/domain/game/registry'
@@ -133,6 +135,27 @@ export async function tallyActs(
   /** No date, no act — see the note above on why this holds even all-time. */
   const dated = (date: string | undefined): boolean => date !== undefined && within(date)
 
+  /*
+   * Every record pays exactly one area, and `belongsTo` decides which.
+   *
+   * A house job is stored as a project and a chore as a daily, so without
+   * this split a Base chore would pay `dailies.completed` *and*
+   * `base.chore-kept` — rule three, nothing counted twice, broken in the
+   * most direct way available.
+   *
+   * Split here rather than at the repository, because the stores are
+   * genuinely one store each: a project is a project, and which screen it
+   * appears on is a question for the reader. Filtering at the source would
+   * mean every future caller inheriting an opinion it did not ask for.
+   */
+  const ownProjects = projects.filter(isOwnArea)
+  const baseProjects = projects.filter(isBase)
+  const ownDailies = dailies.filter(isOwnArea)
+  const baseDailies = dailies.filter(isBase)
+
+  const daysKept = (records: readonly Daily[]): number =>
+    records.reduce((total, daily) => total + daily.done.filter((day) => within(day)).length, 0)
+
   const completed = workouts.filter((log) => log.status === 'completed' && within(log.date))
 
   return {
@@ -159,8 +182,18 @@ export async function tallyActs(
      * and counts as a side quest, which is what `kindOf` says about a
      * quest with no kind either.
      */
-    'projects.main-action-closed': closedActions(projects, dated, 'main'),
-    'projects.side-action-closed': closedActions(projects, dated, 'side'),
+    'projects.main-action-closed': closedActions(ownProjects, dated, 'main'),
+    'projects.side-action-closed': closedActions(ownProjects, dated, 'side'),
+    /*
+     * One flat rate for a house job's steps, where a quest has two.
+     *
+     * Main and side is a claim about what you have chosen to care about
+     * this week, and it does not translate: the tap is leaking whether or
+     * not it is your main quest. Counting them by kind would have every
+     * house job read as a side quest, which is a judgement nobody made.
+     */
+    'base.action-closed':
+      closedActions(baseProjects, dated, 'main') + closedActions(baseProjects, dated, 'side'),
     /*
      * `social.hangout-logged` is deliberately absent, and it is the one
      * act the registry declares that cannot be counted.
@@ -181,10 +214,8 @@ export async function tallyActs(
      * habit's XP lands in the season it was kept in rather than all of it
      * in whichever season you happen to be reading.
      */
-    'dailies.completed': dailies.reduce(
-      (total, daily) => total + daily.done.filter((day) => within(day)).length,
-      0,
-    ),
+    'dailies.completed': daysKept(ownDailies),
+    'base.chore-kept': daysKept(baseDailies),
     'places.place-visited': places.filter(
       (place) => place.status === 'visited' && isResolved(place) && dated(place.dateVisited),
     ).length,

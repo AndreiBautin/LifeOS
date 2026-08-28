@@ -522,12 +522,71 @@ the domain refused correctly and no screen could ask it to. Adding a
 domain rule means adding the control that can trip it, or the guard is
 decoration with a test attached.
 
-**The navigation is seven, and the labels paid for the seventh.**
+**Base is an area that files records rather than storing them.**
+`domain/base/base.ts`. A house job is a `Project`, a chore is a `Daily`,
+a house upgrade is an `Upgrade` — the app already knows all three shapes,
+and a second implementation of "a thing with steps" would be two places
+for a bug about steps to live. What Base changes is _where they appear_.
+
+House work has a different rhythm from a quest log: it arrives when
+something breaks rather than when you choose it, it is mostly the same
+errand each time — find the right person, get them to come — and it never
+finishes. Mixed into the quest list it crowds out what somebody actually
+chose.
+
+Membership is one optional field, `belongsTo`, and **absent means the
+record's own area** — right for every row written before Base existed.
+`isBase` and `isOwnArea` are both named, because a screen listing one of
+these types has to pick a side and the failure is silent in exactly one
+direction: forget to exclude Base and a house job shows in the quest log
+_and_ on Base, reading as a duplicate rather than a bug.
+
+**Every list that can return both takes a `HomeFilter`, with no default.**
+A default would be an opinion the call site did not state. Making it
+required turned the compiler into the thing that finds the missed call
+sites, which it did immediately for both existing ones.
+
+**Each record pays exactly one area.** `tallyActs` splits by `belongsTo`
+before counting, so a Base chore pays `base.chore-kept` and not
+`dailies.completed`. Rule three is that nothing is counted twice, and this
+is the most direct way there was to break it. `measure.ts` splits the same
+way for the monthly rating.
+
+**Base has `hasTree: false`, and that is deliberate.** It shows house
+upgrades and the tech tree shows the rest, but that is a question of which
+screen a row appears on — a dishwasher and a barbell are the same record
+with the same gates. The model's claim is that exactly one area _spends_
+rather than measures, and splitting a tree across two screens does not
+make a second spender. `registry.test.ts` → "has exactly one tree" caught
+this the first time it was written the other way.
+
+**Moving is a move, not a re-create.** `moveProjectHome` and friends
+change one field. The common case is a quest log that has quietly filled
+with house work, and the leaking tap on it has a month of steps and
+history that retyping would throw away. XP already earned stays where it
+was paid; the record simply stops paying its old area from the day it
+moves.
+
+**The navigation is eight, and the eighth was measured rather than
+argued about.**
 Character became "You" and the tech tree moved to a link, because seven
-cells on a 375-pixel screen are 53 pixels wide and "Character" measures
-53 — exactly the width, nothing left for padding. The longest remaining
-label is 38. Measure before adding an eighth: at 46 pixels a cell, every
-label but "Map" is at risk.
+cells on a 375-pixel screen are 53.6 pixels wide and "Character" measured
+53 — exactly the width, nothing left for padding.
+
+That note then warned that at eight cells "every label but Map is at
+risk", which was an extrapolation and **wrong**. Measured with a real
+eighth cell: 46.9 pixels each at 375, the widest label ("Quests") is 37.1,
+nothing clips and nothing overflows. Eight is fine.
+
+Where it does break is **320 pixels**, an iPhone SE 1st-gen width: the
+44-pixel tap-target minimum refuses to shrink further, so 8 × 44 = 352
+overflows a 320 viewport and the last tab is clipped by 32. That cannot be
+fixed by narrowing cells — 44 is the accessibility floor and the mobile
+bar below says every control clears it — so a ninth tab, or support for
+320, needs a horizontally scrolling nav instead.
+
+**Measure before adding a ninth**, and measure it rather than reasoning
+about it: this paragraph is what an unmeasured warning costs.
 
 Settings, the tech tree and the monthly review are links from You, which
 is the hub. That is the line worth keeping: **a tab is somewhere you act,

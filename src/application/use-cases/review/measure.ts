@@ -1,6 +1,8 @@
 import { getGoalsStats } from '@/domain/backlog/goals-stats'
+import { isBase, isOwnArea } from '@/domain/base/base'
 import { STRENGTH_LIFT_SLUGS } from '@/domain/exercises/catalogue'
 import { asExerciseId } from '@/domain/ids/ids'
+import type { Daily } from '@/domain/dailies/daily'
 import { isDoneOn, isExpectedOn, shiftDay } from '@/domain/dailies/daily'
 import { isActive } from '@/domain/social/circle'
 import type {
@@ -111,20 +113,41 @@ export async function measureAll(deps: MeasureDeps): Promise<Readonly<Record<str
    */
   const dailies = await deps.dailies.all()
   const month = toMonth(now)
-  let expected = 0
-  let kept = 0
-  for (const daily of dailies) {
-    for (let back = 0; back < 31; back += 1) {
-      const day = shiftDay(toDay(now), -back)
-      if (day.slice(0, 7) !== month) break
-      if (!isExpectedOn(daily, day)) continue
-      expected += 1
-      if (isDoneOn(daily, day)) kept += 1
+
+  /*
+   * Measured twice over the same shape, once per area.
+   *
+   * A chore is a daily that belongs to Base, so it must not also move the
+   * Dailies rating — two areas reading the same records would report the
+   * same month twice under different names, and a bad week would look
+   * like two bad weeks.
+   *
+   * Absent rather than zero when a side has nothing expected, which is
+   * the rule everywhere in the review: somebody with no chores has not
+   * failed to keep them.
+   */
+  const shareKept = (records: readonly Daily[]): number | undefined => {
+    let expected = 0
+    let kept = 0
+
+    for (const daily of records) {
+      for (let back = 0; back < 31; back += 1) {
+        const day = shiftDay(toDay(now), -back)
+        if (day.slice(0, 7) !== month) break
+        if (!isExpectedOn(daily, day)) continue
+        expected += 1
+        if (isDoneOn(daily, day)) kept += 1
+      }
     }
+
+    return expected > 0 ? Math.round((100 * kept) / expected) : undefined
   }
-  if (expected > 0) {
-    measured['dailies.kept-share-in-month'] = Math.round((100 * kept) / expected)
-  }
+
+  const ownShare = shareKept(dailies.filter(isOwnArea))
+  if (ownShare !== undefined) measured['dailies.kept-share-in-month'] = ownShare
+
+  const choreShare = shareKept(dailies.filter(isBase))
+  if (choreShare !== undefined) measured['base.chore-share-in-month'] = choreShare
 
   /*
    * The strength ladders, as **multiples of bodyweight** rather than as

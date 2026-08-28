@@ -1,4 +1,4 @@
-import { BookMarked, CalendarDays, Dumbbell, Map, Target, User, Users } from 'lucide-react'
+import { BookMarked, CalendarDays, Dumbbell, Home, Map, Target, User, Users } from 'lucide-react'
 import { NavLink, Outlet } from 'react-router-dom'
 
 import { BackupReminder } from '@/features/backup/BackupReminder'
@@ -48,6 +48,7 @@ const NAV = [
   { to: '/backlog', label: 'Codex', Icon: BookMarked },
   { to: '/map', label: 'Map', Icon: Map },
   { to: '/party', label: 'Party', Icon: Users },
+  { to: '/base', label: 'Base', Icon: Home },
 ] as const
 
 export function AppShell() {

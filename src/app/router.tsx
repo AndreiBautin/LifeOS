@@ -9,6 +9,7 @@ import { TripsPage } from '@/features/atlas/TripsPage'
 import { BacklogPage } from '@/features/backlog/BacklogPage'
 import { ProjectsPage } from '@/features/projects/ProjectsPage'
 import { ReviewPage } from '@/features/review/ReviewPage'
+import { BasePage } from '@/features/base/BasePage'
 import { UpgradesPage } from '@/features/upgrades/UpgradesPage'
 import { CharacterPage } from '@/features/character/CharacterPage'
 import { HistoryPage } from '@/features/history/HistoryPage'
@@ -52,6 +53,7 @@ export const router = createBrowserRouter(
         { path: 'program', element: <ProgramPage /> },
         { path: 'backlog', element: <BacklogPage /> },
         { path: 'upgrades', element: <UpgradesPage /> },
+        { path: 'base', element: <BasePage /> },
         { path: 'map', element: <AtlasPage /> },
         { path: 'map/share', element: <SharePage /> },
         { path: 'map/inbox', element: <InboxPage /> },

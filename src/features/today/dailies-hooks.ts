@@ -25,7 +25,17 @@ const KEYS = [['today'], ['character']] as const
 export function useDailies() {
   const services = useServices()
 
-  return useQuery({ queryKey: ['today', 'dailies'], queryFn: () => dailiesToday(services) })
+  return useQuery({
+    queryKey: ['today', 'dailies'],
+    queryFn: () => dailiesToday(services, 'own-area'),
+  })
+}
+
+/** Chores, for the Base screen. */
+export function useChores() {
+  const services = useServices()
+
+  return useQuery({ queryKey: ['base', 'chores'], queryFn: () => dailiesToday(services, 'base') })
 }
 
 function useDailyMutation<TVariables>(

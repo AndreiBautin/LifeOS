@@ -1,4 +1,5 @@
 import type { ActionId, ProjectId } from '@/domain/ids/ids'
+import type { RecordHome } from '@/domain/base/base'
 
 /**
  * A project, its checklist, and what it is waiting on.
@@ -142,6 +143,19 @@ export interface Project {
 
   readonly createdAt: string
   readonly completedAt?: string
+
+  /**
+   * Set when this belongs to Base rather than to its own area.
+   *
+   * Absent means the natural home, which is right for every record
+   * written before Base existed and for anything added without thinking
+   * about it. Read it through `isBase` / `isOwnArea` in
+   * `domain/base/base.ts` rather than comparing here — the two halves are
+   * named so a screen listing this type has to choose a side, and the
+   * failure is silent in one direction: forget to exclude Base and the
+   * record shows up in two places at once.
+   */
+  readonly belongsTo?: RecordHome
 
   readonly actions: readonly ActionItem[]
 

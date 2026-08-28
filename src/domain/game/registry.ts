@@ -29,6 +29,7 @@ export const LIFE_AREAS = [
   'places',
   'dailies',
   'jobs',
+  'base',
 ] as const
 
 export type LifeArea = (typeof LIFE_AREAS)[number]
@@ -252,6 +253,65 @@ export const SCORING: readonly AreaScoring[] = [
      * area where the temptation is strongest.
      */
     acts: [{ id: 'dailies.completed', area: 'dailies', label: 'Kept a daily', points: 15 }],
+    hasTree: false,
+  },
+  {
+    area: 'base',
+    name: 'Base',
+    phase: 10,
+    /*
+     * No ladder, for the reason the dailies give: nobody publishes how
+     * well-maintained a house ought to be, and a threshold invented here
+     * would be a scale this app can move — the one thing the model
+     * refuses everywhere.
+     *
+     * The tempting substitute is a count of outstanding jobs. That is an
+     * inventory rather than a standard: a house with four open jobs is
+     * not worse than one with two, it is bigger, older, or more honestly
+     * recorded.
+     */
+    ladders: [],
+    ratings: [
+      {
+        id: 'base.chores-kept',
+        source: 'base.chore-share-in-month',
+        name: 'Chores kept',
+        unit: '% of days expected',
+        direction: 'stay-above',
+        cadence: 'monthly',
+        threshold: 80,
+      },
+    ],
+    /*
+     * Every one of these is a *record type that already pays* — a chore
+     * is a daily, a house job is a project — so the tally routes each
+     * record to exactly one area by `belongsTo`. Rule three is that
+     * nothing is counted twice, and a Base chore paying both
+     * `dailies.completed` and `base.chore-kept` would be the clearest
+     * possible breach of it.
+     *
+     * Points match their counterparts on purpose. Fixing a tap is not
+     * worth more or less than a step on any other quest, and pricing it
+     * differently would be an opinion about house work smuggled into the
+     * currency.
+     */
+    acts: [
+      { id: 'base.action-closed', area: 'base', label: 'Step on a house job', points: 20 },
+      { id: 'base.chore-kept', area: 'base', label: 'Kept a chore', points: 15 },
+    ],
+    /*
+     * False, and this is the interesting one.
+     *
+     * Base shows house upgrades and the tech tree shows the rest, but
+     * that is a question of *which screen a row appears on* — an upgrade
+     * to a dishwasher and an upgrade to a barbell are the same record with
+     * the same gates, money and a prerequisite. The model's claim is that
+     * exactly one area spends rather than measures, and splitting a tree
+     * across two screens does not make a second spender.
+     *
+     * `registry.test.ts` → "has exactly one tree" is what holds that, and
+     * it caught this the first time it was written the other way.
+     */
     hasTree: false,
   },
   {

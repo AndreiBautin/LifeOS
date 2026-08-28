@@ -1,4 +1,5 @@
 import type { DailyId } from '@/domain/ids/ids'
+import type { RecordHome } from '@/domain/base/base'
 
 /**
  * A thing you mean to do repeatedly, and whether you did it.
@@ -69,6 +70,19 @@ export interface Daily {
    * A retired daily is expected on no day and scores no streak.
    */
   readonly retiredAt?: string
+  /**
+   * Set when this belongs to Base rather than to its own area.
+   *
+   * Absent means the natural home, which is right for every record
+   * written before Base existed and for anything added without thinking
+   * about it. Read it through `isBase` / `isOwnArea` in
+   * `domain/base/base.ts` rather than comparing here — the two halves are
+   * named so a screen listing this type has to choose a side, and the
+   * failure is silent in one direction: forget to exclude Base and the
+   * record shows up in two places at once.
+   */
+  readonly belongsTo?: RecordHome
+
   /** Written by the repository, never here. */
   readonly updatedAt?: string
 }

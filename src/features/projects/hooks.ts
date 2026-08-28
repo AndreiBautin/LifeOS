@@ -1,3 +1,4 @@
+import type { RecordHome } from '@/domain/base/base'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { useServices } from '@/app/context'
@@ -7,6 +8,7 @@ import {
   addProject,
   deleteProject,
   listProjects,
+  moveProjectHome,
   recommendation,
   setActionStatus,
   setActiveQuest,
@@ -34,7 +36,20 @@ const PROJECTS = ['projects'] as const
 export function useProjects() {
   const services = useServices()
 
-  return useQuery({ queryKey: [...PROJECTS, 'all'], queryFn: () => listProjects(services) })
+  return useQuery({
+    queryKey: [...PROJECTS, 'all'],
+    queryFn: () => listProjects(services, 'own-area'),
+  })
+}
+
+/** House jobs, for the Base screen. Keyed apart so the two do not share a cache. */
+export function useBaseProjects() {
+  const services = useServices()
+
+  return useQuery({
+    queryKey: [...PROJECTS, 'base'],
+    queryFn: () => listProjects(services, 'base'),
+  })
 }
 
 export function useRecommendation() {
@@ -72,6 +87,21 @@ export function useUpdateProject() {
   return useProjectMutation<{ id: ProjectId; changes: ProjectChanges }, unknown>(
     'projects.update',
     ({ id, changes }, services) => updateProject(id, changes, services),
+  )
+}
+
+/**
+ * Moves a quest into Base, or back out.
+ *
+ * Invalidates the same keys every project mutation does, which matters
+ * more here than elsewhere: the record leaves one list and joins another,
+ * so a stale cache would show it in both at once — the exact duplicate the
+ * split is meant to prevent.
+ */
+export function useMoveProjectHome() {
+  return useProjectMutation<{ id: ProjectId; home: RecordHome | undefined }, unknown>(
+    'projects.moved-home',
+    ({ id, home }, services) => moveProjectHome(id, home, services),
   )
 }
 

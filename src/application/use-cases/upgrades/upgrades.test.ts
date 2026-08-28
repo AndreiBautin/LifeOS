@@ -233,7 +233,7 @@ describe('the tree with a budget', () => {
       deps,
     )
 
-    const tree = await upgradeTree(50_000, deps)
+    const tree = await upgradeTree(50_000, deps, 'both')
 
     expect(tree.map((entry) => entry.recommendation.effectivePriority)).toEqual([92, 92])
     expect(tree.find((entry) => entry.upgrade.id === desk.id)?.affordable).toBe(true)
@@ -255,7 +255,7 @@ describe('the tree with a budget', () => {
 
     await updateUpgrade(desk.id, { status: 'purchased' }, deps)
 
-    const tree = await upgradeTree(50_000, deps)
+    const tree = await upgradeTree(50_000, deps, 'both')
     const armEntry = tree.find((entry) => entry.upgrade.title === 'Arm')
 
     expect(armEntry?.recommendation.isBlocked).toBe(false)

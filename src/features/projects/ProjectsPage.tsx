@@ -1,4 +1,4 @@
-import { Check, ChevronDown, ChevronRight, Plus, Trash2, Undo2 } from 'lucide-react'
+import { Check, ChevronDown, ChevronRight, Home, Plus, Trash2, Undo2 } from 'lucide-react'
 import { useState } from 'react'
 
 import { useServices } from '@/app/context'
@@ -14,6 +14,7 @@ import {
   useAddAction,
   useAddProject,
   useDeleteProject,
+  useMoveProjectHome,
   useProjects,
   useActiveQuests,
   useRecommendation,
@@ -152,6 +153,7 @@ function ProjectCard({
   const addAction = useAddAction()
   const update = useUpdateProject()
   const remove = useDeleteProject()
+  const moveHome = useMoveProjectHome()
   const setActive = useSetActiveQuest()
   const active = useActiveQuests()
   const [confirming, setConfirming] = useState(false)
@@ -302,6 +304,24 @@ function ProjectCard({
                 Re-open
               </Button>
             )}
+
+            {/*
+              Moving to Base rather than retyping it there.
+              The common case is a quest log that has quietly filled with
+              house work, and the leaking tap on it has a month of steps
+              and history that a re-create would throw away.
+            */}
+            <Button
+              variant="ghost"
+              size="sm"
+              aria-label={`Move ${project.name} to Base`}
+              disabled={moveHome.isPending}
+              onClick={() => {
+                moveHome.mutate({ id: project.id, home: 'base' })
+              }}
+            >
+              <Home size={16} aria-hidden />
+            </Button>
 
             <Button
               variant={confirming ? 'danger' : 'ghost'}

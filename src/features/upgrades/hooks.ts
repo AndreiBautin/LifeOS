@@ -1,3 +1,4 @@
+import type { HomeFilter } from '@/domain/base/base'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 
@@ -28,12 +29,12 @@ import { logger } from '@/shared/logging/logger'
 
 const UPGRADES = ['upgrades'] as const
 
-export function useUpgradeTree(availableMinorUnits: number) {
+export function useUpgradeTree(availableMinorUnits: number, home: HomeFilter = 'own-area') {
   const services = useServices()
 
   return useQuery({
-    queryKey: [...UPGRADES, 'tree', availableMinorUnits],
-    queryFn: () => upgradeTree(availableMinorUnits, services),
+    queryKey: [...UPGRADES, 'tree', home, availableMinorUnits],
+    queryFn: () => upgradeTree(availableMinorUnits, services, home),
   })
 }
 

@@ -1,3 +1,4 @@
+import { keepFor, type HomeFilter, type RecordHome } from '@/domain/base/base'
 import {
   complete,
   isDueToday,
@@ -105,9 +106,44 @@ export async function removeDaily(id: DailyId, deps: DailyDeps): Promise<void> {
  * every one of their numbers would read as a zero rather than as an
  * absence.
  */
-export async function dailiesToday(deps: DailyDeps): Promise<readonly DailyView[]> {
+/**
+ * Moves a record between Base and its own area.
+ *
+ * A *move*, not a create-and-delete, and that is the whole reason this
+ * exists rather than a checkbox on the add form. The common case is a
+ * quest log that has quietly filled up with house work — the leaking tap
+ * has been on the list for a month, with its steps and its history — and
+ * retyping it into a new home would throw away the part that took effort
+ * to record.
+ *
+ * One field changes. Nothing about the record's identity, steps or
+ * completions moves with it, so XP already earned stays earned in
+ * whichever area paid it: `tallyActs` reads the *current* home, and a
+ * quest moved to Base today stops paying `projects.*` from today. That is
+ * the honest reading of a reclassification — you have not un-done the
+ * work, you have changed what it is filed under — and it is the same
+ * trade `completedAsKind` makes for main and side quests, in the other
+ * direction, for the same reason.
+ */
+export async function moveDailyHome(
+  id: DailyId,
+  home: RecordHome | undefined,
+  deps: DailyDeps,
+): Promise<void> {
+  const existing = (await deps.dailies.all()).find((daily) => daily.id === id)
+  if (existing === undefined) return
+
+  const { belongsTo: _dropped, ...rest } = existing
+
+  await deps.dailies.save(home === undefined ? rest : { ...rest, belongsTo: home })
+}
+
+export async function dailiesToday(
+  deps: DailyDeps,
+  home: HomeFilter,
+): Promise<readonly DailyView[]> {
   const today = toDayKey(deps.clock.now())
-  const dailies = await deps.dailies.all()
+  const dailies = keepFor(await deps.dailies.all(), home)
 
   return dailies
     .filter((daily) => daily.retiredAt === undefined)
