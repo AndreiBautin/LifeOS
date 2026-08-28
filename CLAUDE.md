@@ -278,11 +278,30 @@ for every tier but one, which is why the setting is a single number rather
 than a pair: two fields would let a lifter set a 5% bar and a 9% target
 and there would be no sentence left to say.
 
-**Published RTS guidance stops at 7%** — the scale is 0 none, 2 minimal, 5
-moderate, 7 high — and the setting goes to 10 because a lifter who has run
-7% and recovers from it knows something a general scale cannot. Above 7 is
-extrapolation and the editor says so rather than presenting the whole
-range as equally supported.
+**The setting is RTS's published scale and nothing else** — 0 none, 2
+minimal, 5 moderate, 7 high, in `FATIGUE_CHOICES`. It was a free integer
+from 5 to 10 on the reasoning that a lifter who has run 7% knows something
+a general scale cannot. True, and it made the control a slider over
+numbers that mean nothing individually: these are four _named amounts of
+work_, not samples from a continuum, and "moderate" is a decision a lifter
+can make where 5 is a number they can only accept.
+
+`nearestFatigueChoice` snaps a stored value rather than clamping it,
+because devices hold 8s and 9s from the old range — a 9 reads as "high"
+rather than being dragged to the top of a range it was never on.
+
+**None means no back-off slot at all**, not three the stopping rule
+immediately cancels. The cap is materialised as slots and counted as
+volume, so a plan that is only correct if you skip most of it is not
+correct.
+
+**The setting was decorative for two commits and that is the lesson.**
+`settings.fatiguePercent` existed, the editor changed it, and
+`recipeFromSettings` went on passing `DEFAULT_RTS` — so the control
+decided nothing while looking like it worked. A rule nothing can reach is
+a rule nobody can trust; a _control_ nothing can reach is worse, because
+the lifter believes they changed something. Two tests now assert the
+number arrives.
 **Frequency is a means to volume, never a goal.** The backfill will not
 schedule a muscle already at its weekly target, secondary credit
 included. This is the one exception to "every muscle gets the sessions it

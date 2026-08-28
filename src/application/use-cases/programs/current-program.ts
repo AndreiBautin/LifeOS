@@ -1,4 +1,5 @@
 import { assembleRpProgram, defaultRpRecipe, type RpRecipe } from '@/domain/assembly/rp-assemble'
+import { DEFAULT_RTS } from '@/domain/framework/rts'
 import type { Exercise } from '@/domain/exercises/exercise'
 import type { IdGenerator } from '@/domain/ids/ids'
 import { asProgramId } from '@/domain/ids/ids'
@@ -61,6 +62,22 @@ export function recipeFromSettings(
     daysPerWeek: settings.daysPerWeek,
     weeksBeforeDeload: settings.weeksBeforeDeload,
     excludedExercises: settings.excludedExercises,
+    /*
+     * The fatigue percent reaches the assembler, which it did not until
+     * now — the setting existed, the editor changed it, and the recipe
+     * went on using `DEFAULT_RTS` regardless. A control that decides
+     * nothing is worse than no control, because it looks like it worked.
+     *
+     * One number in both fields, which is the whole point of it being one
+     * setting: the bar is this much lighter and you stop when the implied
+     * max has dropped this much, and at matched reps and RPE those are the
+     * same moment. Two fields would let them disagree.
+     */
+    rts: {
+      ...DEFAULT_RTS,
+      fatigueTargetPercent: settings.fatiguePercent,
+      loadDropPercent: settings.fatiguePercent,
+    },
     settings: {
       units: settings.units,
       roundingIncrement: settings.roundingIncrement,

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { builtInExercises, STRENGTH_VARIATIONS } from '@/domain/exercises/catalogue'
+import { DEFAULT_RTS } from '@/domain/framework/rts'
 import type { StrengthLift } from '@/domain/priority/tiers'
 import { MAX_DIRECT_SETS_PER_SESSION } from '@/domain/volume/frequency'
 import { MUSCLE_GROUPS, type MuscleGroup } from '@/domain/exercises/taxonomy'
@@ -375,6 +376,62 @@ describe('the assembled block', () => {
    * The equality that makes the stopping rule sayable: drop five per
    * cent, keep going until the lighter bar feels like the opener.
    */
+  /*
+   * The setting reaches the plan, which it did not for two commits.
+   *
+   * `settings.fatiguePercent` existed, the editor changed it, and
+   * `recipeFromSettings` went on passing `DEFAULT_RTS` — so the control
+   * decided nothing while looking like it worked. A rule nothing can
+   * reach is a rule nobody can trust, and a *control* nothing can reach is
+   * worse, because the lifter believes they changed something.
+   */
+  it('takes the fatigue percent from settings', () => {
+    for (const percent of [2, 7]) {
+      const week = weekAt(
+        assembleRpProgram(
+          defaultRpRecipe({
+            rts: { ...DEFAULT_RTS, fatigueTargetPercent: percent, loadDropPercent: percent },
+          }),
+          asProgramId('rp'),
+          { exercises, ids: counterIds(), now: new Date('2026-08-24T00:00:00Z') },
+        ),
+        0,
+      )
+
+      const backoff = week.days
+        .flatMap((day) => day.slots)
+        .find((slot) => slot.variant === 'Back-off')
+
+      expect(backoff?.notes, String(percent)).toContain(`${String(percent)}% fatigue target`)
+      expect(backoff?.notes, String(percent)).toContain(`Load drop ${String(percent)}%`)
+    }
+  })
+
+  /*
+   * And "none" means none: the stopping rule fires on the first back-off
+   * at a zero target, so prescribing any would put work in the plan the
+   * rule immediately cancels. The cap is materialised as slots and counted
+   * as volume, so a plan only correct if you skip most of it is not
+   * correct.
+   */
+  it('prescribes no back-off slot at all when the target is none', () => {
+    const week = weekAt(
+      assembleRpProgram(
+        defaultRpRecipe({ rts: { ...DEFAULT_RTS, fatigueTargetPercent: 0, loadDropPercent: 0 } }),
+        asProgramId('rp'),
+        { exercises, ids: counterIds(), now: new Date('2026-08-24T00:00:00Z') },
+      ),
+      0,
+    )
+
+    const strength = week.days
+      .flatMap((day) => day.slots)
+      .filter((slot) => slot.role === 'strength')
+
+    expect(strength.length).toBeGreaterThan(0)
+    expect(strength.every((slot) => slot.variant === 'Top set')).toBe(true)
+  })
+
   it('sets the fatigue allowance equal to the load drop', () => {
     const backoff = (block?.weeks[0]?.days ?? [])
       .flatMap((day) => day.slots)

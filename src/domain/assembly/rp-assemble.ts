@@ -676,7 +676,22 @@ function buildStrengthSlots(
    * materialised as slots and counted as volume, so it should sit near
    * where the rule usually fires rather than at the theoretical maximum.
    */
-  const backoffCap = isDeload ? 1 : Math.min(recipe.rts.maxBackoffSets, STRENGTH_BACKOFF_CAP)
+  const backoffCap =
+    fatigueTarget <= 0
+      ? /*
+         * None means none. The stopping rule fires on the first back-off
+         * when the target is zero, so prescribing three of them would put
+         * work in the plan that the rule immediately cancels — and the
+         * cap is materialised as slots and counted as volume, so a plan
+         * only correct if you skip most of it is not correct.
+         *
+         * Reachable from the settings screen: "None — top set only" is one
+         * of the four published fatigue percents.
+         */
+        0
+      : isDeload
+        ? 1
+        : Math.min(recipe.rts.maxBackoffSets, STRENGTH_BACKOFF_CAP)
 
   /*
    * A fixed drop from today's top set, with no prescribed RPE.
@@ -761,8 +776,16 @@ function buildStrengthSlots(
       : `${describeMethod(recipe.rts)} · ${String(fatigueTarget)}% fatigue target. The set count is a cap, not a plan.`,
   }
 
+  /*
+   * No back-off slot at all when there are no back-offs, rather than an
+   * empty one. A slot with no sets is a row on the session screen with
+   * nothing to tick, and `describeDay` would name a lift twice for one
+   * trip to the rack.
+   */
+  const slots = backoffs.length > 0 ? [top, backoff] : [top]
+
   return {
-    slots: [top, backoff],
+    slots,
     spent: addInto(slotVolume(exercise, top.sets), slotVolume(exercise, backoff.sets)),
   }
 }

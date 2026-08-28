@@ -70,24 +70,66 @@ export const FATIGUE_TARGETS = {
 export type FatigueLevel = keyof typeof FATIGUE_TARGETS
 
 /**
- * The range the fatigue percent may be set to, and where published
- * guidance stops.
+ * The fatigue percent a lifter may choose: the four published points, and
+ * only those.
  *
- * RTS names four points — 0% none, 2% minimal, 5% moderate, 7% high —
- * and 7 is the top of them. The setting goes to 10 because a lifter who
- * has run 7% for a while and recovers from it has evidence nobody
- * publishing a general scale could have, and there is no mechanism in the
- * body that makes 8 meaningless. But **above 7 is extrapolation**, and
- * the Plan screen says so rather than presenting the whole range as
- * equally supported.
+ * It was a free integer from 5 to 10, on the reasoning that somebody who
+ * has run 7% and recovers from it knows something a general scale cannot.
+ * True, and it made the setting into a slider over numbers that mean
+ * nothing individually — there is no sense in which 8 is a step past 7,
+ * because the published figures are *four named amounts of work*, not
+ * samples from a continuum.
  *
- * Five is the floor rather than zero: below moderate the back-off work
- * stops being enough to matter, and a lifter who wants none of it is
- * describing a different program than this one.
+ * So the choice is the scale. Naming each point is most of the value:
+ * "moderate" is a decision a lifter can make, and 5 is a number they can
+ * only accept.
+ *
+ * Zero is a real option and means the top set is the work — the stopping
+ * rule fires immediately and no back-off sets are prescribed. It reads
+ * oddly as a *load drop*, which the same number also is, and that is
+ * consistent rather than broken: with nothing to drop to, there is
+ * nothing to drop.
  */
-export const MIN_FATIGUE_PERCENT = FATIGUE_TARGETS.moderate
-export const MAX_FATIGUE_PERCENT = 10
-export const PUBLISHED_FATIGUE_CEILING = FATIGUE_TARGETS.high
+export const FATIGUE_CHOICES: readonly {
+  readonly level: FatigueLevel
+  readonly percent: number
+  readonly label: string
+  readonly detail: string
+}[] = [
+  { level: 'none', percent: FATIGUE_TARGETS.none, label: 'None', detail: 'Top set only.' },
+  {
+    level: 'minimal',
+    percent: FATIGUE_TARGETS.minimal,
+    label: 'Minimal',
+    detail: 'A back-off set or two.',
+  },
+  {
+    level: 'moderate',
+    percent: FATIGUE_TARGETS.moderate,
+    label: 'Moderate',
+    detail: 'The usual starting point.',
+  },
+  {
+    level: 'high',
+    percent: FATIGUE_TARGETS.high,
+    label: 'High',
+    detail: 'The most RTS publishes.',
+  },
+]
+
+/**
+ * The nearest published point to a stored number.
+ *
+ * Needed because the setting used to allow 5 to 10, so a device may hold
+ * an 8 or a 9 — values that are no longer choices. Snapping is better
+ * than clamping here: a stored 9 becomes "high" rather than being dragged
+ * to the top of a range it was never on.
+ */
+export function nearestFatigueChoice(percent: number): number {
+  return FATIGUE_CHOICES.reduce((closest, choice) =>
+    Math.abs(choice.percent - percent) < Math.abs(closest.percent - percent) ? choice : closest,
+  ).percent
+}
 
 export interface RtsPrescription {
   /** Reps for the top set. */
