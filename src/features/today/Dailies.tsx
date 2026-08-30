@@ -1,10 +1,10 @@
-import { Archive, Check, Flame, Home, Plus } from 'lucide-react'
+import { Archive, Check, Flame, Home, Pencil, Plus } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useState } from 'react'
 
 import type { DailyView } from '@/application/use-cases/dailies/dailies'
 import { Button, Card, Empty } from '@/components/shared/primitives'
-import type { Cadence } from '@/domain/dailies/daily'
+import type { Cadence, Daily } from '@/domain/dailies/daily'
 
 import { BASE, UPKEEP, type RecordHome } from '@/domain/base/base'
 import { WEEKDAY_LABELS, WEEKDAY_NAMES } from '@/domain/time/day'
@@ -19,6 +19,7 @@ import {
   useAddDaily,
   useDueElsewhere,
   useMoveDailyHome,
+  useRenameDaily,
   useDailies,
   useKeepToday,
   useRetireDaily,
@@ -64,6 +65,102 @@ function cadenceLabel(cadence: Cadence): string {
   return sorted.map((day) => WEEKDAY_LABELS[day] ?? '?').join(' ')
 }
 
+/**
+ * Renaming, in the space the row was using.
+ *
+ * The full width, which is why it replaces the row rather than editing
+ * in place inside the title column: after a tick button, a streak and
+ * two icon buttons there are about a hundred and eighty pixels left, and
+ * a text field and its two buttons do not fit in them.
+ *
+ * Shared by all three screens that list habits, for the reason
+ * `AddDaily` is — Today, Base and Upkeep hold the same record, and a
+ * second copy of this form is where a rename that trims differently
+ * would live.
+ */
+export function RenameDaily({
+  daily,
+  onDone,
+}: {
+  readonly daily: Daily
+  readonly onDone: () => void
+}) {
+  const rename = useRenameDaily()
+  const [title, setTitle] = useState(daily.title)
+
+  return (
+    <form
+      className="flex items-center gap-2 py-2"
+      onSubmit={(event) => {
+        event.preventDefault()
+        if (title.trim() === '') return
+        rename.mutate({ id: daily.id, title }, { onSuccess: onDone })
+      }}
+    >
+      <input
+        className={FIELD}
+        aria-label={`Rename ${daily.title}`}
+        value={title}
+        /* The field opens because it was asked for, so it takes the caret.
+           iOS will not raise the keyboard for a focus outside the gesture,
+           which costs a second tap there and nothing anywhere else. */
+        autoFocus
+        enterKeyHint="done"
+        onChange={(event) => {
+          setTitle(event.target.value)
+        }}
+        onKeyDown={(event) => {
+          if (event.key === 'Escape') onDone()
+        }}
+      />
+      <Button type="submit" size="sm" variant="primary" disabled={rename.isPending}>
+        Save
+      </Button>
+      <Button type="button" size="sm" variant="ghost" onClick={onDone}>
+        Cancel
+      </Button>
+    </form>
+  )
+}
+
+/**
+ * A habit's name, and the way to change it.
+ *
+ * The title *is* the control, rather than a fourth icon button on a row
+ * that already carries three plus a streak — at 375 there is no room for
+ * one, and the name is the only thing on the row that is not already
+ * something you press. The pencil beside it is what says so, since a
+ * phone has no hover to reveal it with.
+ */
+export function DailyTitle({
+  daily,
+  done,
+  onRename,
+}: {
+  readonly daily: Daily
+  readonly done: boolean
+  readonly onRename: () => void
+}) {
+  return (
+    <button
+      type="button"
+      className="flex min-w-0 max-w-full items-center gap-1.5 text-left"
+      aria-label={`Rename ${daily.title}`}
+      onClick={onRename}
+    >
+      <span
+        className={[
+          'truncate text-sm',
+          done ? 'text-ink-500 line-through' : 'text-ink-50 font-medium',
+        ].join(' ')}
+      >
+        {daily.title}
+      </span>
+      <Pencil size={12} className="text-ink-700 shrink-0" aria-hidden />
+    </button>
+  )
+}
+
 function DailyRow({ view }: { readonly view: DailyView }) {
   // From the record, so a chore shown on Today still pays as a chore.
   const keep = useKeepToday(view.daily.belongsTo)
@@ -72,8 +169,20 @@ function DailyRow({ view }: { readonly view: DailyView }) {
   const retire = useRetireDaily()
   const moveHome = useMoveDailyHome()
   const [confirming, setConfirming] = useState(false)
+  const [renaming, setRenaming] = useState(false)
 
   const { daily, doneToday, expectedToday, doneCount, needed } = view
+
+  if (renaming) {
+    return (
+      <RenameDaily
+        daily={daily}
+        onDone={() => {
+          setRenaming(false)
+        }}
+      />
+    )
+  }
 
   return (
     <div className="flex items-center gap-3 py-2">
@@ -115,14 +224,13 @@ function DailyRow({ view }: { readonly view: DailyView }) {
       </button>
 
       <div className="min-w-0 flex-1">
-        <p
-          className={[
-            'truncate text-sm',
-            doneToday ? 'text-ink-500 line-through' : 'text-ink-50 font-medium',
-          ].join(' ')}
-        >
-          {daily.title}
-        </p>
+        <DailyTitle
+          daily={daily}
+          done={doneToday}
+          onRename={() => {
+            setRenaming(true)
+          }}
+        />
         <p className="text-ink-600 text-xs">
           {/*
             Lit when it is that part of the day now. It never changes

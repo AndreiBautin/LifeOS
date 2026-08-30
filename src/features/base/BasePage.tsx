@@ -12,7 +12,7 @@ import { BASE } from '@/domain/base/base'
 import { cn } from '@/lib/cn'
 
 import { useKeepToday, useMoveDailyHome, useUndoToday } from '../today/dailies-hooks'
-import { AddDaily } from '../today/Dailies'
+import { AddDaily, DailyTitle, RenameDaily } from '../today/Dailies'
 import { useChores } from '../today/dailies-hooks'
 import { useBaseProjects, useMoveProjectHome } from '../projects/hooks'
 import { useAddUpgrade, useMoveUpgradeHome, useUpgradeTree } from '../upgrades/hooks'
@@ -42,8 +42,20 @@ function ChoreRow({ view }: { readonly view: DailyView }) {
   const keep = useKeepToday(view.daily.belongsTo)
   const undo = useUndoToday()
   const moveHome = useMoveDailyHome()
+  const [renaming, setRenaming] = useState(false)
 
   const { daily, doneToday, expectedToday, doneCount, needed } = view
+
+  if (renaming) {
+    return (
+      <RenameDaily
+        daily={daily}
+        onDone={() => {
+          setRenaming(false)
+        }}
+      />
+    )
+  }
 
   return (
     <div className="flex items-center gap-3 py-2">
@@ -73,14 +85,13 @@ function ChoreRow({ view }: { readonly view: DailyView }) {
       </Button>
 
       <div className="min-w-0 flex-1">
-        <p
-          className={cn(
-            'truncate text-sm',
-            doneToday ? 'text-ink-500 line-through' : 'text-ink-50',
-          )}
-        >
-          {daily.title}
-        </p>
+        <DailyTitle
+          daily={daily}
+          done={doneToday}
+          onRename={() => {
+            setRenaming(true)
+          }}
+        />
         {needed > 1 && expectedToday && (
           <p className="text-ink-700 text-xs">
             {doneCount} of {needed} today

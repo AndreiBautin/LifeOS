@@ -10,6 +10,7 @@ import {
   keepToday,
   moveDailyHome,
   removeDaily,
+  renameDaily,
   retireDaily,
   undoToday,
 } from '@/application/use-cases/dailies/dailies'
@@ -158,6 +159,19 @@ export function useKeepToday(home?: RecordHome) {
 
 export function useUndoToday() {
   return useDailyMutation<DailyId>('dailies.undone', (id, services) => undoToday(id, services))
+}
+
+/**
+ * Renaming, which pays nothing.
+ *
+ * Correcting a label is not an act — the same reason undo pays nothing
+ * and the reason `retireDaily` does not either. XP is for things done.
+ */
+export function useRenameDaily() {
+  return useDailyMutation<{ id: DailyId; title: string }>(
+    'dailies.renamed',
+    ({ id, title }, services) => renameDaily(id, title, services),
+  )
 }
 
 export function useRetireDaily() {

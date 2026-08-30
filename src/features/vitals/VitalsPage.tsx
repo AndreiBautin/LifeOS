@@ -36,9 +36,8 @@ import {
 } from '@/domain/vitals/charges'
 import { UPKEEP } from '@/domain/base/base'
 import type { DailyView } from '@/application/use-cases/dailies/dailies'
-import { cn } from '@/lib/cn'
 
-import { AddDaily } from '../today/Dailies'
+import { AddDaily, DailyTitle, RenameDaily } from '../today/Dailies'
 import {
   useAddDaily,
   useKeepToday,
@@ -1222,8 +1221,22 @@ function UpkeepRow({ view }: { readonly view: DailyView }) {
   const keep = useKeepToday(view.daily.belongsTo)
   const undo = useUndoToday()
   const moveHome = useMoveDailyHome()
+  const [renaming, setRenaming] = useState(false)
 
   const { daily, doneToday, expectedToday, doneCount, needed } = view
+
+  if (renaming) {
+    return (
+      <li>
+        <RenameDaily
+          daily={daily}
+          onDone={() => {
+            setRenaming(false)
+          }}
+        />
+      </li>
+    )
+  }
 
   return (
     <li className="flex items-center gap-3 py-2">
@@ -1247,14 +1260,13 @@ function UpkeepRow({ view }: { readonly view: DailyView }) {
       </Button>
 
       <div className="min-w-0 flex-1">
-        <p
-          className={cn(
-            'truncate text-sm',
-            doneToday ? 'text-ink-500 line-through' : 'text-ink-50',
-          )}
-        >
-          {daily.title}
-        </p>
+        <DailyTitle
+          daily={daily}
+          done={doneToday}
+          onRename={() => {
+            setRenaming(true)
+          }}
+        />
         {needed > 1 && expectedToday && (
           <p className="text-ink-700 text-xs">
             {doneCount} of {needed} today

@@ -1635,12 +1635,36 @@ personal — everybody's is roughly water, brushing, flossing and hair.
 Offered by _name not already used_, the same rule the pools follow, so
 taking one does not take the rest away.
 
-**A daily has no rename**, which is why the suggestion is "Gallon of
-water" rather than "Water". A title is fixed at creation, so a row
-reading just "Water" would be a checkbox against a question nobody
-fails, where the whole point is whether the day's target was finished.
-If renaming ever arrives, this is a suggestion that can go back to being
-general.
+**A daily renames now, and only the title.** `renameDaily`. A name was
+fixed at creation, so a habit named wrongly — or named before it meant
+what it means now — could only be retired and typed again, and that
+throws away the streak. Worse than the same trap on a pool: a pool's
+value is a list of spends, and a habit's value _is_ the run of days.
+
+**The cadence and the times a day are deliberately not in that form**,
+and it is not squeamishness about a bigger one. A title is a label — the
+record means exactly what it meant before — where a cadence decides
+_which days were expected_ and re-reads every streak the habit has ever
+had. A habit kept every weekday for a year becomes a broken run the
+moment it is told it was an every-day habit all along. That is a real
+operation somebody may want, and it has to say out loud what it does to
+the history rather than arriving as a second field on a rename box.
+
+**The title is the control, not a fourth icon button.** The rows already
+carry a tick, a streak, a move and a retire; at 375 there is no room for
+another, and the name is the only thing on a row that is not already
+something you press. The pencil beside it is what says so, because a
+phone has no hover to reveal it with. Editing replaces the whole row
+rather than swapping the title column for a field — after the tick,
+streak and two buttons there are about a hundred and eighty pixels left,
+which does not hold a text field and its two buttons.
+
+Shared by Today, Base and Upkeep the way `AddDaily` is: the same record
+on three screens, and a second copy of the form is where a rename that
+trims differently would live.
+
+**Renaming pays no XP**, like undo and like retiring. Correcting a label
+is not a thing done.
 
 **Supplements are Upkeep, not a pool.** Creatine is a thing you take once
 a day and either did or did not — a daily with a streak, which is exactly

@@ -142,6 +142,45 @@ export async function retireDaily(id: DailyId, deps: DailyDeps): Promise<void> {
   await deps.dailies.save({ ...daily, retiredAt: toDayKey(deps.clock.now()) })
 }
 
+/**
+ * Renames a habit, and changes nothing else about it.
+ *
+ * A title was fixed at creation, so a habit named wrongly — or named
+ * before it meant what it means now — could only be retired and typed
+ * again, which throws away the streak. That is the same bargain a pool
+ * was offering before its name became editable, and it is worse here:
+ * a pool's value is a list of spends and a habit's value *is* the run
+ * of days.
+ *
+ * **Only the title.** The cadence and the times a day are deliberately
+ * not here, and the difference is not squeamishness about a bigger form.
+ * A title is a label — the record means exactly what it meant before —
+ * where a cadence decides *which days were expected*, and changing it
+ * re-reads every streak the habit has ever had. A habit kept every
+ * weekday for a year becomes a broken run the moment it is told it was
+ * an every-day habit all along. That is a real operation somebody may
+ * want, and it needs to say out loud what it does to the history rather
+ * than arriving as a second field on a rename box.
+ *
+ * An empty name is refused rather than accepted and shown as a blank
+ * row, matching `addDaily`.
+ */
+export async function renameDaily(
+  id: DailyId,
+  title: string,
+  deps: DailyDeps,
+): Promise<{ readonly error?: string }> {
+  const trimmed = title.trim()
+  if (trimmed === '') return { error: 'A daily needs a name.' }
+
+  const daily = await deps.dailies.byId(id)
+  if (daily === undefined) return {}
+
+  await deps.dailies.save({ ...daily, title: trimmed })
+
+  return {}
+}
+
 export async function removeDaily(id: DailyId, deps: DailyDeps): Promise<void> {
   await deps.dailies.remove(id)
 }
