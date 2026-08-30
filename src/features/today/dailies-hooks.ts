@@ -4,6 +4,7 @@ import { useServices } from '@/app/context'
 import type { RecordHome } from '@/domain/base/base'
 import {
   addDaily,
+  type NewDaily,
   dailiesToday,
   keepToday,
   moveDailyHome,
@@ -11,7 +12,6 @@ import {
   retireDaily,
   undoToday,
 } from '@/application/use-cases/dailies/dailies'
-import type { Cadence } from '@/domain/dailies/daily'
 import type { DailyId } from '@/domain/ids/ids'
 import { useXpAward } from '@/app/xp-award'
 import { logger } from '@/shared/logging/logger'
@@ -77,9 +77,8 @@ function useDailyMutation<TVariables>(
  * Base creates chores, and each of them knows which it is.
  */
 export function useAddDaily(home?: RecordHome) {
-  return useDailyMutation<{ title: string; cadence: Cadence }>(
-    'dailies.added',
-    ({ title, cadence }, services) => addDaily(title, cadence, services, home),
+  return useDailyMutation<Omit<NewDaily, 'belongsTo'>>('dailies.added', (input, services) =>
+    addDaily({ ...input, ...(home === undefined ? {} : { belongsTo: home }) }, services),
   )
 }
 

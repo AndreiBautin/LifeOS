@@ -62,8 +62,34 @@ export interface Daily {
   readonly id: DailyId
   readonly title: string
   readonly cadence: Cadence
-  /** Day keys (`YYYY-MM-DD`) it was completed on. Unsorted is fine. */
+  /**
+   * When it was completed. Unsorted is fine.
+   *
+   * Two shapes live here and both are read through `timesDoneOn`, which
+   * compares only the first ten characters.
+   *
+   * A once-a-day habit stores a bare day key, `2026-08-27`, and that
+   * **idempotency is load-bearing**: two devices ticking the same Tuesday
+   * write the same string, the union collapses it, and `daysKept` — which
+   * counts entries — pays fifteen XP once rather than twice.
+   *
+   * A habit done several times a day stores a full timestamp per
+   * completion instead, because there is nothing to collapse: feeding the
+   * dog at eight and again at six are two separate things that happened,
+   * and a set of days cannot hold that. Each is one completion and pays
+   * once, which is the existing rule rather than a new one.
+   */
   readonly done: readonly string[]
+  /**
+   * How many times a day it is expected, on the days it is expected at
+   * all. Absent means once, which is what every record written before
+   * this meant.
+   *
+   * On the daily rather than inside `Cadence` because the two are
+   * orthogonal: the cadence answers *which days*, this answers *how many
+   * on one of them*, and folding it in would mean saying it three times.
+   */
+  readonly timesPerDay?: number
   readonly createdAt: string
   /**
    * Retired rather than deleted, so the days it was done on survive.
@@ -123,26 +149,80 @@ export function isExpectedOn(daily: Daily, day: string): boolean {
     : daily.cadence.days.includes(date.getUTCDate())
 }
 
-export function isDoneOn(daily: Daily, day: string): boolean {
-  return daily.done.includes(day)
+/** How many times it is expected on a day it is expected at all. */
+export function timesPerDay(daily: Daily): number {
+  return Math.max(1, Math.round(daily.timesPerDay ?? 1))
 }
 
 /**
- * Ticks a day, idempotently.
+ * How many completions a day carries.
  *
- * Returns the same object when the day is already ticked, so a caller can
- * skip the write — and so two devices that both ticked Tuesday converge
- * rather than disagreeing about how many Tuesdays there were.
+ * Compares the day part only, so it reads a bare day key and a full
+ * timestamp the same way — which is what lets records written before
+ * this keep working untouched.
  */
-export function complete(daily: Daily, day: string): Daily {
-  if (daily.done.includes(day)) return daily
-  return { ...daily, done: [...daily.done, day].sort() }
+export function timesDoneOn(daily: Daily, day: string): number {
+  return daily.done.filter((entry) => entry.slice(0, 10) === day).length
 }
 
-/** Unticks a day. The inverse, and separately named so no flag chooses. */
+/** Done means done *enough times*, which is once unless stated otherwise. */
+export function isDoneOn(daily: Daily, day: string): boolean {
+  return timesDoneOn(daily, day) >= timesPerDay(daily)
+}
+
+/**
+ * Records a completion.
+ *
+ * Once-a-day habits stay **idempotent**: the same day key, so ticking
+ * Tuesday twice on two devices converges rather than disagreeing about
+ * how many Tuesdays there were — and, because `daysKept` counts entries,
+ * rather than paying for it twice.
+ *
+ * A habit done several times a day cannot work that way and should not:
+ * the second feed is not a duplicate of the first. It appends a
+ * timestamp, so two devices that each fed the dog union to two, which is
+ * what happened. `at` is passed in rather than read, like every other
+ * clock in the domain.
+ */
+export function complete(daily: Daily, day: string, at?: Date): Daily {
+  if (timesPerDay(daily) === 1) {
+    if (daily.done.includes(day)) return daily
+    return { ...daily, done: [...daily.done, day].sort() }
+  }
+
+  // Already at the day's quota — a fourth feed is not recorded against a
+  // habit that asked for three.
+  if (timesDoneOn(daily, day) >= timesPerDay(daily)) return daily
+
+  const stamp = at === undefined ? `${day}T00:00:00.000Z` : at.toISOString()
+
+  return { ...daily, done: [...daily.done, stamp].sort() }
+}
+
+/**
+ * Takes one completion back.
+ *
+ * The inverse, separately named so no flag chooses between them. For a
+ * habit done several times a day it removes the **latest** entry on that
+ * day rather than all of them: an undo, not an eraser, the same shape as
+ * `undoLastCharge`.
+ */
 export function uncomplete(daily: Daily, day: string): Daily {
-  if (!daily.done.includes(day)) return daily
-  return { ...daily, done: daily.done.filter((one) => one !== day) }
+  const onDay = daily.done.filter((entry) => entry.slice(0, 10) === day)
+  if (onDay.length === 0) return daily
+
+  const latest = [...onDay].sort()[onDay.length - 1]
+
+  /*
+   * Removes one entry, not every match. Two identical strings can only
+   * exist if a merge produced them, and dropping both would take away a
+   * completion that did happen.
+   */
+  if (latest === undefined) return daily
+
+  const at = daily.done.lastIndexOf(latest)
+
+  return { ...daily, done: [...daily.done.slice(0, at), ...daily.done.slice(at + 1)] }
 }
 
 /**

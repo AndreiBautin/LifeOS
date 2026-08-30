@@ -7,7 +7,9 @@ import {
   complete,
   isDueToday,
   isExpectedOn,
+  isDoneOn,
   streakFor,
+  timesDoneOn,
   uncomplete,
   type Cadence,
   type Daily,
@@ -246,5 +248,109 @@ describe('a monthly cadence', () => {
     }
 
     expect(streakFor(kept, '2026-03-15')).toBe(3)
+  })
+})
+
+describe('a habit done several times a day', () => {
+  const dog = (over: Partial<Daily> = {}) =>
+    aDaily({ cadence: { kind: 'every-day' }, timesPerDay: 3, ...over })
+
+  const at = (hour: number) => new Date(Date.UTC(2026, 7, 27, hour))
+
+  it('is not done until it has been done enough times', () => {
+    let daily = dog()
+
+    expect(isDoneOn(daily, '2026-08-27')).toBe(false)
+    daily = complete(daily, '2026-08-27', at(8))
+    expect(timesDoneOn(daily, '2026-08-27')).toBe(1)
+    expect(isDoneOn(daily, '2026-08-27')).toBe(false)
+
+    daily = complete(daily, '2026-08-27', at(13))
+    daily = complete(daily, '2026-08-27', at(19))
+
+    expect(timesDoneOn(daily, '2026-08-27')).toBe(3)
+    expect(isDoneOn(daily, '2026-08-27')).toBe(true)
+  })
+
+  /*
+   * The reason a set of day keys could not carry this: the evening feed
+   * is not a duplicate of the morning one, so the two have to be
+   * distinguishable or one of them is lost.
+   */
+  it('records each completion separately rather than collapsing them', () => {
+    let daily = dog()
+    daily = complete(daily, '2026-08-27', at(8))
+    daily = complete(daily, '2026-08-27', at(19))
+
+    expect(daily.done).toHaveLength(2)
+  })
+
+  it('does not record more than the day asked for', () => {
+    let daily = dog()
+    for (const hour of [8, 13, 19, 22]) daily = complete(daily, '2026-08-27', at(hour))
+
+    expect(timesDoneOn(daily, '2026-08-27')).toBe(3)
+  })
+
+  /*
+   * An undo, not an eraser. Mis-tapping the third feed must not throw
+   * away the two that happened.
+   */
+  it('takes back one completion at a time', () => {
+    let daily = dog()
+    for (const hour of [8, 13, 19]) daily = complete(daily, '2026-08-27', at(hour))
+
+    daily = uncomplete(daily, '2026-08-27')
+
+    expect(timesDoneOn(daily, '2026-08-27')).toBe(2)
+    expect(isDoneOn(daily, '2026-08-27')).toBe(false)
+  })
+
+  it('counts a day toward the streak only once it is fully done', () => {
+    let daily = dog()
+    // Yesterday complete, today two of three.
+    for (const hour of [8, 13, 19]) daily = complete(daily, '2026-08-26', at(hour))
+    daily = complete(daily, '2026-08-27', at(8))
+    daily = complete(daily, '2026-08-27', at(13))
+
+    // Today is unfinished and the day is not over, so it neither counts
+    // nor breaks — the same humane rule a once-daily habit gets.
+    expect(streakFor(daily, '2026-08-27')).toBe(1)
+  })
+
+  it('leaves a partly done yesterday out of the streak', () => {
+    let daily = dog()
+    daily = complete(daily, '2026-08-26', at(8))
+
+    expect(streakFor(daily, '2026-08-27')).toBe(0)
+  })
+})
+
+describe('records written before times-per-day existed', () => {
+  /*
+   * These are on a device now. A bare day key is read as one completion
+   * because `timesDoneOn` compares only the day part, so nothing had to
+   * be migrated.
+   */
+  it('reads a bare day key as one completion', () => {
+    const old = aDaily({ done: ['2026-08-26', '2026-08-27'] })
+
+    expect(timesDoneOn(old, '2026-08-27')).toBe(1)
+    expect(isDoneOn(old, '2026-08-27')).toBe(true)
+    expect(streakFor(old, '2026-08-27')).toBe(2)
+  })
+
+  /*
+   * The idempotency that a once-a-day habit depends on: two devices
+   * ticking the same Tuesday write the same string, so the union
+   * collapses it and `daysKept` — which counts entries — pays once.
+   */
+  it('stays idempotent when it is only expected once', () => {
+    const once = aDaily({ done: [] })
+    const first = complete(once, '2026-08-27')
+    const again = complete(first, '2026-08-27')
+
+    expect(again.done).toEqual(['2026-08-27'])
+    expect(again).toBe(first)
   })
 })

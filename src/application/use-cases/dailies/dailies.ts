@@ -1,9 +1,12 @@
 import { keepFor, type HomeFilter, type RecordHome } from '@/domain/base/base'
 import {
   complete,
+  isDoneOn,
   isDueToday,
   isExpectedOn,
   streakFor,
+  timesDoneOn,
+  timesPerDay,
   uncomplete,
   type Cadence,
   type Daily,
@@ -33,6 +36,9 @@ export interface DailyView {
   readonly streak: number
   readonly dueToday: boolean
   readonly doneToday: boolean
+  /** How many of today's completions are in, and how many it asked for. */
+  readonly doneCount: number
+  readonly needed: number
   /** Expected today at all — a weekday habit is not "missed" on Sunday. */
   readonly expectedToday: boolean
 }
@@ -50,22 +56,42 @@ export interface DailyView {
  * Absent means the record's own area, as everywhere else `belongsTo` is
  * read.
  */
+export interface NewDaily {
+  readonly title: string
+  readonly cadence: Cadence
+  /** Absent means once, which is what every record before this meant. */
+  readonly timesPerDay?: number
+  /** Absent means the record's own area. */
+  readonly belongsTo?: RecordHome
+}
+
+/**
+ * Creates a daily, in the area that asked for it.
+ *
+ * **An object rather than a fourth and fifth positional parameter**, and
+ * that is not tidiness. The optional fields were being passed from the
+ * screen inside a spread — `...(howMany > 1 ? { timesPerDay } : {})` —
+ * which defeats excess-property checking, so a value the form collected
+ * was silently dropped and nothing failed to compile. A named input
+ * makes the compiler the thing that notices, which is what it is for.
+ */
 export async function addDaily(
-  title: string,
-  cadence: Cadence,
+  input: NewDaily,
   deps: DailyDeps,
-  home?: RecordHome,
 ): Promise<{ readonly error?: string }> {
-  const trimmed = title.trim()
+  const trimmed = input.title.trim()
   if (trimmed === '') return { error: 'A daily needs a name.' }
 
   await deps.dailies.save({
     id: deps.ids.next() as DailyId,
     title: trimmed,
-    cadence,
+    cadence: input.cadence,
     done: [],
     createdAt: deps.clock.now().toISOString(),
-    ...(home === undefined ? {} : { belongsTo: home }),
+    ...(input.timesPerDay === undefined || input.timesPerDay <= 1
+      ? {}
+      : { timesPerDay: Math.round(input.timesPerDay) }),
+    ...(input.belongsTo === undefined ? {} : { belongsTo: input.belongsTo }),
   })
 
   return {}
@@ -76,8 +102,9 @@ export async function keepToday(id: DailyId, deps: DailyDeps): Promise<void> {
   const daily = await deps.dailies.byId(id)
   if (daily === undefined) return
 
-  const today = toDayKey(deps.clock.now())
-  const next = complete(daily, today)
+  const now = deps.clock.now()
+  const today = toDayKey(now)
+  const next = complete(daily, today, now)
   // Identity means it was already ticked — no write, no sync traffic, and
   // no `updatedAt` churn that would make this device look newer than one
   // that actually changed something.
@@ -166,7 +193,12 @@ export async function dailiesToday(
       daily,
       streak: streakFor(daily, today),
       dueToday: isDueToday(daily, today),
-      doneToday: daily.done.includes(today),
+      // Through `isDoneOn`, not a second copy of it. This read
+      // `done.includes(today)` — the same answer while every habit was
+      // once a day, and wrong the moment one asked for three.
+      doneToday: isDoneOn(daily, today),
+      doneCount: timesDoneOn(daily, today),
+      needed: timesPerDay(daily),
       expectedToday: isExpectedOn(daily, today),
     }))
     .sort((a, b) => {

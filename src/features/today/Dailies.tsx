@@ -63,26 +63,45 @@ function DailyRow({ view }: { readonly view: DailyView }) {
   const moveHome = useMoveDailyHome()
   const [confirming, setConfirming] = useState(false)
 
-  const { daily, doneToday, expectedToday } = view
+  const { daily, doneToday, expectedToday, doneCount, needed } = view
 
   return (
     <div className="flex items-center gap-3 py-2">
+      {/*
+        One tap adds one completion. For a habit asked for several times a
+        day the button counts rather than toggles — tapping it at the
+        second feed must record a third, not undo the first — and it only
+        becomes an untick once the day is full, which is the point at
+        which the next tap can only mean a mistake.
+      */}
       <button
         type="button"
-        aria-label={doneToday ? `Untick ${daily.title}` : `Tick ${daily.title}`}
+        aria-label={
+          doneToday
+            ? `Untick ${daily.title}`
+            : needed > 1
+              ? `Log ${daily.title}, ${String(doneCount)} of ${String(needed)} done`
+              : `Tick ${daily.title}`
+        }
         aria-pressed={doneToday}
         className={[
-          'tap-target grid size-9 shrink-0 place-items-center rounded-lg border transition-colors',
+          'tap-target grid size-9 shrink-0 place-items-center rounded-lg border text-xs font-semibold transition-colors',
           doneToday
             ? 'border-good-500 bg-good-500/15 text-good-500'
-            : 'border-ink-700 text-ink-700 hover:border-ink-500',
+            : doneCount > 0
+              ? 'border-good-500/50 text-good-500'
+              : 'border-ink-700 text-ink-700 hover:border-ink-500',
         ].join(' ')}
         onClick={() => {
           if (doneToday) undo.mutate(daily.id)
           else keep.mutate(daily.id)
         }}
       >
-        {doneToday && <Check size={18} aria-hidden />}
+        {doneToday ? (
+          <Check size={18} aria-hidden />
+        ) : (
+          needed > 1 && doneCount > 0 && `${String(doneCount)}/${String(needed)}`
+        )}
       </button>
 
       <div className="min-w-0 flex-1">
@@ -96,6 +115,7 @@ function DailyRow({ view }: { readonly view: DailyView }) {
         </p>
         <p className="text-ink-600 text-xs">
           {cadenceLabel(daily.cadence)}
+          {needed > 1 && ` · ${String(doneCount)} of ${String(needed)} today`}
           {!expectedToday && ' · not today'}
         </p>
       </div>
@@ -165,6 +185,7 @@ export function AddDaily({
   const [title, setTitle] = useState('')
   const [days, setDays] = useState<readonly number[]>([])
   const [monthly, setMonthly] = useState(false)
+  const [times, setTimes] = useState('1')
 
   const toggle = (day: number): void => {
     setDays(days.includes(day) ? days.filter((one) => one !== day) : [...days, day])
@@ -176,9 +197,12 @@ export function AddDaily({
         className="space-y-3"
         onSubmit={(event) => {
           event.preventDefault()
+          const howMany = Math.max(1, Math.round(Number(times) || 1))
+
           add.mutate(
             {
               title,
+              ...(howMany > 1 ? { timesPerDay: howMany } : {}),
               // No days picked means every day, which is what somebody who
               // ignored this row meant by ignoring it.
               cadence:
@@ -201,6 +225,25 @@ export function AddDaily({
             setTitle(event.target.value)
           }}
         />
+
+        {/*
+          How many times on each of those days. Separate from the cadence
+          above because the two answer different questions — which days,
+          and how many on one of them — and a habit done three times on
+          weekdays needs both.
+        */}
+        <label className="text-ink-500 flex items-center gap-2 text-xs">
+          <span className="shrink-0">Times a day</span>
+          <input
+            className="bg-ink-850 border-ink-800 text-ink-50 numeric tap-target w-16 rounded-lg border px-2 text-sm"
+            inputMode="decimal"
+            aria-label="Times a day"
+            value={times}
+            onChange={(event) => {
+              setTimes(event.target.value)
+            }}
+          />
+        </label>
 
         <div className="space-y-2">
           <div className="flex gap-1">

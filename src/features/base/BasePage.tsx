@@ -43,13 +43,25 @@ function ChoreRow({ view }: { readonly view: DailyView }) {
   const undo = useUndoToday()
   const moveHome = useMoveDailyHome()
 
-  const { daily, doneToday, expectedToday } = view
+  const { daily, doneToday, expectedToday, doneCount, needed } = view
 
   return (
     <div className="flex items-center gap-3 py-2">
+      {/*
+        Counts rather than toggles when the chore asks for more than one —
+        letting the dog out is the case this exists for, and a tap at the
+        second time of day has to record a third rather than undo the
+        first. It only becomes an undo once the day is full.
+      */}
       <Button
         variant={doneToday ? 'primary' : 'outline'}
-        aria-label={doneToday ? `Undo ${daily.title}` : `Mark ${daily.title} done`}
+        aria-label={
+          doneToday
+            ? `Undo ${daily.title}`
+            : needed > 1
+              ? `Log ${daily.title}, ${String(doneCount)} of ${String(needed)} done`
+              : `Mark ${daily.title} done`
+        }
         aria-pressed={doneToday}
         disabled={keep.isPending || undo.isPending}
         onClick={() => {
@@ -57,7 +69,7 @@ function ChoreRow({ view }: { readonly view: DailyView }) {
           else keep.mutate(daily.id)
         }}
       >
-        {doneToday ? '✓' : ''}
+        {doneToday ? '✓' : needed > 1 ? `${String(doneCount)}/${String(needed)}` : ''}
       </Button>
 
       <div className="min-w-0 flex-1">
@@ -69,6 +81,11 @@ function ChoreRow({ view }: { readonly view: DailyView }) {
         >
           {daily.title}
         </p>
+        {needed > 1 && expectedToday && (
+          <p className="text-ink-700 text-xs">
+            {doneCount} of {needed} today
+          </p>
+        )}
         {!expectedToday && <p className="text-ink-700 text-xs">Not due today</p>}
       </div>
 

@@ -1573,6 +1573,44 @@ be told a twelve-day run is finished, because you have not yet done the
 thing you are about to do, is the single most discouraging thing a habit
 tracker can do. `streakFor` has tests for both.
 
+**`done` holds two shapes and `timesDoneOn` is the only thing that
+reads it.** A habit expected several times a day — feeding a dog morning,
+afternoon and evening — could not be recorded at all, because a set of
+day keys has nowhere to put "twice". `timesPerDay` sits on the `Daily`
+rather than inside `Cadence`, since the two are orthogonal: the cadence
+answers _which days_ and this answers _how many on one of them_.
+
+**A once-a-day habit still stores a bare day key, and that idempotency is
+load-bearing.** Two devices ticking the same Tuesday write the same
+string, the union collapses it, and `daysKept` — which counts _entries_ —
+pays fifteen XP once rather than twice. Switching everything to
+timestamps would have quietly doubled the XP of every habit synced from
+two devices.
+
+**A multi-times habit stores one timestamp per completion**, because
+there is nothing to collapse: the evening feed is not a duplicate of the
+morning one. Each entry is one completion and pays once, which is the
+existing rule rather than a new one — three feeds is 45 XP, verified.
+Both shapes are read by comparing the first ten characters, so nothing
+needed migrating.
+
+**`isDoneOn` means done _enough times_.** Streaks follow from that
+unchanged: a day counts once it is full, and a part-done today still does
+not break the run, which is the humane rule already written down.
+
+**The view was computing `done.includes(today)` itself** rather than
+calling `isDoneOn` — the same answer while every habit was once a day,
+and wrong the moment one asked for three. A second implementation of a
+domain predicate is a bug with a delay on it.
+
+**A create that takes four positional parameters will silently drop the
+fifth.** `addDaily` grew `home` and then `timesPerDay`, and the screen
+passed the latter inside a spread — `...(howMany > 1 ? { timesPerDay } : {})`
+— which **defeats excess-property checking**, so a value the form
+collected went nowhere and nothing failed to compile. It takes a
+`NewDaily` object now, like `addUpgrade` and `addVice`, which puts the
+compiler back in charge of noticing.
+
 **Completions are a set of day keys, merged by union.** `unionDone` in
 `domain/sync/payload.ts`, beside `unionProgress` for the same reason:
 tick Tuesday on the phone and Wednesday on the desktop with neither
