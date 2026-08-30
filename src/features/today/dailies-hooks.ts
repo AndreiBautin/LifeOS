@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { useServices } from '@/app/context'
-import type { RecordHome } from '@/domain/base/base'
+import { UPKEEP, type RecordHome } from '@/domain/base/base'
 import {
   addDaily,
   type NewDaily,
@@ -24,14 +24,14 @@ import { logger } from '@/shared/logging/logger'
  * and a narrower key would leave one of the three showing yesterday's
  * answer.
  *
- * `['base']` is here because **a daily lives in one of two places and
- * these hooks serve both.** Without it, adding a chore wrote the record
+ * `['base']` and `['vitals']` are here because **a daily lives in one of
+ * three places and these hooks serve all of them.** Without it, adding a chore wrote the record
  * and left the Base screen saying "No chores yet" — the row was in the
  * database and the list that should have shown it was never told. A
  * mutation has to invalidate every list its record could appear on, not
  * only the one the hook was first written for.
  */
-const KEYS = [['today'], ['character'], ['base']] as const
+const KEYS = [['today'], ['character'], ['base'], ['vitals']] as const
 
 export function useDailies() {
   const services = useServices()
@@ -40,6 +40,13 @@ export function useDailies() {
     queryKey: ['today', 'dailies'],
     queryFn: () => dailiesToday(services, 'own-area'),
   })
+}
+
+/** Upkeep, for the Vitals screen — the body's own chores. */
+export function useUpkeep() {
+  const services = useServices()
+
+  return useQuery({ queryKey: ['vitals', 'upkeep'], queryFn: () => dailiesToday(services, UPKEEP) })
 }
 
 /** Chores, for the Base screen. */

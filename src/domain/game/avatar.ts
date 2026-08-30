@@ -43,8 +43,15 @@ export const AREA_TITLES: Record<LifeArea, string> = {
   dailies: 'Devotee',
   jobs: 'Journeyman',
   base: 'Steward',
-  // Vitals pays no XP at all, so it can never be the calling. The entry
-  // exists because this is a total record and the compiler says so.
+  /*
+   * Reachable now, and it was not when this was written.
+   *
+   * The note here said Vitals pays no XP so this could never be the
+   * calling — true of an area holding only charges and a scale, and
+   * false the moment it held upkeep. Brushing your teeth is an act and
+   * pays like one, so somebody whose XP is mostly upkeep reads as an
+   * Ascetic, which is the right word for it.
+   */
   vitals: 'Ascetic',
 }
 

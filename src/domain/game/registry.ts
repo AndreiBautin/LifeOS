@@ -355,22 +355,29 @@ export const SCORING: readonly AreaScoring[] = [
       },
     ],
     /*
-     * **No act pays XP here, and that is the whole point.**
+     * **One act, and the reason it is allowed is the reason the others
+     * are not.**
      *
-     * XP is paid per act and never per outcome, and every candidate in
-     * this area falls on the wrong side of that line. Not drinking is an
-     * outcome — it is what happened — so paying for it would be the same
-     * mistake as paying a streak. And the only actual *acts* available
-     * are spending a charge and stepping on a scale, neither of which is
-     * something to reward: paying XP for logging a beer is perverse, and
-     * paying it for weighing in turns a measurement into a chore with a
-     * score attached, which is how a number stops being honest.
+     * This list was empty, and the note here said the area measures and
+     * never pays — because every candidate then fell on the wrong side of
+     * the act/outcome line. That reasoning has not changed and still
+     * holds for all of them: *not* drinking is an outcome, so paying for
+     * it would be the streak mistake in a new costume; and the only
+     * genuine acts were spending a charge and stepping on a scale, where
+     * paying XP for logging a beer is perverse and paying it for weighing
+     * in turns a measurement into a chore with a score attached.
      *
-     * So this area measures and never pays. It is the first one that
-     * does, and it should stay that way — an area with no acts is not an
-     * incomplete area.
+     * Brushing your teeth is none of those. It is a thing you did — an
+     * act, in exactly the sense a kept daily is one — so paying for it is
+     * the rule applied rather than bent. What was true was that this area
+     * held nothing that qualified; what was never true is that it was
+     * forbidden from holding anything that does.
+     *
+     * Same fifteen points as a daily and a chore, because it is the same
+     * kind of thing under a third name, and `tallyActs` splits by
+     * `belongsTo` so no record can pay two of them.
      */
-    acts: [],
+    acts: [{ id: 'vitals.upkeep-kept', area: 'vitals', label: 'Kept up', points: 15 }],
     hasTree: false,
   },
   {

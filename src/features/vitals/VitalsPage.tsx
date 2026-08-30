@@ -1,4 +1,4 @@
-import { Pencil, Plus, Scale, Trash2 } from 'lucide-react'
+import { Flame, Pencil, Plus, Scale, Trash2, Undo2 } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { useState } from 'react'
 
@@ -25,6 +25,12 @@ import {
   type ChargeCycle,
   type Vice,
 } from '@/domain/vitals/charges'
+import { UPKEEP } from '@/domain/base/base'
+import type { DailyView } from '@/application/use-cases/dailies/dailies'
+import { cn } from '@/lib/cn'
+
+import { AddDaily } from '../today/Dailies'
+import { useKeepToday, useMoveDailyHome, useUndoToday, useUpkeep } from '../today/dailies-hooks'
 import { projectCorridor } from '@/domain/vitals/weight'
 import { TrendChart } from '@/components/shared/TrendChart'
 
@@ -694,6 +700,131 @@ function AddVice() {
   )
 }
 
+/**
+ * One thing you keep on top of, and how much of today's is done.
+ *
+ * A daily in every respect — cadence, streak, and the count that arrived
+ * for chores done several times a day, which is exactly what brushing
+ * twice needs. What it is not is a *quest*, and on Today these crowd out
+ * the things somebody actually chose: the same argument that moved house
+ * work to Base, applied to the other set of chores nobody calls chores.
+ */
+function UpkeepRow({ view }: { readonly view: DailyView }) {
+  const keep = useKeepToday('vitals.upkeep-kept')
+  const undo = useUndoToday()
+  const moveHome = useMoveDailyHome()
+
+  const { daily, doneToday, expectedToday, doneCount, needed } = view
+
+  return (
+    <li className="flex items-center gap-3 py-2">
+      <Button
+        variant={doneToday ? 'primary' : 'outline'}
+        aria-label={
+          doneToday
+            ? `Undo ${daily.title}`
+            : needed > 1
+              ? `Log ${daily.title}, ${String(doneCount)} of ${String(needed)} done`
+              : `Mark ${daily.title} done`
+        }
+        aria-pressed={doneToday}
+        disabled={keep.isPending || undo.isPending}
+        onClick={() => {
+          if (doneToday) undo.mutate(daily.id)
+          else keep.mutate(daily.id)
+        }}
+      >
+        {doneToday ? '✓' : needed > 1 ? `${String(doneCount)}/${String(needed)}` : ''}
+      </Button>
+
+      <div className="min-w-0 flex-1">
+        <p
+          className={cn(
+            'truncate text-sm',
+            doneToday ? 'text-ink-500 line-through' : 'text-ink-50',
+          )}
+        >
+          {daily.title}
+        </p>
+        {needed > 1 && expectedToday && (
+          <p className="text-ink-700 text-xs">
+            {doneCount} of {needed} today
+          </p>
+        )}
+        {!expectedToday && <p className="text-ink-700 text-xs">Not due today</p>}
+      </div>
+
+      {view.streak > 0 && (
+        <span className="text-ink-500 numeric flex items-center gap-1 text-xs">
+          <Flame size={12} aria-hidden />
+          {view.streak}
+        </span>
+      )}
+
+      <Button
+        variant="ghost"
+        size="sm"
+        aria-label={`Move ${daily.title} back to Today`}
+        disabled={moveHome.isPending}
+        onClick={() => {
+          moveHome.mutate({ id: daily.id, home: undefined })
+        }}
+      >
+        <Undo2 size={14} aria-hidden />
+      </Button>
+    </li>
+  )
+}
+
+function Upkeep() {
+  const upkeep = useUpkeep()
+  const [adding, setAdding] = useState(false)
+
+  const views = upkeep.data ?? []
+
+  return (
+    <Section
+      title="Upkeep"
+      description="Brushing, flossing, washing your hair — the body's chores"
+      action={
+        <Button
+          variant={adding ? 'ghost' : 'outline'}
+          size="sm"
+          onClick={() => {
+            setAdding(!adding)
+          }}
+        >
+          {adding ? 'Close' : 'Add'}
+        </Button>
+      }
+    >
+      {adding && (
+        <AddDaily
+          home={UPKEEP}
+          placeholder="Something you keep on top of"
+          onDone={() => {
+            setAdding(false)
+          }}
+        />
+      )}
+
+      <Card>
+        {upkeep.data === undefined ? null : views.length === 0 ? (
+          <Empty title="Nothing yet">
+            Twice-a-day things belong here too — set how many times and each tap logs one.
+          </Empty>
+        ) : (
+          <ul className="divide-ink-800 divide-y">
+            {views.map((view) => (
+              <UpkeepRow key={view.daily.id} view={view} />
+            ))}
+          </ul>
+        )}
+      </Card>
+    </Section>
+  )
+}
+
 export function VitalsPage() {
   const vices = useVices()
   const add = useAddVice()
@@ -761,6 +892,8 @@ export function VitalsPage() {
       <Section title="Macros" description="Derived from the scale, not from a formula">
         <MacroTargetsCard />
       </Section>
+
+      <Upkeep />
 
       <Section title="Condition" description="How the day feels, and what it does to the session">
         <ConditionEditor />

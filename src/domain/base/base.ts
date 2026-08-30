@@ -25,22 +25,47 @@ import type { Upgrade } from '@/domain/upgrades/upgrade'
 export const BASE = 'base'
 
 /**
+ * The body, as a place records are filed — brushing, flossing, washing
+ * your hair.
+ *
+ * The second answer the union below was written to expect. These are
+ * dailies in every respect that matters: a cadence, a streak, and now a
+ * count for the ones done twice a day. What they are not is *quests*, and
+ * on Today they crowd out the things somebody actually chose — the same
+ * argument that moved house work to Base, applied to the other set of
+ * chores nobody thinks of as chores.
+ *
+ * Filed under `vitals` because that is the area that scores them, and
+ * `tallyActs` splits by area. The screen calls the section Upkeep, which
+ * is what a person calls it; the code uses the area id, the way Quests
+ * sits over `Project`.
+ */
+export const UPKEEP = 'vitals'
+
+/**
  * Where a record lives when it is not in its natural home.
  *
- * A single-member union today, and written as one rather than as a
- * boolean because the question is *which* area owns this, not whether
- * some flag is set. A second answer would extend this; an `isBase` flag
- * would have to be replaced.
+ * Written as a union rather than a boolean because the question is
+ * *which* area owns this, not whether some flag is set — and that has now
+ * paid for itself: adding the body as a second answer is one more member
+ * here, where an `isBase` flag would have had to be replaced everywhere
+ * it was read.
  */
-export type RecordHome = typeof BASE
+export const RECORD_HOMES = [BASE, UPKEEP] as const
 
-/** Anything that can be assigned to Base rather than its own area. */
+export type RecordHome = (typeof RECORD_HOMES)[number]
+
+/** Anything that can be filed to an area other than its own. */
 export interface Homed {
   readonly belongsTo?: RecordHome
 }
 
 export function isBase(record: Homed): boolean {
   return record.belongsTo === BASE
+}
+
+export function isUpkeep(record: Homed): boolean {
+  return record.belongsTo === UPKEEP
 }
 
 /**
@@ -65,11 +90,21 @@ export function isOwnArea(record: Homed): boolean {
  * to exclude Base shows a house job in the quest log *and* on the Base
  * page, where it reads as a duplicate rather than as a bug.
  */
-export type HomeFilter = 'own-area' | 'base' | 'both'
+export type HomeFilter = 'own-area' | RecordHome | 'both'
 
+/**
+ * Keeps the side the caller asked for.
+ *
+ * Written against `belongsTo` directly rather than as a chain of
+ * predicates, so a third home is a value and not another branch. The
+ * homes are the members of `RecordHome`, which is what makes the filter
+ * total by construction: a new area cannot be added without this
+ * accepting it.
+ */
 export function keepFor<T extends Homed>(records: readonly T[], home: HomeFilter): readonly T[] {
   if (home === 'both') return records
-  return records.filter(home === 'base' ? isBase : isOwnArea)
+  if (home === 'own-area') return records.filter(isOwnArea)
+  return records.filter((record) => record.belongsTo === home)
 }
 
 export interface BaseContents {

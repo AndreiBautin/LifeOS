@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest'
 
-import { baseContents, isBase, isOwnArea, keepFor, type Homed } from './base'
+import {
+  baseContents,
+  isBase,
+  isOwnArea,
+  isUpkeep,
+  keepFor,
+  RECORD_HOMES,
+  type Homed,
+  type RecordHome,
+} from './base'
 import type { Daily } from '@/domain/dailies/daily'
 import type { Project } from '@/domain/projects/project'
 import type { Upgrade } from '@/domain/upgrades/upgrade'
@@ -16,7 +25,7 @@ import type { Upgrade } from '@/domain/upgrades/upgrade'
  * wants.
  */
 
-const homed = (belongsTo?: 'base'): Homed => (belongsTo === undefined ? {} : { belongsTo })
+const homed = (belongsTo?: RecordHome): Homed => (belongsTo === undefined ? {} : { belongsTo })
 
 describe('which area owns a record', () => {
   it('treats an unmarked record as belonging to its own area', () => {
@@ -31,15 +40,27 @@ describe('which area owns a record', () => {
     expect(isOwnArea(homed('base'))).toBe(false)
   })
 
+  it('treats a record filed to the body as neither of the other two', () => {
+    expect(isUpkeep(homed('vitals'))).toBe(true)
+    expect(isBase(homed('vitals'))).toBe(false)
+    expect(isOwnArea(homed('vitals'))).toBe(false)
+  })
+
   /*
    * The property the whole split depends on: every record lands on
-   * exactly one side. If these two ever overlapped a record would be
-   * counted twice, and if they ever left a gap it would vanish from both
-   * screens.
+   * exactly one side. If any two overlapped a record would be counted
+   * twice, and if they left a gap it would vanish from every screen.
+   *
+   * Driven off `RECORD_HOMES` rather than a hand-written list, so adding
+   * a fourth area cannot leave this passing vacuously — which is exactly
+   * what it did when the body was added and this still only knew about
+   * two.
    */
   it('puts every record on exactly one side', () => {
-    for (const record of [homed(), homed('base')]) {
-      expect([isOwnArea(record), isBase(record)].filter(Boolean)).toHaveLength(1)
+    const everyHome: readonly Homed[] = [homed(), ...RECORD_HOMES.map((home) => homed(home))]
+
+    for (const record of everyHome) {
+      expect([isOwnArea(record), isBase(record), isUpkeep(record)].filter(Boolean)).toHaveLength(1)
     }
   })
 })
@@ -50,6 +71,7 @@ describe('filtering a list by side', () => {
   it('keeps only what the caller asked for', () => {
     expect(keepFor(records, 'own-area')).toHaveLength(2)
     expect(keepFor(records, 'base')).toHaveLength(2)
+    expect(keepFor([...records, homed('vitals')], 'vitals')).toHaveLength(1)
   })
 
   /*
@@ -62,9 +84,12 @@ describe('filtering a list by side', () => {
   })
 
   it('adds up to the whole, with nothing double-counted', () => {
-    expect(keepFor(records, 'own-area').length + keepFor(records, 'base').length).toBe(
-      records.length,
-    )
+    const all = [...records, homed('vitals')]
+    const counted =
+      keepFor(all, 'own-area').length +
+      RECORD_HOMES.reduce((total, home) => total + keepFor(all, home).length, 0)
+
+    expect(counted).toBe(all.length)
   })
 })
 

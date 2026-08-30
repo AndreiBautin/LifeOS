@@ -1206,6 +1206,31 @@ the domain refused correctly and no screen could ask it to. Adding a
 domain rule means adding the control that can trip it, or the guard is
 decoration with a test attached.
 
+**A daily is filed to one of three places, and `RecordHome` was written
+to expect the third.** Today owns what you chose, Base owns the house,
+and Vitals owns the body — brushing, flossing, washing your hair, filed
+under `vitals` and shown as **Upkeep**. It is the Base argument applied
+to the other set of chores nobody calls chores: mixed into Today they
+crowd out the things somebody actually decided to do. `RECORD_HOMES`
+drives `keepFor` and the "exactly one side" test, so a fourth area cannot
+leave either passing vacuously — which is precisely what that test did
+when the third was added and it still only knew about two.
+
+**Vitals pays XP now, and that is the rule applied rather than bent.**
+The note in `registry.ts` said this area measures and never pays, because
+every candidate then fell on the wrong side of the act/outcome line: not
+drinking is an outcome, and paying for a weigh-in turns a measurement
+into a chore with a score. All of that is still true. **Brushing your
+teeth is none of it** — it is a thing you did, an act in exactly the
+sense a kept daily is one. What was true was that the area held nothing
+that qualified; what was never true is that it was barred from holding
+anything that does. Same fifteen points, and `tallyActs` splits by
+`belongsTo` so no record pays two of them.
+
+That also makes `AREA_TITLES.vitals` reachable, where its comment
+asserted it never could be. Somebody whose XP is mostly upkeep reads as
+an Ascetic.
+
 **Base is an area that files records rather than storing them.**
 `domain/base/base.ts`. A house job is a `Project`, a chore is a `Daily`,
 a house upgrade is an `Upgrade` — the app already knows all three shapes,
