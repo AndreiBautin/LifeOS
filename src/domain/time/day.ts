@@ -54,6 +54,21 @@ export const WEEKDAY_NAMES = [
   'Saturday',
 ] as const
 
+/**
+ * The two halves of the week, Sunday-indexed like everything else here.
+ *
+ * In the domain rather than in the form, for the same reason
+ * `WEEKDAY_LABELS` is: the indexing is what a stored cadence means, and
+ * a list written out at a call site is a list that can be written out
+ * wrongly at the next one.
+ *
+ * Complements by construction — every day is in exactly one — so a
+ * "weekends" shortcut and a "weekdays" one cannot drift into overlapping
+ * or leaving Wednesday out.
+ */
+export const WEEKDAYS = [1, 2, 3, 4, 5] as const
+export const WEEKEND = [0, 6] as const
+
 /** "Fri, Sat" — for reading a chosen set of days back in a sentence. */
 export function namedDays(days: readonly number[]): string {
   const sorted = [...days].sort((a, b) => a - b)

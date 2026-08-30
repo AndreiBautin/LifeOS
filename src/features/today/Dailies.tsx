@@ -7,7 +7,7 @@ import { Button, Card, Empty } from '@/components/shared/primitives'
 import type { Cadence, Daily } from '@/domain/dailies/daily'
 
 import { BASE, UPKEEP, type RecordHome } from '@/domain/base/base'
-import { WEEKDAY_LABELS, WEEKDAY_NAMES } from '@/domain/time/day'
+import { WEEKDAY_LABELS, WEEKDAY_NAMES, WEEKDAYS, WEEKEND } from '@/domain/time/day'
 import {
   PART_OF_DAY_LABELS,
   PARTS_OF_DAY,
@@ -36,6 +36,42 @@ import {
  * Unticking is the same checkbox. There is no separate undo, because a
  * mis-tap on the thing you tap most should cost exactly one more tap.
  */
+
+/**
+ * The four week shapes worth one tap.
+ *
+ * A cadence of "weekdays" is five taps on a row of single letters, twice
+ * over if the evening picker is meant too, and it is the single most
+ * common shape a habit has. The letters stay — a shortcut that hid them
+ * would make anything irregular impossible — and pressing one simply
+ * fills them in, so what was chosen is still visible and still editable.
+ *
+ * **The nights set the evening as well as the days**, which is the whole
+ * difference between "weekdays" and "weeknights": the same five days,
+ * and a claim about which end of them. A shortcut that set only the days
+ * would be the weekdays button under a second name.
+ *
+ * Weeknights is Monday to Friday and weekend nights are Saturday and
+ * Sunday, so the two are exact complements. The other reading — a
+ * weeknight is a night before a working day, which makes Sunday one and
+ * Friday not — is defensible and is a different habit; it is two taps
+ * away on the letters, where this arrangement at least has the property
+ * that the four buttons cover the week twice and overlap nowhere.
+ */
+const WEEK_SHAPES: readonly {
+  readonly label: string
+  readonly days: readonly number[]
+  readonly part?: PartOfDay
+}[] = [
+  { label: 'Weekdays', days: WEEKDAYS },
+  { label: 'Weekends', days: WEEKEND },
+  { label: 'Weeknights', days: WEEKDAYS, part: 'evening' },
+  { label: 'Weekend nights', days: WEEKEND, part: 'evening' },
+]
+
+function sameDays(a: readonly number[], b: readonly number[]): boolean {
+  return a.length === b.length && [...a].sort().every((day, index) => day === [...b].sort()[index])
+}
 
 const FIELD =
   'bg-ink-850 border-ink-800 text-ink-50 placeholder:text-ink-700 h-11 w-full rounded-xl border px-3 text-sm'
@@ -468,27 +504,70 @@ export function AddDaily({
               )}
             </>
           ) : (
-            <div className="flex gap-1">
-              {WEEKDAY_LABELS.map((label, index) => (
-                <button
-                  key={WEEKDAY_NAMES[index]}
-                  type="button"
-                  aria-label={WEEKDAY_NAMES[index] ?? ''}
-                  aria-pressed={days.includes(index)}
-                  className={[
-                    'tap-target h-10 flex-1 rounded-lg border text-xs font-medium',
-                    days.includes(index)
-                      ? 'border-accent-500 bg-accent-500/15 text-accent-400'
-                      : 'border-ink-800 text-ink-500',
-                  ].join(' ')}
-                  onClick={() => {
-                    toggle(index)
-                  }}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
+            <>
+              {/*
+                Above the letters rather than replacing them. Pressed
+                state comes from comparing the current selection, so the
+                button says what is chosen rather than what was last
+                tapped — picking the five days by hand lights "Weekdays",
+                which is the honest reading of a shortcut.
+              */}
+              <div className="mb-2 flex flex-wrap gap-1">
+                {WEEK_SHAPES.map((shape) => {
+                  /*
+                   * The part has to match too, including when the shape
+                   * does not name one: "Weekdays" means those five days
+                   * at any time, so it must not stay lit once the evening
+                   * is chosen. Otherwise picking Weeknights lights both,
+                   * and two pressed buttons describing one cadence is a
+                   * worse answer than none.
+                   */
+                  const on = sameDays(days, shape.days) && part === (shape.part ?? '')
+
+                  return (
+                    <button
+                      key={shape.label}
+                      type="button"
+                      aria-pressed={on}
+                      className={[
+                        'tap-target rounded-lg border px-3 text-xs font-medium',
+                        on
+                          ? 'border-accent-500 bg-accent-500/15 text-accent-400'
+                          : 'border-ink-800 text-ink-500',
+                      ].join(' ')}
+                      onClick={() => {
+                        setDays([...shape.days])
+                        if (shape.part !== undefined) setPart(shape.part)
+                      }}
+                    >
+                      {shape.label}
+                    </button>
+                  )
+                })}
+              </div>
+
+              <div className="flex gap-1">
+                {WEEKDAY_LABELS.map((label, index) => (
+                  <button
+                    key={WEEKDAY_NAMES[index]}
+                    type="button"
+                    aria-label={WEEKDAY_NAMES[index] ?? ''}
+                    aria-pressed={days.includes(index)}
+                    className={[
+                      'tap-target h-10 flex-1 rounded-lg border text-xs font-medium',
+                      days.includes(index)
+                        ? 'border-accent-500 bg-accent-500/15 text-accent-400'
+                        : 'border-ink-800 text-ink-500',
+                    ].join(' ')}
+                    onClick={() => {
+                      toggle(index)
+                    }}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </>
           )}
         </div>
 
@@ -553,6 +632,24 @@ export function Dailies() {
   const [adding, setAdding] = useState(false)
 
   const views = dailies.data ?? []
+
+  /*
+   * **A screen called Today does not list things labelled "not today".**
+   * Own dailies used to show in full, on the reasoning that Today is
+   * their only home and therefore also where they are managed. The first
+   * half is true and the second does not follow: a weekday habit sat in
+   * Saturday's list wearing a "not today" caption, which is a screen
+   * arguing with itself, and it is the same crowding that moved chores
+   * to Base — the things the day actually asks for buried under the ones
+   * it does not.
+   *
+   * They are still here, because there is still nowhere else for them.
+   * They are below everything due, under a heading that says what they
+   * are, in the same shape the House and Upkeep groups already use.
+   */
+  const todays = views.filter((view) => view.dueToday || view.doneToday)
+  const otherDays = views.filter((view) => !view.dueToday && !view.doneToday)
+
   /*
    * Counted across every home, because the sentence is about the day and
    * not about this section. "3 left today" that ignored the bins would
@@ -590,20 +687,40 @@ export function Dailies() {
         />
       )}
 
-      {views.length === 0 && (due.data ?? []).length > 0 ? null : views.length === 0 ? (
+      {views.length === 0 && (due.data ?? []).length === 0 && (
         <Empty title="No dailies yet">
           A daily here is a checkbox and a streak. It cannot ring — nothing in a web app on iOS can
           — so it earns its place by being the first thing on this screen.
         </Empty>
-      ) : (
+      )}
+
+      {todays.length > 0 && (
         <Card className="divide-ink-800 divide-y py-0">
-          {views.map((view) => (
+          {todays.map((view) => (
             <DailyRow key={view.daily.id} view={view} />
           ))}
         </Card>
       )}
 
       <DueElsewhere />
+
+      {/*
+        Last, because everything above it is something the day asks for.
+        No "all →" beside the heading, unlike House and Upkeep: those
+        point at the screen that owns them, and this *is* that screen.
+      */}
+      {otherDays.length > 0 && (
+        <div className="mt-3">
+          <span className="text-ink-700 mb-1 block text-xs tracking-wide uppercase">
+            Other days
+          </span>
+          <Card className="divide-ink-800 divide-y py-0">
+            {otherDays.map((view) => (
+              <DailyRow key={view.daily.id} view={view} />
+            ))}
+          </Card>
+        </div>
+      )}
     </>
   )
 }

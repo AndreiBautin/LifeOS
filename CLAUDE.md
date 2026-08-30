@@ -1227,6 +1227,47 @@ are not body upkeep" — a residue rather than a category — and left the
 screen whose whole job is _present tense_ unable to say what the day
 actually asks for.
 
+**A screen called Today does not list rows labelled "not today".** Own
+dailies used to show in full, on the reasoning that Today is their only
+home and therefore also where they are managed. The first half is true
+and the second does not follow: a weekday habit sat in Saturday's list
+under a "not today" caption, which is a screen arguing with itself, and
+it is the same crowding that moved chores to Base — the things the day
+asks for buried under the ones it does not.
+
+They are still on the screen, because there is still nowhere else for
+them, under an **Other days** heading below everything due. No "all →"
+beside it, unlike House and Upkeep: those point at the screen that owns
+them, and this _is_ that screen. The count was never wrong — `left`
+has always filtered on `dueToday` — which is why this read as a display
+quirk rather than as a bug for as long as it did.
+
+**The week has four shapes worth one tap.** `WEEK_SHAPES` — weekdays,
+weekends, weeknights, weekend nights. A cadence of "weekdays" was five
+taps on a row of single letters, twice over if the evening picker was
+meant too, and it is the most common shape a habit has. The letters
+stay: a shortcut that replaced them would make anything irregular
+impossible, and pressing one only fills them in, so what was chosen is
+still visible and still editable.
+
+The nights set the **part of day as well as the days**, which is the
+entire difference between "weekdays" and "weeknights" — the same five
+days and a claim about which end of them. A shortcut that set only the
+days would be the weekdays button under a second name.
+
+**Pressed state is computed from the selection, not remembered from the
+tap**, so choosing the five days by hand lights "Weekdays" — the honest
+reading of a shortcut. It compares the part too, including when the
+shape does not name one: "Weekdays" means those days at any time, so it
+must go out once the evening is chosen. Otherwise Weeknights lights two
+buttons, and two pressed buttons describing one cadence is worse than
+none.
+
+Weeknights is Monday to Friday, so the four shapes are exact
+complements. The other reading — a weeknight is the night _before_ a
+working day, which makes Sunday one and Friday not — is defensible and
+is a different habit, two taps away on the letters.
+
 It aggregates now, **grouped by where each thing lives** rather than
 mixed in, because a flat list is what buries the habits somebody chose
 under the ones the house and the body simply require. The asymmetry is
