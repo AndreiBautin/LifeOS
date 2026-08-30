@@ -1225,6 +1225,19 @@ these types has to pick a side and the failure is silent in exactly one
 direction: forget to exclude Base and a house job shows in the quest log
 _and_ on Base, reading as a duplicate rather than a bug.
 
+**Base files upgrades; the tech tree edits them.** `moveUpgradeHome`
+was the last of the three move functions with no caller, which is why
+that panel could only ever be empty. The row on Base is deliberately
+read-only apart from the way back: an upgrade carries a price, a priority
+and a prerequisite, and a second editor for those would be a second place
+for the gate rules to be got wrong.
+
+The upgrade hooks did **not** have the invalidation bug the daily ones
+did — every mutation invalidates the whole `UPGRADES` prefix and
+`useUpgradeTree` carries `home` in its key, so one call reloads both
+lists and neither can be left showing a row that has moved. Worth
+knowing which of the two shapes to copy.
+
 **A chore is created on Base, and for three commits it could not be
 created at all.** `moveDailyHome` and `moveUpgradeHome` were written the
 day Base was and **nothing ever called either of them** — so the empty

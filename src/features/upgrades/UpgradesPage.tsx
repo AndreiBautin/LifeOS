@@ -1,8 +1,9 @@
-import { Check, Lock, Plus, Trash2, Wallet } from 'lucide-react'
+import { Check, Home, Lock, Plus, Trash2, Wallet } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { useState } from 'react'
 
 import { Badge, Button, Card, Empty, Section } from '@/components/shared/primitives'
+import { BASE } from '@/domain/base/base'
 import type { Gate } from '@/domain/game/tree'
 import type { UpgradeId } from '@/domain/ids/ids'
 import type { TreeEntry } from '@/domain/upgrades/recommendation'
@@ -19,6 +20,7 @@ import {
   useAddUpgrade,
   useBudget,
   useDeleteUpgrade,
+  useMoveUpgradeHome,
   useUpdateUpgrade,
   useUpgradeTree,
 } from './hooks'
@@ -125,6 +127,7 @@ function EntryCard({
 }) {
   const update = useUpdateUpgrade()
   const remove = useDeleteUpgrade()
+  const moveHome = useMoveUpgradeHome()
   const [confirming, setConfirming] = useState(false)
 
   const { upgrade, recommendation, gates, affordable } = entry
@@ -189,6 +192,23 @@ function EntryCard({
             Not yet
           </Button>
         )}
+
+        {/*
+          To the house, where it stops competing with the things you are
+          buying for yourself. The same split the avatar reads for gear:
+          a dishwasher upgrades the place you live, a belt upgrades you.
+        */}
+        <Button
+          variant="ghost"
+          size="sm"
+          aria-label={`Move ${upgrade.title} to Base`}
+          disabled={moveHome.isPending}
+          onClick={() => {
+            moveHome.mutate({ id: upgrade.id, home: BASE })
+          }}
+        >
+          <Home size={14} aria-hidden />
+        </Button>
 
         <Button
           variant={confirming ? 'danger' : 'ghost'}

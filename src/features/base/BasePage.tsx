@@ -7,6 +7,7 @@ import { Badge, Button, Card, Empty, Section } from '@/components/shared/primiti
 import { buttonStyles } from '@/components/shared/styles'
 import type { DailyView } from '@/application/use-cases/dailies/dailies'
 import type { Project } from '@/domain/projects/project'
+import type { Upgrade } from '@/domain/upgrades/upgrade'
 import { BASE } from '@/domain/base/base'
 import { cn } from '@/lib/cn'
 
@@ -14,7 +15,7 @@ import { useKeepToday, useMoveDailyHome, useUndoToday } from '../today/dailies-h
 import { AddDaily } from '../today/Dailies'
 import { useChores } from '../today/dailies-hooks'
 import { useBaseProjects, useMoveProjectHome } from '../projects/hooks'
-import { useUpgradeTree } from '../upgrades/hooks'
+import { useMoveUpgradeHome, useUpgradeTree } from '../upgrades/hooks'
 
 /**
  * Base: the place you live, and everything it asks of you.
@@ -140,6 +141,38 @@ function JobRow({ project }: { readonly project: Project }) {
   )
 }
 
+/**
+ * A house upgrade, with the way back to the tech tree.
+ *
+ * Read-only otherwise, and deliberately: an upgrade carries a price, a
+ * priority and a prerequisite, and a second editor for those on this
+ * screen would be a second place for the gate rules to be got wrong. The
+ * tree owns editing; Base owns the filing.
+ */
+function UpgradeRow({ upgrade }: { readonly upgrade: Upgrade }) {
+  const moveHome = useMoveUpgradeHome()
+
+  return (
+    <li className="flex items-center justify-between gap-2">
+      <span className="text-ink-300 min-w-0 flex-1 truncate text-sm">{upgrade.title}</span>
+      <Badge tone={upgrade.status === 'purchased' ? 'good' : 'neutral'}>
+        {upgrade.status === 'purchased' ? 'Owned' : 'Wanted'}
+      </Badge>
+      <Button
+        variant="ghost"
+        size="sm"
+        aria-label={`Move ${upgrade.title} back to the tech tree`}
+        disabled={moveHome.isPending}
+        onClick={() => {
+          moveHome.mutate({ id: upgrade.id, home: undefined })
+        }}
+      >
+        <Undo2 size={14} aria-hidden />
+      </Button>
+    </li>
+  )
+}
+
 export function BasePage() {
   const [addingChore, setAddingChore] = useState(false)
   const chores = useChores()
@@ -233,19 +266,13 @@ export function BasePage() {
         <Card>
           {upgrades.data === undefined ? null : upgrades.data.length === 0 ? (
             <Empty title="Nothing on the list">
-              Upgrades marked as Base appear here; the rest stay on the tech tree.
+              Anything you mark as the house&rsquo;s on the tech tree appears here — a dishwasher
+              rather than a barbell.
             </Empty>
           ) : (
             <ul className="space-y-1.5">
               {upgrades.data.map((entry) => (
-                <li key={entry.upgrade.id} className="flex items-baseline justify-between gap-3">
-                  <span className="text-ink-300 min-w-0 flex-1 truncate text-sm">
-                    {entry.upgrade.title}
-                  </span>
-                  <Badge tone={entry.upgrade.status === 'purchased' ? 'good' : 'neutral'}>
-                    {entry.upgrade.status === 'purchased' ? 'Owned' : 'Wanted'}
-                  </Badge>
-                </li>
+                <UpgradeRow key={entry.upgrade.id} upgrade={entry.upgrade} />
               ))}
             </ul>
           )}

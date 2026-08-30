@@ -1,10 +1,11 @@
-import type { HomeFilter } from '@/domain/base/base'
+import type { HomeFilter, RecordHome } from '@/domain/base/base'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 
 import { useServices } from '@/app/context'
 import {
   addUpgrade,
+  moveUpgradeHome,
   deleteUpgrade,
   updateUpgrade,
   upgradeTree,
@@ -64,6 +65,22 @@ export function useUpdateUpgrade() {
   return useUpgradeMutation<{ id: UpgradeId; changes: UpgradeChanges }, UpgradeResult>(
     'upgrades.update',
     ({ id, changes }, services) => updateUpgrade(id, changes, services),
+  )
+}
+
+/**
+ * Moving an upgrade between the tech tree and Base.
+ *
+ * Written the day Base was and called by nothing until now, which is why
+ * the Upgrades panel there could only ever be empty. Every mutation here
+ * invalidates the whole `UPGRADES` prefix, and `useUpgradeTree` carries
+ * `home` in its key — so both lists reload from one call and neither can
+ * be left showing a row that has moved.
+ */
+export function useMoveUpgradeHome() {
+  return useUpgradeMutation<{ id: UpgradeId; home: RecordHome | undefined }, unknown>(
+    'upgrades.moved-home',
+    ({ id, home }, services) => moveUpgradeHome(id, home, services),
   )
 }
 
