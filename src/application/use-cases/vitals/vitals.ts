@@ -262,7 +262,7 @@ export async function editVice(
      * drawing a bar for a pool the lifter had just turned back into a
      * count.
      */
-    const { daysLimit: _days, unit: _unit, ...rest } = vice
+    const { daysLimit: _days, unit: _unit, presets: _presets, ...rest } = vice
 
     return {
       ...rest,
@@ -278,6 +278,14 @@ export async function editVice(
        */
       ...(input.unit === undefined || input.unit.trim() === '' ? {} : { unit: input.unit.trim() }),
       ...(input.direction === undefined ? {} : { direction: input.direction }),
+      /*
+       * Presets are replaced wholesale rather than merged, because the
+       * editor shows the whole list — a merge would make a removed row
+       * come back, which is the one thing a list editor must not do.
+       */
+      ...(input.presets === undefined || input.presets.length === 0
+        ? {}
+        : { presets: input.presets }),
       ...daysOrNothing(input.daysLimit),
     }
   })

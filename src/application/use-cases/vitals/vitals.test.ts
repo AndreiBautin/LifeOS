@@ -260,3 +260,64 @@ describe('changing what a pool measures', () => {
     expect((await listVices(services))[0]?.direction).toBe('target')
   })
 })
+
+describe('changing the quick amounts', () => {
+  const caffeine = (presets: { label: string; amount: number }[]): Vice => ({
+    id: asViceId('caffeine'),
+    name: 'Caffeine',
+    capacity: 400,
+    unit: 'mg',
+    cycle: { kind: 'calendar', period: 'day' },
+    presets,
+    spent: [],
+    createdAt: '2026-01-01T00:00:00.000Z',
+  })
+
+  const edit = (presets?: { label: string; amount: number }[]) => ({
+    name: 'Caffeine',
+    capacity: 400,
+    cycle: { kind: 'calendar' as const, period: 'day' as const },
+    unit: 'mg',
+    ...(presets === undefined ? {} : { presets }),
+  })
+
+  /*
+   * Replaced wholesale, not merged. The editor shows the whole list, so
+   * a merge would make a removed row reappear — the one thing a list
+   * editor must not do.
+   */
+  it('replaces the list rather than merging into it', async () => {
+    const services = deps({
+      vices: [
+        caffeine([
+          { label: 'Tea', amount: 47 },
+          { label: 'Espresso', amount: 65 },
+        ]),
+      ],
+    })
+
+    await editVice(
+      asViceId('caffeine'),
+      edit([
+        { label: 'Soda', amount: 45 },
+        { label: 'Pre-workout', amount: 200 },
+      ]),
+      services,
+    )
+
+    const after = (await listVices(services))[0]
+
+    expect(after?.presets?.map((one) => one.label)).toEqual(['Soda', 'Pre-workout'])
+  })
+
+  it('clears them all when the last row is removed', async () => {
+    const services = deps({ vices: [caffeine([{ label: 'Tea', amount: 47 }])] })
+
+    await editVice(asViceId('caffeine'), edit([]), services)
+
+    // Absent rather than an empty array — the card reads `presets ?? []`
+    // either way, and a stored empty list is a thing that has to be
+    // explained to every future reader.
+    expect((await listVices(services))[0]?.presets).toBeUndefined()
+  })
+})

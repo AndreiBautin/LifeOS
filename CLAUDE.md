@@ -1530,6 +1530,19 @@ and gave no way to fill it. There is a typed amount beside the presets
 now, which is useful anyway: a preset cannot know that tonight's glass
 was a large one.
 
+**Quick amounts are editable too, and replaced wholesale rather than
+merged.** The editor shows the entire list, so merging would make a
+removed row reappear — the one thing a list editor must not do. An empty
+list clears the field rather than storing `[]`: the card reads
+`presets ?? []` either way, and a stored empty array is a state every
+future reader has to have explained.
+
+They are shown **only for a measured pool**, because that is the only
+place they are used — a counting pool's row is pips and a plus, with
+nowhere to put a "Coffee" button. And a half-typed row is dropped on
+save: a name with no number is somebody mid-thought, not a preset, and
+saving it would put a nameless button on the card.
+
 **The unit and the direction are editable, and the entries are not
 rewritten.** They were fixed at creation, so a pool labelled wrongly
 could only be retired and rebuilt — throwing away everything it had

@@ -30,6 +30,7 @@ import {
   type ChargeCycle,
   type ChargeDirection,
   type ChargePeriod,
+  type ChargePreset,
   type DaysLimit,
   type Vice,
 } from '@/domain/vitals/charges'
@@ -136,10 +137,10 @@ const SUGGESTIONS: readonly NewVice[] = [
      * the difference between them is a number rather than a name.
      */
     presets: [
-      { label: 'Tea', amount: 47 },
-      { label: 'Espresso', amount: 65 },
+      { label: 'Soda', amount: 45 },
       { label: 'Coffee', amount: 95 },
       { label: 'Energy drink', amount: 160 },
+      { label: 'Pre-workout', amount: 200 },
     ],
   },
 ]
@@ -551,6 +552,7 @@ function ViceRow({ vice, now }: { readonly vice: Vice; readonly now: Date }) {
                     picked.kind === 'rolling' ? { kind: 'rolling', hours: Number(hours) } : picked,
                   direction: shape.direction,
                   ...(shape.unit.trim() === '' ? {} : { unit: shape.unit.trim() }),
+                  ...(shape.value.length === 0 ? {} : { presets: shape.value }),
                   ...(dayLimit.value === undefined ? {} : { daysLimit: dayLimit.value }),
                 },
               },
@@ -719,8 +721,97 @@ function usePoolShape(vice?: Vice) {
     vice === undefined ? 'limit' : directionOf(vice),
   )
   const [unit, setUnit] = useState(vice?.unit ?? '')
+  const [presets, setPresets] = useState<readonly ChargePreset[]>(vice?.presets ?? [])
 
-  return { direction, setDirection, unit, setUnit }
+  return {
+    direction,
+    setDirection,
+    unit,
+    setUnit,
+    presets,
+    setPresets,
+    /*
+     * Only the rows worth keeping. A half-typed row — a name with no
+     * number, or a number with no name — is somebody mid-thought rather
+     * than a preset, and saving it would put a nameless button on the
+     * card.
+     */
+    value: presets.filter((one) => one.label.trim() !== '' && one.amount > 0),
+  }
+}
+
+/**
+ * The quick amounts, editable.
+ *
+ * Shown only for a measured pool, because that is the only place they
+ * are used — a counting pool's row is pips and a plus, with nowhere to
+ * put a "Coffee" button.
+ *
+ * They were set once by whichever suggestion created the pool and could
+ * not be touched afterwards, which is the same defect the unit had: a
+ * list of drinks somebody's caffeine actually comes from is exactly the
+ * kind of thing that changes, and rebuilding the pool to change it would
+ * throw away everything it had recorded.
+ */
+function PresetFields({ state }: { readonly state: ReturnType<typeof usePoolShape> }) {
+  if (state.unit.trim() === '') return null
+
+  const change = (at: number, next: Partial<ChargePreset>) => {
+    state.setPresets(state.presets.map((one, index) => (index === at ? { ...one, ...next } : one)))
+  }
+
+  return (
+    <div className="space-y-1.5">
+      <span className="text-ink-500 block text-xs">Quick amounts</span>
+
+      {state.presets.map((preset, index) => (
+        <div key={index} className="flex items-center gap-2">
+          <input
+            className="bg-ink-900 border-ink-700 text-ink-50 tap-target min-w-0 flex-1 rounded-lg border px-2 text-sm"
+            aria-label={`Quick amount ${String(index + 1)} name`}
+            placeholder="Coffee"
+            value={preset.label}
+            onChange={(event) => {
+              change(index, { label: event.target.value })
+            }}
+          />
+          <input
+            className="bg-ink-900 border-ink-700 text-ink-50 numeric tap-target w-20 rounded-lg border px-2 text-sm"
+            inputMode="decimal"
+            aria-label={`Quick amount ${String(index + 1)} size`}
+            placeholder={state.unit}
+            value={preset.amount === 0 ? '' : String(preset.amount)}
+            onChange={(event) => {
+              change(index, { amount: Number(event.target.value) || 0 })
+            }}
+          />
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            aria-label={`Remove quick amount ${String(index + 1)}`}
+            onClick={() => {
+              state.setPresets(state.presets.filter((_, at) => at !== index))
+            }}
+          >
+            <Trash2 size={14} aria-hidden />
+          </Button>
+        </div>
+      ))}
+
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={() => {
+          state.setPresets([...state.presets, { label: '', amount: 0 }])
+        }}
+      >
+        <Plus size={14} aria-hidden />
+        Quick amount
+      </Button>
+    </div>
+  )
 }
 
 function PoolShapeFields({ state }: { readonly state: ReturnType<typeof usePoolShape> }) {
@@ -761,6 +852,8 @@ function PoolShapeFields({ state }: { readonly state: ReturnType<typeof usePoolS
           }}
         />
       </label>
+
+      <PresetFields state={state} />
     </>
   )
 }
@@ -984,6 +1077,7 @@ function AddVice() {
           cycle: picked.kind === 'rolling' ? { kind: 'rolling', hours: Number(hours) } : picked,
           direction: shape.direction,
           ...(shape.unit.trim() === '' ? {} : { unit: shape.unit.trim() }),
+          ...(shape.value.length === 0 ? {} : { presets: shape.value }),
           ...(dayLimit.value === undefined ? {} : { daysLimit: dayLimit.value }),
         })
         setName('')
