@@ -1408,6 +1408,53 @@ charge; a calendar pool returns all of them. Saying "+1 in 3d" under a
 weekly allowance with three spent would have somebody expecting one drink
 on Monday when they have four.
 
+**One row component, on both screens, and the Vitals page could not
+log anything until there was one.** `features/vitals/PoolRow.tsx`. The
+row on the management screen was a badge, a pencil and a bin — a reading
+with no button beside it — so the section that exists to create and edit
+pools was the one place a pool could not be _used_. Reaching for the plus
+on a limit found nothing there, which is the same shape as every other
+capability in this file that nothing could reach, arriving from the other
+direction: the action existed and the screen had no control for it.
+
+Two sets of buttons is how two screens end up disagreeing about what a
+spend does, so there is one set.
+
+**The rule decides the row's shape, not a flag naming a screen.** With a
+`rule` — the limit written out, "3 a day, on 2 days a week" — the row
+stacks into four bands: name and figure, gauge, detail, controls.
+Without one it stays a single line. That is not a stylistic pairing:
+three buttons and a row of pips leave about two hundred pixels for the
+words, so the rule wrapped four times in a monospaced face while the
+buttons sat in open space — and stacking it _unconditionally_ took
+Today's card from a glance to a full screen and pushed the dailies below
+the fold. The screen that states the rule is the screen being worked on;
+Today is scanned. A measured pool stacks either way, because a bar and a
+row of quick amounts have never fitted on a line.
+
+**The monospaced face is for the figure, never the sentence.** It was on
+the whole detail line, which made a clause about days of the week both
+wider and harder to read for the sake of two numerals inside it.
+
+**The pips are `aria-hidden`, so the count has to be in text.** They are
+a picture of a number and not the number. A row showing "1 a day" in
+place of "0 of 1" left a screen reader the limit with no idea where you
+stood against it — which is what happened the first time the rule was
+added, because it _replaced_ the state rather than joining it.
+
+**Retiring lives in the editor, not on the row.** It is the one thing you
+do to a pool once, and a bin sitting permanently beside a plus pressed
+daily is a mis-tap waiting to happen — the more so once the row carries
+buttons meant to be pressed.
+
+**The add form folds away.** It stood open at the foot of the section: a
+name box, a direction toggle, a unit field, quick amounts, a size, a
+period and a day limit, permanently on a screen whose job the rest of the
+time is to show four rows and let you press plus. The unit field was the
+giveaway — a box asking what you measure kush in, under a list of pools
+that already know. A form you open is also a form you finish; one left
+open has no moment where it is submitted, so it reads as furniture.
+
 **Editing a pool had no screen for three commits.** `editVice` existed
 from the day pools did and nothing called it — the third time in this app
 a working capability was invisible because nothing reached it. It became

@@ -2,7 +2,7 @@ import { Flame, Pencil, Plus, Scale, Trash2, Undo2 } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { useState } from 'react'
 
-import { Badge, Button, Card, Empty, Section } from '@/components/shared/primitives'
+import { Button, Card, Empty, Section } from '@/components/shared/primitives'
 import { useServices, useSettings } from '@/app/context'
 import {
   READINESS_SCALE,
@@ -42,6 +42,7 @@ import { AddDaily } from '../today/Dailies'
 import { useKeepToday, useMoveDailyHome, useUndoToday, useUpkeep } from '../today/dailies-hooks'
 import { projectCorridor } from '@/domain/vitals/weight'
 import { TrendChart } from '@/components/shared/TrendChart'
+import { PoolRow } from './PoolRow'
 
 import type { NewVice } from '@/application/use-cases/vitals/vitals'
 
@@ -609,6 +610,30 @@ function ViceRow({ vice, now }: { readonly vice: Vice; readonly now: Date }) {
             >
               Cancel
             </Button>
+            {/*
+              Retiring lives here rather than on the row. It is the one
+              thing on a pool you do once, and a bin sitting permanently
+              beside the plus you press daily is a mis-tap waiting to
+              happen — the more so now that the row carries buttons that
+              are meant to be pressed.
+
+              Retire, not delete. Months of spends are a true account of
+              a stretch of your life, and deleting the pool takes them
+              with it.
+            */}
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="ml-auto"
+              aria-label={`Retire ${vice.name}`}
+              disabled={retire.isPending}
+              onClick={() => {
+                retire.mutate(vice.id)
+              }}
+            >
+              <Trash2 size={14} aria-hidden />
+            </Button>
           </div>
           <PoolShapeFields state={shape} />
 
@@ -657,50 +682,31 @@ function ViceRow({ vice, now }: { readonly vice: Vice; readonly now: Date }) {
     )
   }
 
+  /*
+   * The same row Today draws, because it is the same pool and the same
+   * spend. What this screen adds is the rule it is being held to and a
+   * way into the editor; what it no longer does is show a reading with
+   * no button beside it.
+   */
   return (
-    <li className="flex items-center gap-3 py-2">
-      <div className="min-w-0 flex-1">
-        <p className="text-ink-50 truncate text-sm font-medium">{vice.name}</p>
-        {/*
-          The cycle and nothing else. `describeCycle` already states the
-          whole rule — "4 drinks a week, on Fri, Sat" — and the badge
-          beside it states where you are against that rule, so the
-          lifetime count that used to sit here was a third number saying
-          neither. It also meant two different things depending on the
-          pool: twelve entries for a counting pool, twelve *entries* and
-          not twelve hundred milligrams for a measured one, which is why
-          it needed a hedge word on the end to be true at all.
-        */}
-        <p className="text-ink-700 numeric text-xs">{describeCycle(vice)}</p>
-      </div>
-      <Badge tone={reading.over > 0 ? 'bad' : 'neutral'}>
-        {reading.over > 0 ? `${String(reading.over)} over` : `${String(reading.available)} left`}
-      </Badge>
-      <Button
-        variant="ghost"
-        size="sm"
-        aria-label={`Edit ${vice.name}`}
-        onClick={() => {
-          setOpen(true)
-        }}
-      >
-        <Pencil size={14} aria-hidden />
-      </Button>
-      {/*
-        Retire, not delete. Months of spends are a true account of a
-        stretch of your life, and deleting the pool takes them with it.
-      */}
-      <Button
-        variant="ghost"
-        size="sm"
-        aria-label={`Retire ${vice.name}`}
-        disabled={retire.isPending}
-        onClick={() => {
-          retire.mutate(vice.id)
-        }}
-      >
-        <Trash2 size={14} aria-hidden />
-      </Button>
+    <li>
+      <PoolRow
+        pool={{ vice, reading }}
+        now={now}
+        rule={describeCycle(vice)}
+        action={
+          <Button
+            variant="ghost"
+            size="sm"
+            aria-label={`Edit ${vice.name}`}
+            onClick={() => {
+              setOpen(true)
+            }}
+          >
+            <Pencil size={14} aria-hidden />
+          </Button>
+        }
+      />
     </li>
   )
 }
@@ -721,9 +727,9 @@ function ViceRow({ vice, now }: { readonly vice: Vice; readonly now: Date }) {
  * it had recorded. Two copies of these controls would have been two
  * places for that to happen again.
  */
-function usePoolShape(vice?: Vice) {
+function usePoolShape(vice?: Vice, fallback: ChargeDirection = 'limit') {
   const [direction, setDirection] = useState<ChargeDirection>(
-    vice === undefined ? 'limit' : directionOf(vice),
+    vice === undefined ? fallback : directionOf(vice),
   )
   const [unit, setUnit] = useState(vice?.unit ?? '')
   const [presets, setPresets] = useState<readonly ChargePreset[]>(vice?.presets ?? [])
@@ -1056,14 +1062,44 @@ function Suggestions({ of }: { readonly of: ChargeDirection }) {
   )
 }
 
-function AddVice() {
+/**
+ * Making a pool, folded away until asked for.
+ *
+ * It used to stand open at the foot of the section: a name box, a
+ * direction toggle, a unit field, quick amounts, a size, a period and a
+ * day limit, every one of them permanently on a screen whose job the
+ * rest of the time is to show four rows and let you press plus. The unit
+ * field was the giveaway — a box asking what you measure kush in, under
+ * a list of pools that already know.
+ *
+ * A form you open is also a form you finish. One left open has no
+ * moment where it is submitted, so it reads as part of the furniture.
+ */
+function AddVice({ of }: { readonly of: ChargeDirection }) {
   const add = useAddVice()
+  const [open, setOpen] = useState(false)
   const [name, setName] = useState('')
   const [capacity, setCapacity] = useState('2')
   const [choice, setChoice] = useState('week')
   const [hours, setHours] = useState('12')
   const dayLimit = useDaysLimit()
-  const shape = usePoolShape()
+  const shape = usePoolShape(undefined, of)
+
+  if (!open) {
+    return (
+      <Button
+        variant="outline"
+        size="sm"
+        full
+        onClick={() => {
+          setOpen(true)
+        }}
+      >
+        <Plus size={14} aria-hidden />
+        {of === 'limit' ? 'New limit' : 'New target'}
+      </Button>
+    )
+  }
 
   return (
     <form
@@ -1086,6 +1122,7 @@ function AddVice() {
           ...(dayLimit.value === undefined ? {} : { daysLimit: dayLimit.value }),
         })
         setName('')
+        setOpen(false)
       }}
     >
       <input
@@ -1132,6 +1169,15 @@ function AddVice() {
         <Button type="submit" variant="primary" disabled={add.isPending}>
           <Plus size={16} aria-hidden />
           Add
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          onClick={() => {
+            setOpen(false)
+          }}
+        >
+          Cancel
         </Button>
       </div>
 
@@ -1329,7 +1375,7 @@ export function VitalsPage() {
           */}
           <Suggestions of="limit" />
 
-          <AddVice />
+          <AddVice of="limit" />
         </Card>
       </Section>
 
@@ -1348,6 +1394,8 @@ export function VitalsPage() {
           )}
 
           <Suggestions of="target" />
+
+          <AddVice of="target" />
         </Card>
       </Section>
 
