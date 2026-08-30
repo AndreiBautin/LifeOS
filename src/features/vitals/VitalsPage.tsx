@@ -661,12 +661,17 @@ function ViceRow({ vice, now }: { readonly vice: Vice; readonly now: Date }) {
     <li className="flex items-center gap-3 py-2">
       <div className="min-w-0 flex-1">
         <p className="text-ink-50 truncate text-sm font-medium">{vice.name}</p>
-        <p className="text-ink-700 numeric text-xs">
-          {/* `describeCycle` states the whole limit — "4 a week", "2, one
-              back every 12h" — so the sentence that used to wrap it is
-              gone rather than doubled. */}
-          {describeCycle(vice)} · {vice.spent.length} spent all told
-        </p>
+        {/*
+          The cycle and nothing else. `describeCycle` already states the
+          whole rule — "4 drinks a week, on Fri, Sat" — and the badge
+          beside it states where you are against that rule, so the
+          lifetime count that used to sit here was a third number saying
+          neither. It also meant two different things depending on the
+          pool: twelve entries for a counting pool, twelve *entries* and
+          not twelve hundred milligrams for a measured one, which is why
+          it needed a hedge word on the end to be true at all.
+        */}
+        <p className="text-ink-700 numeric text-xs">{describeCycle(vice)}</p>
       </div>
       <Badge tone={reading.over > 0 ? 'bad' : 'neutral'}>
         {reading.over > 0 ? `${String(reading.over)} over` : `${String(reading.available)} left`}
@@ -1302,13 +1307,11 @@ export function VitalsPage() {
         itself as either of two things, which is what a heading does when
         it is covering two.
       */}
-      <Section title="Limits" description="What you are keeping under, and what is left of it">
+      <Section title="Limits" description="What you are keeping under">
         <Card>
           {vices.data === undefined ? null : limits.length === 0 ? (
             <Empty title="Nothing limited yet">
-              A limit as a rule has two states, kept and broken. A limit as a resource has as many
-              states as it has charges — the question stops being whether you were good and becomes
-              what you have left.
+              Charges you spend down, rather than rules you keep or break.
             </Empty>
           ) : (
             <ul className="divide-ink-800 mb-3 divide-y">
@@ -1330,12 +1333,11 @@ export function VitalsPage() {
         </Card>
       </Section>
 
-      <Section title="Targets" description="What you are trying to reach before the day is out">
+      <Section title="Targets" description="What you are trying to reach">
         <Card>
           {vices.data === undefined ? null : targets.length === 0 ? (
             <Empty title="Nothing to reach yet">
-              The same mechanism read from the other end: instead of what is left, how far there is
-              to go.
+              The same pools read from the other end: how far there is to go.
             </Empty>
           ) : (
             <ul className="divide-ink-800 mb-3 divide-y">
