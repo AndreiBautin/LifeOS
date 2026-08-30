@@ -1,12 +1,14 @@
-import { Archive, Check, Flame, Plus } from 'lucide-react'
+import { Archive, Check, Flame, Home, Plus } from 'lucide-react'
 import { useState } from 'react'
 
 import type { DailyView } from '@/application/use-cases/dailies/dailies'
 import { Button, Card, Empty } from '@/components/shared/primitives'
 import type { Cadence } from '@/domain/dailies/daily'
 
+import { BASE, type RecordHome } from '@/domain/base/base'
 import {
   useAddDaily,
+  useMoveDailyHome,
   useDailies,
   useKeepToday,
   useRetireDaily,
@@ -58,6 +60,7 @@ function DailyRow({ view }: { readonly view: DailyView }) {
   const keep = useKeepToday()
   const undo = useUndoToday()
   const retire = useRetireDaily()
+  const moveHome = useMoveDailyHome()
   const [confirming, setConfirming] = useState(false)
 
   const { daily, doneToday, expectedToday } = view
@@ -105,6 +108,24 @@ function DailyRow({ view }: { readonly view: DailyView }) {
       )}
 
       {/*
+        Off to Base, for the hoovering somebody added here before noticing
+        it was house work. A move rather than a re-create — the days it
+        has been kept on are the whole value of the record — and it comes
+        straight back the same way from the Base screen.
+      */}
+      <Button
+        size="sm"
+        variant="ghost"
+        aria-label={`Move ${daily.title} to Base`}
+        disabled={moveHome.isPending}
+        onClick={() => {
+          moveHome.mutate({ id: daily.id, home: BASE })
+        }}
+      >
+        <Home size={16} aria-hidden />
+      </Button>
+
+      {/*
         Retire rather than delete: the days it was kept survive, and eighty
         days of a habit you have finished with is a thing that happened.
       */}
@@ -123,8 +144,24 @@ function DailyRow({ view }: { readonly view: DailyView }) {
   )
 }
 
-function AddDaily({ onDone }: { readonly onDone: () => void }) {
-  const add = useAddDaily()
+/**
+ * The add form, shared by Today and Base.
+ *
+ * Exported rather than copied: a chore and a daily are the same record
+ * on the same three cadences, and the second copy of this would be the
+ * place a cadence bug lives on after the first is fixed. `home` is the
+ * only difference between the two callers.
+ */
+export function AddDaily({
+  onDone,
+  home,
+  placeholder = 'Something you mean to do daily',
+}: {
+  readonly onDone: () => void
+  readonly home?: RecordHome
+  readonly placeholder?: string
+}) {
+  const add = useAddDaily(home)
   const [title, setTitle] = useState('')
   const [days, setDays] = useState<readonly number[]>([])
   const [monthly, setMonthly] = useState(false)
@@ -159,7 +196,7 @@ function AddDaily({ onDone }: { readonly onDone: () => void }) {
           className={FIELD}
           value={title}
           aria-label="New daily"
-          placeholder="Something you mean to do daily"
+          placeholder={placeholder}
           onChange={(event) => {
             setTitle(event.target.value)
           }}

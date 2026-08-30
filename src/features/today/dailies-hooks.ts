@@ -1,10 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { useServices } from '@/app/context'
+import type { RecordHome } from '@/domain/base/base'
 import {
   addDaily,
   dailiesToday,
   keepToday,
+  moveDailyHome,
   removeDaily,
   retireDaily,
   undoToday,
@@ -17,11 +19,19 @@ import { logger } from '@/shared/logging/logger'
 /**
  * Habits, from the UI's side.
  *
- * Everything invalidates `['today']` and `['character']`: a tick changes
- * the agenda, the streak and the XP on the character sheet, and a narrower
- * key would leave one of the three showing yesterday's answer.
+ * Everything invalidates `['today']`, `['character']` and `['base']`: a
+ * tick changes the agenda, the streak and the XP on the character sheet,
+ * and a narrower key would leave one of the three showing yesterday's
+ * answer.
+ *
+ * `['base']` is here because **a daily lives in one of two places and
+ * these hooks serve both.** Without it, adding a chore wrote the record
+ * and left the Base screen saying "No chores yet" — the row was in the
+ * database and the list that should have shown it was never told. A
+ * mutation has to invalidate every list its record could appear on, not
+ * only the one the hook was first written for.
  */
-const KEYS = [['today'], ['character']] as const
+const KEYS = [['today'], ['character'], ['base']] as const
 
 export function useDailies() {
   const services = useServices()
@@ -59,10 +69,32 @@ function useDailyMutation<TVariables>(
   })
 }
 
-export function useAddDaily() {
+/**
+ * Adding a daily, into whichever area is doing the asking.
+ *
+ * The screen names the home rather than the hook guessing it, the same
+ * way it names the act for `useKeepToday` — Today creates dailies and
+ * Base creates chores, and each of them knows which it is.
+ */
+export function useAddDaily(home?: RecordHome) {
   return useDailyMutation<{ title: string; cadence: Cadence }>(
     'dailies.added',
-    ({ title, cadence }, services) => addDaily(title, cadence, services),
+    ({ title, cadence }, services) => addDaily(title, cadence, services, home),
+  )
+}
+
+/**
+ * Moving a daily between Today and Base.
+ *
+ * Written when Base was and never called until now, which is why a daily
+ * added on Today by somebody who meant it as a chore was stuck there
+ * permanently. A move, not a re-create: the days it has already been
+ * kept on are the whole value of the record.
+ */
+export function useMoveDailyHome() {
+  return useDailyMutation<{ id: DailyId; home: RecordHome | undefined }>(
+    'dailies.moved-home',
+    ({ id, home }, services) => moveDailyHome(id, home, services),
   )
 }
 

@@ -37,10 +37,24 @@ export interface DailyView {
   readonly expectedToday: boolean
 }
 
+/**
+ * Creates a daily, in the area that asked for it.
+ *
+ * `home` exists because Base could not make a chore at all. The screen
+ * said "add one from Today", Today created a daily in its own area, and
+ * the only thing that could have moved it — `moveDailyHome` — had no
+ * caller anywhere in the app. So the instruction was impossible to
+ * follow, which is worse than a missing button: a missing button is
+ * visible.
+ *
+ * Absent means the record's own area, as everywhere else `belongsTo` is
+ * read.
+ */
 export async function addDaily(
   title: string,
   cadence: Cadence,
   deps: DailyDeps,
+  home?: RecordHome,
 ): Promise<{ readonly error?: string }> {
   const trimmed = title.trim()
   if (trimmed === '') return { error: 'A daily needs a name.' }
@@ -51,6 +65,7 @@ export async function addDaily(
     cadence,
     done: [],
     createdAt: deps.clock.now().toISOString(),
+    ...(home === undefined ? {} : { belongsTo: home }),
   })
 
   return {}

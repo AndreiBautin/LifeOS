@@ -1,4 +1,5 @@
 import { Flame, Undo2, Wrench } from 'lucide-react'
+import { useState } from 'react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { Link } from 'react-router-dom'
 
@@ -6,9 +7,11 @@ import { Badge, Button, Card, Empty, Section } from '@/components/shared/primiti
 import { buttonStyles } from '@/components/shared/styles'
 import type { DailyView } from '@/application/use-cases/dailies/dailies'
 import type { Project } from '@/domain/projects/project'
+import { BASE } from '@/domain/base/base'
 import { cn } from '@/lib/cn'
 
-import { useKeepToday, useUndoToday } from '../today/dailies-hooks'
+import { useKeepToday, useMoveDailyHome, useUndoToday } from '../today/dailies-hooks'
+import { AddDaily } from '../today/Dailies'
 import { useChores } from '../today/dailies-hooks'
 import { useBaseProjects, useMoveProjectHome } from '../projects/hooks'
 import { useUpgradeTree } from '../upgrades/hooks'
@@ -37,6 +40,7 @@ import { useUpgradeTree } from '../upgrades/hooks'
 function ChoreRow({ view }: { readonly view: DailyView }) {
   const keep = useKeepToday('base.chore-kept')
   const undo = useUndoToday()
+  const moveHome = useMoveDailyHome()
 
   const { daily, doneToday, expectedToday } = view
 
@@ -73,6 +77,21 @@ function ChoreRow({ view }: { readonly view: DailyView }) {
           {view.streak}
         </span>
       )}
+
+      {/* The way back out, so a chore filed here by mistake is one tap
+          from Today rather than a re-create — the days it has been kept
+          on are the whole value of the record. */}
+      <Button
+        variant="ghost"
+        size="sm"
+        aria-label={`Move ${daily.title} back to Today`}
+        disabled={moveHome.isPending}
+        onClick={() => {
+          moveHome.mutate({ id: daily.id, home: undefined })
+        }}
+      >
+        <Undo2 size={14} aria-hidden />
+      </Button>
     </div>
   )
 }
@@ -122,6 +141,7 @@ function JobRow({ project }: { readonly project: Project }) {
 }
 
 export function BasePage() {
+  const [addingChore, setAddingChore] = useState(false)
   const chores = useChores()
   const jobs = useBaseProjects()
   /*
@@ -138,11 +158,36 @@ export function BasePage() {
     <div className="space-y-4">
       <PageHeader title="Base" subtitle="The place you live, and what it is asking for" />
 
-      <Section title="Chores" description="What the house wants today">
+      <Section
+        title="Chores"
+        description="What the house wants today"
+        action={
+          <Button
+            variant={addingChore ? 'ghost' : 'outline'}
+            size="sm"
+            onClick={() => {
+              setAddingChore(!addingChore)
+            }}
+          >
+            {addingChore ? 'Close' : 'Add'}
+          </Button>
+        }
+      >
+        {addingChore && (
+          <AddDaily
+            home={BASE}
+            placeholder="Something the house needs doing"
+            onDone={() => {
+              setAddingChore(false)
+            }}
+          />
+        )}
+
         <Card>
           {chores.data === undefined ? null : dueChores.length === 0 && otherChores.length === 0 ? (
             <Empty title="No chores yet">
-              Add one from Today — anything on a daily, weekly or monthly cadence.
+              Add one above — the hoovering, the bins, anything on a daily, weekly or monthly
+              cadence.
             </Empty>
           ) : (
             <>

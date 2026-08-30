@@ -1225,6 +1225,28 @@ these types has to pick a side and the failure is silent in exactly one
 direction: forget to exclude Base and a house job shows in the quest log
 _and_ on Base, reading as a duplicate rather than a bug.
 
+**A chore is created on Base, and for three commits it could not be
+created at all.** `moveDailyHome` and `moveUpgradeHome` were written the
+day Base was and **nothing ever called either of them** — so the empty
+state saying "add one from Today" was advice that could not be followed:
+Today made a daily in its own area and no control existed to move it.
+That is worse than a missing button, because a missing button is visible;
+this was a screen giving instructions the app could not carry out.
+
+`addDaily` takes a `home` now and `AddDaily` is shared by both screens
+rather than copied — a chore and a daily are the same record on the same
+three cadences, and a second copy of that form is where a cadence bug
+would outlive its fix. The move works both ways, because the common case
+is a habit added on Today by somebody who only afterwards noticed it was
+house work.
+
+**A mutation must invalidate every list its record can appear on.** These
+hooks invalidated `['today']` and `['character']` and not `['base']`, so
+the first working "add a chore" wrote the row and left the Base screen
+saying "No chores yet" — the record in the database and the list that
+should show it never told. A daily lives in one of two places and these
+hooks serve both.
+
 **Every list that can return both takes a `HomeFilter`, with no default.**
 A default would be an opinion the call site did not state. Making it
 required turned the compiler into the thing that finds the missed call
