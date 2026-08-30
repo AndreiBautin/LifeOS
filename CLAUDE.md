@@ -1410,6 +1410,26 @@ sentiment differs, which is why it is a flag on one mechanism rather than
 two mechanisms. Absent means limit — every pool written before this was
 one.
 
+**Name the substance, not the vessel.** A Coffee pool counting cups sat
+beside a Caffeine pool counting milligrams, and the cups measured the
+wrong thing: a cold brew and an espresso are one coffee each and roughly
+three times apart in the quantity anybody means to keep down. Two pools
+for one substance is two numbers to keep in step, one of which is not the
+answer. Coffee is gone from the suggestions and lives on as a _preset_ —
+which is the one place a vessel belongs, because there it is a number
+rather than a name.
+
+Beer went the same way and became **Alcohol, counted in standard
+drinks**. It stays a count rather than gaining a unit: four is small
+enough to read as pips, and a standard drink already is the unit.
+
+**Converting a count pool to a measured one cannot be done from the
+history.** Coffee-counts do not become caffeine-milligrams, because
+nothing recorded whether each cup was an espresso or a cold brew, and
+inventing a size for every past entry would be fabricating the record.
+Retiring the old pool and starting the new one is the honest move — the
+old one keeps what it truly held.
+
 **A unit is not cosmetic.** A double espresso and a cold brew are one
 coffee each and very different amounts of caffeine, which is the whole
 reason `capacity` had to stop being a count. Pools with a unit get a bar

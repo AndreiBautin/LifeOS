@@ -68,9 +68,23 @@ import {
  * budgets four a week as "one back every forty-two hours".
  */
 const SUGGESTIONS: readonly NewVice[] = [
-  { name: 'Coffee', capacity: 2, cycle: { kind: 'rolling', hours: 12 } },
+  /*
+   * **Name the substance, not the vessel.**
+   *
+   * Coffee was here as a count and is gone, because it measured the
+   * wrong thing next to caffeine: a cold brew and an espresso are one
+   * coffee each and roughly three times apart in the thing anybody
+   * actually means to keep down. Two pools for one substance is two
+   * numbers to keep in step and one of them not being the answer.
+   *
+   * Beer went the same way. A pint and a shot are both "one drink" only
+   * if what you are counting is drinks, so the pool counts **standard
+   * drinks** and is named for the substance. It stays a count rather
+   * than gaining a unit: four is small enough to read as pips, and a
+   * standard drink already *is* the unit.
+   */
   { name: 'Kush', capacity: 1, cycle: { kind: 'calendar', period: 'day' } },
-  { name: 'Beer', capacity: 4, cycle: { kind: 'calendar', period: 'week' } },
+  { name: 'Alcohol', capacity: 4, cycle: { kind: 'calendar', period: 'week' } },
   /*
    * Water is the one that runs the other way — filled rather than spent
    * — and caffeine is the one that shows why a count was not enough: a
@@ -99,7 +113,12 @@ const SUGGESTIONS: readonly NewVice[] = [
     unit: 'mg',
     direction: 'limit',
     cycle: { kind: 'calendar', period: 'day' },
+    /*
+     * The presets are where the vessels belong — this is the one place
+     * the difference between them is a number rather than a name.
+     */
     presets: [
+      { label: 'Tea', amount: 47 },
       { label: 'Espresso', amount: 65 },
       { label: 'Coffee', amount: 95 },
       { label: 'Energy drink', amount: 160 },
@@ -873,14 +892,14 @@ export function VitalsPage() {
 
       <Section
         title="Charges"
-        description="Things you mean to have less of, as a pool that comes back"
+        description="A limit to stay under or a target to reach, refilling on its own"
       >
         <Card>
           {vices.data === undefined ? null : vices.data.length === 0 ? (
-            <Empty title="Nothing limited yet">
+            <Empty title="Nothing tracked yet">
               A limit as a rule has two states, kept and broken. A limit as a resource has as many
               states as it has charges — the question stops being whether you were good and becomes
-              what you have left.
+              what you have left. A target works the same way from the other end.
             </Empty>
           ) : (
             <ul className="divide-ink-800 mb-3 divide-y">

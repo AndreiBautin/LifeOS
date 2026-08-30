@@ -1,7 +1,7 @@
 import type { ViceId } from '@/domain/ids/ids'
 
 /**
- * Things you mean to have less of, as a pool of charges that comes back.
+ * Amounts you are keeping to, as a pool that refills on its own.
  *
  * The framing is the whole design. A limit stated as a rule — "no more
  * than two coffees" — has exactly two states, kept and broken, and the
