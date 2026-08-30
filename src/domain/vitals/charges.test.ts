@@ -445,3 +445,85 @@ describe('entries written before amounts existed', () => {
     expect(spendEntry(at, 95)).toContain('#95')
   })
 })
+
+describe('limiting the days as well as the amount', () => {
+  // Three a day, on at most two days a week.
+  const drink = (spent: readonly string[]): Vice => ({
+    id: asViceId('alcohol'),
+    name: 'Alcohol',
+    capacity: 3,
+    cycle: { kind: 'calendar', period: 'day' },
+    daysLimit: { days: 2, period: 'week' },
+    spent,
+    createdAt: '2026-01-01T00:00:00.000Z',
+  })
+
+  // The week beginning Monday 24 August 2026.
+  const on = (day: number, hour = 20) => spendEntry(new Date(2026, 7, day, hour))
+
+  it('counts drinking days, not drinks', () => {
+    // Three on one Tuesday is one day used, not three.
+    const reading = readCharges(
+      drink([on(25, 18), on(25, 19), on(25, 20)]),
+      new Date(2026, 7, 25, 22),
+    )
+
+    expect(reading.days?.used).toBe(1)
+    expect(reading.days?.allowed).toBe(2)
+  })
+
+  /*
+   * The case that makes it usable rather than annoying: a day already
+   * started does not cost a second one, so the third drink on a Friday
+   * you had already begun is not "breaking the limit".
+   */
+  it('does not charge a second day for a day already started', () => {
+    const reading = readCharges(drink([on(25), on(26)]), new Date(2026, 7, 26, 22))
+
+    expect(reading.days?.used).toBe(2)
+    expect(reading.days?.todayCounts).toBe(true)
+    // One of three drunk *today* — the other was yesterday, and the
+    // amount runs on its own daily cycle — so two are still available.
+    expect(reading.available).toBe(2)
+  })
+
+  /*
+   * And the point of the whole thing: out of days shuts the pool on a
+   * new day, even though that day's own amount is untouched.
+   */
+  it('shuts on a new day once the days are spent', () => {
+    const reading = readCharges(drink([on(25), on(26)]), new Date(2026, 7, 27, 20))
+
+    expect(reading.days?.todayCounts).toBe(false)
+    expect(reading.available).toBe(0)
+  })
+
+  it('opens again when the period turns over', () => {
+    // The following Monday: last week's days are last week's.
+    const reading = readCharges(drink([on(25), on(26)]), new Date(2026, 7, 31, 20))
+
+    expect(reading.days?.used).toBe(0)
+    expect(reading.available).toBe(3)
+  })
+
+  it('still limits the amount on a day that is allowed', () => {
+    const reading = readCharges(
+      drink([on(25, 18), on(25, 19), on(25, 20)]),
+      new Date(2026, 7, 25, 22),
+    )
+
+    expect(reading.available).toBe(0)
+    expect(reading.days?.todayCounts).toBe(true)
+  })
+
+  it('says both halves in a sentence', () => {
+    expect(describeCycle(drink([]))).toBe('3 a day, on 2 days a week')
+  })
+
+  it('says nothing about days when a pool has no such limit', () => {
+    const plain: Vice = { ...drink([]), capacity: 4 }
+    delete (plain as { daysLimit?: unknown }).daysLimit
+
+    expect(readCharges(plain, new Date(2026, 7, 27, 20)).days).toBeUndefined()
+  })
+})

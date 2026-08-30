@@ -86,6 +86,20 @@ export interface Vice {
    */
   readonly unit?: string
   readonly direction?: ChargeDirection
+  /**
+   * How many *days* the pool may be touched at all, within a period.
+   *
+   * The second dimension, and neither existing shape could stand in for
+   * it: "four a week" permits four on one night, and "three a day"
+   * permits twenty-one. Moderating drink is usually both at once — a few
+   * on a couple of nights — and stating it needs two numbers because it
+   * is two decisions.
+   *
+   * Independent of `cycle`, which governs the *amount*. The common
+   * pairing is an amount per day with days per week, but an amount per
+   * week on at most two days is equally sayable and works unchanged.
+   */
+  readonly daysLimit?: { readonly days: number; readonly period: ChargePeriod }
   /** Offered when logging, so a glass of water is one tap and not a form. */
   readonly presets?: readonly ChargePreset[]
   /**
@@ -132,6 +146,20 @@ export interface ChargeReading {
   readonly over: number
   /** When the next charge comes back. Absent when the pool is full. */
   readonly nextBackAt?: Date
+  /**
+   * The day allowance, when the pool has one.
+   *
+   * `todayCounts` is the load-bearing part: a day already spent on does
+   * not cost a second one, so a pool with both days used is still open
+   * on one of those days and shut on any other. Without it a second
+   * drink on a Friday you had already started would read as breaking the
+   * limit.
+   */
+  readonly days?: {
+    readonly used: number
+    readonly allowed: number
+    readonly todayCounts: boolean
+  }
 }
 
 /**
@@ -263,6 +291,31 @@ export function periodEnd(now: Date, period: ChargePeriod): Date {
  * the right way round: a nicer mechanic that desynchronises is not
  * nicer.
  */
+/**
+ * Which distinct days inside the period have anything logged on them.
+ *
+ * Distinct days rather than entries: three drinks on one Friday is one
+ * drinking day, which is the whole point of counting this separately
+ * from the amount.
+ */
+function daysUsedIn(vice: Vice, now: Date, period: ChargePeriod): Set<string> {
+  const from = periodStart(now, period).getTime()
+
+  return new Set(
+    vice.spent
+      .map(parseSpend)
+      .filter((spend): spend is Spend => spend !== undefined && spend.at >= from)
+      .map((spend) => toLocalDayKey(new Date(spend.at))),
+  )
+}
+
+/** `YYYY-MM-DD` in local time, which is the day a person means. */
+function toLocalDayKey(date: Date): string {
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${String(date.getFullYear())}-${month}-${day}`
+}
+
 export function readCharges(vice: Vice, now: Date): ChargeReading {
   const cycle = cycleOf(vice)
 
@@ -293,7 +346,36 @@ export function readCharges(vice: Vice, now: Date): ChargeReading {
    */
   const over = directionOf(vice) === 'limit' ? Math.max(0, onCooldown - vice.capacity) : 0
 
-  const full = { capacity: vice.capacity, available, onCooldown, over }
+  /*
+   * The day allowance, folded into what is available.
+   *
+   * Out of days and today is not one of them means nothing is available,
+   * whatever the amount says — "can I have one" is answered by both
+   * constraints and the stricter one wins. Spending is still never
+   * refused; this only reports.
+   */
+  const dayLimit = vice.daysLimit
+  const days =
+    dayLimit === undefined
+      ? undefined
+      : (() => {
+          const used = daysUsedIn(vice, now, dayLimit.period)
+          return {
+            used: used.size,
+            allowed: dayLimit.days,
+            todayCounts: used.has(toLocalDayKey(now)),
+          }
+        })()
+
+  const shutForToday = days !== undefined && !days.todayCounts && days.used >= days.allowed
+
+  const full = {
+    capacity: vice.capacity,
+    available: shutForToday ? 0 : available,
+    onCooldown,
+    over,
+    ...(days === undefined ? {} : { days }),
+  }
 
   /*
    * On a calendar cycle the whole pool returns at the boundary, so there
@@ -323,9 +405,16 @@ export function describeCycle(vice: Vice): string {
   const amount =
     vice.unit === undefined ? String(vice.capacity) : `${String(vice.capacity)} ${vice.unit}`
 
-  return cycle.kind === 'calendar'
-    ? `${amount} ${CHARGE_PERIOD_LABELS[cycle.period]}`
-    : `${amount}, one back every ${String(cycle.hours)}h`
+  const limit =
+    cycle.kind === 'calendar'
+      ? `${amount} ${CHARGE_PERIOD_LABELS[cycle.period]}`
+      : `${amount}, one back every ${String(cycle.hours)}h`
+
+  if (vice.daysLimit === undefined) return limit
+
+  return `${limit}, on ${String(vice.daysLimit.days)} day${
+    vice.daysLimit.days === 1 ? '' : 's'
+  } ${CHARGE_PERIOD_LABELS[vice.daysLimit.period]}`
 }
 
 /**

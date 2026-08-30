@@ -1426,6 +1426,31 @@ identity is correct, and an array of objects would need a merge rule
 written from scratch to say the same thing. A bare timestamp reads as
 one, so nothing on a device needed migrating.
 
+**A pool can limit the days as well as the amount, and neither number
+can stand in for the other.** `daysLimit` in `domain/vitals/charges.ts`.
+"Four a week" permits four on one night; "three a day" permits
+twenty-one. Moderating drink is usually both at once — a few on a couple
+of nights — and saying it takes two numbers because it is two decisions.
+The two run on independent periods: an amount per day with days per week
+is the common pairing, and an amount per week on at most two days works
+unchanged.
+
+**`todayCounts` is the load-bearing part.** A day already started does
+not cost a second one, so a pool with both days spent is still open on
+one of those days and shut on any other. Without it the third drink on a
+Friday you had already begun would read as breaking the limit, which is
+the kind of wrongness that makes somebody stop logging.
+
+**The stricter constraint wins in `available`**, because "can I have one"
+is answered by both. Out of days on a fresh day reports nothing available
+even when that day's own amount is untouched — and **spending is still
+never refused**, so logging it anyway records the day overrun as `3 of 2
+days used` rather than hiding it.
+
+**Distinct days, not entries.** Three drinks on one Friday is one
+drinking day, which is the entire reason this is counted separately from
+the amount.
+
 **A pool is a limit or a target, and only a limit can be exceeded.**
 Caffeine is spent down and going past 400mg is worth seeing; water is
 filled up, and reporting "500 over" for a fourth glass would be scolding

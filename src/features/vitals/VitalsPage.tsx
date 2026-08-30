@@ -18,11 +18,14 @@ import {
   TREND_DAYS,
 } from '@/domain/vitals/weight'
 import {
+  CHARGE_PERIOD_LABELS,
+  CHARGE_PERIODS,
   cycleOf,
   describeCycle,
   readCharges,
   rollingHours,
   type ChargeCycle,
+  type ChargePeriod,
   type Vice,
 } from '@/domain/vitals/charges'
 import { UPKEEP } from '@/domain/base/base'
@@ -84,7 +87,17 @@ const SUGGESTIONS: readonly NewVice[] = [
    * standard drink already *is* the unit.
    */
   { name: 'Kush', capacity: 1, cycle: { kind: 'calendar', period: 'day' } },
-  { name: 'Alcohol', capacity: 4, cycle: { kind: 'calendar', period: 'week' } },
+  {
+    name: 'Alcohol',
+    capacity: 3,
+    cycle: { kind: 'calendar', period: 'day' },
+    /*
+     * Two numbers because it is two decisions. A weekly total alone
+     * permits the whole week's worth on one night, which is the shape of
+     * drinking the limit was meant to discourage.
+     */
+    daysLimit: { days: 2, period: 'week' },
+  },
   /*
    * Water is the one that runs the other way — filled rather than spent
    * — and caffeine is the one that shows why a count was not enough: a
@@ -509,6 +522,9 @@ function ViceRow({ vice, now }: { readonly vice: Vice; readonly now: Date }) {
   const [capacity, setCapacity] = useState(String(vice.capacity))
   const [choice, setChoice] = useState(choiceFor(vice))
   const [hours, setHours] = useState(String(rollingHours(vice)))
+  const [limitDays, setLimitDays] = useState(vice.daysLimit !== undefined)
+  const [days, setDays] = useState(String(vice.daysLimit?.days ?? 2))
+  const [daysPeriod, setDaysPeriod] = useState<ChargePeriod>(vice.daysLimit?.period ?? 'week')
 
   const reading = readCharges(vice, now)
 
@@ -529,6 +545,9 @@ function ViceRow({ vice, now }: { readonly vice: Vice; readonly now: Date }) {
                   capacity: Number(capacity),
                   cycle:
                     picked.kind === 'rolling' ? { kind: 'rolling', hours: Number(hours) } : picked,
+                  ...(limitDays
+                    ? { daysLimit: { days: Number(days) || 1, period: daysPeriod } }
+                    : {}),
                 },
               },
               {
@@ -585,6 +604,16 @@ function ViceRow({ vice, now }: { readonly vice: Vice; readonly now: Date }) {
               Cancel
             </Button>
           </div>
+          <DaysLimitFields
+            enabled={limitDays}
+            onToggle={setLimitDays}
+            days={days}
+            onDays={setDays}
+            period={daysPeriod}
+            onPeriod={setDaysPeriod}
+            idPrefix={vice.name}
+          />
+
           {choice === 'rolling' && (
             <label className="text-ink-500 flex items-center gap-2 text-xs">
               One back every
@@ -657,12 +686,86 @@ function ViceRow({ vice, now }: { readonly vice: Vice; readonly now: Date }) {
   )
 }
 
+/**
+ * The optional second limit, on how many days the pool may be touched.
+ *
+ * Off by default and hidden until asked for, because most pools want one
+ * number: caffeine has a daily ceiling and no notion of caffeine-free
+ * days, and water has neither.
+ */
+function DaysLimitFields({
+  enabled,
+  onToggle,
+  days,
+  onDays,
+  period,
+  onPeriod,
+  idPrefix,
+}: {
+  readonly enabled: boolean
+  readonly onToggle: (next: boolean) => void
+  readonly days: string
+  readonly onDays: (next: string) => void
+  readonly period: ChargePeriod
+  readonly onPeriod: (next: ChargePeriod) => void
+  readonly idPrefix: string
+}) {
+  return (
+    <div className="space-y-2">
+      <Button
+        type="button"
+        variant={enabled ? 'primary' : 'outline'}
+        size="sm"
+        aria-pressed={enabled}
+        onClick={() => {
+          onToggle(!enabled)
+        }}
+      >
+        {enabled ? 'Limiting days too' : 'Also limit days'}
+      </Button>
+
+      {enabled && (
+        <label className="text-ink-500 flex items-center gap-2 text-xs">
+          <span className="shrink-0">on</span>
+          <input
+            className="bg-ink-900 border-ink-700 text-ink-50 numeric tap-target w-14 rounded-lg border px-2 text-sm"
+            inputMode="decimal"
+            aria-label={`${idPrefix} days`}
+            value={days}
+            onChange={(event) => {
+              onDays(event.target.value)
+            }}
+          />
+          <span className="shrink-0">days</span>
+          <select
+            className="bg-ink-900 border-ink-700 text-ink-50 tap-target min-w-0 flex-1 rounded-lg border px-2 text-sm"
+            aria-label={`${idPrefix} days period`}
+            value={period}
+            onChange={(event) => {
+              onPeriod(event.target.value as ChargePeriod)
+            }}
+          >
+            {CHARGE_PERIODS.map((one) => (
+              <option key={one} value={one}>
+                {CHARGE_PERIOD_LABELS[one]}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+    </div>
+  )
+}
+
 function AddVice() {
   const add = useAddVice()
   const [name, setName] = useState('')
   const [capacity, setCapacity] = useState('2')
   const [choice, setChoice] = useState('week')
   const [hours, setHours] = useState('12')
+  const [limitDays, setLimitDays] = useState(false)
+  const [days, setDays] = useState('2')
+  const [daysPeriod, setDaysPeriod] = useState<ChargePeriod>('week')
 
   return (
     <form
@@ -679,6 +782,7 @@ function AddVice() {
           name,
           capacity: Number(capacity),
           cycle: picked.kind === 'rolling' ? { kind: 'rolling', hours: Number(hours) } : picked,
+          ...(limitDays ? { daysLimit: { days: Number(days) || 1, period: daysPeriod } } : {}),
         })
         setName('')
       }}
@@ -749,6 +853,16 @@ function AddVice() {
           hours
         </label>
       )}
+
+      <DaysLimitFields
+        enabled={limitDays}
+        onToggle={setLimitDays}
+        days={days}
+        onDays={setDays}
+        period={daysPeriod}
+        onPeriod={setDaysPeriod}
+        idPrefix="New pool"
+      />
     </form>
   )
 }

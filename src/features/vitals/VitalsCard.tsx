@@ -8,8 +8,8 @@ import { buttonStyles } from '@/components/shared/styles'
 import type { PhaseView, PoolView } from '@/application/use-cases/vitals/vitals'
 import { PHASE_LABELS, PHASE_VERDICT_LABELS } from '@/domain/vitals/weight'
 import { cycleOf, directionOf, type Vice } from '@/domain/vitals/charges'
-import type { MacroTargets } from '@/domain/vitals/macros'
 import { cn } from '@/lib/cn'
+import type { MacroTargets } from '@/domain/vitals/macros'
 
 import { useServices } from '@/app/context'
 
@@ -189,6 +189,26 @@ function PoolRow({ pool, now }: { readonly pool: PoolView; readonly now: Date })
             : `${String(reading.available)} of ${String(reading.capacity)}`}
           {reading.nextBackAt !== undefined && ` · ${whenBack(vice, reading.nextBackAt, now)}`}
         </p>
+        {/*
+          The second limit, said only when it is the one that binds. On a
+          day already started it is not news; on a fresh day with the
+          days gone it is the entire answer to "can I have one".
+        */}
+        {reading.days !== undefined && (
+          <p
+            className={cn(
+              'numeric text-xs',
+              !reading.days.todayCounts && reading.days.used >= reading.days.allowed
+                ? 'text-warn-500'
+                : 'text-ink-700',
+            )}
+          >
+            {reading.days.used} of {reading.days.allowed} days used
+            {!reading.days.todayCounts &&
+              reading.days.used >= reading.days.allowed &&
+              ' · not today'}
+          </p>
+        )}
       </div>
 
       <Pips reading={reading} />

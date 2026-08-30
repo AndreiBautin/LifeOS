@@ -9,7 +9,12 @@ import type {
   WeighInRepository,
 } from '@/domain/repositories/ports'
 import type { ReadinessFactors } from '@/domain/autoregulation/check-in'
-import type { ChargeCycle, ChargeDirection, ChargePreset } from '@/domain/vitals/charges'
+import type {
+  ChargeCycle,
+  ChargeDirection,
+  ChargePeriod,
+  ChargePreset,
+} from '@/domain/vitals/charges'
 import {
   isActive,
   readCharges,
@@ -183,6 +188,8 @@ export interface NewVice {
   readonly unit?: string
   readonly direction?: ChargeDirection
   readonly presets?: readonly ChargePreset[]
+  /** How many days in a period the pool may be touched at all. */
+  readonly daysLimit?: { readonly days: number; readonly period: ChargePeriod }
 }
 
 export async function addVice(input: NewVice, deps: VitalsDeps): Promise<Vice> {
@@ -194,6 +201,14 @@ export async function addVice(input: NewVice, deps: VitalsDeps): Promise<Vice> {
     ...(input.unit === undefined ? {} : { unit: input.unit }),
     ...(input.direction === undefined ? {} : { direction: input.direction }),
     ...(input.presets === undefined ? {} : { presets: input.presets }),
+    ...(input.daysLimit === undefined
+      ? {}
+      : {
+          daysLimit: {
+            days: Math.max(1, Math.round(input.daysLimit.days)),
+            period: input.daysLimit.period,
+          },
+        }),
     spent: [],
     createdAt: deps.clock.now().toISOString(),
   }
@@ -242,12 +257,29 @@ export async function editVice(
   input: NewVice,
   deps: VitalsDeps,
 ): Promise<Vice | undefined> {
-  return withVice(id, deps, (vice) => ({
-    ...vice,
-    name: input.name.trim(),
-    capacity: Math.max(1, Math.round(input.capacity)),
-    cycle: sane(input.cycle),
-  }))
+  return withVice(id, deps, (vice) => {
+    /*
+     * Spread first, then overwrite. `daysLimit` is dropped rather than
+     * left behind when the editor clears it — a limit removed on screen
+     * and still enforced underneath is the worst of both.
+     */
+    const { daysLimit: _cleared, ...rest } = vice
+
+    return {
+      ...rest,
+      name: input.name.trim(),
+      capacity: Math.max(1, Math.round(input.capacity)),
+      cycle: sane(input.cycle),
+      ...(input.daysLimit === undefined
+        ? {}
+        : {
+            daysLimit: {
+              days: Math.max(1, Math.round(input.daysLimit.days)),
+              period: input.daysLimit.period,
+            },
+          }),
+    }
+  })
 }
 
 /**
