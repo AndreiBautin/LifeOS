@@ -1,5 +1,6 @@
 import { HeartPulse, Minus, Plus } from 'lucide-react'
 import { Skeleton } from '@/components/shared/Skeleton'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 
 import { Badge, Button, Card } from '@/components/shared/primitives'
@@ -105,6 +106,7 @@ function backIn(at: Date, now: Date): string {
 function MeasuredPool({ pool, now }: { readonly pool: PoolView; readonly now: Date }) {
   const spend = useSpendVice()
   const undo = useUndoVice()
+  const [custom, setCustom] = useState('')
   const { vice, reading } = pool
 
   const isTarget = directionOf(vice) === 'target'
@@ -149,6 +151,39 @@ function MeasuredPool({ pool, now }: { readonly pool: PoolView; readonly now: Da
             {preset.label}
           </Button>
         ))}
+
+        {/*
+          An amount typed by hand, and it is not a convenience.
+          Presets were the *only* way to log a measured pool, so one
+          without them — which is every pool that gains a unit in the
+          editor rather than arriving with one — drew a bar and offered
+          no way to fill it. It is useful besides: a preset cannot know
+          that tonight's glass was a large one.
+        */}
+        <form
+          className="flex items-center gap-1"
+          onSubmit={(event) => {
+            event.preventDefault()
+            const amount = Number(custom)
+            if (!Number.isFinite(amount) || amount <= 0) return
+            spend.mutate({ id: vice.id, amount })
+            setCustom('')
+          }}
+        >
+          <input
+            className="bg-ink-900 border-ink-700 text-ink-50 numeric tap-target w-16 rounded-lg border px-2 text-sm"
+            inputMode="decimal"
+            aria-label={`How much ${vice.name}`}
+            placeholder={vice.unit ?? ''}
+            value={custom}
+            onChange={(event) => {
+              setCustom(event.target.value)
+            }}
+          />
+          <Button type="submit" variant="outline" size="sm" disabled={spend.isPending}>
+            <Plus size={14} aria-hidden />
+          </Button>
+        </form>
 
         <Button
           variant="ghost"

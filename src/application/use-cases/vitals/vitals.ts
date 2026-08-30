@@ -255,17 +255,29 @@ export async function editVice(
 ): Promise<Vice | undefined> {
   return withVice(id, deps, (vice) => {
     /*
-     * Spread first, then overwrite. `daysLimit` is dropped rather than
-     * left behind when the editor clears it — a limit removed on screen
-     * and still enforced underneath is the worst of both.
+     * Spread first, then overwrite — and the optional fields are
+     * *dropped* from the spread rather than left behind, because
+     * clearing one on screen has to clear it in the record. A unit
+     * removed in the editor and still stored underneath would keep
+     * drawing a bar for a pool the lifter had just turned back into a
+     * count.
      */
-    const { daysLimit: _cleared, ...rest } = vice
+    const { daysLimit: _days, unit: _unit, ...rest } = vice
 
     return {
       ...rest,
       name: input.name.trim(),
       capacity: Math.max(1, Math.round(input.capacity)),
       cycle: sane(input.cycle),
+      /*
+       * The unit is editable and the past entries are not rewritten.
+       * That is right for a relabel — "drinks" to "shots" is the same
+       * one-each history under a better word — and it is the lifter's
+       * call for a rescale, which is why the editor says so rather than
+       * silently converting numbers it cannot know the meaning of.
+       */
+      ...(input.unit === undefined || input.unit.trim() === '' ? {} : { unit: input.unit.trim() }),
+      ...(input.direction === undefined ? {} : { direction: input.direction }),
       ...daysOrNothing(input.daysLimit),
     }
   })

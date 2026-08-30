@@ -1522,6 +1522,28 @@ inventing a size for every past entry would be fabricating the record.
 Retiring the old pool and starting the new one is the honest move — the
 old one keeps what it truly held.
 
+**A measured pool must be loggable without presets, and for three
+commits it was not.** `MeasuredPool` offered the preset buttons and
+nothing else, so a pool that gained a unit any way other than arriving
+with one — which is every pool edited into being measured — drew a bar
+and gave no way to fill it. There is a typed amount beside the presets
+now, which is useful anyway: a preset cannot know that tonight's glass
+was a large one.
+
+**The unit and the direction are editable, and the entries are not
+rewritten.** They were fixed at creation, so a pool labelled wrongly
+could only be retired and rebuilt — throwing away everything it had
+recorded to correct a word. Not converting the history is the deliberate
+half: relabelling drinks as shots is the same one-each record under a
+better word, and drinks to milligrams is not, and **only the person
+knows which of the two it is**. The editor says the entries keep their
+numbers rather than guessing.
+
+**Clearing a unit has to remove it, not leave it behind.** `editVice`
+drops `unit` from the spread before rebuilding, the same as `daysLimit`.
+A stored unit still draws a bar, so one surviving a clear would keep
+rendering a pool the person had just turned back into a count.
+
 **A unit is not cosmetic.** A double espresso and a cold brew are one
 coffee each and very different amounts of caffeine, which is the whole
 reason `capacity` had to stop being a count. Pools with a unit get a bar

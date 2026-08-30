@@ -528,6 +528,7 @@ function ViceRow({ vice, now }: { readonly vice: Vice; readonly now: Date }) {
   const [choice, setChoice] = useState(choiceFor(vice))
   const [hours, setHours] = useState(String(rollingHours(vice)))
   const dayLimit = useDaysLimit(vice.daysLimit)
+  const shape = usePoolShape(vice)
 
   const reading = readCharges(vice, now)
 
@@ -548,6 +549,8 @@ function ViceRow({ vice, now }: { readonly vice: Vice; readonly now: Date }) {
                   capacity: Number(capacity),
                   cycle:
                     picked.kind === 'rolling' ? { kind: 'rolling', hours: Number(hours) } : picked,
+                  direction: shape.direction,
+                  ...(shape.unit.trim() === '' ? {} : { unit: shape.unit.trim() }),
                   ...(dayLimit.value === undefined ? {} : { daysLimit: dayLimit.value }),
                 },
               },
@@ -605,7 +608,23 @@ function ViceRow({ vice, now }: { readonly vice: Vice; readonly now: Date }) {
               Cancel
             </Button>
           </div>
-          <DaysLimitFields state={dayLimit} idPrefix={vice.name} />
+          <PoolShapeFields state={shape} />
+
+          {/*
+            Said plainly, because it is the one edit that changes what
+            the record already holds. Relabelling drinks as shots is the
+            same one-each history under a better word; changing drinks to
+            milligrams is not, and only the lifter knows which of the two
+            this is.
+          */}
+          {shape.unit !== (vice.unit ?? '') && vice.spent.length > 0 && (
+            <p className="text-ink-700 text-xs">
+              The {vice.spent.length} entr{vice.spent.length === 1 ? 'y' : 'ies'} already recorded
+              keep their numbers.
+            </p>
+          )}
+
+          {shape.direction === 'limit' && <DaysLimitFields state={dayLimit} idPrefix={vice.name} />}
 
           {choice === 'rolling' && (
             <label className="text-ink-500 flex items-center gap-2 text-xs">
@@ -686,6 +705,66 @@ function ViceRow({ vice, now }: { readonly vice: Vice; readonly now: Date }) {
  * number: caffeine has a daily ceiling and no notion of caffeine-free
  * days, and water has neither.
  */
+/**
+ * What a pool *is* — which way it runs and what it counts.
+ *
+ * Shared by the add form and the editor, and it had to be: the editor
+ * offered neither, so a pool's unit was fixed at creation and a
+ * mislabelled one could only be retired and rebuilt, losing everything
+ * it had recorded. Two copies of these controls would have been two
+ * places for that to happen again.
+ */
+function usePoolShape(vice?: Vice) {
+  const [direction, setDirection] = useState<ChargeDirection>(
+    vice === undefined ? 'limit' : directionOf(vice),
+  )
+  const [unit, setUnit] = useState(vice?.unit ?? '')
+
+  return { direction, setDirection, unit, setUnit }
+}
+
+function PoolShapeFields({ state }: { readonly state: ReturnType<typeof usePoolShape> }) {
+  return (
+    <>
+      <div className="flex gap-1">
+        {CHARGE_DIRECTIONS.map((one) => (
+          <Button
+            key={one}
+            type="button"
+            size="sm"
+            full
+            variant={state.direction === one ? 'primary' : 'outline'}
+            aria-pressed={state.direction === one}
+            onClick={() => {
+              state.setDirection(one)
+            }}
+          >
+            {one === 'limit' ? 'Stay under' : 'Reach'}
+          </Button>
+        ))}
+      </div>
+
+      {/*
+        Blank means a count. Naming a unit is what turns "three" into
+        "three hundred millilitres" — and what swaps the pips for a bar,
+        because pips cannot show three hundred.
+      */}
+      <label className="text-ink-500 flex items-center gap-2 text-xs">
+        <span className="shrink-0">Measured in</span>
+        <input
+          className="bg-ink-900 border-ink-700 text-ink-50 tap-target min-w-0 flex-1 rounded-lg border px-2 text-sm"
+          aria-label="Unit"
+          placeholder="counts — or drinks, hits, mg…"
+          value={state.unit}
+          onChange={(event) => {
+            state.setUnit(event.target.value)
+          }}
+        />
+      </label>
+    </>
+  )
+}
+
 /**
  * The day limit's form state, in one place.
  *
@@ -886,8 +965,7 @@ function AddVice() {
   const [choice, setChoice] = useState('week')
   const [hours, setHours] = useState('12')
   const dayLimit = useDaysLimit()
-  const [direction, setDirection] = useState<ChargeDirection>('limit')
-  const [unit, setUnit] = useState('')
+  const shape = usePoolShape()
 
   return (
     <form
@@ -904,8 +982,8 @@ function AddVice() {
           name,
           capacity: Number(capacity),
           cycle: picked.kind === 'rolling' ? { kind: 'rolling', hours: Number(hours) } : picked,
-          direction,
-          ...(unit.trim() === '' ? {} : { unit: unit.trim() }),
+          direction: shape.direction,
+          ...(shape.unit.trim() === '' ? {} : { unit: shape.unit.trim() }),
           ...(dayLimit.value === undefined ? {} : { daysLimit: dayLimit.value }),
         })
         setName('')
@@ -926,28 +1004,7 @@ function AddVice() {
         and a number of hours, which is the right question for coffee and
         a translation exercise for anything weekly.
       */}
-      {/*
-        Which way the pool runs, and it has to be asked here: water only
-        existed because a *suggestion* set it, so anything made by hand
-        was a limit whatever it was for.
-      */}
-      <div className="flex gap-1">
-        {CHARGE_DIRECTIONS.map((one) => (
-          <Button
-            key={one}
-            type="button"
-            size="sm"
-            full
-            variant={direction === one ? 'primary' : 'outline'}
-            aria-pressed={direction === one}
-            onClick={() => {
-              setDirection(one)
-            }}
-          >
-            {one === 'limit' ? 'Stay under' : 'Reach'}
-          </Button>
-        ))}
-      </div>
+      <PoolShapeFields state={shape} />
 
       <div className="flex items-center gap-2">
         <input
@@ -1001,25 +1058,7 @@ function AddVice() {
         </label>
       )}
 
-      {/*
-        Optional, and blank means a count. Naming a unit is what turns
-        "three" into "three hundred millilitres" — and what swaps the
-        pips for a bar, because pips cannot show three hundred.
-      */}
-      <label className="text-ink-500 flex items-center gap-2 text-xs">
-        <span className="shrink-0">Measured in</span>
-        <input
-          className="bg-ink-900 border-ink-700 text-ink-50 tap-target min-w-0 flex-1 rounded-lg border px-2 text-sm"
-          aria-label="Unit"
-          placeholder="counts — or ml, mg…"
-          value={unit}
-          onChange={(event) => {
-            setUnit(event.target.value)
-          }}
-        />
-      </label>
-
-      {direction === 'limit' && <DaysLimitFields state={dayLimit} idPrefix="New pool" />}
+      {shape.direction === 'limit' && <DaysLimitFields state={dayLimit} idPrefix="New pool" />}
     </form>
   )
 }

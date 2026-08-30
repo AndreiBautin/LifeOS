@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest'
 
-import { recordWeighIn, spendVice, vitalsToday, type VitalsDeps } from './vitals'
+import {
+  editVice,
+  listVices,
+  recordWeighIn,
+  spendVice,
+  vitalsToday,
+  type VitalsDeps,
+} from './vitals'
 import { DEFAULT_SETTINGS } from '@/domain/settings/settings'
 import { asViceId } from '@/domain/ids/ids'
 import type { Vice } from '@/domain/vitals/charges'
@@ -186,5 +193,70 @@ describe('recording', () => {
     await recordWeighIn(-5, services)
 
     expect((await vitalsToday(services)).phase.today).toBeUndefined()
+  })
+})
+
+describe('changing what a pool measures', () => {
+  const pool = (over: Partial<Vice>): Vice => ({
+    id: asViceId('alcohol'),
+    name: 'Alcohol',
+    capacity: 4,
+    cycle: { kind: 'calendar', period: 'week' },
+    spent: [],
+    createdAt: '2026-01-01T00:00:00.000Z',
+    ...over,
+  })
+
+  /*
+   * The gap this closes: a pool's unit was fixed at creation, so a
+   * mislabelled one could only be retired and rebuilt — throwing away
+   * everything it had recorded to fix a word.
+   */
+  it('sets a unit on a pool that had none', async () => {
+    const services = deps({ vices: [pool({ spent: ['2026-08-28T20:00:00.000Z'] })] })
+
+    await editVice(
+      asViceId('alcohol'),
+      { name: 'Alcohol', capacity: 4, cycle: { kind: 'calendar', period: 'week' }, unit: 'drinks' },
+      services,
+    )
+
+    const after = (await listVices(services))[0]
+
+    expect(after?.unit).toBe('drinks')
+    // The history is untouched — this is a relabel, not a conversion.
+    expect(after?.spent).toEqual(['2026-08-28T20:00:00.000Z'])
+  })
+
+  it('clears a unit, turning a measured pool back into a count', async () => {
+    const services = deps({ vices: [pool({ unit: 'drinks' })] })
+
+    await editVice(
+      asViceId('alcohol'),
+      { name: 'Alcohol', capacity: 4, cycle: { kind: 'calendar', period: 'week' } },
+      services,
+    )
+
+    // Absent, not an empty string: a stored unit still draws a bar, and
+    // one left behind after the editor cleared it is the worst of both.
+    expect((await listVices(services))[0]?.unit).toBeUndefined()
+  })
+
+  it('flips a limit into a target', async () => {
+    const services = deps({ vices: [pool({ name: 'Water', direction: 'limit' })] })
+
+    await editVice(
+      asViceId('alcohol'),
+      {
+        name: 'Water',
+        capacity: 3000,
+        cycle: { kind: 'calendar', period: 'day' },
+        unit: 'ml',
+        direction: 'target',
+      },
+      services,
+    )
+
+    expect((await listVices(services))[0]?.direction).toBe('target')
   })
 })
