@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest'
 
-import { cycleOf, readCharges, spendCharge, undoLastCharge, type Vice } from './charges'
+import {
+  cycleOf,
+  describeCycle,
+  readCharges,
+  spendCharge,
+  spendEntry,
+  undoLastCharge,
+  type Vice,
+} from './charges'
 import { asViceId } from '@/domain/ids/ids'
 
 /**
@@ -324,5 +332,116 @@ describe('pools written before cycles existed', () => {
     }
 
     expect(cycleOf(both).kind).toBe('calendar')
+  })
+})
+
+describe('a pool measured in units rather than counts', () => {
+  const caffeine = (spent: readonly string[]): Vice => ({
+    id: asViceId('caffeine'),
+    name: 'Caffeine',
+    capacity: 400,
+    unit: 'mg',
+    cycle: { kind: 'calendar', period: 'day' },
+    spent,
+    createdAt: '2026-01-01T00:00:00.000Z',
+  })
+
+  const noon = new Date(2026, 7, 30, 12, 0)
+  const morning = (mg: number) => spendEntry(new Date(2026, 7, 30, 8, 0), mg)
+
+  it('sums the amounts rather than counting the entries', () => {
+    const reading = readCharges(
+      caffeine([morning(95), spendEntry(new Date(2026, 7, 30, 10), 65)]),
+      noon,
+    )
+
+    expect(reading.onCooldown).toBe(160)
+    expect(reading.available).toBe(240)
+  })
+
+  /*
+   * The distinction the whole unit business exists for: a double
+   * espresso and a cold brew are one coffee each and very different
+   * amounts of caffeine.
+   */
+  it('treats two entries of different sizes differently', () => {
+    const small = readCharges(caffeine([morning(65)]), noon).available
+    const large = readCharges(caffeine([morning(200)]), noon).available
+
+    expect(small).toBeGreaterThan(large)
+  })
+
+  it('still reports going over a limit', () => {
+    const reading = readCharges(
+      caffeine([morning(300), spendEntry(new Date(2026, 7, 30, 10), 200)]),
+      noon,
+    )
+
+    expect(reading.available).toBe(0)
+    expect(reading.over).toBe(100)
+  })
+
+  /*
+   * A target is filled rather than spent, so exceeding it is not an
+   * overrun — reporting "500 over" for drinking enough water would be
+   * scolding somebody for doing the thing.
+   */
+  it('never reports an overrun on a target', () => {
+    const water: Vice = {
+      ...caffeine([]),
+      name: 'Water',
+      capacity: 3000,
+      unit: 'ml',
+      direction: 'target',
+      spent: [spendEntry(new Date(2026, 7, 30, 8), 3500)],
+    }
+
+    const reading = readCharges(water, noon)
+
+    expect(reading.onCooldown).toBe(3500)
+    expect(reading.over).toBe(0)
+  })
+
+  it('ignores an amount it cannot read rather than counting it as one', () => {
+    // A malformed entry must not quietly make the pool look fuller.
+    const reading = readCharges(
+      caffeine([`${new Date(2026, 7, 30, 8).toISOString()}#nonsense`]),
+      noon,
+    )
+
+    expect(reading.onCooldown).toBe(0)
+  })
+
+  it('says the unit when it describes the limit', () => {
+    expect(describeCycle(caffeine([]))).toBe('400 mg a day')
+  })
+})
+
+describe('entries written before amounts existed', () => {
+  /*
+   * Every entry on a device right now is a bare timestamp. It reads as
+   * one, which is what it always meant, so nothing needed migrating.
+   */
+  it('reads a bare timestamp as one', () => {
+    const beer: Vice = {
+      id: asViceId('beer'),
+      name: 'Beer',
+      capacity: 4,
+      cycle: { kind: 'calendar', period: 'week' },
+      spent: [new Date(2026, 7, 25, 20).toISOString(), new Date(2026, 7, 26, 20).toISOString()],
+      createdAt: '2026-01-01T00:00:00.000Z',
+    }
+
+    expect(readCharges(beer, new Date(2026, 7, 27, 12)).available).toBe(2)
+  })
+
+  it('writes a bare timestamp when the amount is one', () => {
+    // So a counting pool's entries stay byte-identical to what they were,
+    // and two devices logging the same tap still collapse to one.
+    const at = new Date(2026, 7, 30, 8)
+
+    expect(spendEntry(at)).toBe(at.toISOString())
+    expect(spendEntry(at, 1)).toBe(at.toISOString())
+    expect(spendEntry(at, 95)).toContain('#95')
   })
 })

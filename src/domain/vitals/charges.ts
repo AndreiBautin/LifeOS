@@ -46,11 +46,48 @@ export type ChargeCycle =
   | { readonly kind: 'rolling'; readonly hours: number }
   | { readonly kind: 'calendar'; readonly period: ChargePeriod }
 
+/**
+ * Which way a pool is meant to go.
+ *
+ * A limit is spent down — coffee, beer, caffeine — and going past it is
+ * the thing worth seeing. A target is filled up: water is not something
+ * you are rationing, and reporting "1 over" for a fourth glass would be
+ * scolding somebody for drinking enough.
+ *
+ * The arithmetic is identical and only the sentiment differs, which is
+ * why this is a flag on one mechanism rather than a second one. Absent
+ * means a limit — every pool written before this was one.
+ */
+export const CHARGE_DIRECTIONS = ['limit', 'target'] as const
+export type ChargeDirection = (typeof CHARGE_DIRECTIONS)[number]
+
+/** A quick amount to log, so a common measure is one tap. */
+export interface ChargePreset {
+  readonly label: string
+  readonly amount: number
+}
+
 export interface Vice {
   readonly id: ViceId
   readonly name: string
-  /** How many charges the pool holds when full. At least one. */
+  /**
+   * What the pool holds in a cycle — four beers, or four hundred
+   * milligrams. At least one.
+   */
   readonly capacity: number
+  /**
+   * What one unit is, when it is not simply a count.
+   *
+   * `mg` for caffeine, `ml` for water. Absent means the pool counts
+   * things, which is what every pool written before this did — and the
+   * difference is real rather than cosmetic: a double espresso and a
+   * cold brew are one coffee each and very different amounts of
+   * caffeine.
+   */
+  readonly unit?: string
+  readonly direction?: ChargeDirection
+  /** Offered when logging, so a glass of water is one tap and not a form. */
+  readonly presets?: readonly ChargePreset[]
   /**
    * The rolling window, in hours.
    *
@@ -97,6 +134,23 @@ export interface ChargeReading {
   readonly nextBackAt?: Date
 }
 
+/**
+ * The separator between when a charge was spent and how much it was.
+ *
+ * An entry is `2026-08-30T15:45:34.045Z` for one, or
+ * `2026-08-30T15:45:34.045Z#95` for ninety-five of whatever the pool
+ * counts. **The amount is encoded into the string rather than held
+ * beside it**, and that is the whole reason this works: the merge is a
+ * union over strings, so two devices logging the same drink produce the
+ * same entry and it collapses, while two different drinks stay two.
+ *
+ * That is not a trick to be tidied into an object array later. The
+ * amount is part of what happened — "95mg at 08:00" is one event — so
+ * putting it in the identity is correct, and an array of objects would
+ * need a merge rule written from scratch to say the same thing.
+ */
+const AMOUNT_SEPARATOR = '#'
+
 const HOUR_MS = 60 * 60 * 1000
 const DEFAULT_ROLLING_HOURS = 12
 
@@ -110,6 +164,39 @@ const DEFAULT_ROLLING_HOURS = 12
  * statement of a rolling window, and rewriting it would be churn that
  * risks a merge for no gain.
  */
+interface Spend {
+  readonly at: number
+  readonly amount: number
+}
+
+/**
+ * One entry, read back.
+ *
+ * A bare timestamp is one — which is what every entry written before
+ * amounts existed is, so nothing needed migrating.
+ */
+function parseSpend(entry: string): Spend | undefined {
+  const [stamp, size] = entry.split(AMOUNT_SEPARATOR)
+  const at = Date.parse(stamp ?? '')
+  if (!Number.isFinite(at)) return undefined
+
+  if (size === undefined) return { at, amount: 1 }
+
+  const amount = Number(size)
+  // A size that will not parse is not silently worth one: it would make
+  // a pool read as fuller or emptier than it is, with nothing to see.
+  return Number.isFinite(amount) && amount > 0 ? { at, amount } : undefined
+}
+
+/** Writes an entry, omitting the amount when it is the default of one. */
+export function spendEntry(at: Date, amount = 1): string {
+  return amount === 1 ? at.toISOString() : `${at.toISOString()}${AMOUNT_SEPARATOR}${String(amount)}`
+}
+
+export function directionOf(vice: Vice): ChargeDirection {
+  return vice.direction ?? 'limit'
+}
+
 export function cycleOf(vice: Vice): ChargeCycle {
   if (vice.cycle !== undefined) return vice.cycle
   return { kind: 'rolling', hours: vice.regenHours ?? DEFAULT_ROLLING_HOURS }
@@ -191,13 +278,20 @@ export function readCharges(vice: Vice, now: Date): ChargeReading {
       : periodStart(now, cycle.period).getTime() - 1
 
   const active = vice.spent
-    .map((stamp) => Date.parse(stamp))
-    .filter((at) => Number.isFinite(at) && at > cutoff)
-    .sort((a, b) => a - b)
+    .map(parseSpend)
+    .filter((spend): spend is Spend => spend !== undefined && spend.at > cutoff)
+    .sort((a, b) => a.at - b.at)
 
-  const onCooldown = active.length
+  // Summed, not counted. One entry can be ninety-five milligrams.
+  const onCooldown = active.reduce((total, spend) => total + spend.amount, 0)
   const available = Math.max(0, vice.capacity - onCooldown)
-  const over = Math.max(0, onCooldown - vice.capacity)
+
+  /*
+   * Only a limit can be exceeded. A fourth glass of water against a
+   * three-glass target is not an overrun, and reporting it as one would
+   * be scolding somebody for drinking enough.
+   */
+  const over = directionOf(vice) === 'limit' ? Math.max(0, onCooldown - vice.capacity) : 0
 
   const full = { capacity: vice.capacity, available, onCooldown, over }
 
@@ -219,21 +313,30 @@ export function readCharges(vice: Vice, now: Date): ChargeReading {
   const oldest = active[0]
   if (available >= vice.capacity || oldest === undefined) return full
 
-  return { ...full, nextBackAt: new Date(oldest + cycle.hours * HOUR_MS) }
+  return { ...full, nextBackAt: new Date(oldest.at + cycle.hours * HOUR_MS) }
 }
 
 /** How a pool's limit reads in a sentence — "4 a week", "2 every 12h". */
 export function describeCycle(vice: Vice): string {
   const cycle = cycleOf(vice)
 
+  const amount =
+    vice.unit === undefined ? String(vice.capacity) : `${String(vice.capacity)} ${vice.unit}`
+
   return cycle.kind === 'calendar'
-    ? `${String(vice.capacity)} ${CHARGE_PERIOD_LABELS[cycle.period]}`
-    : `${String(vice.capacity)}, one back every ${String(cycle.hours)}h`
+    ? `${amount} ${CHARGE_PERIOD_LABELS[cycle.period]}`
+    : `${amount}, one back every ${String(cycle.hours)}h`
 }
 
-/** Spending a charge records that it happened. It never refuses. */
-export function spendCharge(vice: Vice, now: Date): Vice {
-  return { ...vice, spent: [...vice.spent, now.toISOString()] }
+/**
+ * Records a spend. It never refuses, and it never refuses a size either.
+ *
+ * `amount` is in the pool's own units — one beer, or ninety-five
+ * milligrams of caffeine — and defaults to one so a counting pool is
+ * unchanged.
+ */
+export function spendCharge(vice: Vice, now: Date, amount = 1): Vice {
+  return { ...vice, spent: [...vice.spent, spendEntry(now, amount)] }
 }
 
 /**

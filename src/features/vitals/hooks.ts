@@ -99,7 +99,10 @@ export function useEditVice() {
 export function useSpendVice() {
   const services = useServices()
 
-  return useInvalidating((id: ViceId) => spendVice(id, services), 'spend-vice')
+  return useInvalidating(
+    ({ id, amount }: { id: ViceId; amount?: number }) => spendVice(id, services, amount ?? 1),
+    'spend-vice',
+  )
 }
 
 export function useUndoVice() {

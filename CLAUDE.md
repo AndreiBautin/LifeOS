@@ -22,6 +22,13 @@ configured, is the other one.
 pnpm verify    # typecheck + lint + format:check + test:run + build
 ```
 
+**Use `pnpm typecheck`, never `npx tsc --noEmit`.** The root `tsconfig.json`
+is a solution file of project references, so `tsc --noEmit` against it
+can pass while the app is not checked at all — it did, and reported clean
+on a call site passing a `ViceId` where an object was required.
+`pnpm typecheck` runs `tsc -b`, which builds the referenced projects and
+actually looks.
+
 A pre-push hook runs this and refuses the push if it fails. The same
 command gates the deploy. If `pnpm verify` is green the change is
 shippable; if it is not, it is not — there is no third state.
@@ -1383,6 +1390,42 @@ a working capability was invisible because nothing reached it. It became
 load-bearing the moment cycles arrived: without it the only way to put an
 existing beer pool on a weekly allowance was to retire it and start
 again, discarding every spend it had recorded.
+
+**A charge can carry an amount, and the amount lives inside the entry
+string.** An entry is `2026-08-30T15:45:34.045Z` for one, or
+`…Z#95` for ninety-five of whatever the pool measures. That is not a
+trick awaiting an object array: **the merge is a union over strings**, so
+two devices logging the same drink produce the same entry and it
+collapses, while two different drinks stay two. The amount is part of
+what happened — "95mg at 08:00" is one event — so putting it in the
+identity is correct, and an array of objects would need a merge rule
+written from scratch to say the same thing. A bare timestamp reads as
+one, so nothing on a device needed migrating.
+
+**A pool is a limit or a target, and only a limit can be exceeded.**
+Caffeine is spent down and going past 400mg is worth seeing; water is
+filled up, and reporting "500 over" for a fourth glass would be scolding
+somebody for drinking enough. The arithmetic is identical and only the
+sentiment differs, which is why it is a flag on one mechanism rather than
+two mechanisms. Absent means limit — every pool written before this was
+one.
+
+**A unit is not cosmetic.** A double espresso and a cold brew are one
+coffee each and very different amounts of caffeine, which is the whole
+reason `capacity` had to stop being a count. Pools with a unit get a bar
+and their numbers written out; pools without keep the pips, because pips
+cannot show four hundred.
+
+**Supplements are Upkeep, not a pool.** Creatine is a thing you take once
+a day and either did or did not — a daily with a streak, which is exactly
+what Upkeep holds. Building a third mechanism for it would have been a
+counting pool wearing a habit's clothes.
+
+**Macros and calories stay targets, deliberately.** The amount mechanism
+would fit them and they are still not logged here: a calorie log needs a
+database of foods and portions, it is the first thing to fall behind, and
+everything derived from a stale one is quietly wrong. Water and caffeine
+have neither problem — a handful of presets and no food database.
 
 **A charge comes back exactly `regenHours` after the spend that consumed
 it**, so three coffees at eight in the morning on a twelve-hour timer are

@@ -9,7 +9,7 @@ import type {
   WeighInRepository,
 } from '@/domain/repositories/ports'
 import type { ReadinessFactors } from '@/domain/autoregulation/check-in'
-import type { ChargeCycle } from '@/domain/vitals/charges'
+import type { ChargeCycle, ChargeDirection, ChargePreset } from '@/domain/vitals/charges'
 import {
   isActive,
   readCharges,
@@ -179,6 +179,10 @@ export interface NewVice {
   readonly name: string
   readonly capacity: number
   readonly cycle: ChargeCycle
+  /** Absent means the pool counts things rather than measuring them. */
+  readonly unit?: string
+  readonly direction?: ChargeDirection
+  readonly presets?: readonly ChargePreset[]
 }
 
 export async function addVice(input: NewVice, deps: VitalsDeps): Promise<Vice> {
@@ -187,6 +191,9 @@ export async function addVice(input: NewVice, deps: VitalsDeps): Promise<Vice> {
     name: input.name.trim(),
     capacity: Math.max(1, Math.round(input.capacity)),
     cycle: sane(input.cycle),
+    ...(input.unit === undefined ? {} : { unit: input.unit }),
+    ...(input.direction === undefined ? {} : { direction: input.direction }),
+    ...(input.presets === undefined ? {} : { presets: input.presets }),
     spent: [],
     createdAt: deps.clock.now().toISOString(),
   }
@@ -218,8 +225,12 @@ async function withVice(
  * beer and not log it — and a record you lie to is worth nothing. What
  * it does instead is count, and let `over` on the reading say so.
  */
-export async function spendVice(id: ViceId, deps: VitalsDeps): Promise<Vice | undefined> {
-  return withVice(id, deps, (vice) => spendCharge(vice, deps.clock.now()))
+export async function spendVice(
+  id: ViceId,
+  deps: VitalsDeps,
+  amount = 1,
+): Promise<Vice | undefined> {
+  return withVice(id, deps, (vice) => spendCharge(vice, deps.clock.now(), Math.max(0, amount)))
 }
 
 export async function undoVice(id: ViceId, deps: VitalsDeps): Promise<Vice | undefined> {

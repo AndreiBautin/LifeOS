@@ -71,6 +71,40 @@ const SUGGESTIONS: readonly NewVice[] = [
   { name: 'Coffee', capacity: 2, cycle: { kind: 'rolling', hours: 12 } },
   { name: 'Kush', capacity: 1, cycle: { kind: 'calendar', period: 'day' } },
   { name: 'Beer', capacity: 4, cycle: { kind: 'calendar', period: 'week' } },
+  /*
+   * Water is the one that runs the other way — filled rather than spent
+   * — and caffeine is the one that shows why a count was not enough: a
+   * double espresso and a cold brew are one coffee each and very
+   * different amounts.
+   *
+   * 400 mg is the figure health agencies give as a daily ceiling for
+   * most adults; the water target is a round 3 litres and is a starting
+   * point rather than a claim, which is why both are editable.
+   */
+  {
+    name: 'Water',
+    capacity: 3000,
+    unit: 'ml',
+    direction: 'target',
+    cycle: { kind: 'calendar', period: 'day' },
+    presets: [
+      { label: '+250', amount: 250 },
+      { label: '+500', amount: 500 },
+      { label: '+1L', amount: 1000 },
+    ],
+  },
+  {
+    name: 'Caffeine',
+    capacity: 400,
+    unit: 'mg',
+    direction: 'limit',
+    cycle: { kind: 'calendar', period: 'day' },
+    presets: [
+      { label: 'Espresso', amount: 65 },
+      { label: 'Coffee', amount: 95 },
+      { label: 'Energy drink', amount: 160 },
+    ],
+  },
 ]
 
 const FACTORS: readonly { key: keyof ReadinessFactors; label: string }[] = [

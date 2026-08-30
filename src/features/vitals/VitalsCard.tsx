@@ -7,7 +7,7 @@ import { Meter } from '@/components/shared/Meter'
 import { buttonStyles } from '@/components/shared/styles'
 import type { PhaseView, PoolView } from '@/application/use-cases/vitals/vitals'
 import { PHASE_LABELS, PHASE_VERDICT_LABELS } from '@/domain/vitals/weight'
-import { cycleOf, type Vice } from '@/domain/vitals/charges'
+import { cycleOf, directionOf, type Vice } from '@/domain/vitals/charges'
 import type { MacroTargets } from '@/domain/vitals/macros'
 import { cn } from '@/lib/cn'
 
@@ -93,10 +93,91 @@ function backIn(at: Date, now: Date): string {
   return rest === 0 ? `${String(hours)}h` : `${String(hours)}h ${String(rest)}m`
 }
 
+/**
+ * A pool measured in units rather than counted.
+ *
+ * Pips cannot show four hundred milligrams, so this gets a bar and the
+ * numbers written out. The presets are the point: logging caffeine by
+ * typing 95 every morning is a form, and a form is a thing you stop
+ * filling in.
+ */
+function MeasuredPool({ pool, now }: { readonly pool: PoolView; readonly now: Date }) {
+  const spend = useSpendVice()
+  const undo = useUndoVice()
+  const { vice, reading } = pool
+
+  const isTarget = directionOf(vice) === 'target'
+  const used = reading.onCooldown
+
+  return (
+    <div className="py-2">
+      <div className="flex items-baseline justify-between gap-2">
+        <span className="text-ink-50 truncate text-sm">{vice.name}</span>
+        <span className="text-ink-500 numeric shrink-0 text-xs">
+          {used} / {vice.capacity} {vice.unit}
+          {reading.over > 0 && <span className="text-bad-500"> · {reading.over} over</span>}
+        </span>
+      </div>
+
+      <Meter
+        className="mt-1.5"
+        value={used}
+        of={vice.capacity}
+        height={6}
+        /*
+         * Green while a target is being filled and while a limit still
+         * has room; amber once a limit is spent. A full water bar is
+         * good news and a full caffeine bar is not, and the colour is
+         * the fastest way to say which without reading.
+         */
+        tone={isTarget ? 'good' : reading.available > 0 ? 'accent' : 'warn'}
+        label={`${vice.name}: ${String(used)} of ${String(vice.capacity)} ${vice.unit ?? ''}`}
+      />
+
+      <div className="mt-1.5 flex flex-wrap items-center gap-1">
+        {(vice.presets ?? []).map((preset) => (
+          <Button
+            key={preset.label}
+            variant="outline"
+            size="sm"
+            disabled={spend.isPending}
+            onClick={() => {
+              spend.mutate({ id: vice.id, amount: preset.amount })
+            }}
+          >
+            {preset.label}
+          </Button>
+        ))}
+
+        <Button
+          variant="ghost"
+          size="sm"
+          aria-label={`Undo the last ${vice.name}`}
+          disabled={vice.spent.length === 0 || undo.isPending}
+          onClick={() => {
+            undo.mutate(vice.id)
+          }}
+        >
+          <Minus size={14} aria-hidden />
+        </Button>
+
+        {reading.nextBackAt !== undefined && (
+          <span className="text-ink-700 numeric ml-auto text-xs">
+            {whenBack(vice, reading.nextBackAt, now)}
+          </span>
+        )}
+      </div>
+    </div>
+  )
+}
+
 function PoolRow({ pool, now }: { readonly pool: PoolView; readonly now: Date }) {
   const spend = useSpendVice()
   const undo = useUndoVice()
   const { vice, reading } = pool
+
+  // A pool with a unit is a quantity, and a row of pips cannot show one.
+  if (vice.unit !== undefined) return <MeasuredPool pool={pool} now={now} />
 
   return (
     <div className="flex items-center gap-2 py-1.5">
@@ -133,7 +214,7 @@ function PoolRow({ pool, now }: { readonly pool: PoolView; readonly now: Date })
         aria-label={`Spend a ${vice.name}`}
         disabled={spend.isPending}
         onClick={() => {
-          spend.mutate(vice.id)
+          spend.mutate({ id: vice.id })
         }}
       >
         <Plus size={14} aria-hidden />
