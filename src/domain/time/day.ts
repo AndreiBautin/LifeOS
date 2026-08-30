@@ -32,3 +32,30 @@ export function toMonthKey(date: Date): string {
 export function toDayKey(date: Date): string {
   return `${toMonthKey(date)}-${date.getDate().toString().padStart(2, '0')}`
 }
+
+/**
+ * The week, Sunday-indexed to match `Date.getDay()`.
+ *
+ * Here rather than in a component because the *indexing* is the load-
+ * bearing part — a list that started on Monday would silently shift
+ * every stored `days-of-week` cadence by one — and because two screens
+ * now need it. It was declared twice before this, once in the habit form
+ * and once about to be in the vitals one.
+ */
+export const WEEKDAY_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'] as const
+
+export const WEEKDAY_NAMES = [
+  'Sunday',
+  'Monday',
+  'Tuesday',
+  'Wednesday',
+  'Thursday',
+  'Friday',
+  'Saturday',
+] as const
+
+/** "Fri, Sat" — for reading a chosen set of days back in a sentence. */
+export function namedDays(days: readonly number[]): string {
+  const sorted = [...days].sort((a, b) => a - b)
+  return sorted.map((day) => WEEKDAY_NAMES[day]?.slice(0, 3) ?? '?').join(', ')
+}

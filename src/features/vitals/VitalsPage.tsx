@@ -17,6 +17,7 @@ import {
   PHASES,
   TREND_DAYS,
 } from '@/domain/vitals/weight'
+import { WEEKDAY_LABELS, WEEKDAY_NAMES } from '@/domain/time/day'
 import {
   CHARGE_DIRECTIONS,
   CHARGE_PERIOD_LABELS,
@@ -29,6 +30,7 @@ import {
   type ChargeCycle,
   type ChargeDirection,
   type ChargePeriod,
+  type DaysLimit,
   type Vice,
 } from '@/domain/vitals/charges'
 import { UPKEEP } from '@/domain/base/base'
@@ -525,9 +527,7 @@ function ViceRow({ vice, now }: { readonly vice: Vice; readonly now: Date }) {
   const [capacity, setCapacity] = useState(String(vice.capacity))
   const [choice, setChoice] = useState(choiceFor(vice))
   const [hours, setHours] = useState(String(rollingHours(vice)))
-  const [limitDays, setLimitDays] = useState(vice.daysLimit !== undefined)
-  const [days, setDays] = useState(String(vice.daysLimit?.days ?? 2))
-  const [daysPeriod, setDaysPeriod] = useState<ChargePeriod>(vice.daysLimit?.period ?? 'week')
+  const dayLimit = useDaysLimit(vice.daysLimit)
 
   const reading = readCharges(vice, now)
 
@@ -548,9 +548,7 @@ function ViceRow({ vice, now }: { readonly vice: Vice; readonly now: Date }) {
                   capacity: Number(capacity),
                   cycle:
                     picked.kind === 'rolling' ? { kind: 'rolling', hours: Number(hours) } : picked,
-                  ...(limitDays
-                    ? { daysLimit: { days: Number(days) || 1, period: daysPeriod } }
-                    : {}),
+                  ...(dayLimit.value === undefined ? {} : { daysLimit: dayLimit.value }),
                 },
               },
               {
@@ -607,15 +605,7 @@ function ViceRow({ vice, now }: { readonly vice: Vice; readonly now: Date }) {
               Cancel
             </Button>
           </div>
-          <DaysLimitFields
-            enabled={limitDays}
-            onToggle={setLimitDays}
-            days={days}
-            onDays={setDays}
-            period={daysPeriod}
-            onPeriod={setDaysPeriod}
-            idPrefix={vice.name}
-          />
+          <DaysLimitFields state={dayLimit} idPrefix={vice.name} />
 
           {choice === 'rolling' && (
             <label className="text-ink-500 flex items-center gap-2 text-xs">
@@ -696,65 +686,155 @@ function ViceRow({ vice, now }: { readonly vice: Vice; readonly now: Date }) {
  * number: caffeine has a daily ceiling and no notion of caffeine-free
  * days, and water has neither.
  */
+/**
+ * The day limit's form state, in one place.
+ *
+ * A hook rather than five `useState` calls repeated in the add form and
+ * the edit form. They had already drifted once — the editor read
+ * `daysLimit.period` unconditionally and stopped compiling the moment a
+ * second shape existed — and two copies of a union's state is two places
+ * to get the union wrong.
+ */
+function useDaysLimit(initial?: DaysLimit) {
+  const [enabled, setEnabled] = useState(initial !== undefined)
+  const [mode, setMode] = useState<'count' | 'days-of-week'>(
+    initial?.kind === 'days-of-week' ? 'days-of-week' : 'count',
+  )
+  const [count, setCount] = useState(
+    String(initial !== undefined && initial.kind !== 'days-of-week' ? initial.days : 2),
+  )
+  const [period, setPeriod] = useState<ChargePeriod>(
+    initial !== undefined && initial.kind !== 'days-of-week' ? initial.period : 'week',
+  )
+  const [weekdays, setWeekdays] = useState<readonly number[]>(
+    initial?.kind === 'days-of-week' ? initial.days : [5, 6],
+  )
+
+  const value: DaysLimit | undefined = !enabled
+    ? undefined
+    : mode === 'days-of-week'
+      ? { kind: 'days-of-week', days: weekdays }
+      : { kind: 'count', days: Number(count) || 1, period }
+
+  return {
+    enabled,
+    setEnabled,
+    mode,
+    setMode,
+    count,
+    setCount,
+    period,
+    setPeriod,
+    weekdays,
+    setWeekdays,
+    /*
+     * Named days with nothing picked would shut the pool every day,
+     * which is not what an empty picker means — it means "not decided".
+     */
+    value: mode === 'days-of-week' && weekdays.length === 0 ? undefined : value,
+  }
+}
+
 function DaysLimitFields({
-  enabled,
-  onToggle,
-  days,
-  onDays,
-  period,
-  onPeriod,
+  state,
   idPrefix,
 }: {
-  readonly enabled: boolean
-  readonly onToggle: (next: boolean) => void
-  readonly days: string
-  readonly onDays: (next: string) => void
-  readonly period: ChargePeriod
-  readonly onPeriod: (next: ChargePeriod) => void
+  readonly state: ReturnType<typeof useDaysLimit>
   readonly idPrefix: string
 }) {
   return (
     <div className="space-y-2">
       <Button
         type="button"
-        variant={enabled ? 'primary' : 'outline'}
+        variant={state.enabled ? 'primary' : 'outline'}
         size="sm"
-        aria-pressed={enabled}
+        aria-pressed={state.enabled}
         onClick={() => {
-          onToggle(!enabled)
+          state.setEnabled(!state.enabled)
         }}
       >
-        {enabled ? 'Limiting days too' : 'Also limit days'}
+        {state.enabled ? 'Limiting days too' : 'Also limit days'}
       </Button>
 
-      {enabled && (
-        <label className="text-ink-500 flex items-center gap-2 text-xs">
-          <span className="shrink-0">on</span>
-          <input
-            className="bg-ink-900 border-ink-700 text-ink-50 numeric tap-target w-14 rounded-lg border px-2 text-sm"
-            inputMode="decimal"
-            aria-label={`${idPrefix} days`}
-            value={days}
-            onChange={(event) => {
-              onDays(event.target.value)
-            }}
-          />
-          <span className="shrink-0">days</span>
-          <select
-            className="bg-ink-900 border-ink-700 text-ink-50 tap-target min-w-0 flex-1 rounded-lg border px-2 text-sm"
-            aria-label={`${idPrefix} days period`}
-            value={period}
-            onChange={(event) => {
-              onPeriod(event.target.value as ChargePeriod)
-            }}
-          >
-            {CHARGE_PERIODS.map((one) => (
-              <option key={one} value={one}>
-                {CHARGE_PERIOD_LABELS[one]}
-              </option>
+      {state.enabled && (
+        <>
+          <div className="flex gap-1">
+            {[
+              { id: 'count' as const, label: 'Any days' },
+              { id: 'days-of-week' as const, label: 'Certain days' },
+            ].map((one) => (
+              <Button
+                key={one.id}
+                type="button"
+                size="sm"
+                full
+                variant={state.mode === one.id ? 'primary' : 'outline'}
+                aria-pressed={state.mode === one.id}
+                onClick={() => {
+                  state.setMode(one.id)
+                }}
+              >
+                {one.label}
+              </Button>
             ))}
-          </select>
-        </label>
+          </div>
+
+          {state.mode === 'count' ? (
+            <label className="text-ink-500 flex items-center gap-2 text-xs">
+              <span className="shrink-0">on</span>
+              <input
+                className="bg-ink-900 border-ink-700 text-ink-50 numeric tap-target w-14 rounded-lg border px-2 text-sm"
+                inputMode="decimal"
+                aria-label={`${idPrefix} days`}
+                value={state.count}
+                onChange={(event) => {
+                  state.setCount(event.target.value)
+                }}
+              />
+              <span className="shrink-0">days</span>
+              <select
+                className="bg-ink-900 border-ink-700 text-ink-50 tap-target min-w-0 flex-1 rounded-lg border px-2 text-sm"
+                aria-label={`${idPrefix} days period`}
+                value={state.period}
+                onChange={(event) => {
+                  state.setPeriod(event.target.value as ChargePeriod)
+                }}
+              >
+                {CHARGE_PERIODS.map((one) => (
+                  <option key={one} value={one}>
+                    {CHARGE_PERIOD_LABELS[one]}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : (
+            <div className="flex gap-1">
+              {WEEKDAY_LABELS.map((label, index) => (
+                <button
+                  key={WEEKDAY_NAMES[index]}
+                  type="button"
+                  aria-label={`${idPrefix} ${WEEKDAY_NAMES[index] ?? ''}`}
+                  aria-pressed={state.weekdays.includes(index)}
+                  className={[
+                    'tap-target h-10 flex-1 rounded-lg border text-xs font-medium',
+                    state.weekdays.includes(index)
+                      ? 'border-accent-500 bg-accent-500/15 text-accent-400'
+                      : 'border-ink-800 text-ink-500',
+                  ].join(' ')}
+                  onClick={() => {
+                    state.setWeekdays(
+                      state.weekdays.includes(index)
+                        ? state.weekdays.filter((one) => one !== index)
+                        : [...state.weekdays, index],
+                    )
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
+        </>
       )}
     </div>
   )
@@ -805,9 +885,7 @@ function AddVice() {
   const [capacity, setCapacity] = useState('2')
   const [choice, setChoice] = useState('week')
   const [hours, setHours] = useState('12')
-  const [limitDays, setLimitDays] = useState(false)
-  const [days, setDays] = useState('2')
-  const [daysPeriod, setDaysPeriod] = useState<ChargePeriod>('week')
+  const dayLimit = useDaysLimit()
   const [direction, setDirection] = useState<ChargeDirection>('limit')
   const [unit, setUnit] = useState('')
 
@@ -828,7 +906,7 @@ function AddVice() {
           cycle: picked.kind === 'rolling' ? { kind: 'rolling', hours: Number(hours) } : picked,
           direction,
           ...(unit.trim() === '' ? {} : { unit: unit.trim() }),
-          ...(limitDays ? { daysLimit: { days: Number(days) || 1, period: daysPeriod } } : {}),
+          ...(dayLimit.value === undefined ? {} : { daysLimit: dayLimit.value }),
         })
         setName('')
       }}
@@ -941,17 +1019,7 @@ function AddVice() {
         />
       </label>
 
-      {direction === 'limit' && (
-        <DaysLimitFields
-          enabled={limitDays}
-          onToggle={setLimitDays}
-          days={days}
-          onDays={setDays}
-          period={daysPeriod}
-          onPeriod={setDaysPeriod}
-          idPrefix="New pool"
-        />
-      )}
+      {direction === 'limit' && <DaysLimitFields state={dayLimit} idPrefix="New pool" />}
     </form>
   )
 }

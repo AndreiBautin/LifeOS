@@ -8,6 +8,7 @@ import { buttonStyles } from '@/components/shared/styles'
 import type { PhaseView, PoolView } from '@/application/use-cases/vitals/vitals'
 import { PHASE_LABELS, PHASE_VERDICT_LABELS } from '@/domain/vitals/weight'
 import { cycleOf, directionOf, type Vice } from '@/domain/vitals/charges'
+import { namedDays } from '@/domain/time/day'
 import { cn } from '@/lib/cn'
 import type { MacroTargets } from '@/domain/vitals/macros'
 
@@ -198,15 +199,20 @@ function PoolRow({ pool, now }: { readonly pool: PoolView; readonly now: Date })
           <p
             className={cn(
               'numeric text-xs',
-              !reading.days.todayCounts && reading.days.used >= reading.days.allowed
-                ? 'text-warn-500'
-                : 'text-ink-700',
+              /*
+               * `openToday` rather than a comparison of used against
+               * allowed. That comparison is the *count* rule, and it
+               * stayed silent for named days: a weekend-only pool on a
+               * Tuesday has none of its days used, so it read as fine
+               * while being shut.
+               */
+              reading.days.openToday ? 'text-ink-700' : 'text-warn-500',
             )}
           >
-            {reading.days.used} of {reading.days.allowed} days used
-            {!reading.days.todayCounts &&
-              reading.days.used >= reading.days.allowed &&
-              ' · not today'}
+            {vice.daysLimit?.kind === 'days-of-week'
+              ? `${namedDays(vice.daysLimit.days)} only`
+              : `${String(reading.days.used)} of ${String(reading.days.allowed)} days used`}
+            {!reading.days.openToday && ' · not today'}
           </p>
         )}
       </div>

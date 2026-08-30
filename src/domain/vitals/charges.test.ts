@@ -4,6 +4,7 @@ import {
   cycleOf,
   describeCycle,
   readCharges,
+  saneDaysLimit,
   spendCharge,
   spendEntry,
   undoLastCharge,
@@ -525,5 +526,82 @@ describe('limiting the days as well as the amount', () => {
     delete (plain as { daysLimit?: unknown }).daysLimit
 
     expect(readCharges(plain, new Date(2026, 7, 27, 20)).days).toBeUndefined()
+  })
+})
+
+describe('limiting to named days rather than a count', () => {
+  // Only Friday and Saturday.
+  const weekend = (spent: readonly string[]): Vice => ({
+    id: asViceId('alcohol'),
+    name: 'Alcohol',
+    capacity: 3,
+    cycle: { kind: 'calendar', period: 'day' },
+    daysLimit: { kind: 'days-of-week', days: [5, 6] },
+    spent,
+    createdAt: '2026-01-01T00:00:00.000Z',
+  })
+
+  // Friday 28, Saturday 29, Sunday 30 August 2026.
+  const friday = new Date(2026, 7, 28, 20)
+  const sunday = new Date(2026, 7, 30, 20)
+
+  /*
+   * The distinction a count cannot express: "two days a week" permits
+   * Monday and Tuesday, and somebody who says "only at weekends" means
+   * something stricter than a number.
+   */
+  it('opens on a named day and shuts on any other', () => {
+    expect(readCharges(weekend([]), friday).days?.openToday).toBe(true)
+    expect(readCharges(weekend([]), sunday).days?.openToday).toBe(false)
+    expect(readCharges(weekend([]), sunday).available).toBe(0)
+  })
+
+  it('still limits the amount on a day it does allow', () => {
+    const three = [20, 21, 22].map((h) => spendEntry(new Date(2026, 7, 28, h)))
+
+    expect(readCharges(weekend(three), new Date(2026, 7, 28, 23)).available).toBe(0)
+  })
+
+  it('does not shut a named day just because others were used', () => {
+    // Drank Friday; Saturday is still one of the named days.
+    const reading = readCharges(weekend([spendEntry(friday)]), new Date(2026, 7, 29, 20))
+
+    expect(reading.days?.openToday).toBe(true)
+    expect(reading.available).toBe(3)
+  })
+
+  it('says which days in the sentence', () => {
+    expect(describeCycle(weekend([]))).toBe('3 a day, on Fri, Sat')
+  })
+})
+
+describe('making a day limit sensible', () => {
+  it('rounds a count and never lets it reach zero', () => {
+    expect(saneDaysLimit({ kind: 'count', days: 2.4, period: 'week' })).toEqual({
+      kind: 'count',
+      days: 2,
+      period: 'week',
+    })
+    expect(saneDaysLimit({ kind: 'count', days: 0, period: 'week' })).toEqual({
+      kind: 'count',
+      days: 1,
+      period: 'week',
+    })
+  })
+
+  it('drops duplicate and impossible weekdays', () => {
+    expect(saneDaysLimit({ kind: 'days-of-week', days: [6, 5, 5, 9, -1] })).toEqual({
+      kind: 'days-of-week',
+      days: [5, 6],
+    })
+  })
+
+  /*
+   * A picker with nothing chosen means undecided, not "shut every day" —
+   * and a limit that can never be satisfied is the worst of the three
+   * states it could be in.
+   */
+  it('is absent when no day was chosen at all', () => {
+    expect(saneDaysLimit({ kind: 'days-of-week', days: [] })).toBeUndefined()
   })
 })

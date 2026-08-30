@@ -1435,6 +1435,24 @@ The two run on independent periods: an amount per day with days per week
 is the common pairing, and an amount per week on at most two days works
 unchanged.
 
+**A day limit is a count _or_ named days, because those are two rules.**
+`DaysLimit` in `domain/vitals/charges.ts`. "At most two days a week"
+leaves the choice to the day it arrives on; "Friday and Saturday" is
+decided once, in advance, and a count cannot express it — any two days
+permits Monday and Tuesday. Spelled `days-of-week` and Sunday-indexed to
+match `Cadence`, because `Date.getDay()` is what reads both.
+
+**`openToday` is the one question both shapes answer**, and it is what
+`available` folds against. A count is open while days remain or the day
+has already started; named days are open on the named days and shut on
+the others however few have been used. The card asked
+`used >= allowed` before this — the _count_ rule — so a weekend-only pool
+on a Tuesday read as fine while being shut, with none of its days used.
+
+**An empty day picker is undecided, not "shut every day".**
+`saneDaysLimit` returns `undefined` for it, because a limit that can
+never be satisfied is the worst of the states it could be in.
+
 **`todayCounts` is the load-bearing part.** A day already started does
 not cost a second one, so a pool with both days spent is still open on
 one of those days and shut on any other. Without it the third drink on a

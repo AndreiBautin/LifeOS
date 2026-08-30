@@ -9,12 +9,8 @@ import type {
   WeighInRepository,
 } from '@/domain/repositories/ports'
 import type { ReadinessFactors } from '@/domain/autoregulation/check-in'
-import type {
-  ChargeCycle,
-  ChargeDirection,
-  ChargePeriod,
-  ChargePreset,
-} from '@/domain/vitals/charges'
+import type { ChargeCycle, ChargeDirection, ChargePreset, DaysLimit } from '@/domain/vitals/charges'
+import { saneDaysLimit } from '@/domain/vitals/charges'
 import {
   isActive,
   readCharges,
@@ -175,6 +171,13 @@ export async function listWeighIns(deps: VitalsDeps): Promise<readonly WeighIn[]
   return [...(await deps.weighIns.all())].sort((a, b) => a.day.localeCompare(b.day))
 }
 
+/** The day limit as a spreadable, so an absent one writes no key at all. */
+function daysOrNothing(limit: DaysLimit | undefined): { daysLimit?: DaysLimit } {
+  if (limit === undefined) return {}
+  const sane = saneDaysLimit(limit)
+  return sane === undefined ? {} : { daysLimit: sane }
+}
+
 /** A rolling window of zero hours would make a pool that never refills. */
 function sane(cycle: ChargeCycle): ChargeCycle {
   return cycle.kind === 'rolling' ? { kind: 'rolling', hours: Math.max(1, cycle.hours) } : cycle
@@ -188,8 +191,8 @@ export interface NewVice {
   readonly unit?: string
   readonly direction?: ChargeDirection
   readonly presets?: readonly ChargePreset[]
-  /** How many days in a period the pool may be touched at all. */
-  readonly daysLimit?: { readonly days: number; readonly period: ChargePeriod }
+  /** Which days the pool may be touched at all — a count, or named days. */
+  readonly daysLimit?: DaysLimit
 }
 
 export async function addVice(input: NewVice, deps: VitalsDeps): Promise<Vice> {
@@ -201,14 +204,7 @@ export async function addVice(input: NewVice, deps: VitalsDeps): Promise<Vice> {
     ...(input.unit === undefined ? {} : { unit: input.unit }),
     ...(input.direction === undefined ? {} : { direction: input.direction }),
     ...(input.presets === undefined ? {} : { presets: input.presets }),
-    ...(input.daysLimit === undefined
-      ? {}
-      : {
-          daysLimit: {
-            days: Math.max(1, Math.round(input.daysLimit.days)),
-            period: input.daysLimit.period,
-          },
-        }),
+    ...daysOrNothing(input.daysLimit),
     spent: [],
     createdAt: deps.clock.now().toISOString(),
   }
@@ -270,14 +266,7 @@ export async function editVice(
       name: input.name.trim(),
       capacity: Math.max(1, Math.round(input.capacity)),
       cycle: sane(input.cycle),
-      ...(input.daysLimit === undefined
-        ? {}
-        : {
-            daysLimit: {
-              days: Math.max(1, Math.round(input.daysLimit.days)),
-              period: input.daysLimit.period,
-            },
-          }),
+      ...daysOrNothing(input.daysLimit),
     }
   })
 }

@@ -7,6 +7,7 @@ import { Button, Card, Empty } from '@/components/shared/primitives'
 import type { Cadence } from '@/domain/dailies/daily'
 
 import { BASE, UPKEEP, type RecordHome } from '@/domain/base/base'
+import { WEEKDAY_LABELS, WEEKDAY_NAMES } from '@/domain/time/day'
 import {
   useAddDaily,
   useDueElsewhere,
@@ -32,8 +33,6 @@ const FIELD =
   'bg-ink-850 border-ink-800 text-ink-50 placeholder:text-ink-700 h-11 w-full rounded-xl border px-3 text-sm'
 
 /** Sunday first, matching `Date.getDay()` and every calendar app. */
-const WEEKDAY_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S']
-const WEEKDAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 
 /** 1st, 2nd, 3rd, 4th — for reading a day of the month back. */
 function ordinal(day: number): string {

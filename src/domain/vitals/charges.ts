@@ -1,4 +1,5 @@
 import type { ViceId } from '@/domain/ids/ids'
+import { namedDays } from '@/domain/time/day'
 
 /**
  * Amounts you are keeping to, as a pool that refills on its own.
@@ -58,6 +59,47 @@ export type ChargeCycle =
  * why this is a flag on one mechanism rather than a second one. Absent
  * means a limit — every pool written before this was one.
  */
+/**
+ * Which days a pool may be touched on.
+ *
+ * Two ways of saying it, because they are two different rules. **A
+ * count** — at most two days a week, whichever two — leaves the choice
+ * to the day it arrives on. **Named days** — Friday and Saturday — is a
+ * decision made once, in advance, and is what somebody usually means by
+ * "I only drink at weekends". A count cannot express it: any two days
+ * permits Monday and Tuesday.
+ *
+ * `days-of-week` is spelled as it is in `Cadence`, and Sunday-indexed
+ * for the same reason — `Date.getDay()` is what reads it.
+ *
+ * A stored limit with no `kind` is a count, which is what every one
+ * written before this was.
+ */
+export type DaysLimit =
+  | { readonly kind?: 'count'; readonly days: number; readonly period: ChargePeriod }
+  | { readonly kind: 'days-of-week'; readonly days: readonly number[] }
+
+/**
+ * A day limit with its numbers made sensible.
+ *
+ * Beside the type rather than in the use-case, because both shapes need
+ * different treatment — a count must be a whole number of at least one,
+ * a set of weekdays must hold only real weekdays and no duplicates —
+ * and a caller that knew to round one would have to be told about the
+ * other. Named days with nothing left is `undefined`: a picker with
+ * nothing chosen means undecided, not "shut every day".
+ */
+export function saneDaysLimit(limit: DaysLimit): DaysLimit | undefined {
+  if (limit.kind === 'days-of-week') {
+    const days = [...new Set(limit.days)]
+      .filter((day) => day >= 0 && day <= 6)
+      .sort((a, b) => a - b)
+    return days.length === 0 ? undefined : { kind: 'days-of-week', days }
+  }
+
+  return { kind: 'count', days: Math.max(1, Math.round(limit.days)), period: limit.period }
+}
+
 export const CHARGE_DIRECTIONS = ['limit', 'target'] as const
 export type ChargeDirection = (typeof CHARGE_DIRECTIONS)[number]
 
@@ -99,7 +141,7 @@ export interface Vice {
    * pairing is an amount per day with days per week, but an amount per
    * week on at most two days is equally sayable and works unchanged.
    */
-  readonly daysLimit?: { readonly days: number; readonly period: ChargePeriod }
+  readonly daysLimit?: DaysLimit
   /** Offered when logging, so a glass of water is one tap and not a form. */
   readonly presets?: readonly ChargePreset[]
   /**
@@ -159,6 +201,15 @@ export interface ChargeReading {
     readonly used: number
     readonly allowed: number
     readonly todayCounts: boolean
+    /**
+     * Whether today is a day this pool may be touched at all.
+     *
+     * The single question both shapes answer, and the one `available`
+     * is folded against. A count is open while days remain or the day
+     * has already started; named days are open on the named days and
+     * shut on the others however few have been used.
+     */
+    readonly openToday: boolean
   }
 }
 
@@ -359,15 +410,32 @@ export function readCharges(vice: Vice, now: Date): ChargeReading {
     dayLimit === undefined
       ? undefined
       : (() => {
+          if (dayLimit.kind === 'days-of-week') {
+            /*
+             * Counted over the week whatever the amount's own cycle is,
+             * because a set of weekdays is a statement about a week.
+             */
+            const used = daysUsedIn(vice, now, 'week')
+            return {
+              used: used.size,
+              allowed: dayLimit.days.length,
+              todayCounts: used.has(toLocalDayKey(now)),
+              openToday: dayLimit.days.includes(now.getDay()),
+            }
+          }
+
           const used = daysUsedIn(vice, now, dayLimit.period)
+          const todayCounts = used.has(toLocalDayKey(now))
+
           return {
             used: used.size,
             allowed: dayLimit.days,
-            todayCounts: used.has(toLocalDayKey(now)),
+            todayCounts,
+            openToday: todayCounts || used.size < dayLimit.days,
           }
         })()
 
-  const shutForToday = days !== undefined && !days.todayCounts && days.used >= days.allowed
+  const shutForToday = days !== undefined && !days.openToday
 
   const full = {
     capacity: vice.capacity,
@@ -410,11 +478,16 @@ export function describeCycle(vice: Vice): string {
       ? `${amount} ${CHARGE_PERIOD_LABELS[cycle.period]}`
       : `${amount}, one back every ${String(cycle.hours)}h`
 
-  if (vice.daysLimit === undefined) return limit
+  const dayLimit = vice.daysLimit
+  if (dayLimit === undefined) return limit
 
-  return `${limit}, on ${String(vice.daysLimit.days)} day${
-    vice.daysLimit.days === 1 ? '' : 's'
-  } ${CHARGE_PERIOD_LABELS[vice.daysLimit.period]}`
+  if (dayLimit.kind === 'days-of-week') {
+    return `${limit}, on ${namedDays(dayLimit.days)}`
+  }
+
+  return `${limit}, on ${String(dayLimit.days)} day${
+    dayLimit.days === 1 ? '' : 's'
+  } ${CHARGE_PERIOD_LABELS[dayLimit.period]}`
 }
 
 /**
