@@ -1610,6 +1610,38 @@ reason `capacity` had to stop being a count. Pools with a unit get a bar
 and their numbers written out; pools without keep the pips, because pips
 cannot show four hundred.
 
+**Water is Upkeep too, and it used to be a measured target.** It was
+3,000 ml with buttons for 250, 500 and a litre: an accurate account of a
+day's drinking, and a running total nobody keeps. A gallon is a thing
+you either finished or did not — which is a _daily_ here, one tap, with a
+streak, and the streak is the question actually being asked over a week.
+
+The mechanism fitting is what made it tempting. A pool with a capacity of
+one and no unit would have worked and would have been a habit wearing a
+pool's clothes: a plus, a single pip, and no streak at the end of it.
+Same call [[supplements]] got, for the same reason.
+
+**Removing a suggestion reaches nobody who already took it.** A Water
+pool already on a device stays a 3,000 ml bar — it is a record, not a
+default — so the way across is to retire it and tap the Upkeep
+suggestion. This is the trap `SETTINGS_SCHEMA_VERSION` exists for,
+appearing again in the one place a migration would be _wrong_: silently
+deleting a pool holding weeks of readings, to replace it with a habit
+that has no history, is worse than leaving it.
+
+**Upkeep has suggestions now, and it was the only list without them.**
+You typed every row, and it is the list whose contents are the least
+personal — everybody's is roughly water, brushing, flossing and hair.
+Offered by _name not already used_, the same rule the pools follow, so
+taking one does not take the rest away.
+
+**A daily has no rename**, which is why the suggestion is "Gallon of
+water" rather than "Water". A title is fixed at creation, so a row
+reading just "Water" would be a checkbox against a question nobody
+fails, where the whole point is whether the day's target was finished.
+If renaming ever arrives, this is a suggestion that can go back to being
+general.
+
 **Supplements are Upkeep, not a pool.** Creatine is a thing you take once
 a day and either did or did not — a daily with a streak, which is exactly
 what Upkeep holds. Building a third mechanism for it would have been a

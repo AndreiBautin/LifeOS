@@ -39,7 +39,13 @@ import type { DailyView } from '@/application/use-cases/dailies/dailies'
 import { cn } from '@/lib/cn'
 
 import { AddDaily } from '../today/Dailies'
-import { useKeepToday, useMoveDailyHome, useUndoToday, useUpkeep } from '../today/dailies-hooks'
+import {
+  useAddDaily,
+  useKeepToday,
+  useMoveDailyHome,
+  useUndoToday,
+  useUpkeep,
+} from '../today/dailies-hooks'
 import { projectCorridor } from '@/domain/vitals/weight'
 import { TrendChart } from '@/components/shared/TrendChart'
 import { PoolRow } from './PoolRow'
@@ -106,27 +112,22 @@ const SUGGESTIONS: readonly NewVice[] = [
     daysLimit: { days: 2, period: 'week' },
   },
   /*
-   * Water is the one that runs the other way — filled rather than spent
-   * — and caffeine is the one that shows why a count was not enough: a
-   * double espresso and a cold brew are one coffee each and very
-   * different amounts.
+   * **Water is not here, and that is the same call supplements got.**
+   * It was a target measured in millilitres with buttons for 250, 500
+   * and a litre — an accurate account of a day's drinking and a running
+   * total nobody keeps. A gallon is a thing you either finished or did
+   * not, which is a *daily* in this app: it lives in Upkeep, it is one
+   * tap, and it earns a streak, which is the question actually being
+   * asked over a week.
    *
-   * 400 mg is the figure health agencies give as a daily ceiling for
-   * most adults; the water target is a round 3 litres and is a starting
-   * point rather than a claim, which is why both are editable.
+   * The mechanism would have fitted, and that was the trap. A pool with
+   * a capacity of one and no unit is a habit wearing a pool's clothes —
+   * a plus and a single pip, and no streak at the end of it.
+   *
+   * 400 mg is the figure health agencies give as a daily caffeine
+   * ceiling for most adults, and it is editable because it is a starting
+   * point rather than a claim.
    */
-  {
-    name: 'Water',
-    capacity: 3000,
-    unit: 'ml',
-    direction: 'target',
-    cycle: { kind: 'calendar', period: 'day' },
-    presets: [
-      { label: '+250', amount: 250 },
-      { label: '+500', amount: 500 },
-      { label: '+1L', amount: 1000 },
-    ],
-  },
   {
     name: 'Caffeine',
     capacity: 400,
@@ -1284,6 +1285,73 @@ function UpkeepRow({ view }: { readonly view: DailyView }) {
   )
 }
 
+/**
+ * The body's chores, offered by name.
+ *
+ * Upkeep was the one list in the app with no suggestions — you typed
+ * every row — and it is the list whose contents are the least personal:
+ * everybody's is roughly brushing, flossing, hair and water. Water is
+ * the reason it exists now, since taking it off the pool suggestions
+ * would otherwise have left the only way to it a form.
+ *
+ * `timesPerDay` is on brushing because two is what brushing is, and it
+ * is the field `AddDaily` collects for exactly this.
+ */
+const UPKEEP_SUGGESTIONS: readonly {
+  readonly title: string
+  readonly timesPerDay?: number
+}[] = [
+  /*
+   * Named for the thing being ticked rather than for the substance. A
+   * daily has no rename — the title is fixed at creation — so a row
+   * reading just 'Water' would be a checkbox against a question nobody
+   * fails, where the whole point is whether the day's target was
+   * finished.
+   */
+  { title: 'Gallon of water' },
+  { title: 'Brush teeth', timesPerDay: 2 },
+  { title: 'Floss' },
+  { title: 'Wash hair' },
+]
+
+function UpkeepSuggestions({ taken }: { readonly taken: ReadonlySet<string> }) {
+  const add = useAddDaily(UPKEEP)
+
+  /*
+   * Offered by *name not already used*, the same rule the pools follow.
+   * Gating on an empty list instead means adding the first one takes the
+   * other three away, so the second has to be typed — which is the
+   * opposite of what a suggestion is for.
+   */
+  const unused = UPKEEP_SUGGESTIONS.filter((one) => !taken.has(one.title.toLowerCase()))
+  if (unused.length === 0) return null
+
+  return (
+    <div className="mb-3 flex flex-wrap gap-1.5">
+      {unused.map((suggestion) => (
+        <Button
+          key={suggestion.title}
+          variant="outline"
+          size="sm"
+          disabled={add.isPending}
+          onClick={() => {
+            add.mutate({
+              title: suggestion.title,
+              cadence: { kind: 'every-day' },
+              ...(suggestion.timesPerDay === undefined
+                ? {}
+                : { timesPerDay: suggestion.timesPerDay }),
+            })
+          }}
+        >
+          <Plus size={14} aria-hidden />
+          {suggestion.title}
+        </Button>
+      ))}
+    </div>
+  )
+}
+
 function Upkeep() {
   const upkeep = useUpkeep()
   const [adding, setAdding] = useState(false)
@@ -1319,15 +1387,19 @@ function Upkeep() {
       <Card>
         {upkeep.data === undefined ? null : views.length === 0 ? (
           <Empty title="Nothing yet">
-            Twice-a-day things belong here too — set how many times and each tap logs one.
+            Things you either did today or did not — a gallon of water, brushing, flossing.
           </Empty>
         ) : (
-          <ul className="divide-ink-800 divide-y">
+          <ul className="divide-ink-800 mb-3 divide-y">
             {views.map((view) => (
               <UpkeepRow key={view.daily.id} view={view} />
             ))}
           </ul>
         )}
+
+        <UpkeepSuggestions
+          taken={new Set(views.map((view) => view.daily.title.trim().toLowerCase()))}
+        />
       </Card>
     </Section>
   )
