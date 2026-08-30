@@ -8,6 +8,8 @@ import {
   isDueToday,
   isExpectedOn,
   isDoneOn,
+  PARTS_OF_DAY,
+  partOfDayAt,
   streakFor,
   timesDoneOn,
   uncomplete,
@@ -352,5 +354,35 @@ describe('records written before times-per-day existed', () => {
 
     expect(again.done).toEqual(['2026-08-27'])
     expect(again).toBe(first)
+  })
+})
+
+describe('the part of the day a habit belongs to', () => {
+  it('reads the current part off ordinary boundaries', () => {
+    expect(partOfDayAt(new Date(2026, 7, 30, 7))).toBe('morning')
+    expect(partOfDayAt(new Date(2026, 7, 30, 11, 59))).toBe('morning')
+    expect(partOfDayAt(new Date(2026, 7, 30, 12))).toBe('afternoon')
+    expect(partOfDayAt(new Date(2026, 7, 30, 16, 59))).toBe('afternoon')
+    expect(partOfDayAt(new Date(2026, 7, 30, 17))).toBe('evening')
+    expect(partOfDayAt(new Date(2026, 7, 30, 23))).toBe('evening')
+  })
+
+  it('lists the parts in the order the day happens', () => {
+    // The array order *is* the sort order, which is why it is a list.
+    expect(PARTS_OF_DAY).toEqual(['morning', 'afternoon', 'evening'])
+  })
+
+  /*
+   * The rule this must not break. A morning habit undone at noon is not
+   * missed — the day is not over — and time of day was the most obvious
+   * excuse to start breaking streaks early, which is the single most
+   * discouraging thing a habit tracker can do.
+   */
+  it('never decides whether something counts as done', () => {
+    const morning = aDaily({ cadence: { kind: 'every-day' }, partOfDay: 'morning', done: [] })
+    const evening = aDaily({ cadence: { kind: 'every-day' }, partOfDay: 'evening', done: [] })
+
+    expect(isDoneOn(morning, '2026-08-30')).toBe(isDoneOn(evening, '2026-08-30'))
+    expect(streakFor({ ...morning, done: ['2026-08-29'] }, '2026-08-30')).toBe(1)
   })
 })

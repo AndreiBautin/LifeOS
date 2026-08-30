@@ -16,6 +16,37 @@ import type { RecordHome } from '@/domain/base/base'
  * twice on two devices is one completion, which is also just true.
  */
 
+/**
+ * The three parts of a day, in the order they happen.
+ *
+ * The order of this array is the order things sort in, which is why it
+ * is a list rather than a set of booleans.
+ */
+export const PARTS_OF_DAY = ['morning', 'afternoon', 'evening'] as const
+export type PartOfDay = (typeof PARTS_OF_DAY)[number]
+
+export const PART_OF_DAY_LABELS: Record<PartOfDay, string> = {
+  morning: 'Morning',
+  afternoon: 'Afternoon',
+  evening: 'Evening',
+}
+
+/**
+ * Which part of the day it is now.
+ *
+ * The boundaries are stated here rather than guessed at each call site,
+ * and they are ordinary rather than clever: noon and five o'clock are
+ * where most people would put them. Nothing depends on being right about
+ * the edges — this only decides which label is highlighted, never
+ * whether something counts as done.
+ */
+export function partOfDayAt(now: Date): PartOfDay {
+  const hour = now.getHours()
+  if (hour < 12) return 'morning'
+  if (hour < 17) return 'afternoon'
+  return 'evening'
+}
+
 export const CADENCE_KINDS = ['every-day', 'days-of-week', 'days-of-month'] as const
 
 export type CadenceKind = (typeof CADENCE_KINDS)[number]
@@ -90,6 +121,20 @@ export interface Daily {
    * on one of them*, and folding it in would mean saying it three times.
    */
   readonly timesPerDay?: number
+  /**
+   * Which part of the day it belongs to. Absent means no particular one.
+   *
+   * **Coarse on purpose, because nothing can ring.** A PWA on iOS cannot
+   * schedule a notification and this app has no server to push one, so a
+   * stored "07:00" would be precision with no consumer — it could order
+   * a list and nothing else, which three named parts do just as well and
+   * without inviting somebody to expect an alarm.
+   *
+   * What it is for is reading a day as a routine: opening the house
+   * belongs at one end and closing it at the other, and a flat
+   * alphabetical list says nothing about which comes first.
+   */
+  readonly partOfDay?: PartOfDay
   readonly createdAt: string
   /**
    * Retired rather than deleted, so the days it was done on survive.

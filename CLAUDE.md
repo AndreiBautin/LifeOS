@@ -1739,6 +1739,31 @@ The wrinkle it carries, stated so nobody treats it as a bug: a
 days-of-week cadence means a "daily" can happen weekly. Every MMO with
 dailies has the same thing and nobody is confused by it.
 
+**A habit can name a part of the day, and it is deliberately coarse.**
+`partOfDay` in `domain/dailies/daily.ts` — morning, afternoon, evening,
+or none. A stored "07:00" would be precision with no consumer: nothing
+can ring (see below), so a time could order a list and do nothing else,
+which three named parts do just as well without inviting somebody to
+expect an alarm.
+
+What it is for is reading a day as a routine — the house is opened at one
+end and closed at the other, and an alphabetical list says nothing about
+which comes first.
+
+**Sorted chronologically, never "the current part first."** Putting now
+at the top is the more obviously clever rule and is worse to live with:
+the list would reorder itself twice a day, so the row you reach for by
+position moves, and a glance at breakfast and a glance at bedtime
+disagree about where anything is. The current part is _lit_ instead,
+which says the same thing and moves nothing. A habit with no part sorts
+last, because it belongs to no point in the day rather than to the start.
+
+**It never decides whether something counts as done.** Time of day is the
+most obvious excuse to start breaking a streak early — a morning habit
+undone at noon _looks_ missed — and that would undo the humane rule this
+file already sets out: today does not break a streak until the day is
+over. `daily.test.ts` holds it.
+
 **A daily cannot ring, and the design is built around that.** iOS gives
 a PWA no way to schedule a local notification, and Web Push needs a
 server this app does not have. So `domain/dailies/` earns its place by

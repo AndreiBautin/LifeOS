@@ -3,6 +3,8 @@ import {
   complete,
   isDoneOn,
   isDueToday,
+  PARTS_OF_DAY,
+  type PartOfDay,
   isExpectedOn,
   streakFor,
   timesDoneOn,
@@ -61,6 +63,8 @@ export interface NewDaily {
   readonly cadence: Cadence
   /** Absent means once, which is what every record before this meant. */
   readonly timesPerDay?: number
+  /** Which part of the day it belongs to. Absent means no particular one. */
+  readonly partOfDay?: PartOfDay
   /** Absent means the record's own area. */
   readonly belongsTo?: RecordHome
 }
@@ -91,6 +95,7 @@ export async function addDaily(
     ...(input.timesPerDay === undefined || input.timesPerDay <= 1
       ? {}
       : { timesPerDay: Math.round(input.timesPerDay) }),
+    ...(input.partOfDay === undefined ? {} : { partOfDay: input.partOfDay }),
     ...(input.belongsTo === undefined ? {} : { belongsTo: input.belongsTo }),
   })
 
@@ -206,6 +211,27 @@ export async function dailiesToday(
       const rank = (view: DailyView) => (view.dueToday ? 0 : view.doneToday ? 1 : 2)
       const byRank = rank(a) - rank(b)
       if (byRank !== 0) return byRank
+
+      /*
+       * Then in the order the day happens, so a list of habits reads as
+       * a routine: the house is opened before it is closed.
+       *
+       * **Chronological, not "whatever part it is now first."** Putting
+       * the current part at the top is the more obviously clever rule
+       * and is worse to live with: the list would reorder itself twice a
+       * day, so the thing you reach for by position moves, and a glance
+       * at breakfast and a glance at bedtime disagree about where
+       * anything is. Anything with no part sorts last, because it
+       * belongs to no point in the day rather than to the start of it.
+       */
+      const when = (view: DailyView) =>
+        view.daily.partOfDay === undefined
+          ? PARTS_OF_DAY.length
+          : PARTS_OF_DAY.indexOf(view.daily.partOfDay)
+
+      const byPart = when(a) - when(b)
+      if (byPart !== 0) return byPart
+
       return a.daily.title.localeCompare(b.daily.title)
     })
 }

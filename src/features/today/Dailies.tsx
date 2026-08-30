@@ -9,6 +9,13 @@ import type { Cadence } from '@/domain/dailies/daily'
 import { BASE, UPKEEP, type RecordHome } from '@/domain/base/base'
 import { WEEKDAY_LABELS, WEEKDAY_NAMES } from '@/domain/time/day'
 import {
+  PART_OF_DAY_LABELS,
+  PARTS_OF_DAY,
+  partOfDayAt,
+  type PartOfDay,
+} from '@/domain/dailies/daily'
+import { useServices } from '@/app/context'
+import {
   useAddDaily,
   useDueElsewhere,
   useMoveDailyHome,
@@ -60,6 +67,7 @@ function cadenceLabel(cadence: Cadence): string {
 function DailyRow({ view }: { readonly view: DailyView }) {
   // From the record, so a chore shown on Today still pays as a chore.
   const keep = useKeepToday(view.daily.belongsTo)
+  const nowPart = partOfDayAt(useServices().clock.now())
   const undo = useUndoToday()
   const retire = useRetireDaily()
   const moveHome = useMoveDailyHome()
@@ -116,6 +124,19 @@ function DailyRow({ view }: { readonly view: DailyView }) {
           {daily.title}
         </p>
         <p className="text-ink-600 text-xs">
+          {/*
+            Lit when it is that part of the day now. It never changes
+            whether something counts as done — the streak's humane rule
+            stands, and an unticked morning does not break anything until
+            the day is over — it only says which end of the day you are
+            at.
+          */}
+          {daily.partOfDay !== undefined && (
+            <span className={daily.partOfDay === nowPart ? 'text-accent-400' : undefined}>
+              {PART_OF_DAY_LABELS[daily.partOfDay]}
+              {' · '}
+            </span>
+          )}
           {cadenceLabel(daily.cadence)}
           {needed > 1 && ` · ${String(doneCount)} of ${String(needed)} today`}
           {!expectedToday && ' · not today'}
@@ -188,6 +209,7 @@ export function AddDaily({
   const [days, setDays] = useState<readonly number[]>([])
   const [monthly, setMonthly] = useState(false)
   const [times, setTimes] = useState('1')
+  const [part, setPart] = useState<PartOfDay | ''>('')
 
   const toggle = (day: number): void => {
     setDays(days.includes(day) ? days.filter((one) => one !== day) : [...days, day])
@@ -205,6 +227,7 @@ export function AddDaily({
             {
               title,
               ...(howMany > 1 ? { timesPerDay: howMany } : {}),
+              ...(part === '' ? {} : { partOfDay: part }),
               // No days picked means every day, which is what somebody who
               // ignored this row meant by ignoring it.
               cadence:
@@ -227,6 +250,32 @@ export function AddDaily({
             setTitle(event.target.value)
           }}
         />
+
+        {/*
+          When in the day it belongs, which is a third question again:
+          which days, how many on one of them, and whereabouts in it.
+          Coarse because nothing can ring — see `partOfDay`.
+        */}
+        <div className="flex gap-1">
+          {(['', ...PARTS_OF_DAY] as const).map((one) => (
+            <button
+              key={one === '' ? 'any' : one}
+              type="button"
+              aria-pressed={part === one}
+              className={[
+                'tap-target flex-1 rounded-lg border px-2 text-xs font-medium',
+                part === one
+                  ? 'border-accent-500 bg-accent-500/15 text-accent-400'
+                  : 'border-ink-800 text-ink-500',
+              ].join(' ')}
+              onClick={() => {
+                setPart(one)
+              }}
+            >
+              {one === '' ? 'Any time' : PART_OF_DAY_LABELS[one]}
+            </button>
+          ))}
+        </div>
 
         {/*
           How many times on each of those days. Separate from the cadence
