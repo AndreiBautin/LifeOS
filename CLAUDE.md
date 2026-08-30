@@ -1618,6 +1618,22 @@ and gave no way to fill it. There is a typed amount beside the presets
 now, which is useful anyway: a preset cannot know that tonight's glass
 was a large one.
 
+**An empty amount box means one, and the plus was doing nothing at
+all.** `Number('')` is 0, so the submit fell through its `amount <= 0`
+guard and returned — and on a measured pool with no quick amounts, that
+plus is the only control on the row. A button that looks pressable, is
+not disabled, and has no effect is the worst of the three states it can
+be in: a disabled one says why, and a working one works.
+
+One _unit_ in the pool's own terms — one hit, one millilitre, one
+milligram. It is the least surprising reading of a plus, it makes a
+preset-less pool tappable at all, and every spend is one tap from undo.
+
+**Undo does not wear a minus on a measured pool.** A minus beside a plus
+reads as "one less", and undo removes the _last entry_ — which may have
+been a 160 mg energy drink. On a counting pool the two readings coincide
+and the minus is honest, so it stays there.
+
 **Quick amounts are editable too, and replaced wholesale rather than
 merged.** The editor shows the entire list, so merging would make a
 removed row reappear — the one thing a list editor must not do. An empty

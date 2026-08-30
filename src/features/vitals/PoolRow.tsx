@@ -1,4 +1,4 @@
-import { Minus, Plus } from 'lucide-react'
+import { Minus, Plus, Undo2 } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { useState } from 'react'
 
@@ -156,7 +156,7 @@ function DaysLine({ pool }: { readonly pool: Pool }) {
  * reads as a rendering fault rather than as the quieter of two options,
  * and it was the only thing in the band without an edge.
  */
-function UndoButton({ vice }: { readonly vice: Vice }) {
+function UndoButton({ vice, measured }: { readonly vice: Vice; readonly measured?: boolean }) {
   const undo = useUndoVice()
 
   return (
@@ -169,7 +169,13 @@ function UndoButton({ vice }: { readonly vice: Vice }) {
         undo.mutate(vice.id)
       }}
     >
-      <Minus size={14} aria-hidden />
+      {/*
+        A minus beside a plus reads as "one less", and on a measured pool
+        that is not what this does — it removes the *last entry*, which
+        might have been a 160 mg energy drink. On a counting pool the two
+        readings coincide, so the minus is honest there and stays.
+      */}
+      {measured ? <Undo2 size={14} aria-hidden /> : <Minus size={14} aria-hidden />}
     </Button>
   )
 }
@@ -203,11 +209,25 @@ function MeasuredLog({ vice }: { readonly vice: Vice }) {
         </Button>
       ))}
 
+      {/*
+        **An empty box means one, and that is a bug fix rather than a
+        convenience.** `Number('')` is 0, so the plus fell through
+        `amount <= 0` and returned — on a measured pool with no presets
+        it was the only control on the row and it silently did nothing.
+        A button that looks pressable, is not disabled, and has no effect
+        is the worst of the three states it could be in.
+
+        One *unit*, in the pool's own terms: one hit, one millilitre, one
+        milligram. It is the least surprising reading of a plus, it is
+        what makes a preset-less pool tappable at all, and every spend is
+        one tap from undo.
+      */}
       <form
         className="flex items-center gap-1"
         onSubmit={(event) => {
           event.preventDefault()
-          const amount = Number(custom)
+          const typed = custom.trim()
+          const amount = typed === '' ? 1 : Number(typed)
           if (!Number.isFinite(amount) || amount <= 0) return
           spend.mutate({ id: vice.id, amount })
           setCustom('')
@@ -223,12 +243,22 @@ function MeasuredLog({ vice }: { readonly vice: Vice }) {
             setCustom(event.target.value)
           }}
         />
-        <Button type="submit" variant="outline" size="sm" disabled={spend.isPending}>
+        <Button
+          type="submit"
+          variant="outline"
+          size="sm"
+          aria-label={
+            custom.trim() === ''
+              ? `Log one ${vice.unit ?? ''} of ${vice.name}`.trim()
+              : `Log ${custom.trim()} ${vice.unit ?? ''} of ${vice.name}`
+          }
+          disabled={spend.isPending}
+        >
           <Plus size={14} aria-hidden />
         </Button>
       </form>
 
-      <UndoButton vice={vice} />
+      <UndoButton vice={vice} measured />
     </>
   )
 }
