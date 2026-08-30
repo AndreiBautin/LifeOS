@@ -1,8 +1,17 @@
 import { describe, expect, it } from 'vitest'
 
+import { RECORD_HOMES } from '@/domain/base/base'
 import { LEVELS } from './character'
 import { RATING_CADENCES, RATING_DIRECTIONS } from './rating'
-import { actById, ALL_ACTS, ALL_LADDERS, ALL_RATINGS, LIFE_AREAS, SCORING } from './registry'
+import {
+  actById,
+  ALL_ACTS,
+  dailyActFor,
+  ALL_LADDERS,
+  ALL_RATINGS,
+  LIFE_AREAS,
+  SCORING,
+} from './registry'
 
 /*
  * The three rules of docs/GAME_MODEL.md, checked against the table rather
@@ -166,5 +175,37 @@ describe('looking an act up to acknowledge it', () => {
 
   it('can find every act the registry declares', () => {
     for (const act of ALL_ACTS) expect(actById(act.id)).toBe(act)
+  })
+})
+
+describe('which act keeping a daily performs', () => {
+  /*
+   * Derived from the record rather than the screen, and that is the fix
+   * rather than a preference: while each screen showed one home the
+   * caller could name the act, and the moment Today began reporting
+   * everything due, a chore ticked there announced "Kept a daily".
+   */
+  it('reads the act off where the daily is filed', () => {
+    expect(dailyActFor(undefined)).toBe('dailies.completed')
+    expect(dailyActFor('base')).toBe('base.chore-kept')
+    expect(dailyActFor('vitals')).toBe('vitals.upkeep-kept')
+  })
+
+  it('names an act the registry actually declares, for every home', () => {
+    // A typo here would show a blank badge rather than fail anything.
+    for (const home of [undefined, ...RECORD_HOMES]) {
+      expect(actById(dailyActFor(home))).toBeDefined()
+    }
+  })
+
+  /*
+   * The same fifteen points under three names. If they ever diverged,
+   * moving a habit between areas would change what it is worth — and a
+   * record of effort must not shrink because it was refiled.
+   */
+  it('pays the same for all three', () => {
+    const points = [undefined, ...RECORD_HOMES].map((home) => actById(dailyActFor(home))?.points)
+
+    expect(new Set(points).size).toBe(1)
   })
 })

@@ -1,3 +1,4 @@
+import { BASE, UPKEEP, type RecordHome } from '@/domain/base/base'
 import { STRENGTH_LIFT_SLUGS } from '@/domain/exercises/catalogue'
 
 import { STRENGTH_STANDARDS, TOTAL_STANDARDS } from './character'
@@ -459,6 +460,27 @@ export const ALL_ACTS: readonly ActDefinition[] = SCORING.flatMap((area) => area
  * `tallyActs`, and it would disagree silently — the sheet would say one
  * thing and the acknowledgement another, both looking authoritative.
  */
+/**
+ * Which act keeping a daily performs, from where the daily is filed.
+ *
+ * **Derived from the record, not from the screen.** It used to be the
+ * caller's answer, on the reasoning that the screen doing the calling
+ * *was* the area — true while Today showed only its own habits, Base
+ * only chores and Vitals only upkeep. The moment Today began reporting
+ * everything due, the screen stopped being the area and a chore ticked
+ * there announced "Kept a daily".
+ *
+ * The XP was never wrong — `tallyActs` splits by `belongsTo` and always
+ * did — but the badge is supposed to say what the registry says, and it
+ * was saying something else. Reading the same field both places is what
+ * makes them agree by construction.
+ */
+export function dailyActFor(home: RecordHome | undefined): string {
+  if (home === BASE) return 'base.chore-kept'
+  if (home === UPKEEP) return 'vitals.upkeep-kept'
+  return 'dailies.completed'
+}
+
 export function actById(id: string): ActDefinition | undefined {
   return ALL_ACTS.find((act) => act.id === id)
 }

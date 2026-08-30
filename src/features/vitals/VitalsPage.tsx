@@ -763,7 +763,7 @@ function AddVice() {
  * work to Base, applied to the other set of chores nobody calls chores.
  */
 function UpkeepRow({ view }: { readonly view: DailyView }) {
-  const keep = useKeepToday('vitals.upkeep-kept')
+  const keep = useKeepToday(view.daily.belongsTo)
   const undo = useUndoToday()
   const moveHome = useMoveDailyHome()
 

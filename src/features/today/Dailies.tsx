@@ -1,13 +1,15 @@
 import { Archive, Check, Flame, Home, Plus } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { useState } from 'react'
 
 import type { DailyView } from '@/application/use-cases/dailies/dailies'
 import { Button, Card, Empty } from '@/components/shared/primitives'
 import type { Cadence } from '@/domain/dailies/daily'
 
-import { BASE, type RecordHome } from '@/domain/base/base'
+import { BASE, UPKEEP, type RecordHome } from '@/domain/base/base'
 import {
   useAddDaily,
+  useDueElsewhere,
   useMoveDailyHome,
   useDailies,
   useKeepToday,
@@ -57,7 +59,8 @@ function cadenceLabel(cadence: Cadence): string {
 }
 
 function DailyRow({ view }: { readonly view: DailyView }) {
-  const keep = useKeepToday()
+  // From the record, so a chore shown on Today still pays as a chore.
+  const keep = useKeepToday(view.daily.belongsTo)
   const undo = useUndoToday()
   const retire = useRetireDaily()
   const moveHome = useMoveDailyHome()
@@ -342,18 +345,72 @@ export function AddDaily({
   )
 }
 
+/**
+ * Recurring work that lives on another screen but is due on this one.
+ *
+ * Grouped by where it is filed rather than mixed in, which is the whole
+ * reason chores were moved off Today in the first place: a flat list
+ * buries the habits somebody chose under the ones the house and the body
+ * simply require. Grouping keeps both true — everything due is visible,
+ * and what you chose is still first.
+ */
+function DueElsewhere() {
+  const due = useDueElsewhere()
+  const views = due.data ?? []
+
+  if (views.length === 0) return null
+
+  const groups = [
+    { home: BASE, label: 'House', to: '/base' },
+    { home: UPKEEP, label: 'Upkeep', to: '/vitals' },
+  ].map((group) => ({
+    ...group,
+    rows: views.filter((view) => view.daily.belongsTo === group.home),
+  }))
+
+  return (
+    <div className="mt-3 space-y-3">
+      {groups
+        .filter((group) => group.rows.length > 0)
+        .map((group) => (
+          <div key={group.home}>
+            <div className="mb-1 flex items-baseline justify-between gap-2">
+              <span className="text-ink-700 text-xs tracking-wide uppercase">{group.label}</span>
+              <Link to={group.to} className="text-ink-700 hover:text-ink-500 text-xs">
+                all →
+              </Link>
+            </div>
+            <Card className="divide-ink-800 divide-y py-0">
+              {group.rows.map((view) => (
+                <DailyRow key={view.daily.id} view={view} />
+              ))}
+            </Card>
+          </div>
+        ))}
+    </div>
+  )
+}
+
 export function Dailies() {
   const dailies = useDailies()
+  const due = useDueElsewhere()
   const [adding, setAdding] = useState(false)
 
   const views = dailies.data ?? []
-  const left = views.filter((view) => view.dueToday).length
+  /*
+   * Counted across every home, because the sentence is about the day and
+   * not about this section. "3 left today" that ignored the bins would
+   * be answering a question nobody asked.
+   */
+  const left =
+    views.filter((view) => view.dueToday).length +
+    (due.data ?? []).filter((view) => view.dueToday).length
 
   return (
     <>
       <div className="mb-2 flex items-center justify-between gap-2">
         <p className="text-ink-500 text-sm">
-          {views.length === 0
+          {views.length === 0 && (due.data ?? []).length === 0
             ? 'Nothing yet.'
             : left === 0
               ? 'All done for today.'
@@ -377,7 +434,7 @@ export function Dailies() {
         />
       )}
 
-      {views.length === 0 ? (
+      {views.length === 0 && (due.data ?? []).length > 0 ? null : views.length === 0 ? (
         <Empty title="No dailies yet">
           A daily here is a checkbox and a streak. It cannot ring — nothing in a web app on iOS can
           — so it earns its place by being the first thing on this screen.
@@ -389,6 +446,8 @@ export function Dailies() {
           ))}
         </Card>
       )}
+
+      <DueElsewhere />
     </>
   )
 }

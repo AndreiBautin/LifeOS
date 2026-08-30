@@ -39,7 +39,7 @@ import { useAddUpgrade, useMoveUpgradeHome, useUpgradeTree } from '../upgrades/h
  */
 
 function ChoreRow({ view }: { readonly view: DailyView }) {
-  const keep = useKeepToday('base.chore-kept')
+  const keep = useKeepToday(view.daily.belongsTo)
   const undo = useUndoToday()
   const moveHome = useMoveDailyHome()
 

@@ -924,12 +924,19 @@ is paid along. **Undo pays nothing** — not a negative badge and not a
 silent one; it takes the day back and the sheet shows that at the next
 read.
 
-**Which act a habit performs is the caller's answer, not the hook's.** A
-chore pays `base.chore-kept` and a daily pays `dailies.completed` — the
-same fifteen points under different names — and `tallyActs` already
-splits them by `belongsTo`. The screen calling `useKeepToday` _is_ the
-area, so it names the act; deriving it inside would mean re-fetching the
-record to find out what was just done to it.
+**Which act a habit performs comes from the record, not the screen.**
+`dailyActFor` in `registry.ts`. A chore pays `base.chore-kept`, upkeep
+pays `vitals.upkeep-kept` and a daily pays `dailies.completed` — the same
+fifteen points under three names, split by `belongsTo` in `tallyActs`.
+
+This used to be the _caller's_ answer, on the reasoning that the screen
+doing the calling was the area. That was true while each screen showed
+one home and stopped being true the moment Today began reporting
+everything due: a chore ticked there announced "Kept a daily". The XP was
+never wrong — `tallyActs` reads `belongsTo` and always did — but the
+badge is supposed to say what the registry says. **Reading the same field
+in both places is what makes them agree by construction**, where naming
+the act at the call site only made them agree by attention.
 
 **Its lifetime is a timer, not `animationend`.** The reduced-motion block
 collapses every animation to 0.01ms with `!important`, so a toast that
@@ -1212,6 +1219,23 @@ log's cycle guard and the tree's were briefly unreachable from the UI —
 the domain refused correctly and no screen could ask it to. Adding a
 domain rule means adding the control that can trip it, or the guard is
 decoration with a test attached.
+
+**Today reports what is due everywhere; the other screens own their
+lists.** Splitting chores to Base and upkeep to Vitals left Today's
+Dailies section meaning "recurring things that are not house chores and
+are not body upkeep" — a residue rather than a category — and left the
+screen whose whole job is _present tense_ unable to say what the day
+actually asks for.
+
+It aggregates now, **grouped by where each thing lives** rather than
+mixed in, because a flat list is what buries the habits somebody chose
+under the ones the house and the body simply require. The asymmetry is
+deliberate and has a reason: own dailies show in full because Today is
+their only home and therefore also where they are managed, while chores
+and upkeep appear **only when due or done today**, since anything else
+about them belongs on the screen that owns them. The count in the
+header is across all three, because "3 left today" is a claim about the
+day and not about one section.
 
 **A daily is filed to one of three places, and `RecordHome` was written
 to expect the third.** Today owns what you chose, Base owns the house,

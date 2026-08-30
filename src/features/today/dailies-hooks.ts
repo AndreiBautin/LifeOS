@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { useServices } from '@/app/context'
 import { UPKEEP, type RecordHome } from '@/domain/base/base'
+import { dailyActFor } from '@/domain/game/registry'
 import {
   addDaily,
   type NewDaily,
@@ -39,6 +40,35 @@ export function useDailies() {
   return useQuery({
     queryKey: ['today', 'dailies'],
     queryFn: () => dailiesToday(services, 'own-area'),
+  })
+}
+
+/**
+ * Everything recurring that is outstanding today, wherever it is filed.
+ *
+ * Today's job is to say what is due — "Today is present tense" — and
+ * once chores moved to Base and upkeep to Vitals, it stopped being able
+ * to. The Dailies section quietly came to mean "recurring things that
+ * are not house chores and are not body upkeep", which is a residue
+ * rather than a category.
+ *
+ * **Due or done, and nothing else.** A chore not expected today belongs
+ * on Base and would only be noise here; a chore already ticked stays so
+ * the tick can be seen and undone. Own dailies are excluded because they
+ * are listed in full just above — Today is their only home, so it is
+ * also where they are managed.
+ */
+export function useDueElsewhere() {
+  const services = useServices()
+
+  return useQuery({
+    queryKey: ['today', 'due-elsewhere'],
+    queryFn: async () => {
+      const all = await dailiesToday(services, 'both')
+      return all.filter(
+        (view) => view.daily.belongsTo !== undefined && (view.dueToday || view.doneToday),
+      )
+    },
   })
 }
 
@@ -118,8 +148,12 @@ export function useMoveDailyHome() {
  * takes the day back, and the sheet will show that at the next read. An
  * acknowledgement is for acts.
  */
-export function useKeepToday(actId = 'dailies.completed') {
-  return useDailyMutation<DailyId>('dailies.kept', (id, services) => keepToday(id, services), actId)
+export function useKeepToday(home?: RecordHome) {
+  return useDailyMutation<DailyId>(
+    'dailies.kept',
+    (id, services) => keepToday(id, services),
+    dailyActFor(home),
+  )
 }
 
 export function useUndoToday() {
