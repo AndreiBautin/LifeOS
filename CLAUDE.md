@@ -1451,6 +1451,31 @@ days used` rather than hiding it.
 drinking day, which is the entire reason this is counted separately from
 the amount.
 
+**Limits and targets get their own sections, because a heading that has
+to say "or the opposite" is covering two things.** One list read
+"A limit to stay under or a target to reach", which is what a description
+becomes when water is filed among the things being rationed. They are
+read for different questions — what is left, versus how far there is to
+go — so they are separate on the Vitals screen and grouped on Today's
+card, the same way the dailies are grouped by home.
+
+On the card the group heading appears **only when both kinds are
+present**: one group alone is not ambiguous about which it is, and a
+label on an unambiguous list is noise.
+
+**Direction and unit are on the form now.** They were reachable only
+through a _suggestion_, so anything made by hand was a counting limit
+whatever it was for — water existed as a target only because a preset
+row said so. Same defect as the geocoder and `moveDailyHome`: a
+capability the data model had and no screen could reach.
+
+**`Vice` is now the wrong name for the type and is staying.** It holds
+water. The store key, the branded id and the sync payload field all say
+`vices`, and those are **addresses rather than labels** — renaming one
+opens a fresh empty store beside the old rather than migrating anything.
+The screens say Limits and Targets, which is the same split this file
+already documents for Quests over `Project` and Codex over `backlog`.
+
 **A pool is a limit or a target, and only a limit can be exceeded.**
 Caffeine is spent down and going past 400mg is worth seeing; water is
 filled up, and reporting "500 over" for a fourth glass would be scolding

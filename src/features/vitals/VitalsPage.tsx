@@ -18,13 +18,16 @@ import {
   TREND_DAYS,
 } from '@/domain/vitals/weight'
 import {
+  CHARGE_DIRECTIONS,
   CHARGE_PERIOD_LABELS,
   CHARGE_PERIODS,
   cycleOf,
   describeCycle,
+  directionOf,
   readCharges,
   rollingHours,
   type ChargeCycle,
+  type ChargeDirection,
   type ChargePeriod,
   type Vice,
 } from '@/domain/vitals/charges'
@@ -757,6 +760,45 @@ function DaysLimitFields({
   )
 }
 
+/**
+ * The unused suggestions for one direction.
+ *
+ * Filtered by name already taken rather than by list emptiness: gating
+ * on emptiness meant adding coffee took the other two away, so the
+ * second and third pool had to be typed out, which is the opposite of
+ * what a suggestion is for.
+ */
+function Suggestions({ of }: { readonly of: ChargeDirection }) {
+  const vices = useVices()
+  const add = useAddVice()
+
+  const taken = new Set((vices.data ?? []).map((vice) => vice.name.toLowerCase()))
+  const unused = SUGGESTIONS.filter(
+    (one) => (one.direction ?? 'limit') === of && !taken.has(one.name.toLowerCase()),
+  )
+
+  if (unused.length === 0) return null
+
+  return (
+    <div className="mb-3 flex flex-wrap gap-1.5">
+      {unused.map((suggestion) => (
+        <Button
+          key={suggestion.name}
+          variant="outline"
+          size="sm"
+          disabled={add.isPending}
+          onClick={() => {
+            add.mutate(suggestion)
+          }}
+        >
+          <Plus size={14} aria-hidden />
+          {suggestion.name}
+        </Button>
+      ))}
+    </div>
+  )
+}
+
 function AddVice() {
   const add = useAddVice()
   const [name, setName] = useState('')
@@ -766,6 +808,8 @@ function AddVice() {
   const [limitDays, setLimitDays] = useState(false)
   const [days, setDays] = useState('2')
   const [daysPeriod, setDaysPeriod] = useState<ChargePeriod>('week')
+  const [direction, setDirection] = useState<ChargeDirection>('limit')
+  const [unit, setUnit] = useState('')
 
   return (
     <form
@@ -782,6 +826,8 @@ function AddVice() {
           name,
           capacity: Number(capacity),
           cycle: picked.kind === 'rolling' ? { kind: 'rolling', hours: Number(hours) } : picked,
+          direction,
+          ...(unit.trim() === '' ? {} : { unit: unit.trim() }),
           ...(limitDays ? { daysLimit: { days: Number(days) || 1, period: daysPeriod } } : {}),
         })
         setName('')
@@ -802,6 +848,29 @@ function AddVice() {
         and a number of hours, which is the right question for coffee and
         a translation exercise for anything weekly.
       */}
+      {/*
+        Which way the pool runs, and it has to be asked here: water only
+        existed because a *suggestion* set it, so anything made by hand
+        was a limit whatever it was for.
+      */}
+      <div className="flex gap-1">
+        {CHARGE_DIRECTIONS.map((one) => (
+          <Button
+            key={one}
+            type="button"
+            size="sm"
+            full
+            variant={direction === one ? 'primary' : 'outline'}
+            aria-pressed={direction === one}
+            onClick={() => {
+              setDirection(one)
+            }}
+          >
+            {one === 'limit' ? 'Stay under' : 'Reach'}
+          </Button>
+        ))}
+      </div>
+
       <div className="flex items-center gap-2">
         <input
           className="bg-ink-900 border-ink-700 text-ink-50 numeric tap-target w-16 shrink-0 rounded-lg border px-2 text-sm"
@@ -854,15 +923,35 @@ function AddVice() {
         </label>
       )}
 
-      <DaysLimitFields
-        enabled={limitDays}
-        onToggle={setLimitDays}
-        days={days}
-        onDays={setDays}
-        period={daysPeriod}
-        onPeriod={setDaysPeriod}
-        idPrefix="New pool"
-      />
+      {/*
+        Optional, and blank means a count. Naming a unit is what turns
+        "three" into "three hundred millilitres" — and what swaps the
+        pips for a bar, because pips cannot show three hundred.
+      */}
+      <label className="text-ink-500 flex items-center gap-2 text-xs">
+        <span className="shrink-0">Measured in</span>
+        <input
+          className="bg-ink-900 border-ink-700 text-ink-50 tap-target min-w-0 flex-1 rounded-lg border px-2 text-sm"
+          aria-label="Unit"
+          placeholder="counts — or ml, mg…"
+          value={unit}
+          onChange={(event) => {
+            setUnit(event.target.value)
+          }}
+        />
+      </label>
+
+      {direction === 'limit' && (
+        <DaysLimitFields
+          enabled={limitDays}
+          onToggle={setLimitDays}
+          days={days}
+          onDays={setDays}
+          period={daysPeriod}
+          onPeriod={setDaysPeriod}
+          idPrefix="New pool"
+        />
+      )}
     </form>
   )
 }
@@ -994,30 +1083,35 @@ function Upkeep() {
 
 export function VitalsPage() {
   const vices = useVices()
-  const add = useAddVice()
   const now = useServices().clock.now()
 
-  const taken = new Set((vices.data ?? []).map((vice) => vice.name.toLowerCase()))
-  const unused = SUGGESTIONS.filter((one) => !taken.has(one.name.toLowerCase()))
+  const all = vices.data ?? []
+  const limits = all.filter((vice) => directionOf(vice) === 'limit')
+  const targets = all.filter((vice) => directionOf(vice) === 'target')
 
   return (
     <div className="space-y-4">
       <PageHeader title="Vitals" subtitle="What the body is doing, and what you have left" />
 
-      <Section
-        title="Charges"
-        description="A limit to stay under or a target to reach, refilling on its own"
-      >
+      {/*
+        Two sections, not one with a heading that says "or the opposite".
+        A limit and a target are read for different reasons — one asks
+        what is left and the other how far there is to go — and putting
+        water among the things being rationed made the section describe
+        itself as either of two things, which is what a heading does when
+        it is covering two.
+      */}
+      <Section title="Limits" description="What you are keeping under, and what is left of it">
         <Card>
-          {vices.data === undefined ? null : vices.data.length === 0 ? (
-            <Empty title="Nothing tracked yet">
+          {vices.data === undefined ? null : limits.length === 0 ? (
+            <Empty title="Nothing limited yet">
               A limit as a rule has two states, kept and broken. A limit as a resource has as many
               states as it has charges — the question stops being whether you were good and becomes
-              what you have left. A target works the same way from the other end.
+              what you have left.
             </Empty>
           ) : (
             <ul className="divide-ink-800 mb-3 divide-y">
-              {vices.data.map((vice) => (
+              {limits.map((vice) => (
                 <ViceRow key={vice.id} vice={vice} now={now} />
               ))}
             </ul>
@@ -1029,26 +1123,28 @@ export function VitalsPage() {
             other two away, so the second and third pool had to be typed
             out — which is the opposite of what a suggestion is for.
           */}
-          {unused.length > 0 && (
-            <div className="mb-3 flex flex-wrap gap-1.5">
-              {unused.map((suggestion) => (
-                <Button
-                  key={suggestion.name}
-                  variant="outline"
-                  size="sm"
-                  disabled={add.isPending}
-                  onClick={() => {
-                    add.mutate(suggestion)
-                  }}
-                >
-                  <Plus size={14} aria-hidden />
-                  {suggestion.name}
-                </Button>
-              ))}
-            </div>
-          )}
+          <Suggestions of="limit" />
 
           <AddVice />
+        </Card>
+      </Section>
+
+      <Section title="Targets" description="What you are trying to reach before the day is out">
+        <Card>
+          {vices.data === undefined ? null : targets.length === 0 ? (
+            <Empty title="Nothing to reach yet">
+              The same mechanism read from the other end: instead of what is left, how far there is
+              to go.
+            </Empty>
+          ) : (
+            <ul className="divide-ink-800 mb-3 divide-y">
+              {targets.map((vice) => (
+                <ViceRow key={vice.id} vice={vice} now={now} />
+              ))}
+            </ul>
+          )}
+
+          <Suggestions of="target" />
         </Card>
       </Section>
 

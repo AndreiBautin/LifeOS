@@ -364,13 +364,36 @@ export function VitalsCard() {
         </div>
       )}
 
-      {pools.length > 0 && (
-        <div className="divide-ink-800 divide-y">
-          {pools.map((pool) => (
-            <PoolRow key={pool.vice.id} pool={pool} now={now} />
-          ))}
-        </div>
-      )}
+      {/*
+        Split the way the Vitals screen splits them, and for the reason
+        the dailies are grouped: two things read for different questions
+        should not share a list. "What is left" and "how far to go" are
+        opposite readings of the same bar, and interleaving them makes
+        every row need its label read before its number means anything.
+      */}
+      {[
+        { of: 'limit' as const, label: 'Limits' },
+        { of: 'target' as const, label: 'Targets' },
+      ]
+        .map((group) => ({
+          ...group,
+          rows: pools.filter((pool) => directionOf(pool.vice) === group.of),
+        }))
+        .filter((group) => group.rows.length > 0)
+        .map((group) => (
+          <div key={group.of} className="mb-3 last:mb-0">
+            {/* Only worth a heading when both are present — one group
+                alone is not ambiguous about which it is. */}
+            {pools.some((pool) => directionOf(pool.vice) !== group.of) && (
+              <p className="text-ink-700 mb-1 text-xs tracking-wide uppercase">{group.label}</p>
+            )}
+            <div className="divide-ink-800 divide-y">
+              {group.rows.map((pool) => (
+                <PoolRow key={pool.vice.id} pool={pool} now={now} />
+              ))}
+            </div>
+          </div>
+        ))}
 
       {nothingSetUp ? (
         <p className="text-ink-500 text-sm">
