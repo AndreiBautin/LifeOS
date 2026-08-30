@@ -1225,6 +1225,34 @@ these types has to pick a side and the failure is silent in exactly one
 direction: forget to exclude Base and a house job shows in the quest log
 _and_ on Base, reading as a duplicate rather than a bug.
 
+**The record is shared with the tech tree; the screens are not.** That
+split is the answer to "are these too tightly coupled", and each half has
+a reason.
+
+Shared, and it should stay shared: **one wallet** — a dishwasher and a
+barbell come out of the same money — **one set of gates**, because two
+implementations of money-and-a-prerequisite are two places for the cycle
+bug, and **one spender**, because the model allows exactly one area that
+spends rather than measures (`registry.test.ts` → "has exactly one tree").
+Base having its own tree would be a second spender and is not a thing to
+build.
+
+Not shared, and this was wrong for a commit: **creating.** Adding a
+dishwasher meant opening a page about barbells, typing it there, and
+coming back to move it — the same friction removed from chores an hour
+earlier, left in place here on the reasoning that "a second editor would
+be a second place for the gate rules to be got wrong". That argument is
+true of _editing_ prerequisites and priority and false of typing a name:
+`NewUpgrade` requires only a title, and the tree's own add form is one
+text box. Base creates with a title and a rough cost; the tree still owns
+editing.
+
+**Base passes a budget of `0` and shows no affordability.** Deliberate —
+the tech tree owns the budget control, and duplicating it would be two
+places to set one number — but worth stating plainly rather than
+implying both screens reason about money. They do not; one number is
+stored, one screen applies it.
+
 **Base files upgrades; the tech tree edits them.** `moveUpgradeHome`
 was the last of the three move functions with no caller, which is why
 that panel could only ever be empty. The row on Base is deliberately

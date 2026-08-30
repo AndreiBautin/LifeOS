@@ -1,4 +1,4 @@
-import { Flame, Undo2, Wrench } from 'lucide-react'
+import { Flame, Plus, Undo2, Wrench } from 'lucide-react'
 import { useState } from 'react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { Link } from 'react-router-dom'
@@ -15,7 +15,7 @@ import { useKeepToday, useMoveDailyHome, useUndoToday } from '../today/dailies-h
 import { AddDaily } from '../today/Dailies'
 import { useChores } from '../today/dailies-hooks'
 import { useBaseProjects, useMoveProjectHome } from '../projects/hooks'
-import { useMoveUpgradeHome, useUpgradeTree } from '../upgrades/hooks'
+import { useAddUpgrade, useMoveUpgradeHome, useUpgradeTree } from '../upgrades/hooks'
 
 /**
  * Base: the place you live, and everything it asks of you.
@@ -173,8 +173,98 @@ function UpgradeRow({ upgrade }: { readonly upgrade: Upgrade }) {
   )
 }
 
+/**
+ * Adding something the house needs, without leaving the house.
+ *
+ * A title and a rough cost, and nothing else. That is the deliberate
+ * half of the coupling: the record, the wallet and the gates are shared
+ * with the tech tree — a dishwasher and a barbell compete for the same
+ * money, and two sets of gate rules would be two places for the cycle
+ * bug to live — while the *screens* are not. Wanting a new washing
+ * machine should not mean opening a page about barbells.
+ *
+ * Prerequisites, categories and priority stay on the tree, which is
+ * where an upgrade is *edited*. Those are the parts a second form would
+ * genuinely duplicate; a name and a price are not.
+ */
+function AddHouseUpgrade({ onDone }: { readonly onDone: () => void }) {
+  const add = useAddUpgrade()
+  const [title, setTitle] = useState('')
+  const [cost, setCost] = useState('')
+
+  return (
+    <Card className="mb-3">
+      <form
+        className="space-y-2"
+        onSubmit={(event) => {
+          event.preventDefault()
+          if (title.trim() === '') return
+
+          const pounds = Number(cost)
+          const minor =
+            cost.trim() !== '' && Number.isFinite(pounds) && pounds > 0
+              ? Math.round(pounds * 100)
+              : undefined
+
+          add.mutate(
+            {
+              title,
+              belongsTo: BASE,
+              // The house's own default, rather than the tree's "other".
+              category: 'home',
+              ...(minor === undefined ? {} : { estimatedCostMinorUnits: minor }),
+            },
+            {
+              onSuccess: (result) => {
+                if (result.error !== undefined) return
+                setTitle('')
+                setCost('')
+                onDone()
+              },
+            },
+          )
+        }}
+      >
+        <input
+          className="bg-ink-850 border-ink-800 text-ink-50 placeholder:text-ink-700 tap-target w-full rounded-xl border px-3 text-sm"
+          value={title}
+          aria-label="Something the house needs"
+          placeholder="Something the house needs"
+          onChange={(event) => {
+            setTitle(event.target.value)
+          }}
+        />
+
+        <div className="flex gap-2">
+          <input
+            className="bg-ink-850 border-ink-800 text-ink-50 placeholder:text-ink-700 numeric tap-target min-w-0 flex-1 rounded-xl border px-3 text-sm"
+            inputMode="decimal"
+            value={cost}
+            aria-label="Roughly what it costs"
+            placeholder="Roughly what it costs"
+            onChange={(event) => {
+              setCost(event.target.value)
+            }}
+          />
+          <Button type="submit" variant="primary" disabled={add.isPending}>
+            <Plus size={16} aria-hidden />
+            Add
+          </Button>
+        </div>
+
+        {add.data?.error !== undefined && (
+          <p role="alert" className="text-bad-500 text-sm">
+            {add.data.error}
+          </p>
+        )}
+      </form>
+    </Card>
+  )
+}
+
 export function BasePage() {
   const [addingChore, setAddingChore] = useState(false)
+  const [addingUpgrade, setAddingUpgrade] = useState(false)
   const chores = useChores()
   const jobs = useBaseProjects()
   /*
@@ -262,12 +352,34 @@ export function BasePage() {
         </Card>
       </Section>
 
-      <Section title="Upgrades" description="Things for the place rather than for you">
+      <Section
+        title="Upgrades"
+        description="Things for the place rather than for you"
+        action={
+          <Button
+            variant={addingUpgrade ? 'ghost' : 'outline'}
+            size="sm"
+            onClick={() => {
+              setAddingUpgrade(!addingUpgrade)
+            }}
+          >
+            {addingUpgrade ? 'Close' : 'Add'}
+          </Button>
+        }
+      >
+        {addingUpgrade && (
+          <AddHouseUpgrade
+            onDone={() => {
+              setAddingUpgrade(false)
+            }}
+          />
+        )}
+
         <Card>
           {upgrades.data === undefined ? null : upgrades.data.length === 0 ? (
             <Empty title="Nothing on the list">
-              Anything you mark as the house&rsquo;s on the tech tree appears here — a dishwasher
-              rather than a barbell.
+              Add one above, or send something across from the tech tree. It shares the same wallet
+              either way — a dishwasher and a barbell come out of the same money.
             </Empty>
           ) : (
             <ul className="space-y-1.5">

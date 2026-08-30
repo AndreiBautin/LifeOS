@@ -36,6 +36,16 @@ export interface UpgradeDeps {
 
 export interface NewUpgrade {
   readonly title: string
+  /**
+   * Which area the upgrade is filed under. Absent means the tech tree.
+   *
+   * Here rather than as a separate move because the workflow otherwise
+   * runs the wrong way round: adding a dishwasher meant opening the tech
+   * tree, typing it among the barbells, and coming back to Base to move
+   * it. **The record is shared on purpose and the screens are not** —
+   * one wallet and one set of gates, entered wherever you were standing.
+   */
+  readonly belongsTo?: RecordHome
   readonly description?: string
   readonly category?: UpgradeCategory
   readonly priority?: number
@@ -81,6 +91,7 @@ export async function addUpgrade(input: NewUpgrade, deps: UpgradeDeps): Promise<
     ...(input.notes === undefined ? {} : { notes: input.notes }),
     ...(input.productLink === undefined ? {} : { productLink: input.productLink }),
     ...(input.prerequisiteId === undefined ? {} : { prerequisiteId: input.prerequisiteId }),
+    ...(input.belongsTo === undefined ? {} : { belongsTo: input.belongsTo }),
     createdAt: deps.clock.now().toISOString(),
   }
 
