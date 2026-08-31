@@ -86,6 +86,16 @@ function useProjectMutation<TVariables, TResult>(
       logger.info(event, {})
       void client.invalidateQueries({ queryKey: PROJECTS })
     },
+    /*
+     * A failed mutation was silent, and silence is the worst of the
+     * states it can be in. There was no `onError` at all, so a refused
+     * write left the form open, the button enabled and nothing said —
+     * which reads as a button that does nothing. The same defect the
+     * digest's save had, arriving in the layer above it.
+     */
+    onError: (error) => {
+      logger.error(`${event}-failed`, error)
+    },
   })
 }
 

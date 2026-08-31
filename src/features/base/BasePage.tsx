@@ -10,7 +10,7 @@ import { buttonStyles } from '@/components/shared/styles'
 import type { DailyView } from '@/application/use-cases/dailies/dailies'
 import type { Project } from '@/domain/projects/project'
 import type { Upgrade } from '@/domain/upgrades/upgrade'
-import { BASE, HOUSE_JOB_STEPS } from '@/domain/base/base'
+import { BASE, JOB_APPROACHES, stepsFor, type JobApproach } from '@/domain/base/base'
 import { cn } from '@/lib/cn'
 
 import { useKeepToday, useMoveDailyHome, useUndoToday } from '../today/dailies-hooks'
@@ -300,23 +300,47 @@ function AddHouseUpgrade({ onDone }: { readonly onDone: () => void }) {
  * already removed from chores and from upgrades, and left in place here.
  * Third instance of one shape.
  *
- * **The steps arrive with it.** `HOUSE_JOB_STEPS` is the errand this
- * module has described in prose since it was written and the empty state
- * printed on screen: find the right person, get a quote, book the
- * appointment. Knowing the shape and then making somebody type it out
- * from memory is the gap this closes.
+ * **The steps arrive with it**, and there are two sets of them.
+ * Hiring somebody is find the right person, get a quote, book the
+ * appointment — the errand this module has described in prose since it
+ * was written. Doing it yourself is work out what it needs, get the
+ * materials, do the work.
  *
- * Ticked, not forced. A boiler service the landlord books skips the
- * first two, so each is a checkbox — an offer, which is the same stance
- * every other default in this app takes.
+ * **The approach is chosen before the steps are shown**, because on a
+ * job you handle yourself all three hiring steps are wrong: there is
+ * nobody to find, nothing to quote and no appointment. Leaving one list
+ * and asking somebody to un-tick their way to the other would be the
+ * form arguing with itself, and it is what made the template useless for
+ * half the jobs.
+ *
+ * Ticked, not forced, either way. A boiler service the landlord books
+ * skips the first two — an offer, the same stance every other default in
+ * this app takes.
  */
 function AddJob({ onDone }: { readonly onDone: () => void }) {
   const add = useAddProject()
   const [name, setName] = useState('')
-  const [steps, setSteps] = useState<readonly string[]>(HOUSE_JOB_STEPS)
+  /*
+   * Hiring is the default because it is the common case this screen was
+   * built around — house work "arrives when something breaks, and it is
+   * mostly the same errand each time". Doing it yourself is one tap.
+   */
+  const [approach, setApproach] = useState<JobApproach>('hired')
+  const offered = stepsFor(approach)
+  const [steps, setSteps] = useState<readonly string[]>(offered)
 
   const toggle = (step: string): void => {
     setSteps(steps.includes(step) ? steps.filter((one) => one !== step) : [...steps, step])
+  }
+
+  /*
+   * Switching approach re-ticks the new list rather than keeping what
+   * was ticked. The two share no step, so carrying the selection across
+   * would leave every box empty and the job would open with nothing.
+   */
+  const chooseApproach = (next: JobApproach): void => {
+    setApproach(next)
+    setSteps(stepsFor(next))
   }
 
   return (
@@ -333,8 +357,10 @@ function AddJob({ onDone }: { readonly onDone: () => void }) {
               belongsTo: BASE,
               // In the order the errand runs, not the order they were
               // ticked — unticking the quote and re-ticking it must not
-              // send it to the end.
-              steps: HOUSE_JOB_STEPS.filter((one) => steps.includes(one)),
+              // send it to the end. Filtered against the chosen
+              // approach's own list, so a step from the other one cannot
+              // survive a change of mind.
+              steps: offered.filter((one) => steps.includes(one)),
             },
             { onSuccess: onDone },
           )
@@ -350,9 +376,35 @@ function AddJob({ onDone }: { readonly onDone: () => void }) {
           }}
         />
 
+        {/*
+          The approach first, because it decides which steps are even
+          worth showing. Two buttons rather than a checkbox: these are
+          two named errands, not a setting with an on and an off.
+        */}
+        <div className="flex gap-1.5">
+          {JOB_APPROACHES.map((one) => (
+            <button
+              key={one.id}
+              type="button"
+              className={[
+                'tap-target flex-1 rounded-lg border px-2.5 text-xs font-medium',
+                approach === one.id
+                  ? 'border-accent-500 bg-accent-500/15 text-accent-400'
+                  : 'border-ink-800 text-ink-500',
+              ].join(' ')}
+              aria-pressed={approach === one.id}
+              onClick={() => {
+                chooseApproach(one.id)
+              }}
+            >
+              {one.label}
+            </button>
+          ))}
+        </div>
+
         <div className="space-y-1.5">
           <span className="text-ink-500 block text-xs">Steps to open it with</span>
-          {HOUSE_JOB_STEPS.map((step) => (
+          {offered.map((step) => (
             <label key={step} className="tap-target flex items-center gap-2 text-sm">
               <input
                 type="checkbox"
@@ -484,7 +536,8 @@ export function BasePage() {
           {jobs.data === undefined ? null : jobs.data.length === 0 ? (
             <Empty title="Nothing broken">
               A job opens with the errand it usually is — find the right person, get a quote, book
-              the appointment.
+              the appointment — or with the one you do yourself: work out what it needs, get the
+              materials, do the work.
             </Empty>
           ) : (
             <ul>

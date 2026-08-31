@@ -2567,6 +2567,37 @@ true of _editing_ prerequisites and priority and false of typing a name:
 text box. Base creates with a title and a rough cost; the tree still owns
 editing.
 
+**There are two errands, and for a long time only one had a template.**
+The report: _"there are also some base projects that I will handle
+myself rather than hiring someone."_ Every job opened with
+`HIRED_JOB_STEPS` — find the right person, get a quote, book the
+appointment — and on a job you do yourself **all three are wrong**:
+there is nobody to find, nothing to quote, no appointment. So the shape
+had to be un-ticked three times and typed by hand, which is exactly the
+friction the template was added to remove, reappearing for half the
+jobs. `DIY_JOB_STEPS` is the parallel: work out what it needs, get the
+materials, do the work.
+
+**The approach is chosen before the steps are shown.** The two lists
+share no step, so a form that offered one and asked you to un-tick your
+way to the other would be arguing with itself. Switching re-ticks the
+new list rather than keeping the old selection — carrying it across
+would leave every box empty and open the job with nothing.
+
+**Deliberately not stored on the record.** A project already carries its
+steps, and "Find the right person" against "Work out what it needs" says
+which errand this is more plainly than a field would. A stored approach
+would be a second answer to a question the actions already answer, and
+the rule here is that a field needs something that reads it — nothing
+would.
+
+**Both openings are three steps, and that is load-bearing rather than
+tidy.** Every closed step pays `base.action-closed`, so an opening with
+four would quietly make one approach worth more XP than the other.
+Doing it yourself is a decision about the afternoon, not a harder
+version of the same act; difficulty is recorded and does not scale the
+points anywhere else here either.
+
 **A house job is created on Base, and opens with the errand it usually
 is.** Adding one meant going to the Quests page, typing it among the
 things you chose to do, and coming back to move it — the same round

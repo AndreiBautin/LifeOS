@@ -4,7 +4,7 @@ import { asProjectId, type ProjectId } from '@/domain/ids/ids'
 import type { Project } from '@/domain/projects/project'
 import type { Clock, ProjectRepository, TombstoneRepository } from '@/domain/repositories/ports'
 import type { Tombstone } from '@/domain/sync/tombstone'
-import { BASE, HOUSE_JOB_STEPS, keepFor } from '@/domain/base/base'
+import { BASE, HIRED_JOB_STEPS, keepFor } from '@/domain/base/base'
 
 import {
   addAction,
@@ -346,11 +346,11 @@ describe('a house job, created on Base', () => {
     const { deps } = harness()
 
     const project = await addProject(
-      { name: 'Boiler service', belongsTo: BASE, steps: [...HOUSE_JOB_STEPS] },
+      { name: 'Boiler service', belongsTo: BASE, steps: [...HIRED_JOB_STEPS] },
       deps,
     )
 
-    expect(project.actions.map((one) => one.description)).toEqual([...HOUSE_JOB_STEPS])
+    expect(project.actions.map((one) => one.description)).toEqual([...HIRED_JOB_STEPS])
     /*
      * One-based and ascending, matching `addAction`, which places a new
      * step one past the highest already there. Sharing the convention is
@@ -363,7 +363,7 @@ describe('a house job, created on Base', () => {
   it('gives distinct ids to each step', async () => {
     const { deps } = harness()
 
-    const project = await addProject({ name: 'Boiler service', steps: [...HOUSE_JOB_STEPS] }, deps)
+    const project = await addProject({ name: 'Boiler service', steps: [...HIRED_JOB_STEPS] }, deps)
 
     expect(new Set(project.actions.map((one) => one.id)).size).toBe(3)
   })

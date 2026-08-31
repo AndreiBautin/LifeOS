@@ -107,12 +107,61 @@ export const MIND = 'mind'
  * skips the first two — the same stance `ApplyEstimates` takes, and for
  * the same reason: a default that cannot be declined is a decision taken
  * away.
+ *
+ * This is the *hiring* errand. See {@link DIY_JOB_STEPS} for the one
+ * that has nobody to find.
  */
-export const HOUSE_JOB_STEPS = [
+export const HIRED_JOB_STEPS = [
   'Find the right person',
   'Get a quote',
   'Book the appointment',
 ] as const
+
+/**
+ * The other errand: *"there are also some base projects that I will
+ * handle myself rather than hiring someone."*
+ *
+ * The steps above are the *hiring* errand, and every job opened with
+ * them. On a job you do yourself all three are wrong — there is nobody
+ * to find, nothing to quote and no appointment — so the shape had to be
+ * unticked three times and typed out by hand, which is precisely the
+ * gap the template was added to close, reappearing for half the jobs.
+ *
+ * **Two templates rather than one with a flag.** The parallel is exact:
+ * work out what it needs, get what it takes, do it. Naming both is what
+ * makes the choice visible at the moment it is made, where a boolean on
+ * one list would leave a form asking to un-tick its way to the other
+ * shape.
+ */
+export const DIY_JOB_STEPS = ['Work out what it needs', 'Get the materials', 'Do the work'] as const
+
+/**
+ * How a job gets done, offered at the moment one is created.
+ *
+ * **Deliberately not stored on the record.** A project already carries
+ * its steps, and "Find the right person" against "Work out what it
+ * needs" says which errand this is more plainly than a field would. A
+ * stored approach would be a second answer to a question the actions
+ * already answer, and this app has paid for that shape before — the
+ * rule here is that a field needs something that reads it, and nothing
+ * would.
+ *
+ * It does not change what a job pays, either. Both openings are three
+ * steps at `base.action-closed`, and scaling XP by how hard the work
+ * was is the outcome creeping back in: doing it yourself is a decision
+ * about the afternoon, not a harder version of the same act. Difficulty
+ * is recorded and does not scale the points anywhere else here.
+ */
+export const JOB_APPROACHES = [
+  { id: 'hired', label: 'Hire someone', steps: HIRED_JOB_STEPS },
+  { id: 'diy', label: 'Do it myself', steps: DIY_JOB_STEPS },
+] as const
+
+export type JobApproach = (typeof JOB_APPROACHES)[number]['id']
+
+export function stepsFor(approach: JobApproach): readonly string[] {
+  return (JOB_APPROACHES.find((one) => one.id === approach) ?? JOB_APPROACHES[0]).steps
+}
 
 /**
  * Where a record lives when it is not in its natural home.
