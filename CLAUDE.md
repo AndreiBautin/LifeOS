@@ -2085,6 +2085,54 @@ be told a twelve-day run is finished, because you have not yet done the
 thing you are about to do, is the single most discouraging thing a habit
 tracker can do. `streakFor` has tests for both.
 
+**A day key is local, and mixing it with a UTC date shipped five
+times.** `toDayKey` reads `getFullYear`/`getMonth`/`getDate`, so it is
+the day the person is standing in. `toISOString().slice(0, 10)` is the
+UTC date. West of Greenwich those disagree for the last hours of every
+evening, and every place the two met was a bug:
+
+- A habit asked for three times a day **could not be finished after
+  about seven in the evening**. `complete` stamped `at.toISOString()`,
+  so the entry carried tomorrow’s date, `timesDoneOn` did not count it,
+  and the row stuck at 2 of 3 — while the write succeeded and the XP was
+  paid, which is what made it look like the tick was working.
+- `vitals.days-within-limits` counted an evening drink against the
+  wrong day, **and counted entries rather than amounts**, so a 400 mg
+  caffeine ceiling needed four hundred separate coffees to register as
+  breached.
+- A trip flipped from upcoming to past several hours early.
+- The weight chart’s window boundary dropped its oldest reading.
+
+`complete` now writes `${day}T${localTime}` with **no `Z`** — the first
+ten characters are the day key by construction, which is the only
+contract `timesDoneOn` has, and a `Z` would be a claim about an offset
+the string does not carry. `amountSpentOn` in `charges.ts` is the same
+answer for pools: it parses the entry and converts, because a spend
+_is_ a real instant and `#95` on the end means `new Date` on it yields
+Invalid Date.
+
+**Nothing rewrites entries already stored.** An evening completion
+filed under tomorrow is wrong by a day and there is no way to know by
+how much — the offset it was written at was never recorded, and
+assuming the current one would corrupt anything logged while
+travelling. They stay as they are and read as a completion on the
+following day, which is what the record actually says.
+
+**The suite runs in `America/New_York` now, and that is the real fix.**
+In UTC a local day key and a UTC date prefix are the same ten
+characters, so every assertion about this passed while the app was
+wrong for half of every day for anyone in the Americas. Moving the
+suite cost nothing — all 1,227 tests passed unchanged on the first run
+— which is the measure of how little it was covering. A lint rule bans
+`.toISOString().slice(0, 10)` so the next one fails the build instead.
+The ten-character slice only: a longer one is a timestamp for a
+filename, where UTC is right and nothing compares it to anything.
+
+`shiftDay` is the one deliberate exception and carries a disable
+comment. It is calendar arithmetic on a key rather than a reading of a
+clock — `parseDay` builds midnight UTC and `keyOf` formats one back, so
+a day is exactly 86,400,000 ms. Reading it locally would be the bug.
+
 **`done` holds two shapes and `timesDoneOn` is the only thing that
 reads it.** A habit expected several times a day — feeding a dog morning,
 afternoon and evening — could not be recorded at all, because a set of

@@ -1,5 +1,6 @@
 import { Flame, Plus, Scale, Undo2 } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
+import { toDayKey } from '@/domain/time/day'
 import { useState } from 'react'
 
 import { Button, Card, Empty, Section } from '@/components/shared/primitives'
@@ -68,7 +69,14 @@ const DAY_MS = 24 * 60 * 60 * 1000
  * still is a chart no test can assert about.
  */
 function sinceDay(days: number, now: Date): string {
-  return new Date(now.getTime() - days * DAY_MS).toISOString().slice(0, 10)
+  /*
+   * `toDayKey`, not the UTC date. Weigh-ins are keyed by the local day,
+   * so a window boundary built from `toISOString` is comparing against
+   * keys it does not share a calendar with — and for the last hours of
+   * every evening west of Greenwich it names the day after the one
+   * intended, quietly dropping the oldest reading from the chart.
+   */
+  return toDayKey(new Date(now.getTime() - days * DAY_MS))
 }
 
 function daysBetween(from: string, to: string): number {

@@ -1,3 +1,4 @@
+import { toDayKey } from '@/domain/time/day'
 import type { Place } from '@/domain/atlas/place/Place'
 import { isResolved } from '@/domain/atlas/place/Place'
 import type { PlaceId } from '@/domain/atlas/place/PlaceId'
@@ -158,7 +159,10 @@ const ORDER: Record<TripView['status'], number> = {
 export async function tripViews(deps: TripDeps): Promise<readonly TripView[]> {
   const [trips, places] = await Promise.all([deps.trips.all(), deps.places.all()])
   const byId = new Map(places.map((place) => [place.id, place]))
-  const today = deps.clock.now().toISOString().slice(0, 10)
+  // `toDayKey`, not the UTC date. A trip is upcoming or past according
+  // to the day the traveller is in, and the two disagree for the last
+  // hours of every evening west of Greenwich.
+  const today = toDayKey(deps.clock.now())
 
   return trips
     .map((trip) => {

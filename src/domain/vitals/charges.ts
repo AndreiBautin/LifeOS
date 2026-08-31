@@ -360,6 +360,32 @@ function daysUsedIn(vice: Vice, now: Date, period: ChargePeriod): Set<string> {
   )
 }
 
+/**
+ * What a pool took on one local day, in its own units.
+ *
+ * Exported because two callers outside this file were doing it by hand
+ * and both had the same bug: `stamp.slice(0, 10) === day` compares the
+ * *UTC* date inside an entry against a day key built from the local
+ * clock, and west of Greenwich those disagree for the last hours of
+ * every evening. A drink at nine at night counted towards tomorrow.
+ *
+ * The parsing has to happen here anyway — an entry may carry an amount
+ * after a `#`, so it is not a date string and `new Date` on it yields
+ * Invalid Date.
+ *
+ * **Amounts, not entries.** The other half of what those callers had
+ * wrong: one entry is one *spend*, not one unit, so counting rows makes
+ * a 400 mg caffeine limit take four hundred coffees to breach.
+ */
+export function amountSpentOn(vice: Vice, day: string): number {
+  return vice.spent
+    .map(parseSpend)
+    .filter(
+      (spend): spend is Spend => spend !== undefined && toLocalDayKey(new Date(spend.at)) === day,
+    )
+    .reduce((total, spend) => total + spend.amount, 0)
+}
+
 /** `YYYY-MM-DD` in local time, which is the day a person means. */
 function toLocalDayKey(date: Date): string {
   const month = String(date.getMonth() + 1).padStart(2, '0')

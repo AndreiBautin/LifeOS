@@ -164,7 +164,18 @@ function parseDay(key: string): Date {
   return new Date(`${key}T00:00:00Z`)
 }
 
+/**
+ * The UTC date, and here that is correct rather than an oversight.
+ *
+ * This is half of `shiftDay`, which is calendar arithmetic on a key
+ * rather than a reading of a clock: `parseDay` builds midnight *UTC*
+ * from a key and this formats one back. UTC in, UTC out, so a day is
+ * exactly 86,400,000 milliseconds and no offset change can make one
+ * shorter. Reading it locally would be the bug — `getDate()` on a UTC
+ * midnight returns the previous day anywhere west of Greenwich.
+ */
 function keyOf(date: Date): string {
+  // eslint-disable-next-line no-restricted-syntax -- symmetric with parseDay; see above
   return date.toISOString().slice(0, 10)
 }
 
@@ -239,9 +250,7 @@ export function complete(daily: Daily, day: string, at?: Date): Daily {
   // habit that asked for three.
   if (timesDoneOn(daily, day) >= timesPerDay(daily)) return daily
 
-  const stamp = at === undefined ? `${day}T00:00:00.000Z` : at.toISOString()
-
-  return { ...daily, done: [...daily.done, stamp].sort() }
+  return { ...daily, done: [...daily.done, stampFor(day, at)].sort() }
 }
 
 /**
@@ -252,6 +261,47 @@ export function complete(daily: Daily, day: string, at?: Date): Daily {
  * day rather than all of them: an undo, not an eraser, the same shape as
  * `undoLastCharge`.
  */
+/**
+ * One completion, written so that its first ten characters are the day
+ * it happened on.
+ *
+ * **That prefix is the whole contract**, because `timesDoneOn` counts by
+ * comparing it against a day key and nothing ever parses these back into
+ * a date. It was `at.toISOString()`, which is a *UTC* date — and day
+ * keys are local, from `getFullYear`/`getMonth`/`getDate`. West of
+ * Greenwich those two disagree for the last hours of every evening, so a
+ * habit fed at eight at night was filed under tomorrow and counted
+ * towards nothing: the third of three feeds stuck at 2 of 3 while the
+ * write succeeded and the XP was paid.
+ *
+ * The suite could not see it. Tests run in UTC, where the local date and
+ * the UTC date are the same ten characters, so every assertion about
+ * this passed while the app was wrong for half the day for anyone in the
+ * Americas. `daily-timezone.test.ts` sets a timezone for that reason.
+ *
+ * The time after the prefix is local too, and carries no `Z`, because a
+ * `Z` would be a claim about an offset this string does not have. Its
+ * only job is to keep two completions on one day distinct — and to be
+ * identical on two devices that saw the same tap, so `unionDone` folds
+ * them rather than double-counting.
+ *
+ * **Nothing rewrites entries already stored.** An evening completion
+ * filed under tomorrow's UTC date is wrong by a day and there is no way
+ * to tell by how much: the offset it was written at is not recorded, and
+ * guessing the current one would corrupt anything logged while
+ * travelling. They are left alone, and they read as a completion on the
+ * following day — which is what the record actually says.
+ */
+function stampFor(day: string, at: Date | undefined): string {
+  if (at === undefined) return `${day}T00:00:00.000`
+
+  const pad = (value: number, width = 2): string => value.toString().padStart(width, '0')
+
+  const time = `${pad(at.getHours())}:${pad(at.getMinutes())}:${pad(at.getSeconds())}`
+
+  return `${day}T${time}.${pad(at.getMilliseconds(), 3)}`
+}
+
 export function uncomplete(daily: Daily, day: string): Daily {
   const onDay = daily.done.filter((entry) => entry.slice(0, 10) === day)
   if (onDay.length === 0) return daily

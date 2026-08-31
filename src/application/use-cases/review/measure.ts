@@ -20,6 +20,7 @@ import type {
   WorkoutRepository,
 } from '@/domain/repositories/ports'
 import { isOwned, isOpen } from '@/domain/upgrades/upgrade'
+import { amountSpentOn } from '@/domain/vitals/charges'
 import { phaseVerdict, weightTrend } from '@/domain/vitals/weight'
 import { atlasView } from '@/application/use-cases/atlas/atlas'
 
@@ -180,9 +181,15 @@ export async function measureAll(deps: MeasureDeps): Promise<Readonly<Record<str
       const day = shiftDay(toDay(now), -back)
       if (day.slice(0, 7) !== month) break
 
-      const overAny = vices.some(
-        (vice) => vice.spent.filter((stamp) => stamp.slice(0, 10) === day).length > vice.capacity,
-      )
+      /*
+       * `amountSpentOn` rather than counting entries, and it fixes two
+       * things at once. Entries were compared by their *UTC* date prefix
+       * against a local day key, so an evening drink counted towards
+       * tomorrow — and a row was treated as one unit, which meant a
+       * 400 mg caffeine limit needed four hundred separate coffees
+       * before this rating noticed anything.
+       */
+      const overAny = vices.some((vice) => amountSpentOn(vice, day) > vice.capacity)
 
       if (!overAny) within += 1
     }

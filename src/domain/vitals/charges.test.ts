@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  amountSpentOn,
   cycleOf,
   describeCycle,
   readCharges,
@@ -603,5 +604,53 @@ describe('making a day limit sensible', () => {
    */
   it('is absent when no day was chosen at all', () => {
     expect(saneDaysLimit({ kind: 'days-of-week', days: [] })).toBeUndefined()
+  })
+})
+
+describe('amountSpentOn', () => {
+  /*
+   * The suite runs in New York, so an evening here is already tomorrow
+   * in UTC — which is the whole reason this function exists rather than
+   * a `stamp.slice(0, 10)` at each call site.
+   */
+  const EVENING = new Date('2026-08-31T00:44:00.000Z') // 20:44 on the 30th, local
+
+  function pool(spent: readonly string[], over: Partial<Vice> = {}): Vice {
+    return {
+      id: asViceId('caffeine'),
+      name: 'Caffeine',
+      capacity: 400,
+      unit: 'mg',
+      cycle: { kind: 'calendar', period: 'day' },
+      spent,
+      createdAt: '2026-08-01T00:00:00.000Z',
+      ...over,
+    }
+  }
+
+  it('counts an evening spend against the day the person was in', () => {
+    const spent = pool([spendEntry(EVENING, 95)])
+
+    expect(amountSpentOn(spent, '2026-08-30')).toBe(95)
+    expect(amountSpentOn(spent, '2026-08-31')).toBe(0)
+  })
+
+  it('sums the amounts rather than counting the entries', () => {
+    /*
+     * The other half of what the callers had wrong. Three coffees is
+     * 285 mg against a 400 mg ceiling, not three against four hundred —
+     * which is why a measured limit could never read as breached.
+     */
+    const morning = new Date('2026-08-30T13:00:00.000Z')
+    const spent = pool([spendEntry(morning, 95), spendEntry(EVENING, 160), spendEntry(EVENING, 30)])
+
+    expect(amountSpentOn(spent, '2026-08-30')).toBe(285)
+  })
+
+  it('treats an entry with no amount as one, which is every older record', () => {
+    const { unit: _measured, ...counting } = pool([EVENING.toISOString()], { capacity: 3 })
+    const spent: Vice = counting
+
+    expect(amountSpentOn(spent, '2026-08-30')).toBe(1)
   })
 })

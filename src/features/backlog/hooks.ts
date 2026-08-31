@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { toDayKey } from '@/domain/time/day'
 
 import { useServices } from '@/app/context'
 import {
@@ -185,7 +186,7 @@ export function useBacklogTransfer() {
 
       const anchor = document.createElement('a')
       anchor.href = url
-      anchor.download = `backlog-${services.clock.now().toISOString().slice(0, 10)}.json`
+      anchor.download = `backlog-${toDayKey(services.clock.now())}.json`
       anchor.click()
 
       // Revoked on a later turn of the event loop: Safari is known to

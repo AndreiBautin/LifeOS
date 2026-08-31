@@ -170,6 +170,30 @@ export default defineConfig([
           message:
             'Take the current time as a `now: Date` parameter (or use the injected Clock) rather than reading the system clock here. Progression and scheduling must be reproducible in a test.',
         },
+        {
+          /*
+           * A day key in this app is *local* — `toDayKey` reads
+           * `getFullYear`/`getMonth`/`getDate`. `toISOString().slice(0, 10)`
+           * is the UTC date, and the two disagree for the last hours of
+           * every evening anywhere west of Greenwich.
+           *
+           * That mismatch shipped five times: a habit fed at eight at
+           * night was filed under tomorrow and never completed its day,
+           * a drink counted against the wrong day in the monthly rating,
+           * a trip flipped to past early, and the weight chart dropped
+           * its oldest reading. Every one was invisible in a suite that
+           * ran in UTC.
+           *
+           * Only the ten-character slice, because that is the one that
+           * produces a *day key*. A longer slice is a timestamp for a
+           * filename or a log line, where UTC is the right answer and
+           * nothing compares it to anything.
+           */
+          selector:
+            'CallExpression[callee.property.name="slice"][callee.object.callee.property.name="toISOString"][arguments.1.value=10]',
+          message:
+            'This is the UTC date, and a day key in this app is local. Use `toDayKey(date)` from `@/domain/time/day`, or compare instants rather than date prefixes.',
+        },
       ],
     },
   },

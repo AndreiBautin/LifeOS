@@ -12,6 +12,7 @@ import type { ReadinessFactors } from '@/domain/autoregulation/check-in'
 import type { ChargeCycle, ChargeDirection, ChargePreset, DaysLimit } from '@/domain/vitals/charges'
 import { saneDaysLimit } from '@/domain/vitals/charges'
 import {
+  amountSpentOn,
   isActive,
   readCharges,
   spendCharge,
@@ -105,7 +106,7 @@ export async function vitalsToday(deps: VitalsDeps): Promise<VitalsToday> {
     .map((vice) => ({
       vice,
       reading: readCharges(vice, now),
-      spentToday: vice.spent.filter((stamp) => stamp.slice(0, 10) === today).length,
+      spentToday: amountSpentOn(vice, today),
     }))
     /*
      * Emptiest first, so what is nearly gone is what you see. Sorting by
