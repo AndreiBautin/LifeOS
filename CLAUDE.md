@@ -1122,6 +1122,48 @@ filter on floating point eventually disagrees with itself. Two of its
 rules had a database behind them and no longer do: `wouldCreateCycle`, and
 the refusal to delete anything with dependents still attached.
 
+**The lead scorer is ported from Career Command Center, and it is a
+port rather than a rewrite.** `domain/jobs/score.ts`. Hard filters drop
+a posting outright; what survives earns 0–100 from title hits, keyword
+coverage, location fit, published pay and freshness. **No model is
+involved and every point is explainable**, which is the property worth
+carrying across: a lead scoring 74 can say which points it earned.
+
+Two deliberate departures from the C#, both rules this codebase
+already holds:
+
+- **Reasons are data, not a string.** The original built a
+  `StringBuilder` of lines like "+50 title matches …". Structured
+  reasons let a screen render them and a test assert on points rather
+  than prose, and nothing has to parse English back into numbers.
+- **The clock is a parameter.** `DateTime.UtcNow` was read inside the
+  scorer, which makes freshness untestable and scores the same posting
+  differently depending on the day the suite runs.
+
+Money is minor units, like everywhere else: a pay floor is a budget
+filter, and a budget filter on floating point eventually disagrees with
+itself.
+
+**Keyword score is a _share_ of the wanted list, which is the most
+surprising thing in it.** Adding a keyword you rarely match lowers
+every score — the list is for ranking, not for widening the net. It has
+a test saying so, because it reads as a bug the first time somebody
+meets it.
+
+**The wanted-locations list applies to remote roles too.** "Remote
+Poland" is still Poland. A bare `remote` term is how somebody opts into
+remote-anywhere; `remote us` or `denver` keeps it local. The other
+reading — remote means location does not matter — is the one that
+quietly fills a board with jobs in the wrong hemisphere.
+
+**A stale req is penalised, never dropped.** Past ninety days it loses
+eight points: often filled or evergreen, occasionally still real, so it
+falls behind fresher work rather than vanishing.
+
+**Pay is judged only when the board publishes it**, which most do not.
+Dropping every posting that stays quiet about money would throw away
+the majority of a board to enforce a floor nobody stated.
+
 **The posting lives in `Project.description`, and the match is a word
 count.** `domain/jobs/match.ts`. For an application the posting _is_
 the description of the thing, so a parallel field would be a second
