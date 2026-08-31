@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { matchResume, tokenise } from './match'
+import { matchResume, phrases, tokenise } from './match'
 import { asBulletId, asCompanyId, asRoleId } from '@/domain/ids/ids'
 import { EMPTY_RESUME, type Resume } from '@/domain/resume/resume'
 
@@ -122,5 +122,73 @@ describe('matching a posting against a resume', () => {
     const match = matchResume('microservices', resumeWith(['Built a microservice']))
 
     expect(match.missing.map((one) => one.word)).toEqual(['microservices'])
+  })
+})
+
+describe('two-word phrases', () => {
+  /*
+   * The whole reason phrases exist. A word match reports Azure covered
+   * and says nothing about the gap — on a posting built out of product
+   * names that is most of what it was asked.
+   */
+  it('finds a phrase missing even when both its words are covered', () => {
+    const match = matchResume(
+      'You will use Azure Functions',
+      resumeWith(['Built things on Azure', 'Wrote functions in TypeScript']),
+    )
+
+    expect(match.missing).toEqual([])
+    expect(match.missingPhrases.map((one) => one.word)).toEqual(['azure functions'])
+  })
+
+  it('says nothing when the resume uses the phrase too', () => {
+    const match = matchResume('Azure Functions', resumeWith(['Shipped Azure Functions']))
+
+    expect(match.missingPhrases).toEqual([])
+  })
+
+  /*
+   * Adjacency has to survive stopword removal, or a phrase is invented
+   * out of a sentence that never said it. This is why `phrases` walks
+   * the unfiltered words.
+   */
+  it('does not invent a phrase across a stopword', () => {
+    expect(phrases('azure and functions')).toEqual([])
+  })
+
+  it('breaks a pair on a word not worth comparing', () => {
+    expect(phrases('scalable azure functions')).toEqual(['scalable azure', 'azure functions'])
+  })
+
+  it('ranks by how often the posting repeats it', () => {
+    const match = matchResume(
+      'azure functions. service bus. azure functions.',
+      resumeWith(['Nothing']),
+    )
+
+    expect(match.missingPhrases[0]).toEqual({ word: 'azure functions', count: 2 })
+  })
+
+  /*
+   * Every phrase is made of words that are already counted, so folding
+   * them in would weigh the same vocabulary twice and move the number
+   * for a reason nobody could trace back to the posting.
+   */
+  it('leaves the share to single words', () => {
+    const match = matchResume('azure functions', resumeWith(['Azure', 'functions']))
+
+    expect(match.share).toBe(1)
+    expect(match.missingPhrases).toHaveLength(1)
+  })
+
+  it('does not run one resume section into the next', () => {
+    // "TypeScript" ends a bullet and "Mentored" starts the next; joining
+    // them without a stop would create a phrase neither sentence said.
+    const match = matchResume(
+      'typescript mentored',
+      resumeWith(['Wrote TypeScript', 'Mentored engineers']),
+    )
+
+    expect(match.missingPhrases.map((one) => one.word)).toEqual(['typescript mentored'])
   })
 })

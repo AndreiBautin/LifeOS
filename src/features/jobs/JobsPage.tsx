@@ -104,6 +104,31 @@ function Posting({ application }: { readonly application: Project }) {
               : `${String(Math.round(match.share * 100))}% of the words in this posting appear somewhere in your resume. It is a word match — it does not read either document.`}
           </p>
 
+          {/*
+            Phrases first, and above the single words on purpose. "azure
+            functions" missing while "azure" is covered is the sharpest
+            thing on the panel — a specific gap inside something you do
+            know — and it would be lost among thirty single words.
+          */}
+          {match.missingPhrases.length > 0 && (
+            <div>
+              <p className="text-ink-500 mb-1 text-xs tracking-wide uppercase">
+                Phrases the posting uses
+              </p>
+              <div className="flex flex-wrap gap-1">
+                {match.missingPhrases.slice(0, 12).map((term) => (
+                  <span
+                    key={term.word}
+                    className="border-warn-500/40 text-warn-500 rounded-lg border px-2 py-0.5 text-xs"
+                  >
+                    {term.word}
+                    {term.count > 1 && <span className="text-ink-700"> ×{term.count}</span>}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
           {match.missing.length > 0 && (
             <div>
               <p className="text-ink-500 mb-1 text-xs tracking-wide uppercase">

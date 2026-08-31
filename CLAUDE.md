@@ -1163,6 +1163,37 @@ never decides which _skills_ matter — that would be the app having an
 opinion about somebody’s field. `go` is deliberately absent, being a
 language.
 
+**Two-word phrases, because "azure functions" is a different
+requirement from "azure".** A word match reports Azure covered and
+says nothing about the gap — on a posting built out of product names
+that is most of what it was asked. Shown above the single words, since
+a specific gap inside something you _do_ know is the sharpest thing on
+the panel and would be lost among thirty loose words.
+
+Verified against a real posting: `azure` and `openai` read as covered,
+`azure openai` is correctly _not_ a gap, and `azure functions` and
+`azure devops` are — three phrases sharing a word, told apart.
+
+**Phrases are not in the `share` denominator.** Every phrase is made of
+words already counted, so folding them in weighs the same vocabulary
+twice and moves the number for a reason nobody could trace back to the
+posting.
+
+**A separator has to actually separate, and the first one did not.**
+Resume sections were joined with ". " on the assumption a full stop
+breaks a pair — but the tokeniser strips a trailing dot on purpose, so
+the words stayed adjacent and a phrase could span two bullets that
+never touched: "Wrote TypeScript" and "Mentored engineers" invented
+"typescript mentored". `segments` breaks on line endings, on commas and
+semicolons, and on a full stop **only when whitespace or the end
+follows it** — which is what keeps `node.js` and `.NET` whole, the
+whole reason the tokeniser tolerates dots. Caught by a test written to
+assert it could not happen.
+
+**Trigrams are deliberately absent.** On a posting of this length they
+are mostly noise, and the first thing they produce is a longer list to
+read — the opposite of the point.
+
 **No stemming, stated as a limit rather than half-solved.**
 "microservice" does not match "microservices". Stemming would fix that
 and would also match things that are not the same word, and a match

@@ -36,12 +36,86 @@ import { allBullets, type Resume } from '@/domain/resume/resume'
  * their punctuation does.
  */
 export function tokenise(text: string): readonly string[] {
+  return everyWord(text).filter(worthComparing)
+}
+
+/**
+ * Every word in order, stopwords included.
+ *
+ * Adjacency is the whole reason this exists separately. A phrase can
+ * only be trusted if its two halves were *next to each other in the
+ * posting*, and filtering first destroys that: "strong Azure and
+ * scalable Functions" collapses to `azure, functions` and would invent
+ * "azure functions" out of a sentence that never said it.
+ */
+function everyWord(text: string): readonly string[] {
   return text
     .toLowerCase()
     .split(/[^a-z0-9#+.]+/)
     .map((token) => token.replace(/^[.]+|[.]+$/g, ''))
-    .filter((token) => token.length > 1 && !STOPWORDS.has(token))
 }
+
+function worthComparing(token: string): boolean {
+  return token.length > 1 && !STOPWORDS.has(token)
+}
+
+/**
+ * Two-word phrases, from words that were genuinely adjacent.
+ *
+ * **"azure functions" is a different requirement from "azure".** A word
+ * match reports Azure covered and says nothing about the gap, which on a
+ * posting built out of product names is most of what it was asked. Both
+ * halves must be worth comparing on their own, so a stopword between
+ * them breaks the pair rather than being stepped over — that is what
+ * stops "experience with Azure" becoming a phrase.
+ *
+ * Two words and not three. Trigrams are mostly noise on a posting of
+ * this length, and the first thing they would produce is a longer list
+ * to read, which is the opposite of the point.
+ */
+export function phrases(text: string): readonly string[] {
+  const found: string[] = []
+
+  for (const segment of segments(text)) {
+    const words = everyWord(segment)
+    for (let i = 0; i + 1 < words.length; i += 1) {
+      const first = words[i] ?? ''
+      const second = words[i + 1] ?? ''
+      if (worthComparing(first) && worthComparing(second)) found.push(`${first} ${second}`)
+    }
+  }
+
+  return found
+}
+
+/**
+ * Where one thought ends and the next begins.
+ *
+ * **A separator has to actually separate, and the first attempt did
+ * not.** Resume sections were joined with ". " on the assumption that a
+ * full stop would break the pair — but the tokeniser strips a trailing
+ * dot on purpose, so the two words stayed neighbours and a phrase could
+ * span two bullets that never touched. "Wrote TypeScript" followed by
+ * "Mentored engineers" invented "typescript mentored". Caught by a test
+ * written to assert it could not.
+ *
+ * A dot only ends a segment when whitespace or the end of the text
+ * follows it, which is what keeps `node.js` and `.NET` whole — the
+ * whole reason the tokeniser tolerates dots in the first place.
+ * Commas break too: "Azure, Azure Functions" is a list of two things,
+ * not a phrase.
+ */
+function segments(text: string): readonly string[] {
+  return text.split(SEGMENT_BREAK)
+}
+
+const SEGMENT_BREAK = new RegExp(
+  [
+    '[\\r\\n]+', // a line ending is always a break
+    '[,;:!?]+', // "Azure, Azure Functions" is a list of two things
+    '\\.(?=\\s|$)', // a full stop only when something follows it — node.js survives
+  ].join('|'),
+)
 
 /**
  * Words too common to mean anything in a comparison.
@@ -229,7 +303,25 @@ export interface Match {
   readonly covered: readonly Term[]
   /** Terms the posting uses that appear nowhere in the resume. */
   readonly missing: readonly Term[]
-  /** 0–1. Absent when the posting is empty — nothing over nothing is not a score. */
+  /**
+   * Two-word phrases the posting uses and the resume does not.
+   *
+   * Kept apart from `missing` rather than mixed in, because they answer
+   * different questions: a missing *word* is something never mentioned,
+   * a missing *phrase* is usually something mentioned in another
+   * context. "Azure" covered and "azure functions" missing is a real and
+   * specific gap, and burying it among single words would lose exactly
+   * the distinction it exists to draw.
+   */
+  readonly missingPhrases: readonly Term[]
+  /**
+   * 0–1, over single words only.
+   *
+   * Phrases are deliberately not in this denominator. Every phrase is
+   * made of words that are already counted, so folding them in would
+   * weigh the same vocabulary twice and move the number for a reason
+   * nobody could trace back to the posting.
+   */
   readonly share?: number
 }
 
@@ -257,7 +349,7 @@ export function matchResume(description: string, resume: Resume): Match {
         resume.summary,
         ...resume.skills.flatMap((group) => [group.label, ...group.skills]),
         ...allBullets(resume).map((bullet) => bullet.text),
-      ].join(' '),
+      ].join('. '),
     ),
   )
 
@@ -267,13 +359,32 @@ export function matchResume(description: string, resume: Resume): Match {
     ;(mine.has(word) ? covered : missing).push({ word, count })
   }
 
+  const myPhrases = new Set(
+    phrases(
+      [
+        resume.summary,
+        ...resume.skills.flatMap((group) => [group.label, ...group.skills]),
+        ...allBullets(resume).map((bullet) => bullet.text),
+      ].join('\n'),
+    ),
+  )
+
+  const phraseCounts = new Map<string, number>()
+  for (const phrase of phrases(description)) {
+    if (myPhrases.has(phrase)) continue
+    phraseCounts.set(phrase, (phraseCounts.get(phrase) ?? 0) + 1)
+  }
+
   const byWeight = (a: Term, b: Term): number => b.count - a.count || a.word.localeCompare(b.word)
   covered.sort(byWeight)
   missing.sort(byWeight)
 
+  const missingPhrases = [...phraseCounts].map(([word, count]) => ({ word, count })).sort(byWeight)
+
   return {
     covered,
     missing,
+    missingPhrases,
     /*
      * Absent rather than zero on an empty posting, which is the rule
      * this app applies everywhere a denominator can vanish: nothing over
