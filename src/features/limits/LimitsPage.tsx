@@ -753,7 +753,16 @@ function AddVice({ of }: { readonly of: ChargeDirection }) {
     >
       <input
         className="bg-ink-900 border-ink-700 text-ink-50 tap-target w-full rounded-lg border px-3 text-sm"
-        placeholder="What are you limiting?"
+        /*
+          Asks the question the chosen direction actually asks. One form
+          serves both, and it went on saying "what are you limiting?"
+          under a Reach button — which is the confusion this whole
+          distinction exists to prevent, printed on the control that
+          makes it.
+        */
+        placeholder={
+          shape.direction === 'target' ? 'What are you reaching for?' : 'What are you limiting?'
+        }
         aria-label="Name"
         value={name}
         onChange={(event) => {

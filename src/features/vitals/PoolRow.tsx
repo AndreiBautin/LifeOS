@@ -1,10 +1,16 @@
 import { Minus, Plus, Undo2 } from 'lucide-react'
 import type { ReactNode } from 'react'
 
-import { Button } from '@/components/shared/primitives'
+import { Badge, Button } from '@/components/shared/primitives'
 import { Meter } from '@/components/shared/Meter'
 import type { PoolView } from '@/application/use-cases/vitals/vitals'
-import { cycleOf, directionOf, type Vice } from '@/domain/vitals/charges'
+import {
+  cycleOf,
+  directionOf,
+  poolStanding,
+  type PoolStanding,
+  type Vice,
+} from '@/domain/vitals/charges'
 import { namedDays } from '@/domain/time/day'
 import { cn } from '@/lib/cn'
 
@@ -276,6 +282,44 @@ function CountedLog({ vice }: { readonly vice: Vice }) {
  * and is passed only where it is the point. Today asks where you stand;
  * the Vitals page asks what the rule is *and* where you stand.
  */
+
+/**
+ * Where the pool stands, as one word with a tone.
+ *
+ * The ask was for limits to read more like buffs and rechargeable
+ * potions. The half that seemed to break that — *"one of them is
+ * literally the act of going out"* — is already modelled: going out is a
+ * **target**, so it is a flask you are filling rather than draining, and
+ * it gets the vocabulary that deserves.
+ *
+ * **Nothing new is measured.** Every state comes off a reading that was
+ * already on the screen as a number; this only says what that number
+ * means at a glance, which is what a status chip is for and the most a
+ * label is entitled to do.
+ *
+ * The tones are deliberately not "good" and "bad" all the way down.
+ * *Spent* is neutral rather than a warning: reaching the allowance you
+ * set is the plan working, not a failure. Only *over* is warned about,
+ * because only *over* is the thing you asked to be told about.
+ */
+type BadgeTone = 'neutral' | 'good' | 'warn'
+
+const STANDING: Record<PoolStanding, { readonly label: string; readonly tone: BadgeTone }> = {
+  untouched: { label: 'Untouched', tone: 'good' },
+  holding: { label: 'Holding', tone: 'neutral' },
+  spent: { label: 'Spent', tone: 'neutral' },
+  over: { label: 'Over', tone: 'warn' },
+  empty: { label: 'Not yet', tone: 'neutral' },
+  'part-way': { label: 'Part way', tone: 'neutral' },
+  full: { label: 'Reached', tone: 'good' },
+}
+
+function StandingBadge({ pool }: { readonly pool: Pool }) {
+  const { label, tone } = STANDING[poolStanding(pool.vice, pool.reading)]
+
+  return <Badge tone={tone}>{label}</Badge>
+}
+
 export function PoolRow({
   pool,
   now,
@@ -315,7 +359,10 @@ export function PoolRow({
     return (
       <div className="flex items-center gap-2 py-1.5">
         <div className="min-w-0 flex-1">
-          <p className="text-ink-50 truncate text-sm font-medium">{vice.name}</p>
+          <p className="text-ink-50 flex items-center gap-1.5 truncate text-sm font-medium">
+            <span className="truncate">{vice.name}</span>
+            <StandingBadge pool={pool} />
+          </p>
           <p className="text-ink-700 text-xs">
             <span className="numeric">
               {reading.over > 0
@@ -342,7 +389,10 @@ export function PoolRow({
   return (
     <div className="py-3">
       <div className="flex items-baseline justify-between gap-2">
-        <span className="text-ink-50 min-w-0 truncate text-sm font-medium">{vice.name}</span>
+        <span className="text-ink-50 flex min-w-0 items-center gap-1.5 text-sm font-medium">
+          <span className="truncate">{vice.name}</span>
+          <StandingBadge pool={pool} />
+        </span>
 
         {/*
           The headline figure, and the only place the monospaced face is

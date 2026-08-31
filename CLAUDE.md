@@ -3091,6 +3091,40 @@ opens a fresh empty store beside the old rather than migrating anything.
 The screens say Limits and Targets, which is the same split this file
 already documents for Quests over `Project` and Codex over `backlog`.
 
+**A pool says where it stands in one word, and the thing that seemed to
+break the metaphor is what makes it work.** The ask: _"I want limits to
+be more gamified — buffs, rechargeable potions or something. But one of
+them is literally the act of going out, so I'm not sure how to reconcile
+that."_
+
+Going out is not a limit, it is a **target**, and `direction` has
+carried that since water was added. So both halves already exist: a
+limit is a flask you are draining and would rather not empty, a target
+is one you are filling and want to. `poolStanding` names the state in
+the vocabulary each direction deserves — Untouched / Holding / Spent /
+Over against Not yet / Part way / Reached.
+
+**No new quantity, which is what keeps this honest.** Every state is
+read off a `ChargeReading` already on the screen as a number; this only
+says what that number means at a glance. It is a re-presentation, the
+same footing the avatar's calling sits on, and not a fourth currency —
+a word that can be wrong is worse than a number that is plain.
+
+**A target is never Over, however much is logged.** Reporting a fourth
+glass of water as exceeding something would be scolding somebody for
+drinking enough, which is exactly why `over` is a limit's word. Driven:
+a target logged past its capacity still reads Reached.
+
+**Spent is neutral and only Over is warned about.** Reaching an
+allowance you set for yourself is the plan working, not a failure. A
+tone that treated the two the same would make the one day worth
+noticing look like every other day.
+
+The add form's placeholder follows the direction now. One form serves
+both and it went on asking _"what are you limiting?"_ under a Reach
+button — the confusion this distinction exists to prevent, printed on
+the control that makes it.
+
 **A pool is a limit or a target, and only a limit can be exceeded.**
 Caffeine is spent down and going past 400mg is worth seeing; water is
 filled up, and reporting "500 over" for a fourth glass would be scolding

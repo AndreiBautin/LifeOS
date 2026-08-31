@@ -553,3 +553,58 @@ export function rollingHours(vice: Vice): number {
   const cycle = cycleOf(vice)
   return cycle.kind === 'rolling' ? cycle.hours : DEFAULT_ROLLING_HOURS
 }
+
+/**
+ * Where a pool stands right now, in one word.
+ *
+ * The ask: *"I want limits to be more gamified — like buffs, rechargeable
+ * potions or something. But one of them is literally the act of going
+ * out, so I'm not sure how to reconcile that."*
+ *
+ * **The thing that seems to break the metaphor is already modelled.**
+ * Going out is not a limit, it is a *target*, and this module has carried
+ * `direction` since water was added. So both halves of the metaphor
+ * exist: a limit is a flask you are draining and would rather not empty,
+ * a target is one you are filling and want to. The states below say
+ * which, in the vocabulary each direction actually deserves.
+ *
+ * **No new quantity.** Every state is read off a `ChargeReading` that
+ * already exists — this is a re-presentation, the same footing the
+ * avatar's calling sits on, and not a fourth currency. A word that could
+ * be wrong is worse than a number that is plain.
+ */
+export type PoolStanding =
+  /** Limit: nothing spent yet. */
+  | 'untouched'
+  /** Limit: some spent, still inside the allowance. */
+  | 'holding'
+  /** Limit: exactly at the allowance. Not over — spent. */
+  | 'spent'
+  /** Limit: past the allowance. Recorded, never refused. */
+  | 'over'
+  /** Target: nothing yet. */
+  | 'empty'
+  /** Target: some of the way there. */
+  | 'part-way'
+  /** Target: reached. */
+  | 'full'
+
+export function poolStanding(vice: Vice, reading: ChargeReading): PoolStanding {
+  const used = Math.max(0, reading.capacity - reading.available) + reading.over
+
+  if (directionOf(vice) === 'target') {
+    /*
+     * A target is never "over". Reporting a fourth glass of water as
+     * exceeding something would be scolding somebody for drinking
+     * enough, which is the whole reason `over` is a limit's word.
+     */
+    if (reading.available <= 0) return 'full'
+
+    return used > 0 ? 'part-way' : 'empty'
+  }
+
+  if (reading.over > 0) return 'over'
+  if (reading.available <= 0) return 'spent'
+
+  return used > 0 ? 'holding' : 'untouched'
+}
