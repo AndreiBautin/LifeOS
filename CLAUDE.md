@@ -325,6 +325,47 @@ can make where 5 is a number they can only accept.
 because devices hold 8s and 9s from the old range — a 9 reads as "high"
 rather than being dragged to the top of a range it was never on.
 
+**The stopping rule was never wired up, and it printed advice about
+itself the whole time.** Reported: _"I hit RPE 8 on back-off set two and
+it didn't cap the sets or anything."_ It could not have.
+`evaluateFatigue`, `accumulatedFatiguePercent`, `nextBackoffLoad` and
+`nextBackoffReps` had **no caller outside their own test** — the entire
+live half of RTS. The app planned the slots, wrote "until RPE 8" into
+the note, and never read the RPE.
+
+Fifth instance of the pattern this file keeps recording, after
+`proposeLandmarks`, `readinessScore` feeding a session adjustment
+nothing called, `moveDailyHome` with no control, and the fatigue percent
+being decorative for two commits. **A rule that prints advice about
+itself is the worst version**, because the lifter believes it is
+watching.
+
+`domain/framework/backoff-stop.ts` is the adapter — deliberately not in
+`rts.ts`, which works in `PerformedSet` and must not learn what a
+`WorkoutLog` is.
+
+**The printed rule and the evaluated rule were not the same rule, and
+rounding made them disagree almost every time.** This is the part worth
+keeping. The slot says "until RPE 8" from a `stopRpe` baked into its
+prescription; the evaluation asked whether the accumulated drop had
+reached the target percent. Those agree only when the bar _is_ exactly
+the drop — and the bar is rounded to something you can load. Measured on
+a real session: 305 drops 5% to 289.75, rounds to **290**, which is
+**4.92%** lighter. At matched reps and RPE the implied-max drop equals
+the bar drop, so RPE 8 accumulated 4.92% against a 5% target and the
+arithmetic said keep going while the screen said stop. The RPE is now
+compared to the number that was displayed, read from the record that
+displayed it — one rule, one source. It only ever _adds_ a reason to
+stop; the arithmetic still owns target-reached and the set cap.
+
+**It reports and offers; it does not act.** The remaining sets are not
+cleared automatically — this is a reading of a self-reported RPE, and a
+session that deleted work on one tap would be hard to argue with when
+the tap was wrong. One button does it, and the sets can still be logged
+if the lifter disagrees. They are **skipped, not cleared**: "I chose not
+to do this" is a recorded outcome and `pending` means the session was
+never finished, which the volume count reads differently.
+
 **The back-off count is derived from the fatigue target, and for a long
 time it was not.** Reported from real use: _"back-off sets shouldn't
 always display 1–3, they should be the range based on the fatigue

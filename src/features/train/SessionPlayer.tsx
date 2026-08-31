@@ -3,7 +3,10 @@ import { useState } from 'react'
 
 import type { Exercise } from '@/domain/exercises/exercise'
 import type { ExerciseId } from '@/domain/ids/ids'
-import type { WorkoutLog } from '@/domain/logging/workout-log'
+import type { LogEntry, WorkoutLog } from '@/domain/logging/workout-log'
+import { useSettings } from '@/app/context'
+import { backoffStandingFor } from '@/domain/framework/backoff-stop'
+import { BACKOFF_VARIANT } from '@/domain/framework/replan-backoffs'
 import {
   isEntryComplete,
   loggedVolume,
@@ -43,6 +46,70 @@ interface Props {
   readonly onAbandon: () => void
 }
 
+/**
+ * The stopping rule, on the screen, at the moment it fires.
+ *
+ * **This is the half of RTS that was never wired up.** `evaluateFatigue`
+ * had no caller outside its own test, so the app planned back-off slots,
+ * printed a note saying "when one comes in at RPE 8 you are done", and
+ * never read the RPE. Reported from real use: RPE 8 on the second set,
+ * and nothing happened.
+ *
+ * **It reports and offers; it does not act.** The remaining sets are not
+ * cleared automatically — the rule is a reading of a self-reported RPE,
+ * and a session that deleted work on the strength of one tap would be
+ * hard to argue with when the tap was wrong. One button does it, and the
+ * sets can be logged anyway if the lifter disagrees.
+ */
+function BackoffStop({
+  workout,
+  entry,
+  fatiguePercent,
+  onSkipRest,
+  busy,
+}: {
+  readonly workout: WorkoutLog
+  readonly entry: LogEntry
+  readonly fatiguePercent: number
+  readonly onSkipRest: () => void
+  readonly busy: boolean
+}) {
+  if (entry.variant !== BACKOFF_VARIANT) return null
+
+  const standing = backoffStandingFor(workout, entry.exerciseId, fatiguePercent)
+  if (standing === undefined) return null
+
+  const { state, remaining } = standing
+
+  /*
+   * Silent until there is something to say. Before the target is reached
+   * the note on the slot already states the rule, and a running "2.1% of
+   * 5%" on every set would be a number to watch instead of a bar to
+   * lift.
+   */
+  if (!state.shouldStop || remaining === 0) return null
+
+  return (
+    <Card className="border-good-500/40 mb-3">
+      <p className="text-good-500 text-sm font-medium">Target reached</p>
+      <p className="text-ink-300 mt-1 text-sm">{state.reason}</p>
+      <Button
+        variant="outline"
+        size="sm"
+        full
+        className="mt-3"
+        disabled={busy}
+        onClick={onSkipRest}
+      >
+        Done here — skip the last {remaining === 1 ? 'set' : `${String(remaining)} sets`}
+      </Button>
+      <p className="text-ink-700 mt-2 text-xs">
+        Or log them anyway. This reads the RPE you typed, and you are the one who typed it.
+      </p>
+    </Card>
+  )
+}
+
 export function SessionPlayer({
   workout,
   exercises,
@@ -57,6 +124,7 @@ export function SessionPlayer({
   const [restStartedAt, setRestStartedAt] = useState<number | undefined>(undefined)
   const [confirmingAbandon, setConfirmingAbandon] = useState(false)
 
+  const { settings } = useSettings()
   const logSet = useLogSet(workout.id)
   const clearSet = useClearSet(workout.id)
 
@@ -106,6 +174,25 @@ export function SessionPlayer({
           {outstanding === 0 ? 'all sets logged' : `${String(outstanding)} sets left`}
         </p>
       </header>
+
+      <BackoffStop
+        workout={workout}
+        entry={entry}
+        fatiguePercent={settings.fatiguePercent}
+        busy={logSet.isPending}
+        onSkipRest={() => {
+          /*
+           * Skipped, not cleared. "I chose not to do this" is a recorded
+           * outcome and `pending` means the session was never finished —
+           * the volume count reads them differently, and stopping on the
+           * rule is a decision rather than an abandonment.
+           */
+          entry.sets.forEach((one, setIndex) => {
+            if (one.outcome !== 'pending') return
+            logSet.mutate({ entryIndex: index, setIndex, result: { outcome: 'skipped' } })
+          })
+        }}
+      />
 
       <div className="space-y-2">
         {entry.sets.map((set, setIndex) => (
