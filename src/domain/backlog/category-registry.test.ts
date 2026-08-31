@@ -3,10 +3,25 @@ import { describe, expect, it } from 'vitest'
 import { CATEGORY_REGISTRY, getCategoryDefinition, isCategoryId } from './category-registry'
 
 describe('CATEGORY_REGISTRY', () => {
-  it('contains the ten spec-required categories exactly once each', () => {
+  /*
+   * Two assertions where there was one, and the split is the point.
+   *
+   * This pinned the exact array, which conflated "the port dropped none
+   * of the ten" — the thing genuinely worth guarding, since a category
+   * lost in the port would orphan every item filed under it — with
+   * "nobody may ever add one". Adding `articles` for the morning digest
+   * failed it, and the failure said nothing about whether anything was
+   * broken.
+   *
+   * The ported ten must all still be here. Beyond that the registry is
+   * allowed to grow, and each addition still has to earn a row: a label,
+   * an icon and an entry in `CATEGORY_ICONS`, which is a
+   * `Record<CategoryId, …>` and therefore fails the build on its own.
+   */
+  it('still has every category the port arrived with', () => {
     const ids = CATEGORY_REGISTRY.map((category) => category.id)
 
-    expect(ids).toEqual([
+    for (const required of [
       'games',
       'tv-shows',
       'movies',
@@ -17,7 +32,14 @@ describe('CATEGORY_REGISTRY', () => {
       'music',
       'youtube',
       'courses',
-    ])
+    ]) {
+      expect(ids).toContain(required)
+    }
+  })
+
+  it('lists each category once', () => {
+    const ids = CATEGORY_REGISTRY.map((category) => category.id)
+
     expect(new Set(ids).size).toBe(ids.length)
   })
 

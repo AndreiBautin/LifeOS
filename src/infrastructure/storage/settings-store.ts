@@ -1,3 +1,4 @@
+import { parseDigestPreferences } from '@/domain/news/digest'
 import { parseJobSearch } from '@/domain/jobs/search'
 import type { AppSettings } from '@/domain/settings/settings'
 import { DEFAULT_SETTINGS, SETTINGS_SCHEMA_VERSION } from '@/domain/settings/settings'
@@ -263,6 +264,7 @@ function mergeWithDefaults(parsed: unknown): AppSettings {
      * gateway cannot read.
      */
     jobSearch: parseJobSearch(stored.jobSearch),
+    digest: parseDigestPreferences(stored.digest),
     /*
      * Carried through, or the stamp is written and never read.
      *

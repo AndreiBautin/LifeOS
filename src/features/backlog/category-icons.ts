@@ -6,6 +6,7 @@ import {
   GraduationCap,
   Mic,
   Music,
+  Newspaper,
   Sparkles,
   SquarePlay,
   Tv,
@@ -25,5 +26,6 @@ export const CATEGORY_ICONS: Record<CategoryId, LucideIcon> = {
   podcasts: Mic,
   music: Music,
   youtube: SquarePlay,
+  articles: Newspaper,
   courses: GraduationCap,
 }

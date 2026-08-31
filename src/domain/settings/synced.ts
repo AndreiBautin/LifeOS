@@ -36,6 +36,7 @@ export const SYNCED_SETTING_KEYS = [
   'weeksBeforeDeload',
   'e1rmFormula',
   'jobSearch',
+  'digest',
 ] as const
 
 export type SyncedSettingKey = (typeof SYNCED_SETTING_KEYS)[number]

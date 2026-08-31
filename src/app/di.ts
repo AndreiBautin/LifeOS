@@ -21,6 +21,7 @@ import type {
   TombstoneRepository,
   FinanceRepository,
   JobBoardGateway,
+  NewsGateway,
   ResumeRepository,
   TripRepository,
   ViceRepository,
@@ -57,8 +58,12 @@ import { NominatimSearchProvider } from '@/infrastructure/map/nominatim-search'
 import { createSyncStateStore } from '@/infrastructure/storage/sync-state-store'
 import { createNullSyncTarget } from '@/infrastructure/sync/targets'
 import { requestPersistence } from '@/infrastructure/storage/durability'
-import { createSweepMarkerStore } from '@/infrastructure/storage/sweep-marker-store'
-import type { SweepMarkerStore } from '@/application/use-cases/jobs/daily-sweep'
+import { createDailyRunStore } from '@/infrastructure/storage/daily-run-store'
+import { createNewsGateway } from '@/infrastructure/news/news-gateway'
+import type { DailyRunStore } from '@/application/use-cases/daily/once-a-day'
+import type { LeadSweep } from '@/application/use-cases/jobs/leads'
+import type { Digest } from '@/application/use-cases/news/digest'
+import { STORAGE_KEYS } from '@/config/storage-keys'
 import { logger } from '@/shared/logging/logger'
 
 /**
@@ -94,7 +99,9 @@ export interface AppServices {
   readonly finance: FinanceRepository
   readonly boards: JobBoardGateway
   /** Which local day the boards were last read on their own. */
-  readonly sweepMarker: SweepMarkerStore
+  readonly sweepStore: DailyRunStore<LeadSweep>
+  readonly digestStore: DailyRunStore<Digest>
+  readonly news: NewsGateway
   readonly resume: ResumeRepository
   readonly trips: TripRepository
   readonly dailies: DailyRepository
@@ -161,7 +168,9 @@ export async function bootstrap(): Promise<BootstrapResult> {
     places: createPlaceRepository(db, systemClock),
     finance: createFinanceRepository(db, systemClock),
     boards: createAtsGateway(),
-    sweepMarker: createSweepMarkerStore(),
+    sweepStore: createDailyRunStore(STORAGE_KEYS.jobSweptOn),
+    digestStore: createDailyRunStore(STORAGE_KEYS.digestReadOn),
+    news: createNewsGateway(),
     resume: createResumeRepository(db, systemClock),
     trips: createTripRepository(db, systemClock),
     dailies: createDailyRepository(db, systemClock),

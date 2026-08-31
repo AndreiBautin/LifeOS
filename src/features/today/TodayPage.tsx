@@ -1,3 +1,4 @@
+import { DigestCard } from '@/features/news/DigestCard'
 import { BookMarked, CalendarCheck, Map, Target, Users } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { Link } from 'react-router-dom'
@@ -130,6 +131,13 @@ export function TodayPage() {
         too.
       */}
       <LeadsToday />
+
+      {/*
+        The digest sits with the leads, below everything the day asks of
+        you and above the season. Both are things that arrived overnight
+        rather than things you decided to do, and neither pays anything.
+      */}
+      <DigestCard />
 
       <Section
         title="Due"

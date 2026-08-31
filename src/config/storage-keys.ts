@@ -41,6 +41,8 @@ export const STORAGE_KEYS = {
    * mistake.
    */
   jobSweptOn: `${PREFIX}.job-swept-on`,
+  /** This morning's digest, and the day it was read. Same rules. */
+  digestReadOn: `${PREFIX}.digest-read-on`,
   /** Set once the install prompt has been dismissed, so it is not nagged. */
   installPromptDismissed: `${PREFIX}.install-dismissed`,
   /** Set once the storage-durability explanation has been acknowledged. */

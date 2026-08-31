@@ -1,3 +1,4 @@
+import type { NewsSource, Story } from '@/domain/news/story'
 import type { CheckIn } from '@/domain/autoregulation/check-in'
 import type { FinanceReading } from '@/domain/finance/reading'
 import type { AtsProvider, FetchedPosting } from '@/domain/jobs/boards'
@@ -389,6 +390,17 @@ export interface ResumeRepository {
  * one thing a job board is guaranteed to do is answer differently
  * tomorrow.
  */
+/**
+ * Reading a public news source.
+ *
+ * A port for the reason every port here is one: the parsing is pure and
+ * testable against fixtures, and the fetching is the one thing that
+ * cannot be. See `domain/news/story.ts`.
+ */
+export interface NewsGateway {
+  read(source: NewsSource): Promise<readonly Story[]>
+}
+
 export interface JobBoardGateway {
   fetch(provider: AtsProvider, token: string): Promise<readonly FetchedPosting[]>
 }

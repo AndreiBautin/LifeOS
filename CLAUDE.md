@@ -1179,6 +1179,77 @@ filter on floating point eventually disagrees with itself. Two of its
 rules had a database behind them and no longer do: `wouldCreateCycle`, and
 the refusal to delete anything with dependents still attached.
 
+**The morning digest pays no XP, and that is the design rather than a
+gap.** A digest is the one thing in the hub that is not a record of
+anything you did — reading a headline list is not an act, and paying
+for marking items read would create exactly the farming incentive the
+act/outcome line exists to prevent. It is a reading surface, like the
+map's tiles, and it is deliberately **not a `LifeArea`**: adding one
+would break the trait partition and demand acts it should not have.
+
+**Its one action lands somewhere that already scores.** Saving a story
+makes an ordinary backlog item, and logging progress there pays, and
+finishing it pays, and both feed Intellect. So the path from "this
+looks interesting" to XP runs through a record of having actually read
+the thing. The card says so on screen.
+
+**Interests rank; they do not gate** — the one place the job scorer’s
+shape was deliberately not copied. There a keyword is a _share_ of the
+wanted list, so adding one you rarely match lowers every score, which
+is documented because it reads as a bug. A digest has no such excuse:
+hiding everything off-subject turns it into a filter bubble somebody
+configured by accident. **Mutes do gate**, because that is what a mute
+is. Nothing computes a score of its own; the fallback is the source’s
+own points, which every reader of that site already understands.
+
+**Hacker News through Algolia, not the official Firebase API.** Both
+are open to a browser with no key and both were tested. Firebase
+returns 500 story _ids_ and then wants a request per story to get
+titles — thirty requests for a front page, where Algolia returns it in
+one. Lobsters is reachable and sends no CORS header; Exercism is
+CORS-blocked outright. That makes six outbound hosts, and **each one is
+a decision, not a precedent.**
+
+**Parsing is what keeps the cache small.** A single Algolia hit carries
+`_highlightResult` and a `children` array of every comment id on the
+story — eighty on the first one looked at. Twelve parsed stories store
+in 4.3 KB; the raw hits would be orders of magnitude more. An Ask HN
+has a **null `url`**, verified live, so `url` is optional and the
+discussion link always exists.
+
+**`once-a-day.ts` is shared by the digest and the job sweep, and it
+fixes a bug the sweep shipped with.** That gate kept a marker and no
+store, so the second open of a day answered "already swept" carrying
+nothing — the card showing thirty leads at eight in the morning
+rendered blank at noon, with the day marked so it could not run again.
+A morning’s work vanishing with no way back is worse than not having
+run it. The result is remembered now.
+
+The day is still marked **before** the work: a source that hangs would
+otherwise leave it unset and every reopening that day would retry the
+whole list. The two are stored at different moments, which is what
+makes a failure (`failed-earlier`) distinguishable from a success that
+returned nothing.
+
+**A saved story is checked against the Codex, not against component
+state.** A story sits on the front page two days running, and state
+alone resets on reload — which is exactly when the duplicate gets made.
+Same guard `appliedLinks` gives the job leads.
+
+**The save is marked only once the write succeeds**, and the first
+version got this wrong in the most instructive way: it invented a
+status (`not-started`, which is not one of the six), the domain refused
+it correctly, the error went to the log, and the tick turned green over
+a record that did not exist. A button that looks like it worked is
+worse than one that looks broken.
+
+`articles` joined `CATEGORY_REGISTRY` because a story is genuinely none
+of the other ten, and filing one under `books` would make every reading
+statistic about books wrong. Its test was split in two: the ported ten
+must all still be present — losing one would orphan every item filed
+under it — but the registry is allowed to grow, which the old
+exact-array assertion forbade for no stated reason.
+
 **The job search lives in settings, and it was component state — which
 made it a bug rather than a preference.** Six `useState` calls on the
 leads panel held every board slug and every filter, so all of it was

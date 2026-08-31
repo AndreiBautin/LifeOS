@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 
 import { Badge, Card } from '@/components/shared/primitives'
 
-import { useDailySweep } from './useDailySweep'
+import { useMorningLeads } from './useDailySweep'
 
 /**
  * What this morning's read of the boards turned up, on Today.
@@ -20,12 +20,16 @@ import { useDailySweep } from './useDailySweep'
  * there is anything worth going to look at.
  */
 export function LeadsToday() {
-  const sweep = useDailySweep()
-  const outcome = sweep.data
+  /*
+   * Whichever render fetched it. The gate remembers the morning's
+   * answer, so this card is still here at noon -- it used to vanish the
+   * moment the day was marked, taking thirty leads with it.
+   */
+  const sweep = useMorningLeads()
 
-  if (outcome?.kind !== 'swept') return null
+  if (sweep === undefined) return null
 
-  const { leads, read, failures } = outcome.sweep
+  const { leads, read, failures } = sweep
 
   // Nothing found and nothing broken is not news.
   if (leads.length === 0 && failures.length === 0) return null

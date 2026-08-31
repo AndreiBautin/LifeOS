@@ -1,3 +1,4 @@
+import { DEFAULT_DIGEST, type DigestPreferences } from '@/domain/news/digest'
 import { EMPTY_JOB_SEARCH, type JobSearch } from '@/domain/jobs/search'
 import { PHASE_RATES, type Phase } from '@/domain/vitals/weight'
 import { DEFAULT_RTS } from '@/domain/framework/rts'
@@ -162,6 +163,15 @@ export interface AppSettings {
    */
   readonly jobSearch: JobSearch
   /**
+   * The morning digest -- which sources, and what floats to the top.
+   *
+   * Travels between devices for the reason the job search does: the
+   * subjects you care about are a fact about you rather than about the
+   * phone, and a list that existed only on whichever device you typed it
+   * into is the defect one layer up.
+   */
+  readonly digest: DigestPreferences
+  /**
    * ISO timestamp of the last successful export. Drives the backup
    * reminder — a backup feature nobody is prompted to use is worth
    * nothing, and this is local-only storage.
@@ -258,6 +268,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   checkInsEnabled: true,
   theme: 'system',
   jobSearch: EMPTY_JOB_SEARCH,
+  digest: DEFAULT_DIGEST,
   schemaVersion: SETTINGS_SCHEMA_VERSION,
 }
 

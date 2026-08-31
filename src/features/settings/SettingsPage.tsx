@@ -20,6 +20,7 @@ import {
 } from '@/domain/autoregulation/schedule'
 import { BacklogSettingsSection } from '@/features/backlog/BacklogSettingsSection'
 import { JobSearchSection } from './JobSearchSection'
+import { DigestSection } from './DigestSection'
 import { useBackup } from '@/features/backup/useBackup'
 import { SyncSection } from '@/features/sync/SyncSection'
 import { useSyncConfig } from '@/features/sync/useSync'
@@ -291,6 +292,8 @@ export function SettingsPage() {
         none. It reports where the data is, not where it used to be.
       */}
       <JobSearchSection />
+
+      <DigestSection />
 
       <BacklogSettingsSection />
 

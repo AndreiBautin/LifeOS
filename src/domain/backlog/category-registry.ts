@@ -76,6 +76,22 @@ export const CATEGORY_REGISTRY = [
     suggestedPlatforms: ['YouTube'],
   },
   {
+    /*
+     * Added for the morning digest, which had nowhere to save to.
+     * An article is genuinely none of the other ten -- not a book, not
+     * a course -- and filing one under `books` to avoid a registry row
+     * would make every reading statistic about books wrong.
+     *
+     * Counted in minutes because that is the unit an article comes in,
+     * and because a "chapter" of a blog post is not a thing.
+     */
+    id: 'articles',
+    label: 'Articles',
+    icon: 'Newspaper',
+    suggestedGoalUnit: 'article',
+    suggestedPlatforms: ['Hacker News', 'DEV', 'Web'],
+  },
+  {
     id: 'courses',
     label: 'Courses',
     icon: 'GraduationCap',
