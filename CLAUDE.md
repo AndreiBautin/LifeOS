@@ -3255,6 +3255,46 @@ where the temptation is strongest.
 **Habits retire rather than delete.** `retiredAt` makes them expected on
 no day, so they leave the list and their kept days survive. Eighty days
 of a habit you have finished with is a thing that happened.
+**Today and You are one screen, and that reverses the rule below.**
+The paragraph that follows is kept rather than deleted, because it is
+the argument this decision was made _against_ and it may well be right
+again.
+
+The reversal was asked for directly: _the character progression is the
+main thing and should be shown first._ It was flagged first — that
+ordering had been reversed once already, for a stated reason — and then
+made, which is the right way round for a decision about somebody’s own
+app.
+
+**Three bands: the glance, the day, where you stand.** Portrait, season
+and traits; then limits, vitals, dailies, quests, leads, digest and due;
+then the strength ladders and the area cards. The third band is last
+because that is where it was already read from — scrolled to on purpose
+rather than met on the way to a checkbox.
+
+**The cost is exactly what the old rule predicted.** The dailies now sit
+below three blocks of readout where they sat below two, so opening the
+app shows a level before it shows a checkbox. If ticking habits starts
+feeling like a chore buried under a scoreboard, this ordering is the
+thing to suspect, and moving the standing band above the day is a
+two-line change.
+
+**It also fixed the 320-pixel overflow this file warned about.** Eight
+cells needed 352 against an iPhone SE’s 320 and clipped the last tab by
+32; seven need 308. Measured after the merge: at 320 the nav overflows
+by **0 pixels**, seven cells at 46 each, the last tab ending exactly at
+the edge. The freed seat is deliberately left empty — the eight
+screens without a tab are all things you decide rather than do daily.
+
+**The route stayed `/today` under the label "You"**, and `/character`
+redirects to it. A PWA shortcut is registered with the operating system
+at install time, so an installed copy goes on asking for the path it was
+installed with — the same reason `/next` still resolves.
+
+`CharacterPage` is gone; its parts moved to `CharacterParts.tsx` and its
+constants to `sheet-constants.ts`, because a module exporting both
+components and values breaks fast refresh and the lint rule says so.
+
 **Today is present tense, You is standing.** That line decides where a
 thing goes. Dailies, the active quests, what is due and the season all
 describe now, so they live on Today; levels, ladders and ratings describe

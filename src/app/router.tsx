@@ -3,7 +3,7 @@ import { createBrowserRouter, Navigate } from 'react-router-dom'
 import { AtlasPage } from '@/features/atlas/AtlasPage'
 import { InboxPage } from '@/features/atlas/InboxPage'
 import { PartyPage } from '@/features/party/PartyPage'
-import { TodayPage } from '@/features/today/TodayPage'
+import { HomePage } from '@/features/today/HomePage'
 import { SharePage } from '@/features/atlas/SharePage'
 import { TripsPage } from '@/features/atlas/TripsPage'
 import { BacklogPage } from '@/features/backlog/BacklogPage'
@@ -18,7 +18,6 @@ import { JobsPage } from '@/features/jobs/JobsPage'
 import { FinancePage } from '@/features/finance/FinancePage'
 import { ResumePage } from '@/features/resume/ResumePage'
 import { UpgradesPage } from '@/features/upgrades/UpgradesPage'
-import { CharacterPage } from '@/features/character/CharacterPage'
 import { HistoryPage } from '@/features/history/HistoryPage'
 import { PlanPage } from '@/features/plan/PlanPage'
 import { ProgramPage } from '@/features/plan/ProgramPage'
@@ -72,8 +71,8 @@ export const router = createBrowserRouter(
         { path: 'map/share', element: <SharePage /> },
         { path: 'map/inbox', element: <InboxPage /> },
         { path: 'trips', element: <TripsPage /> },
-        { path: 'character', element: <CharacterPage /> },
-        { path: 'today', element: <TodayPage /> },
+        { path: 'character', element: <Navigate to="/today" replace /> },
+        { path: 'today', element: <HomePage /> },
         { path: 'party', element: <PartyPage /> },
         { path: 'review', element: <ReviewPage /> },
         { path: 'history', element: <HistoryPage /> },

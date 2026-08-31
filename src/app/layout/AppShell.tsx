@@ -1,4 +1,4 @@
-import { BookMarked, CalendarDays, Dumbbell, Home, Map, Target, User, Users } from 'lucide-react'
+import { BookMarked, Dumbbell, Home, Map, Target, User, Users } from 'lucide-react'
 import { NavLink, Outlet } from 'react-router-dom'
 
 import { BackupReminder } from '@/features/backup/BackupReminder'
@@ -15,34 +15,40 @@ import { UpdatePrompt } from '@/features/pwa/UpdatePrompt'
  */
 
 /*
- * Character first, because it is now the readout for every area rather
- * than a strength sheet. It sat fifth on reasoning that expired: when this
- * order was set it showed bodyweight multiples and an XP bar fed only by
- * workouts, which is not something to open an app to.
- *
  * The labels say what the model says. "Quests" and "Tech tree" are the
  * words the domain and the docs have used since the game model was
- * written; the screens were the only place still calling them Projects and
- * Upgrades.
- *
- * **Seven seats, not six, and the labels paid for it.** "Character"
- * became "You" and "Tech tree" moved out entirely, because seven cells on
- * a 375-pixel screen are 53 pixels wide and "Character" measures 53 —
- * exactly the width with nothing left for padding. With the longest
- * remaining label at 38 pixels there is room to spare. Measured rather
- * than guessed; the widths are in the commit that added the seventh.
+ * written; the screens were the only place still calling them Projects
+ * and Upgrades. "Map" rather than "Atlas", because the route has always
+ * been `/map` and that was the one label disagreeing with its own path.
  *
  * Settings, the tech tree and the monthly review are links from You,
- * which is the hub. None of the three is a place you go to *do* something
- * daily, and that is the line: a tab is for somewhere you act, a link on
- * the hub is for somewhere you decide.
+ * which is the hub. None of the three is a place you go to *do*
+ * something daily, and that is the line: a tab is for somewhere you act,
+ * a link on the hub is for somewhere you decide.
+ */
+/**
+ * Seven cells, and it was eight until Today and You became one screen.
  *
- * "Map" rather than "Atlas": the route has always been `/map`, and that
- * was the one label in here that disagreed with its own path.
+ * **That merge fixed an overflow this file used to warn about rather
+ * than only saving a slot.** Every cell carries `.tap-target`, a 44-pixel
+ * accessibility floor that refuses to shrink — so eight need 352 and an
+ * iPhone SE at 320 clipped the last tab by 32. Seven need 308 and fit.
+ *
+ * The freed room is deliberately left as room. The screens without a tab
+ * — Limits, Vitals, Job search, Mind, Houses, Finance, Resume, the tech
+ * tree — are eight, and promoting any one of them is a claim that it is
+ * used daily. None of them is.
  */
 const NAV = [
-  { to: '/today', label: 'Today', Icon: CalendarDays },
-  { to: '/character', label: 'You', Icon: User },
+  /*
+   * `/today` under the label "You", which is the screen/type split this
+   * app makes everywhere: Quests over `Project`, Codex over `backlog`.
+   * The route stays because a PWA shortcut is registered with the
+   * operating system at install time — an installed copy goes on asking
+   * for the path it was installed with. `/character` redirects here for
+   * the same reason.
+   */
+  { to: '/today', label: 'You', Icon: User },
   { to: '/train', label: 'Train', Icon: Dumbbell },
   { to: '/quests', label: 'Quests', Icon: Target },
   { to: '/backlog', label: 'Codex', Icon: BookMarked },
