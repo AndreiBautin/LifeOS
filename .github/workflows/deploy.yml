@@ -79,6 +79,9 @@ jobs:
           VITE_FIREBASE_AUTH_DOMAIN: ${{ vars.VITE_FIREBASE_AUTH_DOMAIN }}
           VITE_FIREBASE_PROJECT_ID: ${{ vars.VITE_FIREBASE_PROJECT_ID }}
           VITE_FIREBASE_APP_ID: ${{ vars.VITE_FIREBASE_APP_ID }}
+          # Who may open the deployed app. Unset means no gate — see
+          # .env.example. A uid is public and authorises nothing.
+          VITE_ALLOWED_UIDS: ${{ vars.VITE_ALLOWED_UIDS }}
         run: pnpm build
 
       # Static hosts 404 on a client-side route requested cold. Serving

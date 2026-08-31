@@ -106,6 +106,32 @@ Three things worth knowing before relying on it:
   same cursor and neither is wrong — so each device keeps its own. Train
   on the phone and it stays right there.
 
+### Locking the app to one account
+
+Optional, and off unless configured. Set `VITE_ALLOWED_UIDS` to your
+Firebase account id and the app refuses anybody else — a sign-in screen
+in front of every route, and a refusal screen for an account that is not
+on the list.
+
+Be clear about what it does and does not buy:
+
+- **It does not protect the synced data.** `firestore.rules` already
+  pins every document to one account and always has. That file, not this
+  variable, is what stands between the data and the internet.
+- **It does not protect the device.** IndexedDB belongs to whoever holds
+  the phone, and a gate drawn in JavaScript does not change that.
+- **It is not a lock on the phone either.** A session persists on
+  purpose, so an unlocked device opens straight through rather than
+  asking every morning.
+- **What it does buy** is that the app stops being usable by whoever
+  finds the page. Before it, opening the deployed page gave anybody a
+  complete working application against their own storage.
+
+It **fails open** on an empty value. A gate that bricked the app for want
+of a variable would be worse than no gate, and there is nothing behind it
+that failing closed would protect. The Settings screen says which state
+the build is in rather than leaving it to be guessed.
+
 ## Running it
 
 Double-click `start-app.bat`, or:

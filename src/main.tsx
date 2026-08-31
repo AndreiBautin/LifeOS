@@ -4,6 +4,7 @@ import { RouterProvider } from 'react-router-dom'
 
 import { bootstrap } from '@/app/di'
 import { AppProviders } from '@/app/providers'
+import { AuthGate } from '@/app/layout/AuthGate'
 import { router } from '@/app/router'
 import { watchForStaleChunks } from '@/features/pwa/stale-chunk'
 import { logger } from '@/shared/logging/logger'
@@ -30,7 +31,9 @@ bootstrap()
     root.render(
       <StrictMode>
         <AppProviders services={services}>
-          <RouterProvider router={router} />
+          <AuthGate>
+            <RouterProvider router={router} />
+          </AuthGate>
         </AppProviders>
       </StrictMode>,
     )

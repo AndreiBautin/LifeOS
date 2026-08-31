@@ -4,6 +4,7 @@ import { Badge, Button, Card, Section } from '@/components/shared/primitives'
 
 import { describeSyncError } from './describe-error'
 
+import { readAccessConfig } from '@/config/access'
 import {
   useAccount,
   useSignIn,
@@ -23,6 +24,8 @@ import {
  * not, has lost three weeks — so the screen states the position rather
  * than implying it.
  */
+const access = readAccessConfig()
+
 export function SyncSection() {
   const config = useSyncConfig()
   const { account, ready } = useAccount()
@@ -99,6 +102,20 @@ export function SyncSection() {
             </Button>
           )}
         </div>
+
+        {/*
+          Whether the gate is on, stated rather than left to be guessed.
+
+          It fails open on a missing account list — a gate that bricked
+          the app for want of a variable would be worse than no gate — so
+          "off" is a state somebody can arrive in without meaning to. A
+          lock nobody can see is a lock nobody can trust.
+        */}
+        <p className="text-ink-700 border-ink-800 border-t pt-3 text-xs">
+          {access.kind === 'restricted'
+            ? `This build is locked to ${access.allowed.length === 1 ? 'one account' : `${String(access.allowed.length)} accounts`}. Anyone else signing in is refused.`
+            : 'This build has no account list, so anyone signed in can use it. Your synced data is still locked to your account by the database rules.'}
+        </p>
 
         {account !== undefined && (
           <Button

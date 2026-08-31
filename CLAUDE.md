@@ -2358,6 +2358,61 @@ That also makes `AREA_TITLES.vitals` reachable, where its comment
 asserted it never could be. Somebody whose XP is mostly upkeep reads as
 an Ascetic.
 
+**The app is locked to an account list, and being precise about what
+that buys is most of the value.** The ask: _"is there a way to lock
+access to this app behind only my account?"_ — so `AuthGate` wraps the
+whole shell and `decideAccess` checks an **allowlist**, not merely that
+somebody is signed in. Signed-in-ness alone admits anybody with a Google
+account, which is not what was asked for.
+
+**It protects less than it looks like it does, and the parts it does not
+protect were already covered.** The synced data was never exposed:
+`firestore.rules` pins every document to one uid and has since sync was
+built. The device's own IndexedDB is not protected by this and cannot be
+— it belongs to whoever holds the device. And it is **not a lock on the
+phone**: a session persists on purpose, so an unlocked device opens
+straight through. What it buys is that the app stops being usable by
+whoever finds the page, which is the demo posture the ask retires.
+
+**It fails open on a missing account list**, which is a deliberate
+inversion of the usual rule for a security control. A gate that failed
+closed on an unset variable would brick the app with no way back in, and
+there is nothing behind it that failing closed would protect. The
+Settings screen states which of the two it is in — a lock nobody can see
+is a lock nobody can trust, and "off" is a state somebody can arrive in
+without meaning to.
+
+**Refused is its own state, not a return to signed-out.** Sending the
+wrong account back to a Sign in button is a loop: the browser hands
+Google the session it already has and arrives straight back. So the
+refusal screen carries its own sign-out — which it must, because the
+gate wraps Settings too and that is where sign-out otherwise lives.
+
+**Checking is its own state as well**, and that decides what every
+launch feels like. A persisted session takes a moment to resolve, and
+answering "signed out" in the meantime flashes a sign-in screen at
+somebody already signed in, on every single launch.
+
+**A build with no Firebase project cannot gate**, because there is no
+sign-in to offer — a gate there is a locked door with no key. That is
+exactly the local development build, and it must keep working.
+
+**The uid is stated in two places and they can disagree.**
+`VITE_ALLOWED_UIDS` and `firestore.rules` name the same account, the
+rules file cannot be read from the bundle, and the bundle cannot be read
+by Firestore. The symptom of a mismatch is an account that opens the app
+and cannot sync.
+
+**Making the repository private took the deployed site down, and no
+change to this code brings it back.** GitHub Pages does not serve a
+private repository on a free plan — the site was unpublished, the Pages
+API answers 404, and `actions/configure-pages` now fails the deploy with
+"Get Pages site failed". Verified by asking the API to re-enable it:
+_"Your current plan does not support GitHub Pages for this
+repository."_ The options are a host that deploys from a private repo,
+a public repository with this gate in front of the app, or no hosted
+site at all. It is a hosting decision rather than an app one.
+
 **Clutter is a level, not a task, and that decides everything else about
 it.** The report: _"another aspect of base maintenance is decluttering —
 this is ongoing and should be represented by percent of each room and
