@@ -1,3 +1,4 @@
+import { WEEKDAY_LABELS, WEEKDAY_NAMES } from '@/domain/time/day'
 import { useState } from 'react'
 
 import { Button, Card } from '@/components/shared/primitives'
@@ -46,6 +47,10 @@ export function ItemForm({ existing, onCancel, onSubmit, pending, error }: ItemF
   const [platform, setPlatform] = useState(existing?.platform ?? '')
   const [goalAmount, setGoalAmount] = useState(existing?.dailyGoal?.amount.toString() ?? '')
   const [goalUnit, setGoalUnit] = useState(existing?.dailyGoal?.unit ?? '')
+  const existingCadence = existing?.dailyGoal?.cadence
+  const [goalDays, setGoalDays] = useState<readonly number[]>(
+    existingCadence?.kind === 'days-of-week' ? existingCadence.days : [],
+  )
 
   /*
    * Looked up through the registry rather than cast, because `category`
@@ -73,7 +78,18 @@ export function ItemForm({ existing, onCancel, onSubmit, pending, error }: ItemF
             status,
             priority,
             ...(platform.trim() === '' ? {} : { platform: platform.trim() }),
-            ...(Number.isFinite(amount) && amount > 0 ? { dailyGoal: { amount, unit } } : {}),
+            ...(Number.isFinite(amount) && amount > 0
+              ? {
+                  dailyGoal: {
+                    amount,
+                    unit,
+                    // No days picked means every day.
+                    ...(goalDays.length === 0
+                      ? {}
+                      : { cadence: { kind: 'days-of-week' as const, days: goalDays } }),
+                  },
+                }
+              : {}),
           })
         }}
       >
@@ -177,6 +193,50 @@ export function ItemForm({ existing, onCancel, onSubmit, pending, error }: ItemF
             }}
             placeholder={definition.suggestedGoalUnit}
           />
+
+          {/*
+            Which days it is expected on, and it earns the row.
+
+            Without it a reading goal meant *every* day, so somebody who
+            reads on Tuesdays and Thursdays failed five days a week — a
+            streak that could only ever be one, and a board saying they
+            were behind on a book they were not behind on. A goal you
+            cannot help but fail is one you stop logging.
+
+            None chosen means every day, which is what somebody who
+            ignored this row meant by ignoring it, and what every goal
+            written before this existed already means.
+          */}
+          <div className="col-span-2">
+            <span className={LABEL}>Which days · none for every day</span>
+            <div className="mt-1 grid grid-cols-7 gap-1">
+              {WEEKDAY_LABELS.map((label, day) => {
+                const chosen = goalDays.includes(day)
+
+                return (
+                  <button
+                    key={label}
+                    type="button"
+                    aria-pressed={chosen}
+                    aria-label={WEEKDAY_NAMES[day] ?? label}
+                    className={[
+                      'tap-target rounded-lg border text-xs font-medium',
+                      chosen
+                        ? 'border-accent-500 bg-accent-500/15 text-accent-400'
+                        : 'border-ink-800 text-ink-500',
+                    ].join(' ')}
+                    onClick={() => {
+                      setGoalDays(
+                        chosen ? goalDays.filter((one) => one !== day) : [...goalDays, day],
+                      )
+                    }}
+                  >
+                    {label}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
         </fieldset>
 
         {error !== undefined && (

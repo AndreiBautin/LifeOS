@@ -1,3 +1,4 @@
+import { normaliseGroup } from '@/domain/dailies/groups'
 import { keepFor, type HomeFilter, type RecordHome } from '@/domain/base/base'
 import {
   complete,
@@ -65,6 +66,8 @@ export interface NewDaily {
   readonly timesPerDay?: number
   /** Which part of the day it belongs to. Absent means no particular one. */
   readonly partOfDay?: PartOfDay
+  /** What kind of thing it is. Absent means it belongs to no group. */
+  readonly group?: string
   /** Absent means the record's own area. */
   readonly belongsTo?: RecordHome
 }
@@ -86,6 +89,10 @@ export async function addDaily(
   const trimmed = input.title.trim()
   if (trimmed === '') return { error: 'A daily needs a name.' }
 
+  // Held rather than called twice in the spread: the second call is a
+  // fresh `string | undefined` the compiler cannot narrow.
+  const group = normaliseGroup(input.group)
+
   await deps.dailies.save({
     id: deps.ids.next() as DailyId,
     title: trimmed,
@@ -96,6 +103,7 @@ export async function addDaily(
       ? {}
       : { timesPerDay: Math.round(input.timesPerDay) }),
     ...(input.partOfDay === undefined ? {} : { partOfDay: input.partOfDay }),
+    ...(group === undefined ? {} : { group }),
     ...(input.belongsTo === undefined ? {} : { belongsTo: input.belongsTo }),
   })
 
@@ -152,22 +160,31 @@ export async function retireDaily(id: DailyId, deps: DailyDeps): Promise<void> {
  * a pool's value is a list of spends and a habit's value *is* the run
  * of days.
  *
- * **Only the title.** The cadence and the times a day are deliberately
- * not here, and the difference is not squeamishness about a bigger form.
- * A title is a label — the record means exactly what it meant before —
- * where a cadence decides *which days were expected*, and changing it
- * re-reads every streak the habit has ever had. A habit kept every
- * weekday for a year becomes a broken run the moment it is told it was
- * an every-day habit all along. That is a real operation somebody may
- * want, and it needs to say out loud what it does to the history rather
- * than arriving as a second field on a rename box.
+ * **Labels only — the title and the group.** The cadence and the times
+ * a day are deliberately not here, and the difference is not
+ * squeamishness about a bigger form. Both of these are *labels*: the
+ * record means exactly what it meant before and every day it was kept
+ * is still a day it was kept. A cadence decides *which days were
+ * expected*, so changing it re-reads every streak the habit has ever
+ * had — a habit kept every weekday for a year becomes a broken run the
+ * moment it is told it was an every-day habit all along. That is a real
+ * operation somebody may want, and it needs to say out loud what it
+ * does to the history rather than arriving as a second field on a
+ * rename box.
+ *
+ * The group joins the title because it is on the same side of that
+ * line, and because a category is the field most likely to be wrong at
+ * creation: you find out that everything falls into groups only after
+ * you have a list long enough to look at.
  *
  * An empty name is refused rather than accepted and shown as a blank
- * row, matching `addDaily`.
+ * row, matching `addDaily`. An empty *group* is accepted and means
+ * ungrouped, which is how a habit leaves a group it no longer suits.
  */
-export async function renameDaily(
+export async function relabelDaily(
   id: DailyId,
   title: string,
+  group: string | undefined,
   deps: DailyDeps,
 ): Promise<{ readonly error?: string }> {
   const trimmed = title.trim()
@@ -176,7 +193,18 @@ export async function renameDaily(
   const daily = await deps.dailies.byId(id)
   if (daily === undefined) return {}
 
-  await deps.dailies.save({ ...daily, title: trimmed })
+  const named = normaliseGroup(group)
+
+  // Dropped from the spread rather than set to undefined: under
+  // `exactOptionalPropertyTypes` a key holding undefined is a key, and
+  // it would travel over sync as one.
+  const { group: _cleared, ...rest } = daily
+
+  await deps.dailies.save({
+    ...rest,
+    title: trimmed,
+    ...(named === undefined ? {} : { group: named }),
+  })
 
   return {}
 }

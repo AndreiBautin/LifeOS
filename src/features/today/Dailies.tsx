@@ -15,11 +15,12 @@ import {
   type PartOfDay,
 } from '@/domain/dailies/daily'
 import { useServices } from '@/app/context'
+import { GroupedDailies, GroupField } from './DailyGroups'
 import {
   useAddDaily,
   useDueElsewhere,
   useMoveDailyHome,
-  useRenameDaily,
+  useRelabelDaily,
   useDailies,
   useKeepToday,
   useRetireDaily,
@@ -121,40 +122,56 @@ export function RenameDaily({
   readonly daily: Daily
   readonly onDone: () => void
 }) {
-  const rename = useRenameDaily()
+  const rename = useRelabelDaily()
   const [title, setTitle] = useState(daily.title)
+  const [group, setGroup] = useState(daily.group ?? '')
 
   return (
     <form
-      className="flex items-center gap-2 py-2"
+      className="space-y-3 py-2"
       onSubmit={(event) => {
         event.preventDefault()
         if (title.trim() === '') return
-        rename.mutate({ id: daily.id, title }, { onSuccess: onDone })
+        rename.mutate({ id: daily.id, title, group }, { onSuccess: onDone })
       }}
     >
-      <input
-        className={FIELD}
-        aria-label={`Rename ${daily.title}`}
-        value={title}
-        /* The field opens because it was asked for, so it takes the caret.
-           iOS will not raise the keyboard for a focus outside the gesture,
-           which costs a second tap there and nothing anywhere else. */
-        autoFocus
-        enterKeyHint="done"
-        onChange={(event) => {
-          setTitle(event.target.value)
-        }}
-        onKeyDown={(event) => {
-          if (event.key === 'Escape') onDone()
-        }}
-      />
-      <Button type="submit" size="sm" variant="primary" disabled={rename.isPending}>
-        Save
-      </Button>
-      <Button type="button" size="sm" variant="ghost" onClick={onDone}>
-        Cancel
-      </Button>
+      <div className="flex items-center gap-2">
+        <input
+          className={FIELD}
+          aria-label={`Rename ${daily.title}`}
+          value={title}
+          /* The field opens because it was asked for, so it takes the caret.
+             iOS will not raise the keyboard for a focus outside the gesture,
+             which costs a second tap there and nothing anywhere else. */
+          autoFocus
+          enterKeyHint="done"
+          onChange={(event) => {
+            setTitle(event.target.value)
+          }}
+          onKeyDown={(event) => {
+            if (event.key === 'Escape') onDone()
+          }}
+        />
+        <Button type="submit" size="sm" variant="primary" disabled={rename.isPending}>
+          Save
+        </Button>
+        <Button type="button" size="sm" variant="ghost" onClick={onDone}>
+          Cancel
+        </Button>
+      </div>
+
+      {/*
+        The group is here and the cadence is not, and the line between
+        them is what the record *means*. Both of these are labels — every
+        day it was kept is still a day it was kept — where a cadence
+        decides which days were expected and re-reads every streak the
+        habit has ever had.
+
+        It is also the field most likely to be wrong at creation: you
+        find out everything falls into groups only once the list is long
+        enough to look at.
+      */}
+      <GroupField value={group} onChange={setGroup} />
     </form>
   )
 }
@@ -354,6 +371,7 @@ export function AddDaily({
   const [monthly, setMonthly] = useState(false)
   const [times, setTimes] = useState('1')
   const [part, setPart] = useState<PartOfDay | ''>('')
+  const [group, setGroup] = useState('')
 
   const toggle = (day: number): void => {
     setDays(days.includes(day) ? days.filter((one) => one !== day) : [...days, day])
@@ -372,6 +390,7 @@ export function AddDaily({
               title,
               ...(howMany > 1 ? { timesPerDay: howMany } : {}),
               ...(part === '' ? {} : { partOfDay: part }),
+              ...(group.trim() === '' ? {} : { group }),
               // No days picked means every day, which is what somebody who
               // ignored this row meant by ignoring it.
               cadence:
@@ -420,6 +439,15 @@ export function AddDaily({
             </button>
           ))}
         </div>
+
+        {/*
+          The group. Offered as chips rather than only a box, because the
+          names already in use are better answers than anything suggested
+          — the same reason a pool's quick amounts end up being what you
+          actually drink. Pressing a chip that is already chosen clears
+          it, so leaving a group needs no separate control.
+        */}
+        <GroupField value={group} onChange={setGroup} />
 
         {/*
           How many times on each of those days. Separate from the cadence
@@ -628,7 +656,7 @@ function DueElsewhere() {
 }
 
 export function Dailies() {
-  const dailies = useDailies()
+  const dailies = useDailies('own-area')
   const due = useDueElsewhere()
   const [adding, setAdding] = useState(false)
 
@@ -696,11 +724,10 @@ export function Dailies() {
       )}
 
       {todays.length > 0 && (
-        <Card className="divide-ink-800 divide-y py-0">
-          {todays.map((view) => (
-            <DailyRow key={view.daily.id} view={view} />
-          ))}
-        </Card>
+        <GroupedDailies
+          views={todays}
+          render={(view) => <DailyRow key={view.daily.id} view={view} />}
+        />
       )}
 
       <DueElsewhere />
@@ -715,11 +742,10 @@ export function Dailies() {
           <span className="text-ink-700 mb-1 block text-xs tracking-wide uppercase">
             Other days
           </span>
-          <Card className="divide-ink-800 divide-y py-0">
-            {otherDays.map((view) => (
-              <DailyRow key={view.daily.id} view={view} />
-            ))}
-          </Card>
+          <GroupedDailies
+            views={otherDays}
+            render={(view) => <DailyRow key={view.daily.id} view={view} />}
+          />
         </div>
       )}
     </>

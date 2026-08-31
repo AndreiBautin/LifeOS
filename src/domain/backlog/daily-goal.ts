@@ -1,3 +1,5 @@
+import { cadenceCovers, isPlausibleCadence, type Cadence } from '@/domain/dailies/daily'
+
 import { BacklogValidationError } from './errors'
 
 /**
@@ -8,6 +10,26 @@ import { BacklogValidationError } from './errors'
 export interface DailyGoal {
   readonly amount: number
   readonly unit: string
+  /**
+   * Which days the goal is expected on. Absent means every day.
+   *
+   * **The same `Cadence` the habits use, deliberately reused rather than
+   * reinvented.** It answers "was this expected on this date" from the
+   * date alone, which is the property that makes a streak a walk
+   * backwards — and a second implementation of that question is a bug
+   * with a delay on it.
+   *
+   * Without it a reading goal meant *every* day, so somebody who reads
+   * on Tuesdays and Thursdays had a broken streak five days a week and a
+   * board that said they were behind on a book they were not behind on.
+   * A goal you cannot help but fail is one you stop logging.
+   *
+   * Absent rather than defaulted to every-day in storage, because every
+   * goal written before this existed has no cadence and reads correctly
+   * as "no restriction" — the same concession every optional field in
+   * the backup makes.
+   */
+  readonly cadence?: Cadence
 }
 
 /**
@@ -23,6 +45,7 @@ export interface DailyProgressEntry {
 export interface DailyGoalInput {
   amount: number
   unit: string
+  cadence?: Cadence
 }
 
 export const MAX_GOAL_AMOUNT = 99
@@ -78,7 +101,21 @@ export function requireDailyGoal(input: DailyGoalInput): DailyGoal {
       `Daily goal amount must be ${MAX_GOAL_AMOUNT.toString()} or fewer`,
     )
   }
-  return { amount: input.amount, unit }
+  return {
+    amount: input.amount,
+    unit,
+    ...(input.cadence === undefined ? {} : { cadence: input.cadence }),
+  }
+}
+
+/**
+ * Whether a goal is expected on a day. No cadence means every day.
+ *
+ * The one place the cadence is read, so every caller -- the streak, the
+ * board, the day strip -- agrees about which days count.
+ */
+export function goalCovers(goal: DailyGoal, dateKey: string): boolean {
+  return goal.cadence === undefined || cadenceCovers(goal.cadence, dateKey)
 }
 
 /** "1 chapter/day", "2 episodes/day" — naive pluralization, skipped if already plural. */
@@ -123,7 +160,11 @@ export function isPlausibleDailyGoal(value: unknown): value is DailyGoal {
     candidate.unit.trim().length > 0 &&
     typeof candidate.amount === 'number' &&
     Number.isInteger(candidate.amount) &&
-    candidate.amount >= 1
+    candidate.amount >= 1 &&
+    // Absent is fine -- it means every day. Present and malformed is not:
+    // `cadenceCovers` reads `days.includes`, so a `days` that is a string
+    // throws rather than degrading.
+    (candidate.cadence === undefined || isPlausibleCadence(candidate.cadence))
   )
 }
 

@@ -177,3 +177,138 @@ describe('getDailyGoalBoard', () => {
     })
   })
 })
+
+/*
+ * The report behind this: "codex work should also be tied to days, as I
+ * only read/game on certain days". Without a cadence a reading goal
+ * meant *every* day, so somebody reading on Tuesdays and Thursdays was
+ * failing five days a week — a streak that could only ever be one, and a
+ * board saying they were behind on a book they were not behind on.
+ *
+ * NOW is 2026-08-19, a Wednesday. `days` is Sunday-indexed to match
+ * `Date.getDay()`, the same as a habit's cadence.
+ */
+describe('a goal tied to certain days', () => {
+  const WEDNESDAY = 3
+  const TUESDAY = 2
+
+  it('is not due on a day its cadence does not name', () => {
+    const item = buildGoalItem({
+      dailyGoal: { amount: 1, unit: 'chapter', cadence: { kind: 'days-of-week', days: [TUESDAY] } },
+    })
+
+    expect(getDailyGoalBoard([item], NOW).statuses[0]?.isDueToday).toBe(false)
+  })
+
+  it('is due on a day its cadence names', () => {
+    const item = buildGoalItem({
+      dailyGoal: {
+        amount: 1,
+        unit: 'chapter',
+        cadence: { kind: 'days-of-week', days: [WEDNESDAY] },
+      },
+    })
+
+    expect(getDailyGoalBoard([item], NOW).statuses[0]?.isDueToday).toBe(true)
+  })
+
+  it('is due every day when no cadence was set', () => {
+    // Every goal written before cadences existed has none, and reads
+    // correctly as "no restriction" rather than as "never".
+    expect(getDailyGoalBoard([buildGoalItem()], NOW).statuses[0]?.isDueToday).toBe(true)
+  })
+
+  /*
+   * "2 of 5" on a Wednesday when three of the five are Tuesday goals
+   * reads as being behind while nothing is outstanding — the same defect
+   * Today had when it listed habits that were not due.
+   */
+  it('counts only what is due towards the day', () => {
+    const today = buildGoalItem({
+      title: 'Due today',
+      dailyGoal: {
+        amount: 1,
+        unit: 'chapter',
+        cadence: { kind: 'days-of-week', days: [WEDNESDAY] },
+      },
+    })
+    const other = buildGoalItem({
+      title: 'Tuesdays',
+      dailyGoal: { amount: 1, unit: 'level', cadence: { kind: 'days-of-week', days: [TUESDAY] } },
+    })
+
+    const board = getDailyGoalBoard([today, other], NOW)
+
+    expect(board.totalCount).toBe(1)
+    // Still listed — logging on a day you did not plan to read happens,
+    // and an item that vanished on Wednesday would read as lost.
+    expect(board.statuses).toHaveLength(2)
+  })
+
+  it('is complete when everything due is done, ignoring what is not', () => {
+    const done = buildGoalItem({
+      dailyGoal: {
+        amount: 1,
+        unit: 'chapter',
+        cadence: { kind: 'days-of-week', days: [WEDNESDAY] },
+      },
+      dailyProgress: metDays(['2026-08-19']),
+    })
+    const notDue = buildGoalItem({
+      title: 'Tuesdays',
+      dailyGoal: { amount: 1, unit: 'level', cadence: { kind: 'days-of-week', days: [TUESDAY] } },
+    })
+
+    expect(getDailyGoalBoard([done, notDue], NOW).allMet).toBe(true)
+  })
+
+  /*
+   * The rule that makes the whole thing worth having, and the same one
+   * `streakFor` holds for habits: a day the goal was not expected on
+   * does not break the run.
+   */
+  it('does not break a streak on a day the goal was not expected', () => {
+    const item = buildGoalItem({
+      dailyGoal: { amount: 1, unit: 'chapter', cadence: { kind: 'days-of-week', days: [TUESDAY] } },
+      // Three Tuesdays running. Every day between them is unlogged.
+      dailyProgress: metDays(['2026-08-04', '2026-08-11', '2026-08-18']),
+    })
+
+    expect(getDailyGoalBoard([item], NOW).statuses[0]?.currentStreak).toBe(3)
+  })
+
+  it('still breaks on a missed day it was expected on', () => {
+    const item = buildGoalItem({
+      dailyGoal: { amount: 1, unit: 'chapter', cadence: { kind: 'days-of-week', days: [TUESDAY] } },
+      // 2026-08-11 is missing: a Tuesday that was expected and skipped.
+      dailyProgress: metDays(['2026-08-04', '2026-08-18']),
+    })
+
+    expect(getDailyGoalBoard([item], NOW).statuses[0]?.currentStreak).toBe(1)
+  })
+
+  it('survives a cadence that names no days at all', () => {
+    // Expected on nothing. A `while` loop looking for the next covered
+    // day would spin forever; the walk is bounded instead.
+    const item = buildGoalItem({
+      dailyGoal: { amount: 1, unit: 'chapter', cadence: { kind: 'days-of-week', days: [] } },
+    })
+
+    const board = getDailyGoalBoard([item], NOW)
+
+    expect(board.statuses[0]?.currentStreak).toBe(0)
+    expect(board.totalCount).toBe(0)
+  })
+
+  it('does not mark an off day as missed on the history strip', () => {
+    const item = buildGoalItem({
+      dailyGoal: { amount: 1, unit: 'chapter', cadence: { kind: 'days-of-week', days: [TUESDAY] } },
+      dailyProgress: metDays(['2026-08-18']),
+    })
+
+    const days = getDailyGoalBoard([item], NOW).statuses[0]?.recentDays ?? []
+
+    // 2026-08-17 is a Monday: never expected, so not a gap in the strip.
+    expect(days.find((day) => day.date === '2026-08-17')?.isMet).toBe(true)
+  })
+})

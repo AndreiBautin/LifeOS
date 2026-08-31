@@ -1,3 +1,4 @@
+import { GroupedDailies } from '@/features/today/DailyGroups'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { TRAINING } from '@/domain/base/base'
 import { AddDaily, DailyRow } from '@/features/today/Dailies'
@@ -107,11 +108,11 @@ function TrainingHabits() {
             calendar, so it cannot work them out for you.
           </Empty>
         ) : (
-          <div className="divide-ink-800 divide-y">
-            {views.map((view) => (
-              <DailyRow key={view.daily.id} view={view} />
-            ))}
-          </div>
+          <GroupedDailies
+            bare
+            views={views}
+            render={(view) => <DailyRow key={view.daily.id} view={view} />}
+          />
         )}
       </Card>
     </Section>

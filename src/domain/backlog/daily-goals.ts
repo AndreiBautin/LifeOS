@@ -1,4 +1,4 @@
-import { getProgressOn, shiftDateKey, toDateKey, type DailyGoal } from './daily-goal'
+import { getProgressOn, goalCovers, shiftDateKey, toDateKey, type DailyGoal } from './daily-goal'
 import type { Item } from './item'
 
 /** How many days the Goals page's history strip shows. */
@@ -16,6 +16,16 @@ export interface DailyGoalStatus {
   readonly loggedToday: number
   readonly target: number
   readonly isMet: boolean
+  /**
+   * Whether the goal is expected today at all.
+   *
+   * Reported rather than filtered out, so a caller can decide. The board
+   * counts only what is due towards `metCount`, and the Codex screen
+   * still shows the rest — logging on a day you did not plan to read is
+   * a thing that happens, and an item that vanished on Wednesday would
+   * read as lost rather than as not due.
+   */
+  readonly isDueToday: boolean
   readonly currentStreak: number
   readonly longestStreak: number
   /** Oldest-first window ending today, for the history strip. */
@@ -46,18 +56,42 @@ function metOn(item: GoalItem, dateKey: string): boolean {
 }
 
 /**
- * Consecutive met days ending today — or ending yesterday, when today hasn't
- * been logged yet. The grace day is deliberate: a streak should only die once
- * a day has been fully missed, not the moment a new day begins.
+ * Consecutive met days ending today, counting only the days the goal was
+ * expected on.
+ *
+ * Two rules, and they are deliberately the same two `streakFor` holds for
+ * habits — this is the same question about a different record, and two
+ * different answers to it on two screens would be worse than either.
+ *
+ * **A day the goal was not expected on does not break it.** Somebody who
+ * reads on Tuesdays and Thursdays was previously failing five days a
+ * week, which made the streak a number that could only ever be one.
+ *
+ * **Today does not break it until the day is over.** An unlogged today
+ * is skipped; an unlogged yesterday is not.
+ *
+ * The walk is bounded rather than `while`-looped, because a cadence of
+ * `days-of-week: []` is expected on nothing and would otherwise spin
+ * forever looking for a day that never comes.
  */
 function getCurrentStreak(item: GoalItem, todayKey: string): number {
-  let cursor = metOn(item, todayKey) ? todayKey : shiftDateKey(todayKey, -1)
-
   let streak = 0
-  while (metOn(item, cursor)) {
-    streak += 1
+  let cursor = todayKey
+
+  // A year is far past the point where a streak means anything, and it
+  // bounds the walk on a record with a corrupt date.
+  for (let step = 0; step < 366; step += 1) {
+    if (goalCovers(item.dailyGoal, cursor)) {
+      if (metOn(item, cursor)) {
+        streak += 1
+      } else if (cursor !== todayKey) {
+        return streak
+      }
+      // An unmet *today* falls through: the day is not over.
+    }
     cursor = shiftDateKey(cursor, -1)
   }
+
   return streak
 }
 
@@ -83,7 +117,13 @@ function getRecentDays(item: GoalItem, todayKey: string, dayCount: number): Dail
   return Array.from({ length: dayCount }, (_unused, index) => {
     const date = shiftDateKey(todayKey, index - (dayCount - 1))
     const amount = getProgressOn(item.dailyProgress, date)
-    return { date, amount, isMet: amount >= item.dailyGoal.amount }
+    // A day the goal was never expected on is not a miss on the strip
+    // either -- it reads as met, the way an off day does for a habit.
+    return {
+      date,
+      amount,
+      isMet: amount >= item.dailyGoal.amount || !goalCovers(item.dailyGoal, date),
+    }
   })
 }
 
@@ -96,6 +136,7 @@ function toStatus(item: GoalItem, todayKey: string, dayCount: number): DailyGoal
     loggedToday,
     target: item.dailyGoal.amount,
     isMet: loggedToday >= item.dailyGoal.amount,
+    isDueToday: goalCovers(item.dailyGoal, todayKey),
     currentStreak: getCurrentStreak(item, todayKey),
     longestStreak: getLongestStreak(item),
     recentDays: getRecentDays(item, todayKey, dayCount),
@@ -118,12 +159,21 @@ export function getDailyGoalBoard(
     .map((item) => toStatus(item, todayKey, recentDayCount))
     .sort((a, b) => a.item.title.localeCompare(b.item.title))
 
-  const metCount = statuses.filter((status) => status.isMet).length
+  /*
+   * Counted over what is *due*, not over everything tracked.
+   *
+   * "2 of 5" on a Wednesday when three of the five are Tuesday goals is
+   * a number that reads as being behind while nothing is outstanding —
+   * the same defect the Today screen had when it listed habits that
+   * were not due. A goal not expected today is neither met nor missed.
+   */
+  const due = statuses.filter((status) => status.isDueToday)
+  const metCount = due.filter((status) => status.isMet).length
 
   return {
     statuses,
     metCount,
-    totalCount: statuses.length,
-    allMet: statuses.length > 0 && metCount === statuses.length,
+    totalCount: due.length,
+    allMet: due.length > 0 && metCount === due.length,
   }
 }

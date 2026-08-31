@@ -160,3 +160,46 @@ describe('isPlausibleProgressEntry', () => {
     expect(isPlausibleProgressEntry(value)).toBe(false)
   })
 })
+
+/*
+ * A cadence arrives from a backup file, from another device, or from a
+ * hand-edited blob, and `cadenceCovers` reads `days.includes(...)` — so
+ * a record whose `days` is a string does not degrade, it throws, on a
+ * screen somebody opened to read a book.
+ */
+describe('a goal carrying a cadence from somewhere untrusted', () => {
+  const goal = (cadence: unknown) => ({ amount: 1, unit: 'chapter', cadence })
+
+  it('accepts a goal with no cadence, which means every day', () => {
+    expect(isPlausibleDailyGoal({ amount: 1, unit: 'chapter' })).toBe(true)
+  })
+
+  it('accepts the three real kinds', () => {
+    expect(isPlausibleDailyGoal(goal({ kind: 'every-day' }))).toBe(true)
+    expect(isPlausibleDailyGoal(goal({ kind: 'days-of-week', days: [0, 6] }))).toBe(true)
+    expect(isPlausibleDailyGoal(goal({ kind: 'days-of-month', days: [1, 31] }))).toBe(true)
+  })
+
+  it('refuses days that are not an array', () => {
+    expect(isPlausibleDailyGoal(goal({ kind: 'days-of-week', days: 'tuesday' }))).toBe(false)
+  })
+
+  it('refuses a kind it does not know', () => {
+    expect(isPlausibleDailyGoal(goal({ kind: 'every-three-days', days: [] }))).toBe(false)
+  })
+
+  /*
+   * Range-checked as well as typed, because `days-of-month: [0]` is
+   * expected on no day of any month — a goal that is simply never due,
+   * with nothing on any screen able to say why.
+   */
+  it('refuses day numbers outside the range their kind uses', () => {
+    expect(isPlausibleDailyGoal(goal({ kind: 'days-of-week', days: [7] }))).toBe(false)
+    expect(isPlausibleDailyGoal(goal({ kind: 'days-of-month', days: [0] }))).toBe(false)
+    expect(isPlausibleDailyGoal(goal({ kind: 'days-of-month', days: [32] }))).toBe(false)
+  })
+
+  it('refuses a non-integer day', () => {
+    expect(isPlausibleDailyGoal(goal({ kind: 'days-of-week', days: [1.5] }))).toBe(false)
+  })
+})

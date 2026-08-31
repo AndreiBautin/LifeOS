@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { useServices } from '@/app/context'
-import { TRAINING, UPKEEP, type RecordHome } from '@/domain/base/base'
+import { TRAINING, UPKEEP, type HomeFilter, type RecordHome } from '@/domain/base/base'
 import { dailyActFor } from '@/domain/game/registry'
 import {
   addDaily,
@@ -10,7 +10,7 @@ import {
   keepToday,
   moveDailyHome,
   removeDaily,
-  renameDaily,
+  relabelDaily,
   retireDaily,
   undoToday,
 } from '@/application/use-cases/dailies/dailies'
@@ -41,12 +41,21 @@ import { logger } from '@/shared/logging/logger'
  */
 const KEYS = [['today'], ['character'], ['base'], ['vitals'], ['training']] as const
 
-export function useDailies() {
+/**
+ * Habits for one home, or for all of them.
+ *
+ * Required rather than defaulted, which is the rule every list that can
+ * return both already follows: a default is an opinion the call site did
+ * not state, and forgetting it fails silently in one direction only.
+ * `'both'` exists for the group picker, which offers names from every
+ * home so one category does not get typed twice with different casing.
+ */
+export function useDailies(home: HomeFilter) {
   const services = useServices()
 
   return useQuery({
-    queryKey: ['today', 'dailies'],
-    queryFn: () => dailiesToday(services, 'own-area'),
+    queryKey: ['today', 'dailies', home],
+    queryFn: () => dailiesToday(services, home),
   })
 }
 
@@ -183,10 +192,10 @@ export function useUndoToday() {
  * Correcting a label is not an act — the same reason undo pays nothing
  * and the reason `retireDaily` does not either. XP is for things done.
  */
-export function useRenameDaily() {
-  return useDailyMutation<{ id: DailyId; title: string }>(
+export function useRelabelDaily() {
+  return useDailyMutation<{ id: DailyId; title: string; group?: string }>(
     'dailies.renamed',
-    ({ id, title }, services) => renameDaily(id, title, services),
+    ({ id, title, group }, services) => relabelDaily(id, title, group, services),
   )
 }
 

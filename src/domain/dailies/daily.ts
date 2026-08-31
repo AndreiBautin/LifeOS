@@ -135,6 +135,24 @@ export interface Daily {
    * alphabetical list says nothing about which comes first.
    */
   readonly partOfDay?: PartOfDay
+  /**
+   * What kind of thing this is — supplements, pet care, the teeth.
+   *
+   * **A label, not a home.** `belongsTo` decides which screen owns the
+   * record *and* which area pays its XP, so a new one costs a registry
+   * area, an act, a line in `tallyActs` and a screen. This costs a
+   * string, and it is what was actually wanted: the homes were already
+   * right, and the list inside one of them had simply got long enough
+   * that everything in it looked the same.
+   *
+   * Free text rather than a fixed set, because the categories are the
+   * person's rather than the app's — one household has a dog and a
+   * sourdough starter and another has neither. Matched case-insensitively
+   * on the trimmed value, the same rule an employer name follows on the
+   * resume, so "Pet care" and "pet care" are one group and nobody has to
+   * notice.
+   */
+  readonly group?: string
   readonly createdAt: string
   /**
    * Retired rather than deleted, so the days it was done on survive.
@@ -193,16 +211,31 @@ export function shiftDay(key: string, days: number): string {
  */
 export function isExpectedOn(daily: Daily, day: string): boolean {
   if (daily.retiredAt !== undefined && daily.retiredAt <= day) return false
-  if (daily.cadence.kind === 'every-day') return true
+
+  return cadenceCovers(daily.cadence, day)
+}
+
+/**
+ * Whether a cadence covers a day, with no record attached.
+ *
+ * Split out of `isExpectedOn` so the backlog can ask the same question
+ * of a reading goal. A cadence answers **from the date alone** — that is
+ * the property every kind here is chosen for, and it is what makes this
+ * reusable rather than something that had to be reimplemented for a
+ * second kind of record. A second implementation of "is this expected
+ * today" is a bug with a delay on it.
+ */
+export function cadenceCovers(cadence: Cadence, day: string): boolean {
+  if (cadence.kind === 'every-day') return true
 
   // `getUTC*` rather than the local getters: the key was built from a
   // local date and parsed back as UTC midnight, so UTC is what
   // round-trips it.
   const date = parseDay(day)
 
-  return daily.cadence.kind === 'days-of-week'
-    ? daily.cadence.days.includes(date.getUTCDay())
-    : daily.cadence.days.includes(date.getUTCDate())
+  return cadence.kind === 'days-of-week'
+    ? cadence.days.includes(date.getUTCDay())
+    : cadence.days.includes(date.getUTCDate())
 }
 
 /** How many times it is expected on a day it is expected at all. */
@@ -387,4 +420,33 @@ export function bestStreakFor(daily: Daily): number {
 /** Expected today and not yet ticked. */
 export function isDueToday(daily: Daily, today: string): boolean {
   return isExpectedOn(daily, today) && !isDoneOn(daily, today)
+}
+
+/**
+ * Whether an unknown value is a usable cadence.
+ *
+ * A trust-boundary guard rather than a type assertion. A cadence arrives
+ * from a backup file, from another device, or from a hand-edited blob,
+ * and `cadenceCovers` reads `days.includes(...)` — so a record whose
+ * `days` is a string rather than an array does not degrade, it throws,
+ * on a screen somebody opened to read a book.
+ *
+ * The day numbers are checked for range as well as type, because
+ * `days-of-month: [0]` is expected on no day of any month and reads as a
+ * goal that is simply never due, with nothing on any screen saying why.
+ */
+export function isPlausibleCadence(value: unknown): value is Cadence {
+  if (typeof value !== 'object' || value === null) return false
+
+  const bag = value as { kind?: unknown; days?: unknown }
+  if (bag.kind === 'every-day') return true
+
+  if (!Array.isArray(bag.days)) return false
+  if (!bag.days.every((day) => typeof day === 'number' && Number.isInteger(day))) return false
+
+  // `0` is Sunday, matching `Date.getDay()`; days of the month are 1-31.
+  if (bag.kind === 'days-of-week') return bag.days.every((day: number) => day >= 0 && day <= 6)
+  if (bag.kind === 'days-of-month') return bag.days.every((day: number) => day >= 1 && day <= 31)
+
+  return false
 }

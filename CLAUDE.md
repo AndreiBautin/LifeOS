@@ -1903,6 +1903,66 @@ because `tallyActs` had no line for the new act. That second one is the
 valuable one: without it the act would have been declared, awarded on
 screen, and counted nowhere.
 
+**A group is a label; a home is a decision.** The report was "pretty
+much all of my dailies fall under a certain category", naming
+supplements and pet care. The tempting reading is two more
+`RecordHome` members, and it is the wrong one: a home decides which
+screen owns the record _and_ which area pays its XP, so one costs a
+registry area, an act, a branch in `tallyActs`, a screen and a line in
+the "exactly one side" test. Nothing about wanting to see supplements
+together asks for any of that. `Daily.group` is a string.
+
+Free text rather than a fixed set, because the categories are the
+person's rather than the app's — one household has a dog and a
+sourdough starter and another has neither. Matched case-insensitively
+on the trimmed value, the rule the resume already uses for an employer
+name, so `supplements` and `Supplements` are one group.
+
+**Groups are ordered by their earliest habit, never alphabetically**,
+and that is the load-bearing choice. The rows are already
+chronological because a day is a routine; sorting the group names
+would put Teeth above Supplements and have two orderings disagreeing
+inside one list. The ungrouped run **last, with no heading** — a
+heading over the leftovers is a category called "everything else" that
+nobody chose. One unnamed group renders exactly the flat list it
+replaced, so adding the capability changes nothing on a screen where
+nothing is grouped.
+
+`renameDaily` became **`relabelDaily`** and takes the group too. Both
+are labels: the record means what it meant before and every day it was
+kept is still a day it was kept. The cadence is still not there, for
+the reason it never was — it decides _which days were expected_ and
+re-reads every streak the habit ever had.
+
+**A Codex goal carries a cadence, and it is the habits’ `Cadence`.**
+"I only read/game on certain days" — without one a reading goal meant
+_every_ day, so somebody reading on Tuesdays and Thursdays failed five
+days a week. Measured on the same progress log: a Tues/Thurs book
+holds a **3-day streak with the cadence and 0 without**, and an off day
+stops showing as a gap on the history strip.
+
+`cadenceCovers` was split out of `isExpectedOn` so the backlog asks the
+_same_ question rather than reimplementing it — a second answer to "is
+this expected today" is a bug with a delay on it. Both humane streak
+rules come with it: a day it was not expected does not break the run,
+and today does not break it until the day is over. The walk is bounded
+rather than a `while`, because `days-of-week: []` is expected on
+nothing and would spin forever looking for a day that never comes.
+
+**The board counts what is _due_, not what is tracked.** "2 of 5" on a
+Wednesday when three are Tuesday goals reads as being behind while
+nothing is outstanding — the defect Today had when it listed habits
+that were not due. Not-due goals are still _listed_, because logging on
+a day you did not plan to read happens and a row that vanished would
+read as lost.
+
+`isPlausibleDailyGoal` validates the cadence now. It arrives from a
+backup or another device and `cadenceCovers` reads `days.includes`, so
+a `days` that is a string does not degrade — it throws, on a screen
+somebody opened to read a book. Ranges are checked too:
+`days-of-month: [0]` is expected on no day of any month and would read
+as a goal that is simply never due.
+
 **A daily is filed to one of three places, and `RecordHome` was written
 to expect the third.** Today owns what you chose, Base owns the house,
 and Vitals owns the body — brushing, flossing, washing your hair, filed

@@ -1,3 +1,4 @@
+import { GroupedDailies } from '@/features/today/DailyGroups'
 import { Flame, Plus, Undo2, Wrench } from 'lucide-react'
 import { useState } from 'react'
 import { PageHeader } from '@/components/shared/PageHeader'
@@ -427,20 +428,20 @@ export function BasePage() {
             </Empty>
           ) : (
             <>
-              <div className="divide-ink-800 divide-y">
-                {dueChores.map((view) => (
-                  <ChoreRow key={view.daily.id} view={view} />
-                ))}
-              </div>
+              <GroupedDailies
+                bare
+                views={dueChores}
+                render={(view) => <ChoreRow key={view.daily.id} view={view} />}
+              />
 
               {otherChores.length > 0 && (
                 <div className="border-ink-800 mt-2 border-t pt-2">
                   <p className="text-ink-700 mb-1 text-xs tracking-wide uppercase">Not due today</p>
-                  <div className="divide-ink-800 divide-y">
-                    {otherChores.map((view) => (
-                      <ChoreRow key={view.daily.id} view={view} />
-                    ))}
-                  </div>
+                  <GroupedDailies
+                    bare
+                    views={otherChores}
+                    render={(view) => <ChoreRow key={view.daily.id} view={view} />}
+                  />
                 </div>
               )}
             </>

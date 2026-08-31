@@ -1,3 +1,4 @@
+import { GroupedDailies } from '@/features/today/DailyGroups'
 import { Flame, Plus, Scale, Undo2 } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { toDayKey } from '@/domain/time/day'
@@ -535,11 +536,13 @@ function Upkeep() {
             Things you either did today or did not — a gallon of water, brushing, flossing.
           </Empty>
         ) : (
-          <ul className="divide-ink-800 mb-3 divide-y">
-            {views.map((view) => (
-              <UpkeepRow key={view.daily.id} view={view} />
-            ))}
-          </ul>
+          <div className="mb-3">
+            <GroupedDailies
+              bare
+              views={views}
+              render={(view) => <UpkeepRow key={view.daily.id} view={view} />}
+            />
+          </div>
         )}
 
         <UpkeepSuggestions
