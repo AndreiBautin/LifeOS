@@ -181,21 +181,24 @@ function UndoButton({ vice, measured }: { readonly vice: Vice; readonly measured
 }
 
 /**
- * How a measured pool is logged: the quick amounts, and one typed by hand.
+ * The quick amounts, on a line of their own.
  *
- * The typed amount is not a convenience. Presets were the *only* way to
- * log a measured pool, so one without them — which is every pool that
- * gains a unit in the editor rather than arriving with one — drew a bar
- * and offered no way to fill it. It is useful besides: a preset cannot
- * know that tonight's glass was a large one.
+ * They shared a wrapping row with the amount field and its button, so
+ * "Pre-workout", "mg", "+" and undo came out as four siblings of one
+ * kind — a preset, a text field and two different actions, every one of
+ * them reading as the same chip. Separating them is most of what was
+ * clunky: these are the one-tap answers, and the line below is the one
+ * you have to think about.
  */
-function MeasuredLog({ vice }: { readonly vice: Vice }) {
+function Presets({ vice }: { readonly vice: Vice }) {
   const spend = useSpendVice()
-  const [custom, setCustom] = useState('')
+  const presets = vice.presets ?? []
+
+  if (presets.length === 0) return null
 
   return (
-    <>
-      {(vice.presets ?? []).map((preset) => (
+    <div className="flex flex-wrap gap-1">
+      {presets.map((preset) => (
         <Button
           key={preset.label}
           variant="outline"
@@ -208,58 +211,73 @@ function MeasuredLog({ vice }: { readonly vice: Vice }) {
           {preset.label}
         </Button>
       ))}
+    </div>
+  )
+}
 
-      {/*
-        **An empty box means one, and that is a bug fix rather than a
-        convenience.** `Number('')` is 0, so the plus fell through
-        `amount <= 0` and returned — on a measured pool with no presets
-        it was the only control on the row and it silently did nothing.
-        A button that looks pressable, is not disabled, and has no effect
-        is the worst of the three states it could be in.
+/**
+ * An amount typed by hand, which is the only way to log a pool with no
+ * quick amounts — and that is every pool given a unit in the editor
+ * rather than arriving with one.
+ *
+ * **The unit is a label beside the field, not the placeholder inside
+ * it.** As a placeholder it made an empty box read as a chip saying
+ * "mg", which is why the field did not look like a field at all. Out
+ * here it names what the number is, and the placeholder can say the
+ * thing actually worth saying: a bare "1", which is what an empty box
+ * logs.
+ */
+function AmountForm({ vice }: { readonly vice: Vice }) {
+  const spend = useSpendVice()
+  const [custom, setCustom] = useState('')
 
-        One *unit*, in the pool's own terms: one hit, one millilitre, one
-        milligram. It is the least surprising reading of a plus, it is
-        what makes a preset-less pool tappable at all, and every spend is
-        one tap from undo.
-      */}
-      <form
-        className="flex items-center gap-1"
-        onSubmit={(event) => {
-          event.preventDefault()
-          const typed = custom.trim()
-          const amount = typed === '' ? 1 : Number(typed)
-          if (!Number.isFinite(amount) || amount <= 0) return
-          spend.mutate({ id: vice.id, amount })
-          setCustom('')
+  return (
+    <form
+      className="flex items-center gap-1.5"
+      onSubmit={(event) => {
+        event.preventDefault()
+        /*
+         * **An empty box means one, and that is a bug fix rather than a
+         * convenience.** `Number('')` is 0, so this fell through
+         * `amount <= 0` and returned — on a pool with no quick amounts
+         * the plus is the only control on the row, and it silently did
+         * nothing. A button that looks pressable, is not disabled and
+         * has no effect is the worst of the three states it can be in.
+         */
+        const typed = custom.trim()
+        const amount = typed === '' ? 1 : Number(typed)
+        if (!Number.isFinite(amount) || amount <= 0) return
+        spend.mutate({ id: vice.id, amount })
+        setCustom('')
+      }}
+    >
+      <input
+        className="bg-ink-900 border-ink-700 text-ink-50 placeholder:text-ink-700 numeric tap-target w-14 rounded-lg border px-2 text-center text-sm"
+        inputMode="decimal"
+        aria-label={`How much ${vice.name}`}
+        placeholder="1"
+        value={custom}
+        onChange={(event) => {
+          setCustom(event.target.value)
         }}
+      />
+      {vice.unit !== undefined && (
+        <span className="text-ink-500 shrink-0 text-xs">{vice.unit}</span>
+      )}
+      <Button
+        type="submit"
+        variant="outline"
+        size="sm"
+        aria-label={
+          custom.trim() === ''
+            ? `Log one ${vice.unit ?? ''} of ${vice.name}`.trim()
+            : `Log ${custom.trim()} ${vice.unit ?? ''} of ${vice.name}`
+        }
+        disabled={spend.isPending}
       >
-        <input
-          className="bg-ink-900 border-ink-700 text-ink-50 numeric tap-target w-16 rounded-lg border px-2 text-sm"
-          inputMode="decimal"
-          aria-label={`How much ${vice.name}`}
-          placeholder={vice.unit ?? ''}
-          value={custom}
-          onChange={(event) => {
-            setCustom(event.target.value)
-          }}
-        />
-        <Button
-          type="submit"
-          variant="outline"
-          size="sm"
-          aria-label={
-            custom.trim() === ''
-              ? `Log one ${vice.unit ?? ''} of ${vice.name}`.trim()
-              : `Log ${custom.trim()} ${vice.unit ?? ''} of ${vice.name}`
-          }
-          disabled={spend.isPending}
-        >
-          <Plus size={14} aria-hidden />
-        </Button>
-      </form>
-
-      <UndoButton vice={vice} measured />
-    </>
+        <Plus size={14} aria-hidden />
+      </Button>
+    </form>
   )
 }
 
@@ -427,9 +445,25 @@ export function PoolRow({
         </p>
       )}
 
-      <div className="mt-2 flex flex-wrap items-center gap-1">
-        {measured ? <MeasuredLog vice={vice} /> : <CountedLog vice={vice} />}
-        {action !== undefined && <span className="ml-auto">{action}</span>}
+      {/*
+        Logging on the left, taking it back on the right. Undo and the
+        pencil are not more of the same kind of thing as a plus — one
+        removes what the other just recorded, and one leaves the row
+        entirely — and putting all four in a single wrapping row is what
+        made a preset, a text field and two reversals read as one tray of
+        interchangeable chips.
+      */}
+      <div className="mt-2 space-y-1.5">
+        {measured && <Presets vice={vice} />}
+
+        <div className="flex items-center gap-1.5">
+          {measured ? <AmountForm vice={vice} /> : <CountedLog vice={vice} />}
+
+          <span className="ml-auto flex shrink-0 items-center gap-1">
+            {measured && <UndoButton vice={vice} measured />}
+            {action}
+          </span>
+        </div>
       </div>
     </div>
   )

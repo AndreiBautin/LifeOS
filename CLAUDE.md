@@ -1629,6 +1629,20 @@ One _unit_ in the pool's own terms — one hit, one millilitre, one
 milligram. It is the least surprising reading of a plus, it makes a
 preset-less pool tappable at all, and every spend is one tap from undo.
 
+**The control band is laid out by kind: logging left, reversing
+right.** A preset, the amount field, its plus and undo shared one
+wrapping flex row, so "Pre-workout", "mg", "+" and a minus came out as
+four interchangeable chips — a shortcut, a text field and two different
+reversals, all looking like the same thing. The quick amounts get a line
+of their own; the field and its plus sit below them; undo and the pencil
+are pushed to the right, because neither is more of what a plus is.
+
+**The unit is a label beside the field, not the placeholder inside it.**
+As a placeholder it made an empty box read as a chip saying "mg", which
+is most of why the field did not look like a field. Moved out, it names
+what the number is, and the placeholder can say the thing worth saying
+instead: a dimmed "1", which is exactly what an empty box logs.
+
 **Undo does not wear a minus on a measured pool.** A minus beside a plus
 reads as "one less", and undo removes the _last entry_ — which may have
 been a 160 mg energy drink. On a counting pool the two readings coincide
