@@ -43,6 +43,27 @@ export const BASE = 'base'
 export const UPKEEP = 'vitals'
 
 /**
+ * Training, as a place records are filed — pre-workout carbs, protein
+ * after.
+ *
+ * The third answer, and the one that shows what the union is for. These
+ * are habits in every respect: a cadence, a streak, a tick. What makes
+ * them not *dailies* is that they only mean anything on a day you lift,
+ * so on Today they are noise five days out of seven and on the Train
+ * screen they are the obvious thing.
+ *
+ * **The cadence is still weekdays, and that is a real limitation rather
+ * than a shortcut.** The app has no training calendar to hang them on:
+ * it stores `daysPerWeek` — a count — and a *position* in a sequence
+ * that moves only when a session is finished or skipped. Nothing
+ * anywhere can answer "was the 25th a training day", which is precisely
+ * the question every `Cadence` kind must answer from the date alone for
+ * a streak to be walkable. So the lifter names the days they lift, and
+ * the app files the habit under Training rather than pretending to know.
+ */
+export const TRAINING = 'training'
+
+/**
  * Where a record lives when it is not in its natural home.
  *
  * Written as a union rather than a boolean because the question is
@@ -51,7 +72,7 @@ export const UPKEEP = 'vitals'
  * here, where an `isBase` flag would have had to be replaced everywhere
  * it was read.
  */
-export const RECORD_HOMES = [BASE, UPKEEP] as const
+export const RECORD_HOMES = [BASE, UPKEEP, TRAINING] as const
 
 export type RecordHome = (typeof RECORD_HOMES)[number]
 
@@ -66,6 +87,10 @@ export function isBase(record: Homed): boolean {
 
 export function isUpkeep(record: Homed): boolean {
   return record.belongsTo === UPKEEP
+}
+
+export function isTraining(record: Homed): boolean {
+  return record.belongsTo === TRAINING
 }
 
 /**

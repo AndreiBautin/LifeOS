@@ -6,7 +6,7 @@ import type { DailyView } from '@/application/use-cases/dailies/dailies'
 import { Button, Card, Empty } from '@/components/shared/primitives'
 import type { Cadence, Daily } from '@/domain/dailies/daily'
 
-import { BASE, UPKEEP, type RecordHome } from '@/domain/base/base'
+import { BASE, TRAINING, UPKEEP, type RecordHome } from '@/domain/base/base'
 import { WEEKDAY_LABELS, WEEKDAY_NAMES, WEEKDAYS, WEEKEND } from '@/domain/time/day'
 import {
   PART_OF_DAY_LABELS,
@@ -197,7 +197,7 @@ export function DailyTitle({
   )
 }
 
-function DailyRow({ view }: { readonly view: DailyView }) {
+export function DailyRow({ view }: { readonly view: DailyView }) {
   // From the record, so a chore shown on Today still pays as a chore.
   const keep = useKeepToday(view.daily.belongsTo)
   const nowPart = partOfDayAt(useServices().clock.now())
@@ -598,6 +598,7 @@ function DueElsewhere() {
   const groups = [
     { home: BASE, label: 'House', to: '/base' },
     { home: UPKEEP, label: 'Upkeep', to: '/vitals' },
+    { home: TRAINING, label: 'Training', to: '/train' },
   ].map((group) => ({
     ...group,
     rows: views.filter((view) => view.daily.belongsTo === group.home),

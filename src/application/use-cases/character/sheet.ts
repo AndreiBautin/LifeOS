@@ -1,5 +1,5 @@
 import { isResolved } from '@/domain/atlas/place/Place'
-import { isBase, isOwnArea, isUpkeep } from '@/domain/base/base'
+import { isBase, isOwnArea, isTraining, isUpkeep } from '@/domain/base/base'
 import type { Daily } from '@/domain/dailies/daily'
 import type { Project, QuestKind } from '@/domain/projects/project'
 import { readLadder, type LadderReading } from '@/domain/game/ladder'
@@ -153,6 +153,7 @@ export async function tallyActs(
   const ownDailies = dailies.filter(isOwnArea)
   const baseDailies = dailies.filter(isBase)
   const upkeepDailies = dailies.filter(isUpkeep)
+  const trainingDailies = dailies.filter(isTraining)
 
   const daysKept = (records: readonly Daily[]): number =>
     records.reduce((total, daily) => total + daily.done.filter((day) => within(day)).length, 0)
@@ -218,6 +219,7 @@ export async function tallyActs(
     'dailies.completed': daysKept(ownDailies),
     'base.chore-kept': daysKept(baseDailies),
     'vitals.upkeep-kept': daysKept(upkeepDailies),
+    'training.habit-kept': daysKept(trainingDailies),
     'places.place-visited': places.filter(
       (place) => place.status === 'visited' && isResolved(place) && dated(place.dateVisited),
     ).length,

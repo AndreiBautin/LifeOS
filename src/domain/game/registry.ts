@@ -1,4 +1,4 @@
-import { BASE, UPKEEP, type RecordHome } from '@/domain/base/base'
+import { BASE, TRAINING, UPKEEP, type RecordHome } from '@/domain/base/base'
 import { STRENGTH_LIFT_SLUGS } from '@/domain/exercises/catalogue'
 
 import { STRENGTH_STANDARDS, TOTAL_STANDARDS } from './character'
@@ -478,6 +478,7 @@ export const ALL_ACTS: readonly ActDefinition[] = SCORING.flatMap((area) => area
 export function dailyActFor(home: RecordHome | undefined): string {
   if (home === BASE) return 'base.chore-kept'
   if (home === UPKEEP) return 'vitals.upkeep-kept'
+  if (home === TRAINING) return 'training.habit-kept'
   return 'dailies.completed'
 }
 

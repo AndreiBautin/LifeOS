@@ -44,6 +44,14 @@ export const TRAINING_ACTS: readonly ActDefinition[] = [
     label: 'Logged a working set',
     points: XP_PER_SET,
   },
+  /*
+   * A habit filed under Training — carbs before, protein after.
+   *
+   * The same fifteen points a daily, a chore and a piece of upkeep are
+   * worth, because it is the same kind of thing under a fourth name.
+   * `tallyActs` splits by `belongsTo`, so no record can pay two of them.
+   */
+  { id: 'training.habit-kept', area: 'training', label: 'Kept a training habit', points: 15 },
 ]
 
 export function pointsFor(actId: string, catalogue: readonly ActDefinition[]): number {

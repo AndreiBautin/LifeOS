@@ -1,4 +1,7 @@
 import { PageHeader } from '@/components/shared/PageHeader'
+import { TRAINING } from '@/domain/base/base'
+import { AddDaily, DailyRow } from '@/features/today/Dailies'
+import { useTrainingHabits } from '@/features/today/dailies-hooks'
 import {
   ChevronDown,
   ChevronRight,
@@ -46,6 +49,75 @@ import { SessionReport } from './SessionReport'
  * workout is the only thing that matters until it is finished, and
  * burying it behind a dashboard is how half-logged sessions get lost.
  */
+/**
+ * Habits that only mean anything on a day you lift.
+ *
+ * Carbs before, protein after. They are dailies in every respect — a
+ * cadence, a streak, a tick — and they were on Today, where they are
+ * noise on the five days a week you are not in a gym. Same argument that
+ * moved house work to Base and brushing to Upkeep, applied to the set
+ * that belongs to training.
+ *
+ * They still appear on Today when they are due, grouped under Training,
+ * because Today's job is to say what the day asks for. What it stops
+ * doing is listing them on the days it does not.
+ */
+function TrainingHabits() {
+  const habits = useTrainingHabits()
+  const [adding, setAdding] = useState(false)
+
+  const views = habits.data ?? []
+
+  return (
+    <Section
+      title="Habits"
+      description="Carbs before, protein after — the things tied to lifting"
+      action={
+        <Button
+          variant={adding ? 'ghost' : 'outline'}
+          size="sm"
+          onClick={() => {
+            setAdding(!adding)
+          }}
+        >
+          {adding ? 'Close' : 'Add'}
+        </Button>
+      }
+    >
+      {adding && (
+        <AddDaily
+          home={TRAINING}
+          placeholder="Something you do around a session"
+          onDone={() => {
+            setAdding(false)
+          }}
+        />
+      )}
+
+      <Card>
+        {habits.data === undefined ? null : views.length === 0 ? (
+          <Empty title="Nothing yet">
+            {/*
+              The days matter here in a way they do not elsewhere, and the
+              reason is worth saying on the screen: the app cannot work
+              them out. It knows how many days a week you train, not
+              which ones.
+            */}
+            Pick the days you lift when you add one — the app counts your sessions, not your
+            calendar, so it cannot work them out for you.
+          </Empty>
+        ) : (
+          <div className="divide-ink-800 divide-y">
+            {views.map((view) => (
+              <DailyRow key={view.daily.id} view={view} />
+            ))}
+          </div>
+        )}
+      </Card>
+    </Section>
+  )
+}
+
 export function TrainPage() {
   const { settings } = useSettings()
   const activeWorkout = useActiveWorkout()
@@ -189,6 +261,8 @@ export function TrainPage() {
           <p>One moment — the block is put together from your priorities each time.</p>
         </Empty>
       )}
+
+      <TrainingHabits />
 
       <Section title="Or train without a program">
         <Button

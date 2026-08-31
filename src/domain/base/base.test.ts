@@ -4,6 +4,7 @@ import {
   baseContents,
   isBase,
   isOwnArea,
+  isTraining,
   isUpkeep,
   keepFor,
   RECORD_HOMES,
@@ -60,7 +61,9 @@ describe('which area owns a record', () => {
     const everyHome: readonly Homed[] = [homed(), ...RECORD_HOMES.map((home) => homed(home))]
 
     for (const record of everyHome) {
-      expect([isOwnArea(record), isBase(record), isUpkeep(record)].filter(Boolean)).toHaveLength(1)
+      expect(
+        [isOwnArea(record), isBase(record), isUpkeep(record), isTraining(record)].filter(Boolean),
+      ).toHaveLength(1)
     }
   })
 })

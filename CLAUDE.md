@@ -1338,6 +1338,33 @@ about them belongs on the screen that owns them. The count in the
 header is across all three, because "3 left today" is a claim about the
 day and not about one section.
 
+**Four homes now, and the fourth is Training.** Carbs before a session,
+protein after. They are habits in every respect — cadence, streak,
+tick — and what makes them not _dailies_ is that they mean nothing on a
+day you do not lift, so on Today they were noise five days out of
+seven. Same argument that moved house work to Base and brushing to
+Upkeep. They live on Train, appear on Today only when due under a
+Training group, and pay `training.habit-kept` at the same fifteen
+points every other kept habit is worth.
+
+**The cadence is still weekdays, and that is a limitation rather than a
+shortcut.** There is no training calendar to hang them on: the app
+stores `daysPerWeek` — a _count_ — and a position in a sequence that
+moves only when a session is finished or skipped. Nothing anywhere can
+answer "was the 25th a training day", which is exactly what every
+`Cadence` kind must answer from the date alone for a streak to be
+walkable. A "training day" cadence is therefore not a missing feature,
+it is a question the model cannot be asked. The lifter names the days
+they lift and the empty state says why.
+
+**Two guard tests caught this being added, which is what they are for.**
+`base.test.ts` → "puts every record on exactly one side" failed because
+it still only knew three predicates, and `sheet.test.ts` → "has a
+counted or deliberately absent entry for every declared act" failed
+because `tallyActs` had no line for the new act. That second one is the
+valuable one: without it the act would have been declared, awarded on
+screen, and counted nowhere.
+
 **A daily is filed to one of three places, and `RecordHome` was written
 to expect the third.** Today owns what you chose, Base owns the house,
 and Vitals owns the body — brushing, flossing, washing your hair, filed

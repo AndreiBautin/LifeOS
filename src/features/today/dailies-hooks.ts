@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { useServices } from '@/app/context'
-import { UPKEEP, type RecordHome } from '@/domain/base/base'
+import { TRAINING, UPKEEP, type RecordHome } from '@/domain/base/base'
 import { dailyActFor } from '@/domain/game/registry'
 import {
   addDaily,
@@ -33,7 +33,13 @@ import { logger } from '@/shared/logging/logger'
  * mutation has to invalidate every list its record could appear on, not
  * only the one the hook was first written for.
  */
-const KEYS = [['today'], ['character'], ['base'], ['vitals']] as const
+/*
+ * Every list a daily can appear on. A mutation that misses one leaves a
+ * screen showing a row that has moved — which is exactly what happened
+ * when `['base']` was absent and adding a chore left Base saying "no
+ * chores yet".
+ */
+const KEYS = [['today'], ['character'], ['base'], ['vitals'], ['training']] as const
 
 export function useDailies() {
   const services = useServices()
@@ -78,6 +84,16 @@ export function useUpkeep() {
   const services = useServices()
 
   return useQuery({ queryKey: ['vitals', 'upkeep'], queryFn: () => dailiesToday(services, UPKEEP) })
+}
+
+/** Habits tied to lifting, for the Train screen. */
+export function useTrainingHabits() {
+  const services = useServices()
+
+  return useQuery({
+    queryKey: ['training', 'habits'],
+    queryFn: () => dailiesToday(services, TRAINING),
+  })
 }
 
 /** Chores, for the Base screen. */
