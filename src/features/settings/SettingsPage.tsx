@@ -21,6 +21,7 @@ import {
 import { BacklogSettingsSection } from '@/features/backlog/BacklogSettingsSection'
 import { JobSearchSection } from './JobSearchSection'
 import { DigestSection } from './DigestSection'
+import { ConfigTransfer } from './ConfigTransfer'
 import { useBackup } from '@/features/backup/useBackup'
 import { SyncSection } from '@/features/sync/SyncSection'
 import { useSyncConfig } from '@/features/sync/useSync'
@@ -294,6 +295,8 @@ export function SettingsPage() {
       <JobSearchSection />
 
       <DigestSection />
+
+      <ConfigTransfer />
 
       <BacklogSettingsSection />
 

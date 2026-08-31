@@ -2358,6 +2358,52 @@ That also makes `AREA_TITLES.vitals` reachable, where its comment
 asserted it never could be. Somebody whose XP is mostly upkeep reads as
 an Ascetic.
 
+**Preferences move as pasted text, because a file round trip was the
+slow part.** The report: _"passing files back and forth is a slow
+workflow, same with me seeding job board stuff and everything else when
+you already have it."_ `domain/config/document.ts` and the
+Configuration panel in Settings — copy out to the clipboard, paste back
+in, no file in between.
+
+**It is not the backup and must not become it.** A backup is the whole
+database and carries a checksum because a large file can be truncated on
+the way to disk. This is three preference blocks small enough to paste,
+where a truncation fails to be JSON at all. Reusing the backup envelope
+is the trap worth naming: `validateEnvelope` demands `exercises`,
+`workouts` and `checkIns` arrays and `parseBackup` demands a verifying
+checksum, so a document holding a job search and nothing else is not a
+valid backup — and making it one would mean hand-computing a checksum
+before a document could be written at all.
+
+**It carries preferences, never records.** A room, a habit and a
+campaign stage are things that happened or were decided; they have
+screens and history. What is here is the settings whose entire value is
+somebody having typed a long list once.
+
+**An absent section is left alone, never cleared**, which is the rule
+`recordFinance` already follows and the whole reason a document holding
+one section is safe to paste. Verified by driving it: a document with a
+job search and home wants and no digest left the digest's interests
+exactly as they were.
+
+**A section that is present and is not an object is refused rather than
+parsed**, and this is the sharp edge. The three parsers are _total_ —
+junk degrades to a default — and for a job search the default is
+`EMPTY_JOB_SEARCH`. Passing junk through would be a wipe wearing a
+settings change's clothes, which is exactly the destructive/
+non-destructive split this file holds elsewhere. For anything it does
+accept, the preview says what the section would _become_ in the app's
+own words, so a section that genuinely parses to nothing can be seen
+before it is taken. **Offered, never applied**, the stance
+`ApplyEstimates` and the file import share.
+
+**Boards may be written `greenhouse:stripe`.** `parseJobSearch` wants
+`{ provider, token }` because that is what a stored search holds, and
+nobody hand-writes that; the screen's own paste box already takes the
+readable form, so `parseSources` is reused here. A list of strings, one
+newline-separated string, or the stored object form all read — the last
+so a copied document round-trips.
+
 **The app is locked to an account list, and being precise about what
 that buys is most of the value.** The ask: _"is there a way to lock
 access to this app behind only my account?"_ — so `AuthGate` wraps the
