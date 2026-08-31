@@ -1058,6 +1058,18 @@ them. Items are named beside the portrait instead. The whole portrait
 carries one `aria-label` rather than being `aria-hidden` — level,
 calling and season are information, not ornament.
 
+**A silent area still needs a way in, and that is navigation rather
+than a reading.** The rule below is right and it had a hole: the area
+cards were the only route to a screen, and a card is not drawn for an
+area with nothing to say. Job search had nothing to say until an
+application existed, and the only way to the screen that creates one
+was the card that would not appear until it did.
+
+The You page carries a short list of the four screens with no tab —
+Limits, Vitals, Job search, Tech tree — outside the cards and
+repeating none of their numbers. A link makes no claim about standing,
+so it can be shown where a card cannot.
+
 **An area with nothing to say says nothing.** `AreaStanding.silent` on the
 character sheet, and `insufficient-data` counts as silence — it is the
 absence of a judgement rather than a bad one. Treating it as something

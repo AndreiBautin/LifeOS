@@ -145,6 +145,44 @@ export function CharacterPage() {
         )}
       </Section>
 
+      {/*
+        **The screens with no tab, listed so they can be found.**
+        Navigation, not a reading — which is why it sits outside the
+        cards above and repeats none of their numbers.
+
+        It exists because the area cards were the only way in, and a
+        silent area renders no card: Job search had nothing to say until
+        an application existed, and the only route to the screen that
+        creates one was the card that would not appear until it did. A
+        link is not a claim about standing, so it can be shown when a
+        card cannot.
+
+        The eight in the navigation bar are deliberately absent. These
+        are the four that have nowhere else to be reached from — the bar
+        is full at eight cells, which was measured: every cell clears
+        44px, so nine need 396 and a 375-pixel phone has 375.
+      */}
+      <Section title="Areas" description="The ones without a tab of their own">
+        <Card>
+          <div className="flex flex-wrap gap-1.5">
+            {[
+              { to: '/limits', label: 'Limits' },
+              { to: '/vitals', label: 'Vitals' },
+              { to: '/jobs', label: 'Job search' },
+              { to: '/upgrades', label: 'Tech tree' },
+            ].map((area) => (
+              <Link
+                key={area.to}
+                to={area.to}
+                className={buttonStyles({ variant: 'outline', size: 'sm' })}
+              >
+                {area.label}
+              </Link>
+            ))}
+          </div>
+        </Card>
+      </Section>
+
       <Section title="The ladder">
         <Card>
           <div className="flex flex-wrap gap-1.5">
