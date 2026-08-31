@@ -8,13 +8,13 @@ import { buttonStyles } from '@/components/shared/styles'
 import type { DailyView } from '@/application/use-cases/dailies/dailies'
 import type { Project } from '@/domain/projects/project'
 import type { Upgrade } from '@/domain/upgrades/upgrade'
-import { BASE } from '@/domain/base/base'
+import { BASE, HOUSE_JOB_STEPS } from '@/domain/base/base'
 import { cn } from '@/lib/cn'
 
 import { useKeepToday, useMoveDailyHome, useUndoToday } from '../today/dailies-hooks'
 import { AddDaily, DailyTitle, RenameDaily } from '../today/Dailies'
 import { useChores } from '../today/dailies-hooks'
-import { useBaseProjects, useMoveProjectHome } from '../projects/hooks'
+import { useAddProject, useBaseProjects, useMoveProjectHome } from '../projects/hooks'
 import { useAddUpgrade, useMoveUpgradeHome, useUpgradeTree } from '../upgrades/hooks'
 
 /**
@@ -290,9 +290,94 @@ function AddHouseUpgrade({ onDone }: { readonly onDone: () => void }) {
   )
 }
 
+/**
+ * A house job, created here rather than in the quest log.
+ *
+ * Adding one meant opening the Quests page, typing it among the things
+ * you chose to do, and coming back to move it — the same round trip
+ * already removed from chores and from upgrades, and left in place here.
+ * Third instance of one shape.
+ *
+ * **The steps arrive with it.** `HOUSE_JOB_STEPS` is the errand this
+ * module has described in prose since it was written and the empty state
+ * printed on screen: find the right person, get a quote, book the
+ * appointment. Knowing the shape and then making somebody type it out
+ * from memory is the gap this closes.
+ *
+ * Ticked, not forced. A boiler service the landlord books skips the
+ * first two, so each is a checkbox — an offer, which is the same stance
+ * every other default in this app takes.
+ */
+function AddJob({ onDone }: { readonly onDone: () => void }) {
+  const add = useAddProject()
+  const [name, setName] = useState('')
+  const [steps, setSteps] = useState<readonly string[]>(HOUSE_JOB_STEPS)
+
+  const toggle = (step: string): void => {
+    setSteps(steps.includes(step) ? steps.filter((one) => one !== step) : [...steps, step])
+  }
+
+  return (
+    <Card className="mb-3">
+      <form
+        className="space-y-3"
+        onSubmit={(event) => {
+          event.preventDefault()
+          if (name.trim() === '') return
+
+          add.mutate(
+            {
+              name,
+              belongsTo: BASE,
+              // In the order the errand runs, not the order they were
+              // ticked — unticking the quote and re-ticking it must not
+              // send it to the end.
+              steps: HOUSE_JOB_STEPS.filter((one) => steps.includes(one)),
+            },
+            { onSuccess: onDone },
+          )
+        }}
+      >
+        <input
+          className="bg-ink-850 border-ink-800 text-ink-50 placeholder:text-ink-700 tap-target w-full rounded-xl border px-3 text-sm"
+          aria-label="What needs fixing"
+          placeholder="What needs fixing?"
+          value={name}
+          onChange={(event) => {
+            setName(event.target.value)
+          }}
+        />
+
+        <div className="space-y-1.5">
+          <span className="text-ink-500 block text-xs">Steps to open it with</span>
+          {HOUSE_JOB_STEPS.map((step) => (
+            <label key={step} className="tap-target flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                className="size-5 shrink-0"
+                checked={steps.includes(step)}
+                onChange={() => {
+                  toggle(step)
+                }}
+              />
+              <span className="text-ink-300">{step}</span>
+            </label>
+          ))}
+        </div>
+
+        <Button type="submit" variant="primary" full disabled={add.isPending}>
+          <Plus size={16} aria-hidden />
+          Add it
+        </Button>
+      </form>
+    </Card>
+  )
+}
+
 export function BasePage() {
   const [addingChore, setAddingChore] = useState(false)
   const [addingUpgrade, setAddingUpgrade] = useState(false)
+  const [addingJob, setAddingJob] = useState(false)
   const chores = useChores()
   const jobs = useBaseProjects()
   /*
@@ -363,12 +448,34 @@ export function BasePage() {
         </Card>
       </Section>
 
-      <Section title="Jobs" description="Things that need fixing, and who is coming">
+      <Section
+        title="Jobs"
+        description="Things that need fixing, and who is coming"
+        action={
+          <Button
+            variant={addingJob ? 'ghost' : 'outline'}
+            size="sm"
+            onClick={() => {
+              setAddingJob(!addingJob)
+            }}
+          >
+            {addingJob ? 'Close' : 'Add'}
+          </Button>
+        }
+      >
+        {addingJob && (
+          <AddJob
+            onDone={() => {
+              setAddingJob(false)
+            }}
+          />
+        )}
+
         <Card>
           {jobs.data === undefined ? null : jobs.data.length === 0 ? (
             <Empty title="Nothing broken">
-              House jobs are quests marked as Base. The usual shape is find the right person, get a
-              quote, book the appointment.
+              A job opens with the errand it usually is — find the right person, get a quote, book
+              the appointment.
             </Empty>
           ) : (
             <ul>

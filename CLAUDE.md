@@ -1431,6 +1431,41 @@ true of _editing_ prerequisites and priority and false of typing a name:
 text box. Base creates with a title and a rough cost; the tree still owns
 editing.
 
+**A house job is created on Base, and opens with the errand it usually
+is.** Adding one meant going to the Quests page, typing it among the
+things you chose to do, and coming back to move it — the same round
+trip already removed from chores and from upgrades, and left in place
+here. Third instance of one shape, reported by the person using it.
+
+`NewProject` takes `belongsTo` and `steps`, so the job is _born_ filed
+and complete. The steps are written in the same save rather than by
+three `addAction` calls after it: three sequential writes is three
+chances to leave a half-built job behind, which is what `saveAndSettle`
+exists to avoid.
+
+`HOUSE_JOB_STEPS` — find the right person, get a quote, book the
+appointment. **This module described that errand in prose from the day
+it was written and the empty state printed it on screen, and neither
+did anything with it**: every job arrived with no steps and the shape
+had to be retyped from memory off a sentence you were no longer looking
+at. Knowing a pattern and still making somebody type it is worse than
+not knowing it.
+
+Offered, not applied: the three are checkboxes, ticked, and any can be
+turned off — a boiler service the landlord books skips the first two.
+Same stance as `ApplyEstimates`, for the same reason.
+
+**`recommendation` takes a required `HomeFilter` now, and finding out
+why is the useful part.** It read `projects.all()` and scored across
+every home, so the Quests page suggested a leaking tap as the next
+thing to work on — "highest priority active quest" — on the one screen
+Base exists to keep house work off. It hid because the board beside it
+filters correctly, so the job was absent from the list and present in
+the panel above it, which reads as a quirk rather than as the same bug
+twice. Making the parameter required rather than defaulted is the rule
+`listProjects` already followed, and the compiler found the two call
+sites immediately.
+
 **Base passes a budget of `0` and shows no affordability.** Deliberate —
 the tech tree owns the budget control, and duplicating it would be two
 places to set one number — but worth stating plainly rather than

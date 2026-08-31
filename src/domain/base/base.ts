@@ -64,6 +64,29 @@ export const UPKEEP = 'vitals'
 export const TRAINING = 'training'
 
 /**
+ * The errand a house job almost always is.
+ *
+ * This module's opening paragraph has said for as long as it has existed
+ * that house work "is mostly the same errand each time — find the right
+ * person, get them to come", and the Base screen's empty state told the
+ * reader the same three steps. Neither of them did anything with it: a
+ * new job arrived with no steps and the shape had to be typed out again
+ * every time, from memory, off a sentence on a screen you were no longer
+ * looking at.
+ *
+ * Offered rather than applied. The add form ticks all three and lets any
+ * of them be turned off, because a boiler service booked by a landlord
+ * skips the first two — the same stance `ApplyEstimates` takes, and for
+ * the same reason: a default that cannot be declined is a decision taken
+ * away.
+ */
+export const HOUSE_JOB_STEPS = [
+  'Find the right person',
+  'Get a quote',
+  'Book the appointment',
+] as const
+
+/**
  * Where a record lives when it is not in its natural home.
  *
  * Written as a union rather than a boolean because the question is

@@ -42,6 +42,24 @@ export interface ProjectDeps {
 
 export interface NewProject {
   readonly name: string
+  /**
+   * Which area it belongs to, absent meaning the quest log.
+   *
+   * Here so a house job can be *created* on Base rather than created in
+   * the quest log and moved afterwards. That round trip was the friction
+   * already removed from chores and from upgrades, and left in place
+   * here — the third instance of the same shape, found the same way.
+   */
+  readonly belongsTo?: RecordHome
+  /**
+   * Steps to open it with, in order.
+   *
+   * Written in the same save as the project rather than added one call
+   * at a time: three sequential `addAction` writes is three chances for
+   * a half-built job to be left behind, and `saveAndSettle` exists
+   * precisely because a partial write leaves the graph lying.
+   */
+  readonly steps?: readonly string[]
   readonly description?: string
   readonly impact?: number
   readonly urgency?: number
@@ -91,8 +109,17 @@ export async function addProject(input: NewProject, deps: ProjectDeps): Promise<
     ...(input.blockReason === undefined ? {} : { blockReason: input.blockReason }),
     blockedBy: input.blockedBy ?? [],
     ...(input.deadline === undefined ? {} : { deadline: input.deadline }),
+    ...(input.belongsTo === undefined ? {} : { belongsTo: input.belongsTo }),
     createdAt: now,
-    actions: [],
+    actions: (input.steps ?? []).map((description, index) => ({
+      id: asActionId(deps.ids.next()),
+      description: description.trim(),
+      status: 'pending' as const,
+      // One-based, matching `addAction`, which places a new step at
+      // one past the highest already there.
+      order: index + 1,
+      createdAt: now,
+    })),
   }
 
   return saveAndSettle(project, deps)
@@ -311,8 +338,22 @@ export async function activeQuests(
   }
 }
 
-export async function recommendation(deps: ProjectDeps): Promise<Recommendation> {
-  return getRecommendation(await deps.projects.all(), deps.clock.now())
+/**
+ * What the scoring would pick, out of one area's projects.
+ *
+ * **The filter is required, like `listProjects`, and for the reason that
+ * rule was written.** This read `projects.all()` and scored across every
+ * home, so the Quests page's "Suggested" panel offered a leaking tap as
+ * the next thing to work on — a house job recommended as a quest,
+ * described as "highest priority active quest", on the one screen Base
+ * exists to keep house work off.
+ *
+ * It hid because the board beside it filters correctly, so the job was
+ * absent from the list and present in the suggestion above it, which
+ * reads as a quirk rather than as the same bug twice.
+ */
+export async function recommendation(deps: ProjectDeps, home: HomeFilter): Promise<Recommendation> {
+  return getRecommendation(keepFor(await deps.projects.all(), home), deps.clock.now())
 }
 
 /**

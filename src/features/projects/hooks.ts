@@ -57,7 +57,7 @@ export function useRecommendation() {
 
   return useQuery({
     queryKey: [...PROJECTS, 'recommendation'],
-    queryFn: () => recommendation(services),
+    queryFn: () => recommendation(services, 'own-area'),
   })
 }
 

@@ -4,6 +4,7 @@ import { asProjectId, type ProjectId } from '@/domain/ids/ids'
 import type { Project } from '@/domain/projects/project'
 import type { Clock, ProjectRepository, TombstoneRepository } from '@/domain/repositories/ports'
 import type { Tombstone } from '@/domain/sync/tombstone'
+import { BASE, HOUSE_JOB_STEPS, keepFor } from '@/domain/base/base'
 
 import {
   addAction,
@@ -306,21 +307,107 @@ describe('the recommendation', () => {
     if (firstAction === undefined) throw new Error('the action was not added')
     await addAction(project.id, 'book the appointment', undefined, deps)
 
-    const first = await recommendation(deps)
+    const first = await recommendation(deps, 'own-area')
     expect(first.actionDescription).toBe('find the old one')
     expect(first.reason).toBe('Highest priority active quest')
 
     await setActionStatus(project.id, firstAction.id, true, deps)
 
-    expect((await recommendation(deps)).actionDescription).toBe('book the appointment')
+    expect((await recommendation(deps, 'own-area')).actionDescription).toBe('book the appointment')
   })
 
   it('explains itself when there is nothing to do', async () => {
     const { deps } = harness()
 
-    const result = await recommendation(deps)
+    const result = await recommendation(deps, 'own-area')
 
     expect(result.actionId).toBeUndefined()
     expect(result.reason).toMatch(/Nothing actionable/)
+  })
+})
+
+describe('a house job, created on Base', () => {
+  it('is filed to Base rather than landing in the quest log', async () => {
+    const { deps } = harness()
+
+    const project = await addProject({ name: 'Leaking tap', belongsTo: BASE }, deps)
+
+    expect(project.belongsTo).toBe(BASE)
+    /*
+     * The half that made this worth doing. A job created without a home
+     * appears in the quest log among the things somebody chose, which is
+     * exactly what moving it afterwards was for.
+     */
+    expect(keepFor([project], 'own-area')).toHaveLength(0)
+    expect(keepFor([project], BASE)).toHaveLength(1)
+  })
+
+  it('opens with the steps it was given, in the order given', async () => {
+    const { deps } = harness()
+
+    const project = await addProject(
+      { name: 'Boiler service', belongsTo: BASE, steps: [...HOUSE_JOB_STEPS] },
+      deps,
+    )
+
+    expect(project.actions.map((one) => one.description)).toEqual([...HOUSE_JOB_STEPS])
+    /*
+     * One-based and ascending, matching `addAction`, which places a new
+     * step one past the highest already there. Sharing the convention is
+     * what stops a step added later from fighting the third for a place.
+     */
+    expect(project.actions.map((one) => one.order)).toEqual([1, 2, 3])
+    expect(project.actions.every((one) => one.status === 'pending')).toBe(true)
+  })
+
+  it('gives distinct ids to each step', async () => {
+    const { deps } = harness()
+
+    const project = await addProject({ name: 'Boiler service', steps: [...HOUSE_JOB_STEPS] }, deps)
+
+    expect(new Set(project.actions.map((one) => one.id)).size).toBe(3)
+  })
+
+  it('opens with none when none were asked for, which is every quest', async () => {
+    const { deps } = harness()
+
+    expect((await addProject({ name: 'Learn Rust' }, deps)).actions).toEqual([])
+  })
+})
+
+describe('what the scoring suggests', () => {
+  /*
+   * The Quests page exists to hold the things somebody chose, and Base
+   * exists to keep house work off it. Scoring across every home put a
+   * leaking tap in the "Suggested" panel *above* a board that had
+   * correctly excluded it — the same bug twice on one screen, which is
+   * why it read as a quirk.
+   */
+  it('never suggests a house job as the next quest', async () => {
+    const { deps } = harness()
+
+    await addProject({ name: 'Leaking tap', belongsTo: BASE, urgency: 10, impact: 10 }, deps)
+    // With a step, because the scoring only suggests something
+    // actionable — a project with nothing pending is not a next thing to
+    // do, which is a separate rule and one this test must not trip over.
+    await addProject({ name: 'Learn Rust', urgency: 1, impact: 1, steps: ['Read the book'] }, deps)
+
+    const suggested = await recommendation(deps, 'own-area')
+
+    expect(suggested.projectName).toBe('Learn Rust')
+  })
+
+  it('says nothing when the only thing left is house work', async () => {
+    const { deps } = harness()
+
+    await addProject(
+      { name: 'Leaking tap', belongsTo: BASE, steps: ['Find the right person'] },
+      deps,
+    )
+
+    const suggested = await recommendation(deps, 'own-area')
+
+    expect(suggested.projectName).toBeUndefined()
+    expect(suggested.reason).toMatch(/Nothing actionable/)
   })
 })
