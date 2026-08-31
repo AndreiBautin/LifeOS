@@ -1,3 +1,4 @@
+import { Declutter } from './Declutter'
 import { GroupedDailies } from '@/features/today/DailyGroups'
 import { Flame, Plus, Undo2, Wrench } from 'lucide-react'
 import { useState } from 'react'
@@ -448,6 +449,13 @@ export function BasePage() {
           )}
         </Card>
       </Section>
+
+      {/*
+        Between the chores and the jobs, because it is between them in
+        kind: a chore recurs and a job finishes, and this is a level that
+        moves both ways over months.
+      */}
+      <Declutter />
 
       <Section
         title="Jobs"

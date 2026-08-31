@@ -41,6 +41,7 @@ export type CampaignId = Branded<'CampaignId'>
 export type StageId = Branded<'StageId'>
 export type AttemptId = Branded<'AttemptId'>
 export type HomeCandidateId = Branded<'HomeCandidateId'>
+export type RoomId = Branded<'RoomId'>
 
 /* The resume: a bullet is referable because tailoring picks bullets. */
 export type BulletId = Branded<'BulletId'>
@@ -69,6 +70,7 @@ export const asCampaignId = (value: string): CampaignId => value as CampaignId
 export const asStageId = (value: string): StageId => value as StageId
 export const asAttemptId = (value: string): AttemptId => value as AttemptId
 export const asHomeCandidateId = (value: string): HomeCandidateId => value as HomeCandidateId
+export const asRoomId = (value: string): RoomId => value as RoomId
 
 /**
  * Generating an id is a side effect, so the domain takes it as a

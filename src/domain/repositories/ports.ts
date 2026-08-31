@@ -1,3 +1,4 @@
+import type { Room } from '@/domain/base/declutter'
 import type { HomeCandidate } from '@/domain/homes/candidate'
 import type { NearbyKind, Neighbourhood } from '@/domain/homes/neighbourhood'
 import type { TrackExercise, TrackId } from '@/domain/mind/tracks'
@@ -35,6 +36,7 @@ import type {
   CampaignId,
   AttemptId,
   HomeCandidateId,
+  RoomId,
 } from '@/domain/ids/ids'
 import type { WorkoutLog } from '@/domain/logging/workout-log'
 import type { ProgramPosition } from '@/domain/programs/position'
@@ -405,6 +407,17 @@ export interface ResumeRepository {
  * testable against fixtures, and the fetching is the one thing that
  * cannot be. See `domain/news/story.ts`.
  */
+export interface RoomRepository {
+  all(): Promise<readonly Room[]>
+  byId(id: RoomId): Promise<Room | undefined>
+  save(room: Room): Promise<void>
+  /** Writes exactly as given, without stamping. See `ExerciseRepository`. */
+  restoreMany(rooms: readonly Room[]): Promise<void>
+  remove(id: RoomId): Promise<void>
+  /** Deletes without a tombstone -- the receiving half of a sync. */
+  purge(id: RoomId): Promise<void>
+}
+
 export interface HomeRepository {
   all(): Promise<readonly HomeCandidate[]>
   byId(id: HomeCandidateId): Promise<HomeCandidate | undefined>

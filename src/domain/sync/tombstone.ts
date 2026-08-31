@@ -39,6 +39,7 @@ export const TOMBSTONED_COLLECTIONS = [
   'campaigns',
   'attempts',
   'homes',
+  'rooms',
   /*
    * 'conditions' was here and is gone with the store that needed it.
    * A tombstone already written under that name still arrives from

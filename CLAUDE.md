@@ -2358,6 +2358,66 @@ That also makes `AREA_TITLES.vitals` reachable, where its comment
 asserted it never could be. Somebody whose XP is mostly upkeep reads as
 an Ascetic.
 
+**Clutter is a level, not a task, and that decides everything else about
+it.** The report: _"another aspect of base maintenance is decluttering —
+this is ongoing and should be represented by percent of each room and
+overall clutter level."_ A house job finishes and closes; a chore recurs
+and is done today or not. This is neither. It moves in both directions
+over months, which is the shape of a **weigh-in** rather than of a task,
+so a room carries a series of readings and everything on the screen is
+derived from them. Nothing stores a "current" percentage — a stored
+total is a total that can be wrong, and this app already knows what that
+costs.
+
+**It goes backwards, and that is the point of tracking it.** A room
+cleared in March fills up again by August. A checklist, or a completion
+percentage that never fell, would make the one thing worth knowing
+invisible.
+
+**It pays no XP, which is the call the weigh-in already got.** Saying a
+room is 40% clear is a _measurement_, and paying for the number going up
+would be paying for an outcome. The afternoon spent clearing the garage
+already has somewhere to be paid — a house job on Base, with steps,
+paying `base.action-closed`. The effort scores and the reading reports,
+the split Finance and Vitals both run on.
+
+**Unread rooms are left out of the average rather than counted as
+zero.** An unmeasured room is not a room full of clutter, and counting it
+as nothing would make _adding a room you have not looked at yet_ read as
+the house getting worse. The change is averaged over the rooms that have
+a _comparison_ for the same reason: a room read for the first time this
+week has not held steady. `unread` is reported so the screen can say how
+many were left out.
+
+**Comparison starts from the earliest thing known about the window, and
+the first version got this wrong in a way the suite could not see.** It
+compared only against readings _before_ the window opened — so a garage
+read at 90 on the 5th and 32 on the 31st reported **no change at all**
+over the month, because there was no reading on the 1st. Useless in
+exactly the case the feature exists for, and found by driving it.
+`startOfWindow` now takes the reading in force when the window opened,
+or failing that the first one taken inside it. Nothing is invented: both
+candidates are readings somebody actually took, and what changed is
+which counts as "where this started". Still nothing carried forward into
+a gap and nothing interpolated.
+
+**Last write wins per day**, like a weigh-in: two readings for one
+Tuesday are two opinions about one fact, and the later one is a
+correction rather than a second measurement. `recordClear` writes today
+only — this is a judgement made by looking at the room, and you cannot
+look at last Tuesday's kitchen.
+
+**Five bands, because "62%" is precision nobody has.** The words are the
+judgement and the number is there to make two months comparable. It is
+**not a ladder** — there is no published standard for how cleared a room
+should be, so this sits on the same footing as the weight phase and
+deliberately not on that of a strength standard.
+
+`DB_VERSION` went to 16 with a `rooms` store, and the collection
+registered in all of the places a collection has to register. The
+compiler and the guard tests found most of them, which is that machinery
+working as intended.
+
 **Base is an area that files records rather than storing them.**
 `domain/base/base.ts`. A house job is a `Project`, a chore is a `Daily`,
 a house upgrade is an `Upgrade` — the app already knows all three shapes,
