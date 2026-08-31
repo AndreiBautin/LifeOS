@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
-import { addDaily, relabelDaily, type DailyDeps } from './dailies'
+import { addDaily, keepOn, recadenceDaily, relabelDaily, undoOn, type DailyDeps } from './dailies'
+import { isDoneOn, timesDoneOn } from '@/domain/dailies/daily'
 import { asDailyId } from '@/domain/ids/ids'
 import type { Daily } from '@/domain/dailies/daily'
 
@@ -139,5 +140,137 @@ describe('grouping a habit', () => {
     // Removed, not set to undefined: a key holding undefined is a key,
     // and it would travel over sync as one.
     expect('group' in (services.stored[0] ?? {})).toBe(false)
+  })
+})
+
+/*
+ * The gap this closes, reported from real use: a habit asked for three
+ * times a day sat at 2 of 3 on *yesterday*, and nothing anywhere could
+ * correct it. Ticking only ever worked on the day itself, so a third
+ * feed forgotten at eleven at night was gone for good — and it is also
+ * the only repair for an entry misfiled by the timezone bug this app
+ * shipped five times, since nothing rewrites stored entries.
+ */
+describe('ticking a day that is not today', () => {
+  it('records a completion against the day it belonged to', async () => {
+    const services = deps([{ ...habit(), done: [] }])
+
+    await keepOn(asDailyId('water'), '2026-08-29', services)
+
+    expect(services.stored[0]?.done).toEqual(['2026-08-29'])
+  })
+
+  it('finishes a day that was left part done', async () => {
+    // Two of three yesterday, which is the shape that was reported.
+    const services = deps([
+      {
+        ...habit(),
+        timesPerDay: 3,
+        done: ['2026-08-29T08:00:00.000', '2026-08-29T13:00:00.000'],
+      },
+    ])
+
+    await keepOn(asDailyId('water'), '2026-08-29', services)
+
+    expect(timesDoneOn(services.stored[0] ?? habit(), '2026-08-29')).toBe(3)
+    expect(isDoneOn(services.stored[0] ?? habit(), '2026-08-29')).toBe(true)
+  })
+
+  /*
+   * No `at`, so the entry is midnight of the day it belongs to rather
+   * than the time it was typed. A backfilled tick knows which day it was
+   * and does not know what time of that day — stamping "now" would file
+   * a Tuesday completion with Thursday's clock.
+   */
+  it('does not stamp it with the time it was recorded', async () => {
+    const services = deps([{ ...habit(), timesPerDay: 2, done: [] }])
+
+    await keepOn(asDailyId('water'), '2026-08-29', services)
+
+    expect(services.stored[0]?.done[0]).toBe('2026-08-29T00:00:00.000')
+  })
+
+  /*
+   * Ticking tomorrow is not forgetfulness, it is a claim about something
+   * that has not happened — and a streak built on it would be the one
+   * number here that means nothing.
+   */
+  it('refuses a day that has not happened', async () => {
+    const services = deps([habit()])
+
+    const result = await keepOn(asDailyId('water'), '2099-01-01', services)
+
+    expect(result.error).toBeDefined()
+    expect(services.stored[0]?.done).not.toContain('2099-01-01')
+  })
+
+  it('allows today itself, which is not the future', async () => {
+    const services = deps([habit()])
+
+    expect((await keepOn(asDailyId('water'), '2026-08-30', services)).error).toBeUndefined()
+  })
+
+  it('will not push a day past what it asked for', async () => {
+    const services = deps([
+      { ...habit(), timesPerDay: 2, done: ['2026-08-29T08:00:00.000', '2026-08-29T13:00:00.000'] },
+    ])
+
+    await keepOn(asDailyId('water'), '2026-08-29', services)
+
+    expect(timesDoneOn(services.stored[0] ?? habit(), '2026-08-29')).toBe(2)
+  })
+
+  it('takes one back off a past day, leaving the rest', async () => {
+    const services = deps([
+      { ...habit(), timesPerDay: 3, done: ['2026-08-29T08:00:00.000', '2026-08-29T13:00:00.000'] },
+    ])
+
+    await undoOn(asDailyId('water'), '2026-08-29', services)
+
+    expect(timesDoneOn(services.stored[0] ?? habit(), '2026-08-29')).toBe(1)
+  })
+})
+
+/*
+ * The edit the rename form deliberately excluded. The reason it was
+ * excluded still holds — a cadence decides which days were expected, so
+ * changing it re-reads every streak — but the alternative was worse:
+ * a habit on the wrong cadence could only be retired and retyped, and
+ * that throws away the run of days, which is a habit's whole value.
+ */
+describe('changing a cadence', () => {
+  it('changes which days are expected', async () => {
+    const services = deps([habit()])
+
+    await recadenceDaily(asDailyId('water'), { kind: 'days-of-week', days: [1] }, 1, services)
+
+    expect(services.stored[0]?.cadence).toEqual({ kind: 'days-of-week', days: [1] })
+  })
+
+  it('keeps every day it was kept on', async () => {
+    const kept = ['2026-08-28', '2026-08-29', '2026-08-30']
+    const services = deps([{ ...habit(), done: kept }])
+
+    await recadenceDaily(asDailyId('water'), { kind: 'days-of-week', days: [1] }, 1, services)
+
+    expect(services.stored[0]?.done).toEqual(kept)
+  })
+
+  it('changes the times a day, and drops the field when it is one', async () => {
+    const services = deps([{ ...habit(), timesPerDay: 3 }])
+
+    await recadenceDaily(asDailyId('water'), { kind: 'every-day' }, 1, services)
+
+    // Removed, not set to undefined: a key holding undefined is a key,
+    // and it would travel over sync as one.
+    expect('timesPerDay' in (services.stored[0] ?? {})).toBe(false)
+  })
+
+  it('never lets the times a day fall below one', async () => {
+    const services = deps([habit()])
+
+    await recadenceDaily(asDailyId('water'), { kind: 'every-day' }, 0, services)
+
+    expect('timesPerDay' in (services.stored[0] ?? {})).toBe(false)
   })
 })

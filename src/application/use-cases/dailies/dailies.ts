@@ -302,3 +302,99 @@ export async function dailiesToday(
       return a.daily.title.localeCompare(b.daily.title)
     })
 }
+
+/**
+ * Ticks a day that is not today.
+ *
+ * **The gap this closes: a habit could only ever be ticked on the day
+ * itself.** Forget the third feed at eleven at night and it was gone —
+ * the row read 2 of 3 forever with nothing anywhere able to correct it.
+ * That is also the only repair for an entry misfiled by the timezone bug
+ * this app shipped five times, since nothing rewrites stored entries.
+ *
+ * **The future is refused.** Ticking tomorrow is not forgetfulness, it
+ * is a claim about something that has not happened — and a streak built
+ * on it would be the one number in this app that means nothing. The past
+ * is allowed without limit: a day you did the thing is a day you did the
+ * thing, whenever you get round to saying so.
+ *
+ * XP follows automatically and lands in the right place: `tallyActs`
+ * counts completions by the day they are filed under, so a day ticked
+ * late pays into the season it belonged to rather than this one.
+ */
+export async function keepOn(
+  id: DailyId,
+  day: string,
+  deps: DailyDeps,
+): Promise<{ readonly error?: string }> {
+  const today = toDayKey(deps.clock.now())
+  if (day > today) return { error: 'That day has not happened yet.' }
+
+  const daily = await deps.dailies.byId(id)
+  if (daily === undefined) return {}
+
+  /*
+   * No `at`, so the entry is `<day>T00:00:00.000` rather than carrying
+   * the time it was *recorded*. A backfilled tick knows which day it
+   * belongs to and does not know what time of that day it happened, and
+   * stamping "now" would file a Tuesday completion with Thursday's
+   * clock — true of the typing, false of the doing.
+   */
+  const next = complete(daily, day)
+  if (next === daily) return {}
+
+  await deps.dailies.save(next)
+
+  return {}
+}
+
+/** Takes back one completion on a given day. */
+export async function undoOn(id: DailyId, day: string, deps: DailyDeps): Promise<void> {
+  const daily = await deps.dailies.byId(id)
+  if (daily === undefined) return
+
+  const next = uncomplete(daily, day)
+  if (next === daily) return
+
+  await deps.dailies.save(next)
+}
+
+/**
+ * Changes which days a habit is expected on, and how many times.
+ *
+ * **This is the edit the rename form deliberately excluded**, and the
+ * reason it was excluded has not gone away: a cadence decides *which
+ * days were expected*, so changing it re-reads every streak the habit
+ * has ever had. A habit kept every weekday for a year becomes a broken
+ * run the moment it is told it was an every-day habit all along.
+ *
+ * It exists now because the alternative was worse. Without it a habit
+ * set to the wrong cadence could only be retired and typed again, and
+ * that throws away the run of days — which *is* a habit's value, more
+ * so than a pool's list of spends.
+ *
+ * **Nothing is rewritten.** Every day it was kept stays kept; what
+ * changes is which days it was expected on, and therefore what the
+ * streak reads. The screen says so before the change rather than after.
+ */
+export async function recadenceDaily(
+  id: DailyId,
+  cadence: Cadence,
+  timesPerDay: number,
+  deps: DailyDeps,
+): Promise<void> {
+  const daily = await deps.dailies.byId(id)
+  if (daily === undefined) return
+
+  const times = Math.max(1, Math.round(timesPerDay))
+
+  // Dropped from the spread rather than set to undefined: a key holding
+  // undefined is a key, and it would travel over sync as one.
+  const { timesPerDay: _cleared, ...rest } = daily
+
+  await deps.dailies.save({
+    ...rest,
+    cadence,
+    ...(times > 1 ? { timesPerDay: times } : {}),
+  })
+}

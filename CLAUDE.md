@@ -2867,6 +2867,49 @@ personal — everybody's is roughly water, brushing, flossing and hair.
 Offered by _name not already used_, the same rule the pools follow, so
 taking one does not take the rest away.
 
+**A day that is not today can be ticked now, and until it could not,
+nothing could correct a forgotten one.** Reported from real use: a
+habit asked for three times a day sat at **2 of 3 on yesterday**, and
+there was no way anywhere in the app to finish it. `keepToday` only ever
+did today, so a third feed forgotten at eleven at night was gone.
+
+It is also the **only repair** for a completion misfiled by the timezone
+bug this app shipped five times. Nothing rewrites stored entries — the
+offset an entry was written at was never recorded, so there is no way to
+know by how much it is wrong — and the honest fix is a person saying
+"that day was done" and the app believing them.
+
+**A backfilled tick is stamped midnight of the day it belongs to**, not
+the time it was typed. `complete` is called with no `at`, because a late
+tick knows which day it was and does not know what time of that day —
+stamping "now" would file a Tuesday completion with Thursday’s clock.
+
+**The future is refused.** Ticking tomorrow is not forgetfulness, it is
+a claim about something that has not happened, and a streak built on it
+would be the one number here that means nothing. The past is allowed
+without limit. XP follows automatically and lands correctly, because
+`tallyActs` dates a completion by the day it is filed under — so a day
+ticked late pays into the season it belonged to.
+
+**The cadence is editable now, and the reason it was not still holds.**
+It re-reads every streak the habit has ever had: a habit kept every
+weekday for a year becomes a broken run the moment it is told it was an
+every-day habit all along. It exists because the alternative was worse —
+a habit on the wrong cadence could only be retired and typed again, and
+that throws away the run of days, which is a habit’s whole value. So it
+sits **behind a press inside the label form**, with the warning stated
+before the change rather than after: every day kept stays kept, and only
+which days were _expected_ moves.
+
+**Limits are no longer the first thing on the day.** "Can we not have
+limits at the very top" — and the old argument for them leading was
+sound and beside the point: they are the most present-tense thing on the
+screen, and spending a charge happens at an arbitrary moment. Both true.
+A limit is still a _readout you consult before spending_, and the
+checkbox is what you opened the app for. The band runs actions then
+readouts, which restores at this level the ordering the screen as a
+whole gave up when the progression moved above it.
+
 **A daily renames now, and only the title.** `renameDaily`. A name was
 fixed at creation, so a habit named wrongly — or named before it meant
 what it means now — could only be retired and typed again, and that

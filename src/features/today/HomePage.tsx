@@ -198,25 +198,34 @@ export function HomePage() {
 
       {/*
         ── The day ─────────────────────────────────────────────────────
-        Limits lead it because they are the most present-tense thing
-        here — what you have left right now — and because spending a
-        charge is the one action that happens at an arbitrary moment
-        rather than once in the morning.
+        **Dailies lead it, and Limits used to.** The old argument for
+        Limits first was that they are the most present-tense thing here
+        — what you have left right now — and that spending a charge
+        happens at an arbitrary moment rather than once in the morning.
+        Both halves are still true and neither makes it the thing you
+        open the app to do.
+
+        Reported plainly: "can we not have limits at the very top". A
+        limit is a *readout you consult before spending*, and the
+        checkbox is the thing you came for. So the band runs actions
+        first and readouts after, which is the ordering the screen as a
+        whole lost when the progression moved above it — restored here at
+        the level where it still applies.
       */}
-      <Section title="Limits" description="What you have left today.">
-        <LimitsCard />
-      </Section>
-
-      <Section title="Vitals" description="Where the scale is going.">
-        <VitalsCard />
-      </Section>
-
       <Section title="Dailies" description="A checkbox and a streak.">
         <Dailies />
       </Section>
 
       <Section title="Active quests" description="One main, one side.">
         <ActiveQuests main={active.data?.main} side={active.data?.side} showLink />
+      </Section>
+
+      <Section title="Limits" description="What you have left today.">
+        <LimitsCard />
+      </Section>
+
+      <Section title="Vitals" description="Where the scale is going.">
+        <VitalsCard />
       </Section>
 
       {/* Both silent unless this morning's read found something. */}

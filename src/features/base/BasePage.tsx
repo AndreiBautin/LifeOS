@@ -50,7 +50,7 @@ function ChoreRow({ view }: { readonly view: DailyView }) {
   if (renaming) {
     return (
       <RenameDaily
-        daily={daily}
+        view={view}
         onDone={() => {
           setRenaming(false)
         }}

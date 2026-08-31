@@ -1,4 +1,4 @@
-import { Archive, Check, Flame, Home, Pencil, Plus } from 'lucide-react'
+import { Archive, CalendarCog, Check, Flame, Home, Pencil, Plus } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useState } from 'react'
 
@@ -12,14 +12,17 @@ import {
   PART_OF_DAY_LABELS,
   PARTS_OF_DAY,
   partOfDayAt,
+  timesPerDay,
   type PartOfDay,
 } from '@/domain/dailies/daily'
 import { useServices } from '@/app/context'
 import { GroupedDailies, GroupField } from './DailyGroups'
+import { DailyHistory } from './DailyHistory'
 import {
   useAddDaily,
   useDueElsewhere,
   useMoveDailyHome,
+  useRecadenceDaily,
   useRelabelDaily,
   useDailies,
   useKeepToday,
@@ -116,15 +119,17 @@ function cadenceLabel(cadence: Cadence): string {
  * would live.
  */
 export function RenameDaily({
-  daily,
+  view,
   onDone,
 }: {
-  readonly daily: Daily
+  readonly view: DailyView
   readonly onDone: () => void
 }) {
+  const daily = view.daily
   const rename = useRelabelDaily()
   const [title, setTitle] = useState(daily.title)
   const [group, setGroup] = useState(daily.group ?? '')
+  const [showingCadence, setShowingCadence] = useState(false)
 
   return (
     <form
@@ -161,18 +166,211 @@ export function RenameDaily({
       </div>
 
       {/*
-        The group is here and the cadence is not, and the line between
-        them is what the record *means*. Both of these are labels — every
-        day it was kept is still a day it was kept — where a cadence
-        decides which days were expected and re-reads every streak the
-        habit has ever had.
-
-        It is also the field most likely to be wrong at creation: you
-        find out everything falls into groups only once the list is long
-        enough to look at.
+        Labels first: the title and the group. Both leave the record
+        meaning what it meant, and every day kept is still kept.
       */}
       <GroupField value={group} onChange={setGroup} />
+
+      {/*
+        The cadence, behind a press, because it is the one edit here that
+        **re-reads history**: changing which days were expected changes
+        every streak the habit has ever had. A habit kept every weekday
+        for a year becomes a broken run the moment it is told it was an
+        every-day habit all along.
+
+        It exists because the alternative was worse — a habit on the
+        wrong cadence could only be retired and typed again, and that
+        throws away the run of days, which is a habit's whole value.
+        Folded away and warned about, rather than open beside a name box.
+      */}
+      <div className="border-ink-800 border-t pt-3">
+        {showingCadence ? (
+          <CadenceEditor daily={daily} onDone={onDone} />
+        ) : (
+          <>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setShowingCadence(true)
+              }}
+            >
+              <CalendarCog size={14} aria-hidden />
+              Change when it is expected
+            </Button>
+            <p className="text-ink-700 mt-1 text-xs">
+              Currently {cadenceLabel(daily.cadence).toLowerCase()}
+              {timesPerDay(daily) > 1 && `, ${String(timesPerDay(daily))} times a day`}.
+            </p>
+          </>
+        )}
+      </div>
+
+      {/*
+        The fortnight, and the reason this editor is worth opening at
+        all: a day forgotten at eleven at night used to be gone for good.
+      */}
+      <div className="border-ink-800 border-t pt-3">
+        <span className="text-ink-500 mb-1 block text-xs font-medium tracking-wide uppercase">
+          Recent days
+        </span>
+        <DailyHistory view={view} />
+      </div>
     </form>
+  )
+}
+
+/**
+ * Changing which days a habit is expected on, and how many a day.
+ *
+ * Reached from the label form rather than sitting in it, because this is
+ * the edit that re-reads every streak. What it does **not** do is
+ * rewrite anything: every day kept stays kept, and only which days were
+ * *expected* changes — so the number under the habit can move without
+ * any record moving. The warning says exactly that.
+ */
+function CadenceEditor({ daily, onDone }: { readonly daily: Daily; readonly onDone: () => void }) {
+  const recadence = useRecadenceDaily()
+  const [monthly, setMonthly] = useState(daily.cadence.kind === 'days-of-month')
+  const [days, setDays] = useState<readonly number[]>(
+    daily.cadence.kind === 'every-day' ? [] : daily.cadence.days,
+  )
+  const [times, setTimes] = useState(String(timesPerDay(daily)))
+
+  const toggle = (day: number): void => {
+    setDays(days.includes(day) ? days.filter((one) => one !== day) : [...days, day])
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="flex gap-1">
+        {[false, true].map((isMonthly) => (
+          <button
+            key={String(isMonthly)}
+            type="button"
+            aria-pressed={monthly === isMonthly}
+            className={[
+              'tap-target flex-1 rounded-lg border px-3 text-xs font-medium',
+              monthly === isMonthly
+                ? 'border-accent-500 bg-accent-500/15 text-accent-400'
+                : 'border-ink-800 text-ink-500',
+            ].join(' ')}
+            onClick={() => {
+              setMonthly(isMonthly)
+              setDays([])
+            }}
+          >
+            {isMonthly ? 'Days of the month' : 'Days of the week'}
+          </button>
+        ))}
+      </div>
+
+      {!monthly && (
+        <div className="flex gap-1">
+          {WEEK_SHAPES.map((shape) => (
+            <button
+              key={shape.label}
+              type="button"
+              aria-pressed={sameDays(days, shape.days)}
+              className={[
+                'tap-target flex-1 rounded-lg border px-1 text-xs font-medium',
+                sameDays(days, shape.days)
+                  ? 'border-accent-500 bg-accent-500/15 text-accent-400'
+                  : 'border-ink-800 text-ink-500',
+              ].join(' ')}
+              onClick={() => {
+                setDays([...shape.days])
+              }}
+            >
+              {shape.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      <span className="text-ink-500 block text-xs font-medium tracking-wide uppercase">
+        Which days · none for every day
+      </span>
+
+      <div className={monthly ? 'grid grid-cols-7 gap-1' : 'flex gap-1'}>
+        {(monthly
+          ? Array.from({ length: 31 }, (_unused, index) => index + 1)
+          : [0, 1, 2, 3, 4, 5, 6]
+        ).map((day) => (
+          <button
+            key={day}
+            type="button"
+            aria-pressed={days.includes(day)}
+            aria-label={monthly ? ordinal(day) : (WEEKDAY_NAMES[day] ?? String(day))}
+            className={[
+              'tap-target rounded-lg border text-xs font-medium',
+              monthly ? '' : 'flex-1',
+              days.includes(day)
+                ? 'border-accent-500 bg-accent-500/15 text-accent-400'
+                : 'border-ink-800 text-ink-500',
+            ].join(' ')}
+            onClick={() => {
+              toggle(day)
+            }}
+          >
+            {monthly ? day : (WEEKDAY_LABELS[day] ?? '?')}
+          </button>
+        ))}
+      </div>
+
+      <label className="text-ink-500 flex items-center gap-2 text-xs">
+        <span className="shrink-0">Times a day</span>
+        <input
+          className="bg-ink-850 border-ink-800 text-ink-50 numeric tap-target w-16 rounded-lg border px-2 text-sm"
+          inputMode="decimal"
+          aria-label="Times a day"
+          value={times}
+          onChange={(event) => {
+            setTimes(event.target.value)
+          }}
+        />
+      </label>
+
+      {/*
+        Said before the change rather than after. Nothing is rewritten —
+        every day kept stays kept — but the streak is read back through
+        the new cadence, so the number can move without a record moving.
+      */}
+      <p className="text-warn-500 text-xs">
+        Every day you kept it stays kept. The streak is worked out from which days were expected, so
+        it may read differently after this.
+      </p>
+
+      <Button
+        type="button"
+        variant="primary"
+        size="sm"
+        full
+        disabled={recadence.isPending}
+        onClick={() => {
+          const howMany = Math.max(1, Math.round(Number(times) || 1))
+
+          recadence.mutate(
+            {
+              id: daily.id,
+              timesPerDay: howMany,
+              // No days picked means every day — the same reading the add
+              // form gives an untouched row.
+              cadence:
+                days.length === 0
+                  ? { kind: 'every-day' }
+                  : monthly
+                    ? { kind: 'days-of-month', days }
+                    : { kind: 'days-of-week', days },
+            },
+            { onSuccess: onDone },
+          )
+        }}
+      >
+        Save when it is expected
+      </Button>
+    </div>
   )
 }
 
@@ -229,7 +427,7 @@ export function DailyRow({ view }: { readonly view: DailyView }) {
   if (renaming) {
     return (
       <RenameDaily
-        daily={daily}
+        view={view}
         onDone={() => {
           setRenaming(false)
         }}

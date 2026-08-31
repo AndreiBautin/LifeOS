@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { useServices } from '@/app/context'
 import { TRAINING, UPKEEP, type HomeFilter, type RecordHome } from '@/domain/base/base'
+import type { Cadence } from '@/domain/dailies/daily'
 import { dailyActFor } from '@/domain/game/registry'
 import {
   addDaily,
@@ -10,7 +11,10 @@ import {
   keepToday,
   moveDailyHome,
   removeDaily,
+  keepOn,
+  recadenceDaily,
   relabelDaily,
+  undoOn,
   retireDaily,
   undoToday,
 } from '@/application/use-cases/dailies/dailies'
@@ -205,4 +209,39 @@ export function useRetireDaily() {
 
 export function useRemoveDaily() {
   return useDailyMutation<DailyId>('dailies.removed', (id, services) => removeDaily(id, services))
+}
+
+/**
+ * Ticking a day that is not today.
+ *
+ * Pays XP like any other completion, and `tallyActs` dates it by the day
+ * it is filed under — so a day ticked late lands in the season it
+ * belonged to rather than this one.
+ */
+export function useKeepOn(home?: RecordHome) {
+  return useDailyMutation<{ id: DailyId; day: string }>(
+    'dailies.kept-late',
+    ({ id, day }, services) => keepOn(id, day, services),
+    dailyActFor(home),
+  )
+}
+
+export function useUndoOn() {
+  return useDailyMutation<{ id: DailyId; day: string }>(
+    'dailies.undone-late',
+    ({ id, day }, services) => undoOn(id, day, services),
+  )
+}
+
+/**
+ * Changing which days a habit is expected on.
+ *
+ * Pays nothing — correcting a cadence is not a thing done, the same
+ * reason a rename pays nothing.
+ */
+export function useRecadenceDaily() {
+  return useDailyMutation<{ id: DailyId; cadence: Cadence; timesPerDay: number }>(
+    'dailies.recadenced',
+    ({ id, cadence, timesPerDay }, services) => recadenceDaily(id, cadence, timesPerDay, services),
+  )
 }

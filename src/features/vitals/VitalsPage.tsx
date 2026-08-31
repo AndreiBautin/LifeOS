@@ -363,7 +363,7 @@ function UpkeepRow({ view }: { readonly view: DailyView }) {
     return (
       <li>
         <RenameDaily
-          daily={daily}
+          view={view}
           onDone={() => {
             setRenaming(false)
           }}
