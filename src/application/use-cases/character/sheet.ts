@@ -1,3 +1,4 @@
+import { traitStandings, type TraitStanding } from '@/domain/game/traits'
 import { isResolved } from '@/domain/atlas/place/Place'
 import { isBase, isJobs, isOwnArea, isTraining, isUpkeep } from '@/domain/base/base'
 import type { Daily } from '@/domain/dailies/daily'
@@ -84,6 +85,14 @@ export interface AreaStanding {
 export interface CharacterSheet {
   readonly areas: readonly AreaStanding[]
   readonly standing: XpStanding
+  /**
+   * The same XP, re-presented as traits.
+   *
+   * Not a fourth currency and not a second tally: each area belongs to
+   * exactly one trait, so these sum to `standing.xp` exactly. See
+   * `domain/game/traits.ts`.
+   */
+  readonly traits: readonly TraitStanding[]
   /** Every area blended by the review's spine, absent when nothing scored. */
   readonly score?: number
   readonly acts: Readonly<Record<string, number>>
@@ -311,6 +320,7 @@ export async function characterSheet(deps: SheetDeps): Promise<CharacterSheet> {
   return {
     areas,
     standing: standing(xpFrom(acts, ALL_ACTS)),
+    traits: traitStandings(acts, ALL_ACTS),
     ...(recorded.score === undefined ? {} : { score: recorded.score }),
     acts,
   }

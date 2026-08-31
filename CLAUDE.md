@@ -1023,6 +1023,63 @@ changed to take the clock: a window that cannot be held still is a chart
 no test can assert about. If a component needs the time, it takes
 `useServices().clock.now()`.
 
+**Traits are a projection of XP, not a fourth currency.** The ask was
+attributes that "get individually leveled up to make this more
+gamified", and the tempting build is a pool per attribute that things
+pay into. That is the fourth currency the model has three to avoid —
+and worse, most of these have no external standard: strength has
+published bodyweight multiples nothing in this app can move, and there
+is no such table for how charismatic somebody is. Inventing one is the
+thing refused everywhere else.
+
+So each life area belongs to **exactly one** trait, and a trait’s XP
+is the sum of what those areas already paid. Same acts, new name. The
+partition is what makes rule three hold by construction rather than by
+attention: `traits.test.ts` asserts every area has a trait, no area has
+two, and **the trait totals sum to the XP total exactly**. Measured on
+a plausible few months: 9,375 both ways.
+
+The silent failure that test exists for is an area belonging to no
+trait — it would pay XP that appears in the character total and in no
+bar, so the bars quietly add up to less than the level above them and
+nothing errors. Same shape as a muscle group belonging to no tier,
+which typechecked cleanly.
+
+**Eight traits over eleven areas, and six was the target.** Forcing
+eleven into the classic six meant bundling things whose only shared
+property was needing somewhere to go, which is invented structure
+wearing a familiar name. Where a bundle is natural it is made — a house
+job, a quest step and an upgrade are all Craft — and where it is not,
+the trait stands alone.
+
+**Fortune is fed by one act, and that is a feature.** Finance declares
+no acts on purpose: typing in a net worth is a measurement, and paying
+for the number going up would be paying for an outcome. So Fortune
+moves only when an application is sent. Finance still belongs to the
+partition, because an area with no trait is exactly what the guard
+catches.
+
+**Each row says what feeds it.** A bar labelled "Charisma" with nothing
+under it is a number the app made up; one that says "people you
+actually saw" is a count of hangouts logged. Unproven traits keep their
+bars and read "Nothing yet" rather than zero — absent, never zero — and
+stay on screen because the _set_ is the sheet: eight bars with three
+empty says where the time is going, where five bars would only say the
+app knows about five things.
+
+**They share the character level curve** rather than getting one each.
+A second curve would be a second answer to "what is a level worth", and
+the first thing anybody would do is compare a Strength 12 to a
+character level 20. Sharing it means a trait level is exactly what it
+looks like: the level you would be if this were all you had ever done.
+
+**Called traits, not attributes**, because `character.ts` already
+exports an `Attribute` — a lift measured against a published standard.
+Two things under one word in one folder is how a reader ends up
+believing a bench press and Charisma are the same kind of quantity,
+when they are precisely not: one is a ladder, one is a re-presentation
+of XP.
+
 **The avatar re-presents the sheet and adds nothing to it.**
 `domain/game/avatar.ts`. The temptation in a portrait is to give it a
 number of its own — a power rating, a gear score — and that would be a

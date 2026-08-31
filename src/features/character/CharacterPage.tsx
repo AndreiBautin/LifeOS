@@ -1,3 +1,4 @@
+import { Traits } from './Traits'
 import { useQuery } from '@tanstack/react-query'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { Settings } from 'lucide-react'
@@ -112,6 +113,19 @@ export function CharacterPage() {
       <Section title={`Level ${String(standing?.level ?? 1)}`}>
         <AvatarCard xp={standing?.xp ?? 0} />
       </Section>
+
+      {/*
+        Directly under the level, because these are that level split up:
+        each area feeds exactly one trait, so the eight bars sum to the
+        XP above them. Above the strength ladders on purpose -- this is
+        the RPG reading of the whole sheet, and the ladders below are the
+        one place a real external standard exists.
+      */}
+      {sheet.data !== undefined && (
+        <Section title="Traits" description="Your XP, split by what earned it">
+          <Traits traits={sheet.data.traits} />
+        </Section>
+      )}
 
       <Section title="Strength" description="Squat, bench and deadlift make the total">
         <Card className="space-y-4">
