@@ -570,3 +570,65 @@ describe('saveMetric', () => {
     expect(result.error).toMatch(/threshold/)
   })
 })
+
+describe('measuring the job search', () => {
+  const application = (stages: readonly { at?: string }[]) =>
+    ({
+      id: 'j1',
+      name: 'Acme — Backend engineer',
+      status: 'active',
+      belongsTo: 'jobs',
+      createdAt: '2026-08-01T00:00:00.000Z',
+      actions: stages.map((stage, index) => ({
+        id: `s${String(index)}`,
+        description: 'Screen',
+        status: stage.at === undefined ? 'pending' : 'done',
+        order: index + 1,
+        createdAt: '2026-08-01T00:00:00.000Z',
+        ...(stage.at === undefined ? {} : { completedAt: stage.at }),
+      })),
+    }) as unknown as Project
+
+  it('counts the stages advanced inside the month', async () => {
+    const { deps, projectList } = harness()
+    projectList.push(
+      application([
+        { at: '2026-07-20T00:00:00.000Z' },
+        { at: '2026-08-12T00:00:00.000Z' },
+        { at: '2026-08-20T00:00:00.000Z' },
+        {},
+      ]),
+    )
+
+    const measured = await measureAll(deps)
+
+    expect(measured['jobs.stage-advances-in-month']).toBe(2)
+  })
+
+  /*
+   * The rating this feeds is about the quest log, and an application is
+   * a `Project` — so without the `isOwnArea` filter a screen and an
+   * interview would score as quest throughput. The same leak
+   * `recommendation` had, one layer down.
+   */
+  it('keeps stage advances out of quest throughput', async () => {
+    const { deps, projectList } = harness()
+    projectList.push(application([{ at: '2026-08-12T00:00:00.000Z' }]))
+
+    const measured = await measureAll(deps)
+
+    expect(measured['projects.actions-closed-in-month']).toBeUndefined()
+  })
+
+  /*
+   * The only weekly rating in the app, and `measure.ts` is monthly
+   * throughout. Declared and unfed reads as *absent*, which the spine
+   * skips — saying nothing rather than something false.
+   */
+  it('says nothing about the weekly application count', async () => {
+    const { deps, projectList } = harness()
+    projectList.push(application([{ at: '2026-08-12T00:00:00.000Z' }]))
+
+    expect((await measureAll(deps))['jobs.applications-in-week']).toBeUndefined()
+  })
+})

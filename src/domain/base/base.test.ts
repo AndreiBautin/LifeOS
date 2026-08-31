@@ -4,6 +4,7 @@ import {
   baseContents,
   isBase,
   isOwnArea,
+  isJobs,
   isTraining,
   isUpkeep,
   keepFor,
@@ -62,7 +63,13 @@ describe('which area owns a record', () => {
 
     for (const record of everyHome) {
       expect(
-        [isOwnArea(record), isBase(record), isUpkeep(record), isTraining(record)].filter(Boolean),
+        [
+          isOwnArea(record),
+          isBase(record),
+          isUpkeep(record),
+          isTraining(record),
+          isJobs(record),
+        ].filter(Boolean),
       ).toHaveLength(1)
     }
   })

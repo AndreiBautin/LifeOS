@@ -192,8 +192,8 @@ describe('counting acts', () => {
     const tally = await tallyActs(harness())
     const uncounted = ALL_ACTS.filter((act) => tally[act.id] === undefined).map((act) => act.id)
 
-    // `jobs.*` belongs to an area that was deliberately not absorbed.
-    expect(uncounted).toEqual(['social.hangout-logged', 'jobs.application-sent'])
+    // `social.*` belongs to the one area still deliberately not absorbed.
+    expect(uncounted).toEqual(['social.hangout-logged'])
   })
 })
 
@@ -279,5 +279,84 @@ describe('what a quest step is worth', () => {
     const sheet = await characterSheet(harness({ projects: [legacy] }))
 
     expect(sheet.areas.find((area) => area.area === 'projects')?.xp).toBe(20)
+  })
+})
+
+describe('what a job application pays', () => {
+  const application = (over: Record<string, unknown> = {}) =>
+    ({
+      id: 'j1',
+      name: 'Acme — Backend engineer',
+      status: 'active',
+      belongsTo: 'jobs',
+      createdAt: '2026-08-10T00:00:00.000Z',
+      actions: [
+        {
+          id: 's1',
+          description: 'Screen',
+          status: 'done',
+          order: 1,
+          createdAt: '2026-08-10T00:00:00.000Z',
+          completedAt: '2026-08-12T00:00:00.000Z',
+        },
+      ],
+      ...over,
+    }) as unknown as Project
+
+  it('pays for sending it', async () => {
+    const sheet = await characterSheet(harness({ projects: [application()] }))
+
+    expect(sheet.areas.find((area) => area.area === 'jobs')?.xp).toBe(30)
+  })
+
+  /*
+   * The act/outcome line, which this area draws more sharply than any
+   * other. Sending is a thing you decided to do; being given a screen is
+   * a thing that happened to you. A closed stage records the date — that
+   * is what `jobs.stage-advances-in-month` counts — and buys no points.
+   */
+  it('pays nothing extra for reaching a stage', async () => {
+    const one = await characterSheet(harness({ projects: [application()] }))
+    const two = await characterSheet(
+      harness({
+        projects: [
+          application({
+            actions: [
+              {
+                id: 's1',
+                description: 'Screen',
+                status: 'done',
+                order: 1,
+                createdAt: '2026-08-10T00:00:00.000Z',
+                completedAt: '2026-08-12T00:00:00.000Z',
+              },
+              {
+                id: 's2',
+                description: 'Interview',
+                status: 'done',
+                order: 2,
+                createdAt: '2026-08-10T00:00:00.000Z',
+                completedAt: '2026-08-20T00:00:00.000Z',
+              },
+            ],
+          }),
+        ],
+      }),
+    )
+
+    expect(two.areas.find((area) => area.area === 'jobs')?.xp).toBe(
+      one.areas.find((area) => area.area === 'jobs')?.xp,
+    )
+  })
+
+  /*
+   * Rule three, in the place it was most likely to break: an application
+   * is a `Project`, so without the `isOwnArea` split its closed stages
+   * would pay `projects.side-action-closed` as well.
+   */
+  it('does not also pay the quest log', async () => {
+    const sheet = await characterSheet(harness({ projects: [application()] }))
+
+    expect(sheet.areas.find((area) => area.area === 'projects')?.xp).toBe(0)
   })
 })

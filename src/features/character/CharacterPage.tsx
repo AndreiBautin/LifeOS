@@ -226,11 +226,45 @@ const OUTCOME_TONE: Record<RatingOutcome, 'good' | 'bad' | 'neutral'> = {
   'insufficient-data': 'neutral',
 }
 
+/**
+ * Where each area is actually done, so the hub is a hub.
+ *
+ * You is the screen that says how every area is going and, until now,
+ * the one screen with no way to reach any of them. The routes are here
+ * rather than in the registry because `domain/game/` must not know that
+ * a browser exists — an area is a way of scoring, and which URL shows it
+ * is a fact about this app's front end.
+ *
+ * Partial on purpose: an area with no screen of its own is a heading and
+ * nothing more, which is honest rather than a link that goes nowhere.
+ */
+const AREA_ROUTES: Partial<Record<string, string>> = {
+  training: '/train',
+  projects: '/quests',
+  backlog: '/backlog',
+  upgrades: '/upgrades',
+  places: '/map',
+  base: '/base',
+  vitals: '/vitals',
+  dailies: '/today',
+  jobs: '/jobs',
+}
+
 function AreaCard({ area }: { readonly area: AreaStanding }) {
+  const to = AREA_ROUTES[area.area]
+
   return (
     <Card className="space-y-3">
       <div className="flex items-baseline justify-between gap-2">
-        <h3 className="text-ink-50 font-semibold">{area.name}</h3>
+        {to === undefined ? (
+          <h3 className="text-ink-50 font-semibold">{area.name}</h3>
+        ) : (
+          <h3 className="font-semibold">
+            <Link to={to} className="text-ink-50 hover:text-accent-400">
+              {area.name}
+            </Link>
+          </h3>
+        )}
         {area.xp > 0 && <span className="numeric text-ink-500 text-xs">{area.xp} XP</span>}
       </div>
 

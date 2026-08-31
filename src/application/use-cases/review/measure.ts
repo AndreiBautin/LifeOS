@@ -1,5 +1,5 @@
 import { getGoalsStats } from '@/domain/backlog/goals-stats'
-import { isBase, isOwnArea } from '@/domain/base/base'
+import { isBase, isJobs, isOwnArea } from '@/domain/base/base'
 import { STRENGTH_LIFT_SLUGS } from '@/domain/exercises/catalogue'
 import { asExerciseId } from '@/domain/ids/ids'
 import type { Daily } from '@/domain/dailies/daily'
@@ -70,7 +70,17 @@ export async function measureAll(deps: MeasureDeps): Promise<Readonly<Record<str
     measured['backlog.median-age-days'] = getGoalsStats(items, now).averageBacklogAgeDays
   }
 
-  const projects = await deps.projects.all()
+  const allProjects = await deps.projects.all()
+
+  /*
+   * Own-area only, because this feeds `projects.throughput` — a rating
+   * about the quest log. Counting every project anywhere meant a house
+   * job's steps already scored as quest throughput, and adding the job
+   * search would have put a screen and an interview in there too. The
+   * same leak `recommendation` had, in the rating rather than the
+   * suggestion.
+   */
+  const projects = allProjects.filter(isOwnArea)
   const closedThisMonth = projects.flatMap((project) =>
     project.actions.filter(
       (action) => action.status === 'done' && action.completedAt?.slice(0, 7) === toMonth(now),
@@ -99,6 +109,29 @@ export async function measureAll(deps: MeasureDeps): Promise<Readonly<Record<str
   )
   if (workouts.length > 0) {
     measured['training.sessions-in-month'] = thisMonth.length
+  }
+
+  /*
+   * Stage advances, from the dates the steps were closed on.
+   *
+   * `completedAt` is what makes this countable: an application storing
+   * only its current stage would say where each one is and never when it
+   * got there, and a rating that judges a *direction* needs the dates.
+   *
+   * The other declared rating — `jobs.applications-in-week` — has no
+   * producer here on purpose. It is the only weekly rating in the app,
+   * and `measure.ts` is monthly throughout because a snapshot is what
+   * gives a direction two points in time. An unproduced source reads as
+   * **absent** rather than zero, which the spine skips, so declaring it
+   * and not feeding it says nothing rather than something false.
+   */
+  const applications = allProjects.filter(isJobs)
+  if (applications.length > 0) {
+    measured['jobs.stage-advances-in-month'] = applications
+      .flatMap((application) => application.actions)
+      .filter(
+        (action) => action.status === 'done' && action.completedAt?.slice(0, 7) === toMonth(now),
+      ).length
   }
 
   const friends = await deps.friends.all()

@@ -1,5 +1,5 @@
 import { isResolved } from '@/domain/atlas/place/Place'
-import { isBase, isOwnArea, isTraining, isUpkeep } from '@/domain/base/base'
+import { isBase, isJobs, isOwnArea, isTraining, isUpkeep } from '@/domain/base/base'
 import type { Daily } from '@/domain/dailies/daily'
 import type { Project, QuestKind } from '@/domain/projects/project'
 import { readLadder, type LadderReading } from '@/domain/game/ladder'
@@ -154,6 +154,7 @@ export async function tallyActs(
   const baseDailies = dailies.filter(isBase)
   const upkeepDailies = dailies.filter(isUpkeep)
   const trainingDailies = dailies.filter(isTraining)
+  const applications = projects.filter(isJobs)
 
   const daysKept = (records: readonly Daily[]): number =>
     records.reduce((total, daily) => total + daily.done.filter((day) => within(day)).length, 0)
@@ -220,6 +221,19 @@ export async function tallyActs(
     'base.chore-kept': daysKept(baseDailies),
     'vitals.upkeep-kept': daysKept(upkeepDailies),
     'training.habit-kept': daysKept(trainingDailies),
+    /*
+     * Paid for *sending*, which is the thing you decide to do. The
+     * stages after it — screen, interview, offer — are outcomes, so
+     * closing one pays nothing and feeds a rating instead. That is the
+     * act/outcome line the whole model runs on, and the registry drew it
+     * here before there was anything to draw it around.
+     *
+     * Jobs projects are excluded from `ownProjects` by `isOwnArea`, so
+     * their closed stages cannot also pay `projects.*-action-closed`.
+     * Rule three holds by the same split that keeps a house chore off
+     * `dailies.completed`.
+     */
+    'jobs.application-sent': applications.filter((one) => dated(one.createdAt)).length,
     'places.place-visited': places.filter(
       (place) => place.status === 'visited' && isResolved(place) && dated(place.dateVisited),
     ).length,

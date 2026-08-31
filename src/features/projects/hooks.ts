@@ -1,4 +1,5 @@
 import type { RecordHome } from '@/domain/base/base'
+import { JOBS } from '@/domain/base/base'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { useServices } from '@/app/context'
@@ -49,6 +50,16 @@ export function useBaseProjects() {
   return useQuery({
     queryKey: [...PROJECTS, 'base'],
     queryFn: () => listProjects(services, 'base'),
+  })
+}
+
+/** Applications, for the Job search screen. Keyed apart, like the Base list. */
+export function useJobApplications() {
+  const services = useServices()
+
+  return useQuery({
+    queryKey: [...PROJECTS, 'jobs'],
+    queryFn: () => listProjects(services, JOBS),
   })
 }
 

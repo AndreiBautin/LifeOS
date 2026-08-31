@@ -64,6 +64,22 @@ export const UPKEEP = 'vitals'
 export const TRAINING = 'training'
 
 /**
+ * The job search, as a place records are filed.
+ *
+ * An application is a project with a fixed set of stages — see
+ * `domain/jobs/application.ts` — so what it needs from this module is
+ * only a home, the same as a house job. Filed under `jobs` because that
+ * is the area `registry.ts` declared for it in phase 0 and the area
+ * `tallyActs` pays.
+ *
+ * **This module has outgrown its name.** It is called `base` and now
+ * answers "which area owns this record" for five of them. Renaming it
+ * would be churn across every import for no behaviour, so it stays, and
+ * this paragraph is the warning that `base.ts` is really `homes.ts`.
+ */
+export const JOBS = 'jobs'
+
+/**
  * The errand a house job almost always is.
  *
  * This module's opening paragraph has said for as long as it has existed
@@ -95,7 +111,7 @@ export const HOUSE_JOB_STEPS = [
  * here, where an `isBase` flag would have had to be replaced everywhere
  * it was read.
  */
-export const RECORD_HOMES = [BASE, UPKEEP, TRAINING] as const
+export const RECORD_HOMES = [BASE, UPKEEP, TRAINING, JOBS] as const
 
 export type RecordHome = (typeof RECORD_HOMES)[number]
 
@@ -114,6 +130,10 @@ export function isUpkeep(record: Homed): boolean {
 
 export function isTraining(record: Homed): boolean {
   return record.belongsTo === TRAINING
+}
+
+export function isJobs(record: Homed): boolean {
+  return record.belongsTo === JOBS
 }
 
 /**

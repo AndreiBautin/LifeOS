@@ -1110,6 +1110,57 @@ filter on floating point eventually disagrees with itself. Two of its
 rules had a database behind them and no longer do: `wouldCreateCycle`, and
 the refusal to delete anything with dependents still attached.
 
+**The job search is absorbed, and phase 0 had already designed it.**
+`registry.ts` declared the `jobs` area before there was anything in it
+— no ladders, one act, two ratings — and `sheet.test.ts` carried a line
+asserting it was _deliberately_ uncounted. Building it was mostly
+reading what had been decided.
+
+**No ladder, and the reason is in the registry**: a campaign has stages
+and an end, which is not the same as having a ceiling. There is no such
+thing as being maximally good at looking for work.
+
+**An application is a `Project`, not a new record.** Name, fixed steps,
+a home that decides which screen it appears on — the shape a house job
+already is. `belongsTo` and `steps` on `NewProject` were built for
+those a day earlier and needed nothing added.
+
+**`jobs.application-sent` pays 30 XP on _creation_, and reaching a
+stage pays nothing.** This is the sharpest instance of the act/outcome
+line in the app: sending is a thing you decided to do, being given an
+interview is a thing that happened to you. Paying for the second is the
+streak mistake in a suit. The stages exist so their **dates** are
+recorded — `ActionItem.completedAt` is what makes
+`jobs.stage-advances-in-month` countable at all, where storing a
+"current stage" would say where every application is and never when it
+got there.
+
+`APPLICATION_STAGES` is `Screen · Interview · Offer` and **does not
+include "Applied"**, because sending is the record existing. Unlike a
+house job's steps these are not offered as checkboxes: every
+application has all three ahead of it and nobody declines to be
+interviewed, so a checkbox would ask a question with one answer.
+
+**`jobs.applications` is the only weekly rating in the app and has no
+producer.** `measure.ts` is monthly throughout, because a snapshot is
+what gives a direction two points in time. A declared source with
+nothing feeding it reads as **absent**, which the spine skips — so it
+says nothing rather than something false, and a weekly cadence is a
+decision still to be made rather than a gap to be patched.
+
+**`projects.actions-closed-in-month` is own-area only now**, and it was
+not before. That rating is about the quest log, so a house job’s steps
+had been scoring as quest throughput all along and a screen and an
+interview would have joined them — the same leak `recommendation` had,
+one layer down. Both were found by driving the app, not by a test.
+
+**The You page links to each area now** (`AREA_ROUTES` in
+`CharacterPage.tsx`). It is the screen that says how every area is
+going and it had no way to reach any of them. The map lives in the
+feature rather than the registry, because `domain/game/` must not know
+that a browser exists; it is partial on purpose, since an area with no
+screen is a heading rather than a link that goes nowhere.
+
 **No area scores itself.** `domain/review/` is the spine and
 `from-registry.ts` is the join: a rating declared in
 `domain/game/registry.ts` becomes a metric the evaluators judge. Do not add
