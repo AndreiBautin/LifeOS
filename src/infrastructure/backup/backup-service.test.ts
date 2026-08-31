@@ -12,6 +12,7 @@ import {
 } from '@/infrastructure/db/database'
 import {
   createCheckInRepository,
+  createAttemptRepository,
   createCampaignRepository,
   createResumeRepository,
   createBacklogItemRepository,
@@ -67,6 +68,7 @@ beforeEach(async () => {
     checkIns: createCheckInRepository(db, testClock),
     resume: createResumeRepository(db, testClock),
     campaigns: createCampaignRepository(db, testClock),
+    attempts: createAttemptRepository(db, testClock),
     tombstones: createTombstoneRepository(db),
     items: createBacklogItemRepository(db, testClock),
     projects: createProjectRepository(db, testClock),

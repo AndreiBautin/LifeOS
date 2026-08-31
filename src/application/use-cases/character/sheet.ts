@@ -1,6 +1,6 @@
 import { traitStandings, type TraitStanding } from '@/domain/game/traits'
 import { isResolved } from '@/domain/atlas/place/Place'
-import { isBase, isJobs, isOwnArea, isTraining, isUpkeep } from '@/domain/base/base'
+import { isBase, isJobs, isMind, isOwnArea, isTraining, isUpkeep } from '@/domain/base/base'
 import type { Daily } from '@/domain/dailies/daily'
 import type { Project, QuestKind } from '@/domain/projects/project'
 import { readLadder, type LadderReading } from '@/domain/game/ladder'
@@ -133,12 +133,13 @@ export async function tallyActs(
   deps: SheetDeps,
   within: Within = ALWAYS,
 ): Promise<Readonly<Record<string, number>>> {
-  const [workouts, items, projects, places, dailies] = await Promise.all([
+  const [workouts, items, projects, places, dailies, attempts] = await Promise.all([
     deps.workouts.recent(500),
     deps.items.all(),
     deps.projects.all(),
     deps.places.all(),
     deps.dailies.all(),
+    deps.attempts.all(),
   ])
 
   /** No date, no act — see the note above on why this holds even all-time. */
@@ -164,6 +165,7 @@ export async function tallyActs(
   const upkeepDailies = dailies.filter(isUpkeep)
   const trainingDailies = dailies.filter(isTraining)
   const applications = projects.filter(isJobs)
+  const studyDailies = dailies.filter(isMind)
 
   const daysKept = (records: readonly Daily[]): number =>
     records.reduce((total, daily) => total + daily.done.filter((day) => within(day)).length, 0)
@@ -230,6 +232,7 @@ export async function tallyActs(
     'base.chore-kept': daysKept(baseDailies),
     'vitals.upkeep-kept': daysKept(upkeepDailies),
     'training.habit-kept': daysKept(trainingDailies),
+    'mind.habit-kept': daysKept(studyDailies),
     /*
      * Paid for *sending*, which is the thing you decide to do. The
      * stages after it — screen, interview, offer — are outcomes, so
@@ -243,6 +246,15 @@ export async function tallyActs(
      * `dailies.completed`.
      */
     'jobs.application-sent': applications.filter((one) => dated(one.createdAt)).length,
+    /*
+     * One act per problem, counted from the day it was solved.
+     *
+     * Flat, and difficulty deliberately does not scale it -- see
+     * `domain/mind/practice.ts`. A hard problem paying triple would turn
+     * a record of practice into a thing to optimise, and the honest
+     * reason to do a hard one is that it is hard.
+     */
+    'mind.problem-solved': attempts.filter((attempt) => within(attempt.solvedOn)).length,
     'places.place-visited': places.filter(
       (place) => place.status === 'visited' && isResolved(place) && dated(place.dateVisited),
     ).length,

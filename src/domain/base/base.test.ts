@@ -5,6 +5,7 @@ import {
   isBase,
   isOwnArea,
   isJobs,
+  isMind,
   isTraining,
   isUpkeep,
   keepFor,
@@ -69,6 +70,7 @@ describe('which area owns a record', () => {
           isUpkeep(record),
           isTraining(record),
           isJobs(record),
+          isMind(record),
         ].filter(Boolean),
       ).toHaveLength(1)
     }

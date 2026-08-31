@@ -183,6 +183,7 @@ export function CharacterPage() {
               { to: '/limits', label: 'Limits' },
               { to: '/vitals', label: 'Vitals' },
               { to: '/jobs', label: 'Job search' },
+              { to: '/mind', label: 'Mind' },
               { to: '/finance', label: 'Finance' },
               { to: '/resume', label: 'Resume' },
               { to: '/upgrades', label: 'Tech tree' },
@@ -303,6 +304,7 @@ const AREA_ROUTES: Partial<Record<string, string>> = {
   dailies: '/today',
   jobs: '/jobs',
   finance: '/finance',
+  mind: '/mind',
 }
 
 function AreaCard({ area }: { readonly area: AreaStanding }) {

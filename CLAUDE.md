@@ -1200,6 +1200,82 @@ nobody has reached carries no record, so asking about it is a dialogue
 for its own sake — and asking about everything is how somebody learns
 to press through the question without reading it.
 
+**Mind is study and practice, and the ask was two things of which only
+one was missing.** _"A mental training section where I do a daily study
+of design patterns, and maybe pull LeetCode questions in and have that
+gain XP."_
+
+The **daily study is a habit and needed nothing new** — a `Daily` filed
+to Mind, on a cadence, with a streak. What it needed was a home, so it
+pays `mind.habit-kept` instead of crowding Today.
+
+The **log did not exist**. A solved problem has a name, a difficulty
+and a language, and two in a morning are two things rather than one day
+ticked — the shape of a `WorkoutLog`, not of a habit. That is
+`domain/mind/practice.ts`.
+
+**A home, not a group**, and the distinction is the one that sent
+supplements and pet care to `Daily.group` instead. A group is a label; a
+home decides which screen owns the record _and_ which area pays its XP.
+Mind wants both halves, so it earns the full cost — a registry area, two
+acts, a branch in `tallyActs`, an `AREA_TITLES` entry, a line in the
+"exactly one side" test.
+
+**Its trait is Intellect, joining the backlog there.** Practice is the
+other half of what that bar meant: one is what you have read, the other
+is what you can do. A ninth trait would have split a thing that is one
+thing.
+
+**No ladder, and this is where a count is most tempting.** LeetCode
+publishes how many problems exist and every practice site shows a total
+solved, so a "1,200 problems" ceiling _looks_ like an external standard.
+It is a count of one site’s catalogue, which grows, and nothing about
+having solved half of it says you are halfway to anything.
+
+**Two ratings, because one number cannot say what happened.** Six
+problems in a Sunday and six over six days are very different months, so
+problems-solved and days-practised are both counted. Absent when nothing
+has been practised, never zero.
+
+**Difficulty is recorded and does not scale the XP.** Points are flat
+per occurrence everywhere here. The rule’s usual justification — that
+scaling reintroduces the outcome — is weaker for difficulty, which is a
+property of the problem rather than of how it went. It is kept anyway,
+because a hard problem paying triple turns a record of practice into a
+thing to optimise, and the honest reason to do a hard one is that it is
+hard. The screen says so where somebody chooses it.
+
+**Exercism is readable and LeetCode is not, and that was tested.**
+Exercism’s `/api/v2` is internal, needs a token and is CORS-blocked from
+a browser. Their _content_ is open: every track is a public GitHub
+repository whose `config.json` `raw.githubusercontent.com` serves with
+no key — **111 practice exercises for TypeScript in one request**.
+LeetCode publishes no equivalent and blocks browsers, so a problem from
+there is typed in by name. That is all the log needs: what pays XP is
+having solved it, not the app having fetched the text.
+
+Two quirks came off the real config rather than a guess. A track lists
+**`concept` exercises alongside `practice` ones** — the first are its
+syllabus, worked through in order, and offering both would mix a course
+into a problem list. And **`deprecated` is a real status**, so offering
+one is offering a problem the track has withdrawn. Their 1–10 difficulty
+is banded into the three used here rather than carried alongside them,
+because two answers to "how hard was it" is one too many.
+
+Unauthenticated GitHub allows **60 requests an hour**, which is ample
+for reading a track once and caching it and nowhere near enough to
+browse. `staleTime: Infinity` and every refetch off. Seventh outbound
+host; each one is a decision, not a precedent.
+
+**An attempt is deleted, not retired**, unlike a habit. A habit’s kept
+days _are_ the record and retiring keeps them; a problem logged by
+mistake is not a thing that happened, and leaving it would go on paying
+XP for it.
+
+**A repeat is reported, never refused.** A kata done a second time from
+memory is the point of a kata, so `timesSolved` exists to let the form
+say "you logged this in March" rather than to stop anybody logging it.
+
 **A campaign is the long arc across areas, and it is not a `Project`.**
 The report: _"I want to move eventually, but that depends on fixing up
 the house, improving income, finding a new house, saving a deposit,

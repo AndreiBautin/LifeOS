@@ -34,6 +34,7 @@ export const LIFE_AREAS = [
   'base',
   'vitals',
   'finance',
+  'mind',
 ] as const
 
 export type LifeArea = (typeof LIFE_AREAS)[number]
@@ -505,6 +506,57 @@ export const SCORING: readonly AreaScoring[] = [
      * Vitals ran that way for most of its life.
      */
     acts: [],
+    hasTree: false,
+  },
+  {
+    area: 'mind',
+    name: 'Mind',
+    phase: 8,
+    /*
+     * **No ladder, and this is the one where a count is most tempting.**
+     * LeetCode publishes how many problems exist and every practice site
+     * shows a total solved, so a "1,200 problems" ceiling looks like an
+     * external standard. It is not one: it is a count of that site's
+     * catalogue, which grows, and nothing about having solved half of it
+     * says you are halfway to anything. A ladder must name a standard
+     * somebody outside the app anchored — bodyweight multiples, FICO
+     * bands — and there is no published table of what makes a practised
+     * engineer.
+     */
+    ladders: [],
+    ratings: [
+      {
+        id: 'mind.throughput',
+        source: 'mind.problems-solved-in-month',
+        name: 'Problems solved',
+        unit: 'problems',
+        direction: 'increase',
+        cadence: 'monthly',
+      },
+      {
+        /*
+         * Days practised, not problems solved, and the pair is the
+         * point: six problems in one Sunday and six spread over six days
+         * are very different months, and one number cannot say which
+         * happened.
+         */
+        id: 'mind.consistency',
+        source: 'mind.days-practised-in-month',
+        name: 'Days practised',
+        unit: 'days',
+        direction: 'increase',
+        cadence: 'monthly',
+      },
+    ],
+    acts: [
+      { id: 'mind.problem-solved', area: 'mind', label: 'Solved a problem', points: 20 },
+      /*
+       * The same fifteen points every kept habit is worth, under a fifth
+       * name. `tallyActs` splits by `belongsTo`, so a study habit filed
+       * here pays this and never `dailies.completed`.
+       */
+      { id: 'mind.habit-kept', area: 'mind', label: 'Studied', points: 15 },
+    ],
     hasTree: false,
   },
 ]

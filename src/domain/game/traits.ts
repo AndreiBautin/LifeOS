@@ -80,8 +80,8 @@ export const TRAITS: readonly TraitDefinition[] = [
   {
     id: 'intellect',
     label: 'Intellect',
-    blurb: 'Books, courses and games worked through',
-    areas: ['backlog'],
+    blurb: 'Books and courses worked through, and problems practised',
+    areas: ['backlog', 'mind'],
   },
   {
     id: 'charisma',

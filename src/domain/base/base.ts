@@ -80,6 +80,18 @@ export const TRAINING = 'training'
 export const JOBS = 'jobs'
 
 /**
+ * Practice, as a place records are filed -- a daily study of design
+ * patterns, a language drill.
+ *
+ * The fifth answer, and it earns a home rather than a group because it
+ * wants **both** halves of what a home is: a screen of its own, and an
+ * area that pays its own XP. A group is a label and would have given the
+ * first without the second, which is precisely the distinction that sent
+ * supplements and pet care to `Daily.group` instead.
+ */
+export const MIND = 'mind'
+
+/**
  * The errand a house job almost always is.
  *
  * This module's opening paragraph has said for as long as it has existed
@@ -111,7 +123,7 @@ export const HOUSE_JOB_STEPS = [
  * here, where an `isBase` flag would have had to be replaced everywhere
  * it was read.
  */
-export const RECORD_HOMES = [BASE, UPKEEP, TRAINING, JOBS] as const
+export const RECORD_HOMES = [BASE, UPKEEP, TRAINING, JOBS, MIND] as const
 
 export type RecordHome = (typeof RECORD_HOMES)[number]
 
@@ -134,6 +146,10 @@ export function isTraining(record: Homed): boolean {
 
 export function isJobs(record: Homed): boolean {
   return record.belongsTo === JOBS
+}
+
+export function isMind(record: Homed): boolean {
+  return record.belongsTo === MIND
 }
 
 /**

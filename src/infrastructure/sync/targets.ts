@@ -116,6 +116,7 @@ export function createMemorySyncTarget(server: MemorySyncServer, clientId: strin
           weighIns: mine.flatMap((batch) => batch.payload.weighIns),
           finance: mine.flatMap((batch) => batch.payload.finance),
           campaigns: mine.flatMap((batch) => batch.payload.campaigns),
+          attempts: mine.flatMap((batch) => batch.payload.attempts),
           exploredCells: mine.flatMap((batch) => batch.payload.exploredCells),
           tombstones: mine.flatMap((batch) => batch.payload.tombstones),
           ...(settings === undefined ? {} : { settings }),

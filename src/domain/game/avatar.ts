@@ -58,6 +58,10 @@ export const AREA_TITLES: Record<LifeArea, string> = {
    * arrived.
    */
   finance: 'Provider',
+  /* Somebody whose XP is mostly practice -- problems worked, patterns
+     studied. "Adept" over "Scholar", which the backlog already has: one
+     is what you have read and the other is what you can do. */
+  mind: 'Adept',
   /*
    * Reachable now, and it was not when this was written.
    *

@@ -1,3 +1,5 @@
+import type { TrackExercise, TrackId } from '@/domain/mind/tracks'
+import type { Attempt } from '@/domain/mind/practice'
 import type { Campaign } from '@/domain/campaign/campaign'
 import type { NewsSource, Story } from '@/domain/news/story'
 import type { CheckIn } from '@/domain/autoregulation/check-in'
@@ -29,6 +31,7 @@ import type {
   WorkoutId,
   ViceId,
   CampaignId,
+  AttemptId,
 } from '@/domain/ids/ids'
 import type { WorkoutLog } from '@/domain/logging/workout-log'
 import type { ProgramPosition } from '@/domain/programs/position'
@@ -399,6 +402,21 @@ export interface ResumeRepository {
  * testable against fixtures, and the fetching is the one thing that
  * cannot be. See `domain/news/story.ts`.
  */
+export interface TrackGateway {
+  read(track: TrackId): Promise<readonly TrackExercise[]>
+}
+
+export interface AttemptRepository {
+  all(): Promise<readonly Attempt[]>
+  byId(id: AttemptId): Promise<Attempt | undefined>
+  save(attempt: Attempt): Promise<void>
+  /** Writes exactly as given, without stamping. See `ExerciseRepository`. */
+  restoreMany(attempts: readonly Attempt[]): Promise<void>
+  remove(id: AttemptId): Promise<void>
+  /** Deletes without a tombstone -- the receiving half of a sync. */
+  purge(id: AttemptId): Promise<void>
+}
+
 export interface CampaignRepository {
   all(): Promise<readonly Campaign[]>
   byId(id: CampaignId): Promise<Campaign | undefined>

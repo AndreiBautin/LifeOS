@@ -103,6 +103,7 @@ function harness(
     items: stub(backlog),
     projects: stub(projectList),
     finance: stub(financeList),
+    attempts: stub([]),
     upgrades: stub(upgradeList),
     workouts: stub(workoutList) as unknown as WorkoutRepository,
     friends: stub(friendList),

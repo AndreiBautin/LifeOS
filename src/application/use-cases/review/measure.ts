@@ -1,3 +1,4 @@
+import { daysPractisedIn, solvedIn } from '@/domain/mind/practice'
 import { getGoalsStats } from '@/domain/backlog/goals-stats'
 import { isBase, isJobs, isOwnArea } from '@/domain/base/base'
 import { latest } from '@/domain/finance/reading'
@@ -17,6 +18,7 @@ import type {
   SettingsRepository,
   UpgradeRepository,
   ViceRepository,
+  AttemptRepository,
   FinanceRepository,
   WeighInRepository,
   WorkoutRepository,
@@ -52,6 +54,7 @@ export interface MeasureDeps {
   readonly vices: ViceRepository
   readonly weighIns: WeighInRepository
   readonly finance: FinanceRepository
+  readonly attempts: AttemptRepository
   readonly clock: Clock
 }
 
@@ -135,6 +138,21 @@ export async function measureAll(deps: MeasureDeps): Promise<Readonly<Record<str
       .filter(
         (action) => action.status === 'done' && action.completedAt?.slice(0, 7) === toMonth(now),
       ).length
+  }
+
+  /*
+   * Two numbers rather than one, and the pair is the point: six problems
+   * in one Sunday and six spread over six days are very different
+   * months, and neither figure alone can say which happened.
+   *
+   * Absent when nothing has been practised at all, never zero -- a month
+   * with no practice is not a month that scored nought, and a fabricated
+   * reading makes the next month's trend a lie too.
+   */
+  const attempts = await deps.attempts.all()
+  if (attempts.length > 0) {
+    measured['mind.problems-solved-in-month'] = solvedIn(attempts, toMonth(now))
+    measured['mind.days-practised-in-month'] = daysPractisedIn(attempts, toMonth(now))
   }
 
   /*

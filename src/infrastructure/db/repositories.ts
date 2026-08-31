@@ -1,5 +1,6 @@
+import type { Attempt } from '@/domain/mind/practice'
 import type { Campaign } from '@/domain/campaign/campaign'
-import type { CampaignId } from '@/domain/ids/ids'
+import type { AttemptId, CampaignId } from '@/domain/ids/ids'
 import type { CheckIn } from '@/domain/autoregulation/check-in'
 import type { FinanceReading } from '@/domain/finance/reading'
 import type { Resume } from '@/domain/resume/resume'
@@ -40,6 +41,7 @@ import type {
   DailyRepository,
   ExerciseRepository,
   FinanceRepository,
+  AttemptRepository,
   CampaignRepository,
   ResumeRepository,
   ExploredAreaRepository,
@@ -733,6 +735,32 @@ export function createCampaignRepository(db: AppDatabase, clock: Clock): Campaig
     },
     async purge(id: CampaignId) {
       await db.delete('campaigns', id)
+    },
+  }
+}
+
+/** Problems practised, one row each. */
+export function createAttemptRepository(db: AppDatabase, clock: Clock): AttemptRepository {
+  return {
+    async all() {
+      return db.getAll('attempts')
+    },
+    async byId(id: AttemptId) {
+      return db.get('attempts', id)
+    },
+    async save(attempt: Attempt) {
+      await db.put('attempts', stamp(attempt, clock))
+    },
+    async restoreMany(attempts: readonly Attempt[]) {
+      const tx = db.transaction('attempts', 'readwrite')
+      await Promise.all([...attempts.map((one) => tx.store.put(one)), tx.done])
+    },
+    async remove(id: AttemptId) {
+      await db.delete('attempts', id)
+      await bury(db, clock, 'attempts', id)
+    },
+    async purge(id: AttemptId) {
+      await db.delete('attempts', id)
     },
   }
 }

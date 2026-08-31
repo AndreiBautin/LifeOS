@@ -1,3 +1,4 @@
+import type { Attempt } from '@/domain/mind/practice'
 import type { Campaign } from '@/domain/campaign/campaign'
 import type { DBSchema, IDBPDatabase } from 'idb'
 import { openDB } from 'idb'
@@ -64,7 +65,7 @@ export const DB_NAME = 'lifeos'
  * a device that already ran it will not run it again, so changing one
  * leaves two devices with different schemas and no way to tell.
  */
-export const DB_VERSION = 13
+export const DB_VERSION = 14
 
 /**
  * A workout as it is stored, which is not quite a workout as the domain
@@ -283,6 +284,11 @@ export interface LiftDB extends DBSchema {
   weighIns: {
     key: string
     value: WeighIn
+  }
+  /** Problems practised, one row each. */
+  attempts: {
+    key: string
+    value: Attempt
   }
   /** The long arcs -- the move, and anything shaped like it. */
   campaigns: {
@@ -503,6 +509,13 @@ export function openDatabase(name = DB_NAME): Promise<AppDatabase> {
         db.createObjectStore('resume')
       }
 
+      if (oldVersion < 14) {
+        // Problems solved. Keyed by id and indexed by nothing: the log is
+        // read whole and filtered in memory, which is right for a few
+        // hundred rows and wrong at a scale this will not reach.
+        db.createObjectStore('attempts', { keyPath: 'id' })
+      }
+
       if (oldVersion < 13) {
         // The long arcs. Keyed by id; a campaign holds its stages inline
         // rather than in a second store, because a stage has no meaning
@@ -572,6 +585,7 @@ export async function clearAllStores(db: AppDatabase): Promise<void> {
       'finance',
       'resume',
       'campaigns',
+      'attempts',
     ],
     'readwrite',
   )
@@ -597,6 +611,7 @@ export async function clearAllStores(db: AppDatabase): Promise<void> {
     tx.objectStore('finance').clear(),
     tx.objectStore('resume').clear(),
     tx.objectStore('campaigns').clear(),
+    tx.objectStore('attempts').clear(),
     tx.done,
   ])
 }

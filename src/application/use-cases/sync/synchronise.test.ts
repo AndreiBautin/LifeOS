@@ -23,6 +23,7 @@ import type {
   FriendRepository,
   PlaceRepository,
   ProjectRepository,
+  AttemptRepository,
   CampaignRepository,
   ResumeRepository,
   ReviewRepository,
@@ -313,6 +314,20 @@ function device(clock: Clock): Device {
    * whole-record last-write-wins and the exchange has to be able to
    * carry one, which a stub returning an empty list could never show.
    */
+  /*
+   * A stub, unlike the campaigns below it. Nothing in these tests
+   * exercises a practice log, and a double that pretended to would be
+   * testing itself.
+   */
+  const attempts: AttemptRepository = {
+    all: () => Promise.resolve([]),
+    byId: () => Promise.resolve(undefined),
+    save: () => Promise.resolve(),
+    restoreMany: () => Promise.resolve(),
+    remove: () => Promise.resolve(),
+    purge: () => Promise.resolve(),
+  }
+
   const campaignStore = new Map<string, Campaign>()
   const campaigns: CampaignRepository = {
     all: () => Promise.resolve([...campaignStore.values()]),
@@ -460,6 +475,7 @@ function device(clock: Clock): Device {
   }
 
   return {
+    attempts,
     campaigns,
     resume,
     dailies,
