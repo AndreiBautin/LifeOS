@@ -1143,33 +1143,50 @@ last-write-wins fixes that.
 a bad reading cannot be put back, for the same reason there is no
 tombstone. Do not relax it to make the map feel more responsive indoors.
 
-**A waiting worker is not applied by closing the app and opening it
-again, and that was the trap.** `registerType: 'prompt'` installs a new
-version and leaves it _waiting_; only `skipWaiting` promotes it. So a
-banner missed once — or answered with "Later" — left the old shell
-serving forever, and every restart re-showed the banner and changed
-nothing. That is exactly what "I closed it and reloaded and it is still
-the old one" looks like from the outside, and it took two rounds of that
-before the mechanism was suspected rather than the deploy.
+**The worker and the page answer two different questions, and
+`registerType: 'prompt'` answered both with "wait".** "Should the new
+version take over as the worker" and "should this page reload right now"
+are not the same question. Prompt mode installed a new version and left
+it _waiting_ indefinitely for a client to send `SKIP_WAITING` — so a
+banner missed once, or answered with "Later", left the old shell serving
+forever, and closing the app and opening it again never promotes a
+waiting worker. Every restart re-showed the banner and changed nothing.
 
-A worker **already waiting when the page registers** is now applied at
-once, without asking. It arrived in an earlier session, so the reason
-for prompting does not apply: nothing is three sets into anything a
-quarter of a second after launch. Updates arriving _during_ a session
-still ask, which is the case the prompt was built for.
+**The client-side repair for that shipped and could not reach the device
+that needed it**, which is the part worth remembering. It lived in the
+bundle the stale worker was refusing to serve. **Only a change to the
+worker itself reaches a stuck install**, because a browser fetches
+`sw.js` from the network directly rather than through the worker it is
+replacing — it is the one file that always gets through.
 
-It talks to the worker directly — `postMessage({ type: 'SKIP_WAITING' })`
-plus a one-shot `controllerchange` reload — rather than through
-`updateServiceWorker`, which is returned by the very call the callback is
-an argument to. Reaching that would need a ref written during render,
-which React forbids and the linter catches.
+So the registration is `autoUpdate`: the _worker_ activates as soon as it
+installs. The _page_ keeps the prompt, through `onNeedReload` — without
+that handler the library reloads by itself, which is the mid-session swap
+prompt mode existed to prevent. The banner's button is a plain
+`window.location.reload()`, because `updateServiceWorker` only does work
+in prompt mode and would otherwise look like a button that did nothing.
 
-**`__BUILD_ID__` exists because a stale install and a broken deploy look
-identical from a phone.** Defined in `vite.config.ts` from
-`GITHUB_SHA` (or `dev` locally) and shown in Settings. Without it the
-only way to tell them apart was hunting the screen for a string that had
-been removed, which is how two rounds went by with the deploy under
-suspicion while every CI run had been green.
+**`autoUpdate` also forces `clientsClaim`, and the workbox options cannot
+turn it off** — setting `clientsClaim: false` there is inert, verified by
+reading the generated `sw.js`. That matters because claiming hands the
+open page to the new worker while it is still running the _old_ bundle,
+so a dynamic import asks for a chunk by a hash the new precache does not
+hold and a fresh deploy has removed from the server. `stale-chunk.ts`
+closes it: Vite raises `vite:preloadError` for exactly this, and the
+handler reloads once. It reads `PerformanceNavigationTiming.type` rather
+than storing a flag — a page that is already the product of a reload must
+not reload again, and a flag written to survive a reload is persistence,
+which belongs behind a port.
+
+**There was already a version line in Settings and it said "Lift".**
+`VITE_COMMIT_SHA` and `VITE_APP_VERSION` have been injected by the deploy
+all along. The rename missed this one footer, so the single place that
+could answer "which build am I on" was labelled with a name the app has
+not had for months — worse than nothing, because it reads as a different
+app — and it sat below the fold with nothing to press. A `define` was
+added to solve that before anybody looked for what existed, and has been
+removed again. **Look for the thing before building it** is the standing
+rule, and this is the freshest example of what ignoring it costs.
 
 **Settings also carries a manual "Check for updates", and that is
 deliberate duplication.** The banner asks, a waiting worker is applied at

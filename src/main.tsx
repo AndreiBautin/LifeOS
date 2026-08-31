@@ -5,6 +5,7 @@ import { RouterProvider } from 'react-router-dom'
 import { bootstrap } from '@/app/di'
 import { AppProviders } from '@/app/providers'
 import { router } from '@/app/router'
+import { watchForStaleChunks } from '@/features/pwa/stale-chunk'
 import { logger } from '@/shared/logging/logger'
 
 import './index.css'
@@ -17,6 +18,8 @@ import './index.css'
  * few milliseconds against a local IndexedDB; the saving is an entire
  * category of loading state spread across every component.
  */
+watchForStaleChunks()
+
 const container = document.getElementById('root')
 if (container === null) throw new Error('Root element is missing from the document.')
 

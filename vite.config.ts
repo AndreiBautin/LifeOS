@@ -39,7 +39,32 @@ export default defineConfig(({ mode }) => {
       react(),
       tailwindcss(),
       VitePWA({
-        registerType: 'prompt',
+        /*
+         * **The worker no longer waits, and the banner still asks.**
+         *
+         * `'prompt'` installs a new version and leaves it *waiting* until
+         * a client sends `SKIP_WAITING`. That is one message away from
+         * fine and it stranded a real device: a banner missed once left
+         * the old shell serving forever, and closing the app and opening
+         * it again never promotes a waiting worker, so every restart
+         * changed nothing.
+         *
+         * The client-side repair for that shipped, and could not reach
+         * the device that needed it — it lived in the bundle the stale
+         * worker was refusing to serve. **This is the only lever that
+         * reaches a stuck install**, because a browser fetches `sw.js`
+         * from the network itself rather than through the worker it is
+         * replacing.
+         *
+         * `autoUpdate` here means the *worker* activates as soon as it
+         * installs. It does **not** mean the page reloads underneath
+         * anybody: `onNeedReload` in `UpdatePrompt` shows the banner
+         * instead, so the reason `'prompt'` was chosen — never swapping
+         * the app out from under somebody three sets into a session —
+         * still holds. What changes is that the new version can no longer
+         * be stranded behind an unanswered question.
+         */
+        registerType: 'autoUpdate',
         injectRegister: null,
 
         // Every asset the shell needs is precached, so a cold start with

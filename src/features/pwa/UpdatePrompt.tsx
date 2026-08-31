@@ -1,83 +1,74 @@
 import { RefreshCw } from 'lucide-react'
+import { useState } from 'react'
 import { useRegisterSW } from 'virtual:pwa-register/react'
 
 import { Button } from '@/components/shared/primitives'
 import { logger } from '@/shared/logging/logger'
 
 /**
- * A new version, offered rather than applied.
+ * A new version, installed quietly and applied when you say so.
  *
- * The service worker is registered with `registerType: 'prompt'` on
- * purpose. Swapping the app out from under someone who is three sets into
- * a session — which `autoUpdate` would do — risks losing the set they are
- * mid-way through typing. The banner waits.
+ * **The worker and the page answer two different questions, and they used
+ * to be answered together.** "Should the new version take over as the
+ * worker" and "should this page reload right now" are not the same
+ * question, and `registerType: 'prompt'` said no to both: a new version
+ * installed and then *waited*, indefinitely, for a client to send it
+ * `SKIP_WAITING`.
  *
- * **But a waiting worker is not applied by closing the app and opening it
- * again, and that is the trap this had.** A new version installs and then
- * *waits*, and only `skipWaiting` promotes it — so a banner missed once,
- * or dismissed with "Later", left the old shell serving forever. Every
- * restart re-showed the banner and changed nothing, which is exactly what
- * "I closed it and reloaded and it is still the old one" looks like from
- * the outside. Two reports of a stale install came through before the
- * mechanism was suspected rather than the deploy.
+ * That stranded a real install. A banner missed once — or answered with
+ * "Later" — left the old shell serving forever, and closing the app and
+ * opening it again never promotes a waiting worker, so every restart
+ * re-showed the banner and changed nothing. Worse, the client-side repair
+ * for it shipped and could not reach the device that needed it: the fix
+ * lived in the bundle the stale worker was refusing to serve. **Only a
+ * change to the worker itself reaches a stuck install**, because the
+ * browser fetches `sw.js` from the network rather than through the worker
+ * it replaces.
  *
- * So a worker that was **already waiting when the page registered** is
- * applied at once. It arrived in an earlier session, which means the
- * reason for prompting does not apply: nothing is three sets into
- * anything a quarter of a second after launch. Updates that arrive
- * *during* a session still ask, which is the case the prompt was for.
+ * So the worker is `autoUpdate` and promotes itself, and the *page* keeps
+ * the prompt. The reason the prompt existed still holds — nobody's set
+ * should vanish mid-session because a deploy landed — but it is no longer
+ * the thing standing between a shipped change and the device.
  *
- * IndexedDB is untouched by an update either way; only the precached
- * shell is versioned, so reloading never costs data.
+ * IndexedDB is untouched either way; only the precached shell is
+ * versioned, so reloading never costs data.
  */
 export function UpdatePrompt() {
-  const {
-    needRefresh: [needRefresh, setNeedRefresh],
-    updateServiceWorker,
-  } = useRegisterSW({
+  /*
+   * The banner's own state rather than `needRefresh`, which belongs to
+   * the prompt flow. In auto mode the library calls `onNeedReload` — on
+   * the worker having *activated* — and `updateServiceWorker` becomes a
+   * no-op, so there is nothing for that state to mean here.
+   */
+  const [ready, setReady] = useState(false)
+
+  useRegisterSW({
+    /*
+     * Called once the new worker has taken over. Without this the library
+     * reloads the page by itself, which is exactly the mid-session swap
+     * this component exists to prevent.
+     */
+    onNeedReload() {
+      logger.info('sw.update-ready', {})
+      setReady(true)
+    },
+
     onRegisteredSW(url, registration) {
       logger.debug('sw.registered', { url })
-
-      if (registration?.waiting != null) {
-        /*
-         * Waiting *before* this registration, so it was installed in an
-         * earlier run of the app. Apply it now rather than asking: the
-         * question "may I swap the app out" answers itself at launch.
-         */
-        logger.info('sw.applying-waiting-update', {})
-
-        /*
-         * The worker is asked directly rather than through
-         * `updateServiceWorker`, which is returned by the very call this
-         * callback is an argument to — reaching it needs a ref written
-         * during render, which React forbids. This is what that function
-         * does anyway: promote the waiting worker, then reload once it
-         * takes control.
-         */
-        navigator.serviceWorker.addEventListener(
-          'controllerchange',
-          () => {
-            window.location.reload()
-          },
-          { once: true },
-        )
-        registration.waiting.postMessage({ type: 'SKIP_WAITING' })
-        return
-      }
 
       /*
        * Ask again whenever the app comes back to the front.
        *
-       * `registerType: 'prompt'` decides what happens *once a new version
-       * is found*; it does nothing about finding one. The browser checks
-       * on a full page load, and an installed PWA on a phone is rarely
+       * The registration type decides what happens *once a new version is
+       * found*; it does nothing about finding one. The browser checks on
+       * a full page load, and an installed PWA on a phone is rarely
        * loaded again — it is resumed from the background for weeks. So a
-       * shipped change could sit undelivered indefinitely with no banner
-       * and nothing wrong, which is exactly what kept happening.
+       * shipped change could sit undelivered indefinitely with nothing
+       * visibly wrong.
        *
        * Resuming is the right moment because it is free: the check is a
-       * conditional request for one small file, and it happens when the
-       * user has just returned rather than while they are mid-set.
+       * conditional request for one small file, and it lands when the
+       * user has just returned rather than mid-set.
        */
       if (registration === undefined) return
 
@@ -89,12 +80,13 @@ export function UpdatePrompt() {
         })
       })
     },
+
     onRegisterError(error) {
       logger.error('sw.register-failed', error)
     },
   })
 
-  if (!needRefresh) return null
+  if (!ready) return null
 
   return (
     <div
@@ -113,7 +105,14 @@ export function UpdatePrompt() {
         size="sm"
         variant="primary"
         onClick={() => {
-          void updateServiceWorker(true)
+          /*
+           * A plain reload, because the worker has already taken over —
+           * `updateServiceWorker` only has work to do in prompt mode,
+           * where it is what sends `SKIP_WAITING`. Here it returns
+           * without doing anything, and calling it would look like the
+           * button worked while nothing happened.
+           */
+          window.location.reload()
         }}
       >
         Reload
@@ -122,7 +121,7 @@ export function UpdatePrompt() {
         size="sm"
         variant="ghost"
         onClick={() => {
-          setNeedRefresh(false)
+          setReady(false)
         }}
       >
         Later
