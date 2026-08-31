@@ -1,5 +1,6 @@
 import type { CheckIn } from '@/domain/autoregulation/check-in'
 import type { FinanceReading } from '@/domain/finance/reading'
+import type { AtsProvider, FetchedPosting } from '@/domain/jobs/boards'
 import type { Resume } from '@/domain/resume/resume'
 import type { Item } from '@/domain/backlog/item'
 import type { Project } from '@/domain/projects/project'
@@ -378,6 +379,18 @@ export interface FinanceRepository {
 export interface ResumeRepository {
   get(): Promise<Resume | undefined>
   save(resume: Resume): Promise<void>
+}
+
+/**
+ * Reading a public ATS board.
+ *
+ * A port rather than a direct call, for the reason every port here
+ * exists: the use-case must be testable without the internet, and the
+ * one thing a job board is guaranteed to do is answer differently
+ * tomorrow.
+ */
+export interface JobBoardGateway {
+  fetch(provider: AtsProvider, token: string): Promise<readonly FetchedPosting[]>
 }
 
 export interface TripRepository {

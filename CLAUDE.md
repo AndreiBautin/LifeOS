@@ -1122,6 +1122,66 @@ filter on floating point eventually disagrees with itself. Two of its
 rules had a database behind them and no longer do: `wouldCreateCycle`, and
 the refusal to delete anything with dependents still attached.
 
+**The app talks to three job boards now, and that was tested before it
+was claimed.** Greenhouse, Lever and Ashby publish every open posting
+as JSON with no key and no account, and all three answer a browser
+request directly. An earlier answer in this project said job discovery
+"requires a server or proxy, full stop" — that is true of LinkedIn and
+Indeed and false of the public ATS boards, which is what the other app
+was already using. **The correction came from running three fetches,
+not from thinking harder.**
+
+This makes four outbound hosts: OpenStreetMap for tiles, Nominatim for
+geocoding, Firebase when sync is configured, and now the boards. Each
+one is a decision, not a precedent.
+
+**Parsing is pure and fetching is not.** `domain/jobs/boards.ts` turns
+a board's JSON into postings and touches no network;
+`infrastructure/jobs/ats-gateway.ts` is the only thing that fetches.
+Every quirk below is therefore testable against a fixture rather than
+against the internet on the day the suite runs — and the fixtures are
+shapes taken from the live APIs rather than invented.
+
+Three of those quirks were found in the first posting looked at, which
+is why they are worth naming:
+
+- **Ashby's own `isRemote` cannot be trusted.** A Ramp posting had
+  `workplaceType: "Hybrid"` and `isRemote: true`. Believing the flag
+  floods a remote search with office jobs, so `workplaceType` is
+  authoritative whenever present and only a blank one falls back to the
+  location text.
+- **Ashby's compensation tiers hold several kinds of component.** The
+  first was `EquityPercentage` with null values and the salary was
+  second; taking the first reports somebody’s option grant as their pay.
+- **Greenhouse's `content` is entity-encoded**, so it needs decoding
+  twice — once to markup, once to words. Stopping after one leaves
+  `&lt;p&gt;` for a keyword search to match through. Its `id` is also a
+  _number_, and its `absolute_url` points at whatever embedded board the
+  company runs, so the apply URL is built from the canonical address
+  instead.
+
+**Lever answers 200 for a board that does not exist**, with
+`{"ok":false}` rather than a 404 — so the body shape is the only way to
+tell a real empty board from a typo.
+
+**Read on demand, never on a timer.** These are free services run for
+employers rather than for us, and boards are read one at a time rather
+than in parallel. A dozen simultaneous requests from every device that
+opens a screen is how a free API stops being free. Same restraint the
+geocoder shows towards Nominatim.
+
+**A board that fails is named, and the sweep continues.** A mistyped
+slug is the commonest thing that goes wrong, and a sweep that threw on
+the first bad one would report nothing and leave somebody blaming the
+network.
+
+**Nothing is stored yet, deliberately.** The other app keeps a SQLite
+mirror of every posting from every board; approving a lead into a
+tracked application is the next piece, and until that exists,
+persisting a mirror of three job boards would be storing something
+nobody can act on. LifeOS records what you did, not what the internet
+contains.
+
 **The lead scorer is ported from Career Command Center, and it is a
 port rather than a rewrite.** `domain/jobs/score.ts`. Hard filters drop
 a posting outright; what survives earns 0–100 from title hits, keyword

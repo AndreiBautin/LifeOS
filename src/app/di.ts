@@ -1,4 +1,5 @@
 import type { Geolocation } from '@/domain/atlas/Geolocation'
+import { createAtsGateway } from '@/infrastructure/jobs/ats-gateway'
 import type { PlaceSearchProvider } from '@/domain/atlas/PlaceSearch'
 import type { IdGenerator } from '@/domain/ids/ids'
 import type {
@@ -19,6 +20,7 @@ import type {
   SyncTarget,
   TombstoneRepository,
   FinanceRepository,
+  JobBoardGateway,
   ResumeRepository,
   TripRepository,
   ViceRepository,
@@ -88,6 +90,7 @@ export interface AppServices {
   readonly review: ReviewRepository
   readonly places: PlaceRepository
   readonly finance: FinanceRepository
+  readonly boards: JobBoardGateway
   readonly resume: ResumeRepository
   readonly trips: TripRepository
   readonly dailies: DailyRepository
@@ -153,6 +156,7 @@ export async function bootstrap(): Promise<BootstrapResult> {
     review: createReviewRepository(db, systemClock),
     places: createPlaceRepository(db, systemClock),
     finance: createFinanceRepository(db, systemClock),
+    boards: createAtsGateway(),
     resume: createResumeRepository(db, systemClock),
     trips: createTripRepository(db, systemClock),
     dailies: createDailyRepository(db, systemClock),
