@@ -1148,6 +1148,43 @@ prepended to it — a "from Greenhouse, scored 80" preamble would put
 those words into the match, where "greenhouse" and the board slug would
 read as requirements.
 
+**Terms are ranked by count discounted by how late they first appear,
+and getting there took one wrong answer worth recording.**
+
+Frequency alone rewards boilerplate, because boilerplate repeats. The
+usual fix is inverse document frequency and it wants a corpus of
+postings, which an app reading one job ad does not have.
+
+**Capitalisation was tried first and measured wrong.** The idea: a
+posting capitalises Kubernetes and Terraform mid-sentence while prose
+stays lower, so the writer is telling us which words are names. True of
+the requirements — and equally true of benefits sections, which are
+written in Title Case. On a real posting it promoted "Medical",
+"Available" and "Full-time" and made the list _worse_ than frequency.
+A good-sounding idea that did not survive contact with a document.
+
+**Position survived it, and the separation was not subtle.** On the
+same posting: endpoint at 18% of the way in, macos 19%, fleet 19%,
+gitops 21%, telemetry 25% — against insurance at 67%, 401 at 69%,
+parental 71%, bonding 72%, privacy 99%. Postings put the job first and
+the benefits and legal last, and that is structural rather than lucky.
+
+The weight is `count × (1 − firstAt / total)`. **First rather than
+average**, because a requirement named at the top and mentioned again
+among the benefits is still a requirement.
+
+Measured before and after on the posting that started it. Before:
+`bonding ×6, coverage ×6, through ×6, weeks ×6, fleet ×5, pay ×5`.
+After: `fleet ×5, how, build, endpoint, macos, windows`. Every benefits
+word left the top twelve, and the phrases went from `bonding only,
+parental leave, weeks birthing` to `fleet macos, corporate security,
+fleet telemetry`.
+
+Nothing is dropped, only ranked — `dental` still reports its four
+mentions, further down. A word list that removed it would be the app
+deciding what counts as a skill, which is the line held everywhere else
+here.
+
 **A real posting is mostly not the job, and that is a live limitation.**
 The match was built against hand-written three-sentence fixtures. The
 first genuine posting — 5,400 characters of Ashby ad — produced a gap

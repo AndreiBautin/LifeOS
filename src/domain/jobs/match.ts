@@ -128,6 +128,40 @@ function segments(text: string): readonly string[] {
   return text.split(SEGMENT_BREAK)
 }
 
+/**
+ * How much a term matters: how often, discounted by how late.
+ *
+ * **Frequency alone rewards boilerplate, because boilerplate repeats.**
+ * A real posting put `bonding ×6` and `coverage ×6` above `kubernetes`
+ * and `macos` — sorted exactly backwards from what somebody needs. The
+ * usual fix is inverse document frequency and wants a corpus of
+ * postings, which an app reading one job ad does not have.
+ *
+ * **Capitalisation was tried first and measured wrong.** The idea was
+ * that a posting capitalises Kubernetes and Terraform mid-sentence while
+ * prose stays lower — true of the requirements, and equally true of
+ * benefits sections, which are written in Title Case. On a real posting
+ * it promoted "Medical", "Available" and "Full-time" and made the list
+ * worse. It is recorded here because it is a good-sounding idea that
+ * does not survive contact with a document.
+ *
+ * **Position does survive it.** Postings put the job first and the
+ * benefits and legal boilerplate last, and on the posting that started
+ * this the separation was not subtle: endpoint at 18%, macos 19%, fleet
+ * 19%, gitops 21%, telemetry 25% — against insurance at 67%, 401 at
+ * 69%, parental 71%, bonding 72%, privacy 99%.
+ *
+ * So a term is weighed by its count, scaled by how early it *first*
+ * appears. First rather than average, because a requirement named once
+ * at the top and mentioned again in the benefits is still a requirement.
+ */
+function weigh(count: number, firstAt: number, total: number): number {
+  if (total === 0) return count
+
+  // 1.0 at the very top, 0.0 at the very bottom.
+  return count * (1 - firstAt / total)
+}
+
 const SEGMENT_BREAK = new RegExp(
   [
     '[\\r\\n]+', // a line ending is always a break
@@ -372,11 +406,14 @@ export function matchResume(
   ignoring: readonly string[] = [],
 ): Match {
   const ignored = new Set(ignoring.flatMap((word) => tokenise(word)))
+  const words = tokenise(description).filter((token) => !ignored.has(token))
+
   const counts = new Map<string, number>()
-  for (const token of tokenise(description)) {
-    if (ignored.has(token)) continue
+  const firstAt = new Map<string, number>()
+  words.forEach((token, index) => {
     counts.set(token, (counts.get(token) ?? 0) + 1)
-  }
+    if (!firstAt.has(token)) firstAt.set(token, index)
+  })
 
   const mine = new Set(
     tokenise(
@@ -405,21 +442,31 @@ export function matchResume(
   )
 
   const phraseCounts = new Map<string, number>()
-  for (const phrase of phrases(description)) {
-    if (myPhrases.has(phrase)) continue
-    if (phrase.split(' ').some((word) => ignored.has(word))) continue
+  const phraseFirstAt = new Map<string, number>()
+  phrases(description).forEach((phrase, index) => {
+    if (myPhrases.has(phrase)) return
+    if (phrase.split(' ').some((word) => ignored.has(word))) return
     phraseCounts.set(phrase, (phraseCounts.get(phrase) ?? 0) + 1)
-  }
+    if (!phraseFirstAt.has(phrase)) phraseFirstAt.set(phrase, index)
+  })
+  const totalPhrases = phrases(description).length
 
-  const byWeight = (a: Term, b: Term): number => b.count - a.count || a.word.localeCompare(b.word)
-  covered.sort(byWeight)
-  missing.sort(byWeight)
+  const ranked = (terms: readonly Term[], positions: ReadonlyMap<string, number>, total: number) =>
+    [...terms].sort(
+      (a, b) =>
+        weigh(b.count, positions.get(b.word) ?? total, total) -
+          weigh(a.count, positions.get(a.word) ?? total, total) || a.word.localeCompare(b.word),
+    )
 
-  const missingPhrases = [...phraseCounts].map(([word, count]) => ({ word, count })).sort(byWeight)
+  const missingPhrases = ranked(
+    [...phraseCounts].map(([word, count]) => ({ word, count })),
+    phraseFirstAt,
+    totalPhrases,
+  )
 
   return {
-    covered,
-    missing,
+    covered: ranked(covered, firstAt, words.length),
+    missing: ranked(missing, firstAt, words.length),
     missingPhrases,
     /*
      * Absent rather than zero on an empty posting, which is the rule

@@ -226,12 +226,77 @@ describe('the noise a real posting carries', () => {
       'Ramp',
     ])
 
-    expect(match.missing.map((one) => one.word)).toEqual(['hiring', 'kubernetes'])
+    expect(match.missing.map((one) => one.word).sort()).toEqual(['hiring', 'kubernetes'])
   })
 
   it('drops a phrase built out of the employer’s name too', () => {
     const match = matchResume('Ramp engineering is hiring', resumeWith(['Nothing']), ['Ramp'])
 
     expect(match.missingPhrases.map((one) => one.word)).not.toContain('ramp engineering')
+  })
+})
+
+describe('ranking by how much a term matters', () => {
+  /*
+   * Frequency alone rewards boilerplate, because boilerplate repeats. A
+   * real posting put `bonding ×6` and `coverage ×6` above `kubernetes`
+   * and `macos` — sorted exactly backwards from what somebody needs.
+   *
+   * Capitalisation was tried first and measured wrong: benefits sections
+   * are written in Title Case, so it promoted "Medical" and "Full-time".
+   * Position survived the same test — on that posting, endpoint sat at
+   * 18% of the way in and bonding at 72%.
+   */
+  /*
+   * The filler is sixty *distinct* words rather than one repeated. The
+   * first attempt at this test repeated "Filler" forty times, which
+   * legitimately outranked everything — the fixture was wrong, not the
+   * ranking, and it is worth saying so where the next person will read
+   * it.
+   */
+  const filler = Array.from({ length: 60 }, (_unused, index) => `padding${String(index)}`).join(' ')
+
+  it('puts an early term above a late one that repeats more', () => {
+    const posting = ['You will run Kubernetes.', filler, 'Dental. Dental. Dental. Dental.'].join(
+      ' ',
+    )
+
+    const match = matchResume(posting, resumeWith(['Nothing']))
+    const order = match.missing.map((one) => one.word)
+
+    // The claim is the ordering of these two, not the top of the list —
+    // "run" opens the sentence and beats Kubernetes by one slot, which
+    // is the ranking working rather than failing.
+    expect(order.indexOf('kubernetes')).toBeLessThan(order.indexOf('dental'))
+    // Still counted four times — it is ranked below, not thrown away.
+    expect(match.missing.find((one) => one.word === 'dental')?.count).toBe(4)
+  })
+
+  it('still prefers the more frequent of two terms in the same place', () => {
+    const match = matchResume('kubernetes terraform terraform', resumeWith(['Nothing']))
+
+    expect(match.missing.slice(0, 2).map((one) => one.word)).toEqual(['terraform', 'kubernetes'])
+  })
+
+  /*
+   * First rather than average: a requirement named at the top and
+   * mentioned again among the benefits is still a requirement.
+   */
+  it('weighs a term by where it first appears', () => {
+    const posting = ['Kubernetes at the top.', filler, 'Kubernetes again.'].join(' ')
+
+    expect(matchResume(posting, resumeWith(['Nothing'])).missing[0]?.word).toBe('kubernetes')
+  })
+
+  it('ranks phrases the same way', () => {
+    const posting = [
+      'You will use Azure Functions.',
+      filler,
+      'Parental leave. Parental leave.',
+    ].join(' ')
+
+    expect(matchResume(posting, resumeWith(['Nothing'])).missingPhrases[0]?.word).toBe(
+      'azure functions',
+    )
   })
 })
