@@ -13,6 +13,7 @@ import type {
   DailyRepository,
   UpgradeRepository,
   ViceRepository,
+  FinanceRepository,
   WeighInRepository,
   WorkoutRepository,
 } from '@/domain/repositories/ports'
@@ -50,6 +51,7 @@ export interface BackupRepositories {
   readonly dailies: DailyRepository
   readonly vices: ViceRepository
   readonly weighIns: WeighInRepository
+  readonly finance: FinanceRepository
   readonly explored: ExploredAreaRepository
 }
 
@@ -195,6 +197,13 @@ export const COLLECTIONS: Readonly<Record<CollectionKey, Collection>> = {
    * store uses, and it is what makes re-importing a file idempotent
    * instead of duplicating every morning you ever weighed yourself.
    */
+  finance: define({
+    local: (r) => r.finance.all(),
+    fromFile: (data) => data.finance ?? [],
+    idOf: (row) => row.month,
+    restore: (r, rows) => r.finance.restoreMany(rows),
+    tombstoneCollection: 'finance',
+  }),
   weighIns: define({
     local: (r) => r.weighIns.all(),
     fromFile: (data) => data.weighIns ?? [],

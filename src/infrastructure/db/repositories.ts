@@ -1,4 +1,5 @@
 import type { CheckIn } from '@/domain/autoregulation/check-in'
+import type { FinanceReading } from '@/domain/finance/reading'
 import type { Item } from '@/domain/backlog/item'
 import type { Project } from '@/domain/projects/project'
 import type { Upgrade } from '@/domain/upgrades/upgrade'
@@ -35,6 +36,7 @@ import type {
   Clock,
   DailyRepository,
   ExerciseRepository,
+  FinanceRepository,
   ExploredAreaRepository,
   FriendRepository,
   PlaceRepository,
@@ -554,6 +556,28 @@ export function createWeighInRepository(db: AppDatabase, clock: Clock): WeighInR
     },
     async purge(day: string) {
       await db.delete('weighIns', day)
+    },
+  }
+}
+
+export function createFinanceRepository(db: AppDatabase, clock: Clock): FinanceRepository {
+  return {
+    async all() {
+      return db.getAll('finance')
+    },
+    async save(reading: FinanceReading) {
+      await db.put('finance', stamp(reading, clock))
+    },
+    async restoreMany(readings: readonly FinanceReading[]) {
+      const tx = db.transaction('finance', 'readwrite')
+      await Promise.all([...readings.map((reading) => tx.store.put(reading)), tx.done])
+    },
+    async remove(month: string) {
+      await db.delete('finance', month)
+      await bury(db, clock, 'finance', month)
+    },
+    async purge(month: string) {
+      await db.delete('finance', month)
     },
   }
 }

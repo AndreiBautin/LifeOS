@@ -13,6 +13,7 @@ import { BasePage } from '@/features/base/BasePage'
 import { VitalsPage } from '@/features/vitals/VitalsPage'
 import { LimitsPage } from '@/features/limits/LimitsPage'
 import { JobsPage } from '@/features/jobs/JobsPage'
+import { FinancePage } from '@/features/finance/FinancePage'
 import { UpgradesPage } from '@/features/upgrades/UpgradesPage'
 import { CharacterPage } from '@/features/character/CharacterPage'
 import { HistoryPage } from '@/features/history/HistoryPage'
@@ -60,6 +61,7 @@ export const router = createBrowserRouter(
         { path: 'vitals', element: <VitalsPage /> },
         { path: 'limits', element: <LimitsPage /> },
         { path: 'jobs', element: <JobsPage /> },
+        { path: 'finance', element: <FinancePage /> },
         { path: 'map', element: <AtlasPage /> },
         { path: 'map/share', element: <SharePage /> },
         { path: 'map/inbox', element: <InboxPage /> },

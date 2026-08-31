@@ -169,6 +169,7 @@ export function CharacterPage() {
               { to: '/limits', label: 'Limits' },
               { to: '/vitals', label: 'Vitals' },
               { to: '/jobs', label: 'Job search' },
+              { to: '/finance', label: 'Finance' },
               { to: '/upgrades', label: 'Tech tree' },
             ].map((area) => (
               <Link
@@ -286,6 +287,7 @@ const AREA_ROUTES: Partial<Record<string, string>> = {
   vitals: '/vitals',
   dailies: '/today',
   jobs: '/jobs',
+  finance: '/finance',
 }
 
 function AreaCard({ area }: { readonly area: AreaStanding }) {

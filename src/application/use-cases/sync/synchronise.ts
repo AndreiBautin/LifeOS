@@ -25,6 +25,7 @@ import type {
   SyncTarget,
   TombstoneRepository,
   ViceRepository,
+  FinanceRepository,
   WeighInRepository,
   TripRepository,
   UpgradeRepository,
@@ -82,6 +83,7 @@ export interface SynchroniseDeps {
   readonly dailies: DailyRepository
   readonly vices: ViceRepository
   readonly weighIns: WeighInRepository
+  readonly finance: FinanceRepository
   readonly explored: ExploredAreaRepository
   readonly tombstones: TombstoneRepository
   readonly syncState: SyncStateRepository
@@ -159,6 +161,7 @@ export async function synchronise(target: SyncTarget, deps: SynchroniseDeps): Pr
   await deps.dailies.restoreMany(accepted.dailies)
   await deps.vices.restoreMany(accepted.vices)
   await deps.weighIns.restoreMany(accepted.weighIns)
+  await deps.finance.restoreMany(accepted.finance)
   // Union, never replace. See `unionCells`.
   await deps.explored.reveal(accepted.exploredCells as CellId[])
 
@@ -216,6 +219,7 @@ export async function synchronise(target: SyncTarget, deps: SynchroniseDeps): Pr
     accepted.dailies.length +
     accepted.vices.length +
     accepted.weighIns.length +
+    accepted.finance.length +
     (settingsMoved ? 1 : 0)
 
   const offered =
@@ -233,6 +237,7 @@ export async function synchronise(target: SyncTarget, deps: SynchroniseDeps): Pr
     incoming.dailies.length +
     incoming.vices.length +
     incoming.weighIns.length +
+    incoming.finance.length +
     (accepted.settings === undefined ? 0 : 1)
 
   return {
@@ -263,6 +268,7 @@ async function collectLocal(
     dailies,
     vices,
     weighIns,
+    finance,
     explored,
     tombstones,
     settings,
@@ -281,6 +287,7 @@ async function collectLocal(
     deps.dailies.all(),
     deps.vices.all(),
     deps.weighIns.all(),
+    deps.finance.all(),
     deps.explored.all(),
     deps.tombstones.all(),
     deps.settings.get(),
@@ -327,6 +334,7 @@ async function collectLocal(
     dailies: changedSince(dailies, watermark),
     vices: changedSince(vices, watermark),
     weighIns: changedSince(weighIns, watermark),
+    finance: changedSince(finance, watermark),
     /*
      * The whole set, every time, rather than what changed since the
      * watermark. There is nothing to compare against — a cell carries no
@@ -472,6 +480,13 @@ async function applyDeletions(
        * history is a few hundred rows and this runs once per received
        * deletion.
        */
+      case 'finance': {
+        const local = (await deps.finance.all()).find((row) => row.month === tombstone.id)
+        if (local !== undefined && !survives(local, tombstone)) {
+          await deps.finance.purge(tombstone.id)
+        }
+        break
+      }
       case 'weighIns': {
         const local = (await deps.weighIns.all()).find((row) => row.day === tombstone.id)
         if (local !== undefined && !survives(local, tombstone)) {

@@ -44,6 +44,21 @@ export const AREA_TITLES: Record<LifeArea, string> = {
   jobs: 'Journeyman',
   base: 'Steward',
   /*
+   * **Unreachable today, and written down anyway.**
+   *
+   * Finance declares no acts — a net worth is measured, not done — so it
+   * pays no XP and can never be the area that has paid the most. The
+   * calling below cannot currently be shown to anybody.
+   *
+   * It is here because `avatar.test.ts` requires a title for every
+   * declared area, and that guard is right: an area without one reads as
+   * "Adventurer" forever, which is a gap that survives precisely because
+   * nothing fails. The Vitals entry a few lines down was written under
+   * the same "can never happen" and stopped being true the day upkeep
+   * arrived.
+   */
+  finance: 'Provider',
+  /*
    * Reachable now, and it was not when this was written.
    *
    * The note here said Vitals pays no XP so this could never be the

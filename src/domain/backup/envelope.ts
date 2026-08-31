@@ -4,6 +4,7 @@ import type { Daily } from '@/domain/dailies/daily'
 import type { Vice } from '@/domain/vitals/charges'
 import type { WeighIn } from '@/domain/vitals/weight'
 import type { CheckIn } from '@/domain/autoregulation/check-in'
+import type { FinanceReading } from '@/domain/finance/reading'
 import type { Item } from '@/domain/backlog/item'
 import type { Project } from '@/domain/projects/project'
 import type { MetricDefinition, MonthlySnapshot } from '@/domain/review/metric'
@@ -95,6 +96,7 @@ export interface BackupCounts {
   readonly dailies: number
   readonly vices: number
   readonly weighIns: number
+  readonly finance: number
   /** Geohash cells of walked ground. Counted, though it is a set of ids. */
   readonly exploredCells: number
 }
@@ -134,6 +136,7 @@ export interface BackupData {
    */
   readonly vices?: readonly Vice[]
   readonly weighIns?: readonly WeighIn[]
+  readonly finance?: readonly FinanceReading[]
   /**
    * Walked ground, as bare cell ids.
    *
@@ -160,6 +163,7 @@ export function countsFor(data: BackupData): BackupCounts {
     dailies: data.dailies?.length ?? 0,
     vices: data.vices?.length ?? 0,
     weighIns: data.weighIns?.length ?? 0,
+    finance: data.finance?.length ?? 0,
     exploredCells: data.exploredCells?.length ?? 0,
   }
 }
@@ -180,6 +184,7 @@ export const BACKUP_COUNT_KEYS = [
   'dailies',
   'vices',
   'weighIns',
+  'finance',
   'exploredCells',
 ] as const satisfies readonly (keyof BackupCounts)[]
 

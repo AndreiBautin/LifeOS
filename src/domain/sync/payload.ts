@@ -1,4 +1,5 @@
 import type { CheckIn } from '@/domain/autoregulation/check-in'
+import type { FinanceReading } from '@/domain/finance/reading'
 import type { Item } from '@/domain/backlog/item'
 import type { DailyProgressEntry } from '@/domain/backlog/daily-goal'
 import type { Exercise } from '@/domain/exercises/exercise'
@@ -47,6 +48,7 @@ export interface SyncPayload {
   readonly dailies: readonly Daily[]
   readonly vices: readonly Vice[]
   readonly weighIns: readonly WeighIn[]
+  readonly finance: readonly FinanceReading[]
   /**
    * Ground you have walked, as geohash cells.
    *
@@ -88,6 +90,7 @@ export const EMPTY_PAYLOAD: SyncPayload = {
   exploredCells: [],
   vices: [],
   weighIns: [],
+  finance: [],
   tombstones: [],
 }
 
@@ -107,6 +110,7 @@ export function isEmpty(payload: SyncPayload): boolean {
     payload.dailies.length === 0 &&
     payload.vices.length === 0 &&
     payload.weighIns.length === 0 &&
+    payload.finance.length === 0 &&
     payload.exploredCells.length === 0 &&
     payload.tombstones.length === 0 &&
     payload.settings === undefined
@@ -129,6 +133,7 @@ export function payloadSize(payload: SyncPayload): number {
     payload.dailies.length +
     payload.vices.length +
     payload.weighIns.length +
+    payload.finance.length +
     // Counted as one, because that is what it is to a reader: the fog
     // moved, once, however many cells were in the batch.
     (payload.exploredCells.length === 0 ? 0 : 1) +
@@ -317,6 +322,7 @@ export function acceptableFrom(
      * a correction rather than an addition.
      */
     weighIns: incoming.weighIns.filter((item) => shouldAccept(item, 'weighIns', item.day, index)),
+    finance: incoming.finance.filter((item) => shouldAccept(item, 'finance', item.month, index)),
     // Exempt on purpose. There is no tombstone that could apply to ground
     // somebody walked, so there is nothing here to filter against.
     exploredCells: incoming.exploredCells,

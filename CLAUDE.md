@@ -1173,6 +1173,52 @@ feature rather than the registry, because `domain/game/` must not know
 that a browser exists; it is partial on purpose, since an area with no
 screen is a heading rather than a link that goes nowhere.
 
+**Finance is the one area that measures and pays nothing, and it is
+the clearest case in the app for that.** Three numbers a month — net
+worth, retirement, credit score — read off a statement. Typing your net
+worth in is a _measurement_, which the app already refuses to pay for
+when it is a bodyweight, and paying for the number going up would be
+paying for an outcome. So `acts: []`, deliberately. An area that
+measures without paying is not an incomplete area; Vitals ran that way
+for most of its life.
+
+**The credit score is a ladder and net worth is not**, which is the
+three rules doing real work rather than a preference. A ladder must
+name an external standard: FICO publishes its bands, every lender
+quotes them, and nothing this app does can move them — so `CREDIT_BANDS`
+is `[300, 580, 670, 740, 800]` and the fit to five levels is genuine
+rather than arranged. Net worth has no published figure at which
+somebody has finished having money, so giving it levels would invent
+exactly the scale the model refuses. It is judged on direction.
+
+**No transactions, and that is the same call the macros made.** A
+ledger needs every purchase entered, it is the first thing to fall
+behind, and everything derived from a stale one is quietly wrong.
+
+**A month is one row filled in over time, not three rows pretending to
+be one.** `recordFinance` merges: the figures arrive on different days —
+a statement on the 1st, a score whenever the issuer refreshes it — so
+entering one must not blank the others. An empty box leaves a figure
+_alone_ rather than clearing it, because there is no telling "I did not
+check" from "I meant zero" once written, and only the second corrupts a
+series.
+
+**The score is read live and the money figures are read for the month**,
+which is the ladder/rating split made concrete. A ladder must not depend
+on whether the review was opened, so it takes the most recent score
+whenever that was; the ratings need one figure per month in a series.
+`latest` works per _field_ rather than per row, because somebody who
+checks their score quarterly has months where one figure is present and
+the other is not.
+
+**A score outside 300–850 is refused, not clamped.** Quietly rounding a
+typo to 850 would put somebody on the top rung of a ladder by accident,
+which is the one thing a ladder must never do.
+
+**`DB_VERSION` went to 11 with a new guarded block**, never an edit to
+step 10 — a device that has run a step will not run it again, so a store
+added there would reach nobody who has already opened the app.
+
 **No area scores itself.** `domain/review/` is the spine and
 `from-registry.ts` is the join: a rating declared in
 `domain/game/registry.ts` becomes a metric the evaluators judge. Do not add

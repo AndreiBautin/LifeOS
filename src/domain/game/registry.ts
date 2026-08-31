@@ -4,6 +4,7 @@ import { STRENGTH_LIFT_SLUGS } from '@/domain/exercises/catalogue'
 import { STRENGTH_STANDARDS, TOTAL_STANDARDS } from './character'
 import type { Ladder } from './ladder'
 import type { Rating } from './rating'
+import { CREDIT_BANDS } from '@/domain/finance/reading'
 import { TRAINING_ACTS, type ActDefinition } from './xp'
 
 /**
@@ -32,6 +33,7 @@ export const LIFE_AREAS = [
   'jobs',
   'base',
   'vitals',
+  'finance',
 ] as const
 
 export type LifeArea = (typeof LIFE_AREAS)[number]
@@ -442,6 +444,67 @@ export const SCORING: readonly AreaScoring[] = [
       },
     ],
     acts: [{ id: 'jobs.application-sent', area: 'jobs', label: 'Sent an application', points: 30 }],
+    hasTree: false,
+  },
+  {
+    area: 'finance',
+    name: 'Finance',
+    phase: 7,
+    /*
+     * **A ladder for the credit score and nothing else, which is the
+     * three rules working rather than an omission.**
+     *
+     * A ladder must name an external standard. FICO publishes its bands,
+     * every lender quotes them, and nothing this app does can move them
+     * — so credit has real levels in the same sense a powerlifting total
+     * does.
+     *
+     * Net worth has no such figure. There is no published amount at
+     * which somebody has finished having money, so giving it levels
+     * would be inventing a scale the app can move, which is the second
+     * rule exactly. It is judged on *direction* instead, which is what a
+     * rating is for.
+     */
+    ladders: [
+      {
+        id: 'finance.credit',
+        source: 'finance.credit-score',
+        name: 'Credit',
+        unit: 'FICO',
+        anchor: 'The published FICO bands — fair at 580, exceptional at 800',
+        thresholds: [...CREDIT_BANDS],
+      },
+    ],
+    ratings: [
+      {
+        id: 'finance.net-worth',
+        source: 'finance.net-worth-in-month',
+        name: 'Net worth',
+        unit: 'minor units',
+        direction: 'increase',
+        cadence: 'monthly',
+      },
+      {
+        id: 'finance.retirement',
+        source: 'finance.retirement-in-month',
+        name: 'Retirement',
+        unit: 'minor units',
+        direction: 'increase',
+        cadence: 'monthly',
+      },
+    ],
+    /*
+     * **No acts, deliberately, and this area is the clearest case for
+     * it.** XP is paid for things you did. Typing your net worth in is a
+     * *measurement* — the app already refuses to pay for standing on a
+     * scale for exactly this reason — and paying for the number going up
+     * would be paying for an outcome, which is the line the job search
+     * draws and the streak mistake in its oldest costume.
+     *
+     * An area that measures without paying is not an incomplete area.
+     * Vitals ran that way for most of its life.
+     */
+    acts: [],
     hasTree: false,
   },
 ]

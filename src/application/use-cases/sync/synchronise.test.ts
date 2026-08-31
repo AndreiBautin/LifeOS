@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import type { Daily } from '@/domain/dailies/daily'
 import { readCharges, type Vice } from '@/domain/vitals/charges'
 import type { WeighIn } from '@/domain/vitals/weight'
+import type { FinanceReading } from '@/domain/finance/reading'
 import { asDailyId, asViceId } from '@/domain/ids/ids'
 
 import type { CheckIn } from '@/domain/autoregulation/check-in'
@@ -27,6 +28,7 @@ import type {
   SyncStateRepository,
   TombstoneRepository,
   ViceRepository,
+  FinanceRepository,
   WeighInRepository,
   TripRepository,
   UpgradeRepository,
@@ -300,6 +302,27 @@ function device(clock: Clock): Device {
    * row for the same day hold two opinions about one fact, so the later
    * one is meant to win outright and nothing is meant to be unioned.
    */
+  const financeStore = new Map<string, FinanceReading>()
+  const finance: FinanceRepository = {
+    all: () => Promise.resolve([...financeStore.values()]),
+    save: (row) => {
+      financeStore.set(row.month, { ...row, updatedAt: clock.now().toISOString() })
+      return Promise.resolve()
+    },
+    restoreMany: (rows) => {
+      for (const row of rows) financeStore.set(row.month, row)
+      return Promise.resolve()
+    },
+    remove: (month) => {
+      financeStore.delete(month)
+      return Promise.resolve()
+    },
+    purge: (month) => {
+      financeStore.delete(month)
+      return Promise.resolve()
+    },
+  }
+
   const weighInStore = new Map<string, WeighIn>()
   const weighIns: WeighInRepository = {
     all: () => Promise.resolve([...weighInStore.values()]),
@@ -389,6 +412,7 @@ function device(clock: Clock): Device {
     dailies,
     vices,
     weighIns,
+    finance,
     dailyStore,
     exercises,
     workouts,

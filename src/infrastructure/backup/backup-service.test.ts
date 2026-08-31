@@ -22,6 +22,7 @@ import {
   createTombstoneRepository,
   createTripRepository,
   createViceRepository,
+  createFinanceRepository,
   createWeighInRepository,
   createUpgradeRepository,
   createExerciseRepository,
@@ -74,6 +75,7 @@ beforeEach(async () => {
     dailies: createDailyRepository(db, testClock),
     vices: createViceRepository(db, testClock),
     weighIns: createWeighInRepository(db, testClock),
+    finance: createFinanceRepository(db, testClock),
   }
 })
 

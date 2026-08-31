@@ -18,6 +18,7 @@ import type {
   SyncStateRepository,
   SyncTarget,
   TombstoneRepository,
+  FinanceRepository,
   TripRepository,
   ViceRepository,
   WeighInRepository,
@@ -38,6 +39,7 @@ import {
   createProjectRepository,
   createReviewRepository,
   createTombstoneRepository,
+  createFinanceRepository,
   createTripRepository,
   createViceRepository,
   createWeighInRepository,
@@ -83,6 +85,7 @@ export interface AppServices {
   readonly friends: FriendRepository
   readonly review: ReviewRepository
   readonly places: PlaceRepository
+  readonly finance: FinanceRepository
   readonly trips: TripRepository
   readonly dailies: DailyRepository
   readonly vices: ViceRepository
@@ -146,6 +149,7 @@ export async function bootstrap(): Promise<BootstrapResult> {
     friends: createFriendRepository(db, systemClock),
     review: createReviewRepository(db, systemClock),
     places: createPlaceRepository(db, systemClock),
+    finance: createFinanceRepository(db, systemClock),
     trips: createTripRepository(db, systemClock),
     dailies: createDailyRepository(db, systemClock),
     vices: createViceRepository(db, systemClock),

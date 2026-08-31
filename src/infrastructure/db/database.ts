@@ -2,6 +2,7 @@ import type { DBSchema, IDBPDatabase } from 'idb'
 import { openDB } from 'idb'
 
 import type { CheckIn } from '@/domain/autoregulation/check-in'
+import type { FinanceReading } from '@/domain/finance/reading'
 import type { Item } from '@/domain/backlog/item'
 import type { Project } from '@/domain/projects/project'
 import type { Upgrade } from '@/domain/upgrades/upgrade'
@@ -61,7 +62,7 @@ export const DB_NAME = 'lifeos'
  * a device that already ran it will not run it again, so changing one
  * leaves two devices with different schemas and no way to tell.
  */
-export const DB_VERSION = 10
+export const DB_VERSION = 11
 
 /**
  * A workout as it is stored, which is not quite a workout as the domain
@@ -281,6 +282,11 @@ export interface LiftDB extends DBSchema {
     key: string
     value: WeighIn
   }
+  /** The money figures, one row a month. */
+  finance: {
+    key: string
+    value: FinanceReading
+  }
   /**
    * **A retired store, declared here and written by nothing.**
    *
@@ -464,6 +470,17 @@ export function openDatabase(name = DB_NAME): Promise<AppDatabase> {
         db.createObjectStore('weighIns', { keyPath: 'day' })
         db.createObjectStore('conditions', { keyPath: 'day' })
       }
+
+      /*
+       * A new guarded block rather than an edit to the one above, which
+       * is the rule this file states and the one it must never break: a
+       * device that already ran step 10 will not run it again, so adding
+       * a store there would reach nobody who has opened the app.
+       */
+      if (oldVersion < 11) {
+        // Keyed by month, so re-entering August corrects it.
+        db.createObjectStore('finance', { keyPath: 'month' })
+      }
     },
 
     blocked() {
@@ -524,6 +541,7 @@ export async function clearAllStores(db: AppDatabase): Promise<void> {
       'vices',
       'weighIns',
       'conditions',
+      'finance',
     ],
     'readwrite',
   )
@@ -546,6 +564,7 @@ export async function clearAllStores(db: AppDatabase): Promise<void> {
     tx.objectStore('vices').clear(),
     tx.objectStore('weighIns').clear(),
     tx.objectStore('conditions').clear(),
+    tx.objectStore('finance').clear(),
     tx.done,
   ])
 }

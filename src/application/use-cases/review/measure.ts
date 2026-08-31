@@ -1,5 +1,6 @@
 import { getGoalsStats } from '@/domain/backlog/goals-stats'
 import { isBase, isJobs, isOwnArea } from '@/domain/base/base'
+import { latest } from '@/domain/finance/reading'
 import { STRENGTH_LIFT_SLUGS } from '@/domain/exercises/catalogue'
 import { asExerciseId } from '@/domain/ids/ids'
 import type { Daily } from '@/domain/dailies/daily'
@@ -16,6 +17,7 @@ import type {
   SettingsRepository,
   UpgradeRepository,
   ViceRepository,
+  FinanceRepository,
   WeighInRepository,
   WorkoutRepository,
 } from '@/domain/repositories/ports'
@@ -49,6 +51,7 @@ export interface MeasureDeps {
   readonly settings: SettingsRepository
   readonly vices: ViceRepository
   readonly weighIns: WeighInRepository
+  readonly finance: FinanceRepository
   readonly clock: Clock
 }
 
@@ -132,6 +135,33 @@ export async function measureAll(deps: MeasureDeps): Promise<Readonly<Record<str
       .filter(
         (action) => action.status === 'done' && action.completedAt?.slice(0, 7) === toMonth(now),
       ).length
+  }
+
+  /*
+   * **The credit score is read live; the money figures are read for the
+   * month.** That split is the ladder/rating split made concrete.
+   *
+   * A ladder is anchored to something external — the FICO bands — and
+   * its answer must not depend on whether the review was opened, so it
+   * takes the most recent score on file whenever that was. The ratings
+   * judge a *direction*, which needs one figure per month in a series,
+   * so they take this month's and nothing else.
+   *
+   * Per field rather than per row, because somebody who checks their
+   * score quarterly and their net worth monthly has months where one is
+   * present and the other is not. Absent, never zero: a month nobody
+   * looked is not a month the number was nothing.
+   */
+  const finance = await deps.finance.all()
+  const score = latest(finance, 'creditScore')
+  if (score !== undefined) measured['finance.credit-score'] = score
+
+  const thisMonthFinance = finance.find((reading) => reading.month === toMonth(now))
+  if (thisMonthFinance?.netWorthMinor !== undefined) {
+    measured['finance.net-worth-in-month'] = thisMonthFinance.netWorthMinor
+  }
+  if (thisMonthFinance?.retirementMinor !== undefined) {
+    measured['finance.retirement-in-month'] = thisMonthFinance.retirementMinor
   }
 
   const friends = await deps.friends.all()

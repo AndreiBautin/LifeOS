@@ -15,6 +15,7 @@ import {
 } from '@/domain/ids/ids'
 import type { Item } from '@/domain/backlog/item'
 import type { Project } from '@/domain/projects/project'
+import type { FinanceReading } from '@/domain/finance/reading'
 import type { Clock, WorkoutRepository, ReviewRepository } from '@/domain/repositories/ports'
 import type { MetricDefinition, MonthlySnapshot } from '@/domain/review/metric'
 import type { Friend } from '@/domain/social/circle'
@@ -51,6 +52,7 @@ function harness(
 
   const backlog: Item[] = []
   const projectList: Project[] = []
+  const financeList: FinanceReading[] = []
   const upgradeList: Upgrade[] = []
   const friendList: Friend[] = []
   const workoutList: ReturnType<typeof aWorkout>[] = []
@@ -100,6 +102,7 @@ function harness(
   const deps: ReviewDeps = {
     items: stub(backlog),
     projects: stub(projectList),
+    finance: stub(financeList),
     upgrades: stub(upgradeList),
     workouts: stub(workoutList) as unknown as WorkoutRepository,
     friends: stub(friendList),
@@ -127,6 +130,7 @@ function harness(
     deps,
     backlog,
     projectList,
+    financeList,
     upgradeList,
     friendList,
     workoutList,
@@ -524,13 +528,26 @@ describe('retiring a metric', () => {
    */
   it('drops it from the readout and leaves its history alone', async () => {
     const { deps, snapshotStore } = harness()
-    const id = asMetricId('finance.net-worth')
+
+    /*
+     * An area the registry does not declare, and that is the whole point
+     * of the test: a *declared* rating keeps its area in the readout
+     * whatever a stored metric does, so retiring one would prove
+     * nothing.
+     *
+     * This said `finance.net-worth` until finance stopped being
+     * imaginary — the id it borrowed to mean "made up" became a real
+     * rating, and the assertion below quietly started testing the
+     * opposite of what it says. Pick something the registry will not
+     * absorb next.
+     */
+    const id = asMetricId('garden.tomatoes')
 
     await saveMetric(
       {
         id,
-        area: 'finance',
-        name: 'Net worth',
+        area: 'garden',
+        name: 'Tomatoes',
         unit: 'currency',
         direction: 'increase',
         cadence: 'monthly',
@@ -544,7 +561,7 @@ describe('retiring a metric', () => {
     await retireMetric(id, deps)
 
     const result = await readout(deps)
-    expect(result.areas.some((area) => area.area === 'finance')).toBe(false)
+    expect(result.areas.some((area) => area.area === 'garden')).toBe(false)
     expect(snapshotStore.get('2026-08')?.values[id]).toBe(1000)
   })
 })

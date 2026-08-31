@@ -1,4 +1,5 @@
 import type { CheckIn } from '@/domain/autoregulation/check-in'
+import type { FinanceReading } from '@/domain/finance/reading'
 import type { Item } from '@/domain/backlog/item'
 import type { Project } from '@/domain/projects/project'
 import type { Upgrade } from '@/domain/upgrades/upgrade'
@@ -355,6 +356,15 @@ export interface WeighInRepository {
   restoreMany(weighIns: readonly WeighIn[]): Promise<void>
   remove(day: string): Promise<void>
   purge(day: string): Promise<void>
+}
+
+/** The monthly money figures, keyed by month for the same reasons. */
+export interface FinanceRepository {
+  all(): Promise<readonly FinanceReading[]>
+  save(reading: FinanceReading): Promise<void>
+  restoreMany(readings: readonly FinanceReading[]): Promise<void>
+  remove(month: string): Promise<void>
+  purge(month: string): Promise<void>
 }
 
 export interface TripRepository {
