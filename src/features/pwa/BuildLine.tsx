@@ -6,12 +6,16 @@ import { logger } from '@/shared/logging/logger'
 /**
  * Which build is running, and a way to go and get a newer one.
  *
- * Both halves exist because of the same failure. A stale install and a
- * broken deploy look identical from a phone — the app is simply not what
- * you shipped — and with no version on screen the only way to tell them
- * apart was hunting for a string that had been removed. That cost two
- * rounds of "it is still the old one" before the update mechanism was
- * suspected rather than the deploy.
+ * **There was already a version line and it said "Lift".** The app was
+ * renamed and this one footer was missed, so the one place that could
+ * have answered "which build am I on" was labelled with a name that had
+ * not existed for months — which is worse than nothing, because it reads
+ * as a different app. It sat below the fold at the end of Settings with
+ * no way to act on it.
+ *
+ * `VITE_COMMIT_SHA` was already being injected by the deploy, so there
+ * is no second mechanism for this: a `define` added here would have been
+ * a duplicate of a variable that has worked all along.
  *
  * The button is deliberately a second route to something that is already
  * supposed to be automatic. The banner asks, and a waiting worker is now
@@ -94,7 +98,11 @@ export function BuildLine() {
   return (
     <div className="mb-8 flex flex-col items-center gap-1">
       <div className="flex items-center gap-3">
-        <span className="text-ink-700 numeric text-xs">build {__BUILD_ID__}</span>
+        <span className="text-ink-700 numeric text-xs">
+          LifeOS {import.meta.env.VITE_APP_VERSION ?? 'dev'}
+          {import.meta.env.VITE_COMMIT_SHA !== undefined &&
+            ` · ${import.meta.env.VITE_COMMIT_SHA.slice(0, 7)}`}
+        </span>
         <Button
           size="sm"
           variant="ghost"

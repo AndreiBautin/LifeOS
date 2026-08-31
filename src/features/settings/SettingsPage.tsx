@@ -412,12 +412,6 @@ export function SettingsPage() {
 
       {/* Not a Section — a footer, not a thing to decide about. */}
       <BuildLine />
-
-      <p className="text-ink-500 mt-8 text-center text-xs">
-        Lift {import.meta.env.VITE_APP_VERSION ?? 'dev'}
-        {import.meta.env.VITE_COMMIT_SHA !== undefined &&
-          ` · ${import.meta.env.VITE_COMMIT_SHA.slice(0, 7)}`}
-      </p>
     </div>
   )
 }

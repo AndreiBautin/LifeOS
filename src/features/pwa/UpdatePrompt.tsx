@@ -36,7 +36,7 @@ export function UpdatePrompt() {
     updateServiceWorker,
   } = useRegisterSW({
     onRegisteredSW(url, registration) {
-      logger.debug('sw.registered', { url, build: __BUILD_ID__ })
+      logger.debug('sw.registered', { url })
 
       if (registration?.waiting != null) {
         /*
@@ -44,7 +44,7 @@ export function UpdatePrompt() {
          * earlier run of the app. Apply it now rather than asking: the
          * question "may I swap the app out" answers itself at launch.
          */
-        logger.info('sw.applying-waiting-update', { build: __BUILD_ID__ })
+        logger.info('sw.applying-waiting-update', {})
 
         /*
          * The worker is asked directly rather than through
