@@ -3339,6 +3339,46 @@ a day and either did or did not — a daily with a streak, which is exactly
 what Upkeep holds. Building a third mechanism for it would have been a
 counting pool wearing a habit's clothes.
 
+**The day figures reach the cut and the portrait, and the thing that
+had to be refused is the obvious build.** The ask was to feed sleep and
+intake into how the cut is going and how the avatar is doing
+health-wise. That is a health bar, and a health bar needs a
+denominator — there is **no published figure at which a person is 100%
+healthy**, so drawing one would invent exactly the scale this model
+refuses everywhere else, and add a fourth currency to a design that has
+three on purpose. The portrait's own note already refuses "a power
+rating, a gear score" for that reason.
+
+**A figure gets a verdict only where somebody outside this app published
+the bands** — the credit score's rule, applied again:
+
+- **Sleep does.** 7 hours is the AASM/SRS consensus floor for adults and
+  9 the top of the range the National Sleep Foundation quotes for 18–64.
+  Nothing this app does moves those, which is what makes it a scale
+  rather than an invention.
+- **Protein does**, in the form already here: grams per kilogram, which
+  `macros.ts` derives. Comparing what was eaten against it compares two
+  numbers the app already holds.
+- **Calories do not.** There is no universal figure at which somebody
+  has eaten correctly. So calories are **reported and never judged** —
+  net worth's footing, not the credit score's.
+
+**`Condition` names observations and carries their evidence**, which is
+the shape the traits row already uses: "Sleep short" is a label, and
+"6.4 h a night over 14 days" beside it is what makes it a claim somebody
+can check. Absent, never neutral — nothing recorded shows nothing, since
+a bar at the midpoint would assert an unremarkable fortnight rather than
+an unasked question.
+
+**`cutReading` is the only place the new figures touch the phase, and it
+adds no judgement.** `phaseVerdict` still owns what the scale means;
+this contributes the intake that produced it — the thing the app could
+never say before, because it did not know what was eaten. "Losing 0.33%
+a week on 2,418 kcal" is two measurements set side by side. It is
+deliberately not "so eat 2,200", which is the correction that was just
+removed and would be arriving back through the door it left by. Absent
+unless both halves exist, because half of it is not a sentence.
+
 **Macros stopped prescribing, and a day gained a row of its own.** The
 report: _"macro tracking shouldn't be prescriptive — I have Cal AI for
 auto adjustments. I mainly want it for visibility and tracking, the same

@@ -547,6 +547,42 @@ function Upkeep() {
   )
 }
 
+/**
+ * The rate and the intake that produced it, set beside each other.
+ *
+ * **The one place the day figures touch the phase, and it adds no
+ * judgement of its own.** The verdict on the scale is still
+ * `phaseVerdict` reading the trend; what this contributes is the intake,
+ * which the app could not say before because it did not know what was
+ * eaten. "Losing 0.6% a week on 2,400" is two measurements side by side.
+ * "So eat 2,200" is the correction this feature was asked to remove, and
+ * it is not coming back through this door.
+ *
+ * Absent unless both halves exist, because half of it is not a sentence.
+ */
+function CutLine() {
+  const vitals = useVitalsToday()
+  const cut = vitals.data?.cut
+
+  if (cut === undefined) return null
+
+  return (
+    <Card>
+      <p className="text-ink-50 text-sm">
+        <span className="numeric font-semibold">
+          {cut.ratePerWeek > 0 ? '+' : ''}
+          {cut.ratePerWeek.toFixed(2)}% a week
+        </span>{' '}
+        on <span className="numeric font-semibold">{Math.round(cut.calories)} kcal</span>
+      </p>
+      <p className="text-ink-700 mt-1 text-xs">
+        The scale and what you logged eating, over the same stretch — averaged across the {cut.days}{' '}
+        {cut.days === 1 ? 'day' : 'days'} you recorded. Nothing here says to change it.
+      </p>
+    </Card>
+  )
+}
+
 export function VitalsPage() {
   return (
     <div className="space-y-4">
@@ -555,6 +591,8 @@ export function VitalsPage() {
       <Section title="Phase" description="Where the scale is meant to be going">
         <PhaseEditor />
       </Section>
+
+      <CutLine />
 
       <DayReadings />
 

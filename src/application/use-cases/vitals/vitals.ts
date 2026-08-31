@@ -5,6 +5,7 @@ import type {
   Clock,
   SettingsRepository,
   ViceRepository,
+  DayReadingRepository,
   WeighInRepository,
 } from '@/domain/repositories/ports'
 import type { ChargeCycle, ChargeDirection, ChargePreset, DaysLimit } from '@/domain/vitals/charges'
@@ -19,6 +20,14 @@ import {
   type Vice,
 } from '@/domain/vitals/charges'
 import { macroTargets, type MacroTargets } from '@/domain/vitals/macros'
+import {
+  cutReading,
+  dayStanding,
+  type CutReading,
+  type DayStanding,
+} from '@/domain/vitals/day-standing'
+import { SUMMARY_DAYS } from '@/application/use-cases/vitals/days'
+import { shiftDay } from '@/domain/dailies/daily'
 import {
   phaseVerdict,
   weightTrend,
@@ -50,6 +59,7 @@ import {
 export interface VitalsDeps {
   readonly vices: ViceRepository
   readonly weighIns: WeighInRepository
+  readonly dayReadings: DayReadingRepository
   readonly settings: SettingsRepository
   readonly clock: Clock
   readonly ids: IdGenerator
@@ -88,6 +98,21 @@ export interface VitalsToday {
    * unremarkable, which is a different thing from not having been asked.
    */
   readonly phase: PhaseView
+  /**
+   * What the recorded days say about sleep, protein and intake.
+   *
+   * Absent for anything nobody has entered. Only sleep and protein carry
+   * a verdict — see `day-standing.ts` for why calories deliberately do
+   * not.
+   */
+  readonly days: DayStanding
+  /**
+   * The rate and the intake that produced it, side by side.
+   *
+   * The one place the new figures touch the phase, and it adds no
+   * judgement: `phaseVerdict` still owns what the scale means.
+   */
+  readonly cut?: CutReading
 }
 
 export async function vitalsToday(deps: VitalsDeps): Promise<VitalsToday> {
@@ -141,8 +166,22 @@ export async function vitalsToday(deps: VitalsDeps): Promise<VitalsToday> {
           ...(trend === undefined ? {} : { trend }),
         })
 
+  /*
+   * The same window the weight trend compares over, because the two are
+   * read together — "how is the cut going" is a question about one
+   * stretch of days.
+   */
+  const from = shiftDay(today, -(SUMMARY_DAYS - 1))
+  const recorded = (await deps.dayReadings.all()).filter(
+    (one) => one.day >= from && one.day <= today,
+  )
+  const days = dayStanding(recorded, macros?.protein)
+  const cut = cutReading(trend?.ratePerWeek, days)
+
   return {
     pools,
+    days,
+    ...(cut === undefined ? {} : { cut }),
     ...(macros === undefined ? {} : { macros }),
     phase: {
       phase: settings.phase,

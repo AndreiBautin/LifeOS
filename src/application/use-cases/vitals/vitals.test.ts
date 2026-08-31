@@ -1,3 +1,4 @@
+import type { DayReading } from '@/domain/vitals/day-reading'
 import { describe, expect, it } from 'vitest'
 
 import {
@@ -27,10 +28,12 @@ const NOW = new Date('2026-08-27T10:00:00.000Z')
 function deps(seed: {
   vices?: Vice[]
   weighIns?: WeighIn[]
+  dayReadings?: DayReading[]
   phase?: (typeof DEFAULT_SETTINGS)['phase']
 }): VitalsDeps {
   const vices = seed.vices ?? []
   const weighIns = seed.weighIns ?? []
+  const dayReadings: DayReading[] = seed.dayReadings ?? []
 
   return {
     vices: {
@@ -52,6 +55,23 @@ function deps(seed: {
         const at = weighIns.findIndex((one) => one.day === row.day)
         if (at >= 0) weighIns[at] = row
         else weighIns.push(row)
+        return Promise.resolve()
+      },
+      restoreMany: () => Promise.resolve(),
+      remove: () => Promise.resolve(),
+      purge: () => Promise.resolve(),
+    },
+    /*
+     * Backed by a real array rather than stubbed empty, so the tests
+     * below can put a day in and watch it reach the read model.
+     */
+    dayReadings: {
+      all: () => Promise.resolve(dayReadings),
+      byDay: (day: string) => Promise.resolve(dayReadings.find((one) => one.day === day)),
+      save: (row) => {
+        const at = dayReadings.findIndex((one) => one.day === row.day)
+        if (at >= 0) dayReadings[at] = row
+        else dayReadings.push(row)
         return Promise.resolve()
       },
       restoreMany: () => Promise.resolve(),
@@ -276,5 +296,52 @@ describe('changing the quick amounts', () => {
     // either way, and a stored empty list is a thing that has to be
     // explained to every future reader.
     expect((await listVices(services))[0]?.presets).toBeUndefined()
+  })
+})
+
+/*
+ * The wiring, not the arithmetic. `day-standing.test.ts` covers what the
+ * bands mean; this covers that a day somebody entered actually reaches
+ * the screen — which is the step this codebase has watched go missing
+ * more than once.
+ */
+describe('what the recorded days contribute', () => {
+  it('carries sleep through to the read model with a verdict', async () => {
+    const today = await vitalsToday(
+      deps({
+        dayReadings: [
+          { day: '2026-08-26', sleepHours: 6 },
+          { day: '2026-08-27', sleepHours: 6.5 },
+        ],
+      }),
+    )
+
+    expect(today.days.sleep?.average).toBe(6.3)
+    expect(today.days.sleep?.standing).toBe('short')
+  })
+
+  /*
+   * Absent, never zero. A fortnight nobody entered has nothing to say,
+   * which is different from saying it went badly.
+   */
+  it('says nothing when no day has been recorded', async () => {
+    const today = await vitalsToday(deps({}))
+
+    expect(today.days.sleep).toBeUndefined()
+    expect(today.days.calories).toBeUndefined()
+    expect(today.cut).toBeUndefined()
+  })
+
+  /*
+   * The cut line needs both halves: a rate from the scale and an intake
+   * from the days. Half of it is not a sentence.
+   */
+  it('reports the cut only once both the scale and the intake have spoken', async () => {
+    const withoutWeighIns = await vitalsToday(
+      deps({ dayReadings: [{ day: '2026-08-27', calories: 2400 }] }),
+    )
+
+    expect(withoutWeighIns.days.calories?.average).toBe(2400)
+    expect(withoutWeighIns.cut).toBeUndefined()
   })
 })
