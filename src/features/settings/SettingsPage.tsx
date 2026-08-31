@@ -298,8 +298,24 @@ export function SettingsPage() {
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
                 <p className="text-ink-50 text-sm font-medium">Storage</p>
+                {/*
+                  An installed app on best-effort is not a warning. Safari
+                  refuses `persist()` outright, so every iPhone reads
+                  best-effort — and an installed one is exempt from the
+                  eviction that actually happens there. A permanent amber
+                  badge over a state nobody can change is how a person
+                  learns to ignore the badge.
+                */}
                 {storage.data !== undefined && (
-                  <Badge tone={storage.data.state === 'persisted' ? 'good' : 'warn'}>
+                  <Badge
+                    tone={
+                      storage.data.state === 'persisted'
+                        ? 'good'
+                        : storage.data.state === 'best-effort' && storage.data.installed
+                          ? 'neutral'
+                          : 'warn'
+                    }
+                  >
                     {storage.data.state === 'persisted' ? 'persistent' : storage.data.state}
                   </Badge>
                 )}
@@ -307,7 +323,7 @@ export function SettingsPage() {
               {storage.data !== undefined && (
                 <>
                   <p className="text-ink-300 mt-1 text-sm">
-                    {describePersistence(storage.data.state)}
+                    {describePersistence(storage.data.state, storage.data.installed)}
                   </p>
                   {storage.data.usageBytes !== undefined &&
                     storage.data.quotaBytes !== undefined && (

@@ -10,8 +10,13 @@
  *     disk fills. `navigator.storage.persist()` promotes the origin to
  *     "persistent", which exempts it. Chromium grants this silently for an
  *     installed PWA or a site with high engagement; Firefox prompts;
- *     Safari has no equivalent, though it does exempt an installed Home
- *     Screen web app from its own inactivity-based eviction.
+ *     **Safari refuses it, and is nonetheless the platform where being
+ *     installed matters most.** iOS deletes a site's script-writable
+ *     storage after about a week without a visit and exempts a Home
+ *     Screen web app from that — so on an iPhone the API reports
+ *     `best-effort` in precisely the configuration where the data is
+ *     safest. The status therefore carries `installed` alongside the
+ *     state, because the state alone cannot tell those two apart.
  *
  *   - **The user clearing site data.** Nothing can prevent this, and no
  *     API reports it happening. "Clear cookies" in every mainstream
@@ -34,9 +39,28 @@ export type PersistenceState =
 
 export interface StorageStatus {
   readonly state: PersistenceState
+  /** Running as an installed app rather than in a browser tab. */
+  readonly installed: boolean
   readonly usageBytes?: number
   readonly quotaBytes?: number
   readonly percentUsed?: number
+}
+
+/**
+ * Whether this is running as an installed app rather than a tab.
+ *
+ * `display-mode: standalone` is the standard answer and is what a Home
+ * Screen web app matches. `navigator.standalone` is Apple's original
+ * and is checked first because it is non-standard, iOS-only, and
+ * unambiguous where it exists — one property read rather than a
+ * compatibility layer.
+ */
+export function isInstalled(): boolean {
+  if (typeof window === 'undefined') return false
+
+  if ((navigator as { standalone?: boolean }).standalone === true) return true
+
+  return window.matchMedia('(display-mode: standalone)').matches
 }
 
 /**
@@ -59,7 +83,8 @@ export async function requestPersistence(): Promise<PersistenceState> {
 }
 
 export async function storageStatus(): Promise<StorageStatus> {
-  if (!supportsStorageApi()) return { state: 'unsupported' }
+  const installed = isInstalled()
+  if (!supportsStorageApi()) return { state: 'unsupported', installed }
 
   try {
     const persisted = await navigator.storage.persisted()
@@ -70,6 +95,7 @@ export async function storageStatus(): Promise<StorageStatus> {
 
     return {
       state: persisted ? 'persisted' : 'best-effort',
+      installed,
       ...(usageBytes !== undefined ? { usageBytes } : {}),
       ...(quotaBytes !== undefined ? { quotaBytes } : {}),
       ...(usageBytes !== undefined && quotaBytes !== undefined && quotaBytes > 0
@@ -77,7 +103,7 @@ export async function storageStatus(): Promise<StorageStatus> {
         : {}),
     }
   } catch {
-    return { state: 'unsupported' }
+    return { state: 'unsupported', installed }
   }
 }
 
@@ -103,13 +129,24 @@ export function formatBytes(bytes: number): string {
   return `${value.toFixed(value < 10 ? 1 : 0)} ${units[unitIndex] ?? 'GB'}`
 }
 
-/** Plain-language description of what the current state actually means. */
-export function describePersistence(state: PersistenceState): string {
+/**
+ * Plain-language description of what the current state actually means.
+ *
+ * **`installed` changes the answer rather than softening it.** Telling
+ * somebody to add the app to their home screen when it is already on
+ * their home screen is advice they cannot act on, and it arrives beside
+ * a warning badge — so on an iPhone, the one screen that reports
+ * durability described the safest configuration iOS offers as an
+ * unfixable problem.
+ */
+export function describePersistence(state: PersistenceState, installed = false): string {
   switch (state) {
     case 'persisted':
       return 'Your data is marked as persistent, so the browser will not clear it automatically to reclaim space. Clearing site data by hand still removes it.'
     case 'best-effort':
-      return 'Your data is stored, but the browser may clear it if the device runs low on space. Installing the app to your home screen usually earns persistent storage.'
+      return installed
+        ? 'Installed apps are not cleared for going unused, which is the main way a browser discards data on its own. It can still go if the device runs very low on space, or if you clear this app’s data by hand.'
+        : 'Your data is stored, but the browser may clear it if the device runs low on space — and Safari discards an unvisited site’s data after about a week. Adding the app to your home screen exempts it from both.'
     case 'unsupported':
       return 'This browser does not report storage durability. Your data is saved locally, but export a backup regularly.'
   }

@@ -1628,6 +1628,38 @@ Resuming is the right moment: the check is a conditional request for one
 small file, and it lands when the user has just come back rather than
 mid-set.
 
+**An installed iOS web app reports `best-effort`, and that is the
+safest state the platform has.** Safari refuses
+`navigator.storage.persist()` outright, so the state alone cannot
+separate a tab from a Home Screen app — while iOS deletes an
+unvisited site's script-writable storage after about a week and
+exempts an installed app from exactly that. So the reading was amber
+and the advice was "add the app to your home screen", on a device
+where the app was already on the home screen. Advice nobody can act
+on, beside a warning nobody can clear, is how a person learns to
+ignore the one screen that reports durability.
+
+`StorageStatus` carries `installed` beside the state for that reason,
+from `display-mode: standalone` with `navigator.standalone` checked
+first. The badge goes neutral rather than good — best-effort is
+genuinely what it is — and the sentence names what can still take the
+data instead of asking for an install that already happened.
+
+**Home Screen storage is separate from Safari on iOS, which is the
+trap worth knowing.** The same origin opened in the browser and
+opened from the icon are two IndexedDB stores, so anything entered
+before the shortcut existed is not in the installed copy and never
+will be. Nothing in the app can merge them; **sync is the only route
+across**, which makes Firebase the difference between an annoyance
+and a silent loss on iOS specifically.
+
+**iOS 16.4 gave a Home Screen web app Web Push, and the daily still
+cannot ring.** The reason narrowed rather than went away: push needs
+a server to send from, and scheduling a purely local notification is
+available nowhere. The design stands — see the dailies note — but the
+blanket claim that iOS gives a PWA no notifications at all is now
+too strong.
+
 **Form fields are 16px on coarse pointers, and it is a bug fix.** Mobile
 Safari zooms the whole page when a focused input's font is under 16px,
 and the viewport meta deliberately sets no `maximum-scale` — suppressing
