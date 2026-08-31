@@ -28,6 +28,8 @@ import { StageEditor } from './StageEditor'
 const FIELD =
   'bg-ink-850 border-ink-800 text-ink-50 placeholder:text-ink-700 tap-target w-full rounded-xl border px-3 text-sm'
 
+const LABEL = 'text-ink-500 mb-1 block text-xs tracking-wide uppercase'
+
 /**
  * The default arc, offered rather than assumed.
  *
@@ -289,24 +291,46 @@ function AddArc({ onDone }: { readonly onDone: () => void }) {
           add.mutate({ name, aim, stages: MOVE_STAGES }, { onSuccess: onDone })
         }}
       >
-        <input
-          className={FIELD}
-          aria-label="What the arc is called"
-          placeholder="Move"
-          value={name}
-          onChange={(event) => {
-            setName(event.target.value)
-          }}
-        />
-        <input
-          className={FIELD}
-          aria-label="Where it ends"
-          placeholder="Retire in the house I actually want"
-          value={aim}
-          onChange={(event) => {
-            setAim(event.target.value)
-          }}
-        />
+        {/*
+          Labelled where they can be read, not only by a screen reader.
+
+          Both fields were a placeholder and an `aria-label` and nothing
+          else, so the moment you typed into either one the screen no
+          longer said what it was. Reported from real use: the second
+          box was filled in as a *description* — a reasonable guess at an
+          unlabelled field — and then read as the first stage, because
+          the numbered "Opens with" list sits directly beneath it.
+
+          The second label says what it is *not*, which is the half that
+          was actually missing. An aim is the finish line of the whole
+          arc; the first step is in the list below.
+        */}
+        <label className="block">
+          <span className={LABEL}>What it is called</span>
+          <input
+            className={FIELD}
+            placeholder="Move"
+            value={name}
+            onChange={(event) => {
+              setName(event.target.value)
+            }}
+          />
+        </label>
+        <label className="block">
+          <span className={LABEL}>Where it ends</span>
+          <input
+            className={FIELD}
+            placeholder="Retire in the house I actually want"
+            value={aim}
+            onChange={(event) => {
+              setAim(event.target.value)
+            }}
+          />
+          <span className="text-ink-700 mt-1 block text-xs">
+            The finish line for the whole arc, not the first step. The steps are below, and you can
+            change them afterwards.
+          </span>
+        </label>
 
         {/*
           Stated rather than offered as checkboxes, unlike a house job's

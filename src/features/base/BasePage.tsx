@@ -11,13 +11,14 @@ import type { DailyView } from '@/application/use-cases/dailies/dailies'
 import type { Project } from '@/domain/projects/project'
 import type { Upgrade } from '@/domain/upgrades/upgrade'
 import { BASE, JOB_APPROACHES, stepsFor, type JobApproach } from '@/domain/base/base'
+import { UPGRADE_SHELF_LABELS, UPGRADE_SHELVES } from '@/domain/upgrades/shelf'
 import { cn } from '@/lib/cn'
 
 import { useKeepToday, useMoveDailyHome, useUndoToday } from '../today/dailies-hooks'
 import { AddDaily, DailyTitle, RenameDaily } from '../today/Dailies'
 import { useChores } from '../today/dailies-hooks'
 import { useAddProject, useBaseProjects, useMoveProjectHome } from '../projects/hooks'
-import { useAddUpgrade, useMoveUpgradeHome, useUpgradeTree } from '../upgrades/hooks'
+import { useAddUpgrade, useMoveUpgradeToShelf, useUpgradeTree } from '../upgrades/hooks'
 
 /**
  * Base: the place you live, and everything it asks of you.
@@ -180,7 +181,7 @@ function JobRow({ project }: { readonly project: Project }) {
  * tree owns editing; Base owns the filing.
  */
 function UpgradeRow({ upgrade }: { readonly upgrade: Upgrade }) {
-  const moveHome = useMoveUpgradeHome()
+  const move = useMoveUpgradeToShelf()
 
   return (
     <li className="flex items-center justify-between gap-2">
@@ -188,17 +189,26 @@ function UpgradeRow({ upgrade }: { readonly upgrade: Upgrade }) {
       <Badge tone={upgrade.status === 'purchased' ? 'good' : 'neutral'}>
         {upgrade.status === 'purchased' ? 'Owned' : 'Wanted'}
       </Badge>
-      <Button
-        variant="ghost"
-        size="sm"
-        aria-label={`Move ${upgrade.title} back to the tech tree`}
-        disabled={moveHome.isPending}
-        onClick={() => {
-          moveHome.mutate({ id: upgrade.id, home: undefined })
-        }}
-      >
-        <Undo2 size={14} aria-hidden />
-      </Button>
+      {/*
+        Off the house shelf, and now it has to say *which* other one.
+        A single "back to the tech tree" button was right while there
+        were two shelves; with three it would send a pair of boots to
+        the machines.
+      */}
+      {UPGRADE_SHELVES.filter((shelf) => shelf !== 'base').map((shelf) => (
+        <Button
+          key={shelf}
+          variant="ghost"
+          size="sm"
+          aria-label={`Move ${upgrade.title} to ${UPGRADE_SHELF_LABELS[shelf]}`}
+          disabled={move.isPending}
+          onClick={() => {
+            move.mutate({ id: upgrade.id, shelf })
+          }}
+        >
+          <span className="text-xs">{UPGRADE_SHELF_LABELS[shelf]}</span>
+        </Button>
+      ))}
     </li>
   )
 }

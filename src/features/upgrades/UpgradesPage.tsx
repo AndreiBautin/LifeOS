@@ -1,9 +1,15 @@
-import { Check, Home, Lock, Plus, Trash2, Wallet } from 'lucide-react'
+import { Check, Lock, Plus, Trash2, Wallet } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { useState } from 'react'
 
 import { Badge, Button, Card, Empty, Section } from '@/components/shared/primitives'
-import { BASE } from '@/domain/base/base'
+import {
+  UPGRADE_SHELF_BLURBS,
+  UPGRADE_SHELF_LABELS,
+  UPGRADE_SHELVES,
+  shelfOf,
+  type UpgradeShelf,
+} from '@/domain/upgrades/shelf'
 import type { Gate } from '@/domain/game/tree'
 import type { UpgradeId } from '@/domain/ids/ids'
 import type { TreeEntry } from '@/domain/upgrades/recommendation'
@@ -20,9 +26,9 @@ import {
   useAddUpgrade,
   useBudget,
   useDeleteUpgrade,
-  useMoveUpgradeHome,
+  useMoveUpgradeToShelf,
+  useShelfTree,
   useUpdateUpgrade,
-  useUpgradeTree,
 } from './hooks'
 
 /**
@@ -127,7 +133,7 @@ function EntryCard({
 }) {
   const update = useUpdateUpgrade()
   const remove = useDeleteUpgrade()
-  const moveHome = useMoveUpgradeHome()
+  const move = useMoveUpgradeToShelf()
   const [confirming, setConfirming] = useState(false)
 
   const { upgrade, recommendation, gates, affordable } = entry
@@ -194,21 +200,26 @@ function EntryCard({
         )}
 
         {/*
-          To the house, where it stops competing with the things you are
-          buying for yourself. The same split the avatar reads for gear:
-          a dishwasher upgrades the place you live, a belt upgrades you.
+          Three shelves rather than one button to the house, because the
+          question is what this upgrades: the place you live, the tools
+          you work with, or you. Only the two it is *not* on are offered
+          — a button that moves a row where it already is does nothing
+          and still looks pressable.
         */}
-        <Button
-          variant="ghost"
-          size="sm"
-          aria-label={`Move ${upgrade.title} to Base`}
-          disabled={moveHome.isPending}
-          onClick={() => {
-            moveHome.mutate({ id: upgrade.id, home: BASE })
-          }}
-        >
-          <Home size={14} aria-hidden />
-        </Button>
+        {UPGRADE_SHELVES.filter((shelf) => shelf !== shelfOf(upgrade)).map((shelf) => (
+          <Button
+            key={shelf}
+            variant="ghost"
+            size="sm"
+            aria-label={`Move ${upgrade.title} to ${UPGRADE_SHELF_LABELS[shelf]}`}
+            disabled={move.isPending}
+            onClick={() => {
+              move.mutate({ id: upgrade.id, shelf })
+            }}
+          >
+            <span className="text-xs">{UPGRADE_SHELF_LABELS[shelf]}</span>
+          </Button>
+        ))}
 
         <Button
           variant={confirming ? 'danger' : 'ghost'}
@@ -238,7 +249,13 @@ function EntryCard({
   )
 }
 
-function AddUpgrade({ candidates }: { readonly candidates: readonly TreeEntry[] }) {
+function AddUpgrade({
+  candidates,
+  shelf,
+}: {
+  readonly candidates: readonly TreeEntry[]
+  readonly shelf: UpgradeShelf
+}) {
   const add = useAddUpgrade()
 
   const [title, setTitle] = useState('')
@@ -261,6 +278,7 @@ function AddUpgrade({ candidates }: { readonly candidates: readonly TreeEntry[] 
             {
               title,
               category,
+              shelf,
               priority: Number(priority),
               ...(estimate === undefined ? {} : { estimatedCostMinorUnits: estimate }),
               ...(prerequisite === '' ? {} : { prerequisiteId: prerequisite as UpgradeId }),
@@ -363,11 +381,19 @@ function AddUpgrade({ candidates }: { readonly candidates: readonly TreeEntry[] 
   )
 }
 
-export function UpgradesPage() {
+/**
+ * One shelf of the tree.
+ *
+ * Shared by the Tech tree and Gear screens rather than copied, because
+ * they are the same record with the same gates and the same wallet —
+ * a second copy of this file is where a gate bug would outlive its fix.
+ * What differs is the heading and which shelf is read.
+ */
+function ShelfPage({ shelf }: { readonly shelf: UpgradeShelf }) {
   const [budget, setBudget] = useBudget()
   const [budgetText, setBudgetText] = useState(() => (budget === 0 ? '' : formatMinorUnits(budget)))
 
-  const tree = useUpgradeTree(budget)
+  const tree = useShelfTree(shelf, budget)
   const entries = tree.data ?? []
 
   const open = entries.filter((entry) => entry.upgrade.status !== 'purchased')
@@ -376,7 +402,7 @@ export function UpgradesPage() {
 
   return (
     <>
-      <PageHeader title="Tech tree" subtitle="What you are saving up for, and what unlocks what." />
+      <PageHeader title={UPGRADE_SHELF_LABELS[shelf]} subtitle={UPGRADE_SHELF_BLURBS[shelf]} />
 
       <Section
         title="What you can get today"
@@ -420,7 +446,7 @@ export function UpgradesPage() {
         title="The tree"
         description="Ordered by the priority each node inherits from the most important thing it unblocks."
       >
-        <AddUpgrade candidates={entries} />
+        <AddUpgrade candidates={entries} shelf={shelf} />
 
         {open.length === 0 ? (
           <Empty title="Nothing planned">Add the first thing you are saving up for.</Empty>
@@ -452,4 +478,20 @@ export function UpgradesPage() {
       )}
     </>
   )
+}
+
+/**
+ * The tech tree, at `/upgrades`.
+ *
+ * The route keeps its old path under a label that no longer covers
+ * everything it used to — the rule routes outlive labels, and a PWA
+ * shortcut is registered with the operating system at install time.
+ */
+export function UpgradesPage() {
+  return <ShelfPage shelf="tech" />
+}
+
+/** Apparel, shoes and accessories, at `/gear`. */
+export function GearPage() {
+  return <ShelfPage shelf="gear" />
 }

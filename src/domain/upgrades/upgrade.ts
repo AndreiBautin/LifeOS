@@ -25,12 +25,29 @@ import type { RecordHome } from '@/domain/base/base'
  * affordable.
  */
 
+/**
+ * Three shelves — see `shelf.ts` for what each means and why.
+ *
+ * The names live here rather than beside their functions because the
+ * `shelf` field below needs the type, and `shelf.ts` needs `Upgrade`:
+ * declaring it there made a cycle that quietly resolved every
+ * `TreeEntry` to `any`.
+ */
+export const UPGRADE_SHELVES = ['base', 'tech', 'gear'] as const
+
+export type UpgradeShelf = (typeof UPGRADE_SHELVES)[number]
+
 export const UPGRADE_CATEGORIES = [
   'home',
   'office',
   'gym',
   'technology',
   'vehicle',
+  // Added with the gear shelf, which had nowhere to put what it is for:
+  // a pair of boots was 'lifestyle' or 'other', and these are also the
+  // avatar's slots, so the portrait had no way to show them either.
+  'apparel',
+  'accessories',
   'lifestyle',
   'other',
 ] as const
@@ -43,6 +60,8 @@ export const UPGRADE_CATEGORY_LABELS: Readonly<Record<UpgradeCategory, string>> 
   gym: 'Gym',
   technology: 'Technology',
   vehicle: 'Vehicle',
+  apparel: 'Apparel',
+  accessories: 'Accessories',
   lifestyle: 'Lifestyle',
   other: 'Other',
 }
@@ -73,6 +92,16 @@ export interface Upgrade {
   readonly title: string
   readonly description?: string
   readonly category: UpgradeCategory
+  /**
+   * Which of the three shelves this sits on — see `shelf.ts`.
+   *
+   * Optional because stored records outlive the type that wrote them,
+   * and absent reads as the two-way split that shipped: Base if it was
+   * filed there, the tech tree otherwise. Read it through `shelfOf`
+   * rather than directly, or a record written before shelves existed
+   * reads as having no shelf at all.
+   */
+  readonly shelf?: UpgradeShelf
   /** 1–100. Raw, before anything it unblocks has had its say. */
   readonly priority: number
   /** Minor units — cents, pence. Never a float. */

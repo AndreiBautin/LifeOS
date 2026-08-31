@@ -1,4 +1,5 @@
 import { keepFor, type HomeFilter, type RecordHome } from '@/domain/base/base'
+import { homeForShelf, shelfOf, type UpgradeShelf } from '@/domain/upgrades/shelf'
 import { asUpgradeId, type IdGenerator, type UpgradeId } from '@/domain/ids/ids'
 import type { Clock, UpgradeRepository } from '@/domain/repositories/ports'
 import {
@@ -46,6 +47,14 @@ export interface NewUpgrade {
    * one wallet and one set of gates, entered wherever you were standing.
    */
   readonly belongsTo?: RecordHome
+  /**
+   * Which shelf it is born on. Absent means the tech tree.
+   *
+   * Supersedes `belongsTo` when both are given, because it is the finer
+   * answer and the one the screens read — `addUpgrade` derives the area
+   * from it so the two cannot be created disagreeing.
+   */
+  readonly shelf?: UpgradeShelf
   readonly description?: string
   readonly category?: UpgradeCategory
   readonly priority?: number
@@ -78,11 +87,23 @@ export async function addUpgrade(input: NewUpgrade, deps: UpgradeDeps): Promise<
    * cycle check is only needed on update — which is the one place the
    * original put it too.
    */
+  /*
+   * The shelf is the finer answer and wins when both are given, so the
+   * two can never be created disagreeing about the house.
+   */
+  const bornIn = input.shelf === undefined ? input.belongsTo : homeForShelf(input.shelf)
+
   const upgrade: Upgrade = {
     id: asUpgradeId(deps.ids.next()),
     title: input.title.trim(),
     ...(input.description === undefined ? {} : { description: input.description }),
     category: input.category ?? 'other',
+    // Born on the shelf that created it. Without this the Gear screen's
+    // own add form would make a tech-tree row and need a move straight
+    // after — the round trip already removed from chores, upgrades and
+    // house jobs, reappearing on the newest screen.
+    ...(input.shelf === undefined ? {} : { shelf: input.shelf }),
+    ...(bornIn === undefined ? {} : { belongsTo: bornIn }),
     priority: clampPriority(input.priority ?? 50),
     ...(input.estimatedCostMinorUnits === undefined
       ? {}
@@ -91,7 +112,6 @@ export async function addUpgrade(input: NewUpgrade, deps: UpgradeDeps): Promise<
     ...(input.notes === undefined ? {} : { notes: input.notes }),
     ...(input.productLink === undefined ? {} : { productLink: input.productLink }),
     ...(input.prerequisiteId === undefined ? {} : { prerequisiteId: input.prerequisiteId }),
-    ...(input.belongsTo === undefined ? {} : { belongsTo: input.belongsTo }),
     createdAt: deps.clock.now().toISOString(),
   }
 
@@ -226,6 +246,63 @@ export async function upgradeTree(
   home: HomeFilter,
 ): Promise<readonly TreeEntry[]> {
   return rankTree(keepFor(await deps.upgrades.all(), home), availableMinorUnits)
+}
+
+/**
+ * The tree for one shelf.
+ *
+ * Ranked over that shelf alone, which is what makes three screens
+ * useful rather than three filters of one list: the priority order on
+ * the gear shelf should not be disturbed by a graphics card.
+ *
+ * The gates are still global — a prerequisite may sit on another shelf,
+ * because "the desk before the monitor arm" is a real dependency that
+ * crosses them. `rankTree` is given the whole set to resolve against
+ * and the entries are narrowed afterwards, or a cross-shelf parent
+ * would read as missing.
+ */
+export async function shelfTree(
+  shelf: UpgradeShelf,
+  availableMinorUnits: number,
+  deps: UpgradeDeps,
+): Promise<readonly TreeEntry[]> {
+  const all = await deps.upgrades.all()
+
+  return rankTree(all, availableMinorUnits).filter((entry) => shelfOf(entry.upgrade) === shelf)
+}
+
+/**
+ * Moves an upgrade to a shelf.
+ *
+ * **One write setting both fields**, which is the `reshapeStage` lesson:
+ * `shelf` and `belongsTo` are two answers about one record, and sending
+ * them as two read-modify-writes loses one of them. `belongsTo` stays
+ * the area answer because `baseContents`, `keepFor` and the "exactly
+ * one side" test all read it; `shelf` is the finer answer only upgrades
+ * have. They cannot disagree if only one function sets them.
+ *
+ * A move, not a create-and-delete — the record keeps its price, its
+ * priority, its prerequisite and anything that depends on it.
+ */
+export async function moveUpgradeToShelf(
+  id: UpgradeId,
+  shelf: UpgradeShelf,
+  deps: UpgradeDeps,
+): Promise<void> {
+  const existing = (await deps.upgrades.all()).find((upgrade) => upgrade.id === id)
+  if (existing === undefined) return
+
+  const home = homeForShelf(shelf)
+  // Dropped rather than set to undefined: under exactOptionalPropertyTypes
+  // an absent field and one set to undefined are different things, and
+  // only the first means "its own area".
+  const { belongsTo: _dropped, ...rest } = existing
+
+  await deps.upgrades.save({
+    ...rest,
+    shelf,
+    ...(home === undefined ? {} : { belongsTo: home }),
+  })
 }
 
 /**

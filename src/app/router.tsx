@@ -17,7 +17,7 @@ import { HomesPage } from '@/features/homes/HomesPage'
 import { JobsPage } from '@/features/jobs/JobsPage'
 import { FinancePage } from '@/features/finance/FinancePage'
 import { ResumePage } from '@/features/resume/ResumePage'
-import { UpgradesPage } from '@/features/upgrades/UpgradesPage'
+import { GearPage, UpgradesPage } from '@/features/upgrades/UpgradesPage'
 import { HistoryPage } from '@/features/history/HistoryPage'
 import { PlanPage } from '@/features/plan/PlanPage'
 import { ProgramPage } from '@/features/plan/ProgramPage'
@@ -59,6 +59,7 @@ export const router = createBrowserRouter(
         { path: 'program', element: <ProgramPage /> },
         { path: 'backlog', element: <BacklogPage /> },
         { path: 'upgrades', element: <UpgradesPage /> },
+        { path: 'gear', element: <GearPage /> },
         { path: 'base', element: <BasePage /> },
         { path: 'vitals', element: <VitalsPage /> },
         { path: 'limits', element: <LimitsPage /> },

@@ -1382,6 +1382,17 @@ were written. A later stage can be met first; `next` names the earliest
 outstanding one and is _highlighted rather than moved_, for the reason
 habits sort chronologically rather than current-part-first.
 
+**An unlabelled field gets filled in with whatever it looks like it
+wants.** Reported from real use: an arc was created with the aim box
+holding a _description_ — "initially get out of someplace I despise" —
+and then read as the arc's first stage. Nothing turned it into one;
+`addCampaign` maps `input.stages` and stores `aim` apart. What was
+wrong is that both fields carried a placeholder and an `aria-label` and
+nothing else, so the moment you typed into either the screen stopped
+saying what it was — and the numbered "Opens with" list sits directly
+beneath the aim. Both are labelled visibly now, and the aim's label says
+what it is _not_: the finish line for the whole arc, not the first step.
+
 **A stage keeps every lap.** _"Job improvement is interesting because I
 can progress through multiple jobs, and that applies to houses too."_ A
 tick that stopped meaning anything after the first time would lose the
@@ -2638,6 +2649,64 @@ the tech tree owns the budget control, and duplicating it would be two
 places to set one number — but worth stating plainly rather than
 implying both screens reason about money. They do not; one number is
 stored, one screen applies it.
+
+**Three shelves, because "is this the house or not" was answering two
+questions at once.** The report: _"base upgrades should be separate from
+the tech tree — I put a MacBook and a monitor on base upgrades but those
+are tech, while a desk and a couch are base"_, and with it a third
+shelf: _"gear/cosmetics to track apparel, shoes and accessories."_
+
+`domain/upgrades/shelf.ts`. The question a shelf answers is **what does
+this upgrade upgrade** — `base` the place you live, `tech` the tools you
+work and play with, `gear` you. The app already made the first cut and
+made it in one place, so a pair of boots and a graphics card shared a
+screen called Tech tree; the split reads as overdue rather than as new.
+
+**Shelves, not areas.** The model allows exactly one area that _spends_
+(`registry.test.ts` → "has exactly one tree") and three screens showing
+one record type does not make three spenders — the same reason Base has
+`hasTree: false`. One record, one wallet, one set of gates.
+
+**Absent means what it always meant.** `shelfOf` reads a stored record
+with no shelf as `base` if it was filed to Base and `tech` otherwise,
+which is exactly the two-way split that shipped. Nothing migrates,
+nothing moves on its own, and the gear shelf starts empty because nobody
+has put anything on it. Verified by driving it against records written
+before shelves existed.
+
+**`belongsTo` and `shelf` are two answers about one record, kept in step
+by having one writer.** `belongsTo` stays the _area_ answer because
+`baseContents`, `keepFor` and the "exactly one side" test all read it;
+`shelf` is the finer answer only upgrades have. `moveUpgradeToShelf`
+sets both in a single save — the `reshapeStage` lesson — and
+`addUpgrade` derives the area from the shelf so the two cannot be
+_created_ disagreeing. `shelf.test.ts` holds the invariant that
+`shelfOf(u) === 'base'` exactly when `isBase(u)`.
+
+**Gates are global; ranking is per shelf.** `shelfTree` ranks the whole
+set and narrows afterwards, because a prerequisite may sit on another
+shelf — "the desk before the monitor arm" is a real dependency that
+crosses them — and filtering first would make a cross-shelf parent read
+as missing. What is per shelf is the _order_, so a graphics card cannot
+disturb the priority of a pair of boots.
+
+**The Tech tree and Gear screens are one component.** `ShelfPage` takes
+a shelf; `/upgrades` and `/gear` are two-line wrappers. Same record,
+same gates, same wallet — a second copy of that file is where a gate bug
+would outlive its fix. `/upgrades` keeps its path under a label that no
+longer covers what it used to, which is the standing rule that routes
+outlive labels.
+
+**`apparel` and `accessories` joined `UPGRADE_CATEGORIES`**, because the
+gear shelf had nowhere to put what it is for: a pair of boots was
+`lifestyle` or `other`. These are also the avatar's slots, so the
+portrait could not show them either.
+
+**The portrait still counts both non-house shelves, deliberately.**
+`gearFrom` reads `isOwnArea`, so a phone counts as gear alongside a
+belt. Narrowing it to the gear shelf would be more precise about the
+word and worse on the screen — somebody whose purchases are all tech
+would have an empty portrait to make a label read better.
 
 **Base files upgrades; the tech tree edits them.** `moveUpgradeHome`
 was the last of the three move functions with no caller, which is why

@@ -1,11 +1,13 @@
-import type { HomeFilter, RecordHome } from '@/domain/base/base'
+import type { HomeFilter } from '@/domain/base/base'
+import type { UpgradeShelf } from '@/domain/upgrades/shelf'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 
 import { useServices } from '@/app/context'
 import {
   addUpgrade,
-  moveUpgradeHome,
+  moveUpgradeToShelf,
+  shelfTree,
   deleteUpgrade,
   updateUpgrade,
   upgradeTree,
@@ -29,6 +31,23 @@ import { logger } from '@/shared/logging/logger'
  */
 
 const UPGRADES = ['upgrades'] as const
+
+/**
+ * The tree for one shelf.
+ *
+ * The shelf is in the query key beside the budget, for the reason
+ * `home` already is: three screens read this hook and a shared key
+ * would have the Gear screen showing the tech tree's ranking until
+ * something invalidated it.
+ */
+export function useShelfTree(shelf: UpgradeShelf, availableMinorUnits: number) {
+  const services = useServices()
+
+  return useQuery({
+    queryKey: [...UPGRADES, 'shelf', shelf, availableMinorUnits],
+    queryFn: () => shelfTree(shelf, availableMinorUnits, services),
+  })
+}
 
 export function useUpgradeTree(availableMinorUnits: number, home: HomeFilter = 'own-area') {
   const services = useServices()
@@ -77,10 +96,10 @@ export function useUpdateUpgrade() {
  * `home` in its key — so both lists reload from one call and neither can
  * be left showing a row that has moved.
  */
-export function useMoveUpgradeHome() {
-  return useUpgradeMutation<{ id: UpgradeId; home: RecordHome | undefined }, unknown>(
-    'upgrades.moved-home',
-    ({ id, home }, services) => moveUpgradeHome(id, home, services),
+export function useMoveUpgradeToShelf() {
+  return useUpgradeMutation<{ id: UpgradeId; shelf: UpgradeShelf }, unknown>(
+    'upgrades.moved-shelf',
+    ({ id, shelf }, services) => moveUpgradeToShelf(id, shelf, services),
   )
 }
 

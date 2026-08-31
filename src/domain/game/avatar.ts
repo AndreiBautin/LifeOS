@@ -166,9 +166,16 @@ export function callingFrom(areas: readonly AreaXp[]): Calling | undefined {
  *
  * Two existing fields decide this and no new one was added. `isOwned`
  * means the upgrade was purchased rather than wanted — a wishlist is not
- * equipment — and `isOwnArea` excludes the house, which is the split you
- * already make on the Base screen: a dishwasher is an upgrade to the
- * place you live and a belt is an upgrade to you.
+ * equipment — and `isOwnArea` excludes the house: a dishwasher is an
+ * upgrade to the place you live and a belt is an upgrade to you.
+ *
+ * **The tech and gear shelves both count, and that is deliberate now
+ * that they are separate.** Narrowing this to the gear shelf would be
+ * more precise about the word and worse on the screen: a phone and a
+ * laptop are things you carry, and somebody whose purchases are all
+ * tech would have an empty portrait to make a label read better.
+ * `isOwnArea` still draws the line that matters here — the house, or
+ * you — and it keeps drawing it correctly with three shelves.
  *
  * Grouped by the upgrade's own `category`, so the slots are the
  * categories that already exist rather than a set of RPG body parts

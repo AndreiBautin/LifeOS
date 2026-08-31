@@ -28,6 +28,7 @@ export const AREA_LINKS = [
   { to: '/finance', label: 'Finance' },
   { to: '/resume', label: 'Resume' },
   { to: '/upgrades', label: 'Tech tree' },
+  { to: '/gear', label: 'Gear' },
 ] as const
 
 /** The tone each rung of the strength ladder reads in. */
