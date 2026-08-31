@@ -1122,6 +1122,54 @@ filter on floating point eventually disagrees with itself. Two of its
 rules had a database behind them and no longer do: `wouldCreateCycle`, and
 the refusal to delete anything with dependents still attached.
 
+**Approving a lead _is_ applying, and that diverges from the app this
+was ported from on purpose.** There, approving files an application in
+_Preparing_ and applying is a later stage. Here, creating the
+application pays `jobs.application-sent` — thirty XP for an act — so a
+record that existed before anything was sent would pay for something
+nobody did. One press opens the form and files the application
+together, which is the only arrangement in which both stay true. A
+shortlist of postings you are _considering_ is a different record and
+is not this one.
+
+The window is opened from the click rather than after the write
+resolves, because a popup blocker stops anything a promise opens later.
+
+**`Project.link` is the identity of an approved lead.** A sweep is the
+only way to see a lead and a sweep re-reads the whole board, so the
+same posting comes back every time — without a key, triaging twice
+quietly produces two applications to one job. The apply URL is the one
+thing about a posting that is unique _and_ stable across a re-read:
+ids are per-board and a title repeats across companies.
+
+**The posting travels with the approval**, into `description`, so the
+resume match works the moment the application exists. Nothing is
+prepended to it — a "from Greenhouse, scored 80" preamble would put
+those words into the match, where "greenhouse" and the board slug would
+read as requirements.
+
+**A real posting is mostly not the job, and that is a live limitation.**
+The match was built against hand-written three-sentence fixtures. The
+first genuine posting — 5,400 characters of Ashby ad — produced a gap
+list led by `ramp ×10`, `bonding ×6`, `weeks ×6`, `ll ×5`, `100 ×4`.
+Three of those were fixable without the list starting to have opinions
+about which _skills_ matter:
+
+- **Bare numbers** are never a skill, and repeat enough to sort high.
+- **Contraction tails** are not words: the tokeniser splits on the
+  apostrophe, so "we'll" leaves `ll` behind.
+- **The employer's own name**, passed to `matchResume` as `ignoring`. A
+  posting says its company constantly and never requires it of the
+  applicant.
+
+What remains is benefits and legal boilerplate — bonding, coverage,
+insurance, leave — which is genuinely in the posting and genuinely not
+the job. Filtering it by word list would be the app deciding what a
+skill is, which is the line this file holds elsewhere. The honest
+options are ranking by distinctiveness rather than raw frequency, or
+reading only the part of a posting above the benefits section, and
+neither is a stopword.
+
 **The app talks to three job boards now, and that was tested before it
 was claimed.** Greenhouse, Lever and Ashby publish every open posting
 as JSON with no key and no account, and all three answer a browser

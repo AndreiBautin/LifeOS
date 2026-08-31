@@ -32,7 +32,8 @@ import { logger } from '@/shared/logging/logger'
  * finished.
  */
 
-const PROJECTS = ['projects'] as const
+/** Exported so a feature outside this one can invalidate the same list. */
+export const PROJECTS = ['projects'] as const
 
 export function useProjects() {
   const services = useServices()

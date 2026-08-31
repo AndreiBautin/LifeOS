@@ -60,6 +60,8 @@ export interface NewProject {
    * precisely because a partial write leaves the graph lying.
    */
   readonly steps?: readonly string[]
+  /** Where it lives on the web — see `Project.link`. */
+  readonly link?: string
   readonly description?: string
   readonly impact?: number
   readonly urgency?: number
@@ -110,6 +112,7 @@ export async function addProject(input: NewProject, deps: ProjectDeps): Promise<
     blockedBy: input.blockedBy ?? [],
     ...(input.deadline === undefined ? {} : { deadline: input.deadline }),
     ...(input.belongsTo === undefined ? {} : { belongsTo: input.belongsTo }),
+    ...(input.link === undefined || input.link === '' ? {} : { link: input.link }),
     createdAt: now,
     actions: (input.steps ?? []).map((description, index) => ({
       id: asActionId(deps.ids.next()),

@@ -1,12 +1,15 @@
 import { Search } from 'lucide-react'
 import { useState } from 'react'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { useServices } from '@/app/context'
 import { Badge, Button, Card, Empty, Section } from '@/components/shared/primitives'
 import { ATS_PROVIDERS, PROVIDER_LABELS, type AtsProvider } from '@/domain/jobs/boards'
+import { PROJECTS } from '../projects/hooks'
 import { parseTerms } from '@/domain/jobs/score'
 import { countByEmployer, sweepBoards, type LeadSweep } from '@/application/use-cases/jobs/leads'
+import { appliedLinks, approveLead } from '@/application/use-cases/jobs/approve'
+import type { FetchedPosting } from '@/domain/jobs/boards'
 import { logger } from '@/shared/logging/logger'
 
 /**
@@ -47,6 +50,30 @@ function parseSources(raw: string): readonly { provider: AtsProvider; token: str
 
 export function LeadsSection() {
   const services = useServices()
+  const client = useQueryClient()
+
+  /*
+   * Which links are already spent, so a lead that has been applied to
+   * reads as one. A sweep re-reads the whole board, so the same posting
+   * comes back every time — without this the list quietly invites the
+   * same application twice.
+   */
+  const applied = useQuery({
+    queryKey: ['jobs', 'applied-links'],
+    queryFn: () => appliedLinks(services),
+  })
+
+  const approve = useMutation({
+    mutationFn: (posting: FetchedPosting) => approveLead(posting, services),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: ['jobs'] })
+      void client.invalidateQueries({ queryKey: PROJECTS })
+      void client.invalidateQueries({ queryKey: ['character'] })
+    },
+    onError: (error: unknown) => {
+      logger.error('jobs.approve-failed', { message: String(error) })
+    },
+  })
 
   const [sources, setSources] = useState('')
   const [titles, setTitles] = useState('')
@@ -219,14 +246,40 @@ export function LeadsSection() {
                     ))}
                   </ul>
 
-                  <a
-                    href={lead.posting.applyUrl ?? lead.posting.url}
-                    target="_blank"
-                    rel="noreferrer noopener"
-                    className="text-accent-400 inline-block text-xs"
-                  >
-                    Open the posting →
-                  </a>
+                  {/*
+                    **Applying and tracking are one press**, and that is a
+                    deliberate divergence from the app this was ported
+                    from. There, approving files an application in
+                    *Preparing* and applying comes later. Here, creating
+                    the record pays thirty XP for having applied — so a
+                    record that exists before anything was sent would pay
+                    for something nobody did. The button opens the form
+                    and files the application together, which is the only
+                    arrangement in which both are true.
+
+                    The window is opened from the click itself rather than
+                    after the write resolves, because a popup blocker
+                    stops anything a promise opens later.
+                  */}
+                  {applied.data?.has(lead.posting.applyUrl ?? lead.posting.url) === true ? (
+                    <p className="text-good-500 text-xs">Applied — it is on your list</p>
+                  ) : (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={approve.isPending}
+                      onClick={() => {
+                        window.open(
+                          lead.posting.applyUrl ?? lead.posting.url,
+                          '_blank',
+                          'noopener,noreferrer',
+                        )
+                        approve.mutate(lead.posting)
+                      }}
+                    >
+                      Apply, and track it
+                    </Button>
+                  )}
                 </Card>
               ))}
             </div>

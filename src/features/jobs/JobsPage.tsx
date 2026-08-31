@@ -62,8 +62,21 @@ function Posting({ application }: { readonly application: Project }) {
   const [text, setText] = useState(application.description ?? '')
 
   const saved = application.description ?? ''
+
+  /*
+   * The employer is excluded from the comparison. An application
+   * approved from a lead is named "ramp — Senior Security Engineer", so
+   * the half before the dash is the company — and a posting says its own
+   * name constantly, ten times in the first real one tried, while never
+   * requiring it of the applicant. Left in, it sorts straight to the top
+   * of the gap list, which is the first thing anybody reads.
+   */
+  const employer = application.name.split('—')[0] ?? ''
+
   const match =
-    resume.data === undefined || saved.trim() === '' ? undefined : matchResume(saved, resume.data)
+    resume.data === undefined || saved.trim() === ''
+      ? undefined
+      : matchResume(saved, resume.data, [employer])
 
   return (
     <div className="border-ink-800 mt-2 space-y-3 border-t pt-3">

@@ -36,7 +36,9 @@ describe('tokenising a posting', () => {
   })
 
   it('trims dots off the ends without splitting the middle', () => {
-    expect(tokenise('Uses Node.js.')).toEqual(['uses', 'node.js'])
+    // 'Ships' rather than 'Uses', which is now a stopword — the point
+    // here is the dots, not the verb.
+    expect(tokenise('Ships Node.js.')).toEqual(['ships', 'node.js'])
   })
 
   it('drops words that carry no information in any field', () => {
@@ -190,5 +192,46 @@ describe('two-word phrases', () => {
     )
 
     expect(match.missingPhrases.map((one) => one.word)).toEqual(['typescript mentored'])
+  })
+})
+
+describe('the noise a real posting carries', () => {
+  /*
+   * All three of these came out of the first *real* posting the match
+   * was run against — 5,400 characters of Ashby job ad. The hand-written
+   * three-sentence fixtures above never produced any of them.
+   */
+  it('drops bare numbers, which are never a skill', () => {
+    expect(tokenise('100% of premiums and 16 weeks and 401k')).toEqual([
+      'premiums',
+      'weeks',
+      '401k',
+    ])
+  })
+
+  it('drops the tail an apostrophe leaves behind', () => {
+    // "we'll" splits on the apostrophe, and "ll" is neither a word nor a
+    // skill — it appeared five times in one posting's gap list.
+    expect(tokenise("we'll build what you've shipped")).toEqual(['build', 'shipped'])
+  })
+
+  /*
+   * A posting says the company constantly — ten times in the first real
+   * one — and the company is never a requirement of the job. Left in, it
+   * sorts to the top of the gap list by frequency, which is the first
+   * thing anybody reads.
+   */
+  it('ignores the employer’s own name when told it', () => {
+    const match = matchResume('Ramp is hiring. Ramp uses Kubernetes.', resumeWith(['Nothing']), [
+      'Ramp',
+    ])
+
+    expect(match.missing.map((one) => one.word)).toEqual(['hiring', 'kubernetes'])
+  })
+
+  it('drops a phrase built out of the employer’s name too', () => {
+    const match = matchResume('Ramp engineering is hiring', resumeWith(['Nothing']), ['Ramp'])
+
+    expect(match.missingPhrases.map((one) => one.word)).not.toContain('ramp engineering')
   })
 })

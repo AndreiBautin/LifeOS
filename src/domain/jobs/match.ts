@@ -56,8 +56,27 @@ function everyWord(text: string): readonly string[] {
 }
 
 function worthComparing(token: string): boolean {
-  return token.length > 1 && !STOPWORDS.has(token)
+  if (token.length <= 1 || STOPWORDS.has(token)) return false
+
+  /*
+   * **A bare number is never a skill.** Real postings are full of them —
+   * "100% of premiums", "16 weeks", "401" — and they sorted straight to
+   * the top of a gap list by frequency, which is the one place they do
+   * the most damage.
+   */
+  if (ONLY_DIGITS.test(token)) return false
+
+  /*
+   * **The tail of a contraction is not a word.** The tokeniser splits on
+   * the apostrophe, so "we'll" leaves "ll" behind — five of them in one
+   * posting, reported as something missing from a resume.
+   */
+  return !CONTRACTION_TAILS.has(token)
 }
+
+const ONLY_DIGITS = new RegExp('^[0-9.]+$')
+
+const CONTRACTION_TAILS = new Set(['ll', 've', 're', 'nt', 'st', 'th', 'em'])
 
 /**
  * Two-word phrases, from words that were genuinely adjacent.
@@ -207,6 +226,7 @@ const STOPWORDS = new Set([
   'used',
   'using',
   'use',
+  'uses',
   'help',
   'like',
   'both',
@@ -337,9 +357,24 @@ export interface Match {
  * list is what the posting is actually about rather than whatever
  * happens to sort first alphabetically.
  */
-export function matchResume(description: string, resume: Resume): Match {
+/**
+ * Compares a posting against the whole resume.
+ *
+ * `ignoring` is for the employer's own name, and it earns its place: a
+ * posting says the company constantly — ten times in the first real one
+ * tried — and the company is never a requirement of the job. Left in, it
+ * sorts to the top of the gap list by frequency and is the first thing
+ * somebody reads.
+ */
+export function matchResume(
+  description: string,
+  resume: Resume,
+  ignoring: readonly string[] = [],
+): Match {
+  const ignored = new Set(ignoring.flatMap((word) => tokenise(word)))
   const counts = new Map<string, number>()
   for (const token of tokenise(description)) {
+    if (ignored.has(token)) continue
     counts.set(token, (counts.get(token) ?? 0) + 1)
   }
 
@@ -372,6 +407,7 @@ export function matchResume(description: string, resume: Resume): Match {
   const phraseCounts = new Map<string, number>()
   for (const phrase of phrases(description)) {
     if (myPhrases.has(phrase)) continue
+    if (phrase.split(' ').some((word) => ignored.has(word))) continue
     phraseCounts.set(phrase, (phraseCounts.get(phrase) ?? 0) + 1)
   }
 

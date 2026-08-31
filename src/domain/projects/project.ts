@@ -92,6 +92,23 @@ export interface Project {
   readonly name: string
   readonly description?: string
   readonly category?: string
+  /**
+   * Where this thing lives on the web.
+   *
+   * Added for the job search, where it is load-bearing rather than a
+   * convenience: an approved lead with no link has lost the form you
+   * were going to fill in, which is the whole reason it was approved.
+   *
+   * **It is also the identity of an approved lead.** Two applications to
+   * one posting is the mistake triage exists to prevent, and the apply
+   * URL is the one thing about a posting that is unique and stable
+   * across a re-read of the board — ids are per-board and a title
+   * repeats across companies.
+   *
+   * Nothing else populates it yet, and a house job with a quote page is
+   * the obvious second user.
+   */
+  readonly link?: string
 
   /** 1–10 each. Effort is floored at 1 in the engine, never here. */
   readonly impact: number
