@@ -1,6 +1,5 @@
 import { Minus, Plus, Undo2 } from 'lucide-react'
 import type { ReactNode } from 'react'
-import { useState } from 'react'
 
 import { Button } from '@/components/shared/primitives'
 import { Meter } from '@/components/shared/Meter'
@@ -181,20 +180,46 @@ function UndoButton({ vice, measured }: { readonly vice: Vice; readonly measured
 }
 
 /**
- * The quick amounts, on a line of their own.
+ * The quick amounts, and the only way a measured pool is logged.
  *
- * They shared a wrapping row with the amount field and its button, so
- * "Pre-workout", "mg", "+" and undo came out as four siblings of one
- * kind — a preset, a text field and two different actions, every one of
- * them reading as the same chip. Separating them is most of what was
- * clunky: these are the one-tap answers, and the line below is the one
- * you have to think about.
+ * There was a text field beside them for an arbitrary amount, and it is
+ * gone. Two reasons, and the second is the one that decided it: a box
+ * you type into is the largest, loudest control on a row whose job is to
+ * be pressed once, and a *number* is a thing you have to compose rather
+ * than choose — on a card meant to be used mid-conversation, holding a
+ * drink. Choosing what a pool measures belongs in the editor. Logging
+ * belongs here, and logging should be a tap.
+ *
+ * What that costs is real and worth stating: an amount with no chip for
+ * it now needs a chip made first. That is one trip to the editor against
+ * a field on every row forever, and the chips are the thing that gets
+ * better with use — the list ends up being what you actually drink.
  */
 function Presets({ vice }: { readonly vice: Vice }) {
   const spend = useSpendVice()
   const presets = vice.presets ?? []
 
-  if (presets.length === 0) return null
+  /*
+   * A pool with no quick amounts still has to be loggable, and a bare
+   * plus for one unit is what a pool of hits wants anyway. This is also
+   * the case the removed field was covering, so it is not a gap left
+   * behind — it is the same capability without the box.
+   */
+  if (presets.length === 0) {
+    return (
+      <Button
+        variant="outline"
+        size="sm"
+        aria-label={`Log one ${vice.unit ?? ''} of ${vice.name}`.replace('  ', ' ')}
+        disabled={spend.isPending}
+        onClick={() => {
+          spend.mutate({ id: vice.id, amount: 1 })
+        }}
+      >
+        <Plus size={14} aria-hidden />
+      </Button>
+    )
+  }
 
   return (
     <div className="flex flex-wrap gap-1">
@@ -212,72 +237,6 @@ function Presets({ vice }: { readonly vice: Vice }) {
         </Button>
       ))}
     </div>
-  )
-}
-
-/**
- * An amount typed by hand, which is the only way to log a pool with no
- * quick amounts — and that is every pool given a unit in the editor
- * rather than arriving with one.
- *
- * **The unit is a label beside the field, not the placeholder inside
- * it.** As a placeholder it made an empty box read as a chip saying
- * "mg", which is why the field did not look like a field at all. Out
- * here it names what the number is, and the placeholder can say the
- * thing actually worth saying: a bare "1", which is what an empty box
- * logs.
- */
-function AmountForm({ vice }: { readonly vice: Vice }) {
-  const spend = useSpendVice()
-  const [custom, setCustom] = useState('')
-
-  return (
-    <form
-      className="flex items-center gap-1.5"
-      onSubmit={(event) => {
-        event.preventDefault()
-        /*
-         * **An empty box means one, and that is a bug fix rather than a
-         * convenience.** `Number('')` is 0, so this fell through
-         * `amount <= 0` and returned — on a pool with no quick amounts
-         * the plus is the only control on the row, and it silently did
-         * nothing. A button that looks pressable, is not disabled and
-         * has no effect is the worst of the three states it can be in.
-         */
-        const typed = custom.trim()
-        const amount = typed === '' ? 1 : Number(typed)
-        if (!Number.isFinite(amount) || amount <= 0) return
-        spend.mutate({ id: vice.id, amount })
-        setCustom('')
-      }}
-    >
-      <input
-        className="bg-ink-900 border-ink-700 text-ink-50 placeholder:text-ink-700 numeric tap-target w-14 rounded-lg border px-2 text-center text-sm"
-        inputMode="decimal"
-        aria-label={`How much ${vice.name}`}
-        placeholder="1"
-        value={custom}
-        onChange={(event) => {
-          setCustom(event.target.value)
-        }}
-      />
-      {vice.unit !== undefined && (
-        <span className="text-ink-500 shrink-0 text-xs">{vice.unit}</span>
-      )}
-      <Button
-        type="submit"
-        variant="outline"
-        size="sm"
-        aria-label={
-          custom.trim() === ''
-            ? `Log one ${vice.unit ?? ''} of ${vice.name}`.trim()
-            : `Log ${custom.trim()} ${vice.unit ?? ''} of ${vice.name}`
-        }
-        disabled={spend.isPending}
-      >
-        <Plus size={14} aria-hidden />
-      </Button>
-    </form>
   )
 }
 
@@ -453,17 +412,13 @@ export function PoolRow({
         made a preset, a text field and two reversals read as one tray of
         interchangeable chips.
       */}
-      <div className="mt-2 space-y-1.5">
-        {measured && <Presets vice={vice} />}
+      <div className="mt-2 flex items-center gap-1.5">
+        {measured ? <Presets vice={vice} /> : <CountedLog vice={vice} />}
 
-        <div className="flex items-center gap-1.5">
-          {measured ? <AmountForm vice={vice} /> : <CountedLog vice={vice} />}
-
-          <span className="ml-auto flex shrink-0 items-center gap-1">
-            {measured && <UndoButton vice={vice} measured />}
-            {action}
-          </span>
-        </div>
+        <span className="ml-auto flex shrink-0 items-center gap-1">
+          {measured && <UndoButton vice={vice} measured />}
+          {action}
+        </span>
       </div>
     </div>
   )

@@ -14,7 +14,7 @@ import { Dailies } from './Dailies'
 import { SeasonCard } from '@/features/character/SeasonCard'
 import { useSeasonProgress } from '@/features/character/hooks'
 import { useReviewDraft } from '@/features/review/hooks'
-import { VitalsCard } from '@/features/vitals/VitalsCard'
+import { LimitsCard, VitalsCard } from '@/features/vitals/VitalsCard'
 import { TodayAvatar } from '@/features/character/TodayAvatar'
 
 import { useAgenda } from './hooks'
@@ -93,12 +93,17 @@ export function TodayPage() {
       />
 
       {/*
-        Vitals sits above the dailies because it is the most present-tense
-        thing on a present-tense screen — what you have left right now —
-        and because spending a charge is the one action here that happens
-        at an arbitrary moment rather than once in the morning.
+        Limits sit above the dailies because they are the most
+        present-tense thing on a present-tense screen — what you have
+        left right now — and because spending a charge is the one action
+        here that happens at an arbitrary moment rather than once in the
+        morning. Vitals follows, being a reading rather than an action.
       */}
-      <Section title="Vitals" description="What you have left, and how the day feels.">
+      <Section title="Limits" description="What you have left today.">
+        <LimitsCard />
+      </Section>
+
+      <Section title="Vitals" description="How the day feels, and where the scale is going.">
         <VitalsCard />
       </Section>
 

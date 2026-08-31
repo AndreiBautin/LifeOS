@@ -1557,6 +1557,33 @@ days used` rather than hiding it.
 drinking day, which is the entire reason this is counted separately from
 the amount.
 
+**The pools have their own screen, and it is not Vitals.**
+`features/limits/LimitsPage.tsx`, at `/limits`. Vitals measures the
+body — what the scale says, what phase you are in, how the day felt,
+what upkeep was kept — and a pool is none of that. It is a rule you set
+and then spend against, closer to a quest than to a weigh-in: nothing in
+it is a reading taken _of_ you. Sharing one screen also made that screen
+the longest in the app and gave it a heading covering five unrelated
+things.
+
+Today carries a card for each, because Today is where the spending
+happens and this is where the deciding does — the same line Settings and
+the tech tree sit on relative to You. **A link rather than a ninth tab**,
+which was measured rather than argued: every nav cell clears 44px, so
+nine need 396 and a 375-pixel phone has 375.
+
+The domain did not move and should not. `domain/vitals/charges.ts`,
+`ViceRepository`, the `vices` store and the sync field all stay where
+they are — those are addresses, and this is the same screen-word /
+type-word split the file already documents for Quests over `Project`
+and Codex over `backlog`.
+
+**Its sections are "Staying under" and "Reaching for"**, not "Limits"
+and "Targets": the page is already called Limits, and a section under it
+repeating the word says nothing. Those are also the words the add form's
+own direction toggle uses, so the heading and the control that produces
+it agree.
+
 **Limits and targets get their own sections, because a heading that has
 to say "or the opposite" is covering two things.** One list read
 "A limit to stay under or a target to reach", which is what a description
@@ -1614,9 +1641,20 @@ old one keeps what it truly held.
 commits it was not.** `MeasuredPool` offered the preset buttons and
 nothing else, so a pool that gained a unit any way other than arriving
 with one — which is every pool edited into being measured — drew a bar
-and gave no way to fill it. There is a typed amount beside the presets
-now, which is useful anyway: a preset cannot know that tonight's glass
-was a large one.
+and gave no way to fill it.
+
+The answer was a typed amount beside the presets, and that is **gone
+again**: a box you type into is the largest, loudest control on a row
+whose job is to be pressed once, and a number is a thing you have to
+compose rather than choose — on a card meant to be used mid-conversation
+holding a drink. A pool with no quick amounts gets **a bare plus that
+logs one unit** instead, which covers the same gap and is what a pool of
+hits wanted anyway.
+
+What that costs is real: an amount with no chip for it now needs a chip
+made first. That is one trip to the editor against a text field on every
+row forever, and the chips get better with use — the list ends up being
+what you actually drink.
 
 **An empty amount box means one, and the plus was doing nothing at
 all.** `Number('')` is 0, so the submit fell through its `amount <= 0`
