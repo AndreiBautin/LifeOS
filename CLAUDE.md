@@ -1164,6 +1164,42 @@ neither device having heard from the other, loses Monday entirely. Do not
 "simplify" this back to a record-level winner; `synchronise.test.ts` fails
 in two places if you do.
 
+**Two read-modify-writes of one record, fired together, lose one of
+them — and the comment saying otherwise was mine.** The stage editor
+first sent a rename and a retarget as separate mutations, reasoning
+that they are separate operations. They are. Both are also a
+read-modify-write of the same campaign record, so the second read the
+copy from _before_ the first had saved and wrote the old name back.
+Driving it caught the target moving to 30,000 while the new name
+silently did not stick; the suite was green throughout.
+
+This is the hazard `serialise` exists for in the backlog hooks,
+arriving from the other direction. There the answer is a queue, because
+two taps really are two events. Here **one form press is one edit**, so
+the answer is `reshapeStage` — one function, one write. Any future edit
+that changes two fields of a campaign belongs in one call for the same
+reason.
+
+**Three kinds of stage edit, and only one loses anything.** A name is a
+label: the stage means what it meant and every lap still happened. A
+target changes whether it is _met_ and rewrites nothing — unlike a
+habit's cadence, which decides which days were expected and re-reads
+every streak. `dropStage` is named apart from the rest because it is
+the destructive one, the rule that a call site must not be able to ask
+for "change this" and receive "wipe it".
+
+**The laps survive a change of kind, deliberately.** Turning a declared
+stage into a measured one leaves its dates inert — the reading decides
+from then on — and clearing them would be a destructive edit wearing a
+settings change's clothes. "2026-08-31 · Maple Street" is a true record
+of a day something happened, and it survives the way a retired habit’s
+kept days do. The editor says so before the change rather than after.
+
+**The confirm appears only when there is something to lose.** A stage
+nobody has reached carries no record, so asking about it is a dialogue
+for its own sake — and asking about everything is how somebody learns
+to press through the question without reading it.
+
 **A campaign is the long arc across areas, and it is not a `Project`.**
 The report: _"I want to move eventually, but that depends on fixing up
 the house, improving income, finding a new house, saving a deposit,

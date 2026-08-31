@@ -3,12 +3,20 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useServices } from '@/app/context'
 import {
   addCampaign,
+  appendStage,
+  dropStage,
+  moveStageIn,
+  renameArc,
+  renameStageIn,
+  reshapeStageIn,
+  retargetStageIn,
   campaignStandings,
   reachStage,
   removeCampaign,
   undoStage,
   type NewCampaign,
 } from '@/application/use-cases/campaign/campaign'
+import type { Requirement } from '@/domain/campaign/campaign'
 import type { CampaignId, StageId } from '@/domain/ids/ids'
 
 export const CAMPAIGNS = ['campaigns'] as const
@@ -72,4 +80,53 @@ export function useUndoStage() {
 
 export function useRemoveCampaign() {
   return useCampaignMutation<CampaignId>((id, services) => removeCampaign(id, services))
+}
+
+export function useRenameStage() {
+  return useCampaignMutation<{ id: CampaignId; stageId: StageId; name: string }>(
+    ({ id, stageId, name }, services) => renameStageIn(id, stageId, name, services),
+  )
+}
+
+export function useRetargetStage() {
+  return useCampaignMutation<{ id: CampaignId; stageId: StageId; requirement: Requirement }>(
+    ({ id, stageId, requirement }, services) => retargetStageIn(id, stageId, requirement, services),
+  )
+}
+
+export function useMoveStage() {
+  return useCampaignMutation<{ id: CampaignId; stageId: StageId; by: -1 | 1 }>(
+    ({ id, stageId, by }, services) => moveStageIn(id, stageId, by, services),
+  )
+}
+
+export function useAppendStage() {
+  return useCampaignMutation<{ id: CampaignId; name: string; requirement: Requirement }>(
+    ({ id, name, requirement }, services) => appendStage(id, name, requirement, services),
+  )
+}
+
+/** Destructive, and named apart from every other stage edit. */
+export function useDropStage() {
+  return useCampaignMutation<{ id: CampaignId; stageId: StageId }>(({ id, stageId }, services) =>
+    dropStage(id, stageId, services),
+  )
+}
+
+export function useRenameArc() {
+  return useCampaignMutation<{ id: CampaignId; name: string; aim: string }>(
+    ({ id, name, aim }, services) => renameArc(id, name, aim, services),
+  )
+}
+
+/** A stage's name and requirement, in one write. See `reshapeStage`. */
+export function useReshapeStage() {
+  return useCampaignMutation<{
+    id: CampaignId
+    stageId: StageId
+    name: string
+    requirement: Requirement
+  }>(({ id, stageId, name, requirement }, services) =>
+    reshapeStageIn(id, stageId, name, requirement, services),
+  )
 }

@@ -1,12 +1,14 @@
-import { Check, Flag, Plus, Undo2, X } from 'lucide-react'
+import { Check, Flag, Pencil, Plus, Undo2, X } from 'lucide-react'
 import { useState } from 'react'
 
+import type { CampaignId } from '@/domain/ids/ids'
 import { Badge, Button, Card, Empty, Section } from '@/components/shared/primitives'
 import { Meter } from '@/components/shared/Meter'
 import type { CampaignStanding, Requirement, StageStanding } from '@/domain/campaign/campaign'
 import { formatMinorUnits } from '@/domain/upgrades/upgrade'
 
-import { useAddCampaign, useCampaigns, useReachStage, useUndoStage } from './hooks'
+import { useAddCampaign, useAppendStage, useCampaigns, useReachStage, useUndoStage } from './hooks'
+import { StageEditor } from './StageEditor'
 
 /**
  * The long arc — the move, and anything shaped like it.
@@ -79,30 +81,67 @@ function describe(requirement: Requirement, standing: StageStanding): string {
 function StageRow({
   standing,
   campaign,
+  index,
 }: {
   readonly standing: StageStanding
   readonly campaign: CampaignStanding
+  readonly index: number
 }) {
   const reach = useReachStage()
   const undo = useUndoStage()
   const [noting, setNoting] = useState(false)
   const [note, setNote] = useState('')
+  const [editing, setEditing] = useState(false)
 
   const { stage, met, progress, unproven } = standing
   const declared = stage.requirement.kind === 'declared'
   const isNext = campaign.next?.stage.id === stage.id
 
+  if (editing) {
+    return (
+      <li className="py-2">
+        <StageEditor
+          campaignId={campaign.campaign.id}
+          stage={stage}
+          isFirst={index === 0}
+          isLast={index === campaign.stages.length - 1}
+          onDone={() => {
+            setEditing(false)
+          }}
+        />
+      </li>
+    )
+  }
+
   return (
     <li className="border-ink-800 border-b py-2.5 last:border-b-0">
       <div className="flex items-baseline justify-between gap-2">
-        <span
-          className={[
-            'min-w-0 flex-1 text-sm',
-            met ? 'text-ink-500' : isNext ? 'text-ink-50 font-medium' : 'text-ink-300',
-          ].join(' ')}
+        {/*
+          The name is the control, rather than a fourth button on a row
+          that already carries a record, an undo and a bar. The same
+          decision a habit's title makes, for the same reason: at 375
+          there is no room, and the name is the only thing here that is
+          not already something you press. The pencil says so, because a
+          phone has no hover to reveal it with.
+        */}
+        <button
+          type="button"
+          className="flex min-w-0 flex-1 items-center gap-1.5 text-left"
+          aria-label={`Edit ${stage.name}`}
+          onClick={() => {
+            setEditing(true)
+          }}
         >
-          {stage.name}
-        </span>
+          <span
+            className={[
+              'truncate text-sm',
+              met ? 'text-ink-500' : isNext ? 'text-ink-50 font-medium' : 'text-ink-300',
+            ].join(' ')}
+          >
+            {stage.name}
+          </span>
+          <Pencil size={11} className="text-ink-700 shrink-0" aria-hidden />
+        </button>
 
         {met ? (
           <Check size={14} className="text-good-500 shrink-0" aria-label="Reached" />
@@ -293,6 +332,87 @@ function AddArc({ onDone }: { readonly onDone: () => void }) {
   )
 }
 
+/**
+ * Adding a stage the default arc did not include.
+ *
+ * Folded away, because the ordinary state of this screen is reading it
+ * rather than building it — a form standing open at the foot of every
+ * arc is furniture, which is the same call the pool add-form makes.
+ *
+ * It appends. Somewhere in the middle is a move away, and offering a
+ * position picker here would be a second way to do what the arrows
+ * already do.
+ */
+function AddStage({ campaignId }: { readonly campaignId: CampaignId }) {
+  const append = useAppendStage()
+  const [open, setOpen] = useState(false)
+  const [name, setName] = useState('')
+
+  if (!open) {
+    return (
+      <Button
+        variant="ghost"
+        size="sm"
+        full
+        className="mt-2"
+        onClick={() => {
+          setOpen(true)
+        }}
+      >
+        <Plus size={14} aria-hidden />
+        Add a stage
+      </Button>
+    )
+  }
+
+  return (
+    <form
+      className="mt-2 flex items-center gap-2"
+      onSubmit={(event) => {
+        event.preventDefault()
+        if (name.trim() === '') return
+
+        append.mutate(
+          // Declared, because that is the only kind whose meaning is
+          // knowable from a name alone. What it should read from is a
+          // decision, and it is one tap away in the editor.
+          { id: campaignId, name, requirement: { kind: 'declared' } },
+          {
+            onSuccess: () => {
+              setName('')
+              setOpen(false)
+            },
+          },
+        )
+      }}
+    >
+      <input
+        className={FIELD}
+        aria-label="What the stage is called"
+        placeholder="Something else that has to happen"
+        value={name}
+        autoFocus
+        onChange={(event) => {
+          setName(event.target.value)
+        }}
+      />
+      <Button type="submit" size="sm" variant="primary" disabled={append.isPending}>
+        Add
+      </Button>
+      <Button
+        type="button"
+        size="sm"
+        variant="ghost"
+        onClick={() => {
+          setOpen(false)
+        }}
+      >
+        <X size={14} aria-hidden />
+      </Button>
+    </form>
+  )
+}
+
 export function Campaigns() {
   const campaigns = useCampaigns()
   const [adding, setAdding] = useState(false)
@@ -377,10 +497,12 @@ export function Campaigns() {
             />
 
             <ul>
-              {standing.stages.map((stage) => (
-                <StageRow key={stage.stage.id} standing={stage} campaign={standing} />
+              {standing.stages.map((stage, index) => (
+                <StageRow key={stage.stage.id} standing={stage} campaign={standing} index={index} />
               ))}
             </ul>
+
+            <AddStage campaignId={standing.campaign.id} />
           </Card>
         ))}
       </div>

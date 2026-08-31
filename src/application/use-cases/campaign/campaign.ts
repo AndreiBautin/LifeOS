@@ -1,6 +1,14 @@
 import { BASE, JOBS, keepFor } from '@/domain/base/base'
 import {
+  addStage,
   markReached,
+  moveStage,
+  removeStage,
+  renameCampaign,
+  renameStage,
+  reshapeStage,
+  retargetStage,
+  type Requirement,
   standingFor,
   undoReached,
   type Campaign,
@@ -159,26 +167,142 @@ export async function removeCampaign(id: CampaignId, deps: CampaignDeps): Promis
 }
 
 /**
- * The one path a stage change takes to storage.
+ * A change to one stage, expressed as a change to the arc.
  *
- * A campaign is saved whole, so every edit is a read-modify-write of the
- * same record — and two of those in flight at once would count one tap.
- * Routing both through here means the mapping over stages is written
- * once rather than in each caller.
+ * Written on top of `editCampaign` rather than beside it. The two were
+ * briefly separate paths to the same write and only one carried the
+ * identity check, which is exactly how a "no write when nothing
+ * changed" rule ends up half-true.
  */
-async function editStage(
+function editStage(
   id: CampaignId,
   stageId: StageId,
   deps: CampaignDeps,
   change: (stage: Stage) => Stage,
 ): Promise<void> {
+  return editCampaign(id, deps, (campaign) => {
+    const found = campaign.stages.find((stage) => stage.id === stageId)
+    // Identity, so a stage that does not exist writes nothing rather
+    // than restamping the record it was not in.
+    if (found === undefined) return campaign
+
+    return {
+      ...campaign,
+      stages: campaign.stages.map((stage) => (stage.id === stageId ? change(stage) : stage)),
+    }
+  })
+}
+
+/**
+ * Editing an arc: the label changes, the shape changes, and the one
+ * destructive one.
+ *
+ * All of them route through `editCampaign` for the reason `editStage`
+ * exists — a campaign is saved whole, so every edit is a
+ * read-modify-write of the same record, and the read has to happen
+ * inside the operation rather than in each caller.
+ *
+ * **`dropStage` is named apart from the rest**, because it is the only
+ * one that loses something: a stage reached three times carries three
+ * dated records nothing else holds. The rule is that a call site must
+ * not be able to ask for "change this" and receive "wipe it", which a
+ * single `updateStage(…, { remove: true })` would allow.
+ */
+export async function renameStageIn(
+  id: CampaignId,
+  stageId: StageId,
+  name: string,
+  deps: CampaignDeps,
+): Promise<void> {
+  await editCampaign(id, deps, (campaign) => renameStage(campaign, stageId, name))
+}
+
+export async function retargetStageIn(
+  id: CampaignId,
+  stageId: StageId,
+  requirement: Requirement,
+  deps: CampaignDeps,
+): Promise<void> {
+  await editCampaign(id, deps, (campaign) => retargetStage(campaign, stageId, requirement))
+}
+
+export async function moveStageIn(
+  id: CampaignId,
+  stageId: StageId,
+  by: -1 | 1,
+  deps: CampaignDeps,
+): Promise<void> {
+  await editCampaign(id, deps, (campaign) => moveStage(campaign, stageId, by))
+}
+
+export async function appendStage(
+  id: CampaignId,
+  name: string,
+  requirement: Requirement,
+  deps: CampaignDeps,
+): Promise<{ readonly error?: string }> {
+  const trimmed = name.trim()
+  if (trimmed === '') return { error: 'A stage needs a name.' }
+
+  await editCampaign(id, deps, (campaign) =>
+    addStage(campaign, {
+      id: deps.ids.next() as StageId,
+      name: trimmed,
+      requirement,
+      reached: [],
+    }),
+  )
+
+  return {}
+}
+
+/** Removes a stage and every record against it. Destructive, and named so. */
+export async function dropStage(
+  id: CampaignId,
+  stageId: StageId,
+  deps: CampaignDeps,
+): Promise<void> {
+  await editCampaign(id, deps, (campaign) => removeStage(campaign, stageId))
+}
+
+export async function renameArc(
+  id: CampaignId,
+  name: string,
+  aim: string,
+  deps: CampaignDeps,
+): Promise<void> {
+  await editCampaign(id, deps, (campaign) => renameCampaign(campaign, name, aim))
+}
+
+async function editCampaign(
+  id: CampaignId,
+  deps: CampaignDeps,
+  change: (campaign: Campaign) => Campaign,
+): Promise<void> {
   const campaign = await deps.campaigns.byId(id)
   if (campaign === undefined) return
 
-  const next: Campaign = {
-    ...campaign,
-    stages: campaign.stages.map((stage) => (stage.id === stageId ? change(stage) : stage)),
-  }
+  const next = change(campaign)
+  // Identity means nothing changed — a blank rename, an out-of-range
+  // move — so no write, no sync traffic, and no `updatedAt` churn that
+  // would make this device look newer than one that really did change.
+  if (next === campaign) return
 
   await deps.campaigns.save(next)
+}
+
+/**
+ * The one write a stage edit makes.
+ *
+ * See `reshapeStage`: firing a rename and a retarget as two mutations
+ * raced on the same record and lost the rename.
+ */
+export async function reshapeStageIn(
+  id: CampaignId,
+  stageId: StageId,
+  name: string,
+  requirement: Requirement,
+  deps: CampaignDeps,
+): Promise<void> {
+  await editCampaign(id, deps, (campaign) => reshapeStage(campaign, stageId, name, requirement))
 }

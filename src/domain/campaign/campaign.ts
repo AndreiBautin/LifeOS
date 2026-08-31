@@ -173,23 +173,6 @@ function readingFor(requirement: Requirement, evidence: Evidence): number | unde
   }
 }
 
-function targetFor(requirement: Requirement): number | undefined {
-  switch (requirement.kind) {
-    case 'declared':
-      return undefined
-    case 'house-jobs':
-      return requirement.count
-    case 'offers':
-      return requirement.count
-    case 'net-worth':
-      return requirement.minorUnits
-    case 'retirement':
-      return requirement.minorUnits
-    case 'credit-score':
-      return requirement.score
-  }
-}
-
 function standingForStage(stage: Stage, evidence: Evidence): StageStanding {
   /*
    * A declared stage is met by having been declared, and nothing else.
@@ -201,7 +184,7 @@ function standingForStage(stage: Stage, evidence: Evidence): StageStanding {
   }
 
   const reading = readingFor(stage.requirement, evidence)
-  const target = targetFor(stage.requirement)
+  const target = targetOf(stage.requirement)
 
   if (reading === undefined || target === undefined) {
     return { stage, met: false, unproven: true }
@@ -263,4 +246,204 @@ export function markReached(stage: Stage, at: string, note?: string): Stage {
  */
 export function undoReached(stage: Stage): Stage {
   return { ...stage, reached: stage.reached.slice(0, -1) }
+}
+
+/**
+ * What each kind of requirement is called, and what its number means.
+ *
+ * Beside the type rather than in the component, because the *unit* is a
+ * property of the requirement: a count of house jobs, a sum of money, a
+ * FICO score. A screen that had to remember which was which would get it
+ * wrong the first time a kind was added.
+ */
+export const REQUIREMENT_LABELS: Record<Requirement['kind'], string> = {
+  declared: 'When you say so',
+  'house-jobs': 'House jobs finished',
+  offers: 'Applications through every stage',
+  'net-worth': 'Net worth reaches',
+  retirement: 'Retirement reaches',
+  'credit-score': 'Credit score reaches',
+}
+
+/** Whether a kind's target is money, so a screen knows to convert. */
+export function isMoney(kind: Requirement['kind']): boolean {
+  return kind === 'net-worth' || kind === 'retirement'
+}
+
+/** The target a requirement carries, for an editor to open on. */
+export function targetOf(requirement: Requirement): number | undefined {
+  switch (requirement.kind) {
+    case 'declared':
+      return undefined
+    case 'house-jobs':
+    case 'offers':
+      return requirement.count
+    case 'net-worth':
+    case 'retirement':
+      return requirement.minorUnits
+    case 'credit-score':
+      return requirement.score
+  }
+}
+
+/**
+ * Builds a requirement of a kind from one number.
+ *
+ * One constructor rather than six at the call site, so the union's shape
+ * is known in exactly one place — and a kind added to the type fails the
+ * switch here rather than silently producing the wrong field name
+ * somewhere in a form.
+ */
+export function requirementOf(kind: Requirement['kind'], target: number): Requirement {
+  const value = Math.max(0, Math.round(target))
+
+  switch (kind) {
+    case 'declared':
+      return { kind: 'declared' }
+    case 'house-jobs':
+      return { kind: 'house-jobs', count: Math.max(1, value) }
+    case 'offers':
+      return { kind: 'offers', count: Math.max(1, value) }
+    case 'net-worth':
+      return { kind: 'net-worth', minorUnits: value }
+    case 'retirement':
+      return { kind: 'retirement', minorUnits: value }
+    case 'credit-score':
+      return { kind: 'credit-score', score: value }
+  }
+}
+
+/**
+ * Renames a stage, and changes nothing else about it.
+ *
+ * A label, in the sense `relabelDaily` uses: the stage means exactly
+ * what it meant before, and every lap recorded against it is still a lap
+ * that happened. Safe in a way changing the requirement is not.
+ */
+export function renameStage(campaign: Campaign, stageId: StageId, name: string): Campaign {
+  const trimmed = name.trim()
+  if (trimmed === '') return campaign
+
+  return mapStage(campaign, stageId, (stage) => ({ ...stage, name: trimmed }))
+}
+
+/**
+ * Changes what a stage needs.
+ *
+ * **The laps are kept, deliberately, even when they stop deciding
+ * anything.** Turning a declared stage into a measured one leaves its
+ * recorded dates inert — the reading decides now — and the tempting move
+ * is to clear them. That would be a destructive edit wearing a
+ * settings-change's clothes: "2026-08-31 · Maple Street" is a true
+ * record of a day something happened, and it survives the same way a
+ * retired habit's kept days do.
+ *
+ * Nothing historical is *reinterpreted* by this, which is what makes it
+ * different from editing a habit's cadence. A cadence decides which days
+ * were expected and re-reads every streak; a target is compared against
+ * a reading taken now.
+ */
+export function retargetStage(
+  campaign: Campaign,
+  stageId: StageId,
+  requirement: Requirement,
+): Campaign {
+  return mapStage(campaign, stageId, (stage) => ({ ...stage, requirement }))
+}
+
+/** Adds a stage at the end. */
+export function addStage(campaign: Campaign, stage: Stage): Campaign {
+  return { ...campaign, stages: [...campaign.stages, stage] }
+}
+
+/**
+ * Removes a stage and everything recorded against it.
+ *
+ * **Named as the destructive thing it is**, and separate from every
+ * other edit here — the rule that a call site must not be able to ask
+ * for "change this" and receive "wipe it". A stage reached three times
+ * carries three dated records that nothing else holds, and `laps` exists
+ * so a screen can say how many are about to go.
+ */
+export function removeStage(campaign: Campaign, stageId: StageId): Campaign {
+  return { ...campaign, stages: campaign.stages.filter((stage) => stage.id !== stageId) }
+}
+
+/** How many recorded laps a removal would discard. */
+export function laps(campaign: Campaign, stageId: StageId): number {
+  return campaign.stages.find((stage) => stage.id === stageId)?.reached.length ?? 0
+}
+
+/**
+ * Moves a stage one place, which is a change to the shape of the arc.
+ *
+ * The order decides which stage reads as "Now", so this is not
+ * cosmetic — but it rewrites nothing, and a stage at the wrong point in
+ * the chain is the commonest thing to get wrong when writing one out.
+ * Out-of-range moves return the campaign unchanged rather than wrapping
+ * round, because a stage jumping from the end to the top is never what a
+ * press of "up" meant.
+ */
+export function moveStage(campaign: Campaign, stageId: StageId, by: -1 | 1): Campaign {
+  const from = campaign.stages.findIndex((stage) => stage.id === stageId)
+  if (from === -1) return campaign
+
+  const to = from + by
+  if (to < 0 || to >= campaign.stages.length) return campaign
+
+  const stages = [...campaign.stages]
+  const [moved] = stages.splice(from, 1)
+  if (moved === undefined) return campaign
+  stages.splice(to, 0, moved)
+
+  return { ...campaign, stages }
+}
+
+/** Renames the arc, and its aim. Both are labels. */
+export function renameCampaign(campaign: Campaign, name: string, aim: string): Campaign {
+  const trimmedName = name.trim()
+  if (trimmedName === '') return campaign
+
+  const trimmedAim = aim.trim()
+
+  // Dropped from the spread rather than set to undefined: a key holding
+  // undefined is a key, and it would travel over sync as one.
+  const { aim: _cleared, ...rest } = campaign
+
+  return { ...rest, name: trimmedName, ...(trimmedAim === '' ? {} : { aim: trimmedAim }) }
+}
+
+function mapStage(campaign: Campaign, stageId: StageId, change: (stage: Stage) => Stage): Campaign {
+  return {
+    ...campaign,
+    stages: campaign.stages.map((stage) => (stage.id === stageId ? change(stage) : stage)),
+  }
+}
+
+/**
+ * A stage's name and requirement together, because they are one edit.
+ *
+ * **Not two calls, and that was a real bug.** The editor first fired a
+ * rename and a retarget as separate mutations, on the reasoning that
+ * they are separate operations. They are — but both are a
+ * read-modify-write of the same campaign record, so the second read the
+ * copy from *before* the first had saved and wrote the old name back.
+ * Driving it caught this: the target moved to 30,000 and the new name
+ * silently did not stick.
+ *
+ * This is the same hazard `serialise` exists for in the backlog hooks,
+ * arriving from the other direction. There the answer is a queue,
+ * because two taps really are two events. Here one form press is one
+ * edit, so the answer is one write.
+ */
+export function reshapeStage(
+  campaign: Campaign,
+  stageId: StageId,
+  name: string,
+  requirement: Requirement,
+): Campaign {
+  const trimmed = name.trim()
+  if (trimmed === '') return campaign
+
+  return mapStage(campaign, stageId, (stage) => ({ ...stage, name: trimmed, requirement }))
 }
