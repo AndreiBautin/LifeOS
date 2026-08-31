@@ -6,6 +6,7 @@ import { useServices } from '@/app/context'
 import {
   activeQuests,
   addAction,
+  addContract,
   addProject,
   deleteProject,
   listProjects,
@@ -102,6 +103,12 @@ function useProjectMutation<TVariables, TResult>(
 export function useAddProject() {
   return useProjectMutation<NewProject, unknown>('projects.add', (input, services) =>
     addProject(input, services),
+  )
+}
+
+export function useAddContract() {
+  return useProjectMutation<string, unknown>('projects.contract-added', (name, services) =>
+    addContract(name, services),
   )
 }
 

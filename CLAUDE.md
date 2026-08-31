@@ -1414,6 +1414,49 @@ XP for it.
 memory is the point of a kata, so `timesSolved` exists to let the form
 say "you logged this in March" rather than to stop anybody logging it.
 
+**A contract is a one-off, and it has exactly one step for a reason
+that is not tidiness.** The ask: _"maybe we need contracts or something
+to track little one-off things that come up."_ The board is for what you
+chose and are working through; a parcel to return does not belong there
+wearing the same clothes — the crowding argument that moved house work
+to Base.
+
+**A view, not a record type.** `domain/projects/contract.ts` is a
+predicate over `Project`: no new store, no new act, no new XP price. It
+reuses the board's card and every rule about blockers and homes.
+
+**One step, because a stepless one-off would pay nothing.** XP comes
+from `projects.side-action-closed` — 20 points — and _nothing pays for
+a project existing or being marked done_. So a contract created empty
+earns zero, and a section full of things that pay nothing teaches you
+not to use it. The one-off **is** the step; closing it is the act, and
+the act is what the model pays for. `addContract` writes the step in
+the same call, so a half-built contract cannot be left behind.
+
+The alternative was a new act for "closed a project with no steps",
+which would have been a way to earn points by creating and closing empty
+records — the farming incentive the act/outcome line exists to prevent.
+
+**Derived, so it moves rather than being wrong.** A quest that grows a
+second step stops being a contract, which is honest: the moment
+something needs breaking down it is no longer a one-off. `contracts`
+and `board` partition what is outstanding, so nothing appears twice and
+nothing vanishes — there is a test for that.
+
+**Ticking the step is not filing it away.** `deriveStatus` never
+completes a project on its own, because one with every step done may
+still have steps to add and closing it is a decision. A one-off is where
+that reads as ceremony, and forking the shared rule for one shape would
+be a second answer to "when is a project finished" — so a ticked
+contract sorts to the bottom and waits, like any other quest with every
+step done. If that proves one tap too many, the change belongs in
+`byOutstanding`, not in `deriveStatus`.
+
+Verified end to end: a contract created from the section arrived as a
+side quest with one pending step, stayed off the board, and closing it
+took the all-time XP from 1,675 to **1,695** with a new "Projects · 20
+XP" line — which is the whole reason it has a step at all.
+
 **The arc stands in for a main quest you have not picked.** Reported:
 _"I'm still seeing no main or side quests assigned despite starting an
 arc."_ Nothing was broken — a campaign is deliberately not a `Project`

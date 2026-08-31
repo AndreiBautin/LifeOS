@@ -7,6 +7,7 @@ import { useState } from 'react'
 import { useServices } from '@/app/context'
 import { kindOf } from '@/domain/projects/active'
 import { QUEST_KIND_LABELS, type QuestKind } from '@/domain/projects/project'
+import { board, byOutstanding, contracts } from '@/domain/projects/contract'
 import { ActiveQuests } from './ActiveQuests'
 import { Badge, Button, Card, Empty, Section } from '@/components/shared/primitives'
 
@@ -24,6 +25,7 @@ import {
   useSetActiveQuest,
   useSetActionStatus,
   useSetBlockers,
+  useAddContract,
   useUpdateProject,
 } from './hooks'
 import { NextAction, StatusBadge } from './NextAction'
@@ -349,6 +351,86 @@ function ProjectCard({
   )
 }
 
+/**
+ * One-off things, kept off the board.
+ *
+ * The ask: *"maybe we need contracts or something to track little
+ * one-off things that come up."* The board is for what you chose and are
+ * working through; a parcel to return does not belong there wearing the
+ * same clothes. Same crowding argument that moved house work to Base.
+ *
+ * **A view, not a record type.** A contract is a `Project` with one
+ * step, so it reuses the board's own card, the same 20 points for
+ * closing the step, and every rule about blockers and homes. Nothing new
+ * had to be stored to give the shape a name.
+ *
+ * **Adding one writes the step with it**, because a contract with no
+ * steps would pay nothing — XP comes from closing an action, and nothing
+ * pays for a project existing. The section would have filled with things
+ * that earn nothing, which teaches you not to use it.
+ */
+function Contracts({
+  projects,
+  all,
+  today,
+}: {
+  readonly projects: readonly Project[]
+  readonly all: readonly Project[]
+  readonly today: Date
+}) {
+  const add = useAddContract()
+  const [name, setName] = useState('')
+
+  return (
+    <Section title="Contracts" description="Small one-off things, off the board and out of the way">
+      <form
+        className="mb-3 flex gap-2"
+        onSubmit={(event) => {
+          event.preventDefault()
+          if (name.trim() === '') return
+
+          add.mutate(name, {
+            onSuccess: () => {
+              setName('')
+            },
+          })
+        }}
+      >
+        <input
+          className={FIELD}
+          value={name}
+          aria-label="New contract"
+          placeholder="Something small that came up"
+          onChange={(event) => {
+            setName(event.target.value)
+          }}
+        />
+        <Button type="submit" variant="primary" disabled={add.isPending}>
+          <Plus size={16} aria-hidden />
+        </Button>
+      </form>
+
+      {projects.length === 0 ? (
+        <p className="text-ink-700 text-xs">
+          Nothing here. A contract is one thing to do — ticking it pays the same as any side quest
+          step, and it leaves the moment it needs breaking down into more.
+        </p>
+      ) : (
+        <div className="space-y-2">
+          {projects.map((project) => (
+            <ProjectCard
+              key={project.id}
+              project={project}
+              others={all.filter((one) => one.id !== project.id)}
+              today={today}
+            />
+          ))}
+        </div>
+      )}
+    </Section>
+  )
+}
+
 export function ProjectsPage() {
   const [name, setName] = useState('')
   const [kind, setKind] = useState<QuestKind>('side')
@@ -381,7 +463,16 @@ export function ProjectsPage() {
     (project) => project.id === recommendation.data?.projectId,
   )
 
-  const open = (projects.data ?? []).filter((project) => project.status !== 'completed')
+  /*
+   * One-offs come off the board and into their own section. They are
+   * still quests and still pay the same 20 for the step; what changes is
+   * that a parcel to return no longer sits among the things you chose to
+   * work through, which is the same crowding argument that moved house
+   * work to Base.
+   */
+  const outstanding = (projects.data ?? []).filter((project) => project.status !== 'completed')
+  const oneOffs = byOutstanding(contracts(outstanding))
+  const open = board(outstanding)
   const done = (projects.data ?? []).filter((project) => project.status === 'completed')
 
   return (
@@ -439,6 +530,8 @@ export function ProjectsPage() {
           </>
         )}
       </Section>
+
+      <Contracts projects={oneOffs} today={today} all={projects.data ?? []} />
 
       <Section
         title="The board"

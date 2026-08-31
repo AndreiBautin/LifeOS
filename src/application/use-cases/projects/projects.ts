@@ -128,6 +128,32 @@ export async function addProject(input: NewProject, deps: ProjectDeps): Promise<
   return saveAndSettle(project, deps)
 }
 
+/**
+ * Files a one-off: a quest whose whole content is one step.
+ *
+ * **Born with its step, in one write.** A contract with no actions would
+ * pay nothing at all — XP comes from `projects.side-action-closed` and
+ * nothing pays for a project existing — so creating it empty and hoping
+ * a step gets added later is how the section fills with things that earn
+ * nothing. `addProject` already takes `steps`, so this is one call and
+ * one record, which is also what stops a half-built contract being left
+ * behind.
+ *
+ * The step is named after the contract, because for a one-off they are
+ * the same thing and the history should read that way: "closed a side
+ * quest step — return the parcel" is what happened.
+ *
+ * **Side, not main.** A one-off is by definition not the thing you are
+ * working towards, and `completedAsKind` prices it at 20 rather than 40
+ * at the moment it closes.
+ */
+export async function addContract(name: string, deps: ProjectDeps): Promise<Project | undefined> {
+  const trimmed = name.trim()
+  if (trimmed === '') return undefined
+
+  return addProject({ name: trimmed, kind: 'side', steps: [trimmed] }, deps)
+}
+
 async function require(id: ProjectId, deps: ProjectDeps): Promise<Project> {
   const existing = await deps.projects.byId(id)
   if (existing === undefined) throw new Error(`No project found with id ${id}.`)
