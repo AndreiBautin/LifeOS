@@ -1,4 +1,4 @@
-import { Plus } from 'lucide-react'
+import { FileText, Plus } from 'lucide-react'
 import { useState } from 'react'
 
 import { PageHeader } from '@/components/shared/PageHeader'
@@ -7,7 +7,14 @@ import { JOBS } from '@/domain/base/base'
 import { APPLICATION_STAGES } from '@/domain/jobs/application'
 import type { Project } from '@/domain/projects/project'
 
-import { useAddProject, useJobApplications, useSetActionStatus } from '../projects/hooks'
+import { matchResume } from '@/domain/jobs/match'
+import { useResume } from '../resume/hooks'
+import {
+  useAddProject,
+  useJobApplications,
+  useSetActionStatus,
+  useUpdateProject,
+} from '../projects/hooks'
 
 /**
  * The job search: what is out, and how far each one has got.
@@ -33,8 +40,113 @@ import { useAddProject, useJobApplications, useSetActionStatus } from '../projec
  * current stage instead would say where each application is and never
  * when it got there.
  */
+/**
+ * The posting, and what it asks for that the resume does not say.
+ *
+ * **Stored in `description`, which is the field a project already has.**
+ * For an application the posting *is* the description of the thing, and
+ * a parallel field would be a second place for the same text — the same
+ * reuse that makes a house job a project rather than a new record.
+ *
+ * **A word match, said plainly on the screen.** It cannot tell that
+ * "orchestration" and "Kubernetes" are about the same paragraph, and
+ * claiming more than it does would be worse than the feature not
+ * existing. What it answers is the question nobody can answer reliably
+ * by eye at eleven at night: which words in this posting appear nowhere
+ * in my resume.
+ */
+function Posting({ application }: { readonly application: Project }) {
+  const update = useUpdateProject()
+  const resume = useResume()
+  const [text, setText] = useState(application.description ?? '')
+
+  const saved = application.description ?? ''
+  const match =
+    resume.data === undefined || saved.trim() === '' ? undefined : matchResume(saved, resume.data)
+
+  return (
+    <div className="border-ink-800 mt-2 space-y-3 border-t pt-3">
+      <textarea
+        className="bg-ink-900 border-ink-700 text-ink-50 placeholder:text-ink-700 w-full rounded-xl border p-3 text-sm"
+        rows={5}
+        aria-label={`Posting for ${application.name}`}
+        placeholder="Paste the job description"
+        value={text}
+        onChange={(event) => {
+          setText(event.target.value)
+        }}
+      />
+
+      {text !== saved && (
+        <Button
+          variant="primary"
+          size="sm"
+          full
+          disabled={update.isPending}
+          onClick={() => {
+            update.mutate({ id: application.id, changes: { description: text } })
+          }}
+        >
+          Save the posting
+        </Button>
+      )}
+
+      {match !== undefined && (
+        <>
+          <p className="text-ink-700 text-xs">
+            {/*
+              The number is a word overlap and is labelled as one. A bare
+              percentage would read as a judgement about whether to
+              apply, which nothing here is entitled to make.
+            */}
+            {match.share === undefined
+              ? 'Nothing to compare yet.'
+              : `${String(Math.round(match.share * 100))}% of the words in this posting appear somewhere in your resume. It is a word match — it does not read either document.`}
+          </p>
+
+          {match.missing.length > 0 && (
+            <div>
+              <p className="text-ink-500 mb-1 text-xs tracking-wide uppercase">
+                Not in your resume
+              </p>
+              <div className="flex flex-wrap gap-1">
+                {match.missing.slice(0, 24).map((term) => (
+                  <span
+                    key={term.word}
+                    className="border-warn-500/40 text-warn-500 numeric rounded-lg border px-2 py-0.5 text-xs"
+                  >
+                    {term.word}
+                    {term.count > 1 && <span className="text-ink-700"> ×{term.count}</span>}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {match.covered.length > 0 && (
+            <div>
+              <p className="text-ink-500 mb-1 text-xs tracking-wide uppercase">Already covered</p>
+              <div className="flex flex-wrap gap-1">
+                {match.covered.slice(0, 24).map((term) => (
+                  <span
+                    key={term.word}
+                    className="border-ink-800 text-ink-500 numeric rounded-lg border px-2 py-0.5 text-xs"
+                  >
+                    {term.word}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  )
+}
+
 function ApplicationRow({ application }: { readonly application: Project }) {
   const advance = useSetActionStatus()
+  const [showing, setShowing] = useState(false)
 
   const open = application.actions.filter((action) => action.status !== 'done')
   const done = application.actions.length - open.length
@@ -53,6 +165,19 @@ function ApplicationRow({ application }: { readonly application: Project }) {
             {done}/{application.actions.length}
           </span>
         )}
+        <Button
+          variant="ghost"
+          size="sm"
+          /* Not the same name as the textarea it reveals — two controls
+             with one name is two things a screen reader cannot tell apart. */
+          aria-label={`${showing ? 'Hide' : 'Show'} the posting for ${application.name}`}
+          aria-expanded={showing}
+          onClick={() => {
+            setShowing(!showing)
+          }}
+        >
+          <FileText size={14} aria-hidden />
+        </Button>
       </div>
 
       {next !== undefined && (
@@ -76,6 +201,8 @@ function ApplicationRow({ application }: { readonly application: Project }) {
           </Button>
         </div>
       )}
+
+      {showing && <Posting application={application} />}
     </li>
   )
 }

@@ -1122,6 +1122,53 @@ filter on floating point eventually disagrees with itself. Two of its
 rules had a database behind them and no longer do: `wouldCreateCycle`, and
 the refusal to delete anything with dependents still attached.
 
+**The posting lives in `Project.description`, and the match is a word
+count.** `domain/jobs/match.ts`. For an application the posting _is_
+the description of the thing, so a parallel field would be a second
+place for the same text — the reuse that makes a house job a project
+rather than a new record.
+
+**It says on the screen that it does not read either document.** It
+cannot tell that "orchestration" and "Kubernetes" are about the same
+paragraph, and it will not notice five years being asked for. What it
+answers is the one question nobody can answer reliably by eye at
+eleven at night: which words in this posting appear nowhere in my
+resume. A bare percentage with no caveat would read as advice about
+whether to apply, which nothing here is entitled to give.
+
+The alternative is a language model, which needs a key, which in a
+client-only app is a key anybody can read out of the bundle. This
+needs none, runs offline, and gives the same answer every time.
+
+**The tokeniser keeps punctuation inside a token, and that is the whole
+difficulty.** The obvious one strips non-letters, which turns `C#` into
+`c`, `.NET` into `net` and `Node.js` into two words — on a software
+posting that is most of the vocabulary destroyed before the comparison
+starts. So `#`, `+` and `.` survive within a run and are trimmed only
+from the ends.
+
+**Single characters are dropped, which loses C and R.** Both are real
+languages and both are the commonest stray letters in prose; a posting
+with a bullet lettered "c)" would otherwise report C as a requirement.
+Losing two languages is the cheaper mistake.
+
+**The stopword list was grown against a real posting, twice.** It began
+as words with no meaning in any field, and driving it showed "we" and
+"need" at the top of a gap list, then "is" and "to" — noise in the
+first column somebody reads is how they stop trusting the rest of it.
+Two groups were added: the voice a posting is written in ("looking",
+"join", "ideal") and how it says a thing is wanted ("required",
+"expertise", "familiarity"). The line held throughout is that the list
+never decides which _skills_ matter — that would be the app having an
+opinion about somebody’s field. `go` is deliberately absent, being a
+language.
+
+**No stemming, stated as a limit rather than half-solved.**
+"microservice" does not match "microservices". Stemming would fix that
+and would also match things that are not the same word, and a match
+wrong in a way nobody can predict is worse than one that is plainly
+literal.
+
 **The resume is structured, because tailoring means choosing parts of
 it.** `domain/resume/resume.ts`. A PDF is a picture of a resume; what
 an application needs is the thing underneath — which bullets exist,
