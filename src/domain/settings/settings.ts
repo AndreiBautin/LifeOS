@@ -1,3 +1,4 @@
+import { EMPTY_JOB_SEARCH, type JobSearch } from '@/domain/jobs/search'
 import { PHASE_RATES, type Phase } from '@/domain/vitals/weight'
 import { DEFAULT_RTS } from '@/domain/framework/rts'
 import { asExerciseId, type ExerciseId } from '@/domain/ids/ids'
@@ -150,6 +151,17 @@ export interface AppSettings {
 
   readonly theme: 'system' | 'light' | 'dark'
   /**
+   * The standing job search — which boards to read, and what counts as
+   * a lead on them.
+   *
+   * Here rather than in component state, which is where it was: every
+   * board slug and filter was wiped by any navigation, so the search had
+   * to be retyped each time the screen was opened. It travels between
+   * devices because a board slug is a fact about the search rather than
+   * about the phone.
+   */
+  readonly jobSearch: JobSearch
+  /**
    * ISO timestamp of the last successful export. Drives the backup
    * reminder — a backup feature nobody is prompted to use is worth
    * nothing, and this is local-only storage.
@@ -245,6 +257,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   keepScreenAwake: true,
   checkInsEnabled: true,
   theme: 'system',
+  jobSearch: EMPTY_JOB_SEARCH,
   schemaVersion: SETTINGS_SCHEMA_VERSION,
 }
 

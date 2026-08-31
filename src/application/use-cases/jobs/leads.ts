@@ -1,6 +1,7 @@
-import type { AtsProvider, FetchedPosting } from '@/domain/jobs/boards'
+import type { FetchedPosting } from '@/domain/jobs/boards'
 import { PROVIDER_LABELS, UnknownBoard } from '@/domain/jobs/boards'
 import { scorePosting, type Scored, type SearchProfile } from '@/domain/jobs/score'
+import type { BoardSource } from '@/domain/jobs/search'
 import type { Clock, JobBoardGateway } from '@/domain/repositories/ports'
 
 export interface LeadDeps {
@@ -8,10 +9,13 @@ export interface LeadDeps {
   readonly clock: Clock
 }
 
-export interface BoardSource {
-  readonly provider: AtsProvider
-  readonly token: string
-}
+/*
+ * Re-exported rather than declared. It was defined here *and* needed by
+ * the stored search, and two identical definitions of one concept is how
+ * they drift — the domain owns it now, because a board source is
+ * something settings persist rather than something a sweep invents.
+ */
+export type { BoardSource }
 
 export interface Lead {
   readonly posting: FetchedPosting

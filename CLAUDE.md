@@ -1122,6 +1122,54 @@ filter on floating point eventually disagrees with itself. Two of its
 rules had a database behind them and no longer do: `wouldCreateCycle`, and
 the refusal to delete anything with dependents still attached.
 
+**The job search lives in settings, and it was component state — which
+made it a bug rather than a preference.** Six `useState` calls on the
+leads panel held every board slug and every filter, so all of it was
+wiped by any navigation. The panel is reached _from_ the applications
+above it, so tapping through to one and coming back is the ordinary
+path, not an edge case: the search had to be retyped before it could
+be run, every time.
+
+It also left **three of the six filters unreachable**. `titleExcludes`,
+`keywordExcludes` and the score floor were literals at the one call
+site — `[]`, `[]` and `0` — so two exclusion rules the domain
+implements and tests could not be set from anywhere, and the floor of
+zero meant the scorer ranked the whole board and hid nothing. The
+default floor is 40: a posting still scores for being fresh and in the
+right place without matching a single term.
+
+It **syncs**, because a board slug is a fact about the search rather
+than about the phone. `parseJobSearch` is its own validator for the
+reason the settings parse around it is: this arrives from another
+device, and a board kind that is not recognised must be dropped rather
+than handed to the gateway.
+
+**"Read daily" is a sweep on the first open of a day, and calling it a
+schedule would be a lie.** Nothing can run while the app is closed —
+no server, and iOS gives a home-screen web app no background fetch,
+the same ceiling that stops a daily from ringing. On something opened
+every morning that is most of the way to the same thing, and the copy
+says "this morning" rather than implying a timer.
+
+**The marker is written before the boards are read, not after.** A
+board that hangs would otherwise leave it unset and every reopening
+that day would retry the whole list — one slow morning turning into a
+request loop against a free API somebody else pays for. A failed sweep
+is reported in `failures` with a button beside it, which makes the
+retry a decision.
+
+**The marker is per-device and deliberately not synced**, unlike the
+search itself. One that travelled would have the phone skip its
+morning sweep because the laptop ran one an hour ago, leaving the
+phone showing nothing with no way to explain why. Two devices reading
+a board each is the cheaper mistake. Same call the upgrade budget and
+the program position make.
+
+`useDailySweep` is a query rather than an effect so Today and the Jobs
+screen share one answer, with every refetch turned off: the defaults
+would re-read three job boards on each window focus, which is the
+polling this whole area is written to avoid.
+
 **Approving a lead _is_ applying, and that diverges from the app this
 was ported from on purpose.** There, approving files an application in
 _Preparing_ and applying is a later stage. Here, creating the

@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 
 import type { AgendaItem, Urgency } from '@/application/use-cases/today/agenda'
 import { Badge, Card, Empty, Section } from '@/components/shared/primitives'
+import { LeadsToday } from '@/features/jobs/LeadsToday'
 import { buttonStyles } from '@/components/shared/styles'
 import { ActiveQuests } from '@/features/projects/ActiveQuests'
 import { useActiveQuests } from '@/features/projects/hooks'
@@ -120,6 +121,15 @@ export function TodayPage() {
       <Section title="Active quests" description="One main, one side.">
         <ActiveQuests main={active.data?.main} side={active.data?.side} showLink />
       </Section>
+
+      {/*
+        No heading of its own, and silent unless the morning's read of
+        the boards found something. A leads card is not a section on this
+        screen — it is one line saying whether there is anything to go
+        and look at, which is what Today answers about every other area
+        too.
+      */}
+      <LeadsToday />
 
       <Section
         title="Due"

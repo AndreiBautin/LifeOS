@@ -35,6 +35,7 @@ export const SYNCED_SETTING_KEYS = [
   'daysPerWeek',
   'weeksBeforeDeload',
   'e1rmFormula',
+  'jobSearch',
 ] as const
 
 export type SyncedSettingKey = (typeof SYNCED_SETTING_KEYS)[number]

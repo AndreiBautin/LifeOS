@@ -2,11 +2,13 @@ import { Search } from 'lucide-react'
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
-import { useServices } from '@/app/context'
+import { Link } from 'react-router-dom'
+
+import { useServices, useSettings } from '@/app/context'
 import { Badge, Button, Card, Empty, Section } from '@/components/shared/primitives'
-import { ATS_PROVIDERS, PROVIDER_LABELS, type AtsProvider } from '@/domain/jobs/boards'
+import { PROVIDER_LABELS } from '@/domain/jobs/boards'
+import { canSweep } from '@/domain/jobs/search'
 import { PROJECTS } from '../projects/hooks'
-import { parseTerms } from '@/domain/jobs/score'
 import { countByEmployer, sweepBoards, type LeadSweep } from '@/application/use-cases/jobs/leads'
 import { appliedLinks, approveLead } from '@/application/use-cases/jobs/approve'
 import type { FetchedPosting } from '@/domain/jobs/boards'
@@ -15,38 +17,21 @@ import { logger } from '@/shared/logging/logger'
 /**
  * Leads: every open posting on the boards you follow, scored.
  *
- * **Fetched on demand, never on a timer.** These are free services run
- * for employers rather than for us, and a client-only app has no
- * business polling them in the background — the button is the rate
- * limit. The same restraint the map's geocoder shows towards Nominatim.
+ * **Read once on the first open of a day, and on demand from the
+ * button. Neither is a timer.** The distinction is worth keeping
+ * because "daily fetch" sounds like a scheduled job and cannot be one:
+ * there is no server, and iOS gives a home-screen web app no background
+ * fetch — the same ceiling that stops a daily from ringing. What is
+ * available is a sweep that happens when you next open the app, which
+ * on something opened every morning is most of the way there. See
+ * `sweepIfDue`; the marker is per-device and the boards are read one at
+ * a time, which is the restraint the map's geocoder shows Nominatim.
  *
- * Nothing is stored yet. A sweep reads the boards, scores what came
- * back, and shows it; approving a lead into a tracked application is the
- * next piece, and until it exists persisting a mirror of three job
- * boards would be storing something nobody can act on.
+ * **The search itself lives in settings**, not in this component. It was
+ * six `useState` calls, wiped by any navigation — and this panel is
+ * reached *from* the applications above it, so tapping through and
+ * coming back is the ordinary path rather than an edge case.
  */
-
-const FIELD =
-  'bg-ink-850 border-ink-800 text-ink-50 placeholder:text-ink-700 tap-target w-full rounded-xl border px-3 text-sm'
-
-const AREA =
-  'bg-ink-850 border-ink-800 text-ink-50 placeholder:text-ink-700 w-full rounded-xl border p-3 text-sm'
-
-/** `greenhouse:stripe` a line, which is what a board actually is: a kind and a slug. */
-function parseSources(raw: string): readonly { provider: AtsProvider; token: string }[] {
-  return raw
-    .split(/[\n\r,]+/)
-    .map((line) => line.trim().toLowerCase())
-    .filter((line) => line !== '')
-    .flatMap((line) => {
-      const [kind, token] = line.split(':')
-      const provider = ATS_PROVIDERS.find((one) => one === kind)
-
-      return provider === undefined || token === undefined || token.trim() === ''
-        ? []
-        : [{ provider, token: token.trim() }]
-    })
-}
 
 export function LeadsSection() {
   const services = useServices()
@@ -75,28 +60,22 @@ export function LeadsSection() {
     },
   })
 
-  const [sources, setSources] = useState('')
-  const [titles, setTitles] = useState('')
-  const [keywords, setKeywords] = useState('')
-  const [locations, setLocations] = useState('')
-  const [remoteOnly, setRemoteOnly] = useState(false)
+  /*
+   * The search comes from settings rather than from this component.
+   *
+   * It used to be six `useState` calls, which meant every board slug and
+   * filter was wiped by any navigation — and the panel is reached *from*
+   * the applications above it, so tapping through and coming back is the
+   * ordinary path. It also left three of the six filters unreachable:
+   * both exclusion lists and the score floor were literals here.
+   */
+  const { settings } = useSettings()
+  const search = settings.jobSearch
+
   const [result, setResult] = useState<LeadSweep | undefined>(undefined)
 
   const sweep = useMutation({
-    mutationFn: () =>
-      sweepBoards(
-        parseSources(sources),
-        {
-          titleIncludes: parseTerms(titles),
-          titleExcludes: [],
-          keywordIncludes: parseTerms(keywords),
-          keywordExcludes: [],
-          locationIncludes: parseTerms(locations),
-          remoteOnly,
-        },
-        0,
-        services,
-      ),
+    mutationFn: () => sweepBoards(search.sources, search.profile, search.minimumScore, services),
     onSuccess: setResult,
     onError: (error: unknown) => {
       logger.error('jobs.sweep-failed', { message: String(error) })
@@ -108,70 +87,44 @@ export function LeadsSection() {
   return (
     <Section title="Leads" description="Public ATS boards, read on demand and scored">
       <Card className="space-y-3">
-        <label className="block space-y-1">
-          <span className="text-ink-500 text-xs">Boards — one a line, as kind:slug</span>
-          <textarea
-            className={AREA}
-            rows={3}
-            aria-label="Boards"
-            placeholder={'greenhouse:stripe\nashby:ramp\nlever:acme'}
-            value={sources}
-            onChange={(event) => {
-              setSources(event.target.value)
-            }}
-          />
-        </label>
-
-        <input
-          className={FIELD}
-          aria-label="Wanted titles"
-          placeholder="Wanted titles — engineer, staff"
-          value={titles}
-          onChange={(event) => {
-            setTitles(event.target.value)
-          }}
-        />
-        <input
-          className={FIELD}
-          aria-label="Wanted keywords"
-          placeholder="Wanted keywords — azure, .net"
-          value={keywords}
-          onChange={(event) => {
-            setKeywords(event.target.value)
-          }}
-        />
-        <input
-          className={FIELD}
-          aria-label="Wanted locations"
-          placeholder="Locations — denver, remote"
-          value={locations}
-          onChange={(event) => {
-            setLocations(event.target.value)
-          }}
-        />
-
-        <label className="tap-target flex items-center justify-between gap-3">
-          <span className="text-ink-300 text-sm">Remote only</span>
-          <input
-            type="checkbox"
-            className="size-5 shrink-0"
-            checked={remoteOnly}
-            onChange={(event) => {
-              setRemoteOnly(event.target.checked)
-            }}
-          />
-        </label>
+        {/*
+          What the search is, said in a line, with the way to change it
+          beside it. The panel reports rather than asks — the form lives
+          on Settings, because this is a screen you act on and that is a
+          screen you decide on.
+        */}
+        {canSweep(search) ? (
+          <div className="flex items-baseline justify-between gap-3">
+            <p className="text-ink-500 min-w-0 flex-1 text-xs">
+              {search.sources.length === 1 ? '1 board' : `${String(search.sources.length)} boards`}
+              {search.profile.titleIncludes.length > 0 &&
+                ` · ${search.profile.titleIncludes.join(', ')}`}
+              {search.profile.remoteOnly && ' · remote only'}
+            </p>
+            <Link to="/settings" className="text-accent-400 shrink-0 text-xs">
+              Change
+            </Link>
+          </div>
+        ) : (
+          <Empty title="No boards followed">
+            Greenhouse, Lever and Ashby publish every open role as JSON, with no account and no key.{' '}
+            <Link to="/settings" className="text-accent-400">
+              Add a board in Settings
+            </Link>{' '}
+            and they are read each morning.
+          </Empty>
+        )}
 
         <Button
           variant="primary"
           full
-          disabled={sweep.isPending || parseSources(sources).length === 0}
+          disabled={sweep.isPending || !canSweep(search)}
           onClick={() => {
             sweep.mutate()
           }}
         >
           <Search size={16} aria-hidden />
-          {sweep.isPending ? 'Reading the boards…' : 'Find leads'}
+          {sweep.isPending ? 'Reading the boards…' : 'Read them now'}
         </Button>
 
         {/*

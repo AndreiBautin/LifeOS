@@ -1,3 +1,4 @@
+import { parseJobSearch } from '@/domain/jobs/search'
 import type { AppSettings } from '@/domain/settings/settings'
 import { DEFAULT_SETTINGS, SETTINGS_SCHEMA_VERSION } from '@/domain/settings/settings'
 import { completeLiftSessions } from '@/domain/priority/tiers'
@@ -255,6 +256,13 @@ function mergeWithDefaults(parsed: unknown): AppSettings {
       stored.theme === 'light' || stored.theme === 'dark' || stored.theme === 'system'
         ? stored.theme
         : DEFAULT_SETTINGS.theme,
+    /*
+     * Parsed rather than trusted, and it does its own validation because
+     * it is the only nested structure in here — `parseJobSearch` drops a
+     * board kind it does not recognise instead of returning a source the
+     * gateway cannot read.
+     */
+    jobSearch: parseJobSearch(stored.jobSearch),
     /*
      * Carried through, or the stamp is written and never read.
      *

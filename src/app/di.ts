@@ -57,6 +57,8 @@ import { NominatimSearchProvider } from '@/infrastructure/map/nominatim-search'
 import { createSyncStateStore } from '@/infrastructure/storage/sync-state-store'
 import { createNullSyncTarget } from '@/infrastructure/sync/targets'
 import { requestPersistence } from '@/infrastructure/storage/durability'
+import { createSweepMarkerStore } from '@/infrastructure/storage/sweep-marker-store'
+import type { SweepMarkerStore } from '@/application/use-cases/jobs/daily-sweep'
 import { logger } from '@/shared/logging/logger'
 
 /**
@@ -91,6 +93,8 @@ export interface AppServices {
   readonly places: PlaceRepository
   readonly finance: FinanceRepository
   readonly boards: JobBoardGateway
+  /** Which local day the boards were last read on their own. */
+  readonly sweepMarker: SweepMarkerStore
   readonly resume: ResumeRepository
   readonly trips: TripRepository
   readonly dailies: DailyRepository
@@ -157,6 +161,7 @@ export async function bootstrap(): Promise<BootstrapResult> {
     places: createPlaceRepository(db, systemClock),
     finance: createFinanceRepository(db, systemClock),
     boards: createAtsGateway(),
+    sweepMarker: createSweepMarkerStore(),
     resume: createResumeRepository(db, systemClock),
     trips: createTripRepository(db, systemClock),
     dailies: createDailyRepository(db, systemClock),
