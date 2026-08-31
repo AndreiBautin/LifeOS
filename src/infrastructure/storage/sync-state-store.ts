@@ -75,12 +75,14 @@ function parse(value: unknown): SyncState | undefined {
     cursor?: string
     pushedThrough?: string
     settingsSynced?: string
+    resumeSynced?: string
     lastSyncedAt?: string
   } = {}
 
   if (typeof bag.cursor === 'string') state.cursor = bag.cursor
   if (typeof bag.pushedThrough === 'string') state.pushedThrough = bag.pushedThrough
   if (typeof bag.settingsSynced === 'string') state.settingsSynced = bag.settingsSynced
+  if (typeof bag.resumeSynced === 'string') state.resumeSynced = bag.resumeSynced
   if (typeof bag.lastSyncedAt === 'string') state.lastSyncedAt = bag.lastSyncedAt
 
   return state

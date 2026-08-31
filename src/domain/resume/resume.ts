@@ -122,3 +122,29 @@ export function bulletsFromText(text: string): readonly string[] {
     .map((line) => line.replace(/^\s*[•·*\-–—]\s*/, '').trim())
     .filter((line) => line !== '')
 }
+
+/**
+ * Which of two copies of the resume to keep.
+ *
+ * Whole-record last-write-wins, and the local object is returned **by
+ * identity** when the incoming copy loses — the caller compares against
+ * what it passed in to decide whether to write at all. Restamping values
+ * that did not change would make this device the newest and bounce the
+ * same document back on the next exchange, forever. `mergeSettings` is
+ * the same shape for the same reason.
+ *
+ * An unstamped incoming copy always loses: the stamp is what makes two
+ * copies orderable, and a copy that cannot prove it is newer must not
+ * overwrite one that can. That is the rule tombstones already follow.
+ *
+ * There is nothing here to union. A habit's completions and a backlog
+ * item's progress log are per-day append-only records where a
+ * record-level winner genuinely loses a day; a resume is one document
+ * that somebody edits, so the later edit is a correction.
+ */
+export function mergeResume(local: Resume | undefined, incoming: Resume): Resume | undefined {
+  if (incoming.updatedAt === undefined) return local
+  if (local?.updatedAt !== undefined && local.updatedAt >= incoming.updatedAt) return local
+
+  return incoming
+}

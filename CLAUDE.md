@@ -1542,6 +1542,51 @@ what had nothing to say. A zero turns an honest blank into an accusation,
 and it compounds — one fabricated reading makes the next month's trend a
 lie too.
 
+**A collection joins sync in five places and the resume was in none of
+them.** Not `SyncPayload`, not `isEmpty`, not `payloadSize`, not the
+Firestore target, not the backup envelope. It was written to IndexedDB
+and read back on the one device that wrote it, while both sync and
+export reported success on every run — the honest report of a push that
+genuinely contained everything it knew about.
+
+It is also the worst record in the app to lose. Everything else here is
+a by-product of using the app and comes back by using it again; the
+resume was typed in off a PDF, and nothing regenerates it.
+
+It travels as a **singleton, like the settings blob** — one document
+under a fixed id, sent only when its stamp differs from `resumeSynced`,
+and merged whole-record last-write-wins by `mergeResume`. Same shape as
+`mergeSettings` including the identity return, which is what stops two
+devices bouncing the document back and forth forever. There is nothing
+to union: a habit’s completions and a backlog progress log are per-day
+append-only records where a record-level winner really does lose a day,
+and a resume is one document somebody edits, so the later edit is a
+correction. Unstamped always loses, the rule tombstones already follow.
+
+In the backup it is a **collection of nought or one**, which fits the
+table awkwardly and belongs there anyway: the claim that module makes
+is that a thing joins the export, the preview and the import by gaining
+one row, and the alternative was a fourth hand-written path for a
+single record.
+
+**The Firestore cursor could not advance on the app’s most-written
+record, and the comment warning about it was sitting directly above the
+bug.** `reached` is the high-water mark of what came back, and it was
+computed from a **hand-written second list** of the pages — which had
+already drifted once when the atlas was added, was repaired by hand,
+and had drifted again: `dailies`, `vices`, `weighIns` and `finance`
+were all missing. Nothing was lost, because those records were still in
+the payload, so it looked like working sync. What actually happened is
+that a device whose only change was habit ticks left the cursor
+wherever the last workout had put it, and every subsequent pull re-read
+everything after that point, forever.
+
+**The fix is structural rather than four added lines.** `pages` is now
+the array `Promise.all` returns, and the named results are destructured
+_from it_, so a collection cannot be in one list and not the other. A
+hand-maintained copy of a list that already exists will drift; that is
+twice now.
+
 **The fog is a grow-only set, and that is the only reason it can sync.**
 `unionCells` in `domain/sync/payload.ts`, one row per geohash cell in
 `exploredCells`. It carries no stamp and no tombstone because neither

@@ -29,6 +29,7 @@ import type { Exercise } from '@/domain/exercises/exercise'
 import type { WorkoutLog } from '@/domain/logging/workout-log'
 import type { SyncTarget } from '@/domain/repositories/ports'
 import { CURSOR_START, decodeCursor, encodeCursor, laterCursor } from '@/domain/sync/cursor'
+import type { Resume } from '@/domain/resume/resume'
 import type { SyncedSettings } from '@/domain/settings/synced'
 import type { SyncPayload } from '@/domain/sync/payload'
 import { tombstoneKey, type Tombstone } from '@/domain/sync/tombstone'
@@ -86,8 +87,17 @@ const COLLECTIONS = {
    * accumulation.
    */
   settings: 'settings',
+  /*
+   * The other single document. One resume, stored under a fixed id, for
+   * the same reason the settings blob is — and absent from every one of
+   * these lists until it was looked for, so it lived on one device, was
+   * in no backup, and was the most expensive record in the app to type
+   * again.
+   */
+  resume: 'resume',
 } as const
 
+/** Both singletons are stored under this id, so a write overwrites. */
 const SETTINGS_DOCUMENT = 'current'
 
 /**
@@ -127,6 +137,50 @@ export function createFirestoreSyncTarget(options: FirestoreTargetOptions): Sync
       const from = decodeCursor(cursor)
       const after = new Timestamp(from.seconds, from.nanoseconds)
 
+      const pages = await Promise.all([
+        readSince(root(COLLECTIONS.exercises), after),
+        readSince(root(COLLECTIONS.workouts), after),
+        readSince(root(COLLECTIONS.checkIns), after),
+        readSince(root(COLLECTIONS.items), after),
+        readSince(root(COLLECTIONS.projects), after),
+        readSince(root(COLLECTIONS.upgrades), after),
+        readSince(root(COLLECTIONS.friends), after),
+        readSince(root(COLLECTIONS.metrics), after),
+        readSince(root(COLLECTIONS.reviews), after),
+        readSince(root(COLLECTIONS.places), after),
+        readSince(root(COLLECTIONS.trips), after),
+        readSince(root(COLLECTIONS.dailies), after),
+        readSince(root(COLLECTIONS.vices), after),
+        readSince(root(COLLECTIONS.weighIns), after),
+        readSince(root(COLLECTIONS.finance), after),
+        readSince(root(COLLECTIONS.exploredCells), after),
+        readSince(root(COLLECTIONS.tombstones), after),
+        readSince(root(COLLECTIONS.settings), after),
+        readSince(root(COLLECTIONS.resume), after),
+      ])
+
+      /*
+       * **Every** page, and the completeness is load-bearing.
+       *
+       * `reached` is the high-water mark of what actually came back, and a
+       * collection left out of it cannot advance the cursor. That fails
+       * safe — nothing is lost, because the records are still in the
+       * payload and the next pull re-reads — but it fails permanently: if
+       * the only thing that ever changes is a collection missing from
+       * here, the cursor never moves and every pull re-reads from that
+       * point, forever.
+       *
+       * **It is `pages` itself now, not a second list written beside it.**
+       * Three collections were missing when the atlas was added; the list
+       * was then repaired by hand and drifted again, and by the time this
+       * was found `dailies`, `vices`, `weighIns` and `finance` were all
+       * absent — on an app whose most-written record is a habit tick, so
+       * the cursor sat wherever the last workout had put it and every
+       * pull re-read everything after it. A hand-maintained copy of a
+       * list that already exists will drift; the destructuring below
+       * reads from the same array that produces the cursor, so a
+       * collection cannot be in one and not the other.
+       */
       const [
         exercises,
         workouts,
@@ -146,54 +200,8 @@ export function createFirestoreSyncTarget(options: FirestoreTargetOptions): Sync
         cells,
         tombstones,
         settings,
-      ] = await Promise.all([
-        readSince(root(COLLECTIONS.exercises), after),
-        readSince(root(COLLECTIONS.workouts), after),
-        readSince(root(COLLECTIONS.checkIns), after),
-        readSince(root(COLLECTIONS.items), after),
-        readSince(root(COLLECTIONS.projects), after),
-        readSince(root(COLLECTIONS.upgrades), after),
-        readSince(root(COLLECTIONS.friends), after),
-        readSince(root(COLLECTIONS.metrics), after),
-        readSince(root(COLLECTIONS.reviews), after),
-        readSince(root(COLLECTIONS.places), after),
-        readSince(root(COLLECTIONS.trips), after),
-        readSince(root(COLLECTIONS.dailies), after),
-        readSince(root(COLLECTIONS.vices), after),
-        readSince(root(COLLECTIONS.weighIns), after),
-        readSince(root(COLLECTIONS.finance), after),
-        readSince(root(COLLECTIONS.exploredCells), after),
-        readSince(root(COLLECTIONS.tombstones), after),
-        readSince(root(COLLECTIONS.settings), after),
-      ])
-
-      /*
-       * **Every** page, and the completeness is load-bearing.
-       *
-       * `reached` is the high-water mark of what actually came back, and a
-       * collection left out of this list cannot advance it. That fails
-       * safe — the cursor stays put and the next pull re-reads — but it
-       * fails permanently: if the only thing that ever changes is a
-       * collection missing from here, the cursor never moves and every
-       * pull re-reads the entire history from that point, forever. Three
-       * collections were missing when the atlas was added.
-       */
-      const pages = [
-        exercises,
-        workouts,
-        checkIns,
-        items,
-        projects,
-        upgrades,
-        friends,
-        metrics,
-        reviews,
-        places,
-        trips,
-        cells,
-        tombstones,
-        settings,
-      ]
+        resume,
+      ] = pages
 
       /*
        * The cursor advances to the newest document actually read, and no
@@ -215,6 +223,7 @@ export function createFirestoreSyncTarget(options: FirestoreTargetOptions): Sync
        * replaced.
        */
       const latestSettings = settings.records[settings.records.length - 1]
+      const latestResume = resume.records[resume.records.length - 1]
 
       return {
         payload: {
@@ -238,6 +247,7 @@ export function createFirestoreSyncTarget(options: FirestoreTargetOptions): Sync
           ),
           tombstones: tombstones.records as readonly Tombstone[],
           ...(latestSettings === undefined ? {} : { settings: latestSettings as SyncedSettings }),
+          ...(latestResume === undefined ? {} : { resume: latestResume as Resume }),
         },
         cursor: encodeCursor(reached),
       }
@@ -311,6 +321,10 @@ export function createFirestoreSyncTarget(options: FirestoreTargetOptions): Sync
         ...(payload.settings === undefined
           ? []
           : [{ path: COLLECTIONS.settings, id: SETTINGS_DOCUMENT, record: payload.settings }]),
+        // The same, for the same reason. One resume, one document.
+        ...(payload.resume === undefined
+          ? []
+          : [{ path: COLLECTIONS.resume, id: SETTINGS_DOCUMENT, record: payload.resume }]),
       ]
 
       for (let index = 0; index < operations.length; index += BATCH_LIMIT) {

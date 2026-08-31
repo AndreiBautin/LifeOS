@@ -198,6 +198,7 @@ function emptyCounts(): Record<keyof BackupCounts, number> {
     metrics: 0,
     reviews: 0,
     vices: 0,
+    resume: 0,
     weighIns: 0,
     finance: 0,
     places: 0,

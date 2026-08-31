@@ -486,6 +486,8 @@ export interface SyncState {
    * clock-independent.
    */
   readonly settingsSynced?: string
+  /** The same, for the other singleton. See `settingsSynced`. */
+  readonly resumeSynced?: string
   readonly lastSyncedAt?: string
 }
 

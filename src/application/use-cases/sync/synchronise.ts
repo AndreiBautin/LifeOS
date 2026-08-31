@@ -20,6 +20,7 @@ import type {
   PlaceRepository,
   ProjectRepository,
   ReviewRepository,
+  ResumeRepository,
   SettingsRepository,
   SyncStateRepository,
   SyncTarget,
@@ -32,6 +33,7 @@ import type {
   WorkoutRepository,
 } from '@/domain/repositories/ports'
 import { mergeSettings, projectForSync } from '@/domain/settings/synced'
+import { mergeResume } from '@/domain/resume/resume'
 import {
   acceptableFrom,
   changedSince,
@@ -88,6 +90,7 @@ export interface SynchroniseDeps {
   readonly tombstones: TombstoneRepository
   readonly syncState: SyncStateRepository
   readonly settings: SettingsRepository
+  readonly resume: ResumeRepository
   readonly clock: Clock
 }
 
@@ -113,7 +116,12 @@ export async function synchronise(target: SyncTarget, deps: SynchroniseDeps): Pr
    */
   const startedAt = deps.clock.now().toISOString()
 
-  const outgoing = await collectLocal(deps, state.pushedThrough, state.settingsSynced)
+  const outgoing = await collectLocal(
+    deps,
+    state.pushedThrough,
+    state.settingsSynced,
+    state.resumeSynced,
+  )
   await target.push(outgoing)
 
   const { payload: incoming, cursor } = await target.pull(state.cursor)
@@ -186,6 +194,24 @@ export async function synchronise(target: SyncTarget, deps: SynchroniseDeps): Pr
   }
 
   /*
+   * The resume, on exactly the same terms as the settings above: newer
+   * wins, and `mergeResume` returns the local copy by identity when the
+   * incoming one loses, so a losing exchange writes nothing rather than
+   * restamping and bouncing the document back forever.
+   */
+  let resumeMoved = false
+
+  if (accepted.resume !== undefined) {
+    const local = await deps.resume.get()
+    const merged = mergeResume(local, accepted.resume)
+
+    if (merged !== local && merged !== undefined) {
+      await deps.resume.save(merged)
+      resumeMoved = true
+    }
+  }
+
+  /*
    * The stamp actually exchanged, whichever direction it went.
    *
    * Recording the incoming one matters as much as the outgoing: accepted
@@ -197,10 +223,13 @@ export async function synchronise(target: SyncTarget, deps: SynchroniseDeps): Pr
   const settingsStamp =
     accepted.settings?.updatedAt ?? outgoing.settings?.updatedAt ?? state.settingsSynced
 
+  const resumeStamp = accepted.resume?.updatedAt ?? outgoing.resume?.updatedAt ?? state.resumeSynced
+
   await deps.syncState.save({
     cursor,
     pushedThrough: startedAt,
     ...(settingsStamp === undefined ? {} : { settingsSynced: settingsStamp }),
+    ...(resumeStamp === undefined ? {} : { resumeSynced: resumeStamp }),
     lastSyncedAt: startedAt,
   })
 
@@ -220,7 +249,8 @@ export async function synchronise(target: SyncTarget, deps: SynchroniseDeps): Pr
     accepted.vices.length +
     accepted.weighIns.length +
     accepted.finance.length +
-    (settingsMoved ? 1 : 0)
+    (settingsMoved ? 1 : 0) +
+    (resumeMoved ? 1 : 0)
 
   const offered =
     incoming.exercises.length +
@@ -238,7 +268,8 @@ export async function synchronise(target: SyncTarget, deps: SynchroniseDeps): Pr
     incoming.vices.length +
     incoming.weighIns.length +
     incoming.finance.length +
-    (accepted.settings === undefined ? 0 : 1)
+    (accepted.settings === undefined ? 0 : 1) +
+    (accepted.resume === undefined ? 0 : 1)
 
   return {
     pushed: payloadSize(outgoing),
@@ -252,6 +283,7 @@ async function collectLocal(
   deps: SynchroniseDeps,
   watermark: string | undefined,
   settingsSynced: string | undefined,
+  resumeSynced: string | undefined,
 ): Promise<SyncPayload> {
   const [
     exercises,
@@ -272,6 +304,7 @@ async function collectLocal(
     explored,
     tombstones,
     settings,
+    resume,
   ] = await Promise.all([
     deps.exercises.all(),
     deps.workouts.all(),
@@ -291,6 +324,7 @@ async function collectLocal(
     deps.explored.all(),
     deps.tombstones.all(),
     deps.settings.get(),
+    deps.resume.get(),
   ])
 
   /*
@@ -302,6 +336,9 @@ async function collectLocal(
    * prove it is newer must not overwrite one that can.
    */
   const settingsChanged = settings.updatedAt !== undefined && settings.updatedAt !== settingsSynced
+
+  /* The same rule, for the same reason: no stamp, no send. */
+  const resumeChanged = resume?.updatedAt !== undefined && resume.updatedAt !== resumeSynced
 
   /*
    * Filtered in memory rather than by an index.
@@ -345,6 +382,9 @@ async function collectLocal(
     exploredCells: [...explored],
     tombstones: deletedSince(tombstones, watermark),
     ...(settingsChanged ? { settings: projectForSync(settings) } : {}),
+    // No `resume !== undefined` guard: `resumeChanged` reads the stamp
+    // off it, and TypeScript carries that narrowing through the alias.
+    ...(resumeChanged ? { resume } : {}),
   }
 }
 

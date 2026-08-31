@@ -92,6 +92,12 @@ export function createMemorySyncTarget(server: MemorySyncServer, clientId: strin
         undefined,
       )
 
+      /* The other singleton, on exactly the same terms. */
+      const resume = mine.reduce<SyncPayload['resume']>(
+        (latest, batch) => batch.payload.resume ?? latest,
+        undefined,
+      )
+
       return Promise.resolve({
         payload: {
           exercises: mine.flatMap((batch) => batch.payload.exercises),
@@ -112,6 +118,7 @@ export function createMemorySyncTarget(server: MemorySyncServer, clientId: strin
           exploredCells: mine.flatMap((batch) => batch.payload.exploredCells),
           tombstones: mine.flatMap((batch) => batch.payload.tombstones),
           ...(settings === undefined ? {} : { settings }),
+          ...(resume === undefined ? {} : { resume }),
         },
         // Past everything read, including this client's own batches —
         // they were skipped deliberately, not left for later.

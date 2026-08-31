@@ -22,6 +22,7 @@ import type {
   FriendRepository,
   PlaceRepository,
   ProjectRepository,
+  ResumeRepository,
   ReviewRepository,
   SettingsRepository,
   SyncState,
@@ -35,6 +36,7 @@ import type {
   WorkoutRepository,
 } from '@/domain/repositories/ports'
 import type { AppSettings } from '@/domain/settings/settings'
+import type { Resume } from '@/domain/resume/resume'
 import { DEFAULT_SETTINGS } from '@/domain/settings/settings'
 import type { Tombstone } from '@/domain/sync/tombstone'
 import { aWorkout } from '@/test/builders/workout'
@@ -45,6 +47,8 @@ import {
 } from '@/infrastructure/sync/targets'
 
 import { createItem, logDailyProgress } from '@/domain/backlog/item'
+
+import { mergeResume } from '@/domain/resume/resume'
 
 import { synchronise, type SynchroniseDeps } from './synchronise'
 
@@ -408,7 +412,21 @@ function device(clock: Clock): Device {
     },
   }
 
+  /*
+   * The other singleton, and unlike the settings it starts *absent* —
+   * which is the state every device is in until somebody types one.
+   */
+  let storedResume: Resume | undefined = undefined
+  const resume: ResumeRepository = {
+    get: () => Promise.resolve(storedResume),
+    save: (next) => {
+      storedResume = next
+      return Promise.resolve()
+    },
+  }
+
   return {
+    resume,
     dailies,
     vices,
     weighIns,
@@ -968,5 +986,92 @@ describe('ground you have walked', () => {
     await synchronise(createMemorySyncTarget(server, 'desk'), desk)
 
     expect(await desk.explored.count()).toBe(1)
+  })
+})
+
+/*
+ * The resume shipped in no list at all — not the sync payload, not
+ * `isEmpty`, not the backup envelope — so it existed on exactly one
+ * device while both reported success. It is also the most expensive
+ * record in the app to reproduce: everything else is a by-product of
+ * using the app, and this one was typed in off a PDF.
+ */
+describe('syncing the resume', () => {
+  const aResume = (name: string, at: string): Resume => ({
+    name,
+    contact: '',
+    summary: '',
+    skills: [],
+    companies: [],
+    education: [],
+    updatedAt: at,
+  })
+
+  it('carries a resume to a device that has none', async () => {
+    const clock = advancingClock()
+    const server = createMemorySyncServer()
+    const phone = device(clock)
+    const desk = device(clock)
+
+    await phone.resume.save(aResume('Typed once', clock.now().toISOString()))
+
+    await synchronise(createMemorySyncTarget(server, 'phone'), phone)
+    const report = await synchronise(createMemorySyncTarget(server, 'desk'), desk)
+
+    expect((await desk.resume.get())?.name).toBe('Typed once')
+    expect(report.received).toBe(1)
+  })
+
+  it('does not send a resume that has not changed', async () => {
+    /*
+     * Without the watermark the two devices trade the same document on
+     * every exchange, forever, with nothing changing — the failure
+     * `settingsSynced` already exists to prevent.
+     */
+    const clock = advancingClock()
+    const server = createMemorySyncServer()
+    const phone = device(clock)
+
+    await phone.resume.save(aResume('Typed once', clock.now().toISOString()))
+    await synchronise(createMemorySyncTarget(server, 'phone'), phone)
+
+    const second = await synchronise(createMemorySyncTarget(server, 'phone'), phone)
+
+    expect(second.pushed).toBe(0)
+  })
+
+  it('keeps the later edit when both devices have one', async () => {
+    const clock = advancingClock()
+    const server = createMemorySyncServer()
+    const phone = device(clock)
+    const desk = device(clock)
+
+    await desk.resume.save(aResume('Older', clock.now().toISOString()))
+    await phone.resume.save(aResume('Newer', clock.now().toISOString()))
+
+    await synchronise(createMemorySyncTarget(server, 'desk'), desk)
+    await synchronise(createMemorySyncTarget(server, 'phone'), phone)
+    await synchronise(createMemorySyncTarget(server, 'desk'), desk)
+
+    expect((await desk.resume.get())?.name).toBe('Newer')
+    // A correction, not a merge: there are no per-day entries to union,
+    // so the losing copy is gone. Same rule as a weigh-in.
+    expect((await phone.resume.get())?.name).toBe('Newer')
+  })
+
+  it('never lets an unstamped resume overwrite a stamped one', () => {
+    /*
+     * The rule tombstones already follow: a copy that cannot prove it is
+     * newer must not win. Reached directly rather than through an
+     * exchange, because a device has no way to push an unstamped record.
+     */
+    const local = aResume('Stamped', '2026-08-25T09:00:01.000Z')
+
+    // Built by removing the key rather than setting it to undefined:
+    // under `exactOptionalPropertyTypes` those are different states, and
+    // an absent stamp is the one that reaches a merge.
+    const { updatedAt: _none, ...incoming } = aResume('Unstamped', '')
+
+    expect(mergeResume(local, incoming)).toBe(local)
   })
 })

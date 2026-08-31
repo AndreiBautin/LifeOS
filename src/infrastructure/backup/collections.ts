@@ -14,6 +14,7 @@ import type {
   UpgradeRepository,
   ViceRepository,
   FinanceRepository,
+  ResumeRepository,
   WeighInRepository,
   WorkoutRepository,
 } from '@/domain/repositories/ports'
@@ -52,6 +53,7 @@ export interface BackupRepositories {
   readonly vices: ViceRepository
   readonly weighIns: WeighInRepository
   readonly finance: FinanceRepository
+  readonly resume: ResumeRepository
   readonly explored: ExploredAreaRepository
 }
 
@@ -203,6 +205,30 @@ export const COLLECTIONS: Readonly<Record<CollectionKey, Collection>> = {
     idOf: (row) => row.month,
     restore: (r, rows) => r.finance.restoreMany(rows),
     tombstoneCollection: 'finance',
+  }),
+  /*
+   * A collection of nought or one, because there is one resume.
+   *
+   * It fits the table awkwardly and belongs in it anyway — the whole
+   * claim this module makes is that a thing joins the export, the
+   * preview and the import by gaining a row here, and the alternative
+   * was a fourth hand-written path for a single record. It carries no
+   * tombstone: a resume is edited down to nothing, never deleted.
+   *
+   * The id is fixed, because the record has none. That is also what
+   * makes a restore an overwrite rather than an accumulation.
+   */
+  resume: define({
+    local: async (r) => {
+      const resume = await r.resume.get()
+      return resume === undefined ? [] : [resume]
+    },
+    fromFile: (data) => data.resume ?? [],
+    idOf: () => 'current',
+    restore: async (r, rows) => {
+      const incoming = rows[0]
+      if (incoming !== undefined) await r.resume.save(incoming)
+    },
   }),
   weighIns: define({
     local: (r) => r.weighIns.all(),

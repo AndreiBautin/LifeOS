@@ -1,6 +1,7 @@
 import type { Place } from '@/domain/atlas/place/Place'
 import type { Trip } from '@/domain/atlas/trip/Trip'
 import type { Daily } from '@/domain/dailies/daily'
+import type { Resume } from '@/domain/resume/resume'
 import type { Vice } from '@/domain/vitals/charges'
 import type { WeighIn } from '@/domain/vitals/weight'
 import type { CheckIn } from '@/domain/autoregulation/check-in'
@@ -97,6 +98,7 @@ export interface BackupCounts {
   readonly vices: number
   readonly weighIns: number
   readonly finance: number
+  readonly resume: number
   /** Geohash cells of walked ground. Counted, though it is a set of ids. */
   readonly exploredCells: number
 }
@@ -127,6 +129,17 @@ export interface BackupData {
   readonly places?: readonly Place[]
   readonly trips?: readonly Trip[]
   readonly dailies?: readonly Daily[]
+  /**
+   * The resume, of which there is one — so a list of nought or one.
+   *
+   * A collection rather than a bare field because that is what the
+   * table in `infrastructure/backup/collections.ts` walks, and the
+   * whole point of that table is that a thing joins the backup by
+   * gaining a row in it. The resume shipped in no list anywhere — not
+   * this envelope, not the sync payload — so it lived on one device
+   * with no copy, while both reported success.
+   */
+  readonly resume?: readonly Resume[]
   /**
    * Optional, like everything added after the first envelope shipped.
    *
@@ -164,6 +177,7 @@ export function countsFor(data: BackupData): BackupCounts {
     vices: data.vices?.length ?? 0,
     weighIns: data.weighIns?.length ?? 0,
     finance: data.finance?.length ?? 0,
+    resume: data.resume?.length ?? 0,
     exploredCells: data.exploredCells?.length ?? 0,
   }
 }
@@ -185,6 +199,7 @@ export const BACKUP_COUNT_KEYS = [
   'vices',
   'weighIns',
   'finance',
+  'resume',
   'exploredCells',
 ] as const satisfies readonly (keyof BackupCounts)[]
 
