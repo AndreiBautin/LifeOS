@@ -4,7 +4,6 @@ import { Link } from 'react-router-dom'
 
 import { Badge, Card } from '@/components/shared/primitives'
 import { buttonStyles } from '@/components/shared/styles'
-import { SEASON_LABELS } from '@/domain/game/season'
 import { cn } from '@/lib/cn'
 
 import { AvatarPortrait } from './AvatarPortrait'
@@ -38,7 +37,7 @@ export function AvatarCard({ xp }: { readonly xp: number }) {
     )
   }
 
-  const { calling, gear, gearCount, into, needed, season } = avatar.data
+  const { calling, gear, gearCount, into, needed } = avatar.data
 
   return (
     <Card>
@@ -46,11 +45,14 @@ export function AvatarCard({ xp }: { readonly xp: number }) {
         <AvatarPortrait avatar={avatar.data} />
 
         <div className="min-w-0 flex-1">
-          <h2 className="text-ink-50 truncate text-lg font-semibold">
-            {calling === undefined ? 'Unproven' : calling.title}
-          </h2>
-
-          <p className="text-ink-500 mt-0.5 text-sm">
+          {/*
+            No name here any more — the header carries it. What stays is
+            the *evidence*, which is the half worth keeping beside the
+            figure: somebody who distrusts "Devotee" can read that it
+            means 83% of everything earned came from dailies, and that is
+            the difference between a label and a claim.
+          */}
+          <p className="text-ink-300 text-sm">
             {calling === undefined ? (
               // Absent, never a default class. Nothing has been done yet,
               // which is a different statement from being a novice
@@ -70,7 +72,6 @@ export function AvatarCard({ xp }: { readonly xp: number }) {
               how three figures start disagreeing after somebody edits
               one of them.
             */}
-            <Badge>{SEASON_LABELS[season]}</Badge>
             {gearCount > 0 && (
               <Badge tone="cool">
                 {gearCount} {gearCount === 1 ? 'item' : 'items'}
@@ -87,14 +88,27 @@ export function AvatarCard({ xp }: { readonly xp: number }) {
       </div>
 
       {/*
-        Kept from the card this replaced, because it is the sentence that
-        stops XP being mistaken for a measure of how well anything went.
+        The number stays out; the sentence folds away.
+
+        Reported as *"the blurb underneath the avatar might be overkill,
+        explaining everything"*, and that is fair — it is a rule, and a
+        rule is worth reading once rather than every morning on the
+        screen you open most. Deleting it would be worse: it is the
+        sentence that stops XP being mistaken for a measure of how well
+        anything went, and somebody meeting the number for the first
+        time still needs it. A disclosure keeps both.
       */}
-      <p className="text-ink-500 mt-3 text-xs">
-        {xp} XP all time, across everything you track. Paid for doing the thing, never for it having
-        worked — getting stronger moves a ladder, and paying it twice is how a number stops being a
-        record of effort.
-      </p>
+      <details className="group mt-3">
+        <summary className="text-ink-500 marker:content-none flex cursor-pointer list-none items-baseline gap-1.5 text-xs">
+          <span className="numeric">{xp} XP all time</span>
+          <span className="text-ink-700 group-open:hidden">— what counts?</span>
+        </summary>
+        <p className="text-ink-700 mt-1.5 text-xs">
+          Across everything you track. Paid for doing the thing, never for it having worked —
+          getting stronger moves a ladder, and paying it twice is how a number stops being a record
+          of effort.
+        </p>
+      </details>
 
       {/*
         Gear is what you actually bought, grouped by the upgrade's own

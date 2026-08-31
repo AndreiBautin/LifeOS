@@ -3606,6 +3606,36 @@ installed with — the same reason `/next` still resolves.
 constants to `sheet-constants.ts`, because a module exporting both
 components and values breaks fast refresh and the lint rule says so.
 
+**The hub opens as a character sheet, not as a form.** Reported:
+_"simply rendering 'You' followed by a date underneath feels very
+barebones and non-gamified"_, and it was — a noun over an ISO date is
+what a settings pane opens with, on the screen the app opens to.
+`CharacterHeader` names the calling and reads `Level 5 · Summer ·
+2026-08-31`.
+
+**The label moved up and the evidence stayed down.** The card below
+keeps "83% of your XP is dailies" without repeating "Devotee" above it.
+That split is the card's own rule applied: the share is _"the difference
+between a label and a claim"_, and a claim belongs beside the thing it
+describes rather than in a heading.
+
+**Nothing is drawn twice, and one commit got that wrong.** The
+`Section title="Level N"` wrapper is gone, because the header names the
+level and the ring's badge shows it. The progress into the level was in
+the subtitle for one commit — directly above a card already saying "75 /
+900 XP into the level" — which is the duplication this component exists
+to reduce rather than add to. Caught by looking at the screen. There is
+no compact ring in `leading` either, for the same reason: the portrait
+is 120 pixels below it and its ring _is_ the XP bar.
+
+**The XP rule folds away rather than being deleted.** Reported as
+_"the blurb underneath the avatar might be overkill, explaining
+everything"_ — fair, since it is a rule and a rule is worth reading once
+rather than every morning. Deleting it would be worse: it is the
+sentence that stops XP being read as a measure of how well anything
+went, and somebody meeting the number for the first time still needs it.
+A `details` keeps the number out and the sentence one tap away.
+
 **Today is present tense, You is standing.** That line decides where a
 thing goes. Dailies, the active quests, what is due and the season all
 describe now, so they live on Today; levels, ladders and ratings describe

@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 
 import type { AgendaItem, Urgency } from '@/application/use-cases/today/agenda'
-import { PageHeader } from '@/components/shared/PageHeader'
 import { Badge, Card, Empty, Section } from '@/components/shared/primitives'
 import { buttonStyles } from '@/components/shared/styles'
 import { buildCharacter, LEVELS } from '@/domain/game/character'
@@ -15,6 +14,7 @@ import { useActiveQuests } from '@/features/projects/hooks'
 import { AreaCard, AttributeRow } from '@/features/character/CharacterParts'
 import { AREA_LINKS, LEVEL_TONE } from '@/features/character/sheet-constants'
 import { AvatarCard } from '@/features/character/AvatarCard'
+import { CharacterHeader } from '@/features/character/CharacterHeader'
 import { Traits } from '@/features/character/Traits'
 import { SeasonCard } from '@/features/character/SeasonCard'
 import { useCharacterSheet, useSeasonProgress } from '@/features/character/hooks'
@@ -139,9 +139,8 @@ export function HomePage() {
         to the sheet, and the sheet is now the first thing under it —
         two portraits on one screen is one quantity drawn twice.
       */}
-      <PageHeader
-        title="You"
-        subtitle={<span className="numeric">{today}</span>}
+      <CharacterHeader
+        today={today}
         action={
           <Link
             to="/settings"
@@ -159,9 +158,7 @@ export function HomePage() {
         portrait **is** the XP bar — same numerator, same denominator —
         so nothing here draws that quantity twice.
       */}
-      <Section title={`Level ${String(standing?.level ?? 1)}`}>
-        <AvatarCard xp={standing?.xp ?? 0} />
-      </Section>
+      <AvatarCard xp={standing?.xp ?? 0} />
 
       {/*
         The season moved up from the foot of the old Today, because it
