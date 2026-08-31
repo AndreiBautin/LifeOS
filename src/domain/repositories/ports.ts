@@ -1,3 +1,5 @@
+import type { HomeCandidate } from '@/domain/homes/candidate'
+import type { NearbyKind, Neighbourhood } from '@/domain/homes/neighbourhood'
 import type { TrackExercise, TrackId } from '@/domain/mind/tracks'
 import type { Attempt } from '@/domain/mind/practice'
 import type { Campaign } from '@/domain/campaign/campaign'
@@ -32,6 +34,7 @@ import type {
   ViceId,
   CampaignId,
   AttemptId,
+  HomeCandidateId,
 } from '@/domain/ids/ids'
 import type { WorkoutLog } from '@/domain/logging/workout-log'
 import type { ProgramPosition } from '@/domain/programs/position'
@@ -402,6 +405,26 @@ export interface ResumeRepository {
  * testable against fixtures, and the fetching is the one thing that
  * cannot be. See `domain/news/story.ts`.
  */
+export interface HomeRepository {
+  all(): Promise<readonly HomeCandidate[]>
+  byId(id: HomeCandidateId): Promise<HomeCandidate | undefined>
+  save(candidate: HomeCandidate): Promise<void>
+  /** Writes exactly as given, without stamping. See `ExerciseRepository`. */
+  restoreMany(candidates: readonly HomeCandidate[]): Promise<void>
+  remove(id: HomeCandidateId): Promise<void>
+  /** Deletes without a tombstone -- the receiving half of a sync. */
+  purge(id: HomeCandidateId): Promise<void>
+}
+
+export interface NeighbourhoodGateway {
+  read(
+    latitude: number,
+    longitude: number,
+    radiusMetres: number,
+    kinds: readonly NearbyKind[],
+  ): Promise<Neighbourhood>
+}
+
 export interface TrackGateway {
   read(track: TrackId): Promise<readonly TrackExercise[]>
 }

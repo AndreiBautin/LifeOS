@@ -37,6 +37,7 @@ export const SYNCED_SETTING_KEYS = [
   'e1rmFormula',
   'jobSearch',
   'digest',
+  'homeWants',
 ] as const
 
 export type SyncedSettingKey = (typeof SYNCED_SETTING_KEYS)[number]

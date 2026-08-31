@@ -24,6 +24,7 @@ import type {
   PlaceRepository,
   ProjectRepository,
   AttemptRepository,
+  HomeRepository,
   CampaignRepository,
   ResumeRepository,
   ReviewRepository,
@@ -319,6 +320,15 @@ function device(clock: Clock): Device {
    * exercises a practice log, and a double that pretended to would be
    * testing itself.
    */
+  const homes: HomeRepository = {
+    all: () => Promise.resolve([]),
+    byId: () => Promise.resolve(undefined),
+    save: () => Promise.resolve(),
+    restoreMany: () => Promise.resolve(),
+    remove: () => Promise.resolve(),
+    purge: () => Promise.resolve(),
+  }
+
   const attempts: AttemptRepository = {
     all: () => Promise.resolve([]),
     byId: () => Promise.resolve(undefined),
@@ -475,6 +485,7 @@ function device(clock: Clock): Device {
   }
 
   return {
+    homes,
     attempts,
     campaigns,
     resume,

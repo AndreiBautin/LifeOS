@@ -44,6 +44,7 @@ describe('the schema', () => {
       'exploredCells',
       'finance',
       'friends',
+      'homes',
       'items',
       'metrics',
       'places',

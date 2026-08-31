@@ -22,6 +22,7 @@ import type {
   CampaignRepository,
   Clock,
   FinanceRepository,
+  HomeRepository,
   ProjectRepository,
 } from '@/domain/repositories/ports'
 import { toDayKey } from '@/domain/time/day'
@@ -40,6 +41,7 @@ export interface CampaignDeps {
   readonly campaigns: CampaignRepository
   readonly projects: ProjectRepository
   readonly finance: FinanceRepository
+  readonly homes: HomeRepository
   readonly clock: Clock
   readonly ids: IdGenerator
 }
@@ -59,7 +61,11 @@ export interface CampaignDeps {
  * their score quarterly still gets a net worth from last month.
  */
 export async function gatherEvidence(deps: CampaignDeps): Promise<Evidence> {
-  const [projects, finance] = await Promise.all([deps.projects.all(), deps.finance.all()])
+  const [projects, finance, homes] = await Promise.all([
+    deps.projects.all(),
+    deps.finance.all(),
+    deps.homes.all(),
+  ])
 
   const houseJobsDone = keepFor(projects, BASE).filter(
     (project) =>
@@ -87,9 +93,18 @@ export async function gatherEvidence(deps: CampaignDeps): Promise<Evidence> {
   const retirementMinor = latest(finance, 'retirementMinor')
   const creditScore = latest(finance, 'creditScore')
 
+  /*
+   * Offered and ruled out both count as seen. You do not offer on a
+   * house you have not visited, and deciding against one is what
+   * viewing is *for* -- a count that only rose on houses you liked
+   * would measure optimism rather than effort.
+   */
+  const homesViewed = homes.filter((one) => one.standing !== 'considering').length
+
   return {
     houseJobsDone,
     offers,
+    homesViewed,
     ...(netWorthMinor === undefined ? {} : { netWorthMinor }),
     ...(retirementMinor === undefined ? {} : { retirementMinor }),
     ...(creditScore === undefined ? {} : { creditScore }),

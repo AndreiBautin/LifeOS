@@ -1200,6 +1200,71 @@ nobody has reached carries no record, so asking about it is a dialogue
 for its own sake — and asking about everything is how somebody learns
 to press through the question without reading it.
 
+**Listings cannot be searched and the neighbourhood can. That split is
+the whole feature, and it was tested before anything was built.**
+Zillow, Redfin and Realtor.com are all _reachable_ and all send no CORS
+header — so is the US Census API, which was the other obvious source.
+Overpass answers a browser directly. A house is therefore **typed in**
+and its surroundings are **measured**, which is the same arrangement the
+job search has: the resume is typed and the boards are read. The screen
+says so, because a search box that never finds anything is worse than a
+stated limit.
+
+Overpass is the third face of OpenStreetMap, which the map already uses
+for tiles and geocoding — the same donated service, not a new host.
+
+**Only the wanted kinds are queried, and the difference was measured.**
+All eight around a Manhattan address returned 2,300 elements in **13.4
+seconds** and sometimes 504’d; the three defaults took **1.8**. Overpass
+reports two concurrent slots, so a screen that read every candidate on
+load would be both slow and refused. The result is stored on the
+candidate with its `readAt`, because OSM changes over months.
+
+**A 504 answers with an XHTML error page**, so `response.ok` is checked
+before `json()` — otherwise a busy query fails with a `SyntaxError`
+about an unexpected `<`, which is the least useful message available.
+
+**`Neighbourhood.asked` exists because otherwise a zero is a lie**, and
+this was found by reading a real address: `schools: 0` sat beside 543
+parks purely because schools had not been queried. Add schools to your
+wants afterwards and the score would drop against something nobody had
+ever looked for. Scoring now runs over `wanted ∩ asked`, and `unmeasured`
+is reported so the screen can offer a re-read rather than showing a
+quietly lower number. A kind that _was_ asked for and found nothing
+still counts — the distinction is "looked and found none" against "never
+looked".
+
+**`asked` is optional because stored records outlive the type that
+wrote them.** The first version made it required and
+`asked.includes(...)` threw on the one record already in the database,
+taking the whole screen down. A reading without it is treated as having
+measured nothing, which prompts a re-read rather than scoring counts
+whose provenance is unknown.
+
+**Wants, not filters.** Nothing is ever dropped for scoring badly: a
+house over budget is a house over budget and you may still want to look
+at it. Over budget loses points _in proportion_ — ten percent over is a
+conversation and double is not — and being cheaper than the budget earns
+nothing extra, or the worst affordable option would outrank the best.
+
+**Nearby counts cap at three.** Three supermarkets is a well-served
+address and the thirtieth adds nothing; a raw count would rank a dense
+city centre top on every kind, which is a fact about density rather than
+about whether the address suits you.
+
+**OSM completeness is uneven, and that is a limitation rather than a
+caveat.** A low count means either "nothing there" or "nobody mapped
+it", and nothing here can tell which. Two addresses in the same town
+compare fairly; one in Manhattan against one in rural Vermont does not.
+The screen states it.
+
+**It pays no XP.** Looking at houses is part of the move, and the move
+is a campaign — a readout. What it does feed is the campaign’s new
+`homes-viewed` requirement, so "Find a new house" can be measured.
+**Ruled out counts as seen**, because deciding against one is what
+viewing is _for_: a count that only rose on houses you liked would
+measure optimism rather than effort.
+
 **Mind is study and practice, and the ask was two things of which only
 one was missing.** _"A mental training section where I do a daily study
 of design patterns, and maybe pull LeetCode questions in and have that

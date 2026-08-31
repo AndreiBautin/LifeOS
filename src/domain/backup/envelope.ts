@@ -1,5 +1,6 @@
 import type { Place } from '@/domain/atlas/place/Place'
 import type { Trip } from '@/domain/atlas/trip/Trip'
+import type { HomeCandidate } from '@/domain/homes/candidate'
 import type { Attempt } from '@/domain/mind/practice'
 import type { Campaign } from '@/domain/campaign/campaign'
 import type { Daily } from '@/domain/dailies/daily'
@@ -102,6 +103,7 @@ export interface BackupCounts {
   readonly finance: number
   readonly campaigns: number
   readonly attempts: number
+  readonly homes: number
   readonly resume: number
   /** Geohash cells of walked ground. Counted, though it is a set of ids. */
   readonly exploredCells: number
@@ -156,6 +158,7 @@ export interface BackupData {
   readonly finance?: readonly FinanceReading[]
   readonly campaigns?: readonly Campaign[]
   readonly attempts?: readonly Attempt[]
+  readonly homes?: readonly HomeCandidate[]
   /**
    * Walked ground, as bare cell ids.
    *
@@ -185,6 +188,7 @@ export function countsFor(data: BackupData): BackupCounts {
     finance: data.finance?.length ?? 0,
     campaigns: data.campaigns?.length ?? 0,
     attempts: data.attempts?.length ?? 0,
+    homes: data.homes?.length ?? 0,
     resume: data.resume?.length ?? 0,
     exploredCells: data.exploredCells?.length ?? 0,
   }
@@ -209,6 +213,7 @@ export const BACKUP_COUNT_KEYS = [
   'finance',
   'campaigns',
   'attempts',
+  'homes',
   'resume',
   'exploredCells',
 ] as const satisfies readonly (keyof BackupCounts)[]

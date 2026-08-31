@@ -184,6 +184,7 @@ export function CharacterPage() {
               { to: '/vitals', label: 'Vitals' },
               { to: '/jobs', label: 'Job search' },
               { to: '/mind', label: 'Mind' },
+              { to: '/houses', label: 'Houses' },
               { to: '/finance', label: 'Finance' },
               { to: '/resume', label: 'Resume' },
               { to: '/upgrades', label: 'Tech tree' },

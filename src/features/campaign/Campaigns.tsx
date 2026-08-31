@@ -63,6 +63,8 @@ function describe(requirement: Requirement, standing: StageStanding): string {
       return `${String(progress?.value ?? 0)} of ${String(requirement.count)} house jobs finished`
     case 'offers':
       return `${String(progress?.value ?? 0)} of ${String(requirement.count)} applications through every stage`
+    case 'homes-viewed':
+      return `${String(progress?.value ?? 0)} of ${String(requirement.count)} houses seen`
     case 'net-worth':
       return standing.unproven
         ? `Net worth of ${formatMinorUnits(requirement.minorUnits)} — nothing recorded yet`

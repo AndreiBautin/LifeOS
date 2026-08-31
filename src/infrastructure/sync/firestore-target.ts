@@ -13,6 +13,7 @@ import {
   type QueryDocumentSnapshot,
 } from 'firebase/firestore'
 
+import type { HomeCandidate } from '@/domain/homes/candidate'
 import type { Attempt } from '@/domain/mind/practice'
 import type { Campaign } from '@/domain/campaign/campaign'
 import type { CheckIn } from '@/domain/autoregulation/check-in'
@@ -77,6 +78,7 @@ const COLLECTIONS = {
   finance: 'finance',
   campaigns: 'campaigns',
   attempts: 'attempts',
+  homes: 'homes',
   /*
    * One document holding the whole set, not a document per cell. A
    * thousand-cell walk would otherwise be a thousand writes, and the set
@@ -159,6 +161,7 @@ export function createFirestoreSyncTarget(options: FirestoreTargetOptions): Sync
         readSince(root(COLLECTIONS.finance), after),
         readSince(root(COLLECTIONS.campaigns), after),
         readSince(root(COLLECTIONS.attempts), after),
+        readSince(root(COLLECTIONS.homes), after),
         readSince(root(COLLECTIONS.exploredCells), after),
         readSince(root(COLLECTIONS.tombstones), after),
         readSince(root(COLLECTIONS.settings), after),
@@ -205,6 +208,7 @@ export function createFirestoreSyncTarget(options: FirestoreTargetOptions): Sync
         finance,
         campaigns,
         attempts,
+        homes,
         cells,
         tombstones,
         settings,
@@ -252,6 +256,7 @@ export function createFirestoreSyncTarget(options: FirestoreTargetOptions): Sync
           finance: finance.records as readonly FinanceReading[],
           campaigns: campaigns.records as readonly Campaign[],
           attempts: attempts.records as readonly Attempt[],
+          homes: homes.records as readonly HomeCandidate[],
           exploredCells: cells.records.flatMap(
             (record) => (record as { cells?: readonly string[] }).cells ?? [],
           ),

@@ -1,3 +1,4 @@
+import { DEFAULT_WANTS, type HomeWants } from '@/domain/homes/candidate'
 import { DEFAULT_DIGEST, type DigestPreferences } from '@/domain/news/digest'
 import { EMPTY_JOB_SEARCH, type JobSearch } from '@/domain/jobs/search'
 import { PHASE_RATES, type Phase } from '@/domain/vitals/weight'
@@ -172,6 +173,14 @@ export interface AppSettings {
    */
   readonly digest: DigestPreferences
   /**
+   * What you are looking for in a house.
+   *
+   * Travels between devices for the reason the job search does: a
+   * budget and the things you want within walking distance are facts
+   * about you rather than about the phone.
+   */
+  readonly homeWants: HomeWants
+  /**
    * ISO timestamp of the last successful export. Drives the backup
    * reminder — a backup feature nobody is prompted to use is worth
    * nothing, and this is local-only storage.
@@ -269,6 +278,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   theme: 'system',
   jobSearch: EMPTY_JOB_SEARCH,
   digest: DEFAULT_DIGEST,
+  homeWants: DEFAULT_WANTS,
   schemaVersion: SETTINGS_SCHEMA_VERSION,
 }
 

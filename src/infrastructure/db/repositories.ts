@@ -1,6 +1,7 @@
+import type { HomeCandidate } from '@/domain/homes/candidate'
 import type { Attempt } from '@/domain/mind/practice'
 import type { Campaign } from '@/domain/campaign/campaign'
-import type { AttemptId, CampaignId } from '@/domain/ids/ids'
+import type { AttemptId, CampaignId, HomeCandidateId } from '@/domain/ids/ids'
 import type { CheckIn } from '@/domain/autoregulation/check-in'
 import type { FinanceReading } from '@/domain/finance/reading'
 import type { Resume } from '@/domain/resume/resume'
@@ -42,6 +43,7 @@ import type {
   ExerciseRepository,
   FinanceRepository,
   AttemptRepository,
+  HomeRepository,
   CampaignRepository,
   ResumeRepository,
   ExploredAreaRepository,
@@ -761,6 +763,32 @@ export function createAttemptRepository(db: AppDatabase, clock: Clock): AttemptR
     },
     async purge(id: AttemptId) {
       await db.delete('attempts', id)
+    },
+  }
+}
+
+/** Houses being considered. */
+export function createHomeRepository(db: AppDatabase, clock: Clock): HomeRepository {
+  return {
+    async all() {
+      return db.getAll('homes')
+    },
+    async byId(id: HomeCandidateId) {
+      return db.get('homes', id)
+    },
+    async save(candidate: HomeCandidate) {
+      await db.put('homes', stamp(candidate, clock))
+    },
+    async restoreMany(candidates: readonly HomeCandidate[]) {
+      const tx = db.transaction('homes', 'readwrite')
+      await Promise.all([...candidates.map((one) => tx.store.put(one)), tx.done])
+    },
+    async remove(id: HomeCandidateId) {
+      await db.delete('homes', id)
+      await bury(db, clock, 'homes', id)
+    },
+    async purge(id: HomeCandidateId) {
+      await db.delete('homes', id)
     },
   }
 }

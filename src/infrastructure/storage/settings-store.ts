@@ -1,3 +1,4 @@
+import { parseWants } from '@/domain/homes/candidate'
 import { parseDigestPreferences } from '@/domain/news/digest'
 import { parseJobSearch } from '@/domain/jobs/search'
 import type { AppSettings } from '@/domain/settings/settings'
@@ -265,6 +266,7 @@ function mergeWithDefaults(parsed: unknown): AppSettings {
      */
     jobSearch: parseJobSearch(stored.jobSearch),
     digest: parseDigestPreferences(stored.digest),
+    homeWants: parseWants(stored.homeWants),
     /*
      * Carried through, or the stamp is written and never read.
      *

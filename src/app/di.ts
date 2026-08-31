@@ -20,6 +20,8 @@ import type {
   SyncTarget,
   TombstoneRepository,
   AttemptRepository,
+  HomeRepository,
+  NeighbourhoodGateway,
   TrackGateway,
   CampaignRepository,
   FinanceRepository,
@@ -47,6 +49,7 @@ import {
   createReviewRepository,
   createTombstoneRepository,
   createAttemptRepository,
+  createHomeRepository,
   createCampaignRepository,
   createFinanceRepository,
   createResumeRepository,
@@ -66,6 +69,7 @@ import { requestPersistence } from '@/infrastructure/storage/durability'
 import { createDailyRunStore } from '@/infrastructure/storage/daily-run-store'
 import { createNewsGateway } from '@/infrastructure/news/news-gateway'
 import { createTrackGateway } from '@/infrastructure/mind/track-gateway'
+import { createNeighbourhoodGateway } from '@/infrastructure/homes/overpass-gateway'
 import type { DailyRunStore } from '@/application/use-cases/daily/once-a-day'
 import type { LeadSweep } from '@/application/use-cases/jobs/leads'
 import type { Digest } from '@/application/use-cases/news/digest'
@@ -105,6 +109,8 @@ export interface AppServices {
   readonly finance: FinanceRepository
   readonly campaigns: CampaignRepository
   readonly attempts: AttemptRepository
+  readonly homes: HomeRepository
+  readonly neighbourhoods: NeighbourhoodGateway
   readonly tracks: TrackGateway
   readonly boards: JobBoardGateway
   /** Which local day the boards were last read on their own. */
@@ -178,6 +184,8 @@ export async function bootstrap(): Promise<BootstrapResult> {
     finance: createFinanceRepository(db, systemClock),
     campaigns: createCampaignRepository(db, systemClock),
     attempts: createAttemptRepository(db, systemClock),
+    homes: createHomeRepository(db, systemClock),
+    neighbourhoods: createNeighbourhoodGateway(systemClock),
     tracks: createTrackGateway(),
     boards: createAtsGateway(),
     sweepStore: createDailyRunStore(STORAGE_KEYS.jobSweptOn),

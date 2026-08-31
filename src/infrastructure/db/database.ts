@@ -1,3 +1,4 @@
+import type { HomeCandidate } from '@/domain/homes/candidate'
 import type { Attempt } from '@/domain/mind/practice'
 import type { Campaign } from '@/domain/campaign/campaign'
 import type { DBSchema, IDBPDatabase } from 'idb'
@@ -65,7 +66,7 @@ export const DB_NAME = 'lifeos'
  * a device that already ran it will not run it again, so changing one
  * leaves two devices with different schemas and no way to tell.
  */
-export const DB_VERSION = 14
+export const DB_VERSION = 15
 
 /**
  * A workout as it is stored, which is not quite a workout as the domain
@@ -284,6 +285,11 @@ export interface LiftDB extends DBSchema {
   weighIns: {
     key: string
     value: WeighIn
+  }
+  /** Houses being considered, with the last read of what is near them. */
+  homes: {
+    key: string
+    value: HomeCandidate
   }
   /** Problems practised, one row each. */
   attempts: {
@@ -509,6 +515,10 @@ export function openDatabase(name = DB_NAME): Promise<AppDatabase> {
         db.createObjectStore('resume')
       }
 
+      if (oldVersion < 15) {
+        db.createObjectStore('homes', { keyPath: 'id' })
+      }
+
       if (oldVersion < 14) {
         // Problems solved. Keyed by id and indexed by nothing: the log is
         // read whole and filtered in memory, which is right for a few
@@ -586,6 +596,7 @@ export async function clearAllStores(db: AppDatabase): Promise<void> {
       'resume',
       'campaigns',
       'attempts',
+      'homes',
     ],
     'readwrite',
   )
@@ -612,6 +623,7 @@ export async function clearAllStores(db: AppDatabase): Promise<void> {
     tx.objectStore('resume').clear(),
     tx.objectStore('campaigns').clear(),
     tx.objectStore('attempts').clear(),
+    tx.objectStore('homes').clear(),
     tx.done,
   ])
 }

@@ -1,3 +1,4 @@
+import type { HomeCandidate } from '@/domain/homes/candidate'
 import type { Attempt } from '@/domain/mind/practice'
 import type { Campaign } from '@/domain/campaign/campaign'
 import type { CheckIn } from '@/domain/autoregulation/check-in'
@@ -54,6 +55,7 @@ export interface SyncPayload {
   readonly finance: readonly FinanceReading[]
   readonly campaigns: readonly Campaign[]
   readonly attempts: readonly Attempt[]
+  readonly homes: readonly HomeCandidate[]
   /**
    * Ground you have walked, as geohash cells.
    *
@@ -115,6 +117,7 @@ export const EMPTY_PAYLOAD: SyncPayload = {
   finance: [],
   campaigns: [],
   attempts: [],
+  homes: [],
   tombstones: [],
 }
 
@@ -137,6 +140,7 @@ export function isEmpty(payload: SyncPayload): boolean {
     payload.finance.length === 0 &&
     payload.campaigns.length === 0 &&
     payload.attempts.length === 0 &&
+    payload.homes.length === 0 &&
     payload.exploredCells.length === 0 &&
     payload.tombstones.length === 0 &&
     payload.settings === undefined &&
@@ -163,6 +167,7 @@ export function payloadSize(payload: SyncPayload): number {
     payload.finance.length +
     payload.campaigns.length +
     payload.attempts.length +
+    payload.homes.length +
     // Counted as one, because that is what it is to a reader: the fog
     // moved, once, however many cells were in the batch.
     (payload.exploredCells.length === 0 ? 0 : 1) +
@@ -355,6 +360,7 @@ export function acceptableFrom(
     finance: incoming.finance.filter((item) => shouldAccept(item, 'finance', item.month, index)),
     campaigns: incoming.campaigns.filter((item) => shouldAccept(item, 'campaigns', item.id, index)),
     attempts: incoming.attempts.filter((item) => shouldAccept(item, 'attempts', item.id, index)),
+    homes: incoming.homes.filter((item) => shouldAccept(item, 'homes', item.id, index)),
     // Exempt on purpose. There is no tombstone that could apply to ground
     // somebody walked, so there is nothing here to filter against.
     exploredCells: incoming.exploredCells,
