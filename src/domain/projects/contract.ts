@@ -77,3 +77,40 @@ export function isDone(project: Project): boolean {
 export function byOutstanding(projects: readonly Project[]): readonly Project[] {
   return [...projects].sort((a, b) => Number(isDone(a)) - Number(isDone(b)))
 }
+
+/**
+ * Closes a one-off out when its step is ticked, and reopens it when it
+ * is not.
+ *
+ * **Deliberately here rather than in `deriveStatus`.** That function
+ * governs every project and never completes one on its own, because a
+ * quest with all its steps done may still have steps to add — closing it
+ * is a decision. That stays exactly true. What this adds is a rule about
+ * *one shape*, stated in its own function with its own name, so there is
+ * no second answer hidden inside the shared derivation: a contract is
+ * one thing to do, so ticking the thing is doing it, and asking for a
+ * separate "and now mark it complete" is ceremony over a parcel.
+ *
+ * **Reopening is the half that must not be forgotten.** Without it a
+ * mis-tap would close the contract and unticking would leave it filed as
+ * completed forever — the record stuck disagreeing with its own
+ * checklist. `deriveStatus` short-circuits on a requested `completed`,
+ * so nothing else would ever put it back.
+ *
+ * A no-op for anything that is not a contract, and identity when nothing
+ * changes, so callers can apply it unconditionally.
+ */
+export function settleContract(project: Project): Project {
+  if (project.actions.length !== 1) return project
+
+  const wanted = isDone(project) ? 'completed' : 'active'
+  /*
+   * `paused` is left alone. Parking something is a statement about
+   * whether you mean to do it at all, and a tick should not quietly
+   * overrule it.
+   */
+  if (project.status === 'paused') return project
+  if (project.status === wanted) return project
+
+  return { ...project, status: wanted }
+}

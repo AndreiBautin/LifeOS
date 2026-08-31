@@ -1,3 +1,4 @@
+import { settleContract } from '@/domain/projects/contract'
 import { keepFor, type HomeFilter, type RecordHome } from '@/domain/base/base'
 import { activate, activeQuest, kindOf, standDown } from '@/domain/projects/active'
 import {
@@ -328,7 +329,17 @@ export async function setActionStatus(
       : { ...rest, status: 'pending' as const }
   })
 
-  return saveAndSettle({ ...project, actions }, deps)
+  /*
+   * A one-off closes itself. `settleContract` is a no-op for anything
+   * with more than one step, so the shared rule — that a project is
+   * completed by a decision rather than by arithmetic — is untouched for
+   * every other quest.
+   *
+   * Applied before `saveAndSettle` so its `deriveStatus` sees the
+   * requested status and passes it through, rather than the two
+   * disagreeing about the same record in one write.
+   */
+  return saveAndSettle(settleContract({ ...project, actions }), deps)
 }
 
 /**

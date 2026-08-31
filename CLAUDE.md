@@ -1443,14 +1443,31 @@ something needs breaking down it is no longer a one-off. `contracts`
 and `board` partition what is outstanding, so nothing appears twice and
 nothing vanishes — there is a test for that.
 
-**Ticking the step is not filing it away.** `deriveStatus` never
-completes a project on its own, because one with every step done may
-still have steps to add and closing it is a decision. A one-off is where
-that reads as ceremony, and forking the shared rule for one shape would
-be a second answer to "when is a project finished" — so a ticked
-contract sorts to the bottom and waits, like any other quest with every
-step done. If that proves one tap too many, the change belongs in
-`byOutstanding`, not in `deriveStatus`.
+**Ticking a contract closes it out, and the shared rule is untouched.**
+`deriveStatus` still never completes a project on its own — one with
+every step done may still have steps to add, and closing it is a
+decision. That holds for every checklist. What yields is the one shape
+where it read as ceremony: a contract _is_ its single step, so asking
+for a separate "and now mark it complete" over a parcel is a tap for
+nothing.
+
+The rule lives in `settleContract`, **named and in the domain, rather
+than folded into `deriveStatus`** — the point is that there is no second
+answer hidden inside the shared derivation. It is a no-op for anything
+without exactly one action, and identity when nothing changes, so
+`setActionStatus` applies it unconditionally.
+
+**Reopening is the half that must not be forgotten.** Without it a
+mis-tap files the contract as completed forever: `deriveStatus`
+short-circuits on a requested `completed`, so nothing else would ever
+put it back. `paused` is left alone in both directions — parking
+something is a statement about whether you mean to do it at all, and a
+tick should not quietly overrule it.
+
+**A test had encoded the old behaviour on a single-action project**, and
+it failed the moment this landed — correctly. The rule it protects is
+still true, so it now uses a two-step quest, and the one-off case has
+tests of its own in both directions.
 
 Verified end to end: a contract created from the section arrived as a
 side quest with one pending step, stayed off the board, and closing it

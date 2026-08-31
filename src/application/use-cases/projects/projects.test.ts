@@ -265,18 +265,61 @@ describe('actions', () => {
    * Finishing a checklist and declaring a project done are two different
    * claims, and the second is a decision. Progress reads 100% and the
    * project stays open, which is the honest state.
+   *
+   * **Two steps, not one, and that is the point of the change below.**
+   * This test used a single-action project until contracts existed, at
+   * which point the record it described became a one-off and the rule
+   * stopped applying to it. The rule itself is unchanged for everything
+   * that is genuinely a checklist.
    */
-  it('does not complete the project when the last action is closed', async () => {
+  it('does not complete a multi-step project when the last action is closed', async () => {
     const { deps } = harness()
     const project = await addProject({ name: 'passport' }, deps)
-    const withAction = await addAction(project.id, 'the only step', undefined, deps)
+    await addAction(project.id, 'find the old one', undefined, deps)
+    const withActions = await addAction(project.id, 'book the appointment', undefined, deps)
+
+    let after = withActions
+    for (const action of withActions.actions) {
+      after = await setActionStatus(project.id, action.id, true, deps)
+    }
+
+    expect(after.status).toBe('active')
+    expect(after.actions.every((action) => action.status === 'done')).toBe(true)
+  })
+
+  /*
+   * A one-off closes itself, which is the one place the rule above
+   * yields. A contract *is* its single step, so asking for a separate
+   * "and now mark it complete" is ceremony over a parcel.
+   */
+  it('completes a one-off when its only step is ticked', async () => {
+    const { deps } = harness()
+    const project = await addProject({ name: 'return the parcel' }, deps)
+    const withAction = await addAction(project.id, 'return the parcel', undefined, deps)
     const action = withAction.actions[0]
     if (action === undefined) throw new Error('the action was not added')
 
     const after = await setActionStatus(project.id, action.id, true, deps)
 
+    expect(after.status).toBe('completed')
+  })
+
+  /*
+   * And reopens. Without this a mis-tap files the contract as completed
+   * forever — `deriveStatus` short-circuits on a requested `completed`,
+   * so nothing else would put it back.
+   */
+  it('reopens a one-off when its step is unticked', async () => {
+    const { deps } = harness()
+    const project = await addProject({ name: 'return the parcel' }, deps)
+    const withAction = await addAction(project.id, 'return the parcel', undefined, deps)
+    const action = withAction.actions[0]
+    if (action === undefined) throw new Error('the action was not added')
+
+    await setActionStatus(project.id, action.id, true, deps)
+    const after = await setActionStatus(project.id, action.id, false, deps)
+
     expect(after.status).toBe('active')
-    expect(after.actions[0]?.status).toBe('done')
   })
 
   it('re-opens an action closed by mistake, clearing its completion time', async () => {

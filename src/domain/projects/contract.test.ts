@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { asActionId, asProjectId } from '@/domain/ids/ids'
 import type { Project, ProjectStatus } from '@/domain/projects/project'
 
-import { board, byOutstanding, contracts, isContract, isDone } from './contract'
+import { board, byOutstanding, contracts, isContract, isDone, settleContract } from './contract'
 
 function project(name: string, steps: number, status: ProjectStatus = 'active'): Project {
   return {
@@ -106,5 +106,66 @@ describe('ordering the section', () => {
     expect(isDone({ ...open, actions: open.actions.map((a) => ({ ...a, status: 'done' })) })).toBe(
       true,
     )
+  })
+})
+
+describe('closing a one-off out', () => {
+  const ticked = (p: Project): Project => ({
+    ...p,
+    actions: p.actions.map((one) => ({ ...one, status: 'done' as const })),
+  })
+
+  it('completes a contract when its step is ticked', () => {
+    expect(settleContract(ticked(project('Return the parcel', 1))).status).toBe('completed')
+  })
+
+  /*
+   * The half that must not be forgotten. Without it a mis-tap closes the
+   * contract and unticking leaves it filed as completed forever, because
+   * deriveStatus short-circuits on a requested `completed` and nothing
+   * else would put it back.
+   */
+  it('reopens it when the step is unticked', () => {
+    const closed = { ...ticked(project('Return the parcel', 1)), status: 'completed' as const }
+    const undone = {
+      ...closed,
+      actions: closed.actions.map((one) => ({ ...one, status: 'pending' as const })),
+    }
+
+    expect(settleContract(undone).status).toBe('active')
+  })
+
+  /*
+   * The shared rule is untouched. A project is completed by a decision
+   * rather than by arithmetic, and a three-step quest ticking its last
+   * step must still wait to be closed by hand.
+   */
+  it('leaves a multi-step quest alone however many steps are done', () => {
+    const all = ticked(project('Rewire the kitchen', 3))
+
+    expect(settleContract(all).status).toBe('active')
+    expect(settleContract(all)).toBe(all)
+  })
+
+  it('leaves a quest with no steps alone', () => {
+    const empty = project('Vague intention', 0)
+
+    expect(settleContract(empty)).toBe(empty)
+  })
+
+  /*
+   * Parking something is a statement about whether you mean to do it at
+   * all, and a tick should not quietly overrule it.
+   */
+  it('does not overrule a paused contract', () => {
+    const paused = { ...ticked(project('Return the parcel', 1)), status: 'paused' as const }
+
+    expect(settleContract(paused)).toBe(paused)
+  })
+
+  it('is identity when nothing changes, so it can be applied unconditionally', () => {
+    const open = project('Call the dentist', 1)
+
+    expect(settleContract(open)).toBe(open)
   })
 })
