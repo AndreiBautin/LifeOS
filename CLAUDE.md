@@ -3521,6 +3521,24 @@ What it is for is reading a day as a routine — the house is opened at one
 end and closed at the other, and an alphabetical list says nothing about
 which comes first.
 
+**Later today folds away, and that is the version of "guide me" that
+does not move anything.** The report: _"can we not surface tasks until
+it's time for them, so I'm not combing through stuff that isn't
+applicable in the moment."_ The obvious answer is to sort the current
+part to the top, which is exactly what the paragraph below argues
+against and for a reason that has not stopped being true.
+
+Hiding gets what was asked for without that cost: nothing is reordered,
+a later part is simply not drawn yet, and one press shows it. The count
+in the header still covers the whole day, because "3 left today" is a
+claim about the day rather than about this section.
+
+**Only what is still to do gets hidden.** A habit finished early stays
+on the list — hiding something already done invites doing it twice, and
+it is evidence rather than a task. Earlier parts stay too: a morning
+pill forgotten at noon is precisely what this screen is for. So the fold
+covers exactly one thing, the part of the day that has not arrived.
+
 **Sorted chronologically, never "the current part first."** Putting now
 at the top is the more obviously clever rule and is worse to live with:
 the list would reorder itself twice a day, so the row you reach for by

@@ -856,7 +856,9 @@ function DueElsewhere() {
 export function Dailies() {
   const dailies = useDailies('own-area')
   const due = useDueElsewhere()
+  const services = useServices()
   const [adding, setAdding] = useState(false)
+  const [showLater, setShowLater] = useState(false)
 
   const views = dailies.data ?? []
 
@@ -876,6 +878,39 @@ export function Dailies() {
    */
   const todays = views.filter((view) => view.dueToday || view.doneToday)
   const otherDays = views.filter((view) => !view.dueToday && !view.doneToday)
+
+  /*
+   * **Later today folds away, and the order never moves.**
+   *
+   * The report: *"can we not surface tasks until it's time for them, so
+   * I'm not combing through stuff that isn't applicable in the moment."*
+   * The obvious answer is to sort the current part to the top, and this
+   * file already argues against that: the list would reorder itself
+   * twice a day, so the row you reach for by position moves, and a
+   * glance at breakfast and a glance at bedtime disagree about where
+   * anything is. The current part is *lit* instead.
+   *
+   * Hiding is the version that gets what was asked for without that
+   * cost. Nothing is reordered; a later part is simply not drawn until
+   * it is time, and one press shows it.
+   *
+   * **Only what is still to do gets hidden.** A habit you finished early
+   * stays on the list, because hiding something already done invites
+   * doing it twice — and it is evidence rather than a task. Earlier
+   * parts stay too: a morning pill forgotten at noon is exactly what
+   * this screen is for.
+   */
+  const nowPart = partOfDayAt(services.clock.now())
+  const nowIndex = PARTS_OF_DAY.indexOf(nowPart)
+  const isLater = (view: DailyView): boolean => {
+    const part = view.daily.partOfDay
+    if (part === undefined || view.doneToday) return false
+
+    return PARTS_OF_DAY.indexOf(part) > nowIndex
+  }
+
+  const later = todays.filter(isLater)
+  const showing = showLater ? todays : todays.filter((view) => !isLater(view))
 
   /*
    * Counted across every home, because the sentence is about the day and
@@ -921,11 +956,23 @@ export function Dailies() {
         </Empty>
       )}
 
-      {todays.length > 0 && (
+      {showing.length > 0 && (
         <GroupedDailies
-          views={todays}
+          views={showing}
           render={(view) => <DailyRow key={view.daily.id} view={view} />}
         />
+      )}
+
+      {later.length > 0 && (
+        <button
+          type="button"
+          className="text-ink-700 hover:text-ink-500 tap-target mt-1 text-xs"
+          onClick={() => {
+            setShowLater(!showLater)
+          }}
+        >
+          {showLater ? 'Hide what is for later' : `${String(later.length)} later today — show`}
+        </button>
       )}
 
       <DueElsewhere />
