@@ -40,6 +40,7 @@ describe('the schema', () => {
       'checkIns',
       'conditions',
       'dailies',
+      'dayReadings',
       'exercises',
       'exploredCells',
       'finance',

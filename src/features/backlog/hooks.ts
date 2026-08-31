@@ -24,6 +24,7 @@ import {
   type BacklogSettingsChanges,
 } from '@/domain/backlog/settings'
 import type { BacklogItemId } from '@/domain/ids/ids'
+import { serialise } from '@/lib/serialise'
 import { logger } from '@/shared/logging/logger'
 
 /**
@@ -79,35 +80,6 @@ function useBacklogMutation<TVariables>(
       void client.invalidateQueries({ queryKey: BACKLOG })
     },
   })
-}
-
-/**
- * Runs work for one key strictly after the last work for that key.
- *
- * Logging progress is a read-modify-write against the stored item, so two
- * of them in flight at once both read the same starting amount and the
- * second overwrites the first — two taps counted as one. Disabling the
- * button while a mutation runs avoids the miscount by dropping the tap
- * instead, which from the reader's side is the same thing.
- *
- * Written here rather than reached for in the query library. React
- * Query's `scope` does exactly this and was tried first: it queues
- * correctly and then does not drain when an observer unmounts mid-queue —
- * which a hot reload or a re-render does — and the row goes permanently
- * dead with no error anywhere. A four-line promise chain has no such
- * failure mode.
- *
- * Keyed by item, so rows for different items still run in parallel.
- */
-const chains = new Map<string, Promise<unknown>>()
-
-function serialise<T>(key: string, work: () => Promise<T>): Promise<T> {
-  // `catch` before chaining, so one failure does not poison the key
-  // forever — the next tap gets a fresh attempt rather than the last
-  // rejection.
-  const next = (chains.get(key) ?? Promise.resolve()).catch(() => undefined).then(work)
-  chains.set(key, next)
-  return next
 }
 
 export function useAddItem() {

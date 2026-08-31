@@ -1,3 +1,4 @@
+import type { DayReading } from '@/domain/vitals/day-reading'
 import type { Room } from '@/domain/base/declutter'
 import type { HomeCandidate } from '@/domain/homes/candidate'
 import type { Attempt } from '@/domain/mind/practice'
@@ -58,6 +59,7 @@ export interface SyncPayload {
   readonly attempts: readonly Attempt[]
   readonly homes: readonly HomeCandidate[]
   readonly rooms: readonly Room[]
+  readonly dayReadings: readonly DayReading[]
   /**
    * Ground you have walked, as geohash cells.
    *
@@ -121,6 +123,7 @@ export const EMPTY_PAYLOAD: SyncPayload = {
   attempts: [],
   homes: [],
   rooms: [],
+  dayReadings: [],
   tombstones: [],
 }
 
@@ -145,6 +148,7 @@ export function isEmpty(payload: SyncPayload): boolean {
     payload.attempts.length === 0 &&
     payload.homes.length === 0 &&
     payload.rooms.length === 0 &&
+    payload.dayReadings.length === 0 &&
     payload.exploredCells.length === 0 &&
     payload.tombstones.length === 0 &&
     payload.settings === undefined &&
@@ -173,6 +177,7 @@ export function payloadSize(payload: SyncPayload): number {
     payload.attempts.length +
     payload.homes.length +
     payload.rooms.length +
+    payload.dayReadings.length +
     // Counted as one, because that is what it is to a reader: the fog
     // moved, once, however many cells were in the batch.
     (payload.exploredCells.length === 0 ? 0 : 1) +
@@ -367,6 +372,10 @@ export function acceptableFrom(
     attempts: incoming.attempts.filter((item) => shouldAccept(item, 'attempts', item.id, index)),
     homes: incoming.homes.filter((item) => shouldAccept(item, 'homes', item.id, index)),
     rooms: incoming.rooms.filter((item) => shouldAccept(item, 'rooms', item.id, index)),
+    // Keyed by the day, like weigh-ins and finance — the day *is* the id.
+    dayReadings: incoming.dayReadings.filter((item) =>
+      shouldAccept(item, 'dayReadings', item.day, index),
+    ),
     // Exempt on purpose. There is no tombstone that could apply to ground
     // somebody walked, so there is nothing here to filter against.
     exploredCells: incoming.exploredCells,

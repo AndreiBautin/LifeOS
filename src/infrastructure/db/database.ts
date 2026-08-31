@@ -1,3 +1,4 @@
+import type { DayReading } from '@/domain/vitals/day-reading'
 import type { Room } from '@/domain/base/declutter'
 import type { HomeCandidate } from '@/domain/homes/candidate'
 import type { Attempt } from '@/domain/mind/practice'
@@ -67,7 +68,7 @@ export const DB_NAME = 'lifeos'
  * a device that already ran it will not run it again, so changing one
  * leaves two devices with different schemas and no way to tell.
  */
-export const DB_VERSION = 16
+export const DB_VERSION = 17
 
 /**
  * A workout as it is stored, which is not quite a workout as the domain
@@ -286,6 +287,11 @@ export interface LiftDB extends DBSchema {
   weighIns: {
     key: string
     value: WeighIn
+  }
+  /** One row a day: sleep, and what was eaten. Keyed by the day. */
+  dayReadings: {
+    key: string
+    value: DayReading
   }
   /** Rooms, and how clear each has been over time. */
   rooms: {
@@ -521,6 +527,13 @@ export function openDatabase(name = DB_NAME): Promise<AppDatabase> {
         db.createObjectStore('resume')
       }
 
+      if (oldVersion < 17) {
+        // Keyed by the day, like weigh-ins: one row per day, so a second
+        // entry corrects rather than appends and the merge is a plain
+        // last-write-wins.
+        db.createObjectStore('dayReadings', { keyPath: 'day' })
+      }
+
       if (oldVersion < 16) {
         db.createObjectStore('rooms', { keyPath: 'id' })
       }
@@ -607,6 +620,7 @@ export async function clearAllStores(db: AppDatabase): Promise<void> {
       'campaigns',
       'attempts',
       'homes',
+      'dayReadings',
       'rooms',
     ],
     'readwrite',
@@ -635,6 +649,7 @@ export async function clearAllStores(db: AppDatabase): Promise<void> {
     tx.objectStore('campaigns').clear(),
     tx.objectStore('attempts').clear(),
     tx.objectStore('homes').clear(),
+    tx.objectStore('dayReadings').clear(),
     tx.objectStore('rooms').clear(),
     tx.done,
   ])

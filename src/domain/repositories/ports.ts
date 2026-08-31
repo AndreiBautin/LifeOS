@@ -44,6 +44,7 @@ import type { AppSettings } from '@/domain/settings/settings'
 import type { SyncPayload } from '@/domain/sync/payload'
 import type { Tombstone } from '@/domain/sync/tombstone'
 import type { Vice } from '@/domain/vitals/charges'
+import type { DayReading } from '@/domain/vitals/day-reading'
 import type { WeighIn } from '@/domain/vitals/weight'
 
 /**
@@ -416,6 +417,24 @@ export interface RoomRepository {
   remove(id: RoomId): Promise<void>
   /** Deletes without a tombstone -- the receiving half of a sync. */
   purge(id: RoomId): Promise<void>
+}
+
+/**
+ * One row per day, keyed by the day itself.
+ *
+ * No `byId` taking a branded id: the day key *is* the key, the way a
+ * weigh-in's is, so the reads a screen wants are "this day" and "the
+ * last N days" rather than a lookup by something opaque.
+ */
+export interface DayReadingRepository {
+  all(): Promise<readonly DayReading[]>
+  byDay(day: string): Promise<DayReading | undefined>
+  save(reading: DayReading): Promise<void>
+  /** Writes exactly as given, without stamping. See `ExerciseRepository`. */
+  restoreMany(readings: readonly DayReading[]): Promise<void>
+  remove(day: string): Promise<void>
+  /** Deletes without a tombstone -- the receiving half of a sync. */
+  purge(day: string): Promise<void>
 }
 
 export interface HomeRepository {

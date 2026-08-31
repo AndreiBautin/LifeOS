@@ -3339,6 +3339,58 @@ a day and either did or did not — a daily with a streak, which is exactly
 what Upkeep holds. Building a third mechanism for it would have been a
 counting pool wearing a habit's clothes.
 
+**Macros stopped prescribing, and a day gained a row of its own.** The
+report: _"macro tracking shouldn't be prescriptive — I have Cal AI for
+auto adjustments. I mainly want it for visibility and tracking, the same
+way I want to track sleep, to feed into how the cut is going and how the
+avatar is doing health-wise."_
+
+`macroTargets` no longer corrects the stated intake. What it reports is
+that intake broken down — protein per kilogram, the fat floor off
+bodyweight, carbohydrate as the remainder — all properties of the body
+and the phase rather than judgements about the last fortnight. The trend
+and the phase verdict sit beside it as readings.
+
+**`dailyAdjustment` and `MAX_DAILY_ADJUSTMENT` were deleted rather than
+left unused**, which matters given how often this file records the
+opposite mistake: sound arithmetic nothing calls is how a codebase ends
+up with a fifth `proposeLandmarks`. Two things to know before
+reinstating it — it aimed at the **nearest edge** of the phase band
+rather than the middle, and it was capped at 500 kcal because one
+unrepresentative reading produces an arithmetically correct instruction
+to eat 1,400 fewer a day.
+
+**`DayReading` is not the food log this app has twice refused to
+build**, and that refusal stands: a calorie log needs a database of
+foods and portions, it falls behind first, and everything derived from a
+stale one is quietly wrong. This is four numbers typed once off another
+app's screen — the shape of a weigh-in, which is a measurement somebody
+reads rather than one this app computes. It pays no XP for the same
+reason a weigh-in does not.
+
+**Sleep belongs here for a reason the removed check-in already stated.**
+`readinessScore` rated sleep poor/ok/good, and the note on its removal
+said the quiet part: _"sleep, nutrition and hydration are quantities,
+and a quantity rated `ok` has been thrown away before it was written
+down."_ Hours is the quantity, and this is that correction arriving.
+
+**One row per day, not one per figure.** Sleep is entered in the morning
+and macros at night, so `recordDay` leaves alone anything a change does
+not mention — `recordFinance`'s rule, because there is no telling "I did
+not check" from "I meant zero" once stored. **Clearing is a separate
+word**: `null` removes a figure, so a call site cannot ask for "fill in
+what I know" and receive "wipe the rest". Figures outside a day's range
+are **refused rather than clamped**, the credit score's rule.
+
+**And the boxes had to be serialised, which driving found and the suite
+did not.** Each box writes to the same row, so typing sleep then
+calories fired two read-modify-writes and the second read the day before
+the first had saved — **sleep silently vanished**. That is the hazard
+already documented for the backlog's progress log, arriving from the
+other direction: there it is two taps on one control, here one tap each
+on three boxes. `serialise` moved to `lib/serialise.ts` rather than
+being copied, because a second copy is where a fix stops applying.
+
 **Macros and calories stay targets, deliberately.** The amount mechanism
 would fit them and they are still not logged here: a calorie log needs a
 database of foods and portions, it is the first thing to fall behind, and

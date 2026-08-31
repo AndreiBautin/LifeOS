@@ -1,4 +1,5 @@
 import { GroupedDailies } from '@/features/today/DailyGroups'
+import { DayReadings } from './DayReadings'
 import { Flame, Plus, Scale, Undo2 } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { toDayKey } from '@/domain/time/day'
@@ -270,25 +271,18 @@ function MacroTargetsCard() {
             differently on purpose: "on track" is a judgement, "not
             enough readings" is the absence of one.
           */}
+          {/*
+            No correction any more. The report: *"macro tracking
+            shouldn't be prescriptive — I have Cal AI for auto
+            adjustments, I mainly want visibility."* So this states what
+            the intake breaks down to and leaves the trend beside it as a
+            reading, rather than folding both into an instruction.
+          */}
           <div className="border-ink-800 mb-3 border-b pb-3">
-            {macros.adjustment === undefined ? (
-              <p className="text-ink-500 text-sm">
-                Two weeks of weigh-ins and this starts advising.
-              </p>
-            ) : macros.adjustment === 0 ? (
-              <p className="text-good-500 text-sm">
-                The scale is doing what the phase asked — hold the intake where it is.
-              </p>
-            ) : (
-              <p className="text-ink-50 text-sm">
-                About{' '}
-                <span className="numeric font-semibold">
-                  {Math.abs(macros.adjustment)} {macros.adjustment < 0 ? 'fewer' : 'more'}
-                </span>{' '}
-                a day
-                <span className="text-ink-500"> — the smallest change that reaches the band.</span>
-              </p>
-            )}
+            <p className="text-ink-500 text-sm">
+              What the intake you stated comes to. The trend above says how it is going; nothing
+              here tells you to change it.
+            </p>
           </div>
 
           <dl className="space-y-1.5">
@@ -562,7 +556,9 @@ export function VitalsPage() {
         <PhaseEditor />
       </Section>
 
-      <Section title="Macros" description="Derived from the scale, not from a formula">
+      <DayReadings />
+
+      <Section title="Macros" description="What your stated intake comes to">
         <MacroTargetsCard />
       </Section>
 

@@ -32,6 +32,7 @@ import type {
   ViceRepository,
   AttemptRepository,
   HomeRepository,
+  DayReadingRepository,
   RoomRepository,
   CampaignRepository,
   FinanceRepository,
@@ -98,6 +99,7 @@ export interface SynchroniseDeps {
   readonly attempts: AttemptRepository
   readonly homes: HomeRepository
   readonly rooms: RoomRepository
+  readonly dayReadings: DayReadingRepository
   readonly explored: ExploredAreaRepository
   readonly tombstones: TombstoneRepository
   readonly syncState: SyncStateRepository
@@ -186,6 +188,7 @@ export async function synchronise(target: SyncTarget, deps: SynchroniseDeps): Pr
   await deps.attempts.restoreMany(accepted.attempts)
   await deps.homes.restoreMany(accepted.homes)
   await deps.rooms.restoreMany(accepted.rooms)
+  await deps.dayReadings.restoreMany(accepted.dayReadings)
   // Union, never replace. See `unionCells`.
   await deps.explored.reveal(accepted.exploredCells as CellId[])
 
@@ -269,6 +272,7 @@ export async function synchronise(target: SyncTarget, deps: SynchroniseDeps): Pr
     accepted.attempts.length +
     accepted.homes.length +
     accepted.rooms.length +
+    accepted.dayReadings.length +
     (settingsMoved ? 1 : 0) +
     (resumeMoved ? 1 : 0)
 
@@ -292,6 +296,7 @@ export async function synchronise(target: SyncTarget, deps: SynchroniseDeps): Pr
     incoming.attempts.length +
     incoming.homes.length +
     incoming.rooms.length +
+    incoming.dayReadings.length +
     (accepted.settings === undefined ? 0 : 1) +
     (accepted.resume === undefined ? 0 : 1)
 
@@ -329,6 +334,7 @@ async function collectLocal(
     attempts,
     homes,
     rooms,
+    dayReadings,
     explored,
     tombstones,
     settings,
@@ -353,6 +359,7 @@ async function collectLocal(
     deps.attempts.all(),
     deps.homes.all(),
     deps.rooms.all(),
+    deps.dayReadings.all(),
     deps.explored.all(),
     deps.tombstones.all(),
     deps.settings.get(),
@@ -408,6 +415,7 @@ async function collectLocal(
     attempts: changedSince(attempts, watermark),
     homes: changedSince(homes, watermark),
     rooms: changedSince(rooms, watermark),
+    dayReadings: changedSince(dayReadings, watermark),
     /*
      * The whole set, every time, rather than what changed since the
      * watermark. There is nothing to compare against — a cell carries no
@@ -556,6 +564,15 @@ async function applyDeletions(
         }
         break
       }
+      case 'dayReadings': {
+        // The day is the key, so the tombstone's id is a day key.
+        const local = await deps.dayReadings.byDay(tombstone.id)
+        if (local !== undefined && !survives(local, tombstone)) {
+          await deps.dayReadings.purge(tombstone.id)
+        }
+        break
+      }
+
       case 'rooms': {
         const local = await deps.rooms.byId(asRoomId(tombstone.id))
         if (local !== undefined && !survives(local, tombstone)) {

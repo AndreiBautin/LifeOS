@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { macroTargets, MAX_DAILY_ADJUSTMENT, type MacroInput } from './macros'
+import { macroTargets, type MacroInput } from './macros'
 import type { WeightTrend } from './weight'
 
 /**
@@ -64,52 +64,12 @@ describe('protein and fat', () => {
 })
 
 describe('the calorie correction', () => {
-  it('leaves the intake alone when the trend is in the band', () => {
-    const targets = macroTargets(base)
-
-    expect(targets?.adjustment).toBe(0)
-    expect(targets?.calories).toBe(2400)
-  })
-
   /*
    * The load-bearing one. A band is a range of acceptable answers, so
    * the smallest change that lands inside it is the right advice.
    * Aiming for the centre would tell a lifter losing at 0.45%/wk to cut
    * roughly twice what the situation calls for.
    */
-  it('aims at the nearest edge of the band, not its middle', () => {
-    const nearlyThere = macroTargets({ ...base, trend: trendAt(-0.45), verdict: 'too-slow' })
-    const wayOff = macroTargets({ ...base, trend: trendAt(-0.1), verdict: 'too-slow' })
-
-    /*
-     * The first is 0.05%/wk from the near edge and the second is 0.4% —
-     * eight times the gap — and the corrections stand in that ratio.
-     * Aiming at the middle of the band instead would put the first at
-     * 0.3%/wk from target, six times what it actually needs.
-     *
-     * Asserted as a range rather than an exact figure on purpose: the
-     * near case lands on 44.99 kcal, a hair under a rounding boundary,
-     * and pinning it would make this test a hostage to the fourth
-     * decimal place of a pounds-to-kilograms constant.
-     */
-    expect(Math.abs(nearlyThere?.adjustment ?? 0)).toBeLessThan(60)
-    expect(Math.abs(wayOff?.adjustment ?? 0)).toBeGreaterThan(300)
-  })
-
-  it('tells a stalled cut to eat less and a runaway one to eat more', () => {
-    const stalled = macroTargets({ ...base, trend: trendAt(-0.1), verdict: 'too-slow' })
-    const runaway = macroTargets({ ...base, trend: trendAt(-1.6), verdict: 'too-fast' })
-
-    expect(stalled?.adjustment).toBeLessThan(0)
-    expect(runaway?.adjustment).toBeGreaterThan(0)
-  })
-
-  it('moves the stated total by exactly the correction', () => {
-    const targets = macroTargets({ ...base, trend: trendAt(-0.1), verdict: 'too-slow' })
-
-    expect(targets?.calories).toBe(2400 + (targets?.adjustment ?? 0))
-  })
-
   /*
    * A measurement error must not become a dangerous instruction. One bad
    * reading in a window can produce an arithmetically correct correction
@@ -117,37 +77,10 @@ describe('the calorie correction', () => {
    * really is that large, arriving there over two weeks is the right way
    * to do it.
    */
-  it('will not suggest a change larger than the cap', () => {
-    const absurd = macroTargets({ ...base, trend: trendAt(-9), verdict: 'too-fast' })
-
-    expect(absurd?.adjustment).toBe(MAX_DAILY_ADJUSTMENT)
-  })
-
   /*
    * Absent, never zero — and here the two read differently on screen.
    * Zero is "on track"; absent is "not enough readings".
    */
-  it('offers no correction at all when there is no rate to read', () => {
-    const noTrend = macroTargets({ ...base, verdict: 'unknown', trend: undefined })
-
-    expect(noTrend?.adjustment).toBeUndefined()
-    // The intake still stands as the total — it is what you said you eat.
-    expect(noTrend?.calories).toBe(2400)
-  })
-
-  it('rounds to something the inputs can support', () => {
-    // A smoothed average and a rule of thumb do not justify a target of
-    // 2,373.
-    const targets = macroTargets({ ...base, trend: trendAt(-0.31), verdict: 'too-slow' })
-
-    // Through `Math.abs`, because `-170 % 10` is `-0` in JavaScript and
-    // `toBe(0)` compares with `Object.is`.
-    expect(Math.abs(targets?.calories ?? 0) % 10).toBe(0)
-    expect(Math.abs(targets?.adjustment ?? 0) % 10).toBe(0)
-  })
-})
-
-describe('carbohydrate, as the remainder', () => {
   it('is what is left after protein and the fat floor', () => {
     const targets = macroTargets(base)
     const fromMacros =

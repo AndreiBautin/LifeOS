@@ -25,6 +25,7 @@ import type {
   ProjectRepository,
   AttemptRepository,
   HomeRepository,
+  DayReadingRepository,
   RoomRepository,
   CampaignRepository,
   ResumeRepository,
@@ -330,6 +331,20 @@ function device(clock: Clock): Device {
     purge: () => Promise.resolve(),
   }
 
+  /*
+   * A stub for the same reason as the rooms above: nothing in these
+   * tests exercises a day reading, and a double that pretended to would
+   * be testing itself.
+   */
+  const dayReadings: DayReadingRepository = {
+    all: () => Promise.resolve([]),
+    byDay: () => Promise.resolve(undefined),
+    save: () => Promise.resolve(),
+    restoreMany: () => Promise.resolve(),
+    remove: () => Promise.resolve(),
+    purge: () => Promise.resolve(),
+  }
+
   const homes: HomeRepository = {
     all: () => Promise.resolve([]),
     byId: () => Promise.resolve(undefined),
@@ -496,6 +511,7 @@ function device(clock: Clock): Device {
 
   return {
     rooms,
+    dayReadings,
     homes,
     attempts,
     campaigns,

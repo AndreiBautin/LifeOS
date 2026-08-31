@@ -77,17 +77,8 @@ function PhaseLine({
         )}
       </p>
 
-      {/*
-        One line, and only when there is something to say. The full macro
-        breakdown lives on the Vitals screen — what belongs on Today is
-        the correction, because that is the part that changes what you do
-        at the next meal.
-      */}
-      {macros?.adjustment !== undefined && macros.adjustment !== 0 && (
-        <p className="text-ink-500 numeric mt-1 text-sm">
-          about {Math.abs(macros.adjustment)} {macros.adjustment < 0 ? 'fewer' : 'more'} a day
-          {macros.calories !== undefined && ` · ${String(macros.calories)} kcal`}
-        </p>
+      {macros?.calories !== undefined && (
+        <p className="text-ink-500 numeric mt-1 text-sm">{macros.calories} kcal stated</p>
       )}
     </div>
   )

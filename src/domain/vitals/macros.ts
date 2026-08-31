@@ -58,30 +58,6 @@ export const FAT_FLOOR_PER_KG = 0.66
 
 const KCAL_PER_G = { protein: 4, fat: 9, carbs: 4 } as const
 
-/**
- * The energy in a kilogram of bodyweight, for turning a rate gap into
- * calories.
- *
- * The familiar 3,500 kcal per pound. It is an approximation and it is
- * worth knowing which way it is wrong: it describes *fat* mass, while
- * the first pounds of any change are largely water and glycogen. Over a
- * seven-day smoothed trend that mostly washes out, which is the reason
- * the trend is smoothed over a week before this ever sees it.
- */
-const KCAL_PER_KG_BODYWEIGHT = 7716
-
-/**
- * The most this will ever suggest changing in one go.
- *
- * A trend can be wrong — a week of travel, a bad scale, one reading in a
- * window — and the arithmetic will cheerfully turn that into "eat 1,400
- * fewer a day". A cap is what stops a measurement error becoming a
- * dangerous instruction, and the number is deliberately blunt: if the
- * true correction really is larger than this, arriving there over two
- * weeks is the right way to do it anyway.
- */
-export const MAX_DAILY_ADJUSTMENT = 500
-
 export interface MacroTargets {
   /** Grams. Always present, because bodyweight is all it needs. */
   readonly protein: number
@@ -96,14 +72,27 @@ export interface MacroTargets {
   readonly calories?: number
   /** Grams, absent for the same reason — a remainder needs a total. */
   readonly carbs?: number
-  /**
-   * How far the stated intake is being moved, in kcal a day.
+  /*
+   * `adjustment` used to live here and is gone.
    *
-   * Zero when the trend is inside the band. Absent when there is no
-   * trend to judge, which is a different thing and reads differently on
-   * the screen: "on track" versus "not enough readings".
+   * The report: *"macro tracking shouldn't be prescriptive — I have Cal
+   * AI for auto adjustments. I mainly want it for visibility."* So the
+   * app stopped correcting the number: what it reports is the intake
+   * that was stated, broken down, and the trend and phase are read
+   * beside it rather than folded into an instruction.
+   *
+   * `dailyAdjustment` and `MAX_DAILY_ADJUSTMENT` went with it rather
+   * than being left unused. Keeping sound arithmetic that nothing calls
+   * is how this codebase ends up with a fifth `proposeLandmarks`, and
+   * the git history holds it perfectly well.
+   *
+   * Two things to know before reinstating it. It aimed at the **nearest
+   * edge** of the phase band, never the middle — aiming at the centre
+   * tells somebody losing at 0.45%/wk against a 0.5–1.0% target to cut
+   * several times what the situation calls for. And it was capped at
+   * 500 kcal, because one unrepresentative reading in a window produces
+   * an arithmetically correct instruction to eat 1,400 fewer a day.
    */
-  readonly adjustment?: number
   /**
    * True when protein and the fat floor alone exceed the calorie total.
    *
@@ -136,48 +125,14 @@ export interface MacroInput {
 }
 
 /**
- * How many kcal a day to move, to bring the trend to the nearest edge of
- * the band.
+ * A breakdown of the intake you stated, not a correction to it.
  *
- * **The nearest edge, not the middle.** The band is a range of
- * acceptable answers, so the smallest change that lands inside it is the
- * correct advice — aiming for the centre would tell a lifter losing at
- * 0.45%/wk against a 0.5–1.0% target to cut twice as much as the
- * situation calls for.
+ * **This reports; it does not prescribe.** Protein is grams per
+ * kilogram, the fat floor is off bodyweight, and carbohydrate is the
+ * remainder — all three are properties of the body and the phase rather
+ * than judgements about how the last fortnight went. The trend and the
+ * phase verdict are shown beside this and left as readings.
  */
-function dailyAdjustment(input: MacroInput): number | undefined {
-  const rate = input.trend?.ratePerWeek
-  if (rate === undefined) return undefined
-  if (input.verdict === 'on-track') return 0
-
-  const edge = rate < input.range.min ? input.range.min : input.range.max
-  const gapPercent = edge - rate
-
-  const kg = convertWeight(input.bodyweight, input.units, 'kg')
-  const kgPerWeek = (gapPercent / 100) * kg
-  const perDay = (kgPerWeek * KCAL_PER_KG_BODYWEIGHT) / 7
-
-  const capped = Math.max(-MAX_DAILY_ADJUSTMENT, Math.min(MAX_DAILY_ADJUSTMENT, perDay))
-
-  /*
-   * To the nearest ten, rounding the *magnitude* rather than the signed
-   * value. The inputs are a smoothed average and a rule of thumb, so a
-   * target of 273 would claim a precision neither of them has.
-   *
-   * Rounding the signed value directly is the obvious version and is
-   * subtly asymmetric: JavaScript rounds half toward positive infinity,
-   * so -45 becomes -40 while +45 becomes +50 — the same size of error
-   * corrected less firmly in a deficit than in a surplus, for no reason
-   * anyone could state. Taking the sign off first makes the two
-   * directions behave alike.
-   */
-  const rounded = Math.round(Math.abs(capped) / 10) * 10
-
-  // `-0` is a real value here and renders as "-0". Normalised rather
-  // than left for a formatter to trip over.
-  return rounded === 0 ? 0 : Math.sign(capped) * rounded
-}
-
 export function macroTargets(input: MacroInput): MacroTargets | undefined {
   if (!Number.isFinite(input.bodyweight) || input.bodyweight <= 0) return undefined
 
@@ -186,18 +141,15 @@ export function macroTargets(input: MacroInput): MacroTargets | undefined {
   const protein = Math.round(kg * PROTEIN_PER_KG[input.phase])
   const fat = Math.round(kg * FAT_FLOOR_PER_KG)
 
-  const adjustment = dailyAdjustment(input)
-
   if (input.intake === undefined || !Number.isFinite(input.intake) || input.intake <= 0) {
     return {
       protein,
       fat,
-      ...(adjustment === undefined ? {} : { adjustment }),
       floorsExceedCalories: false,
     }
   }
 
-  const calories = Math.max(0, Math.round((input.intake + (adjustment ?? 0)) / 10) * 10)
+  const calories = Math.max(0, Math.round(input.intake / 10) * 10)
   const fromFloors = protein * KCAL_PER_G.protein + fat * KCAL_PER_G.fat
   const remaining = calories - fromFloors
 
@@ -206,7 +158,6 @@ export function macroTargets(input: MacroInput): MacroTargets | undefined {
       protein,
       fat,
       calories,
-      ...(adjustment === undefined ? {} : { adjustment }),
       floorsExceedCalories: true,
     }
   }
@@ -216,7 +167,6 @@ export function macroTargets(input: MacroInput): MacroTargets | undefined {
     fat,
     calories,
     carbs: Math.round(remaining / KCAL_PER_G.carbs),
-    ...(adjustment === undefined ? {} : { adjustment }),
     floorsExceedCalories: false,
   }
 }
