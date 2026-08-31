@@ -29,11 +29,31 @@ function readBasePath(env: Record<string, string>): string {
   return typeof value === 'string' && value.length > 0 ? value : '/'
 }
 
+/**
+ * Which build this is, so "am I running the new one" has an answer.
+ *
+ * It had none, and that cost a whole exchange: a stale install and a
+ * broken deploy look identical from a phone, and the only way to tell
+ * them apart was hunting the screen for a string that had been removed.
+ *
+ * The commit is what CI knows, and it is the only case that matters —
+ * a local build is one you just ran, so "dev" says everything there is
+ * to say about it. Stamping the clock instead would need a `new Date()`
+ * the lint rule rightly objects to, for a distinction nobody needs.
+ */
+function buildId(): string {
+  const sha = process.env.GITHUB_SHA
+
+  return sha === undefined || sha === '' ? 'dev' : sha.slice(0, 7)
+}
+
 export default defineConfig(({ mode }) => {
   const base = readBasePath(loadEnv(mode, process.cwd(), ''))
 
   return {
     base,
+
+    define: { __BUILD_ID__: JSON.stringify(buildId()) },
 
     plugins: [
       react(),

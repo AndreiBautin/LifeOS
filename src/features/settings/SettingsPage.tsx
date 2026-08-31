@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import { BuildLine } from '@/features/pwa/BuildLine'
 import { PageHeader } from '@/components/shared/PageHeader'
 
 import type { BackupCounts } from '@/domain/backup/envelope'
@@ -408,6 +409,9 @@ export function SettingsPage() {
           )}
         </Card>
       </Section>
+
+      {/* Not a Section — a footer, not a thing to decide about. */}
+      <BuildLine />
 
       <p className="text-ink-500 mt-8 text-center text-xs">
         Lift {import.meta.env.VITE_APP_VERSION ?? 'dev'}

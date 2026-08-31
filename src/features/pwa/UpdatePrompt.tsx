@@ -12,6 +12,21 @@ import { logger } from '@/shared/logging/logger'
  * a session — which `autoUpdate` would do — risks losing the set they are
  * mid-way through typing. The banner waits.
  *
+ * **But a waiting worker is not applied by closing the app and opening it
+ * again, and that is the trap this had.** A new version installs and then
+ * *waits*, and only `skipWaiting` promotes it — so a banner missed once,
+ * or dismissed with "Later", left the old shell serving forever. Every
+ * restart re-showed the banner and changed nothing, which is exactly what
+ * "I closed it and reloaded and it is still the old one" looks like from
+ * the outside. Two reports of a stale install came through before the
+ * mechanism was suspected rather than the deploy.
+ *
+ * So a worker that was **already waiting when the page registered** is
+ * applied at once. It arrived in an earlier session, which means the
+ * reason for prompting does not apply: nothing is three sets into
+ * anything a quarter of a second after launch. Updates that arrive
+ * *during* a session still ask, which is the case the prompt was for.
+ *
  * IndexedDB is untouched by an update either way; only the precached
  * shell is versioned, so reloading never costs data.
  */
@@ -21,7 +36,34 @@ export function UpdatePrompt() {
     updateServiceWorker,
   } = useRegisterSW({
     onRegisteredSW(url, registration) {
-      logger.debug('sw.registered', { url })
+      logger.debug('sw.registered', { url, build: __BUILD_ID__ })
+
+      if (registration?.waiting != null) {
+        /*
+         * Waiting *before* this registration, so it was installed in an
+         * earlier run of the app. Apply it now rather than asking: the
+         * question "may I swap the app out" answers itself at launch.
+         */
+        logger.info('sw.applying-waiting-update', { build: __BUILD_ID__ })
+
+        /*
+         * The worker is asked directly rather than through
+         * `updateServiceWorker`, which is returned by the very call this
+         * callback is an argument to — reaching it needs a ref written
+         * during render, which React forbids. This is what that function
+         * does anyway: promote the waiting worker, then reload once it
+         * takes control.
+         */
+        navigator.serviceWorker.addEventListener(
+          'controllerchange',
+          () => {
+            window.location.reload()
+          },
+          { once: true },
+        )
+        registration.waiting.postMessage({ type: 'SKIP_WAITING' })
+        return
+      }
 
       /*
        * Ask again whenever the app comes back to the front.
