@@ -6,7 +6,7 @@ import type { MuscleGroup } from '@/domain/exercises/taxonomy'
 import { MUSCLE_GROUP_LABELS } from '@/domain/exercises/taxonomy'
 import type { RtsPrescription } from '@/domain/framework/rts'
 import { BACKOFF_VARIANT, TOP_SET_VARIANT } from '@/domain/framework/replan-backoffs'
-import { backoffStopRpe, DEFAULT_RTS } from '@/domain/framework/rts'
+import { backoffStopRpe, DEFAULT_RTS, plannedBackoffSets } from '@/domain/framework/rts'
 import type { ExerciseId, IdGenerator, ProgramId } from '@/domain/ids/ids'
 import { asExerciseId, asSlotId } from '@/domain/ids/ids'
 import type { SetPrescription } from '@/domain/programs/prescription'
@@ -669,12 +669,16 @@ function buildStrengthSlots(
   }
 
   /*
-   * A flat cap, because every session now has the same shape.
+   * As many back-offs as the day's fatigue target is expected to need.
    *
-   * The stopping rule is what ends the block; this only stops a session
-   * running away when the opener was called too light. It is
-   * materialised as slots and counted as volume, so it should sit near
-   * where the rule usually fires rather than at the theoretical maximum.
+   * It was a flat three for every non-zero target, so Minimal and High
+   * built identical sessions and the setting decided only when to stop.
+   * The paragraph this replaces already stated the right rule — the cap
+   * "should sit near where the rule usually fires" — and then ignored it
+   * for every target but one.
+   *
+   * The stopping rule still ends the work; this decides what goes in the
+   * plan, and the plan is materialised as slots and counted as volume.
    */
   const backoffCap =
     fatigueTarget <= 0
@@ -691,7 +695,7 @@ function buildStrengthSlots(
         0
       : isDeload
         ? 1
-        : Math.min(recipe.rts.maxBackoffSets, STRENGTH_BACKOFF_CAP)
+        : Math.min(recipe.rts.maxBackoffSets, plannedBackoffSets(fatigueTarget))
 
   /*
    * A fixed drop from today's top set, with no prescribed RPE.
@@ -1335,20 +1339,20 @@ const COMPOUND_REPS = { low: 5, high: 8 } as const
 const ISOLATION_REPS = { low: 15, high: 30 } as const
 
 /**
- * How many back-off sets a competition lift is capped at.
+ * Gone: the back-off count is derived from the fatigue target now.
  *
- * Three. It was four, on the reasoning that the stopping rule usually
- * fires in three or four sets and a cap far above where the rule fires
- * only misleads the volume count. The same reasoning taken one step
- * further gives three: the cap is *materialised as slots and counted as
- * volume*, so it is the week's plan whether or not you reach it, and the
- * honest place for it is the low end of where the rule fires rather than
- * the high end.
+ * This was a flat three for every non-zero target, and the reasoning
+ * behind it was sound and incomplete. It said the cap should sit at the
+ * low end of where the stopping rule fires, because the slots are
+ * materialised and counted as volume whether or not you reach them —
+ * true, and it fixed the number at one point on a scale with four.
  *
- * The screens say "1–3" now rather than "1–4", which is the same promise
- * made smaller.
+ * Minimal and High therefore built identical sessions and the setting
+ * decided only when to stop, which was reported from real use. See
+ * `plannedBackoffSets` in `domain/framework/rts.ts`; the honest place
+ * for the number is wherever the rule fires *for the chosen target*,
+ * which is one set at 2% and four at 7%.
  */
-export const STRENGTH_BACKOFF_CAP = 3
 
 /** Which tier a muscle sits in; the bottom tier if it is unplaced. */
 

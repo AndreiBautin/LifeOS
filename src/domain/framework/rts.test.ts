@@ -1,18 +1,19 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  DEFAULT_RTS,
+  FATIGUE_TARGETS,
   accumulatedFatiguePercent,
   backoffStopRpe,
-  DEFAULT_RTS,
   estimatedMaxFromSet,
   evaluateFatigue,
-  FATIGUE_TARGETS,
   nextBackoffLoad,
   nextBackoffReps,
+  plannedBackoffSets,
   suggestTopSetLoad,
-  validateRtsPrescription,
   type PerformedSet,
   type RtsPrescription,
+  validateRtsPrescription,
 } from './rts'
 
 const set = (load: number, reps: number, rpe: number): PerformedSet => ({ load, reps, rpe })
@@ -243,5 +244,46 @@ describe('the RPE a back-off block stops at', () => {
 
   it('has no answer for reps the chart does not cover', () => {
     expect(backoffStopRpe(30, 8, 5, 5)).toBeUndefined()
+  })
+})
+
+/*
+ * Reported from real use: the back-offs always read the same however the
+ * fatigue setting was moved. They did — the count was a flat cap of
+ * three for every non-zero target, so Minimal and High built identical
+ * sessions and the setting decided only when to stop.
+ */
+describe('how many back-off sets to plan', () => {
+  it('plans none when the target is none', () => {
+    expect(plannedBackoffSets(FATIGUE_TARGETS.none)).toBe(0)
+  })
+
+  it('plans more for a bigger target, which is the whole point', () => {
+    const minimal = plannedBackoffSets(FATIGUE_TARGETS.minimal)
+    const moderate = plannedBackoffSets(FATIGUE_TARGETS.moderate)
+    const high = plannedBackoffSets(FATIGUE_TARGETS.high)
+
+    expect(minimal).toBeLessThan(moderate)
+    expect(moderate).toBeLessThan(high)
+  })
+
+  it('reads as one, three and four across the published scale', () => {
+    expect(plannedBackoffSets(FATIGUE_TARGETS.minimal)).toBe(1)
+    expect(plannedBackoffSets(FATIGUE_TARGETS.moderate)).toBe(3)
+    expect(plannedBackoffSets(FATIGUE_TARGETS.high)).toBe(4)
+  })
+
+  /*
+   * Any non-zero target needs at least one set to measure a drop
+   * against. Rounding a small target to zero would silently turn it into
+   * "top set only", which is a different choice the lifter did not make.
+   */
+  it('never plans zero for a target somebody asked for', () => {
+    expect(plannedBackoffSets(0.5)).toBe(1)
+    expect(plannedBackoffSets(1)).toBe(1)
+  })
+
+  it('grows without a ceiling of its own, leaving that to maxBackoffSets', () => {
+    expect(plannedBackoffSets(20)).toBeGreaterThan(plannedBackoffSets(10))
   })
 })

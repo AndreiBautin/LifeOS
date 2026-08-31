@@ -70,6 +70,42 @@ export const FATIGUE_TARGETS = {
 export type FatigueLevel = keyof typeof FATIGUE_TARGETS
 
 /**
+ * Roughly what one back-off set costs the implied max, as a percentage.
+ *
+ * An estimate, and named so it reads as one. It exists to answer *how
+ * many back-off slots to put in the plan*, which is a different question
+ * from when to stop — the stopping rule stays authoritative and fires on
+ * the day's actual readings.
+ */
+export const DROP_PER_BACKOFF_PERCENT = 1.75
+
+/**
+ * How many back-off sets to plan for a fatigue target.
+ *
+ * **Reported: the back-offs always read the same however the fatigue
+ * setting was moved.** They did — the count was a flat cap of three for
+ * every non-zero target, so Minimal and High produced identical
+ * sessions and the setting decided only when to stop.
+ *
+ * That is the same defect the `none` case was already fixed for,
+ * arriving at a different point on the same scale: back-off slots are
+ * materialised and counted as volume, so planning three at a 2% target
+ * puts two sets in the plan that the stopping rule will cancel — and a
+ * plan that is only correct if you skip most of it is not correct.
+ *
+ * Derived from the target rather than looked up, so the reason is
+ * legible: at about {@link DROP_PER_BACKOFF_PERCENT} lost per set, a 2%
+ * target is one set, 5% is three and 7% is four. **The floor is one**,
+ * because any non-zero target needs at least one set to measure the drop
+ * against.
+ */
+export function plannedBackoffSets(fatigueTargetPercent: number): number {
+  if (fatigueTargetPercent <= 0) return 0
+
+  return Math.max(1, Math.round(fatigueTargetPercent / DROP_PER_BACKOFF_PERCENT))
+}
+
+/**
  * The fatigue percent a lifter may choose: the four published points, and
  * only those.
  *

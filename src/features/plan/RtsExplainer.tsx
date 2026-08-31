@@ -6,7 +6,7 @@ import { asExerciseId } from '@/domain/ids/ids'
 import { STRENGTH_LIFT_LABELS, STRENGTH_LIFTS, strengthSessionsFor } from '@/domain/priority/tiers'
 import { loadForRpe } from '@/domain/strength/one-rep-max'
 import { formatLoad, roundLoad } from '@/domain/units/weight'
-import { STRENGTH_BACKOFF_CAP } from '@/domain/assembly/rp-assemble'
+import { plannedBackoffSets } from '@/domain/framework/rts'
 import { Badge, Card, Section } from '@/components/shared/primitives'
 
 /**
@@ -158,8 +158,14 @@ export function RtsExplainer() {
             {DEFAULT_RTS.method === 'load-drop'
               ? `Back-offs drop ${String(rts.loadDropPercent ?? 5)}% from the top set and repeat at that weight.`
               : 'Back-offs repeat at the top-set weight.'}{' '}
-            At most {STRENGTH_BACKOFF_CAP}, so a day where the stopping rule is slow to fire still
-            ends.
+            {/*
+              The number your own setting plans for, not a constant. It
+              read "At most 3" whatever the fatigue percent was, which
+              was the same flat cap the assembler used and the same
+              reason Minimal and High built identical sessions.
+            */}
+            At most {plannedBackoffSets(settings.fatiguePercent)} at your {settings.fatiguePercent}%
+            target, so a day where the stopping rule is slow to fire still ends.
           </p>
         </Card>
       </Section>

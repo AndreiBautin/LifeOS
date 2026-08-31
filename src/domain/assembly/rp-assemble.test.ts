@@ -408,6 +408,44 @@ describe('the assembled block', () => {
   })
 
   /*
+   * Reported from real use: the back-offs read the same however the
+   * fatigue setting moved. The count was a flat three for every non-zero
+   * target, so Minimal and High built identical sessions — the setting
+   * changed the *notes* on the slots, which is why the test above passed
+   * while the plan did not move.
+   *
+   * The slots are materialised and counted as volume, so this is a real
+   * difference in the week's work rather than a label.
+   */
+  it('plans more back-off sets for a higher fatigue target', () => {
+    const backoffsAt = (percent: number): number =>
+      weekAt(
+        assembleRpProgram(
+          defaultRpRecipe({
+            rts: { ...DEFAULT_RTS, fatigueTargetPercent: percent, loadDropPercent: percent },
+          }),
+          asProgramId('rp'),
+          { exercises, ids: counterIds(), now: new Date('2026-08-24T00:00:00Z') },
+        ),
+        0,
+      )
+        .days.flatMap((day) => day.slots)
+        // The sets, not the slots: a back-off block is one slot holding
+        // however many sets the target plans for, so counting slots
+        // counts strength *sessions* and comes out the same either way.
+        .filter((slot) => slot.variant === 'Back-off')
+        .reduce((sum, slot) => sum + slot.sets.length, 0)
+
+    const minimal = backoffsAt(2)
+    const moderate = backoffsAt(5)
+    const high = backoffsAt(7)
+
+    expect(minimal).toBeGreaterThan(0)
+    expect(minimal).toBeLessThan(moderate)
+    expect(moderate).toBeLessThan(high)
+  })
+
+  /*
    * And "none" means none: the stopping rule fires on the first back-off
    * at a zero target, so prescribing any would put work in the plan the
    * rule immediately cancels. The cap is materialised as slots and counted

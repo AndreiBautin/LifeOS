@@ -325,6 +325,38 @@ can make where 5 is a number they can only accept.
 because devices hold 8s and 9s from the old range — a 9 reads as "high"
 rather than being dragged to the top of a range it was never on.
 
+**The back-off count is derived from the fatigue target, and for a long
+time it was not.** Reported from real use: _"back-off sets shouldn't
+always display 1–3, they should be the range based on the fatigue
+percent set."_ They always did — the count was
+`min(maxBackoffSets, STRENGTH_BACKOFF_CAP)` with the cap a flat 3, so
+every non-zero target built the same session and the setting decided
+only _when to stop_, never what went in the plan.
+
+**The reasoning behind the flat cap was right and incomplete**, which is
+why it survived: it said the number should sit where the stopping rule
+usually fires, because the slots are materialised and counted as volume
+whether or not you reach them. True — and it then fixed that number at
+one point on a scale with four. It is the same defect `none` was
+already fixed for, arriving further along the same scale.
+
+`plannedBackoffSets` derives it at about `DROP_PER_BACKOFF_PERCENT`
+(1.75) lost per set, so 2% plans one, 5% plans three and 7% plans four,
+with a floor of one for any non-zero target — rounding a small target to
+zero would silently turn it into "top set only", a different choice the
+lifter did not make. The constant is an estimate and is named as one;
+the stopping rule stays authoritative and fires on the day's readings.
+
+Measured across a working week: **0 / 6 / 18 / 24** back-off sets for
+none / minimal / moderate / high, where every non-zero setting used to
+give 18. **Moderate is unchanged**, so the shipped default programme
+does not move — only choosing a different target does, which is the
+whole point.
+
+`STRENGTH_BACKOFF_CAP` is gone. The Plan screen said "At most 3"
+whatever the setting was, from the same constant, and now reports the
+number your own target plans for.
+
 **None means no back-off slot at all**, not three the stopping rule
 immediately cancels. The cap is materialised as slots and counted as
 volume, so a plan that is only correct if you skip most of it is not
