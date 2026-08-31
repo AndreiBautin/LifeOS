@@ -132,6 +132,12 @@ of a variable would be worse than no gate, and there is nothing behind it
 that failing closed would protect. The Settings screen says which state
 the build is in rather than leaving it to be guessed.
 
+The deployed build sets it, so **there is no public demo any more** —
+opening the page gets a sign-in screen. That is the trade for keeping
+the repository public, which it has to be: GitHub Pages does not serve
+a private repository on a free plan, and making this one private
+unpublished the site until it was made public again.
+
 ## Running it
 
 Double-click `start-app.bat`, or:

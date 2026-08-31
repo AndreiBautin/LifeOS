@@ -19,10 +19,12 @@ rules_version = '2';
  *     training log with a public demo attached, not a service, so a
  *     second account has nothing legitimate to store here.
  *
- * The demo is unaffected. The app requires no account for anything except
- * sync — someone opening the deployed page gets a complete, working
- * application against their own device storage. What they cannot do is
- * write to this database.
+ * The deployed app is now gated too, by VITE_ALLOWED_UIDS — the same
+ * account named below, stated a second time because the bundle cannot
+ * read this file and Firestore cannot read the bundle. If the two ever
+ * disagree, the symptom is an account that opens the app and cannot
+ * sync. That gate is a convenience lock on *using* the app; this file
+ * is still the only thing standing between the data and the internet.
  *
  * Adding a second person means adding their uid, deliberately and by
  * hand. There is no path here that grows the allowed set by accident.

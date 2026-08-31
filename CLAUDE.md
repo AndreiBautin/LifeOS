@@ -1821,7 +1821,7 @@ record of what was sent start disagreeing after one edit.
 employer is a promotion and prints under one heading — a flat list of
 jobs prints the employer twice and makes a promotion read as
 job-hopping, which is the opposite of what it is evidence of. Matching
-is on the trimmed, lower-cased name, so "3Cloud" and " 3cloud " are
+is on the trimmed, lower-cased name, so "Northwind" and " northwind " are
 one employer and nobody has to notice.
 
 **A current role sorts first, and nothing else is sorted.** A resume
@@ -2449,15 +2449,22 @@ rules file cannot be read from the bundle, and the bundle cannot be read
 by Firestore. The symptom of a mismatch is an account that opens the app
 and cannot sync.
 
-**Making the repository private took the deployed site down, and no
-change to this code brings it back.** GitHub Pages does not serve a
-private repository on a free plan — the site was unpublished, the Pages
-API answers 404, and `actions/configure-pages` now fails the deploy with
-"Get Pages site failed". Verified by asking the API to re-enable it:
-_"Your current plan does not support GitHub Pages for this
-repository."_ The options are a host that deploys from a private repo,
-a public repository with this gate in front of the app, or no hosted
-site at all. It is a hosting decision rather than an app one.
+**The repository went private for an afternoon and came back, and what
+it cost is worth knowing before anybody tries it again.** GitHub Pages
+does not serve a private repository on a free plan: the site was
+unpublished the moment the repo went private, the Pages API answered
+404, and `actions/configure-pages` failed the deploy. Verified by asking
+the API to re-enable it — _"Your current plan does not support GitHub
+Pages for this repository."_ No change to this code could fix it.
+
+So the repository is public again and **the gate is what protects the
+app**, which is the arrangement to keep in mind when reading anything
+here about a demo. There is no demo any more: the deployed page is gated
+by `VITE_ALLOWED_UIDS`, set as a repository variable. Nothing in the
+repository is a secret — the Firebase config identifies a project and
+authorises nothing, a uid names an account and authorises nothing, and
+no personal data has ever been committed. **That last rule is the one to
+keep holding**, and it is why the resume fixtures say Northwind.
 
 **Clutter is a level, not a task, and that decides everything else about
 it.** The report: _"another aspect of base maintenance is decluttering —
