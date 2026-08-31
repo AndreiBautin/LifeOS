@@ -7,7 +7,6 @@ import {
   editVice,
   listVices,
   listWeighIns,
-  recordCondition,
   recordWeighIn,
   removeVice,
   retireVice,
@@ -16,7 +15,6 @@ import {
   vitalsToday,
   type NewVice,
 } from '@/application/use-cases/vitals/vitals'
-import type { ReadinessFactors } from '@/domain/autoregulation/check-in'
 import type { ViceId } from '@/domain/ids/ids'
 import { logger } from '@/shared/logging/logger'
 
@@ -133,13 +131,4 @@ export function useClearWeighIn() {
   const services = useServices()
 
   return useInvalidating((day: string) => clearWeighIn(day, services), 'clear-weigh-in')
-}
-
-export function useRecordCondition() {
-  const services = useServices()
-
-  return useInvalidating(
-    (readiness: ReadinessFactors) => recordCondition(readiness, services),
-    'record-condition',
-  )
 }

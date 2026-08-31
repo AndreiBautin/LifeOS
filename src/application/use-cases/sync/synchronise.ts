@@ -13,7 +13,6 @@ import type {
   BacklogItemRepository,
   CheckInRepository,
   Clock,
-  ConditionRepository,
   DailyRepository,
   ExerciseRepository,
   ExploredAreaRepository,
@@ -83,7 +82,6 @@ export interface SynchroniseDeps {
   readonly dailies: DailyRepository
   readonly vices: ViceRepository
   readonly weighIns: WeighInRepository
-  readonly conditions: ConditionRepository
   readonly explored: ExploredAreaRepository
   readonly tombstones: TombstoneRepository
   readonly syncState: SyncStateRepository
@@ -161,7 +159,6 @@ export async function synchronise(target: SyncTarget, deps: SynchroniseDeps): Pr
   await deps.dailies.restoreMany(accepted.dailies)
   await deps.vices.restoreMany(accepted.vices)
   await deps.weighIns.restoreMany(accepted.weighIns)
-  await deps.conditions.restoreMany(accepted.conditions)
   // Union, never replace. See `unionCells`.
   await deps.explored.reveal(accepted.exploredCells as CellId[])
 
@@ -219,7 +216,6 @@ export async function synchronise(target: SyncTarget, deps: SynchroniseDeps): Pr
     accepted.dailies.length +
     accepted.vices.length +
     accepted.weighIns.length +
-    accepted.conditions.length +
     (settingsMoved ? 1 : 0)
 
   const offered =
@@ -237,7 +233,6 @@ export async function synchronise(target: SyncTarget, deps: SynchroniseDeps): Pr
     incoming.dailies.length +
     incoming.vices.length +
     incoming.weighIns.length +
-    incoming.conditions.length +
     (accepted.settings === undefined ? 0 : 1)
 
   return {
@@ -268,7 +263,6 @@ async function collectLocal(
     dailies,
     vices,
     weighIns,
-    conditions,
     explored,
     tombstones,
     settings,
@@ -287,7 +281,6 @@ async function collectLocal(
     deps.dailies.all(),
     deps.vices.all(),
     deps.weighIns.all(),
-    deps.conditions.all(),
     deps.explored.all(),
     deps.tombstones.all(),
     deps.settings.get(),
@@ -334,7 +327,6 @@ async function collectLocal(
     dailies: changedSince(dailies, watermark),
     vices: changedSince(vices, watermark),
     weighIns: changedSince(weighIns, watermark),
-    conditions: changedSince(conditions, watermark),
     /*
      * The whole set, every time, rather than what changed since the
      * watermark. There is nothing to compare against — a cell carries no
@@ -484,13 +476,6 @@ async function applyDeletions(
         const local = (await deps.weighIns.all()).find((row) => row.day === tombstone.id)
         if (local !== undefined && !survives(local, tombstone)) {
           await deps.weighIns.purge(tombstone.id)
-        }
-        break
-      }
-      case 'conditions': {
-        const local = (await deps.conditions.all()).find((row) => row.day === tombstone.id)
-        if (local !== undefined && !survives(local, tombstone)) {
-          await deps.conditions.purge(tombstone.id)
         }
         break
       }

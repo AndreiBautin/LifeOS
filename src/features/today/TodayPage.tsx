@@ -103,7 +103,7 @@ export function TodayPage() {
         <LimitsCard />
       </Section>
 
-      <Section title="Vitals" description="How the day feels, and where the scale is going.">
+      <Section title="Vitals" description="Where the scale is going.">
         <VitalsCard />
       </Section>
 

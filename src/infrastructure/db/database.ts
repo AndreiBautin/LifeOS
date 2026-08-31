@@ -12,7 +12,6 @@ import type { Trip } from '@/domain/atlas/trip/Trip'
 import type { Daily } from '@/domain/dailies/daily'
 import type { Vice } from '@/domain/vitals/charges'
 import type { WeighIn } from '@/domain/vitals/weight'
-import type { DayCondition } from '@/domain/vitals/condition'
 import type { Tombstone } from '@/domain/sync/tombstone'
 import type { Exercise } from '@/domain/exercises/exercise'
 import type { WorkoutLog } from '@/domain/logging/workout-log'
@@ -86,6 +85,12 @@ export function toStored(log: WorkoutLog): StoredWorkout {
 export function fromStored(stored: StoredWorkout): WorkoutLog {
   const { exerciseIds: _index, ...log } = stored
   return log
+}
+
+/** The shape rows in the retired `conditions` store were written in. */
+interface RetiredDayCondition {
+  readonly day: string
+  readonly [field: string]: unknown
 }
 
 export interface LiftDB extends DBSchema {
@@ -276,10 +281,27 @@ export interface LiftDB extends DBSchema {
     key: string
     value: WeighIn
   }
-  /** How the day felt, one reading a day, keyed the same way and for the same reason. */
+  /**
+   * **A retired store, declared here and written by nothing.**
+   *
+   * The self-rated condition log is gone from the app — its five factors
+   * were a mood where the app wants a measurement, and the session
+   * adjustment they were supposed to feed was never wired to a session.
+   *
+   * The store stays for two reasons. Removing it would mean editing
+   * migration step 10, which is the one thing this file must never do:
+   * a device that has run that step keeps the store, one that has not
+   * would never make it, and the two schemas diverge with no way to tell
+   * them apart. And the rows are a true record of days somebody rated —
+   * the same argument that retires a habit rather than deleting it.
+   *
+   * Typed locally rather than from a domain module, because the domain
+   * no longer has an opinion about this shape. Nothing reads these rows;
+   * if that ever changes, it needs a domain type again and a reason.
+   */
   conditions: {
     key: string
-    value: DayCondition
+    value: RetiredDayCondition
   }
   /**
    * Ground you have walked, one row per geohash cell.

@@ -5,12 +5,7 @@ import { useState } from 'react'
 
 import { Button, Card, Empty, Section } from '@/components/shared/primitives'
 import { useServices, useSettings } from '@/app/context'
-import {
-  READINESS_SCALE,
-  type ReadinessFactors,
-  type ReadinessLevel,
-} from '@/domain/autoregulation/check-in'
-import { NEUTRAL_READINESS } from '@/domain/vitals/condition'
+import {} from '@/domain/autoregulation/check-in'
 import {
   PHASE_LABELS,
   PHASE_RATES,
@@ -32,7 +27,7 @@ import {
 import { projectCorridor } from '@/domain/vitals/weight'
 import { TrendChart } from '@/components/shared/TrendChart'
 
-import { useRecordCondition, useRecordWeighIn, useVitalsToday, useWeighIns } from './hooks'
+import { useRecordWeighIn, useVitalsToday, useWeighIns } from './hooks'
 
 /**
  * Vitals: the screen where the two bars on Today are set up and read.
@@ -44,16 +39,6 @@ import { useRecordCondition, useRecordWeighIn, useVitalsToday, useWeighIns } fro
  * tab. It is also why it is a link rather than a tab even though there
  * is room on the *screen*: a tab is somewhere you act.
  */
-
-const FACTORS: readonly { key: keyof ReadinessFactors; label: string }[] = [
-  { key: 'sleep', label: 'Sleep' },
-  { key: 'nutrition', label: 'Nutrition' },
-  { key: 'hydration', label: 'Hydration' },
-  { key: 'stress', label: 'Stress' },
-  { key: 'motivation', label: 'Motivation' },
-]
-
-const LEVEL_LABELS: Record<ReadinessLevel, string> = { poor: 'Poor', ok: 'OK', good: 'Good' }
 
 /** How much of the history the chart shows. Four weeks is two trend windows. */
 const CHART_DAYS = 28
@@ -81,49 +66,6 @@ function sinceDay(days: number, now: Date): string {
 
 function daysBetween(from: string, to: string): number {
   return Math.round((Date.parse(to) - Date.parse(from)) / DAY_MS)
-}
-
-function ConditionEditor() {
-  const vitals = useVitalsToday()
-  const record = useRecordCondition()
-
-  const current = vitals.data?.condition?.readiness ?? NEUTRAL_READINESS
-  const recorded = vitals.data?.condition !== undefined
-
-  return (
-    <Card>
-      <p className="text-ink-500 mb-3 text-sm">
-        {recorded ? 'Recorded for today.' : 'Not recorded today.'} This is self-reported, and it
-        scales today&rsquo;s session — never your settings. A bad night is not evidence that a
-        muscle&rsquo;s weekly tolerance has changed.
-      </p>
-
-      <div className="space-y-2">
-        {FACTORS.map(({ key, label }) => (
-          <div key={key} className="flex items-center justify-between gap-3">
-            <span className="text-ink-300 text-sm">{label}</span>
-            <div className="flex gap-1">
-              {READINESS_SCALE.map((level) => (
-                <Button
-                  key={level}
-                  size="sm"
-                  variant={current[key] === level ? 'primary' : 'outline'}
-                  aria-pressed={current[key] === level}
-                  aria-label={`${label}: ${LEVEL_LABELS[level]}`}
-                  disabled={record.isPending}
-                  onClick={() => {
-                    record.mutate({ ...current, [key]: level })
-                  }}
-                >
-                  {LEVEL_LABELS[level]}
-                </Button>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
-    </Card>
-  )
 }
 
 function PhaseEditor() {
@@ -622,10 +564,6 @@ export function VitalsPage() {
       </Section>
 
       <Upkeep />
-
-      <Section title="Condition" description="How the day feels, and what it does to the session">
-        <ConditionEditor />
-      </Section>
     </div>
   )
 }

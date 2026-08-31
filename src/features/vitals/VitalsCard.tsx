@@ -3,7 +3,6 @@ import { Skeleton } from '@/components/shared/Skeleton'
 import { Link } from 'react-router-dom'
 
 import { Badge, Card } from '@/components/shared/primitives'
-import { Meter } from '@/components/shared/Meter'
 import { buttonStyles } from '@/components/shared/styles'
 import type { PhaseView } from '@/application/use-cases/vitals/vitals'
 import { PHASE_LABELS, PHASE_VERDICT_LABELS } from '@/domain/vitals/weight'
@@ -16,19 +15,21 @@ import { PoolRow } from './PoolRow'
 import { useVitalsToday } from './hooks'
 
 /**
- * Vitals on Today: what you have left, and how the day feels.
+ * Vitals on Today: where the scale is going.
  *
- * **Two bars, never one.** The charges are a count of things that
- * happened and the condition is how you said you felt, and averaging
- * them would let the half you can simply decide move the half that is a
- * record. A single "HP" number would also be precisely the invented
- * scale `domain/game/` refuses everywhere else — so they sit side by
- * side and are labelled as the different kinds of thing they are.
+ * **Everything left here is measured.** This card held a self-rated
+ * condition bar beside the weight trend, and the rule it illustrated —
+ * that two readouts of different kinds are never averaged into one —
+ * was sound while there were two. There is one now: the bar was five
+ * factors on a poor/ok/good scale, which is a mood, and the session
+ * adjustment it was meant to feed was never wired to a session.
  *
- * It lives on Today because Today is present tense and this is the most
- * present-tense thing in the app. It is not a ninth tab because a ninth
- * tab does not fit: every nav cell clears 44px, so nine of them need 396
- * and a 375-pixel phone has 375.
+ * The rule it stood for has not gone anywhere. It is why the limits are
+ * a separate card rather than a second bar on this one.
+ *
+ * It lives on Today because Today is present tense. It is not a ninth
+ * tab because a ninth tab does not fit: every nav cell clears 44px, so
+ * nine of them need 396 and a 375-pixel phone has 375.
  */
 
 function PhaseLine({
@@ -190,8 +191,8 @@ export function VitalsCard() {
     )
   }
 
-  const { condition, phase } = vitals.data
-  const nothingSetUp = condition === undefined && phase.trend === undefined
+  const { phase } = vitals.data
+  const nothingSetUp = phase.trend === undefined
 
   return (
     <Card>
@@ -205,31 +206,9 @@ export function VitalsCard() {
         </Link>
       </div>
 
-      {/*
-        The condition bar is the only continuous one here, and it is
-        labelled as self-reported on the screen rather than only in the
-        code. It is absent rather than at the midpoint when nothing has
-        been recorded — a half-full bar would be a claim that the day is
-        unremarkable, which is not the same as not having been asked.
-      */}
-      {condition !== undefined && (
-        <div className="mb-3">
-          <div className="mb-1 flex items-baseline justify-between gap-2">
-            <span className="text-ink-700 text-xs tracking-wide uppercase">Condition</span>
-            <span className="text-ink-700 text-xs">as you reported it</span>
-          </div>
-          <Meter
-            value={condition.fraction}
-            of={1}
-            tone="good"
-            label="How you rated today, across five factors"
-          />
-        </div>
-      )}
-
       {nothingSetUp ? (
         <p className="text-ink-500 text-sm">
-          A weight trend for the phase you are in, and how the day feels.
+          A weight trend for the phase you are in, and the macros it works out to.
         </p>
       ) : (
         <PhaseLine phase={phase} macros={vitals.data.macros} />

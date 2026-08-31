@@ -14,7 +14,6 @@ import type {
   UpgradeRepository,
   ViceRepository,
   WeighInRepository,
-  ConditionRepository,
   WorkoutRepository,
 } from '@/domain/repositories/ports'
 import type { CellId } from '@/domain/atlas/exploration/GeoCell'
@@ -51,7 +50,6 @@ export interface BackupRepositories {
   readonly dailies: DailyRepository
   readonly vices: ViceRepository
   readonly weighIns: WeighInRepository
-  readonly conditions: ConditionRepository
   readonly explored: ExploredAreaRepository
 }
 
@@ -203,13 +201,6 @@ export const COLLECTIONS: Readonly<Record<CollectionKey, Collection>> = {
     idOf: (row) => row.day,
     restore: (r, rows) => r.weighIns.restoreMany(rows),
     tombstoneCollection: 'weighIns',
-  }),
-  conditions: define({
-    local: (r) => r.conditions.all(),
-    fromFile: (data) => data.conditions ?? [],
-    idOf: (row) => row.day,
-    restore: (r, rows) => r.conditions.restoreMany(rows),
-    tombstoneCollection: 'conditions',
   }),
 }
 

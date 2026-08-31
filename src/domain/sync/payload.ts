@@ -11,7 +11,6 @@ import type { Trip } from '@/domain/atlas/trip/Trip'
 import type { Daily } from '@/domain/dailies/daily'
 import type { Vice } from '@/domain/vitals/charges'
 import type { WeighIn } from '@/domain/vitals/weight'
-import type { DayCondition } from '@/domain/vitals/condition'
 import type { WorkoutLog } from '@/domain/logging/workout-log'
 
 import type { SyncedSettings } from '@/domain/settings/synced'
@@ -48,7 +47,6 @@ export interface SyncPayload {
   readonly dailies: readonly Daily[]
   readonly vices: readonly Vice[]
   readonly weighIns: readonly WeighIn[]
-  readonly conditions: readonly DayCondition[]
   /**
    * Ground you have walked, as geohash cells.
    *
@@ -90,7 +88,6 @@ export const EMPTY_PAYLOAD: SyncPayload = {
   exploredCells: [],
   vices: [],
   weighIns: [],
-  conditions: [],
   tombstones: [],
 }
 
@@ -110,7 +107,6 @@ export function isEmpty(payload: SyncPayload): boolean {
     payload.dailies.length === 0 &&
     payload.vices.length === 0 &&
     payload.weighIns.length === 0 &&
-    payload.conditions.length === 0 &&
     payload.exploredCells.length === 0 &&
     payload.tombstones.length === 0 &&
     payload.settings === undefined
@@ -133,7 +129,6 @@ export function payloadSize(payload: SyncPayload): number {
     payload.dailies.length +
     payload.vices.length +
     payload.weighIns.length +
-    payload.conditions.length +
     // Counted as one, because that is what it is to a reader: the fog
     // moved, once, however many cells were in the batch.
     (payload.exploredCells.length === 0 ? 0 : 1) +
@@ -322,9 +317,6 @@ export function acceptableFrom(
      * a correction rather than an addition.
      */
     weighIns: incoming.weighIns.filter((item) => shouldAccept(item, 'weighIns', item.day, index)),
-    conditions: incoming.conditions.filter((item) =>
-      shouldAccept(item, 'conditions', item.day, index),
-    ),
     // Exempt on purpose. There is no tombstone that could apply to ground
     // somebody walked, so there is nothing here to filter against.
     exploredCells: incoming.exploredCells,

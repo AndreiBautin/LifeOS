@@ -35,7 +35,13 @@ export const TOMBSTONED_COLLECTIONS = [
   'dailies',
   'vices',
   'weighIns',
-  'conditions',
+  /*
+   * 'conditions' was here and is gone with the store that needed it.
+   * A tombstone already written under that name still arrives from
+   * another device or from Firestore, and is simply not matched — which
+   * is the right outcome, because there is no longer a repository for it
+   * to purge from. Nothing has to be cleaned up for that to be safe.
+   */
 ] as const
 
 export type TombstonedCollection = (typeof TOMBSTONED_COLLECTIONS)[number]

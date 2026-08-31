@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest'
 import type { Daily } from '@/domain/dailies/daily'
 import { readCharges, type Vice } from '@/domain/vitals/charges'
 import type { WeighIn } from '@/domain/vitals/weight'
-import type { DayCondition } from '@/domain/vitals/condition'
 import { asDailyId, asViceId } from '@/domain/ids/ids'
 
 import type { CheckIn } from '@/domain/autoregulation/check-in'
@@ -16,7 +15,6 @@ import type {
   BacklogItemRepository,
   CheckInRepository,
   Clock,
-  ConditionRepository,
   DailyRepository,
   ExerciseRepository,
   ExploredAreaRepository,
@@ -323,27 +321,6 @@ function device(clock: Clock): Device {
     },
   }
 
-  const conditionStore = new Map<string, DayCondition>()
-  const conditions: ConditionRepository = {
-    all: () => Promise.resolve([...conditionStore.values()]),
-    save: (row) => {
-      conditionStore.set(row.day, { ...row, updatedAt: clock.now().toISOString() })
-      return Promise.resolve()
-    },
-    restoreMany: (rows) => {
-      for (const row of rows) conditionStore.set(row.day, row)
-      return Promise.resolve()
-    },
-    remove: (day) => {
-      conditionStore.delete(day)
-      return Promise.resolve()
-    },
-    purge: (day) => {
-      conditionStore.delete(day)
-      return Promise.resolve()
-    },
-  }
-
   /*
    * A real double, like the backlog. The fog is the one thing in this
    * payload merged by union rather than by a record winner, and a stub
@@ -412,7 +389,6 @@ function device(clock: Clock): Device {
     dailies,
     vices,
     weighIns,
-    conditions,
     dailyStore,
     exercises,
     workouts,

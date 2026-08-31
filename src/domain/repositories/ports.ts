@@ -31,7 +31,6 @@ import type { SyncPayload } from '@/domain/sync/payload'
 import type { Tombstone } from '@/domain/sync/tombstone'
 import type { Vice } from '@/domain/vitals/charges'
 import type { WeighIn } from '@/domain/vitals/weight'
-import type { DayCondition } from '@/domain/vitals/condition'
 
 /**
  * The ports the application layer talks to.
@@ -354,15 +353,6 @@ export interface WeighInRepository {
   all(): Promise<readonly WeighIn[]>
   save(weighIn: WeighIn): Promise<void>
   restoreMany(weighIns: readonly WeighIn[]): Promise<void>
-  remove(day: string): Promise<void>
-  purge(day: string): Promise<void>
-}
-
-/** How the day felt, keyed by the day, for the same reasons. */
-export interface ConditionRepository {
-  all(): Promise<readonly DayCondition[]>
-  save(condition: DayCondition): Promise<void>
-  restoreMany(conditions: readonly DayCondition[]): Promise<void>
   remove(day: string): Promise<void>
   purge(day: string): Promise<void>
 }

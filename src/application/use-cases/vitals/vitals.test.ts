@@ -11,7 +11,6 @@ import {
 import { DEFAULT_SETTINGS } from '@/domain/settings/settings'
 import { asViceId } from '@/domain/ids/ids'
 import type { Vice } from '@/domain/vitals/charges'
-import type { DayCondition } from '@/domain/vitals/condition'
 import type { WeighIn } from '@/domain/vitals/weight'
 
 /**
@@ -19,8 +18,7 @@ import type { WeighIn } from '@/domain/vitals/weight'
  *
  * What is worth holding here is not the arithmetic — that lives in
  * `domain/vitals/` and is tested there — but the two decisions this
- * layer makes: that an unrecorded condition is **absent rather than
- * neutral**, and that the pools are ordered by what is left rather than
+ * layer makes: that that the pools are ordered by what is left rather than
  * by name.
  */
 
@@ -29,7 +27,6 @@ const NOW = new Date('2026-08-27T10:00:00.000Z')
 function deps(seed: {
   vices?: Vice[]
   weighIns?: WeighIn[]
-  conditions?: DayCondition[]
   phase?: (typeof DEFAULT_SETTINGS)['phase']
 }): VitalsDeps {
   const vices = seed.vices ?? []
@@ -61,13 +58,6 @@ function deps(seed: {
       remove: () => Promise.resolve(),
       purge: () => Promise.resolve(),
     },
-    conditions: {
-      all: () => Promise.resolve(seed.conditions ?? []),
-      save: () => Promise.resolve(),
-      restoreMany: () => Promise.resolve(),
-      remove: () => Promise.resolve(),
-      purge: () => Promise.resolve(),
-    },
     settings: {
       get: () =>
         Promise.resolve({ ...DEFAULT_SETTINGS, ...(seed.phase ? { phase: seed.phase } : {}) }),
@@ -88,39 +78,6 @@ const pool = (name: string, capacity: number, spent: readonly string[]): Vice =>
 })
 
 describe("what Today's card is handed", () => {
-  it('says nothing about condition when nothing was recorded', async () => {
-    // Absent, never neutral. A bar at the midpoint would be a claim that
-    // the day is unremarkable, which is not the same as not being asked.
-    const view = await vitalsToday(deps({}))
-
-    expect(view.condition).toBeUndefined()
-  })
-
-  it('reads a condition recorded today and ignores yesterday’s', async () => {
-    const readiness = {
-      sleep: 'good',
-      nutrition: 'good',
-      hydration: 'good',
-      stress: 'good',
-      motivation: 'good',
-    } as const
-
-    const view = await vitalsToday(
-      deps({
-        conditions: [
-          { day: '2026-08-26', readiness },
-          {
-            day: '2026-08-27',
-            readiness: { ...readiness, sleep: 'poor', stress: 'poor' },
-          },
-        ],
-      }),
-    )
-
-    // Three good and two poor is a score of 1 on a range of ±5.
-    expect(view.condition?.fraction).toBeCloseTo(0.6, 5)
-  })
-
   /*
    * Emptiest first, because the list exists to say what is left. Sorting
    * by name would put the pool you have not touched at the top of it.

@@ -1471,13 +1471,46 @@ history that retyping would throw away. XP already earned stays where it
 was paid; the record simply stops paying its old area from the day it
 moves.
 
-**Vitals is two bars that are never averaged, and that is the whole
-design.** `domain/vitals/`. The charges are a count of things that
-happened; the condition is how you said you felt. A single "HP" number
-would let the half you can simply decide move the half that is a record —
-and it would be exactly the invented scale `domain/game/` refuses
-everywhere else. They sit side by side on Today, labelled as the
-different kinds of thing they are.
+**The self-rated condition is gone, and it was never wired to a
+session.** Five factors on a poor/ok/good scale — sleep, nutrition,
+hydration, stress, motivation — fed `readinessScore`, which fed
+`sessionAdjustmentFor`, which returned a set multiplier that **nothing
+ever called except its own test**. The same shape as `proposeLandmarks`
+before it, and the same removal. Every claim this file used to make
+about a bad night trimming the session was false of the shipped app.
+
+It was also the wrong shape twice over. Sleep, nutrition and hydration
+are quantities, and a quantity rated `ok` has been thrown away before
+it was written down — a pool with a unit counts them properly, which is
+what water and caffeine already do. Stress and motivation are a mood,
+and a mood deciding how much you lift is a second autoregulation
+competing with the one that works: **RTS already answers this set by
+set**, because reps at an RPE move the load on a bad day without
+anybody rating the day first.
+
+**The rule it used to illustrate has not gone anywhere.** "Two readouts
+of different kinds are never averaged into one" was written about the
+charges and the condition bar; it is now why the limits are a separate
+card from the weight trend rather than a second bar on the same one.
+
+**The `conditions` store still exists and is written by nothing.**
+Removing it would mean editing migration step 10, which is the one
+thing `database.ts` must never do — a device that ran that step keeps
+the store, one that has not would never create it, and the two schemas
+diverge with nothing able to tell them apart. The rows are also a true
+record of days somebody rated, which is the argument that retires a
+habit rather than deleting it. It is typed locally in `database.ts` as
+`RetiredDayCondition`, because the domain no longer has an opinion
+about the shape.
+
+Gone with it: `domain/vitals/condition.ts`, `ConditionRepository`,
+`recordCondition`, the backup collection, the sync collection, and
+`'conditions'` from `TOMBSTONED_COLLECTIONS`. A tombstone already
+written under that name still arrives from another device and is
+simply not matched, which is correct — there is no repository left for
+it to purge from. `ReadinessFactors` stays, because
+`PreWorkoutCheckIn` holds one and the check-in is its own separate
+unwired feature.
 
 **A pool refills on a rolling window or at a calendar boundary, and
 people genuinely hold both.** `ChargeCycle` in `domain/vitals/charges.ts`.
@@ -1941,12 +1974,11 @@ about _health_ rather than about the thing being measured: a lifter
 deliberately at 15% on a bulk is not worse at anything. The direction is
 the phase, and the phase is a decision.
 
-**`readinessScore` was extracted rather than copied.** The condition bar
-and `sessionAdjustmentFor` read the same sum, because a bar disagreeing
-with the adjustment it is supposed to explain would be worse than no bar.
-`ReadinessFactors` itself is reused rather than reinvented — it existed
-and was **unreachable from any screen**, asked only before a workout by a
-check-in that has no UI.
+**Nothing here is self-reported any more.** `readinessScore` and the
+condition bar it fed are gone; see the note above for why. What that
+leaves is the point: every number on this screen is measured, and the
+one thing the area still cannot do is invent a scale for how a body is
+doing.
 
 **Vitals is a link from Today, not a ninth tab, and that was measured.**
 Every nav cell carries `.tap-target` (`min-width: 44px`), so nine cells
@@ -2351,10 +2383,13 @@ muscles are starved.
 is right — the position records what happened. But a lifter arriving
 mid-block would otherwise skip fifteen sessions to line the app up.
 
-**Readiness scales today, not the settings.** Sleep and stress adjust one
-session. They must never write back to a muscle's sessions or level —
-those are the lifter's statement of intent, and a bad night is not
-evidence about intent.
+**Nothing scales today's session from a self-report, and the rule behind
+that survives the thing that broke it.** A readiness check used to claim
+it trimmed a session and never did — it is gone. What must stay true is
+the second half: a bad night is not evidence about **intent**, so
+nothing may write back to a muscle's sessions or level. Those are the
+lifter's statement of what they mean to do. The load is autoregulated
+set by set by RTS instead, which is a reading rather than a rating.
 
 **The program is derived, never stored.** `deriveProgram(settings,
 library)` in `application/use-cases/programs/current-program.ts`. Only the

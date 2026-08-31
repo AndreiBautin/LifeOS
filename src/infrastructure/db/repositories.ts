@@ -10,7 +10,6 @@ import type { Trip } from '@/domain/atlas/trip/Trip'
 import type { Daily } from '@/domain/dailies/daily'
 import type { Vice } from '@/domain/vitals/charges'
 import type { WeighIn } from '@/domain/vitals/weight'
-import type { DayCondition } from '@/domain/vitals/condition'
 import type { TripId } from '@/domain/atlas/trip/TripId'
 import type { CellId } from '@/domain/atlas/exploration/GeoCell'
 import type { ProgramPosition } from '@/domain/programs/position'
@@ -42,7 +41,6 @@ import type {
   PositionRepository,
   ProjectRepository,
   ReviewRepository,
-  ConditionRepository,
   TombstoneRepository,
   TripRepository,
   UpgradeRepository,
@@ -556,28 +554,6 @@ export function createWeighInRepository(db: AppDatabase, clock: Clock): WeighInR
     },
     async purge(day: string) {
       await db.delete('weighIns', day)
-    },
-  }
-}
-
-export function createConditionRepository(db: AppDatabase, clock: Clock): ConditionRepository {
-  return {
-    async all() {
-      return db.getAll('conditions')
-    },
-    async save(condition: DayCondition) {
-      await db.put('conditions', stamp(condition, clock))
-    },
-    async restoreMany(conditions: readonly DayCondition[]) {
-      const tx = db.transaction('conditions', 'readwrite')
-      await Promise.all([...conditions.map((row) => tx.store.put(row)), tx.done])
-    },
-    async remove(day: string) {
-      await db.delete('conditions', day)
-      await bury(db, clock, 'conditions', day)
-    },
-    async purge(day: string) {
-      await db.delete('conditions', day)
     },
   }
 }

@@ -113,66 +113,26 @@ export type CheckIn = PreWorkoutCheckIn | PostWorkoutCheckIn
 /* Today's session                                                       */
 /* -------------------------------------------------------------------- */
 
-/**
- * How much to scale today's prescribed volume, given readiness.
+/*
+ * **The readiness scoring is gone, and it never reached a session.**
  *
- * Temporary and session-scoped. Nothing here touches a landmark — a bad
- * night is not new information about training tolerance.
- */
-export interface SessionAdjustment {
-  readonly setMultiplier: number
-  readonly reason: string
-}
-
-const READINESS_SCORE: Record<ReadinessLevel, number> = { poor: -1, ok: 0, good: 1 }
-
-/** The worst and best `readinessScore` can return: five factors, ±1 each. */
-export const READINESS_RANGE = { min: -5, max: 5 } as const
-
-/**
- * The five factors added up, once.
+ * `sessionAdjustmentFor` returned a set multiplier and a sentence
+ * explaining it, and the only thing that ever called it was its own
+ * test — the same shape as `proposeLandmarks` before it, and the same
+ * removal. What the comment here used to claim, that a bad night trims
+ * the session, was never true of the shipped app.
  *
- * Exported because two things now read it — the session adjustment
- * below, and the condition bar on Today — and a second copy of this sum
- * is exactly the drift `attributeWeek` and `slotVolume` were merged to
- * avoid. A bar disagreeing with the adjustment it is supposed to explain
- * would be worse than having no bar.
+ * It is also not wanted. Sleep, nutrition and hydration are quantities
+ * and belong in something that counts them; stress and motivation are a
+ * mood, and a mood deciding how much you lift is a second
+ * autoregulation competing with the one that works. RTS already answers
+ * this set by set — reps at an RPE move the load on a bad day without
+ * anybody rating the day first.
+ *
+ * `ReadinessFactors` stays because `PreWorkoutCheckIn` holds one. The
+ * check-in is its own separate unwired feature and is not what was
+ * removed here.
  */
-export function readinessScore(readiness: ReadinessFactors): number {
-  const factors = [
-    readiness.sleep,
-    readiness.nutrition,
-    readiness.hydration,
-    readiness.stress,
-    readiness.motivation,
-  ]
-
-  return factors.reduce((sum, level) => sum + READINESS_SCORE[level], 0)
-}
-
-export function sessionAdjustmentFor(readiness: ReadinessFactors): SessionAdjustment {
-  const score = readinessScore(readiness)
-
-  if (score <= -3) {
-    return {
-      setMultiplier: 0.7,
-      reason: 'Readiness is low across several factors — today is trimmed by roughly a third.',
-    }
-  }
-  if (score <= -1) {
-    return {
-      setMultiplier: 0.85,
-      reason: 'Readiness is a little down — a set has come off the back-off work.',
-    }
-  }
-  if (score >= 4) {
-    return {
-      setMultiplier: 1.1,
-      reason: 'Readiness is high — there is room for a little more if you want it.',
-    }
-  }
-  return { setMultiplier: 1, reason: 'Readiness is normal — the session is as programmed.' }
-}
 
 /**
  * Muscles the lifter reported as still sore going into a session.

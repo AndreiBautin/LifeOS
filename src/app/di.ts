@@ -6,7 +6,6 @@ import type {
   BacklogSettingsRepository,
   CheckInRepository,
   Clock,
-  ConditionRepository,
   DailyRepository,
   ExerciseRepository,
   ExploredAreaRepository,
@@ -30,7 +29,6 @@ import { openDatabase, type AppDatabase } from '@/infrastructure/db/database'
 import {
   createBacklogItemRepository,
   createCheckInRepository,
-  createConditionRepository,
   createDailyRepository,
   createExerciseRepository,
   createExploredAreaRepository,
@@ -89,7 +87,6 @@ export interface AppServices {
   readonly dailies: DailyRepository
   readonly vices: ViceRepository
   readonly weighIns: WeighInRepository
-  readonly conditions: ConditionRepository
   readonly explored: ExploredAreaRepository
   /** The device's own position, behind a port so a test can fake it. */
   readonly geolocation: Geolocation
@@ -153,7 +150,6 @@ export async function bootstrap(): Promise<BootstrapResult> {
     dailies: createDailyRepository(db, systemClock),
     vices: createViceRepository(db, systemClock),
     weighIns: createWeighInRepository(db, systemClock),
-    conditions: createConditionRepository(db, systemClock),
     explored: createExploredAreaRepository(db),
     geolocation: createBrowserGeolocation(),
     placeSearch: new NominatimSearchProvider(),

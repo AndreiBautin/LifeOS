@@ -3,12 +3,10 @@ import type { IdGenerator, ViceId } from '@/domain/ids/ids'
 import { asViceId } from '@/domain/ids/ids'
 import type {
   Clock,
-  ConditionRepository,
   SettingsRepository,
   ViceRepository,
   WeighInRepository,
 } from '@/domain/repositories/ports'
-import type { ReadinessFactors } from '@/domain/autoregulation/check-in'
 import type { ChargeCycle, ChargeDirection, ChargePreset, DaysLimit } from '@/domain/vitals/charges'
 import { saneDaysLimit } from '@/domain/vitals/charges'
 import {
@@ -20,7 +18,6 @@ import {
   type ChargeReading,
   type Vice,
 } from '@/domain/vitals/charges'
-import { conditionFraction, type DayCondition } from '@/domain/vitals/condition'
 import { macroTargets, type MacroTargets } from '@/domain/vitals/macros'
 import {
   phaseVerdict,
@@ -34,11 +31,16 @@ import {
 /**
  * Vitals: what the body is doing, and what you have left to spend on it.
  *
- * Two readouts that are deliberately **never averaged into one**. The
- * charges are a count of things that happened; the condition is how you
- * said you felt. Blending them would let the half you can simply decide
- * move the half that is a record, and a single "HP" number is exactly
- * the scale `domain/game/` refuses everywhere else.
+ * **The self-rated condition is gone from here**, and with it the one
+ * readout on this screen that was an opinion rather than a count. Five
+ * factors on a poor/ok/good scale were a mood, and the session
+ * adjustment they were supposed to feed was never wired to a session —
+ * so the whole of it was a number you typed in and then read back.
+ *
+ * What is left is measured: what the scale says, what the phase asks
+ * for, what the macros work out to. Sleep, nutrition and hydration are
+ * quantities and belong somewhere that counts them; a pool with a unit
+ * does that already.
  *
  * The weight trend sits with them because it answers the third question
  * a body asks — where is this going — and because it is the one number a
@@ -48,7 +50,6 @@ import {
 export interface VitalsDeps {
   readonly vices: ViceRepository
   readonly weighIns: WeighInRepository
-  readonly conditions: ConditionRepository
   readonly settings: SettingsRepository
   readonly clock: Clock
   readonly ids: IdGenerator
@@ -86,7 +87,6 @@ export interface VitalsToday {
    * A bar sitting at the midpoint would be a claim that the day is
    * unremarkable, which is a different thing from not having been asked.
    */
-  readonly condition?: { readonly fraction: number; readonly readiness: ReadinessFactors }
   readonly phase: PhaseView
 }
 
@@ -94,10 +94,9 @@ export async function vitalsToday(deps: VitalsDeps): Promise<VitalsToday> {
   const now = deps.clock.now()
   const today = toDayKey(now)
 
-  const [allVices, weighIns, conditions, settings] = await Promise.all([
+  const [allVices, weighIns, settings] = await Promise.all([
     deps.vices.all(),
     deps.weighIns.all(),
-    deps.conditions.all(),
     deps.settings.get(),
   ])
 
@@ -117,7 +116,6 @@ export async function vitalsToday(deps: VitalsDeps): Promise<VitalsToday> {
 
   const trend = weightTrend(weighIns, now)
   const todayWeight = weighIns.find((row) => row.day === today)?.weight
-  const condition = conditions.find((row) => row.day === today)
   const verdict = phaseVerdict(trend, settings.phaseRate)
 
   /*
@@ -146,14 +144,6 @@ export async function vitalsToday(deps: VitalsDeps): Promise<VitalsToday> {
   return {
     pools,
     ...(macros === undefined ? {} : { macros }),
-    ...(condition === undefined
-      ? {}
-      : {
-          condition: {
-            fraction: conditionFraction(condition.readiness),
-            readiness: condition.readiness,
-          },
-        }),
     phase: {
       phase: settings.phase,
       range: settings.phaseRate,
@@ -323,15 +313,4 @@ export async function recordWeighIn(weight: number, deps: VitalsDeps): Promise<v
 
 export async function clearWeighIn(day: string, deps: VitalsDeps): Promise<void> {
   await deps.weighIns.remove(day)
-}
-
-export async function recordCondition(
-  readiness: ReadinessFactors,
-  deps: VitalsDeps,
-): Promise<DayCondition> {
-  const condition: DayCondition = { day: toDayKey(deps.clock.now()), readiness }
-
-  await deps.conditions.save(condition)
-
-  return condition
 }

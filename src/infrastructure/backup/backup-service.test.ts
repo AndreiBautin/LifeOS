@@ -13,7 +13,6 @@ import {
 import {
   createCheckInRepository,
   createBacklogItemRepository,
-  createConditionRepository,
   createDailyRepository,
   createExploredAreaRepository,
   createFriendRepository,
@@ -75,7 +74,6 @@ beforeEach(async () => {
     dailies: createDailyRepository(db, testClock),
     vices: createViceRepository(db, testClock),
     weighIns: createWeighInRepository(db, testClock),
-    conditions: createConditionRepository(db, testClock),
   }
 })
 
