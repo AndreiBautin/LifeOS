@@ -1,4 +1,5 @@
 import { Campaigns } from '@/features/campaign/Campaigns'
+import { useCampaigns } from '@/features/campaign/hooks'
 import { Check, ChevronDown, ChevronRight, Home, Plus, Trash2, Undo2 } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { useState } from 'react'
@@ -353,6 +354,14 @@ export function ProjectsPage() {
   const [kind, setKind] = useState<QuestKind>('side')
   const projects = useProjects()
   const active = useActiveQuests()
+  /*
+   * The first arc with something outstanding. Several arcs are possible
+   * and one that is finished has nothing to say about what you are
+   * working on now.
+   */
+  const arcs = useCampaigns()
+  const leadingArc = (arcs.data ?? []).find((one) => one.next !== undefined)
+
   const recommendation = useRecommendation()
   const add = useAddProject()
   const setActive = useSetActiveQuest()
@@ -392,7 +401,11 @@ export function ProjectsPage() {
       <Campaigns />
 
       <Section title="Active" description="One main quest, one side quest.">
-        <ActiveQuests main={active.data?.main} side={active.data?.side} />
+        <ActiveQuests
+          main={active.data?.main}
+          side={active.data?.side}
+          {...(leadingArc === undefined ? {} : { arc: leadingArc })}
+        />
       </Section>
 
       {/*

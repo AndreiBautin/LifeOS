@@ -1,4 +1,5 @@
 import { BookMarked, CalendarCheck, Map, Settings, Target, Users } from 'lucide-react'
+import { useCampaigns } from '@/features/campaign/hooks'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 
@@ -99,6 +100,14 @@ function AgendaRow({ item }: { readonly item: AgendaItem }) {
 export function HomePage() {
   const agenda = useAgenda()
   const active = useActiveQuests()
+  /*
+   * The first arc with something outstanding. Several arcs are possible
+   * and one that is finished has nothing to say about what you are
+   * working on now.
+   */
+  const arcs = useCampaigns()
+  const leadingArc = (arcs.data ?? []).find((one) => one.next !== undefined)
+
   const season = useSeasonProgress()
   const review = useReviewDraft()
   const sheet = useCharacterSheet()
@@ -214,7 +223,12 @@ export function HomePage() {
       </Section>
 
       <Section title="Active quests" description="One main, one side.">
-        <ActiveQuests main={active.data?.main} side={active.data?.side} showLink />
+        <ActiveQuests
+          main={active.data?.main}
+          side={active.data?.side}
+          {...(leadingArc === undefined ? {} : { arc: leadingArc })}
+          showLink
+        />
       </Section>
 
       <Section title="Limits" description="What you have left today.">

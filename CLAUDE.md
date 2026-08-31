@@ -1373,6 +1373,24 @@ XP for it.
 memory is the point of a kata, so `timesSolved` exists to let the form
 say "you logged this in March" rather than to stop anybody logging it.
 
+**The arc stands in for a main quest you have not picked.** Reported:
+_"I'm still seeing no main or side quests assigned despite starting an
+arc."_ Nothing was broken — a campaign is deliberately not a `Project`
+(see below) — but the slot answered "no main quest active" to somebody
+who had just declared what they were working towards, which is the
+wrong answer to a fair question.
+
+**A readout, not a quest.** The slot names the arc's `next` stage,
+badges it _Arc_ rather than _Main_, and links to where stages are
+actually worked. Nothing to activate, nothing to close, and it pays
+nothing — the same footing as the arc itself. Making a stage into a
+`Project` to fill the slot is the move rule three forbids: closing it
+would pay XP for work its own area has already paid for.
+
+**An activated quest wins.** The arc is the direction underneath; a
+quest you picked is the thing you chose this week. Verified by
+activating one and watching the slot swap.
+
 **A campaign is the long arc across areas, and it is not a `Project`.**
 The report: _"I want to move eventually, but that depends on fixing up
 the house, improving income, finding a new house, saving a deposit,
