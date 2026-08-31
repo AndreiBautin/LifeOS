@@ -38,6 +38,15 @@ export type DailyId = Branded<'DailyId'>
  */
 export type ViceId = Branded<'ViceId'>
 
+/* The resume: a bullet is referable because tailoring picks bullets. */
+export type BulletId = Branded<'BulletId'>
+export type RoleId = Branded<'RoleId'>
+export type CompanyId = Branded<'CompanyId'>
+
+export const asBulletId = (value: string): BulletId => value as BulletId
+export const asRoleId = (value: string): RoleId => value as RoleId
+export const asCompanyId = (value: string): CompanyId => value as CompanyId
+
 export const asExerciseId = (value: string): ExerciseId => value as ExerciseId
 export const asProgramId = (value: string): ProgramId => value as ProgramId
 export const asInstanceId = (value: string): InstanceId => value as InstanceId

@@ -3,6 +3,7 @@ import { openDB } from 'idb'
 
 import type { CheckIn } from '@/domain/autoregulation/check-in'
 import type { FinanceReading } from '@/domain/finance/reading'
+import type { Resume } from '@/domain/resume/resume'
 import type { Item } from '@/domain/backlog/item'
 import type { Project } from '@/domain/projects/project'
 import type { Upgrade } from '@/domain/upgrades/upgrade'
@@ -62,7 +63,7 @@ export const DB_NAME = 'lifeos'
  * a device that already ran it will not run it again, so changing one
  * leaves two devices with different schemas and no way to tell.
  */
-export const DB_VERSION = 11
+export const DB_VERSION = 12
 
 /**
  * A workout as it is stored, which is not quite a workout as the domain
@@ -282,6 +283,11 @@ export interface LiftDB extends DBSchema {
     key: string
     value: WeighIn
   }
+  /** The resume, one row under a fixed key. */
+  resume: {
+    key: string
+    value: Resume
+  }
   /** The money figures, one row a month. */
   finance: {
     key: string
@@ -481,6 +487,15 @@ export function openDatabase(name = DB_NAME): Promise<AppDatabase> {
         // Keyed by month, so re-entering August corrects it.
         db.createObjectStore('finance', { keyPath: 'month' })
       }
+
+      if (oldVersion < 12) {
+        /*
+         * One row, under a fixed key. There is no `keyPath` because the
+         * resume has no id of its own — it is a singleton, and giving it
+         * one would invite a second.
+         */
+        db.createObjectStore('resume')
+      }
     },
 
     blocked() {
@@ -542,6 +557,7 @@ export async function clearAllStores(db: AppDatabase): Promise<void> {
       'weighIns',
       'conditions',
       'finance',
+      'resume',
     ],
     'readwrite',
   )
@@ -565,6 +581,7 @@ export async function clearAllStores(db: AppDatabase): Promise<void> {
     tx.objectStore('weighIns').clear(),
     tx.objectStore('conditions').clear(),
     tx.objectStore('finance').clear(),
+    tx.objectStore('resume').clear(),
     tx.done,
   ])
 }

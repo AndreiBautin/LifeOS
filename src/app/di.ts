@@ -19,6 +19,7 @@ import type {
   SyncTarget,
   TombstoneRepository,
   FinanceRepository,
+  ResumeRepository,
   TripRepository,
   ViceRepository,
   WeighInRepository,
@@ -40,6 +41,7 @@ import {
   createReviewRepository,
   createTombstoneRepository,
   createFinanceRepository,
+  createResumeRepository,
   createTripRepository,
   createViceRepository,
   createWeighInRepository,
@@ -86,6 +88,7 @@ export interface AppServices {
   readonly review: ReviewRepository
   readonly places: PlaceRepository
   readonly finance: FinanceRepository
+  readonly resume: ResumeRepository
   readonly trips: TripRepository
   readonly dailies: DailyRepository
   readonly vices: ViceRepository
@@ -150,6 +153,7 @@ export async function bootstrap(): Promise<BootstrapResult> {
     review: createReviewRepository(db, systemClock),
     places: createPlaceRepository(db, systemClock),
     finance: createFinanceRepository(db, systemClock),
+    resume: createResumeRepository(db, systemClock),
     trips: createTripRepository(db, systemClock),
     dailies: createDailyRepository(db, systemClock),
     vices: createViceRepository(db, systemClock),

@@ -170,6 +170,7 @@ export function CharacterPage() {
               { to: '/vitals', label: 'Vitals' },
               { to: '/jobs', label: 'Job search' },
               { to: '/finance', label: 'Finance' },
+              { to: '/resume', label: 'Resume' },
               { to: '/upgrades', label: 'Tech tree' },
             ].map((area) => (
               <Link

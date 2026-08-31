@@ -1122,6 +1122,45 @@ filter on floating point eventually disagrees with itself. Two of its
 rules had a database behind them and no longer do: `wouldCreateCycle`, and
 the refusal to delete anything with dependents still attached.
 
+**The resume is structured, because tailoring means choosing parts of
+it.** `domain/resume/resume.ts`. A PDF is a picture of a resume; what
+an application needs is the thing underneath — which bullets exist,
+which went out for a given role, which summary was on top. None of
+that is answerable about a file.
+
+**A bullet has an id, and that is the load-bearing decision.** Tailoring
+is choosing which bullets go out and in what order, so a bullet must be
+referable. The alternative is storing a second copy of the text on the
+application, and two copies of a sentence is how the resume and the
+record of what was sent start disagreeing after one edit.
+
+**A company holds roles; a role is not a job.** Two roles at one
+employer is a promotion and prints under one heading — a flat list of
+jobs prints the employer twice and makes a promotion read as
+job-hopping, which is the opposite of what it is evidence of. Matching
+is on the trimmed, lower-cased name, so "3Cloud" and " 3cloud " are
+one employer and nobody has to notice.
+
+**A current role sorts first, and nothing else is sorted.** A resume
+leads with the job you are in; the order roles were _typed_ has nothing
+to do with it, and prepending each new one put the older role on top —
+caught by looking at the screen, not by a test. Sorting by date is what
+you reach for and is not available: `from` is free text on purpose,
+because a date picker for something a resume prints as a word is a
+worse form. "No end date means current" needs no parsing and is right
+every time. Two _past_ roles at one employer keep the order they were
+added, which is worth stating rather than pretending otherwise.
+
+**Bulk entry is a paste, never a parser.** Bullets arrive one to a line
+and are split on newlines, with a leading glyph stripped. Guessing
+structure out of arbitrary resume text works on the document it was
+written against and quietly mangles the next one — and a mangled resume
+is worse than an empty one, because it looks finished.
+
+**Nothing is seeded.** The repository is public, so a name, a phone
+number and an address in source are published the moment they are
+committed. Every field arrives from the person using the app.
+
 **The job search is absorbed, and phase 0 had already designed it.**
 `registry.ts` declared the `jobs` area before there was anything in it
 — no ladders, one act, two ratings — and `sheet.test.ts` carried a line

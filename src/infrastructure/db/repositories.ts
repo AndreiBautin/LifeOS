@@ -1,5 +1,6 @@
 import type { CheckIn } from '@/domain/autoregulation/check-in'
 import type { FinanceReading } from '@/domain/finance/reading'
+import type { Resume } from '@/domain/resume/resume'
 import type { Item } from '@/domain/backlog/item'
 import type { Project } from '@/domain/projects/project'
 import type { Upgrade } from '@/domain/upgrades/upgrade'
@@ -37,6 +38,7 @@ import type {
   DailyRepository,
   ExerciseRepository,
   FinanceRepository,
+  ResumeRepository,
   ExploredAreaRepository,
   FriendRepository,
   PlaceRepository,
@@ -578,6 +580,20 @@ export function createFinanceRepository(db: AppDatabase, clock: Clock): FinanceR
     },
     async purge(month: string) {
       await db.delete('finance', month)
+    },
+  }
+}
+
+/** The single key the one resume lives under. */
+const RESUME_KEY = 'resume'
+
+export function createResumeRepository(db: AppDatabase, clock: Clock): ResumeRepository {
+  return {
+    async get() {
+      return db.get('resume', RESUME_KEY)
+    },
+    async save(resume: Resume) {
+      await db.put('resume', stamp(resume, clock), RESUME_KEY)
     },
   }
 }

@@ -47,6 +47,7 @@ describe('the schema', () => {
       'places',
       'position',
       'projects',
+      'resume',
       'reviews',
       'tombstones',
       'trips',

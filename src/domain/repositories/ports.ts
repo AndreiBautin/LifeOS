@@ -1,5 +1,6 @@
 import type { CheckIn } from '@/domain/autoregulation/check-in'
 import type { FinanceReading } from '@/domain/finance/reading'
+import type { Resume } from '@/domain/resume/resume'
 import type { Item } from '@/domain/backlog/item'
 import type { Project } from '@/domain/projects/project'
 import type { Upgrade } from '@/domain/upgrades/upgrade'
@@ -365,6 +366,18 @@ export interface FinanceRepository {
   restoreMany(readings: readonly FinanceReading[]): Promise<void>
   remove(month: string): Promise<void>
   purge(month: string): Promise<void>
+}
+
+/**
+ * The resume, of which there is exactly one.
+ *
+ * No `all`, because there is nothing to list — a second resume would be
+ * a *version*, which is a different feature and would need to say what
+ * distinguishes them. `get` returns undefined until one is written.
+ */
+export interface ResumeRepository {
+  get(): Promise<Resume | undefined>
+  save(resume: Resume): Promise<void>
 }
 
 export interface TripRepository {
