@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
+import type { Campaign } from '@/domain/campaign/campaign'
 import type { Daily } from '@/domain/dailies/daily'
 import { readCharges, type Vice } from '@/domain/vitals/charges'
 import type { WeighIn } from '@/domain/vitals/weight'
@@ -22,6 +23,7 @@ import type {
   FriendRepository,
   PlaceRepository,
   ProjectRepository,
+  CampaignRepository,
   ResumeRepository,
   ReviewRepository,
   SettingsRepository,
@@ -306,6 +308,38 @@ function device(clock: Clock): Device {
    * row for the same day hold two opinions about one fact, so the later
    * one is meant to win outright and nothing is meant to be unioned.
    */
+  /*
+   * A real double, like the finance one below it. Campaigns are
+   * whole-record last-write-wins and the exchange has to be able to
+   * carry one, which a stub returning an empty list could never show.
+   */
+  const campaignStore = new Map<string, Campaign>()
+  const campaigns: CampaignRepository = {
+    all: () => Promise.resolve([...campaignStore.values()]),
+    byId: (id) => Promise.resolve(campaignStore.get(id)),
+    save: (row) => {
+      campaignStore.set(row.id, { ...row, updatedAt: clock.now().toISOString() })
+      return Promise.resolve()
+    },
+    restoreMany: (rows) => {
+      for (const row of rows) campaignStore.set(row.id, row)
+      return Promise.resolve()
+    },
+    remove: (id) => {
+      campaignStore.delete(id)
+      graves.set(`campaigns:${id}`, {
+        id,
+        collection: 'campaigns',
+        deletedAt: clock.now().toISOString(),
+      })
+      return Promise.resolve()
+    },
+    purge: (id) => {
+      campaignStore.delete(id)
+      return Promise.resolve()
+    },
+  }
+
   const financeStore = new Map<string, FinanceReading>()
   const finance: FinanceRepository = {
     all: () => Promise.resolve([...financeStore.values()]),
@@ -426,6 +460,7 @@ function device(clock: Clock): Device {
   }
 
   return {
+    campaigns,
     resume,
     dailies,
     vices,

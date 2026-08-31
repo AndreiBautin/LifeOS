@@ -13,6 +13,7 @@ import {
   type QueryDocumentSnapshot,
 } from 'firebase/firestore'
 
+import type { Campaign } from '@/domain/campaign/campaign'
 import type { CheckIn } from '@/domain/autoregulation/check-in'
 import type { Item } from '@/domain/backlog/item'
 import type { Project } from '@/domain/projects/project'
@@ -73,6 +74,7 @@ const COLLECTIONS = {
   vices: 'vices',
   weighIns: 'weighIns',
   finance: 'finance',
+  campaigns: 'campaigns',
   /*
    * One document holding the whole set, not a document per cell. A
    * thousand-cell walk would otherwise be a thousand writes, and the set
@@ -153,6 +155,7 @@ export function createFirestoreSyncTarget(options: FirestoreTargetOptions): Sync
         readSince(root(COLLECTIONS.vices), after),
         readSince(root(COLLECTIONS.weighIns), after),
         readSince(root(COLLECTIONS.finance), after),
+        readSince(root(COLLECTIONS.campaigns), after),
         readSince(root(COLLECTIONS.exploredCells), after),
         readSince(root(COLLECTIONS.tombstones), after),
         readSince(root(COLLECTIONS.settings), after),
@@ -197,6 +200,7 @@ export function createFirestoreSyncTarget(options: FirestoreTargetOptions): Sync
         vices,
         weighIns,
         finance,
+        campaigns,
         cells,
         tombstones,
         settings,
@@ -242,6 +246,7 @@ export function createFirestoreSyncTarget(options: FirestoreTargetOptions): Sync
           vices: vices.records as readonly Vice[],
           weighIns: weighIns.records as readonly WeighIn[],
           finance: finance.records as readonly FinanceReading[],
+          campaigns: campaigns.records as readonly Campaign[],
           exploredCells: cells.records.flatMap(
             (record) => (record as { cells?: readonly string[] }).cells ?? [],
           ),

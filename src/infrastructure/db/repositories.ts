@@ -1,3 +1,5 @@
+import type { Campaign } from '@/domain/campaign/campaign'
+import type { CampaignId } from '@/domain/ids/ids'
 import type { CheckIn } from '@/domain/autoregulation/check-in'
 import type { FinanceReading } from '@/domain/finance/reading'
 import type { Resume } from '@/domain/resume/resume'
@@ -38,6 +40,7 @@ import type {
   DailyRepository,
   ExerciseRepository,
   FinanceRepository,
+  CampaignRepository,
   ResumeRepository,
   ExploredAreaRepository,
   FriendRepository,
@@ -696,6 +699,40 @@ export function createCheckInRepository(db: AppDatabase, clock: Clock): CheckInR
     },
     async all() {
       return db.getAll('checkIns')
+    },
+  }
+}
+
+/**
+ * The long arcs, one row each.
+ *
+ * Stages live inline on the campaign rather than in a store of their
+ * own. A stage has no meaning apart from the arc it belongs to, nothing
+ * queries them independently, and splitting them would turn every read
+ * into a join and every write into a transaction — for a record that
+ * holds six rows.
+ */
+export function createCampaignRepository(db: AppDatabase, clock: Clock): CampaignRepository {
+  return {
+    async all() {
+      return db.getAll('campaigns')
+    },
+    async byId(id: CampaignId) {
+      return db.get('campaigns', id)
+    },
+    async save(campaign: Campaign) {
+      await db.put('campaigns', stamp(campaign, clock))
+    },
+    async restoreMany(campaigns: readonly Campaign[]) {
+      const tx = db.transaction('campaigns', 'readwrite')
+      await Promise.all([...campaigns.map((one) => tx.store.put(one)), tx.done])
+    },
+    async remove(id: CampaignId) {
+      await db.delete('campaigns', id)
+      await bury(db, clock, 'campaigns', id)
+    },
+    async purge(id: CampaignId) {
+      await db.delete('campaigns', id)
     },
   }
 }

@@ -13,6 +13,7 @@ import type {
   DailyRepository,
   UpgradeRepository,
   ViceRepository,
+  CampaignRepository,
   FinanceRepository,
   ResumeRepository,
   WeighInRepository,
@@ -53,6 +54,7 @@ export interface BackupRepositories {
   readonly vices: ViceRepository
   readonly weighIns: WeighInRepository
   readonly finance: FinanceRepository
+  readonly campaigns: CampaignRepository
   readonly resume: ResumeRepository
   readonly explored: ExploredAreaRepository
 }
@@ -229,6 +231,13 @@ export const COLLECTIONS: Readonly<Record<CollectionKey, Collection>> = {
       const incoming = rows[0]
       if (incoming !== undefined) await r.resume.save(incoming)
     },
+  }),
+  campaigns: define({
+    local: (r) => r.campaigns.all(),
+    fromFile: (data) => data.campaigns ?? [],
+    idOf: (row) => row.id,
+    restore: (r, rows) => r.campaigns.restoreMany(rows),
+    tombstoneCollection: 'campaigns',
   }),
   weighIns: define({
     local: (r) => r.weighIns.all(),

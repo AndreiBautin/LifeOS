@@ -37,6 +37,8 @@ export type DailyId = Branded<'DailyId'>
  * carries the record.
  */
 export type ViceId = Branded<'ViceId'>
+export type CampaignId = Branded<'CampaignId'>
+export type StageId = Branded<'StageId'>
 
 /* The resume: a bullet is referable because tailoring picks bullets. */
 export type BulletId = Branded<'BulletId'>
@@ -61,6 +63,8 @@ export const asMetricId = (value: string): MetricId => value as MetricId
 export const asFriendId = (value: string): FriendId => value as FriendId
 export const asDailyId = (value: string): DailyId => value as DailyId
 export const asViceId = (value: string): ViceId => value as ViceId
+export const asCampaignId = (value: string): CampaignId => value as CampaignId
+export const asStageId = (value: string): StageId => value as StageId
 
 /**
  * Generating an id is a side effect, so the domain takes it as a

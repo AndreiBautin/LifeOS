@@ -1164,6 +1164,71 @@ neither device having heard from the other, loses Monday entirely. Do not
 "simplify" this back to a record-level winner; `synchronise.test.ts` fails
 in two places if you do.
 
+**A campaign is the long arc across areas, and it is not a `Project`.**
+The report: _"I want to move eventually, but that depends on fixing up
+the house, improving income, finding a new house, saving a deposit,
+selling, moving."_ Every input already existed — Base holds the house
+work, Jobs the applications, Finance the money — and nothing
+represented the arc.
+
+**Reusing `Project` was the obvious move and is barred by rule three.**
+A project is the app’s shape for "a thing with steps", but closing its
+action pays `projects.main-action-closed` — so a stage closing would
+pay XP for work its own area had already paid for. The record types are
+separate because the scoring has to be. It is not a second tech tree
+either: that is gated progression with money, and `registry.test.ts`
+holds that exactly one area spends.
+
+**It pays nothing at all**, and the hooks say so where an `xp-award`
+call would otherwise go. Finance already showed that an area which
+reports and never pays is not incomplete.
+
+**A stage is measured or declared, and saying which is the honest
+part.** House jobs and offers are counted from records already kept;
+the money is read off the monthly reading. Nothing in a habit tracker
+knows you found a house you liked, so that stage is declared and the
+app takes your word. A declared stage is not a lesser one. **A measured
+stage cannot be declared done** — ticking past a reading that says
+otherwise is the whole reason it is measured.
+
+**Absent, never zero, and the two halves differ.** A _count_ is
+genuinely zero when nothing has happened — you can count no finished
+house jobs. A _money_ figure is typed in monthly, so its absence means
+nobody has said, not that it is nothing: that stage reads `unproven`
+and draws no bar, because a bar at nought against a target somebody set
+reads as failing.
+
+**Ordered but not gated.** The chain really is a chain, but a screen
+that refused to record a later stage would be policing somebody’s life
+rather than reporting on it, and things do not happen in the order they
+were written. A later stage can be met first; `next` names the earliest
+outstanding one and is _highlighted rather than moved_, for the reason
+habits sort chronologically rather than current-part-first.
+
+**A stage keeps every lap.** _"Job improvement is interesting because I
+can progress through multiple jobs, and that applies to houses too."_ A
+tick that stopped meaning anything after the first time would lose the
+shape of the arc, so `reached` is a list of dated entries with notes —
+"2026-08-31 · Maple Street". Undo takes the **most recent** lap only:
+clearing the list would cost the record of the first two, which is the
+sort of thing noticed afterwards.
+
+**Evidence is gathered live, never copied.** A stored count is a total
+that can be wrong. `keepFor` filters projects by home, which is what
+stops a quest counting as house work — the third instance of a leak
+that has now bitten `recommendation` and
+`projects.actions-closed-in-month`. `latest` is read **per field**, so
+somebody who checks their credit score quarterly still gets last
+month’s net worth.
+
+`DB_VERSION` went to 13 with a new guarded block, and the collection
+registered in all five places — payload, `isEmpty`, `payloadSize`, the
+Firestore target, the backup table — plus the tombstone list and the
+deletion switch. The `switch-exhaustiveness-check` rule caught that last
+one, and `repositories.test.ts` caught the store list. That is the
+machinery working: five of the seven were found by the compiler or a
+guard rather than by memory.
+
 **The quest log is the hub's front page, and two of its rules used to be
 the database's job.** `/next` is what `/` redirects to. Cycle detection
 (`validateBlockers`) was enforced in the schema as well as in code and is

@@ -6,6 +6,7 @@ import {
   asFriendId,
   asProjectId,
   asUpgradeId,
+  asCampaignId,
   asViceId,
   asWorkoutId,
 } from '@/domain/ids/ids'
@@ -26,6 +27,7 @@ import type {
   SyncTarget,
   TombstoneRepository,
   ViceRepository,
+  CampaignRepository,
   FinanceRepository,
   WeighInRepository,
   TripRepository,
@@ -86,6 +88,7 @@ export interface SynchroniseDeps {
   readonly vices: ViceRepository
   readonly weighIns: WeighInRepository
   readonly finance: FinanceRepository
+  readonly campaigns: CampaignRepository
   readonly explored: ExploredAreaRepository
   readonly tombstones: TombstoneRepository
   readonly syncState: SyncStateRepository
@@ -170,6 +173,7 @@ export async function synchronise(target: SyncTarget, deps: SynchroniseDeps): Pr
   await deps.vices.restoreMany(accepted.vices)
   await deps.weighIns.restoreMany(accepted.weighIns)
   await deps.finance.restoreMany(accepted.finance)
+  await deps.campaigns.restoreMany(accepted.campaigns)
   // Union, never replace. See `unionCells`.
   await deps.explored.reveal(accepted.exploredCells as CellId[])
 
@@ -249,6 +253,7 @@ export async function synchronise(target: SyncTarget, deps: SynchroniseDeps): Pr
     accepted.vices.length +
     accepted.weighIns.length +
     accepted.finance.length +
+    accepted.campaigns.length +
     (settingsMoved ? 1 : 0) +
     (resumeMoved ? 1 : 0)
 
@@ -268,6 +273,7 @@ export async function synchronise(target: SyncTarget, deps: SynchroniseDeps): Pr
     incoming.vices.length +
     incoming.weighIns.length +
     incoming.finance.length +
+    incoming.campaigns.length +
     (accepted.settings === undefined ? 0 : 1) +
     (accepted.resume === undefined ? 0 : 1)
 
@@ -301,6 +307,7 @@ async function collectLocal(
     vices,
     weighIns,
     finance,
+    campaigns,
     explored,
     tombstones,
     settings,
@@ -321,6 +328,7 @@ async function collectLocal(
     deps.vices.all(),
     deps.weighIns.all(),
     deps.finance.all(),
+    deps.campaigns.all(),
     deps.explored.all(),
     deps.tombstones.all(),
     deps.settings.get(),
@@ -372,6 +380,7 @@ async function collectLocal(
     vices: changedSince(vices, watermark),
     weighIns: changedSince(weighIns, watermark),
     finance: changedSince(finance, watermark),
+    campaigns: changedSince(campaigns, watermark),
     /*
      * The whole set, every time, rather than what changed since the
      * watermark. There is nothing to compare against — a cell carries no
@@ -510,6 +519,13 @@ async function applyDeletions(
         const local = await deps.vices.byId(asViceId(tombstone.id))
         if (local !== undefined && !survives(local, tombstone)) {
           await deps.vices.purge(asViceId(tombstone.id))
+        }
+        break
+      }
+      case 'campaigns': {
+        const local = await deps.campaigns.byId(asCampaignId(tombstone.id))
+        if (local !== undefined && !survives(local, tombstone)) {
+          await deps.campaigns.purge(asCampaignId(tombstone.id))
         }
         break
       }

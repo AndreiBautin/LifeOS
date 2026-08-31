@@ -1,3 +1,4 @@
+import type { Campaign } from '@/domain/campaign/campaign'
 import type { NewsSource, Story } from '@/domain/news/story'
 import type { CheckIn } from '@/domain/autoregulation/check-in'
 import type { FinanceReading } from '@/domain/finance/reading'
@@ -27,6 +28,7 @@ import type {
   UpgradeId,
   WorkoutId,
   ViceId,
+  CampaignId,
 } from '@/domain/ids/ids'
 import type { WorkoutLog } from '@/domain/logging/workout-log'
 import type { ProgramPosition } from '@/domain/programs/position'
@@ -397,6 +399,17 @@ export interface ResumeRepository {
  * testable against fixtures, and the fetching is the one thing that
  * cannot be. See `domain/news/story.ts`.
  */
+export interface CampaignRepository {
+  all(): Promise<readonly Campaign[]>
+  byId(id: CampaignId): Promise<Campaign | undefined>
+  save(campaign: Campaign): Promise<void>
+  /** Writes exactly as given, without stamping. See the note on `ExerciseRepository`. */
+  restoreMany(campaigns: readonly Campaign[]): Promise<void>
+  remove(id: CampaignId): Promise<void>
+  /** Deletes without a tombstone -- the receiving half of a sync. */
+  purge(id: CampaignId): Promise<void>
+}
+
 export interface NewsGateway {
   read(source: NewsSource): Promise<readonly Story[]>
 }

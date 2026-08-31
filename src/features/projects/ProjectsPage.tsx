@@ -1,3 +1,4 @@
+import { Campaigns } from '@/features/campaign/Campaigns'
 import { Check, ChevronDown, ChevronRight, Home, Plus, Trash2, Undo2 } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { useState } from 'react'
@@ -380,6 +381,15 @@ export function ProjectsPage() {
         title="Quests"
         subtitle="What you are trying to get done, and what is blocking what."
       />
+
+      {/*
+        The arc leads, because it is what "main quest" means at full
+        size -- the active quests below it are this week's version of the
+        same question. It is a readout rather than a board: nothing on it
+        is a thing to do, and everything on it is met by work recorded
+        somewhere else.
+      */}
+      <Campaigns />
 
       <Section title="Active" description="One main quest, one side quest.">
         <ActiveQuests main={active.data?.main} side={active.data?.side} />

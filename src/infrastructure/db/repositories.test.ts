@@ -35,6 +35,7 @@ afterEach(async () => {
 describe('the schema', () => {
   it('creates every store the app writes to', () => {
     expect([...db.objectStoreNames].sort()).toEqual([
+      'campaigns',
       'checkIns',
       'conditions',
       'dailies',

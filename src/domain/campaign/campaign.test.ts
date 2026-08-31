@@ -1,0 +1,238 @@
+import { describe, expect, it } from 'vitest'
+
+import { asCampaignId, asStageId } from '@/domain/ids/ids'
+
+import {
+  markReached,
+  standingFor,
+  undoReached,
+  type Campaign,
+  type Requirement,
+  type Stage,
+} from './campaign'
+
+function stage(name: string, requirement: Requirement, reached: readonly string[] = []): Stage {
+  return {
+    id: asStageId(name),
+    name,
+    requirement,
+    reached: reached.map((at) => ({ at })),
+  }
+}
+
+function campaign(...stages: readonly Stage[]): Campaign {
+  return {
+    id: asCampaignId('move'),
+    name: 'Move',
+    stages,
+    createdAt: '2026-08-01T09:00:00',
+  }
+}
+
+describe('a declared stage', () => {
+  /*
+   * Nothing in a habit tracker knows that you found a house you liked.
+   * A stage says which kind it is rather than pretending everything is
+   * measurable, and a declared stage is not a lesser one.
+   */
+  it('is met by having been declared, and nothing else', () => {
+    const before = standingFor(campaign(stage('Find a house', { kind: 'declared' })), {})
+    const after = standingFor(
+      campaign(stage('Find a house', { kind: 'declared' }, ['2026-09-01'])),
+      {},
+    )
+
+    expect(before.stages[0]?.met).toBe(false)
+    expect(after.stages[0]?.met).toBe(true)
+  })
+
+  it('is never unproven — there is no reading to be missing', () => {
+    expect(standingFor(campaign(stage('Move', { kind: 'declared' })), {}).stages[0]?.unproven).toBe(
+      false,
+    )
+  })
+})
+
+describe('a measured stage', () => {
+  it('reads the count the area already keeps', () => {
+    const standing = standingFor(
+      campaign(stage('Fix the house', { kind: 'house-jobs', count: 5 })),
+      {
+        houseJobsDone: 3,
+      },
+    )
+
+    expect(standing.stages[0]?.met).toBe(false)
+    expect(standing.stages[0]?.progress).toEqual({ value: 3, of: 5 })
+  })
+
+  it('is met once the reading reaches the target', () => {
+    const standing = standingFor(
+      campaign(stage('Fix the house', { kind: 'house-jobs', count: 5 })),
+      {
+        houseJobsDone: 5,
+      },
+    )
+
+    expect(standing.stages[0]?.met).toBe(true)
+  })
+
+  /*
+   * A count is genuinely zero when nothing has happened — you can count
+   * no finished house jobs. Money is different: it is typed in monthly,
+   * and its absence means nobody has said, not that it is nothing.
+   */
+  it('treats a count with nothing recorded as zero, not unknown', () => {
+    const standing = standingFor(campaign(stage('Offers', { kind: 'offers', count: 1 })), {})
+
+    expect(standing.stages[0]?.unproven).toBe(false)
+    expect(standing.stages[0]?.progress).toEqual({ value: 0, of: 1 })
+  })
+
+  /*
+   * Absent, never zero. A net-worth stage on a database with no finance
+   * readings has not been *failed* — a bar at nought against a target
+   * somebody set reads as failing when nothing has been measured.
+   */
+  it('is unproven when the money has never been recorded', () => {
+    const standing = standingFor(
+      campaign(stage('Deposit', { kind: 'net-worth', minorUnits: 4_000_000 })),
+      {},
+    )
+
+    expect(standing.stages[0]?.unproven).toBe(true)
+    expect(standing.stages[0]?.met).toBe(false)
+    expect(standing.stages[0]?.progress).toBeUndefined()
+  })
+
+  it('judges money once there is a reading', () => {
+    const standing = standingFor(
+      campaign(stage('Deposit', { kind: 'net-worth', minorUnits: 4_000_000 })),
+      { netWorthMinor: 4_500_000 },
+    )
+
+    expect(standing.stages[0]?.met).toBe(true)
+    expect(standing.stages[0]?.unproven).toBe(false)
+  })
+
+  it('reads a credit score against its target', () => {
+    const standing = standingFor(campaign(stage('Credit', { kind: 'credit-score', score: 740 })), {
+      creditScore: 700,
+    })
+
+    expect(standing.stages[0]?.progress).toEqual({ value: 700, of: 740 })
+  })
+
+  /*
+   * A measured stage is a threshold, and declaring it done would let
+   * somebody tick past a reading that says otherwise — which is the
+   * whole reason it is measured rather than declared.
+   */
+  it('is not met by declaring it', () => {
+    const standing = standingFor(
+      campaign(stage('Deposit', { kind: 'net-worth', minorUnits: 4_000_000 }, ['2026-09-01'])),
+      { netWorthMinor: 100 },
+    )
+
+    expect(standing.stages[0]?.met).toBe(false)
+  })
+})
+
+describe('the arc as a whole', () => {
+  const arc = () =>
+    campaign(
+      stage('Fix the house', { kind: 'house-jobs', count: 3 }),
+      stage('Improve income', { kind: 'offers', count: 1 }),
+      stage('Find a house', { kind: 'declared' }),
+      stage('Save the deposit', { kind: 'net-worth', minorUnits: 4_000_000 }),
+    )
+
+  it('counts what is done against stages you named, not a scale of ours', () => {
+    const standing = standingFor(arc(), { houseJobsDone: 3, offers: 1 })
+
+    expect(standing.done).toBe(2)
+    expect(standing.total).toBe(4)
+  })
+
+  it('names the earliest outstanding stage as what it is waiting on', () => {
+    const standing = standingFor(arc(), { houseJobsDone: 3 })
+
+    expect(standing.next?.stage.name).toBe('Improve income')
+  })
+
+  /*
+   * Ordered but not gated. The chain really is a chain — you cannot put
+   * a deposit down before you have one — but a screen that refused to
+   * record a later stage would be policing somebody's life rather than
+   * reporting on it, and things do not always happen in the order they
+   * were written down.
+   */
+  it('lets a later stage be met before an earlier one', () => {
+    const standing = standingFor(
+      campaign(
+        stage('Fix the house', { kind: 'house-jobs', count: 3 }),
+        stage('Find a house', { kind: 'declared' }, ['2026-09-01']),
+      ),
+      { houseJobsDone: 0 },
+    )
+
+    expect(standing.stages[1]?.met).toBe(true)
+    expect(standing.next?.stage.name).toBe('Fix the house')
+  })
+
+  it('has nothing outstanding once every stage is met', () => {
+    const standing = standingFor(campaign(stage('Move', { kind: 'declared' }, ['2026-12-01'])), {})
+
+    expect(standing.next).toBeUndefined()
+    expect(standing.done).toBe(standing.total)
+  })
+
+  it('says nothing about a campaign with no stages', () => {
+    const standing = standingFor(campaign(), {})
+
+    expect(standing.total).toBe(0)
+    expect(standing.next).toBeUndefined()
+  })
+})
+
+describe('running a stage again', () => {
+  /*
+   * The observation this exists for: "job improvement is interesting
+   * because I can progress through multiple jobs, and that applies to
+   * houses too." A tick that stopped meaning anything after the first
+   * time would lose the shape of the arc.
+   */
+  it('keeps every lap, with what each one was', () => {
+    let one = stage('Improve income', { kind: 'declared' })
+    one = markReached(one, '2026-03-14', 'Acme')
+    one = markReached(one, '2026-09-02', 'Beta')
+
+    expect(one.reached).toEqual([
+      { at: '2026-03-14', note: 'Acme' },
+      { at: '2026-09-02', note: 'Beta' },
+    ])
+  })
+
+  it('leaves the note absent rather than empty when none was given', () => {
+    const one = markReached(stage('Move', { kind: 'declared' }), '2026-12-01', '   ')
+
+    expect(one.reached[0]).toEqual({ at: '2026-12-01' })
+  })
+
+  /*
+   * A mis-tap on a stage reached three times should cost the third, not
+   * the record of the first two — which is what clearing the list would
+   * do, and it is only noticed afterwards.
+   */
+  it('undoes the most recent lap and only that one', () => {
+    let one = stage('Improve income', { kind: 'declared' })
+    one = markReached(one, '2026-03-14', 'Acme')
+    one = markReached(one, '2026-09-02', 'Beta')
+
+    expect(undoReached(one).reached).toEqual([{ at: '2026-03-14', note: 'Acme' }])
+  })
+
+  it('undoing a stage never reached changes nothing', () => {
+    expect(undoReached(stage('Move', { kind: 'declared' })).reached).toEqual([])
+  })
+})

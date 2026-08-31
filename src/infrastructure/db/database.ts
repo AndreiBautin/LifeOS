@@ -1,3 +1,4 @@
+import type { Campaign } from '@/domain/campaign/campaign'
 import type { DBSchema, IDBPDatabase } from 'idb'
 import { openDB } from 'idb'
 
@@ -63,7 +64,7 @@ export const DB_NAME = 'lifeos'
  * a device that already ran it will not run it again, so changing one
  * leaves two devices with different schemas and no way to tell.
  */
-export const DB_VERSION = 12
+export const DB_VERSION = 13
 
 /**
  * A workout as it is stored, which is not quite a workout as the domain
@@ -283,6 +284,11 @@ export interface LiftDB extends DBSchema {
     key: string
     value: WeighIn
   }
+  /** The long arcs -- the move, and anything shaped like it. */
+  campaigns: {
+    key: string
+    value: Campaign
+  }
   /** The resume, one row under a fixed key. */
   resume: {
     key: string
@@ -496,6 +502,13 @@ export function openDatabase(name = DB_NAME): Promise<AppDatabase> {
          */
         db.createObjectStore('resume')
       }
+
+      if (oldVersion < 13) {
+        // The long arcs. Keyed by id; a campaign holds its stages inline
+        // rather than in a second store, because a stage has no meaning
+        // apart from the arc it belongs to and nothing queries them.
+        db.createObjectStore('campaigns', { keyPath: 'id' })
+      }
     },
 
     blocked() {
@@ -558,6 +571,7 @@ export async function clearAllStores(db: AppDatabase): Promise<void> {
       'conditions',
       'finance',
       'resume',
+      'campaigns',
     ],
     'readwrite',
   )
@@ -582,6 +596,7 @@ export async function clearAllStores(db: AppDatabase): Promise<void> {
     tx.objectStore('conditions').clear(),
     tx.objectStore('finance').clear(),
     tx.objectStore('resume').clear(),
+    tx.objectStore('campaigns').clear(),
     tx.done,
   ])
 }

@@ -19,6 +19,7 @@ import type {
   SyncStateRepository,
   SyncTarget,
   TombstoneRepository,
+  CampaignRepository,
   FinanceRepository,
   JobBoardGateway,
   NewsGateway,
@@ -43,6 +44,7 @@ import {
   createProjectRepository,
   createReviewRepository,
   createTombstoneRepository,
+  createCampaignRepository,
   createFinanceRepository,
   createResumeRepository,
   createTripRepository,
@@ -97,6 +99,7 @@ export interface AppServices {
   readonly review: ReviewRepository
   readonly places: PlaceRepository
   readonly finance: FinanceRepository
+  readonly campaigns: CampaignRepository
   readonly boards: JobBoardGateway
   /** Which local day the boards were last read on their own. */
   readonly sweepStore: DailyRunStore<LeadSweep>
@@ -167,6 +170,7 @@ export async function bootstrap(): Promise<BootstrapResult> {
     review: createReviewRepository(db, systemClock),
     places: createPlaceRepository(db, systemClock),
     finance: createFinanceRepository(db, systemClock),
+    campaigns: createCampaignRepository(db, systemClock),
     boards: createAtsGateway(),
     sweepStore: createDailyRunStore(STORAGE_KEYS.jobSweptOn),
     digestStore: createDailyRunStore(STORAGE_KEYS.digestReadOn),
