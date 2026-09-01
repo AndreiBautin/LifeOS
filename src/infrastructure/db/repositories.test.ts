@@ -359,11 +359,26 @@ describe('reading a habit filed under a home that no longer exists', () => {
       ...over,
     }) as Parameters<typeof fromStoredDaily>[0]
 
-  it('reads a legacy upkeep habit as an own habit in the Upkeep group', () => {
+  it('reads a legacy upkeep habit as an own habit in the Hygiene group', () => {
     const read = fromStoredDaily(daily({ belongsTo: 'vitals' }))
 
     expect(read.belongsTo).toBeUndefined()
-    expect(read.group).toBe('Upkeep')
+    expect(read.group).toBe('Hygiene')
+  })
+
+  /*
+   * The group was renamed after it stopped being a home, so rows exist
+   * under both names. Reading only the legacy *home* would leave a
+   * device holding Upkeep and Hygiene at once, drawn as two categories —
+   * which is the split the rename exists to avoid.
+   */
+  it('reads a stored Upkeep group as Hygiene whatever its home', () => {
+    expect(fromStoredDaily(daily({ group: 'Upkeep' })).group).toBe('Hygiene')
+    expect(fromStoredDaily(daily({ belongsTo: 'base', group: 'Upkeep' })).group).toBe('Hygiene')
+  })
+
+  it('leaves every other group alone', () => {
+    expect(fromStoredDaily(daily({ group: 'Tidying' })).group).toBe('Tidying')
   })
 
   it('drops the retired home rather than leaving it on the record', () => {

@@ -1,4 +1,5 @@
 import { Declutter } from './Declutter'
+import { groupOnly } from '@/domain/dailies/groups'
 import { GroupedDailies } from '@/features/today/DailyGroups'
 import { Flame, Plus, Undo2, Wrench } from 'lucide-react'
 import { useState } from 'react'
@@ -517,6 +518,7 @@ export function BasePage() {
             <>
               <GroupedDailies
                 bare
+                categoryOf={groupOnly}
                 views={dueChores}
                 render={(view) => <ChoreRow key={view.daily.id} view={view} />}
               />
@@ -526,6 +528,7 @@ export function BasePage() {
                   <p className="text-ink-700 mb-1 text-xs tracking-wide uppercase">Not due today</p>
                   <GroupedDailies
                     bare
+                    categoryOf={groupOnly}
                     views={otherChores}
                     render={(view) => <ChoreRow key={view.daily.id} view={view} />}
                   />

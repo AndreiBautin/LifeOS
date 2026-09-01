@@ -1,12 +1,11 @@
 import { Archive, CalendarCog, Check, Flame, Home, Pencil, Plus, Undo2 } from 'lucide-react'
-import { Link } from 'react-router-dom'
 import { useState } from 'react'
 
 import type { DailyView } from '@/application/use-cases/dailies/dailies'
 import { Button, Card, Empty } from '@/components/shared/primitives'
 import type { Cadence, Daily } from '@/domain/dailies/daily'
 
-import { BASE, TRAINING, type RecordHome } from '@/domain/base/base'
+import { BASE, type RecordHome } from '@/domain/base/base'
 import { WEEKDAY_LABELS, WEEKDAY_NAMES, WEEKDAYS, WEEKEND } from '@/domain/time/day'
 import {
   PART_OF_DAY_LABELS,
@@ -18,8 +17,8 @@ import {
 import { useServices } from '@/app/context'
 import { Fold } from '@/components/shared/Fold'
 import { counted } from '@/lib/counted'
-import { UPKEEP_GROUP } from '@/domain/dailies/groups'
-import { GroupedDailies, GroupField } from './DailyGroups'
+import { HYGIENE_GROUP, homeOrGroup } from '@/domain/dailies/groups'
+import { DayBands, GroupedDailies, GroupField } from './DailyGroups'
 import { DailyHistory } from './DailyHistory'
 import {
   useAddDaily,
@@ -893,33 +892,9 @@ export function AddDaily({
 }
 
 /**
- * Recurring work that lives on another screen but is due on this one.
- *
- * Grouped by where it is filed rather than mixed in, which is the whole
- * reason chores were moved off Today in the first place: a flat list
- * buries the habits somebody chose under the ones the house and the body
- * simply require. Grouping keeps both true — everything due is visible,
- * and what you chose is still first.
- *
- * **Takes its rows rather than fetching them.** It called
- * `useDueElsewhere` itself while `Dailies` called it too, which was one
- * answer read twice — and the caller now has to split done from
- * outstanding anyway, so the split has to happen in one place or the
- * done fold and this list would disagree about what is left.
- *
- * **Upkeep is a group here again, and `to` is optional because of it.**
- * It was pulled out when upkeep gained a section of its own further down
- * the screen, and that put the day's remaining work three blocks below
- * the line counting it — reported as *"I have two left but have to
- * scroll all the way down to find em."* House and Training keep an
- * "all →" because `/base` and `/train` are where those are managed;
- * upkeep has no link because **this is that screen**, the same reason
- * the own-dailies fold below carries none.
- */
-/**
  * The body's chores, offered by name.
  *
- * Upkeep was the one list in the app with no suggestions — you typed
+ * Hygiene was the one list in the app with no suggestions — you typed
  * every row — and it is the list whose contents are the least personal:
  * everybody's is roughly brushing, flossing, hair and water. Water is
  * the reason it still exists, since taking it off the pool suggestions
@@ -930,57 +905,17 @@ export function AddDaily({
  * fails, where the point is whether the day's target was finished.
  * `timesPerDay` is on brushing because two is what brushing is.
  */
-const UPKEEP_SUGGESTIONS: readonly {
+const HYGIENE_SUGGESTIONS: readonly {
   readonly title: string
   readonly group?: string
   readonly timesPerDay?: number
 }[] = [
-  { title: 'Gallon of water', group: UPKEEP_GROUP },
-  { title: 'Brush teeth', group: UPKEEP_GROUP, timesPerDay: 2 },
-  { title: 'Floss', group: UPKEEP_GROUP },
-  { title: 'Wash hair', group: UPKEEP_GROUP },
+  { title: 'Gallon of water', group: HYGIENE_GROUP },
+  { title: 'Brush teeth', group: HYGIENE_GROUP, timesPerDay: 2 },
+  { title: 'Floss', group: HYGIENE_GROUP },
+  { title: 'Shower', group: HYGIENE_GROUP },
+  { title: 'Wash hair', group: HYGIENE_GROUP },
 ]
-
-const ELSEWHERE_GROUPS: readonly {
-  readonly home: RecordHome
-  readonly label: string
-  /** Absent where Today is itself the screen that owns the rows. */
-  readonly to?: string
-}[] = [
-  { home: BASE, label: 'House', to: '/base' },
-  { home: TRAINING, label: 'Training', to: '/train' },
-]
-
-function DueElsewhere({ views }: { readonly views: readonly DailyView[] }) {
-  const groups = ELSEWHERE_GROUPS.map((group) => ({
-    ...group,
-    rows: views.filter((view) => view.daily.belongsTo === group.home),
-  })).filter((group) => group.rows.length > 0)
-
-  if (groups.length === 0) return null
-
-  return (
-    <div className="mt-3 space-y-3">
-      {groups.map((group) => (
-        <div key={group.home}>
-          <div className="mb-1 flex items-baseline justify-between gap-2">
-            <span className="text-ink-700 text-xs tracking-wide uppercase">{group.label}</span>
-            {group.to !== undefined && (
-              <Link to={group.to} className="text-ink-700 hover:text-ink-500 text-xs">
-                all →
-              </Link>
-            )}
-          </div>
-          <Card className="divide-ink-800 divide-y py-0">
-            {group.rows.map((view) => (
-              <DailyRow key={view.daily.id} view={view} />
-            ))}
-          </Card>
-        </div>
-      ))}
-    </div>
-  )
-}
 
 export function Dailies() {
   const dailies = useDailies('own-area')
@@ -1003,25 +938,39 @@ export function Dailies() {
    *
    * They are still here, because there is still nowhere else for them.
    * They are below everything due, under a heading that says what they
-   * are, in the same shape the House and Upkeep groups already use.
+   * are, in the same shape the House and Hygiene groups already use.
    */
   /*
-   * **This section is the day, across every home**, and it got much
-   * simpler when upkeep stopped being one. It was own habits, House,
-   * Training and a separately-fetched upkeep list that had to be
-   * excluded from `elsewhere` so nothing was counted twice; upkeep is a
-   * `group` label now, so those habits arrive in `views` with everything
-   * else and `GroupedDailies` puts them under their own heading.
+   * **This section is the day, across every home, and now it is one
+   * list.** House and Training used to be drawn by a `DueElsewhere` pass
+   * of their own, below the habits, grouped by where each was filed.
+   * That is what produced the report this pass answers: a habit given
+   * the group *House* on this screen appeared under a House heading in
+   * the first pass while the chores sat under a second House heading in
+   * the second, with nothing on screen to say why one name had two
+   * sections.
+   *
+   * They are one axis now — see `HOME_GROUP_LABELS`. A row's category is
+   * its home's label where it has a home and its group otherwise, so a
+   * chore and a habit somebody labelled House land in one place by
+   * construction rather than by anybody remembering to keep two passes
+   * in step. Nothing is re-filed: an own habit labelled House is still
+   * own-area, still pays `dailies.completed`, and is still managed here.
+   *
+   * The "all →" links to `/base` and `/train` went with that pass, and
+   * the reason is the banding rather than tidiness: a category now
+   * appears once per part of the day it has work in, so House with a
+   * morning chore and an evening one would draw the link twice. Both are
+   * bottom-nav tabs, so nothing became unreachable.
    *
    * What has to stay true is the rule that cost two attempts to find: a
    * count and the rows beneath it are the same claim. "2 left today"
    * over an empty list is the failure, and it is why `left` is built
-   * from the same two lists the section draws.
+   * from the same list the section draws.
    */
   const elsewhere = due.data ?? []
 
-  const outstanding = views.filter((view) => view.dueToday)
-  const outstandingElsewhere = elsewhere.filter((view) => view.dueToday)
+  const outstanding = [...views, ...elsewhere].filter((view) => view.dueToday)
 
   /*
    * **Done rows fold away, and this reverses a rule written directly
@@ -1039,7 +988,7 @@ export function Dailies() {
   const done = [...views, ...elsewhere].filter((view) => view.doneToday)
 
   /*
-   * Own habits only — which now includes upkeep. House and Training are
+   * Own habits only — which now includes hygiene. House and Training are
    * managed on their own screens, and `useDueElsewhere` never offers
    * their other days in the first place.
    */
@@ -1081,9 +1030,11 @@ export function Dailies() {
   /*
    * Counted across every home, because the sentence is about the day and
    * not about this section. "3 left today" that ignored the bins would
-   * be answering a question nobody asked.
+   * be answering a question nobody asked — and with one list the count
+   * and the rows cannot come apart, which is what two passes made
+   * possible.
    */
-  const left = outstanding.length + outstandingElsewhere.length
+  const left = outstanding.length
 
   /* Every title in use, so nothing is offered that already exists. */
   const taken = new Set(
@@ -1118,7 +1069,7 @@ export function Dailies() {
            * again, and what used to be the Upkeep chip is a group label
            * the suggestions carry.
            */
-          suggestions={UPKEEP_SUGGESTIONS.filter(
+          suggestions={HYGIENE_SUGGESTIONS.filter(
             (one) => !taken.has(one.title.trim().toLowerCase()),
           )}
           onDone={() => {
@@ -1134,9 +1085,15 @@ export function Dailies() {
         </Empty>
       )}
 
+      {/*
+        The day in bands, with the categories inside each — see
+        `DayBands`. The part of day is outermost because a screen called
+        Today answers "is this now" before "what sort of thing is this".
+      */}
       {showing.length > 0 && (
-        <GroupedDailies
+        <DayBands
           views={showing}
+          now={nowPart}
           render={(view) => <DailyRow key={view.daily.id} view={view} />}
         />
       )}
@@ -1153,32 +1110,36 @@ export function Dailies() {
         </button>
       )}
 
-      <DueElsewhere views={outstandingElsewhere} />
-
       {/*
         Both folds sit below everything the day asks for, in the order
         they are least likely to be wanted: what is finished, then what
-        is not for today at all. Neither is grouped by home — a fold is
-        already a lid, and headings inside one are structure nobody
-        asked to see.
+        is not for today at all. Neither is banded by part of day — a
+        fold is already a lid, and a whole second axis of headings inside
+        one is structure nobody asked to see. They are still grouped by
+        category, and `homeOrGroup` is what keeps a done chore and a done
+        habit labelled House under one heading here too.
       */}
       {done.length > 0 && (
         <Fold summary={`${counted(done.length, 'done', 'done')} today`}>
           <GroupedDailies
             views={done}
+            categoryOf={homeOrGroup}
             render={(view) => <DailyRow key={view.daily.id} view={view} />}
           />
         </Fold>
       )}
 
       {/*
-        No "all →" beside it, unlike House and Training: those point at
-        the screen that owns them, and this *is* that screen.
+        Own habits only, so nothing here is filed elsewhere — but it
+        takes `homeOrGroup` all the same, because the rule is the
+        screen's rather than the list's and a copy that differed would
+        only be waiting for the day this list stops being own-only.
       */}
       {otherDays.length > 0 && (
         <Fold summary={`${counted(otherDays.length, 'habit', 'habits')} on other days`}>
           <GroupedDailies
             views={otherDays}
+            categoryOf={homeOrGroup}
             render={(view) => <DailyRow key={view.daily.id} view={view} />}
           />
         </Fold>

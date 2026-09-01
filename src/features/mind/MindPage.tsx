@@ -17,6 +17,7 @@ import { matching, TRACKS, type TrackId } from '@/domain/mind/tracks'
 import { toMonthKey } from '@/domain/finance/reading'
 import { useServices } from '@/app/context'
 import { AddDaily, DailyRow } from '@/features/today/Dailies'
+import { groupOnly } from '@/domain/dailies/groups'
 import { GroupedDailies } from '@/features/today/DailyGroups'
 import { useDailies } from '@/features/today/dailies-hooks'
 
@@ -399,6 +400,7 @@ export function MindPage() {
           ) : (
             <GroupedDailies
               bare
+              categoryOf={groupOnly}
               views={study.data}
               render={(view) => <DailyRow key={view.daily.id} view={view} />}
             />

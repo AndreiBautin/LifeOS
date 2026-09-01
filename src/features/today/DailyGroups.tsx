@@ -1,7 +1,16 @@
 import type { DailyView } from '@/application/use-cases/dailies/dailies'
 import { Card } from '@/components/shared/primitives'
 
-import { byGroup, GROUP_SUGGESTIONS, groupNamesIn, sameGroup } from '@/domain/dailies/groups'
+import { PART_OF_DAY_LABELS, type PartOfDay } from '@/domain/dailies/daily'
+import {
+  byGroup,
+  byPartOfDay,
+  GROUP_SUGGESTIONS,
+  groupNamesIn,
+  homeOrGroup,
+  sameGroup,
+  type CategoryOf,
+} from '@/domain/dailies/groups'
 
 import { useDailies } from './dailies-hooks'
 
@@ -40,6 +49,7 @@ export function GroupedDailies({
   views,
   render,
   bare = false,
+  categoryOf,
 }: {
   readonly views: readonly DailyView[]
   readonly render: (view: DailyView) => React.ReactNode
@@ -47,12 +57,22 @@ export function GroupedDailies({
    * Render bands rather than cards, for the screens whose list already
    * sits inside one.
    *
-   * Base, Upkeep and Train each put their habits in a `Card` of their
-   * own; nesting a second card per group would draw a panel inside a
-   * panel for every category. Today owns its cards, so it does not pass
-   * this.
+   * Base and Train each put their habits in a `Card` of their own;
+   * nesting a second card per group would draw a panel inside a panel
+   * for every category. Today owns its cards, so it does not pass this.
    */
   readonly bare?: boolean
+  /**
+   * What names a category here — see `byGroup`.
+   *
+   * Required rather than defaulted, the rule every list that can answer
+   * two ways already follows. `groupOnly` is right for the three screens
+   * showing a single home, where reading the home would put every row
+   * under one heading repeating the name of the screen; Today passes
+   * `homeOrGroup`, which is what stops a chore and a habit labelled
+   * "House" drawing two sections with one name.
+   */
+  readonly categoryOf: CategoryOf
 }) {
   /*
    * Grouped on the dailies and mapped back to views by id, so `byGroup`
@@ -61,7 +81,10 @@ export function GroupedDailies({
    * the chronological sort the caller applied.
    */
   const byId = new Map(views.map((view) => [view.daily.id, view]))
-  const groups = byGroup(views.map((view) => view.daily))
+  const groups = byGroup(
+    views.map((view) => view.daily),
+    categoryOf,
+  )
 
   if (groups.length === 0) return null
 
@@ -108,6 +131,98 @@ export function GroupedDailies({
               return view === undefined ? null : render(view)
             }),
           )}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+/**
+ * The words for the band that names no part of the day.
+ *
+ * "Any time" rather than a fourth clock position, because that is what
+ * an absent `partOfDay` means: a habit that belongs to no point in the
+ * day rather than to the end of it. Calling it "Later" or "Night" would
+ * put a claim on the record that the record does not make.
+ */
+const ANY_TIME = 'Any time'
+
+/**
+ * The day in bands — morning, afternoon, evening — with the categories
+ * inside each.
+ *
+ * *"Group the dailies by morning, afternoon and evening, and then have
+ * the subcategories there."* The sequence is outermost because a screen
+ * called Today answers "is this now" before it answers "what sort of
+ * thing is this"; see `byPartOfDay` for the rest of that argument.
+ *
+ * **The part heading is the structure and the category heading is the
+ * label**, so they are drawn differently on purpose: the band gets the
+ * accent rule this app uses to mean "section" and the category keeps the
+ * small caps it already had. Two identically-styled headings nested one
+ * inside the other read as a list that has lost its place.
+ *
+ * **A single band draws no heading at all.** Somebody whose habits all
+ * run in the morning gets the list they had before, for the reason one
+ * unnamed group renders as a flat list: adding the *capability* to band
+ * should change nothing on a screen with nothing to band.
+ */
+export function DayBands({
+  views,
+  render,
+  now,
+}: {
+  readonly views: readonly DailyView[]
+  readonly render: (view: DailyView) => React.ReactNode
+  /**
+   * Which band is happening, lit rather than moved.
+   *
+   * The rule the rows themselves already follow: the current part is
+   * highlighted and nothing is reordered, because a list that sorts
+   * itself twice a day moves the row you reach for by position.
+   */
+  readonly now: PartOfDay
+}) {
+  const byId = new Map(views.map((view) => [view.daily.id, view]))
+  const bands = byPartOfDay(
+    views.map((view) => view.daily),
+    homeOrGroup,
+  )
+
+  if (bands.length === 0) return null
+
+  const inBand = (band: (typeof bands)[number]) =>
+    band.groups.flatMap((group) =>
+      group.dailies.map((daily) => byId.get(daily.id)).filter((view) => view !== undefined),
+    )
+
+  if (bands.length === 1 && bands[0] !== undefined) {
+    return <GroupedDailies views={inBand(bands[0])} render={render} categoryOf={homeOrGroup} />
+  }
+
+  return (
+    <div className="space-y-4">
+      {bands.map((band) => (
+        <div key={band.part ?? '·anytime'}>
+          <div className="mb-1.5 flex items-center gap-2">
+            <span
+              aria-hidden
+              className={[
+                'h-3.5 w-0.5 rounded-full',
+                band.part === now ? 'bg-accent-500' : 'bg-ink-800',
+              ].join(' ')}
+            />
+            <span
+              className={[
+                'text-xs font-semibold tracking-wide uppercase',
+                band.part === now ? 'text-accent-400' : 'text-ink-600',
+              ].join(' ')}
+            >
+              {band.part === undefined ? ANY_TIME : PART_OF_DAY_LABELS[band.part]}
+            </span>
+          </div>
+
+          <GroupedDailies views={inBand(band)} render={render} categoryOf={homeOrGroup} />
         </div>
       ))}
     </div>

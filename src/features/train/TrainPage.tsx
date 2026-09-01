@@ -1,3 +1,4 @@
+import { groupOnly } from '@/domain/dailies/groups'
 import { GroupedDailies } from '@/features/today/DailyGroups'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { TRAINING } from '@/domain/base/base'
@@ -110,6 +111,7 @@ function TrainingHabits() {
         ) : (
           <GroupedDailies
             bare
+            categoryOf={groupOnly}
             views={views}
             render={(view) => <DailyRow key={view.daily.id} view={view} />}
           />

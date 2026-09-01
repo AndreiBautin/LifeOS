@@ -1,9 +1,18 @@
 import { describe, expect, it } from 'vitest'
 
 import { asDailyId } from '@/domain/ids/ids'
+import { BASE, TRAINING } from '@/domain/base/base'
 
 import type { Daily, PartOfDay } from './daily'
-import { byGroup, groupNamesIn, normaliseGroup, sameGroup } from './groups'
+import {
+  byGroup,
+  byPartOfDay,
+  groupNamesIn,
+  groupOnly,
+  homeOrGroup,
+  normaliseGroup,
+  sameGroup,
+} from './groups'
 
 function daily(title: string, group?: string, partOfDay?: PartOfDay): Daily {
   return {
@@ -16,6 +25,13 @@ function daily(title: string, group?: string, partOfDay?: PartOfDay): Daily {
     ...(partOfDay === undefined ? {} : { partOfDay }),
   }
 }
+
+function chore(title: string, partOfDay?: PartOfDay): Daily {
+  return { ...daily(title, undefined, partOfDay), belongsTo: BASE }
+}
+
+/** The rule for a screen showing one home — Base, Train, Mind. */
+const byGroupOnly = (dailies: readonly Daily[]) => byGroup(dailies, groupOnly)
 
 describe('a group name', () => {
   it('is absent rather than empty', () => {
@@ -41,7 +57,7 @@ describe('a group name', () => {
 
 describe('grouping habits', () => {
   it('collects habits under one name however it was typed', () => {
-    const groups = byGroup([
+    const groups = byGroupOnly([
       daily('Creatine', 'Supplements'),
       daily('Vitamin D', 'supplements'),
       daily('Feed the dog', 'Pet care'),
@@ -54,7 +70,10 @@ describe('grouping habits', () => {
   })
 
   it('falls back to the alphabet when two groups run at the same time', () => {
-    const groups = byGroup([daily('Creatine', 'Supplements'), daily('Feed the dog', 'Pet care')])
+    const groups = byGroupOnly([
+      daily('Creatine', 'Supplements'),
+      daily('Feed the dog', 'Pet care'),
+    ])
 
     expect(groups.map((one) => one.name)).toEqual(['Pet care', 'Supplements'])
   })
@@ -67,7 +86,7 @@ describe('grouping habits', () => {
    * disagreeing inside one list.
    */
   it('orders groups by their earliest habit, not alphabetically', () => {
-    const groups = byGroup([
+    const groups = byGroupOnly([
       daily('Floss', 'Teeth', 'evening'),
       daily('Creatine', 'Supplements', 'morning'),
     ])
@@ -76,7 +95,7 @@ describe('grouping habits', () => {
   })
 
   it('puts a group where its earliest habit is, not its last', () => {
-    const groups = byGroup([
+    const groups = byGroupOnly([
       daily('Walk the dog', 'Pet care', 'evening'),
       daily('Feed the dog', 'Pet care', 'morning'),
       daily('Brush', 'Teeth', 'afternoon'),
@@ -92,7 +111,7 @@ describe('grouping habits', () => {
    * is a category nobody chose.
    */
   it('puts the ungrouped habits last, however early they run', () => {
-    const groups = byGroup([
+    const groups = byGroupOnly([
       daily('Make the bed', undefined, 'morning'),
       daily('Floss', 'Teeth', 'evening'),
     ])
@@ -103,7 +122,7 @@ describe('grouping habits', () => {
   it('keeps the order it was given inside a group', () => {
     // Whatever sort the caller applied — chronological, on every screen
     // that shows these — has to survive the grouping.
-    const groups = byGroup([
+    const groups = byGroupOnly([
       daily('First', 'Admin'),
       daily('Second', 'Admin'),
       daily('Third', 'Admin'),
@@ -113,14 +132,94 @@ describe('grouping habits', () => {
   })
 
   it('says nothing about an empty list', () => {
-    expect(byGroup([])).toEqual([])
+    expect(byGroupOnly([])).toEqual([])
   })
 
   it('makes one unnamed group when nothing is grouped', () => {
-    const groups = byGroup([daily('One'), daily('Two')])
+    const groups = byGroupOnly([daily('One'), daily('Two')])
 
     expect(groups).toHaveLength(1)
     expect(groups[0]?.name).toBeUndefined()
+  })
+})
+
+/*
+ * The reported bug: *"adding a daily to the house category on the
+ * homepage does not group it with the other house items from base,
+ * instead creating a separate house category."* Today drew the homes in
+ * one pass and the groups in another, so one name came out as two
+ * sections. These are the guard on that not returning.
+ */
+describe('naming a category across every home', () => {
+  it('puts a house chore and a habit labelled House under one name', () => {
+    const groups = byGroup([chore('Bins'), daily('Hoover', 'House')], homeOrGroup)
+
+    expect(groups).toHaveLength(1)
+    expect(groups[0]?.name).toBe('House')
+    expect(groups[0]?.dailies.map((one) => one.title)).toEqual(['Bins', 'Hoover'])
+  })
+
+  it('reads the home before the group, so a filed chore keeps its screen name', () => {
+    // A chore filed to Base and also labelled by hand is still house
+    // work — the home is the decision and the group is only a label.
+    const filed: Daily = { ...daily('Bins', 'Tidying'), belongsTo: BASE }
+
+    expect(homeOrGroup(filed)).toBe('House')
+    expect(homeOrGroup(daily('Hoover', 'Tidying'))).toBe('Tidying')
+  })
+
+  it('names the training home too', () => {
+    const carbs: Daily = { ...daily('Pre-workout carbs'), belongsTo: TRAINING }
+
+    expect(homeOrGroup(carbs)).toBe('Training')
+  })
+
+  it('is not what a single-home screen asks, or every chore reads as House', () => {
+    // Base lists chores and nothing else; reading the home there would
+    // put the whole screen under one heading repeating its own name.
+    expect(groupOnly(chore('Bins'))).toBeUndefined()
+  })
+})
+
+describe('banding the day', () => {
+  it('runs morning, afternoon, evening, then whatever names no part', () => {
+    const bands = byPartOfDay(
+      [
+        daily('Floss', 'Hygiene', 'evening'),
+        daily('Creatine', 'Supplements'),
+        daily('Walk', 'Pet care', 'morning'),
+        daily('Emails', 'Admin', 'afternoon'),
+      ],
+      groupOnly,
+    )
+
+    expect(bands.map((one) => one.part)).toEqual(['morning', 'afternoon', 'evening', undefined])
+  })
+
+  it('draws no band for a part of the day with nothing in it', () => {
+    // An empty Afternoon heading claims the afternoon asks something of
+    // you, which is the opposite of what the folding above is for.
+    const bands = byPartOfDay([daily('Walk', 'Pet care', 'morning')], groupOnly)
+
+    expect(bands.map((one) => one.part)).toEqual(['morning'])
+  })
+
+  it('groups inside a band, so the categories sit under the time', () => {
+    const bands = byPartOfDay(
+      [
+        chore('Bins', 'morning'),
+        daily('Brush', 'Hygiene', 'morning'),
+        daily('Floss', 'Hygiene', 'evening'),
+      ],
+      homeOrGroup,
+    )
+
+    expect(bands[0]?.groups.map((one) => one.name)).toEqual(['House', 'Hygiene'])
+    expect(bands[1]?.groups.map((one) => one.name)).toEqual(['Hygiene'])
+  })
+
+  it('says nothing about an empty list', () => {
+    expect(byPartOfDay([], homeOrGroup)).toEqual([])
   })
 })
 

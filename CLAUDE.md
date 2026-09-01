@@ -2534,6 +2534,94 @@ kept is still a day it was kept. The cadence is still not there, for
 the reason it never was — it decides _which days were expected_ and
 re-reads every streak the habit ever had.
 
+**A home and a group are one axis on the screen that shows both, and
+they were two.** Reported: _"adding a daily to the house category on the
+homepage does not group it with the other house items from base, instead
+creating a separate house category."_ Exactly what happened. Today drew
+its own habits through `byGroup` and then ran a second `DueElsewhere`
+pass over House and Training, so a habit somebody labelled **House**
+appeared under a House heading in the first pass while the chores sat
+under a second House heading in the second — one name, two sections, and
+nothing on screen to say why.
+
+`homeOrGroup` is the fix and it is a **display** rule only: a row's
+category is `HOME_GROUP_LABELS[belongsTo]` where it has a home and its
+group otherwise. Nothing is re-filed. An own-area habit labelled House
+is still own-area, still pays `dailies.completed`, and is still managed
+on Today — which is the distinction this file draws everywhere, applied
+in the one place it had been drawn twice. Reading a typed group as a
+_home_ instead would be a string silently deciding which area pays,
+which is the line that must not move.
+
+**`byGroup` takes the rule rather than defaulting to one**, the way
+`listProjects` takes a required `HomeFilter`, because the wrong answer
+is silent in both directions: `homeOrGroup` on Base puts every chore
+under one heading called House, and `groupOnly` on Today draws the two
+House sections again. `groupOnly` is what Base, Train and Mind pass.
+
+**House and Training are still absent from the group chips.** They are
+home names, and a chip that files by label under a name the app also
+uses as a decision is how somebody ends up with a house chore Base has
+never heard of. The merge exists for the person who types it anyway.
+
+**`DueElsewhere` is gone and the "all →" links went with it.** They were
+not dropped for tidiness: a category now appears once per part of the
+day it has work in, so House with a morning chore and an evening one
+would draw the link twice. `/base` and `/train` are both bottom-nav
+tabs, so nothing became unreachable. What that merge buys is that
+`left` and the rows beneath it are now built from **one** list — the
+count and the rows cannot come apart, which two passes made possible and
+which this file already records costing two attempts to get right.
+
+**The day is banded by part, and the categories sit inside the bands.**
+_"Group the dailies by morning, afternoon and evening, and then have the
+subcategories there."_ `byPartOfDay` in `domain/dailies/groups.ts`,
+`DayBands` in `features/today/DailyGroups.tsx`.
+
+**Which axis is outer is the whole of that decision.** A day is read as
+a sequence and a category is read as a kind of thing, so the sequence
+has to be outermost or the screen answers "what sort of task is this"
+before it answers "is this now" — and _now_ is the question a screen
+called Today exists for.
+
+A band per part that **has** habits, never one per part: an empty
+Afternoon heading claims the afternoon asks something of you, which is
+the opposite of what the later-today fold is for. The unbanded habits
+come last under **Any time**, not a fourth clock position — an absent
+`partOfDay` means the habit belongs to no point in the day rather than
+to the end of it. A single band draws no heading at all, the rule one
+unnamed group already follows.
+
+**The current band is lit, not moved**, which is the rule the rows
+themselves have followed since parts of day arrived: a list that sorts
+itself twice a day moves the row you reach for by position.
+
+**Upkeep is called Hygiene.** _"Upkeep doesn't seem like the correct
+term, cause upkeep could relate to upkeeping anything — that one is more
+hygiene stuff since it's brushing, showers, etc."_ Right, and the word
+was a leftover from when this was a **home** covering the body in
+general; as a group it has only ever meant brushing, flossing and
+washing.
+
+Renaming a label costs nothing the way renaming a home would. What it
+costs is a **split**, which is the same defect as the two House
+headings arriving by another route: rows stored as _Upkeep_ would sit
+beside new ones as _Hygiene_. `fromStoredDaily` reads the old name as
+the new one whatever a row's home is — a derivation, not a migration, so
+a row converges the next time anything saves it, which a tick does.
+Verified by ticking a legacy row and reading `group: 'Hygiene'` back off
+IndexedDB.
+
+**The price is stated because it inverts a rule held elsewhere:** nobody
+can now have a group genuinely called Upkeep, for house maintenance say,
+because the read path renames it. That is the app having an opinion
+about somebody's label. It is taken once, deliberately, on the grounds
+that every Upkeep group in existence came from this app's own suggestion
+list or from the legacy home — and once real data has converged,
+`LEGACY_HYGIENE_GROUP` can go. _Teeth_ left `GROUP_SUGGESTIONS` at the
+same time, because it and Hygiene were then offering the same habits
+under two names.
+
 **A Codex goal carries a cadence, and it is the habits’ `Cadence`.**
 "I only read/game on certain days" — without one a reading goal meant
 _every_ day, so somebody reading on Tuesdays and Thursdays failed five

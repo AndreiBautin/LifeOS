@@ -64,7 +64,7 @@ import type { Tombstone, TombstonedCollection } from '@/domain/sync/tombstone'
 import { tombstoneKey } from '@/domain/sync/tombstone'
 
 import { fromStored, toStored, type AppDatabase, type StoredDaily } from './database'
-import { UPKEEP_GROUP } from '@/domain/dailies/groups'
+import { HYGIENE_GROUP, LEGACY_HYGIENE_GROUP } from '@/domain/dailies/groups'
 
 /**
  * IndexedDB implementations of the domain's repository ports.
@@ -499,34 +499,44 @@ export function createPlaceRepository(db: AppDatabase, clock: Clock): PlaceRepos
 }
 
 /**
- * A stored habit, read as this build understands homes.
+ * A stored habit, read as this build understands homes and group names.
  *
- * Upkeep was `belongsTo: 'vitals'` and is the `Upkeep` **group** now.
- * A row written by the old build matches no `RecordHome` and is not
- * own-area either, so without this it would be filtered off every
- * screen while sitting in the database — the worst kind of loss,
- * because nothing errors and the record is still there.
+ * Two derivations, one shape, and the second is why they had to be
+ * separated. Upkeep was `belongsTo: 'vitals'` and became a **group**; a
+ * row written by the old build matches no `RecordHome` and is not
+ * own-area either, so without the first it would be filtered off every
+ * screen while sitting in the database — the worst kind of loss, because
+ * nothing errors and the record is still there.
+ *
+ * The group itself was then renamed from *Upkeep* to *Hygiene*, so the
+ * second maps that name whatever a row's home is. Applying it only to
+ * legacy rows would leave a device holding both names at once, drawn as
+ * two categories — the split this rename exists to avoid.
  *
  * **A derivation, not a migration.** Nothing is rewritten on read; the
  * row normalises the next time something saves it, since callers hand
- * back what they were given. That is the rule `shelfOf` follows for an
- * upgrade with no shelf, and it is what keeps this safe across sync: a
- * device still on the old build goes on reading its own copy the way it
- * always did.
+ * back what they were given, and ticking a habit saves it. That is the
+ * rule `shelfOf` follows for an upgrade with no shelf, and it is what
+ * keeps this safe across sync: a device still on the old build goes on
+ * reading its own copy the way it always did.
  *
- * An existing `group` wins. Somebody who had already labelled a chore
- * meant that label, and overwriting it here would be this function
- * having an opinion about their filing.
+ * An existing `group` wins over the legacy home. Somebody who had
+ * already labelled a chore meant that label, and overwriting it here
+ * would be this function having an opinion about their filing — which
+ * the rename above then does exactly once, deliberately, for one name.
  */
 export function fromStoredDaily(stored: StoredDaily): Daily {
-  if (stored.belongsTo !== LEGACY_UPKEEP_HOME) return stored as Daily
+  const renamed =
+    stored.group === LEGACY_HYGIENE_GROUP ? { ...stored, group: HYGIENE_GROUP } : stored
 
-  const { belongsTo: _retired, ...rest } = stored
+  if (renamed.belongsTo !== LEGACY_UPKEEP_HOME) return renamed as Daily
 
-  return { ...rest, group: stored.group ?? UPKEEP_GROUP }
+  const { belongsTo: _retired, ...rest } = renamed
+
+  return { ...rest, group: renamed.group ?? HYGIENE_GROUP }
 }
 
-/** The home upkeep habits were filed under before it became a label. */
+/** The home hygiene habits were filed under before it became a label. */
 const LEGACY_UPKEEP_HOME = 'vitals'
 
 export function createDailyRepository(db: AppDatabase, clock: Clock): DailyRepository {
