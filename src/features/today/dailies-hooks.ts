@@ -15,6 +15,7 @@ import {
   recadenceDaily,
   relabelDaily,
   type Recadence,
+  type Relabel,
   undoOn,
   retireDaily,
   undoToday,
@@ -206,9 +207,9 @@ export function useUndoToday() {
  * and the reason `retireDaily` does not either. XP is for things done.
  */
 export function useRelabelDaily() {
-  return useDailyMutation<{ id: DailyId; title: string; group?: string }>(
+  return useDailyMutation<{ id: DailyId } & Relabel>(
     'dailies.renamed',
-    ({ id, title, group }, services) => relabelDaily(id, title, group, services),
+    ({ id, ...change }, services) => relabelDaily(id, change, services),
   )
 }
 

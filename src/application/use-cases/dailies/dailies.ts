@@ -205,30 +205,65 @@ export async function retireDaily(id: DailyId, deps: DailyDeps): Promise<void> {
  * An empty name is refused rather than accepted and shown as a blank
  * row, matching `addDaily`. An empty *group* is accepted and means
  * ungrouped, which is how a habit leaves a group it no longer suits.
+ *
+ * **The home is here too, and it is the one thing in this call that is
+ * not a label.** Reported: *"with uncategorised dailies I still can't
+ * move them into the home section with all the other house tasks."*
+ * True — the screen drew a **House** heading and the control that picks
+ * a heading could not choose it, because House is a home and this field
+ * only ever set a group. The only route was an unlabelled icon on the
+ * row whose accessible name said *Base*, which is the area's name and
+ * not the word on the heading.
+ *
+ * Since the screen shows homes and groups as **one** axis, the control
+ * that picks a section has to offer both, and this is the call that
+ * writes it. What it does differently is stated on the screen: a group
+ * is a label and a home decides which area pays the XP, so filing a
+ * habit to House means its ticks pay `base.chore-kept` from then on.
+ *
+ * **One save, not two.** A title, a group and a home are three fields of
+ * one record, and two read-modify-writes fired together lose one of
+ * them — the bug `reshapeStage` exists for, where a rename and a
+ * retarget sent separately had the second read the copy from before the
+ * first had saved. One form press is one edit.
  */
+export interface Relabel {
+  readonly title: string
+  readonly group: string | undefined
+  /**
+   * Where it is filed. `undefined` means the record's own area.
+   *
+   * Always stated rather than optional, because "leave the home alone"
+   * and "move it back to its own area" are the same value under an
+   * optional field and opposite intentions. The form knows which it
+   * means; a default here would be this function guessing.
+   */
+  readonly home: RecordHome | undefined
+}
+
 export async function relabelDaily(
   id: DailyId,
-  title: string,
-  group: string | undefined,
+  change: Relabel,
   deps: DailyDeps,
 ): Promise<{ readonly error?: string }> {
-  const trimmed = title.trim()
+  const trimmed = change.title.trim()
   if (trimmed === '') return { error: 'A daily needs a name.' }
 
   const daily = await deps.dailies.byId(id)
   if (daily === undefined) return {}
 
-  const named = normaliseGroup(group)
+  const named = normaliseGroup(change.group)
 
   // Dropped from the spread rather than set to undefined: under
   // `exactOptionalPropertyTypes` a key holding undefined is a key, and
   // it would travel over sync as one.
-  const { group: _cleared, ...rest } = daily
+  const { group: _cleared, belongsTo: _refiled, ...rest } = daily
 
   await deps.dailies.save({
     ...rest,
     title: trimmed,
     ...(named === undefined ? {} : { group: named }),
+    ...(change.home === undefined ? {} : { belongsTo: change.home }),
   })
 
   return {}

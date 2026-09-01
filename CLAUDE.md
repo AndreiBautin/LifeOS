@@ -2178,10 +2178,49 @@ is silent in both directions: `homeOrGroup` on Base puts every chore
 under one heading called House, and `groupOnly` on Today draws the two
 House sections again. `groupOnly` is what Base, Train and Mind pass.
 
-**House and Training are still absent from the group chips.** They are
-home names, and a chip that files by label under a name the app also
-uses as a decision is how somebody ends up with a house chore Base has
-never heard of. The merge exists for the person who types it anyway.
+**The picker offers House, and that reverses a rule written here one
+pass earlier.** It said House and Training must stay out of the group
+chips, because a chip filing by _label_ under a name the app also uses
+as a _decision_ is how somebody ends up with a house chore Base has
+never heard of. That objection is still correct and the conclusion drawn
+from it was wrong.
+
+Reported next: _"with uncategorised dailies, I still can't move them
+into the home section with all the other house tasks."_ True, and it is
+the same defect as the two House headings arriving from the other side —
+**the screen drew a heading the control that picks headings could not
+choose.** The only route was an unlabelled icon on the row whose
+accessible name said _Base_, which is the area's name and not the word
+on the heading, so nothing connected the two.
+
+The fix answers the original objection rather than ignoring it: the chip
+does not set a label called House, it **moves the record** — `belongsTo`
+— which is what House already means. `relabelDaily` takes the home for
+that reason, in **one save** with the title and the group, because three
+fields of one record sent as two writes lose one of them.
+
+**Only House is offered as a destination.** It is the one home whose
+records are routinely created in the wrong place, which is the whole
+report. Training is not: those habits mean nothing on a day you do not
+lift, they are created on the screen that knows which days those are,
+and a chip here would be a way to make one by accident. A record already
+filed to Training still shows its own chip, or the field would draw
+nothing pressed under a Training heading — a control disagreeing with
+the list it edits.
+
+**Choosing a home clears the group.** `homeOrGroup` puts the home first,
+so a group kept alongside one is a label nothing can display and nobody
+can correct. The field is labelled **Section**, not Group, because that
+is what it now picks and what the headings are called; `Daily.group` is
+still `group` in the domain, the screen-word / type-word split this file
+already documents for Quests over `Project`.
+
+**_Tidying_ left `GROUP_SUGGESTIONS` in the same breath**, reported in
+the same sentence: _"it seems redundant with tidying too."_ It is —
+sweeping the kitchen is house work, House is a section, and offering
+both invites one household's chores to be split across two headings
+meaning the same thing. A group somebody already has called Tidying is
+untouched and still offered, since names in use lead the row.
 
 **`DueElsewhere` is gone and the "all →" links went with it.** They were
 not dropped for tidiness: a category now appears once per part of the

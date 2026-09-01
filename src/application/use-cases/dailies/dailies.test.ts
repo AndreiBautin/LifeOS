@@ -63,7 +63,11 @@ describe('relabelDaily', () => {
   it('keeps every day the habit was kept on', async () => {
     const services = deps([habit()])
 
-    await relabelDaily(asDailyId('water'), 'Gallon of water', undefined, services)
+    await relabelDaily(
+      asDailyId('water'),
+      { title: 'Gallon of water', group: undefined, home: undefined },
+      services,
+    )
 
     const after = services.stored[0]
     expect(after?.title).toBe('Gallon of water')
@@ -80,7 +84,11 @@ describe('relabelDaily', () => {
   it('refuses a blank name and leaves the record alone', async () => {
     const services = deps([habit()])
 
-    const result = await relabelDaily(asDailyId('water'), '   ', undefined, services)
+    const result = await relabelDaily(
+      asDailyId('water'),
+      { title: '   ', group: undefined, home: undefined },
+      services,
+    )
 
     expect(result.error).toBeDefined()
     expect(services.stored[0]?.title).toBe('Water')
@@ -89,7 +97,11 @@ describe('relabelDaily', () => {
   it('trims, so a stray space does not become part of the name', async () => {
     const services = deps([habit()])
 
-    await relabelDaily(asDailyId('water'), '  Gallon of water  ', undefined, services)
+    await relabelDaily(
+      asDailyId('water'),
+      { title: '  Gallon of water  ', group: undefined, home: undefined },
+      services,
+    )
 
     expect(services.stored[0]?.title).toBe('Gallon of water')
   })
@@ -97,7 +109,11 @@ describe('relabelDaily', () => {
   it('does nothing for an id that is not there', async () => {
     const services = deps([habit()])
 
-    const result = await relabelDaily(asDailyId('missing'), 'Something else', undefined, services)
+    const result = await relabelDaily(
+      asDailyId('missing'),
+      { title: 'Something else', group: undefined, home: undefined },
+      services,
+    )
 
     expect(result.error).toBeUndefined()
     expect(services.stored).toHaveLength(1)
@@ -135,7 +151,11 @@ describe('grouping a habit', () => {
   it('changes the group without touching the days it was kept', async () => {
     const services = deps([{ ...habit(), done: ['2026-08-29', '2026-08-30'] }])
 
-    await relabelDaily(asDailyId('water'), 'Water', 'Hydration', services)
+    await relabelDaily(
+      asDailyId('water'),
+      { title: 'Water', group: 'Hydration', home: undefined },
+      services,
+    )
 
     expect(services.stored[0]?.group).toBe('Hydration')
     expect(services.stored[0]?.done).toEqual(['2026-08-29', '2026-08-30'])
@@ -144,7 +164,7 @@ describe('grouping a habit', () => {
   it('takes a habit out of a group when the field is cleared', async () => {
     const services = deps([{ ...habit(), group: 'Supplements' }])
 
-    await relabelDaily(asDailyId('water'), 'Water', '', services)
+    await relabelDaily(asDailyId('water'), { title: 'Water', group: '', home: undefined }, services)
 
     // Removed, not set to undefined: a key holding undefined is a key,
     // and it would travel over sync as one.
@@ -391,5 +411,70 @@ describe('ticking one part of the day', () => {
     // No second entry: the domain returned the same object, so nothing
     // was written and no sync traffic was produced.
     expect(services.stored[0]?.done).toEqual(['2026-08-30#morning'])
+  })
+})
+
+/*
+ * Reported: *"with uncategorised dailies I still can't move them into
+ * the home section with all the other house tasks."* The screen drew a
+ * House heading and the control that picks a heading could not choose
+ * it, because House is a home and that field only ever set a group.
+ */
+describe('filing a habit to a section', () => {
+  it('moves an ungrouped habit into House', async () => {
+    const services = deps([habit()])
+
+    await relabelDaily(
+      asDailyId('water'),
+      { title: 'Water', group: undefined, home: 'base' },
+      services,
+    )
+
+    expect(services.stored[0]?.belongsTo).toBe('base')
+  })
+
+  it('sends it back to its own area, rather than leaving the key behind', async () => {
+    const services = deps([{ ...habit(), belongsTo: 'base' as const }])
+
+    await relabelDaily(
+      asDailyId('water'),
+      { title: 'Water', group: undefined, home: undefined },
+      services,
+    )
+
+    // Dropped, not set to undefined: a key holding undefined is a key,
+    // and it would travel over sync as one.
+    expect('belongsTo' in (services.stored[0] ?? {})).toBe(false)
+  })
+
+  it('writes the name, the group and the home in one save', async () => {
+    // Three fields of one record. Sent separately they are two
+    // read-modify-writes of the same row and one of them is lost — the
+    // bug `reshapeStage` exists for.
+    const services = deps([habit()])
+
+    await relabelDaily(
+      asDailyId('water'),
+      { title: 'Hoover the hall', group: 'Pet care', home: 'base' },
+      services,
+    )
+
+    const after = services.stored[0]
+    expect(after?.title).toBe('Hoover the hall')
+    expect(after?.group).toBe('Pet care')
+    expect(after?.belongsTo).toBe('base')
+  })
+
+  it('keeps every day it was kept on, because a move is not a re-create', async () => {
+    const kept = ['2026-08-28', '2026-08-29']
+    const services = deps([{ ...habit(), done: kept }])
+
+    await relabelDaily(
+      asDailyId('water'),
+      { title: 'Water', group: undefined, home: 'base' },
+      services,
+    )
+
+    expect(services.stored[0]?.done).toEqual(kept)
   })
 })

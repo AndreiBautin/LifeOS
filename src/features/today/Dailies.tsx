@@ -134,6 +134,7 @@ export function RenameDaily({
   const rename = useRelabelDaily()
   const [title, setTitle] = useState(daily.title)
   const [group, setGroup] = useState(daily.group ?? '')
+  const [home, setHome] = useState(daily.belongsTo)
   const [showingCadence, setShowingCadence] = useState(false)
 
   return (
@@ -142,7 +143,13 @@ export function RenameDaily({
       onSubmit={(event) => {
         event.preventDefault()
         if (title.trim() === '') return
-        rename.mutate({ id: daily.id, title, group }, { onSuccess: onDone })
+        /*
+         * One mutation, carrying all three. A title, a group and a home
+         * are three fields of one record, and sending them separately is
+         * two read-modify-writes of the same row — the second reads the
+         * copy from before the first saved, and one of them is lost.
+         */
+        rename.mutate({ id: daily.id, title, group, home }, { onSuccess: onDone })
       }}
     >
       <div className="flex items-center gap-2">
@@ -171,10 +178,12 @@ export function RenameDaily({
       </div>
 
       {/*
-        Labels first: the title and the group. Both leave the record
-        meaning what it meant, and every day kept is still kept.
+        The title, then the section. A title and a group are labels — the
+        record means what it meant and every day kept is still kept — and
+        House is the one choice here that moves it, which the field says
+        under the chips.
       */}
-      <GroupField value={group} onChange={setGroup} />
+      <GroupField value={group} onChange={setGroup} home={home} onHomeChange={setHome} />
 
       {/*
         The cadence, behind a press, because it is the one edit here that
@@ -757,6 +766,12 @@ export function AddDaily({
   const [times, setTimes] = useState('1')
   const [parts, setParts] = useState<readonly PartOfDay[]>([])
   const [group, setGroup] = useState('')
+  /*
+   * Only the screens showing more than one home let this be chosen —
+   * Base and Train pass their own `home` and force it, so a chip there
+   * would be a control that cannot change anything.
+   */
+  const [filed, setFiled] = useState<RecordHome | undefined>(undefined)
 
   const toggle = (day: number): void => {
     setDays(days.includes(day) ? days.filter((one) => one !== day) : [...days, day])
@@ -776,6 +791,7 @@ export function AddDaily({
               ...(howMany > 1 ? { timesPerDay: howMany } : {}),
               ...(parts.length === 0 ? {} : { partsOfDay: parts }),
               ...(group.trim() === '' ? {} : { group }),
+              ...(filed === undefined ? {} : { belongsTo: filed }),
               // No days picked means every day, which is what somebody who
               // ignored this row meant by ignoring it.
               cadence:
@@ -854,7 +870,12 @@ export function AddDaily({
           actually drink. Pressing a chip that is already chosen clears
           it, so leaving a group needs no separate control.
         */}
-        <GroupField value={group} onChange={setGroup} />
+        <GroupField
+          value={group}
+          onChange={setGroup}
+          home={filed}
+          {...(home === undefined ? { onHomeChange: setFiled } : {})}
+        />
 
         {/*
           How many times on each of those days. Separate from the cadence

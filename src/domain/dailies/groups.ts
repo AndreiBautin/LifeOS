@@ -33,10 +33,17 @@ import { PARTS_OF_DAY, type Daily, type DailyOccurrence, type PartOfDay } from '
  * Teeth is untouched and still offered, since `groupNamesIn` puts the
  * names in use ahead of these.
  *
- * **House and Training are not here on purpose.** They name homes, and
- * a chip that files a habit by *label* under a name the app also uses
- * as a *decision* is how somebody ends up with a house chore that Base
- * has never heard of. Those screens have an Add of their own.
+ * *Tidying* went the same way and for the same reason, reported the
+ * same way: *"it seems redundant with tidying too."* It is — sweeping
+ * the kitchen is house work, House is a section on the screen, and
+ * offering both invites one household's chores to be split between two
+ * headings that mean the same thing.
+ *
+ * **House is still not a group, and is now offered beside these.** It
+ * names a *home*, so a chip setting it as a label would be a house
+ * chore Base has never heard of. `GroupField` offers it as what it is —
+ * a move — which is what makes the screen's one axis pickable from one
+ * control.
  */
 /**
  * The one group name the app itself writes.
@@ -85,7 +92,6 @@ export const GROUP_SUGGESTIONS = [
   'Supplements',
   'Pet care',
   'Skin',
-  'Tidying',
   'Admin',
 ] as const
 

@@ -10,10 +10,12 @@ import {
   type DailyOccurrence,
   type PartOfDay,
 } from '@/domain/dailies/daily'
+import { BASE, type RecordHome } from '@/domain/base/base'
 import {
   byGroup,
   byPartOfDay,
   GROUP_SUGGESTIONS,
+  HOME_GROUP_LABELS,
   groupNamesIn,
   homeOrGroup,
   sameGroup,
@@ -306,9 +308,21 @@ export function DayBands({
 export function GroupField({
   value,
   onChange,
+  home,
+  onHomeChange,
 }: {
   readonly value: string
   readonly onChange: (next: string) => void
+  /** Where the record is filed. Only read when `onHomeChange` is given. */
+  readonly home?: RecordHome | undefined
+  /**
+   * Given by the screens that show more than one home, which is Today.
+   *
+   * Absent means this field picks groups only, which is right for Base,
+   * Train and Mind: each shows a single home and offering a move to the
+   * one it already is would be a control that does nothing.
+   */
+  readonly onHomeChange?: (next: RecordHome | undefined) => void
 }) {
   /*
    * Read across *every* home, not just this one. A household with a
@@ -324,15 +338,65 @@ export function GroupField({
     ...GROUP_SUGGESTIONS.filter((one) => !used.some((u) => sameGroup(u, one))),
   ]
 
+  /*
+   * The homes on offer: House, plus whichever this record is already
+   * filed to.
+   *
+   * **House alone is offered as a destination**, because it is the one
+   * home whose records are routinely created in the wrong place — the
+   * hoovering added on Today before anybody noticed it was house work,
+   * which is the report this answers. Training is not offered: those
+   * habits only mean anything on a day you lift, they are created on the
+   * screen that knows which days those are, and a chip here would be a
+   * way to make one by accident.
+   *
+   * A record already filed to Training still shows its own chip, or the
+   * field would draw nothing pressed while the screen above it drew a
+   * Training heading — a control that disagrees with the list it edits.
+   */
+  const homes: readonly RecordHome[] =
+    onHomeChange === undefined ? [] : [BASE, ...(home !== undefined && home !== BASE ? [home] : [])]
+
   return (
     <div className="space-y-1.5">
       <span className="text-ink-500 block text-xs font-medium tracking-wide uppercase">
-        Group · optional
+        Section · optional
       </span>
 
       <div className="-mx-1 flex gap-1 overflow-x-auto px-1 pb-1">
+        {homes.map((one) => {
+          const chosen = home === one
+
+          return (
+            <button
+              key={one}
+              type="button"
+              aria-pressed={chosen}
+              className={[
+                CHIP,
+                chosen
+                  ? 'border-accent-500 bg-accent-500/15 text-accent-400'
+                  : 'border-ink-800 text-ink-500',
+              ].join(' ')}
+              onClick={() => {
+                /*
+                 * Choosing a home clears the group, because the home
+                 * wins in `homeOrGroup` and a label that cannot be seen
+                 * is a field nobody can correct. Pressing the chosen one
+                 * sends it back to its own area, the way a group chip
+                 * clears itself.
+                 */
+                onHomeChange?.(chosen ? undefined : one)
+                if (!chosen) onChange('')
+              }}
+            >
+              {HOME_GROUP_LABELS[one] ?? one}
+            </button>
+          )
+        })}
+
         {offered.map((name) => {
-          const chosen = sameGroup(name, value)
+          const chosen = home === undefined && sameGroup(name, value)
 
           return (
             <button
@@ -346,8 +410,11 @@ export function GroupField({
                   : 'border-ink-800 text-ink-500',
               ].join(' ')}
               onClick={() => {
-                // Pressing the chosen one clears it.
+                // Pressing the chosen one clears it. Choosing a group
+                // takes the record back out of a home, since the two are
+                // one axis on the screen and only one can be shown.
                 onChange(chosen ? '' : name)
+                if (!chosen) onHomeChange?.(undefined)
               }}
             >
               {name}
@@ -363,8 +430,21 @@ export function GroupField({
         value={value}
         onChange={(event) => {
           onChange(event.target.value)
+          onHomeChange?.(undefined)
         }}
       />
+
+      {/*
+        Said where the choice is made, because it is the one option here
+        that is not a label: a group is a word on a heading, and a home
+        decides which area is paid for keeping it.
+      */}
+      {home !== undefined && (
+        <p className="text-ink-600 text-xs">
+          Filed to {HOME_GROUP_LABELS[home] ?? home}, so it is managed there too and its ticks pay
+          that area.
+        </p>
+      )}
     </div>
   )
 }
