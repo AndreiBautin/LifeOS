@@ -1,5 +1,5 @@
 import { GroupedDailies } from '@/features/today/DailyGroups'
-import { DayReadings } from './DayReadings'
+
 import { Flame, Plus, Scale, Undo2 } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { toDayKey } from '@/domain/time/day'
@@ -205,132 +205,6 @@ function PhaseEditor() {
 
       {plot.length === 1 && (
         <p className="text-ink-500 mt-3 text-sm">One reading. A second gives it a line to draw.</p>
-      )}
-    </Card>
-  )
-}
-
-/**
- * What to eat, derived from the scale rather than from a formula.
- *
- * The one field here is the calorie target the lifter is *already*
- * eating to, taken from whichever app tracks their food. Everything else
- * follows: protein and the fat floor off bodyweight, the total corrected
- * by the weight trend, carbohydrate as the remainder.
- *
- * The correction is the part worth the screen space, because it is the
- * only thing here the calorie app could not have told them.
- */
-function MacroTargetsCard() {
-  const { settings, update } = useSettings()
-  const vitals = useVitalsToday()
-  const [intake, setIntake] = useState('')
-
-  const macros = vitals.data?.macros
-  const stated = settings.dailyCalories
-
-  return (
-    <Card>
-      <form
-        className="mb-3 flex gap-2"
-        onSubmit={(event) => {
-          event.preventDefault()
-          const value = Number(intake)
-          if (!Number.isFinite(value) || value <= 0) return
-          update({ dailyCalories: value })
-          setIntake('')
-        }}
-      >
-        <input
-          className="bg-ink-900 border-ink-700 text-ink-50 numeric tap-target min-w-0 flex-1 rounded-lg border px-3 text-sm"
-          inputMode="decimal"
-          placeholder={
-            stated === undefined ? 'What you eat now (kcal)' : `Eating ${String(stated)} kcal`
-          }
-          aria-label="Calories you are currently eating"
-          value={intake}
-          onChange={(event) => {
-            setIntake(event.target.value)
-          }}
-        />
-        <Button type="submit" variant="outline">
-          Set
-        </Button>
-      </form>
-
-      {macros === undefined ? (
-        <p className="text-ink-500 text-sm">
-          Log a weight and these follow from it — protein and fat off bodyweight, the total
-          corrected by what the scale actually does.
-        </p>
-      ) : (
-        <>
-          {/*
-            The correction leads, because it is the only line here the
-            calorie app could not have produced. Absent and zero read
-            differently on purpose: "on track" is a judgement, "not
-            enough readings" is the absence of one.
-          */}
-          {/*
-            No correction any more. The report: *"macro tracking
-            shouldn't be prescriptive — I have Cal AI for auto
-            adjustments, I mainly want visibility."* So this states what
-            the intake breaks down to and leaves the trend beside it as a
-            reading, rather than folding both into an instruction.
-          */}
-          <div className="border-ink-800 mb-3 border-b pb-3">
-            <p className="text-ink-500 text-sm">
-              What the intake you stated comes to. The trend above says how it is going; nothing
-              here tells you to change it.
-            </p>
-          </div>
-
-          <dl className="space-y-1.5">
-            {macros.calories !== undefined && (
-              <div className="flex items-baseline justify-between gap-3">
-                <dt className="text-ink-300 text-sm">Calories</dt>
-                <dd className="text-ink-50 numeric text-sm font-semibold">{macros.calories}</dd>
-              </div>
-            )}
-            <div className="flex items-baseline justify-between gap-3">
-              <dt className="text-ink-300 text-sm">Protein</dt>
-              <dd className="text-ink-50 numeric text-sm">{macros.protein} g</dd>
-            </div>
-            <div className="flex items-baseline justify-between gap-3">
-              <dt className="text-ink-300 text-sm">
-                Fat <span className="text-ink-700 text-xs">floor</span>
-              </dt>
-              <dd className="text-ink-50 numeric text-sm">{macros.fat} g</dd>
-            </div>
-            {macros.carbs !== undefined && (
-              <div className="flex items-baseline justify-between gap-3">
-                <dt className="text-ink-300 text-sm">
-                  Carbs <span className="text-ink-700 text-xs">the remainder</span>
-                </dt>
-                <dd className="text-ink-50 numeric text-sm">{macros.carbs} g</dd>
-              </div>
-            )}
-          </dl>
-
-          {/*
-            Surfaced rather than resolved: a negative remainder is not
-            "eat zero carbs", it is the calorie figure and the phase
-            disagreeing.
-          */}
-          {macros.floorsExceedCalories && (
-            <p className="text-bad-500 mt-3 text-sm">
-              Protein and the fat floor alone come to more than that calorie figure. One of the two
-              needs to move.
-            </p>
-          )}
-
-          {macros.calories === undefined && (
-            <p className="text-ink-500 mt-3 text-sm">
-              Set what you eat now and this gets a calorie total and a carb target — a remainder
-              needs something to be left over from.
-            </p>
-          )}
-        </>
       )}
     </Card>
   )
@@ -547,65 +421,20 @@ function Upkeep() {
   )
 }
 
-/**
- * The rate and the intake that produced it, set beside each other.
- *
- * **The one place the day figures touch the phase, and it adds no
- * judgement of its own.** The verdict on the scale is still
- * `phaseVerdict` reading the trend; what this contributes is the intake,
- * which the app could not say before because it did not know what was
- * eaten. "Losing 0.6% a week on 2,400" is two measurements side by side.
- * "So eat 2,200" is the correction this feature was asked to remove, and
- * it is not coming back through this door.
- *
- * Absent unless both halves exist, because half of it is not a sentence.
- */
-function CutLine() {
-  const vitals = useVitalsToday()
-  const cut = vitals.data?.cut
-
-  if (cut === undefined) return null
-
-  return (
-    <Card>
-      <p className="text-ink-50 text-sm">
-        <span className="numeric font-semibold">
-          {cut.ratePerWeek > 0 ? '+' : ''}
-          {cut.ratePerWeek.toFixed(2)}% a week
-        </span>{' '}
-        on <span className="numeric font-semibold">{Math.round(cut.calories)} kcal</span>
-      </p>
-      <p className="text-ink-700 mt-1 text-xs">
-        The scale and what you logged eating, over the same stretch — averaged across the {cut.days}{' '}
-        {cut.days === 1 ? 'day' : 'days'} you recorded. Nothing here says to change it.
-      </p>
-    </Card>
-  )
-}
-
 export function VitalsPage() {
   return (
     /*
-      Eight rather than four, for the reason Today's wrapper exists: this
-      spacing only ever reaches a block that states none of its own, and
-      the only one here is `CutLine` — a bare card between two sections.
-      At `space-y-4` it sat half as far from its neighbours as they sit
-      from each other, which is the same defect the season heading had,
-      one notch less obvious.
+      Eight rather than four. The bare card that first needed it —
+      `CutLine`, sitting between two sections at half their spacing — has
+      gone with the day figures, so what is left is the gap between the
+      screen's own sections. Kept at eight because that is what the rest
+      of the app uses between sections, not because of the card.
     */
     <div className="space-y-8">
       <PageHeader title="Vitals" subtitle="What the body is doing" />
 
       <Section title="Phase" description="Where the scale is meant to be going">
         <PhaseEditor />
-      </Section>
-
-      <CutLine />
-
-      <DayReadings />
-
-      <Section title="Macros" description="What your stated intake comes to">
-        <MacroTargetsCard />
       </Section>
 
       <Upkeep />

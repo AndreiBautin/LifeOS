@@ -1,4 +1,3 @@
-import type { DayReading } from '@/domain/vitals/day-reading'
 import type { Room } from '@/domain/base/declutter'
 import type { HomeCandidate } from '@/domain/homes/candidate'
 import type { Attempt } from '@/domain/mind/practice'
@@ -94,8 +93,14 @@ export function fromStored(stored: StoredWorkout): WorkoutLog {
   return log
 }
 
-/** The shape rows in the retired `conditions` store were written in. */
-interface RetiredDayCondition {
+/**
+ * The shape rows in the two retired day-keyed stores were written in.
+ *
+ * `conditions` held a self-rated day and `dayReadings` held sleep,
+ * calories and macros. Both are written by nothing now and both keep
+ * their rows, for the reason set out on the store below.
+ */
+interface RetiredDayRow {
   readonly day: string
   readonly [field: string]: unknown
 }
@@ -288,10 +293,26 @@ export interface LiftDB extends DBSchema {
     key: string
     value: WeighIn
   }
-  /** One row a day: sleep, and what was eaten. Keyed by the day. */
+  /**
+   * Retired, like `conditions` below and on the same terms.
+   *
+   * It held one row a day of sleep, calories and macros. That was
+   * scrapped as a second copy of figures Cal AI already keeps — *"what
+   * am I really getting from double tracking this info?"* — and the
+   * store stays because **removing it would mean editing a migration
+   * step**, which is the one thing `database.ts` must never do: a
+   * device that has run step 15 keeps the store, one that has not would
+   * never create it, and the two schemas diverge with nothing able to
+   * tell them apart.
+   *
+   * The rows are also a true record of days somebody measured, which is
+   * the argument that retires a habit rather than deleting it — and this
+   * was scrapped "for now", so throwing the history away would make
+   * coming back to it cost more than it did to leave.
+   */
   dayReadings: {
     key: string
-    value: DayReading
+    value: RetiredDayRow
   }
   /** Rooms, and how clear each has been over time. */
   rooms: {
@@ -343,7 +364,7 @@ export interface LiftDB extends DBSchema {
    */
   conditions: {
     key: string
-    value: RetiredDayCondition
+    value: RetiredDayRow
   }
   /**
    * Ground you have walked, one row per geohash cell.

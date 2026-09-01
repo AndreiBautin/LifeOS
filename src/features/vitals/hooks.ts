@@ -49,9 +49,9 @@ export function useVitalsToday() {
 
   /*
    * The settings go **in the key**, the same way `useProgram` carries
-   * them, because this read model is derived from them: the phase, the
-   * target band and the stated intake all reach it through
-   * `vitalsToday`.
+   * them, because this read model is derived from them: the phase and
+   * the target band reach it through `vitalsToday`. The stated intake
+   * did too, until the day figures were scrapped.
    *
    * Invalidating by hand on every settings write is the alternative and
    * is the version that goes wrong. It did, here, and it looked exactly

@@ -3,10 +3,16 @@
  *
  * **Three numbers and no transactions.** A ledger is a different app: it
  * needs every purchase entered, it is the first thing to fall behind,
- * and everything derived from a stale one is quietly wrong — the same
- * argument that keeps a food log out of `domain/vitals/macros.ts`. What
- * is here is what somebody already checks monthly and can type from a
+ * and everything derived from a stale one is quietly wrong. What is
+ * here is what somebody already checks monthly and can type from a
  * statement in under a minute.
+ *
+ * That argument used to point at `domain/vitals/macros.ts` as the place
+ * it had already been made. It points nowhere now: the day figures were
+ * scrapped, and for a reason a ledger should take seriously — not that
+ * they fell behind, but that another app was already keeping them, so
+ * the row here was a second copy of a number kept properly elsewhere.
+ * **A ledger would be both**, which is why this is still three figures.
  *
  * Keyed by month, so a second entry for August is a *correction* rather
  * than an addition. That makes the merge trivial for the same reason a

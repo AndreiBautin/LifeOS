@@ -16,7 +16,6 @@ import { AreaCard, AttributeRow } from '@/features/character/CharacterParts'
 import { AREA_LINKS, LEVEL_TONE } from '@/features/character/sheet-constants'
 import { AvatarCard } from '@/features/character/AvatarCard'
 import { CharacterHeader } from '@/features/character/CharacterHeader'
-import { Condition } from '@/features/character/Condition'
 import { Traits } from '@/features/character/Traits'
 import { SeasonCard } from '@/features/character/SeasonCard'
 import { useCharacterSheet, useSeasonProgress } from '@/features/character/hooks'
@@ -189,8 +188,6 @@ export function HomePage() {
         so nothing here draws that quantity twice.
       */}
       <AvatarCard xp={standing?.xp ?? 0} />
-
-      <Condition />
 
       {/*
         The season moved up from the foot of the old Today, because it

@@ -5,7 +5,6 @@ import type {
   Clock,
   SettingsRepository,
   ViceRepository,
-  DayReadingRepository,
   WeighInRepository,
 } from '@/domain/repositories/ports'
 import type { ChargeCycle, ChargeDirection, ChargePreset, DaysLimit } from '@/domain/vitals/charges'
@@ -19,15 +18,6 @@ import {
   type ChargeReading,
   type Vice,
 } from '@/domain/vitals/charges'
-import { macroTargets, type MacroTargets } from '@/domain/vitals/macros'
-import {
-  cutReading,
-  dayStanding,
-  type CutReading,
-  type DayStanding,
-} from '@/domain/vitals/day-standing'
-import { SUMMARY_DAYS } from '@/application/use-cases/vitals/days'
-import { shiftDay } from '@/domain/dailies/daily'
 import {
   phaseVerdict,
   weightTrend,
@@ -46,10 +36,16 @@ import {
  * adjustment they were supposed to feed was never wired to a session —
  * so the whole of it was a number you typed in and then read back.
  *
- * What is left is measured: what the scale says, what the phase asks
- * for, what the macros work out to. Sleep, nutrition and hydration are
- * quantities and belong somewhere that counts them; a pool with a unit
- * does that already.
+ * What is left is measured: what the scale says and what the phase
+ * asks for.
+ *
+ * **Sleep, calories and macros are gone from here too**, and that was
+ * asked for rather than tidied: *"what am I really getting from double
+ * tracking this info?"* Cal AI already counts them and syncs them to
+ * Apple Health, so a row here was a second copy of a figure kept
+ * properly somewhere else — and a second copy is a thing that can
+ * disagree with the first. See CLAUDE.md for what went and why the
+ * store it wrote to is still there.
  *
  * The weight trend sits with them because it answers the third question
  * a body asks — where is this going — and because it is the one number a
@@ -59,7 +55,6 @@ import {
 export interface VitalsDeps {
   readonly vices: ViceRepository
   readonly weighIns: WeighInRepository
-  readonly dayReadings: DayReadingRepository
   readonly settings: SettingsRepository
   readonly clock: Clock
   readonly ids: IdGenerator
@@ -82,14 +77,6 @@ export interface PhaseView {
 }
 
 export interface VitalsToday {
-  /**
-   * What to eat, or as much of it as the inputs support.
-   *
-   * Absent when there is no bodyweight to derive from — settings hold
-   * one and a weigh-in supplies a better one, and with neither there is
-   * nothing here that would not be invented.
-   */
-  readonly macros?: MacroTargets
   readonly pools: readonly PoolView[]
   /**
    * Absent rather than neutral when nothing has been recorded today.
@@ -98,21 +85,6 @@ export interface VitalsToday {
    * unremarkable, which is a different thing from not having been asked.
    */
   readonly phase: PhaseView
-  /**
-   * What the recorded days say about sleep, protein and intake.
-   *
-   * Absent for anything nobody has entered. Only sleep and protein carry
-   * a verdict — see `day-standing.ts` for why calories deliberately do
-   * not.
-   */
-  readonly days: DayStanding
-  /**
-   * The rate and the intake that produced it, side by side.
-   *
-   * The one place the new figures touch the phase, and it adds no
-   * judgement: `phaseVerdict` still owns what the scale means.
-   */
-  readonly cut?: CutReading
 }
 
 export async function vitalsToday(deps: VitalsDeps): Promise<VitalsToday> {
@@ -143,46 +115,8 @@ export async function vitalsToday(deps: VitalsDeps): Promise<VitalsToday> {
   const todayWeight = weighIns.find((row) => row.day === today)?.weight
   const verdict = phaseVerdict(trend, settings.phaseRate)
 
-  /*
-   * The smoothed weight in preference to the one in settings.
-   *
-   * Settings hold a single figure a lifter typed once; the trend is an
-   * average of what the scale actually said this week. Preferring the
-   * stale one would quietly derive a whole cut's protein target from a
-   * bodyweight the lifter has since moved away from — which is precisely
-   * what weighing in was meant to fix.
-   */
-  const bodyweight = trend?.current ?? settings.bodyweight
-  const macros =
-    bodyweight === undefined
-      ? undefined
-      : macroTargets({
-          bodyweight,
-          units: settings.units,
-          phase: settings.phase,
-          range: settings.phaseRate,
-          verdict,
-          ...(settings.dailyCalories === undefined ? {} : { intake: settings.dailyCalories }),
-          ...(trend === undefined ? {} : { trend }),
-        })
-
-  /*
-   * The same window the weight trend compares over, because the two are
-   * read together — "how is the cut going" is a question about one
-   * stretch of days.
-   */
-  const from = shiftDay(today, -(SUMMARY_DAYS - 1))
-  const recorded = (await deps.dayReadings.all()).filter(
-    (one) => one.day >= from && one.day <= today,
-  )
-  const days = dayStanding(recorded, macros?.protein)
-  const cut = cutReading(trend?.ratePerWeek, days)
-
   return {
     pools,
-    days,
-    ...(cut === undefined ? {} : { cut }),
-    ...(macros === undefined ? {} : { macros }),
     phase: {
       phase: settings.phase,
       range: settings.phaseRate,

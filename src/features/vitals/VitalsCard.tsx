@@ -7,7 +7,6 @@ import { buttonStyles } from '@/components/shared/styles'
 import type { PhaseView } from '@/application/use-cases/vitals/vitals'
 import { PHASE_LABELS, PHASE_VERDICT_LABELS } from '@/domain/vitals/weight'
 import { directionOf } from '@/domain/vitals/charges'
-import type { MacroTargets } from '@/domain/vitals/macros'
 
 import { useServices } from '@/app/context'
 
@@ -32,13 +31,7 @@ import { useVitalsToday } from './hooks'
  * nine of them need 396 and a 375-pixel phone has 375.
  */
 
-function PhaseLine({
-  phase,
-  macros,
-}: {
-  readonly phase: PhaseView
-  readonly macros?: MacroTargets | undefined
-}) {
+function PhaseLine({ phase }: { readonly phase: PhaseView }) {
   const rate = phase.trend?.ratePerWeek
 
   return (
@@ -76,10 +69,6 @@ function PhaseLine({
           </>
         )}
       </p>
-
-      {macros?.calories !== undefined && (
-        <p className="text-ink-500 numeric mt-1 text-sm">{macros.calories} kcal stated</p>
-      )}
     </div>
   )
 }
@@ -198,11 +187,9 @@ export function VitalsCard() {
       </div>
 
       {nothingSetUp ? (
-        <p className="text-ink-500 text-sm">
-          A weight trend for the phase you are in, and the macros it works out to.
-        </p>
+        <p className="text-ink-500 text-sm">A weight trend for the phase you are in.</p>
       ) : (
-        <PhaseLine phase={phase} macros={vitals.data.macros} />
+        <PhaseLine phase={phase} />
       )}
     </Card>
   )

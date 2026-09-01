@@ -15,7 +15,6 @@ import type {
   ViceRepository,
   AttemptRepository,
   HomeRepository,
-  DayReadingRepository,
   RoomRepository,
   CampaignRepository,
   FinanceRepository,
@@ -62,7 +61,6 @@ export interface BackupRepositories {
   readonly attempts: AttemptRepository
   readonly homes: HomeRepository
   readonly rooms: RoomRepository
-  readonly dayReadings: DayReadingRepository
   readonly resume: ResumeRepository
   readonly explored: ExploredAreaRepository
 }
@@ -239,14 +237,6 @@ export const COLLECTIONS: Readonly<Record<CollectionKey, Collection>> = {
       const incoming = rows[0]
       if (incoming !== undefined) await r.resume.save(incoming)
     },
-  }),
-  dayReadings: define({
-    local: (r) => r.dayReadings.all(),
-    fromFile: (data) => data.dayReadings ?? [],
-    // The day *is* the id, like a weigh-in's.
-    idOf: (row) => row.day,
-    restore: (r, rows) => r.dayReadings.restoreMany(rows),
-    tombstoneCollection: 'dayReadings',
   }),
   rooms: define({
     local: (r) => r.rooms.all(),

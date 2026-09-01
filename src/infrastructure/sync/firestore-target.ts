@@ -13,7 +13,6 @@ import {
   type QueryDocumentSnapshot,
 } from 'firebase/firestore'
 
-import type { DayReading } from '@/domain/vitals/day-reading'
 import type { Room } from '@/domain/base/declutter'
 import type { HomeCandidate } from '@/domain/homes/candidate'
 import type { Attempt } from '@/domain/mind/practice'
@@ -82,7 +81,6 @@ const COLLECTIONS = {
   attempts: 'attempts',
   homes: 'homes',
   rooms: 'rooms',
-  dayReadings: 'dayReadings',
   /*
    * One document holding the whole set, not a document per cell. A
    * thousand-cell walk would otherwise be a thousand writes, and the set
@@ -109,6 +107,143 @@ const COLLECTIONS = {
 
 /** Both singletons are stored under this id, so a write overwrites. */
 const SETTINGS_DOCUMENT = 'current'
+
+/**
+ * The payload fields that carry a list of records.
+ *
+ * Derived from {@link SyncPayload} rather than written out, so the two
+ * cannot drift — the same reason `pull` reads its cursor off the array
+ * it destructures instead of a second list beside it.
+ */
+type ListField = {
+  [K in keyof SyncPayload]-?: SyncPayload[K] extends readonly unknown[] ? K : never
+}[keyof SyncPayload]
+
+/** Every list field except the one stored as a whole set. */
+type KeyedField = Exclude<ListField, 'exploredCells'>
+
+/**
+ * What keys each record, as a mapped type over the payload itself.
+ *
+ * **This is the guard, and it is the compiler rather than a test.**
+ * Adding a collection to `SyncPayload` without naming its key here fails
+ * the build — the same mechanism that makes `MUSCLE_GROUP_LABELS` catch
+ * a new muscle group, and the mechanism this file did not have.
+ *
+ * What its absence cost: `push` was a hand-written list of ten beside a
+ * hand-written `pull` of twenty-four, and twelve collections — places,
+ * trips, dailies, vices, weighIns, finance, campaigns, attempts, homes,
+ * rooms, exploredCells and `dayReadings` (since scrapped) — were read
+ * from the server and written to it by nothing. Not a lost record but a lost *direction*: a
+ * device whose changes that day were a habit tick, a weigh-in or a
+ * night's sleep built a payload `isEmpty` correctly called non-empty,
+ * uploaded none of it, advanced its watermark past it, and reported a
+ * successful sync. Most of the app was one-way, and from both ends it
+ * looked exactly like working sync.
+ *
+ * Three of these are keyed by a date rather than an id, which is the
+ * detail a hand-written list gets wrong quietly: a weigh-in and a day
+ * reading are keyed by their day and a finance row by its month, so
+ * writing them under an `id` they do not carry would file every one of
+ * them under the same missing key and leave one document per collection.
+ */
+const KEYED_BY: {
+  readonly [K in KeyedField]: (record: SyncPayload[K][number]) => string
+} = {
+  exercises: (record) => record.id,
+  workouts: (record) => record.id,
+  checkIns: (record) => record.id,
+  items: (record) => record.id,
+  projects: (record) => record.id,
+  upgrades: (record) => record.id,
+  friends: (record) => record.id,
+  metrics: (record) => record.id,
+  reviews: (record) => record.month,
+  places: (record) => record.id,
+  trips: (record) => record.id,
+  dailies: (record) => record.id,
+  vices: (record) => record.id,
+  weighIns: (record) => record.day,
+  finance: (record) => record.month,
+  campaigns: (record) => record.id,
+  attempts: (record) => record.id,
+  homes: (record) => record.id,
+  rooms: (record) => record.id,
+  tombstones: (record) => tombstoneKey(record.collection, record.id),
+}
+
+export interface PushOperation {
+  readonly path: string
+  readonly id: string
+  readonly record: unknown
+}
+
+/**
+ * What a push would write, worked out without touching Firestore.
+ *
+ * Pure and exported so it can be tested for real. The rest of this file
+ * is a query builder over the SDK, and a double for it would only assert
+ * that this file calls the functions this file calls — but *which
+ * records go up, and under what key* is a decision rather than a call,
+ * and it is the one that was wrong.
+ */
+export function pushOperations(payload: SyncPayload, clientId: string): readonly PushOperation[] {
+  const keyed = Object.keys(KEYED_BY).flatMap((name) => {
+    const key = name as KeyedField
+
+    /*
+     * Both casts are safe by construction and neither can be stated to
+     * the compiler: `KEYED_BY` is a mapped type over these very keys, so
+     * the function found at `key` is by definition the one that keys
+     * `payload[key]`. Indexing by a union is what loses that pairing.
+     */
+    const idOf = KEYED_BY[key] as (record: unknown) => string
+    const records: readonly unknown[] = payload[key]
+
+    return records.map((record) => ({ path: COLLECTIONS[key], id: idOf(record), record }))
+  })
+
+  return [
+    ...keyed,
+    /*
+     * The fog, as one document per *device* rather than one per cell or
+     * one for everybody.
+     *
+     * Per cell would make a thousand-cell walk a thousand writes. A
+     * single shared document would be worse than either: two devices
+     * would overwrite each other's walking, and a grow-only set that
+     * last-write-wins can erase is not grow-only. Keyed by the client
+     * id, each device owns its own document, a pull skips the one it
+     * wrote, and the receiving side unions — which is the arrangement
+     * `unionCells` exists for.
+     *
+     * The cost, stated because it is real: the payload carries the whole
+     * set every time, so this document is rewritten on every exchange
+     * and re-read by the other device on the one after. A year of
+     * walking is a few thousand short strings. If that ever matters the
+     * fix is a locally stored stamp of what was last pushed — not a
+     * shared document.
+     */
+    ...(payload.exploredCells.length === 0
+      ? []
+      : [
+          {
+            path: COLLECTIONS.exploredCells,
+            id: clientId,
+            record: { cells: payload.exploredCells },
+          },
+        ]),
+    // Under a fixed id, so a second push overwrites rather than
+    // accumulating settings blobs nobody will read.
+    ...(payload.settings === undefined
+      ? []
+      : [{ path: COLLECTIONS.settings, id: SETTINGS_DOCUMENT, record: payload.settings }]),
+    // The same, for the same reason. One resume, one document.
+    ...(payload.resume === undefined
+      ? []
+      : [{ path: COLLECTIONS.resume, id: SETTINGS_DOCUMENT, record: payload.resume }]),
+  ]
+}
 
 /**
  * How many documents one pull will take.
@@ -167,7 +302,6 @@ export function createFirestoreSyncTarget(options: FirestoreTargetOptions): Sync
         readSince(root(COLLECTIONS.attempts), after),
         readSince(root(COLLECTIONS.homes), after),
         readSince(root(COLLECTIONS.rooms), after),
-        readSince(root(COLLECTIONS.dayReadings), after),
         readSince(root(COLLECTIONS.exploredCells), after),
         readSince(root(COLLECTIONS.tombstones), after),
         readSince(root(COLLECTIONS.settings), after),
@@ -216,7 +350,6 @@ export function createFirestoreSyncTarget(options: FirestoreTargetOptions): Sync
         attempts,
         homes,
         rooms,
-        dayReadings,
         cells,
         tombstones,
         settings,
@@ -266,7 +399,6 @@ export function createFirestoreSyncTarget(options: FirestoreTargetOptions): Sync
           attempts: attempts.records as readonly Attempt[],
           homes: homes.records as readonly HomeCandidate[],
           rooms: rooms.records as readonly Room[],
-          dayReadings: dayReadings.records as readonly DayReading[],
           exploredCells: cells.records.flatMap(
             (record) => (record as { cells?: readonly string[] }).cells ?? [],
           ),
@@ -290,67 +422,7 @@ export function createFirestoreSyncTarget(options: FirestoreTargetOptions): Sync
        * duplicate. Atomicity would buy nothing and cap the payload at 500
        * records forever.
        */
-      const operations = [
-        ...payload.exercises.map((record) => ({
-          path: COLLECTIONS.exercises,
-          id: record.id,
-          record,
-        })),
-        ...payload.workouts.map((record) => ({
-          path: COLLECTIONS.workouts,
-          id: record.id,
-          record,
-        })),
-        ...payload.friends.map((record) => ({
-          path: COLLECTIONS.friends,
-          id: record.id,
-          record,
-        })),
-        ...payload.metrics.map((record) => ({
-          path: COLLECTIONS.metrics,
-          id: record.id,
-          record,
-        })),
-        ...payload.reviews.map((record) => ({
-          path: COLLECTIONS.reviews,
-          id: record.month,
-          record,
-        })),
-        ...payload.upgrades.map((record) => ({
-          path: COLLECTIONS.upgrades,
-          id: record.id,
-          record,
-        })),
-        ...payload.projects.map((record) => ({
-          path: COLLECTIONS.projects,
-          id: record.id,
-          record,
-        })),
-        ...payload.items.map((record) => ({
-          path: COLLECTIONS.items,
-          id: record.id,
-          record,
-        })),
-        ...payload.checkIns.map((record) => ({
-          path: COLLECTIONS.checkIns,
-          id: record.id,
-          record,
-        })),
-        ...payload.tombstones.map((record) => ({
-          path: COLLECTIONS.tombstones,
-          id: tombstoneKey(record.collection, record.id),
-          record,
-        })),
-        // Under a fixed id, so a second push overwrites rather than
-        // accumulating settings blobs nobody will read.
-        ...(payload.settings === undefined
-          ? []
-          : [{ path: COLLECTIONS.settings, id: SETTINGS_DOCUMENT, record: payload.settings }]),
-        // The same, for the same reason. One resume, one document.
-        ...(payload.resume === undefined
-          ? []
-          : [{ path: COLLECTIONS.resume, id: SETTINGS_DOCUMENT, record: payload.resume }]),
-      ]
+      const operations = pushOperations(payload, clientId)
 
       for (let index = 0; index < operations.length; index += BATCH_LIMIT) {
         const batch = writeBatch(db)

@@ -2194,6 +2194,47 @@ _from it_, so a collection cannot be in one list and not the other. A
 hand-maintained copy of a list that already exists will drift; that is
 twice now.
 
+**Three times now, and the third one was pushing nothing at all.** The
+same defect, one function further down and far worse: `push` was a
+hand-written list of ten collections beside a `pull` of twenty-four,
+and **twelve were read from the server and written to it by nothing** —
+places, trips, dailies, vices, weighIns, finance, campaigns, attempts,
+homes, rooms, exploredCells, and `dayReadings`, which has since been
+scrapped for reasons of its own.
+
+Not a lost record, a lost **direction**. `isEmpty` and `payloadSize`
+knew about all twelve, so a device whose changes that day were a habit
+tick, a weigh-in or a night's sleep built a payload correctly reported
+as non-empty, ran a sync, uploaded none of it, advanced its watermark
+past it, and reported success. Most of the app was one-way, and from
+both ends it looked exactly like working sync.
+
+**The guard is the compiler, not a test.** `KEYED_BY` is a mapped type
+over `SyncPayload` itself, so a field added to the payload without a
+key here fails the build — the `Record<MuscleGroup, …>` mechanism, in
+the one file that had no equivalent. Three of the twelve are keyed by a
+**date rather than an id** (weighIns and dayReadings by their day,
+finance by its month), which is the detail a hand-written list gets
+wrong silently: writing them under an `id` they do not carry files
+every row under one missing key and leaves a single document per
+collection.
+
+**`pushOperations` is pure and exported so it can be tested for real.**
+The note above says the rest of this file is a query builder a double
+would only assert calls itself — true, and _which records go up, under
+what key_ is a decision rather than a call. The test walks the payload's
+own fields rather than a list repeated in the test, because a
+hand-written copy of a list that already exists is the thing that has
+now drifted three times.
+
+**The fog is one document per _device_**, keyed by the client id. Per
+cell would make a thousand-cell walk a thousand writes; a single shared
+document would be worse than either, because two devices would overwrite
+each other's walking and a grow-only set that last-write-wins can erase
+is not grow-only. The cost, since it is real: the payload carries the
+whole set every time, so that document is rewritten on every exchange
+and re-read by the other device on the one after.
+
 **The fog is a grow-only set, and that is the only reason it can sync.**
 `unionCells` in `domain/sync/payload.ts`, one row per geohash cell in
 `exploredCells`. It carries no stamp and no tombstone because neither
@@ -3468,103 +3509,50 @@ a day and either did or did not — a daily with a streak, which is exactly
 what Upkeep holds. Building a third mechanism for it would have been a
 counting pool wearing a habit's clothes.
 
-**The day figures reach the cut and the portrait, and the thing that
-had to be refused is the obvious build.** The ask was to feed sleep and
-intake into how the cut is going and how the avatar is doing
-health-wise. That is a health bar, and a health bar needs a
-denominator — there is **no published figure at which a person is 100%
-healthy**, so drawing one would invent exactly the scale this model
-refuses everywhere else, and add a fourth currency to a design that has
-three on purpose. The portrait's own note already refuses "a power
-rating, a gear score" for that reason.
+**Sleep, calories and macros were scrapped, and the reason is worth
+more than the feature was.** Reported: _"what am I really getting from
+double tracking this info? Now there's a separate process involved."_
 
-**A figure gets a verdict only where somebody outside this app published
-the bands** — the credit score's rule, applied again:
+The area held one row a day — sleep hours, calories, protein, carbs,
+fat — typed off Cal AI's screen, plus `macroTargets` deriving protein
+and a fat floor from bodyweight and a `dailyCalories` figure somebody
+typed into settings. All of it is gone: `day-reading.ts`,
+`day-standing.ts`, `macros.ts`, the `days` use case, the Vitals boxes,
+the Macros card, the cut line, `Condition` on Today, and
+`settings.dailyCalories`.
 
-- **Sleep does.** 7 hours is the AASM/SRS consensus floor for adults and
-  9 the top of the range the National Sleep Foundation quotes for 18–64.
-  Nothing this app does moves those, which is what makes it a scale
-  rather than an invention.
-- **Protein does**, in the form already here: grams per kilogram, which
-  `macros.ts` derives. Comparing what was eaten against it compares two
-  numbers the app already holds.
-- **Calories do not.** There is no universal figure at which somebody
-  has eaten correctly. So calories are **reported and never judged** —
-  net worth's footing, not the credit score's.
+**The test it failed is not "did anybody use it" but "who owns this
+number".** Cal AI counts the macros and Apple Health holds the sleep, so
+a row here was a **second copy of a figure kept properly somewhere
+else** — and a second copy is a thing that can disagree with the first,
+silently, with no way to tell which is right. That is the same argument
+this file already makes against a food log and against a transaction
+ledger, arriving at a feature that had got past it by being small.
 
-**`Condition` names observations and carries their evidence**, which is
-the shape the traits row already uses: "Sleep short" is a label, and
-"6.4 h a night over 14 days" beside it is what makes it a claim somebody
-can check. Absent, never neutral — nothing recorded shows nothing, since
-a bar at the midpoint would assert an unremarkable fortnight rather than
-an unasked question.
+**An automated import does not answer it, which is what settled this.**
+The removal was decided _while_ a working import was on the branch — an
+Apple Shortcut reading Health nightly and a paste panel that previewed
+every figure before writing it. It worked, and it was still a second
+process to keep running in order to hold a second copy of numbers that
+were already fine where they were. **Cheap synchronisation is not a
+reason to duplicate**, and the honest cost of a feature includes the
+machinery that keeps it fed.
 
-**`cutReading` is the only place the new figures touch the phase, and it
-adds no judgement.** `phaseVerdict` still owns what the scale means;
-this contributes the intake that produced it — the thing the app could
-never say before, because it did not know what was eaten. "Losing 0.33%
-a week on 2,418 kcal" is two measurements set side by side. It is
-deliberately not "so eat 2,200", which is the correction that was just
-removed and would be arriving back through the door it left by. Absent
-unless both halves exist, because half of it is not a sentence.
+What that leaves in Vitals is what the app itself measures: the scale,
+the phase, the corridor, and the pools. **A web app cannot read
+HealthKit** — no web API, in Safari or anywhere — so any future version
+of this is an outside process again, and the question above has to be
+answered before the mechanism is.
 
-**Macros stopped prescribing, and a day gained a row of its own.** The
-report: _"macro tracking shouldn't be prescriptive — I have Cal AI for
-auto adjustments. I mainly want it for visibility and tracking, the same
-way I want to track sleep, to feed into how the cut is going and how the
-avatar is doing health-wise."_
-
-`macroTargets` no longer corrects the stated intake. What it reports is
-that intake broken down — protein per kilogram, the fat floor off
-bodyweight, carbohydrate as the remainder — all properties of the body
-and the phase rather than judgements about the last fortnight. The trend
-and the phase verdict sit beside it as readings.
-
-**`dailyAdjustment` and `MAX_DAILY_ADJUSTMENT` were deleted rather than
-left unused**, which matters given how often this file records the
-opposite mistake: sound arithmetic nothing calls is how a codebase ends
-up with a fifth `proposeLandmarks`. Two things to know before
-reinstating it — it aimed at the **nearest edge** of the phase band
-rather than the middle, and it was capped at 500 kcal because one
-unrepresentative reading produces an arithmetically correct instruction
-to eat 1,400 fewer a day.
-
-**`DayReading` is not the food log this app has twice refused to
-build**, and that refusal stands: a calorie log needs a database of
-foods and portions, it falls behind first, and everything derived from a
-stale one is quietly wrong. This is four numbers typed once off another
-app's screen — the shape of a weigh-in, which is a measurement somebody
-reads rather than one this app computes. It pays no XP for the same
-reason a weigh-in does not.
-
-**Sleep belongs here for a reason the removed check-in already stated.**
-`readinessScore` rated sleep poor/ok/good, and the note on its removal
-said the quiet part: _"sleep, nutrition and hydration are quantities,
-and a quantity rated `ok` has been thrown away before it was written
-down."_ Hours is the quantity, and this is that correction arriving.
-
-**One row per day, not one per figure.** Sleep is entered in the morning
-and macros at night, so `recordDay` leaves alone anything a change does
-not mention — `recordFinance`'s rule, because there is no telling "I did
-not check" from "I meant zero" once stored. **Clearing is a separate
-word**: `null` removes a figure, so a call site cannot ask for "fill in
-what I know" and receive "wipe the rest". Figures outside a day's range
-are **refused rather than clamped**, the credit score's rule.
-
-**And the boxes had to be serialised, which driving found and the suite
-did not.** Each box writes to the same row, so typing sleep then
-calories fired two read-modify-writes and the second read the day before
-the first had saved — **sleep silently vanished**. That is the hazard
-already documented for the backlog's progress log, arriving from the
-other direction: there it is two taps on one control, here one tap each
-on three boxes. `serialise` moved to `lib/serialise.ts` rather than
-being copied, because a second copy is where a fix stops applying.
-
-**Macros and calories stay targets, deliberately.** The amount mechanism
-would fit them and they are still not logged here: a calorie log needs a
-database of foods and portions, it is the first thing to fall behind, and
-everything derived from a stale one is quietly wrong. Water and caffeine
-have neither problem — a handful of presets and no food database.
+**Nothing was migrated and nothing was deleted.** The `dayReadings`
+store is still in `database.ts`, typed locally as `RetiredDayRow`
+beside `conditions`, written by nothing. Removing it would mean editing
+a migration step, which is the one thing that file must never do — and
+the rows are a true record of days somebody measured. This was scrapped
+"for now", so throwing the history away would make coming back cost more
+than leaving it did. It is out of the sync payload, the tombstone list
+and the backup envelope; a tombstone arriving under that name from
+another device is simply not matched, which is correct.
 
 **A charge comes back exactly `regenHours` after the spend that consumed
 it**, so three coffees at eight in the morning on a twelve-hour timer are
@@ -3605,47 +3593,6 @@ needs on a Tuesday is whether _this_ week is going where it should.
 the last known weight repeated, because a carried value shows a rate of
 exactly zero for a fortnight of not weighing in and that reads as a
 perfectly held maintenance phase.
-
-**Macro targets are derived from the scale, not from a formula, and the
-lifter supplies the one number the app cannot know.** `domain/vitals/
-macros.ts`. Computing a TDEE needs intake data, and intake lives in
-another app that already does it well — a second food log here would
-duplicate that one and be the first thing to fall behind, which would
-make everything derived from it quietly wrong. So `settings.dailyCalories`
-is **what you are already eating to**, and the app corrects it from the
-two things the other app cannot see: the smoothed trend and the phase
-band. Same bargain RTS makes with loads. Mifflin-St Jeor plus an activity
-multiplier was the alternative, and it wants height, age and sex to
-produce a figure within about 15% that the trend then has to correct
-anyway.
-
-**The correction aims at the nearest edge of the band, never its middle.**
-A band is a range of acceptable answers, so the smallest change that
-lands inside it is the right advice; aiming at the centre tells a lifter
-losing at 0.45%/wk against a 0.5–1.0% target to cut six times what the
-situation calls for.
-
-**`MAX_DAILY_ADJUSTMENT` is 500 and it is a safety rail, not a tidy-up.**
-One bad reading in a window produces an arithmetically correct
-instruction to eat 1,400 fewer a day. If the true correction really is
-larger, arriving there over two weeks is how it should be done.
-
-Protein is g/kg (2.2 on a cut, 1.8 otherwise) because that is how the
-literature states it, converted at the edge; fat is a **floor** off
-bodyweight rather than a share of calories, because above the floor the
-fat/carb split is preference rather than physiology; carbohydrate is the
-remainder. When the floors exceed the calorie figure that is **surfaced,
-not resolved** — a negative remainder is not "eat zero carbs", it is the
-calorie number and the phase disagreeing.
-
-**`useVitalsToday` carries `settings` in its query key**, the way
-`useProgram` does, and this is why: the read model is derived from the
-phase, the band and the stated intake, so invalidating by hand on each
-settings write is a step somebody forgets. It _was_ forgotten — the
-intake field wrote a real value, the phase text updated because it reads
-settings directly, and the macros went on being derived from the old
-number. The same shape as the fatigue percent that was decorative for
-two commits, found the same way: by driving the app.
 
 **Vitals pays no XP at all, and it is the first area that measures
 without paying.** Every candidate falls on the wrong side of the act/

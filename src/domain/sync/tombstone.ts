@@ -40,9 +40,9 @@ export const TOMBSTONED_COLLECTIONS = [
   'attempts',
   'homes',
   'rooms',
-  'dayReadings',
   /*
-   * 'conditions' was here and is gone with the store that needed it.
+   * 'conditions' and 'dayReadings' were both here and are gone with the
+   * records that needed them.
    * A tombstone already written under that name still arrives from
    * another device or from Firestore, and is simply not matched — which
    * is the right outcome, because there is no longer a repository for it

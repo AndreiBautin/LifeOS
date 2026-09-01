@@ -136,21 +136,6 @@ export interface AppSettings {
    */
   readonly phase: Phase
   readonly phaseRate: { readonly min: number; readonly max: number }
-  /**
-   * The daily calorie target currently being eaten to.
-   *
-   * Supplied rather than computed, and that is the whole design of the
-   * macro targets. The app cannot know a TDEE without intake data, and
-   * intake lives in another app that already does it well — so this
-   * takes the number that app has already settled on and corrects it
-   * from the weight trend, which is the thing the other app cannot see.
-   *
-   * Optional, and **absent is not zero**: no stated intake means no
-   * calorie total and no carbohydrate target, while protein and the fat
-   * floor still stand because bodyweight is all they need.
-   */
-  readonly dailyCalories?: number | undefined
-
   readonly theme: 'system' | 'light' | 'dark'
   /**
    * The standing job search — which boards to read, and what counts as

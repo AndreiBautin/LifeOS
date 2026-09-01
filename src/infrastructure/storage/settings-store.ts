@@ -301,11 +301,6 @@ function mergeWithDefaults(parsed: unknown): AppSettings {
       ? (stored.phase as Phase)
       : DEFAULT_SETTINGS.phase,
     phaseRate: phaseRateOf(stored),
-    ...(typeof stored.dailyCalories === 'number' &&
-    Number.isFinite(stored.dailyCalories) &&
-    stored.dailyCalories > 0
-      ? { dailyCalories: stored.dailyCalories }
-      : {}),
     ...(typeof stored.updatedAt === 'string' ? { updatedAt: stored.updatedAt } : {}),
     ...(typeof stored.lastExportAt === 'string' ? { lastExportAt: stored.lastExportAt } : {}),
     schemaVersion: SETTINGS_SCHEMA_VERSION,

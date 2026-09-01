@@ -21,7 +21,6 @@ import type {
   TombstoneRepository,
   AttemptRepository,
   HomeRepository,
-  DayReadingRepository,
   RoomRepository,
   NeighbourhoodGateway,
   TrackGateway,
@@ -52,7 +51,6 @@ import {
   createTombstoneRepository,
   createAttemptRepository,
   createHomeRepository,
-  createDayReadingRepository,
   createRoomRepository,
   createCampaignRepository,
   createFinanceRepository,
@@ -114,7 +112,6 @@ export interface AppServices {
   readonly campaigns: CampaignRepository
   readonly attempts: AttemptRepository
   readonly homes: HomeRepository
-  readonly dayReadings: DayReadingRepository
   readonly rooms: RoomRepository
   readonly neighbourhoods: NeighbourhoodGateway
   readonly tracks: TrackGateway
@@ -191,7 +188,6 @@ export async function bootstrap(): Promise<BootstrapResult> {
     campaigns: createCampaignRepository(db, systemClock),
     attempts: createAttemptRepository(db, systemClock),
     homes: createHomeRepository(db, systemClock),
-    dayReadings: createDayReadingRepository(db, systemClock),
     rooms: createRoomRepository(db, systemClock),
     neighbourhoods: createNeighbourhoodGateway(systemClock),
     tracks: createTrackGateway(),

@@ -1,4 +1,3 @@
-import type { DayReading } from '@/domain/vitals/day-reading'
 import type { Room } from '@/domain/base/declutter'
 import type { HomeCandidate } from '@/domain/homes/candidate'
 import type { Attempt } from '@/domain/mind/practice'
@@ -46,7 +45,6 @@ import type {
   FinanceRepository,
   AttemptRepository,
   HomeRepository,
-  DayReadingRepository,
   RoomRepository,
   CampaignRepository,
   ResumeRepository,
@@ -793,32 +791,6 @@ export function createHomeRepository(db: AppDatabase, clock: Clock): HomeReposit
     },
     async purge(id: HomeCandidateId) {
       await db.delete('homes', id)
-    },
-  }
-}
-
-/** Rooms, and how clear each has been over time. */
-export function createDayReadingRepository(db: AppDatabase, clock: Clock): DayReadingRepository {
-  return {
-    async all() {
-      return db.getAll('dayReadings')
-    },
-    async byDay(day: string) {
-      return db.get('dayReadings', day)
-    },
-    async save(reading: DayReading) {
-      await db.put('dayReadings', stamp(reading, clock))
-    },
-    async restoreMany(readings: readonly DayReading[]) {
-      const tx = db.transaction('dayReadings', 'readwrite')
-      await Promise.all([...readings.map((one) => tx.store.put(one)), tx.done])
-    },
-    async remove(day: string) {
-      await db.delete('dayReadings', day)
-      await bury(db, clock, 'dayReadings', day)
-    },
-    async purge(day: string) {
-      await db.delete('dayReadings', day)
     },
   }
 }
