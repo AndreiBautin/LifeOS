@@ -6,7 +6,7 @@ import type { DailyView } from '@/application/use-cases/dailies/dailies'
 import { Button, Card, Empty } from '@/components/shared/primitives'
 import type { Cadence, Daily } from '@/domain/dailies/daily'
 
-import { BASE, TRAINING, type RecordHome } from '@/domain/base/base'
+import { BASE, TRAINING, UPKEEP, type RecordHome } from '@/domain/base/base'
 import { WEEKDAY_LABELS, WEEKDAY_NAMES, WEEKDAYS, WEEKEND } from '@/domain/time/day'
 import {
   PART_OF_DAY_LABELS,
@@ -16,6 +16,8 @@ import {
   type PartOfDay,
 } from '@/domain/dailies/daily'
 import { useServices } from '@/app/context'
+import { Fold } from '@/components/shared/Fold'
+import { counted } from '@/lib/counted'
 import { GroupedDailies, GroupField } from './DailyGroups'
 import { DailyHistory } from './DailyHistory'
 import {
@@ -814,11 +816,14 @@ export function AddDaily({
  * buries the habits somebody chose under the ones the house and the body
  * simply require. Grouping keeps both true — everything due is visible,
  * and what you chose is still first.
+ *
+ * **Takes its rows rather than fetching them.** It called
+ * `useDueElsewhere` itself while `Dailies` called it too, which was one
+ * answer read twice — and the caller now has to split done from
+ * outstanding anyway, so the split has to happen in one place or the
+ * done fold and this list would disagree about what is left.
  */
-function DueElsewhere() {
-  const due = useDueElsewhere()
-  const views = due.data ?? []
-
+function DueElsewhere({ views }: { readonly views: readonly DailyView[] }) {
   if (views.length === 0) return null
 
   /*
@@ -891,8 +896,40 @@ export function Dailies() {
    * They are below everything due, under a heading that says what they
    * are, in the same shape the House and Upkeep groups already use.
    */
-  const todays = views.filter((view) => view.dueToday || view.doneToday)
+  const outstanding = views.filter((view) => view.dueToday)
   const otherDays = views.filter((view) => !view.dueToday && !view.doneToday)
+
+  /*
+   * **Done rows fold away, and this reverses the rule written directly
+   * above.** That rule said only what is still to do gets hidden,
+   * because hiding something already done invites doing it twice. The
+   * report was that the screen is *"cluttered with everything that gets
+   * checked off"* — and on a list that grows all day, evidence of what
+   * is finished is exactly what buries what is not.
+   *
+   * The tick is still the answer to doing it twice: a done row reads
+   * `aria-pressed` and the header says how many are left. What the fold
+   * protects is **undo**, which is the only route back from a mis-tap
+   * and would be gone if these were filtered out rather than folded.
+   */
+  const doneOwn = views.filter((view) => view.doneToday)
+  const elsewhere = due.data ?? []
+
+  /*
+   * **Upkeep is excluded from what this section draws, and included in
+   * what it counts.** It has a section of its own further down the same
+   * screen with its own folds, so listing it here as well put every
+   * ticked chore in two "done today" folds at once — found by driving
+   * it, with Floss appearing under both.
+   *
+   * The count is the exception on purpose: "3 left today" is a claim
+   * about the **day**, not about this section, so it reads the whole of
+   * `elsewhere` the way it always has.
+   */
+  const otherHomes = elsewhere.filter((view) => view.daily.belongsTo !== UPKEEP)
+  const doneElsewhere = otherHomes.filter((view) => view.doneToday)
+  const dueElsewhere = otherHomes.filter((view) => view.dueToday)
+  const done = [...doneOwn, ...doneElsewhere]
 
   /*
    * **Later today folds away, and the order never moves.**
@@ -924,23 +961,21 @@ export function Dailies() {
     return PARTS_OF_DAY.indexOf(part) > nowIndex
   }
 
-  const later = todays.filter(isLater)
-  const showing = showLater ? todays : todays.filter((view) => !isLater(view))
+  const later = outstanding.filter(isLater)
+  const showing = showLater ? outstanding : outstanding.filter((view) => !isLater(view))
 
   /*
    * Counted across every home, because the sentence is about the day and
    * not about this section. "3 left today" that ignored the bins would
    * be answering a question nobody asked.
    */
-  const left =
-    views.filter((view) => view.dueToday).length +
-    (due.data ?? []).filter((view) => view.dueToday).length
+  const left = outstanding.length + elsewhere.filter((view) => view.dueToday).length
 
   return (
     <>
       <div className="mb-2 flex items-center justify-between gap-2">
         <p className="text-ink-500 text-sm">
-          {views.length === 0 && (due.data ?? []).length === 0
+          {views.length === 0 && elsewhere.length === 0
             ? 'Nothing yet.'
             : left === 0
               ? 'All done for today.'
@@ -964,7 +999,7 @@ export function Dailies() {
         />
       )}
 
-      {views.length === 0 && (due.data ?? []).length === 0 && (
+      {views.length === 0 && elsewhere.length === 0 && (
         <Empty title="No dailies yet">
           A daily here is a checkbox and a streak. It cannot ring — nothing in a web app on iOS can
           — so it earns its place by being the first thing on this screen.
@@ -990,23 +1025,35 @@ export function Dailies() {
         </button>
       )}
 
-      <DueElsewhere />
+      <DueElsewhere views={dueElsewhere} />
 
       {/*
-        Last, because everything above it is something the day asks for.
-        No "all →" beside the heading, unlike House and Upkeep: those
-        point at the screen that owns them, and this *is* that screen.
+        Both folds sit below everything the day asks for, in the order
+        they are least likely to be wanted: what is finished, then what
+        is not for today at all. Neither is grouped by home — a fold is
+        already a lid, and headings inside one are structure nobody
+        asked to see.
+      */}
+      {done.length > 0 && (
+        <Fold summary={`${counted(done.length, 'done', 'done')} today`}>
+          <GroupedDailies
+            views={done}
+            render={(view) => <DailyRow key={view.daily.id} view={view} />}
+          />
+        </Fold>
+      )}
+
+      {/*
+        No "all →" beside it, unlike House and Training: those point at
+        the screen that owns them, and this *is* that screen.
       */}
       {otherDays.length > 0 && (
-        <div className="mt-3">
-          <span className="text-ink-700 mb-1 block text-xs tracking-wide uppercase">
-            Other days
-          </span>
+        <Fold summary={`${counted(otherDays.length, 'habit', 'habits')} on other days`}>
           <GroupedDailies
             views={otherDays}
             render={(view) => <DailyRow key={view.daily.id} view={view} />}
           />
-        </div>
+        </Fold>
       )}
     </>
   )

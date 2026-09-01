@@ -3781,11 +3781,49 @@ a later part is simply not drawn yet, and one press shows it. The count
 in the header still covers the whole day, because "3 left today" is a
 claim about the day rather than about this section.
 
-**Only what is still to do gets hidden.** A habit finished early stays
-on the list — hiding something already done invites doing it twice, and
-it is evidence rather than a task. Earlier parts stay too: a morning
-pill forgotten at noon is precisely what this screen is for. So the fold
-covers exactly one thing, the part of the day that has not arrived.
+**Only what is still to do gets hidden — and that now covers what is
+done as well, which reverses the paragraph this sentence used to be.**
+The old rule: a habit finished early stays on the list, because hiding
+something already done invites doing it twice and it is evidence rather
+than a task. Reported against: _"the homepage is cluttered with
+everything that gets checked off and stuff for other days."_
+
+Both halves were on screen permanently — every ticked row, and an
+"Other days" block for habits not due — so a fifteen-habit routine drew
+fifteen rows whatever the day actually asked for, and **the evidence of
+what was finished was what buried what was not.** They fold away now:
+`components/shared/Fold.tsx`, one lid each for "N done today" and "N on
+other days", on the dailies and on upkeep. Earlier parts of the day
+still stay put — a morning pill forgotten at noon is exactly what the
+screen is for.
+
+**Folded, never filtered, and that is the load-bearing half.** A done
+row is the only route to **undo**, and a not-due row is the only route
+to renaming or retiring one. Dropping either from the screen would take
+a working control away in order to tidy a list, which is the shape of
+mistake this file keeps recording under "a capability nothing can
+reach". The summary carries its count, so the lid says what is under it
+before it is lifted.
+
+**Upkeep created half of this and inherited the rest.** Moving its full
+list onto Today meant every chore rendered whatever the day asked,
+captioned "Not due today" — the clutter arrived with that move rather
+than being found in it.
+
+**One screen must not draw a record twice, and the first attempt did.**
+Today's done fold was built from own dailies plus everything
+`useDueElsewhere` returned, which includes upkeep — so a ticked Floss
+appeared in the Dailies fold _and_ in Upkeep's. `otherHomes` excludes
+`UPKEEP` from what the section **draws**, while `left` still reads the
+whole of `elsewhere`, because "3 left today" is a claim about the day
+rather than about one section. Found by driving it with six habits in
+three homes; the suite was green throughout.
+
+**`DueElsewhere` takes its rows rather than fetching them.** It called
+`useDueElsewhere` while its caller called it too — one answer read
+twice — and the caller has to split done from outstanding anyway, so
+the split has to happen in one place or the fold and the list would
+disagree about what is left.
 
 **Sorted chronologically, never "the current part first."** Putting now
 at the top is the more obviously clever rule and is worse to live with:

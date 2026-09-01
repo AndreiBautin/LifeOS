@@ -1,6 +1,8 @@
 import { Flame, Plus, Undo2 } from 'lucide-react'
 import { useState } from 'react'
 
+import { Fold } from '@/components/shared/Fold'
+import { counted } from '@/lib/counted'
 import { Button, Card, Empty, Section } from '@/components/shared/primitives'
 import { UPKEEP } from '@/domain/base/base'
 import type { DailyView } from '@/application/use-cases/dailies/dailies'
@@ -196,6 +198,22 @@ export function Upkeep() {
 
   const views = upkeep.data ?? []
 
+  /*
+   * The same three-way split the dailies above use, and it is needed
+   * here for a reason this section created: moving the full list onto
+   * Today meant every upkeep habit rendered whatever the day asked for,
+   * captioned "Not due today". That was the clutter reported —
+   * *"everything that gets checked off and stuff for other days"* — and
+   * it arrived with the move rather than being inherited.
+   *
+   * Folded rather than filtered, for the reason `Fold` gives: a done
+   * row is the only route to undo, and a not-due row is the only route
+   * to renaming or retiring one.
+   */
+  const outstanding = views.filter((view) => view.dueToday)
+  const done = views.filter((view) => view.doneToday)
+  const otherDays = views.filter((view) => !view.dueToday && !view.doneToday)
+
   return (
     <Section
       title="Upkeep"
@@ -228,13 +246,48 @@ export function Upkeep() {
             Things you either did today or did not — a gallon of water, brushing, flossing.
           </Empty>
         ) : (
-          <div className="mb-3">
-            <GroupedDailies
-              bare
-              views={views}
-              render={(view) => <UpkeepRow key={view.daily.id} view={view} />}
-            />
-          </div>
+          <>
+            {outstanding.length > 0 && (
+              <div className="mb-3">
+                <GroupedDailies
+                  bare
+                  views={outstanding}
+                  render={(view) => <UpkeepRow key={view.daily.id} view={view} />}
+                />
+              </div>
+            )}
+
+            {/*
+              Said in words rather than left as a gap. An empty card
+              under a heading reads as something that failed to load,
+              where the whole point is that there is nothing left.
+            */}
+            {outstanding.length === 0 && (
+              <p className="text-ink-500 mb-3 text-sm">Nothing left today.</p>
+            )}
+
+            {done.length > 0 && (
+              <Fold summary={`${counted(done.length, 'done', 'done')} today`}>
+                <GroupedDailies
+                  bare
+                  views={done}
+                  render={(view) => <UpkeepRow key={view.daily.id} view={view} />}
+                />
+              </Fold>
+            )}
+
+            {otherDays.length > 0 && (
+              <Fold summary={`${counted(otherDays.length, 'chore', 'chores')} on other days`}>
+                <GroupedDailies
+                  bare
+                  views={otherDays}
+                  render={(view) => <UpkeepRow key={view.daily.id} view={view} />}
+                />
+              </Fold>
+            )}
+
+            <div className="mt-3" />
+          </>
         )}
 
         <UpkeepSuggestions
