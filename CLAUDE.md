@@ -1176,6 +1176,33 @@ distrusts "Devotee" can see it means 100% of earned XP came from
 dailies — the difference between a label and a claim. No calling at all
 before anything has been done.
 
+**The wishlist is the other half of an inventory, and it is the gear
+shelf only.** The ask: _"gear/cosmetics to track apparel, shoes and
+accessories that I would like to purchase."_ The portrait already shows
+what you are carrying; `wantedFrom` shows what you mean to.
+
+**That is a deliberate asymmetry with the equipped list above it**, and
+worth stating because it looks like an inconsistency. `gearFrom` counts
+**both** non-house shelves, because a phone is a thing you carry and
+somebody whose purchases are all tech would otherwise have an empty
+portrait. A wishlist has no such problem: wanted tech already has a
+screen that does it better, with gates, prerequisites and a budget, so
+repeating it here would add nothing and would make "gear" mean something
+else.
+
+**`isOpen`, not "unbought".** Something cancelled is not something you
+want, and that predicate already existed.
+
+**Ordered by the upgrade's own priority, which is deliberately not the
+tech tree's ranking.** That one inherits priority from whatever a node
+unblocks; recomputing it for a four-row summary would put a second
+ordering on the same records.
+
+**Capped at four and silent when empty.** A wishlist that scrolls is a
+list, on a screen that is scanned — the overflow is counted rather than
+dropped. An empty "Wanted" heading is a prompt to go shopping, which is
+not what a character sheet is for.
+
 **Gear needed no new field.** `isOwned` excludes a wishlist and
 `isOwnArea` excludes the house, which is the split the Base screen
 already makes: a dishwasher upgrades the place you live and a belt

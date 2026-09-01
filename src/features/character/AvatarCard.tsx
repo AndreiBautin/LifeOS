@@ -1,9 +1,10 @@
-import { Wrench } from 'lucide-react'
+import { Shirt, Wrench } from 'lucide-react'
 import { Skeleton } from '@/components/shared/Skeleton'
 import { Link } from 'react-router-dom'
 
 import { Badge, Card } from '@/components/shared/primitives'
 import { buttonStyles } from '@/components/shared/styles'
+import { formatMinorUnits } from '@/domain/upgrades/upgrade'
 import { cn } from '@/lib/cn'
 
 import { AvatarPortrait } from './AvatarPortrait'
@@ -37,7 +38,7 @@ export function AvatarCard({ xp }: { readonly xp: number }) {
     )
   }
 
-  const { calling, gear, gearCount, into, needed } = avatar.data
+  const { calling, gear, gearCount, into, needed, wanted, wantedBeyond } = avatar.data
 
   return (
     <Card>
@@ -135,13 +136,58 @@ export function AvatarCard({ xp }: { readonly xp: number }) {
           </dl>
         )}
 
-        <Link
-          to="/upgrades"
-          className={cn(buttonStyles({ variant: 'ghost', size: 'sm' }), 'mt-2 w-full')}
-        >
-          <Wrench size={14} aria-hidden />
-          The tech tree
-        </Link>
+        {/*
+          The other half of an inventory: what you mean to carry.
+
+          **The gear shelf only**, which is a deliberate asymmetry with
+          the equipped list above — that counts both non-house shelves,
+          because a phone is a thing you carry and somebody whose
+          purchases are all tech would otherwise have an empty portrait.
+          A wishlist has no such problem: wanted tech already has a
+          screen that does it better, with gates, prerequisites and a
+          budget, so repeating it here would add nothing and make
+          "gear" mean something else.
+
+          Silent when there is nothing on it. An empty "Wanted" heading
+          is a prompt to go shopping, which is not what a character sheet
+          is for.
+        */}
+        {wanted.length > 0 && (
+          <div className="border-ink-800 mt-3 border-t pt-3">
+            <p className="text-ink-700 mb-1.5 text-xs tracking-wide uppercase">Wanted</p>
+            <ul className="space-y-1">
+              {wanted.map((item) => (
+                <li key={item.title} className="flex items-baseline justify-between gap-3">
+                  <span className="text-ink-300 min-w-0 truncate text-sm">{item.title}</span>
+                  <span className="text-ink-700 numeric shrink-0 text-xs">
+                    {item.costMinorUnits === undefined
+                      ? item.slot
+                      : formatMinorUnits(item.costMinorUnits)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+            {wantedBeyond > 0 && (
+              <p className="text-ink-700 mt-1.5 text-xs">
+                and {wantedBeyond} more on the gear shelf
+              </p>
+            )}
+          </div>
+        )}
+
+        <div className="mt-2 flex gap-1.5">
+          <Link to="/gear" className={cn(buttonStyles({ variant: 'ghost', size: 'sm' }), 'flex-1')}>
+            <Shirt size={14} aria-hidden />
+            Gear
+          </Link>
+          <Link
+            to="/upgrades"
+            className={cn(buttonStyles({ variant: 'ghost', size: 'sm' }), 'flex-1')}
+          >
+            <Wrench size={14} aria-hidden />
+            Tech tree
+          </Link>
+        </div>
       </div>
     </Card>
   )
