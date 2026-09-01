@@ -1120,6 +1120,56 @@ side quest with one pending step, stayed off the board, and closing it
 took the all-time XP from 1,675 to **1,695** with a new "Projects · 20
 XP" line — which is the whole reason it has a step at all.
 
+**The arc names its own section, and the app supplies no title once
+there is one.** Reported: _"I don't like 'The long way round' — I'm not
+sure what it even means or where it came from."_ It came from here: a
+fixed `Section` title over a card that then repeated the campaign's real
+name a size smaller. So the screen led with a heading nobody chose and
+buried _Move out of GVR_ inside it.
+
+Each arc is a `Section` of its own now, titled by its `name`, with its
+`aim` as the description — a campaign already carries both halves of a
+section header, and drawing them as one is what makes that part of the
+screen read as being about the arc rather than as a list with one entry.
+The only title the app still supplies is **"The arc"** on the empty
+state, where there is nothing to name it after. With two arcs there are
+two headings and no wrapper, which is right: nothing is _the_ arc.
+
+**The name and the aim are editable, and were not.** `renameArc` and
+`useRenameArc` were written, exported, and called by **nothing** — the
+same pattern as `removeDaily`, `moveDailyHome` and the rest. That is how
+a real arc came to carry the aim _"Step 1: don't absolutely despise your
+current neighbourhood"_: a description typed into the box above a
+numbered stage list, and then unfixable from any screen. This file
+already records the labelling fix for that box at creation; what it
+missed was that **a field you can only get wrong once still has to be
+correctable**.
+
+Both are labels — the stages, their laps and every date under them are
+untouched — which is why the arc editor carries no warning where a
+stage's _target_ change does.
+
+**Every stage links to the screen its evidence comes from.**
+`EVIDENCE_SCREENS` in `Campaigns.tsx`: house jobs to Base, offers to the
+job search, houses seen to Houses, money to Finance. Reported as _"all
+the other things that just have manual completions, like house search,
+should have sections that we could link to like the other sections"_ — a
+stage reading _0 of 5 house jobs finished_ is quoting a number Base
+owns, and nothing on the row said so.
+
+**Keyed on the requirement, never on the name.** A stage name is free
+text and could say anything; the requirement is the app's own statement
+about which records it reads, so a link derived from it cannot point
+somewhere the number does not come from. The routes live in the feature
+because `domain/campaign` must not know a browser exists.
+
+**A declared stage gets none, and that is the definition rather than a
+gap.** It is declared precisely because nothing in the app records it —
+there is no screen where "we found a house we liked" is written down, so
+a link would have to be invented. _Houses seen_ is the measured version
+of house-hunting and does link, so a house-search stage that wants one
+is a retarget away in the editor rather than a new field.
+
 **The arc stands in for a main quest you have not picked.** Reported:
 _"I'm still seeing no main or side quests assigned despite starting an
 arc."_ Nothing was broken — a campaign is deliberately not a `Project`
@@ -1213,6 +1263,24 @@ deletion switch. The `switch-exhaustiveness-check` rule caught that last
 one, and `repositories.test.ts` caught the store list. That is the
 machinery working: five of the seven were found by the compiler or a
 guard rather than by memory.
+
+**Three controls do not fit on one row at 375, and the board's add form
+was the proof.** Reported as _"I don't seem to be able to add new side
+quests at the bottom of the quests page"_ — and **the form worked**,
+which is what makes this worth recording rather than filing as a styling
+nit. The name field, the Side/Main pair and the Add button shared a flex
+row, so the field was squeezed to **177 pixels** and clipped its own
+placeholder mid-word to _"Something you are tr…"_. A control that cannot
+finish saying what it is for reads as disabled, and the loud button
+beside it reads as the whole form.
+
+The Contracts section directly above gets this right by accident — one
+field, one plus, full width — which is exactly why that one looks like
+somewhere to type and this one did not. The field has its own row now.
+
+**A report of "I can't do X" is not always a broken X.** Driving it
+found a working form nobody could see was a form; the fix is layout, and
+saying so is more useful than a changelog line claiming a bug was fixed.
 
 **The quest log is the hub's front page, and two of its rules used to be
 the database's job.** `/next` is what `/` redirects to. Cycle detection

@@ -541,8 +541,24 @@ export function ProjectsPage() {
             : `${open.length.toString()} open · ${done.length.toString()} finished`
         }
       >
+        {/*
+          **Two rows, because three controls do not fit on one.**
+          Reported as *"I don't seem to be able to add new side quests at
+          the bottom of the quests page"* — and the form did work, which
+          is what makes this worth writing down rather than calling a
+          styling nit. On a 375-pixel phone the name field, the Side/Main
+          pair and the Add button shared a flex row and the field was
+          squeezed to **177px**, clipping its own placeholder mid-word to
+          "Something you are tr…". A control that cannot finish saying
+          what it is for reads as disabled, and the loud Add button
+          beside it reads as the whole form.
+
+          The Contracts section directly above gets this right by
+          accident — one field, one plus, full width — which is why that
+          one looks like somewhere to type and this one did not.
+        */}
         <form
-          className="mb-3 flex gap-2"
+          className="mb-3 space-y-2"
           onSubmit={(event) => {
             event.preventDefault()
             if (name.trim() === '') return
@@ -566,36 +582,38 @@ export function ProjectsPage() {
               setName(event.target.value)
             }}
           />
-          {/*
-            Side is the default, and this toggle is how something becomes a
-            main quest. Deliberately two buttons rather than a select: it is
-            a binary, and a two-option dropdown is a tap and a decision
-            where a tap would do.
-          */}
-          <div className="flex shrink-0 gap-1">
-            {(['side', 'main'] as const).map((option) => (
-              <button
-                key={option}
-                type="button"
-                aria-label={`${QUEST_KIND_LABELS[option]} quest`}
-                aria-pressed={kind === option}
-                className={[
-                  'tap-target rounded-lg border px-2 text-xs font-medium',
-                  kind === option
-                    ? 'border-accent-500 bg-accent-500/15 text-accent-400'
-                    : 'border-ink-800 text-ink-500',
-                ].join(' ')}
-                onClick={() => {
-                  setKind(option)
-                }}
-              >
-                {QUEST_KIND_LABELS[option]}
-              </button>
-            ))}
+          <div className="flex gap-2">
+            {/*
+              Side is the default, and this toggle is how something becomes a
+              main quest. Deliberately two buttons rather than a select: it is
+              a binary, and a two-option dropdown is a tap and a decision
+              where a tap would do.
+            */}
+            <div className="flex flex-1 gap-1">
+              {(['side', 'main'] as const).map((option) => (
+                <button
+                  key={option}
+                  type="button"
+                  aria-label={`${QUEST_KIND_LABELS[option]} quest`}
+                  aria-pressed={kind === option}
+                  className={[
+                    'tap-target flex-1 rounded-lg border px-2 text-xs font-medium',
+                    kind === option
+                      ? 'border-accent-500 bg-accent-500/15 text-accent-400'
+                      : 'border-ink-800 text-ink-500',
+                  ].join(' ')}
+                  onClick={() => {
+                    setKind(option)
+                  }}
+                >
+                  {QUEST_KIND_LABELS[option]}
+                </button>
+              ))}
+            </div>
+            <Button type="submit" variant="primary" disabled={add.isPending}>
+              <Plus size={16} aria-hidden /> Add
+            </Button>
           </div>
-          <Button type="submit" disabled={add.isPending}>
-            <Plus size={16} aria-hidden /> Add
-          </Button>
         </form>
 
         {open.length === 0 ? (

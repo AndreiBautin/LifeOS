@@ -2,12 +2,21 @@ import { Check, Flag, Pencil, Plus, Undo2, X } from 'lucide-react'
 import { useState } from 'react'
 
 import type { CampaignId } from '@/domain/ids/ids'
+import { Link } from 'react-router-dom'
+
 import { Badge, Button, Card, Empty, Section } from '@/components/shared/primitives'
 import { Meter } from '@/components/shared/Meter'
 import type { CampaignStanding, Requirement, StageStanding } from '@/domain/campaign/campaign'
 import { formatMinorUnits } from '@/domain/upgrades/upgrade'
 
-import { useAddCampaign, useAppendStage, useCampaigns, useReachStage, useUndoStage } from './hooks'
+import {
+  useAddCampaign,
+  useAppendStage,
+  useCampaigns,
+  useReachStage,
+  useRenameArc,
+  useUndoStage,
+} from './hooks'
 import { StageEditor } from './StageEditor'
 
 /**
@@ -82,6 +91,41 @@ function describe(requirement: Requirement, standing: StageStanding): string {
   }
 }
 
+/**
+ * The screen a stage's requirement is read from.
+ *
+ * Reported: *"all the other things that just have manual completions,
+ * like house search, should have sections that we could link to like the
+ * other sections."* Right — a stage that says *0 of 5 house jobs
+ * finished* is quoting a number Base owns, and the screen where that
+ * number is moved was two taps away through the nav with nothing on the
+ * row to say which screen it was.
+ *
+ * **The link goes where the evidence is, which is why it is keyed on the
+ * requirement rather than on the stage's name.** A name is free text and
+ * could say anything; the requirement is the app's own statement about
+ * which records it reads, so a link derived from it cannot point
+ * somewhere the number does not come from.
+ *
+ * **A declared stage has none, and that is the definition rather than a
+ * gap.** It is declared precisely because nothing in the app records
+ * it — there is no screen where "we found a house we liked" is written
+ * down, so a link would have to be invented. *Houses seen* is the
+ * measured version of house-hunting and does link, so a house-search
+ * stage that wants one is a retarget away in the editor.
+ *
+ * The routes live here rather than in `domain/campaign` for the reason
+ * `AREA_ROUTES` does: the domain must not know that a browser exists.
+ */
+const EVIDENCE_SCREENS: Partial<Record<Requirement['kind'], { to: string; label: string }>> = {
+  'house-jobs': { to: '/base', label: 'Base' },
+  offers: { to: '/jobs', label: 'Job search' },
+  'homes-viewed': { to: '/houses', label: 'Houses' },
+  'net-worth': { to: '/finance', label: 'Finance' },
+  retirement: { to: '/finance', label: 'Finance' },
+  'credit-score': { to: '/finance', label: 'Finance' },
+}
+
 function StageRow({
   standing,
   campaign,
@@ -99,6 +143,7 @@ function StageRow({
 
   const { stage, met, progress, unproven } = standing
   const declared = stage.requirement.kind === 'declared'
+  const screen = EVIDENCE_SCREENS[stage.requirement.kind]
   const isNext = campaign.next?.stage.id === stage.id
 
   if (editing) {
@@ -160,7 +205,23 @@ function StageRow({
         )}
       </div>
 
-      <p className="text-ink-700 mt-0.5 text-xs">{describe(stage.requirement, standing)}</p>
+      <div className="mt-0.5 flex items-baseline justify-between gap-2">
+        <p className="text-ink-700 text-xs">{describe(stage.requirement, standing)}</p>
+        {/*
+          Where the number is kept, named. It is the same "all →" the
+          day's House and Training groups used to carry, put back where
+          it means something: one stage reads one screen, so it appears
+          once and cannot repeat.
+        */}
+        {screen !== undefined && (
+          <Link
+            to={screen.to}
+            className="text-ink-700 hover:text-ink-500 shrink-0 text-xs whitespace-nowrap"
+          >
+            {screen.label} →
+          </Link>
+        )}
+      </div>
 
       {/*
         A bar only where there is a quantity and a reading. An unproven
@@ -439,99 +500,253 @@ function AddStage({ campaignId }: { readonly campaignId: CampaignId }) {
   )
 }
 
+/**
+ * Renaming an arc, and saying where it ends up.
+ *
+ * **Neither could be changed after creation**, which is how a real arc
+ * came to carry the aim *"Step 1: don't absolutely despise your current
+ * neighbourhood"* — a description typed into the box above a numbered
+ * stage list, and then unfixable from any screen. `renameArc` and
+ * `useRenameArc` were written, exported and called by **nothing**, which
+ * is the pattern this codebase keeps recording.
+ *
+ * Both fields are labels: the stages, their laps and every date under
+ * them are untouched. That is why this needs no warning where a stage's
+ * *target* change gets one.
+ */
+function ArcEditor({
+  campaign,
+  onDone,
+}: {
+  readonly campaign: CampaignStanding['campaign']
+  readonly onDone: () => void
+}) {
+  const rename = useRenameArc()
+  const [name, setName] = useState(campaign.name)
+  const [aim, setAim] = useState(campaign.aim ?? '')
+
+  return (
+    <form
+      className="mb-3 space-y-2"
+      onSubmit={(event) => {
+        event.preventDefault()
+        if (name.trim() === '') return
+        rename.mutate({ id: campaign.id, name, aim }, { onSuccess: onDone })
+      }}
+    >
+      <label className="block">
+        <span className="text-ink-500 mb-1 block text-xs font-medium tracking-wide uppercase">
+          What the arc is called
+        </span>
+        <input
+          className={FIELD}
+          value={name}
+          autoFocus
+          onChange={(event) => {
+            setName(event.target.value)
+          }}
+        />
+      </label>
+
+      {/*
+        Labelled with what it is *not*, because that is the mistake it
+        actually invites and has already caused once: the numbered stage
+        list sits directly below, so an unlabelled box above one gets
+        filled in with the first step.
+      */}
+      <label className="block">
+        <span className="text-ink-500 mb-1 block text-xs font-medium tracking-wide uppercase">
+          Where it ends up · not the first step
+        </span>
+        <input
+          className={FIELD}
+          value={aim}
+          placeholder="Somewhere I actually want to live"
+          onChange={(event) => {
+            setAim(event.target.value)
+          }}
+        />
+      </label>
+
+      <div className="flex gap-2">
+        <Button type="submit" size="sm" variant="primary" disabled={rename.isPending}>
+          Save
+        </Button>
+        <Button type="button" size="sm" variant="ghost" onClick={onDone}>
+          Cancel
+        </Button>
+      </div>
+    </form>
+  )
+}
+
+/**
+ * One arc, under its own heading.
+ *
+ * **The arc names the section.** That replaced a fixed title reading
+ * *"The long way round"*, reported as *"I don't like that title — I'm
+ * not sure what it even means or where it came from."* Fair: it was the
+ * app's phrase for a thing the person had already named, so the screen
+ * led with a heading nobody chose and put *Move out of GVR* a size
+ * smaller underneath it, inside the card.
+ *
+ * The aim becomes the description for the same reason. A campaign
+ * already carries both halves of a section header — a name, and a
+ * sentence saying where it goes — so drawing them as one is what makes
+ * this part of the screen read as being *about* the arc rather than as a
+ * list that happens to have one entry.
+ *
+ * A consequence worth knowing: with two arcs there are two headings and
+ * no wrapper over them, which is right. Nothing is "the" arc.
+ */
+function Arc({ standing }: { readonly standing: CampaignStanding }) {
+  const [editing, setEditing] = useState(false)
+  const { campaign } = standing
+
+  return (
+    <Section
+      title={campaign.name}
+      {...(campaign.aim === undefined || campaign.aim.trim() === ''
+        ? {}
+        : { description: campaign.aim })}
+      action={
+        <Button
+          size="sm"
+          variant="ghost"
+          aria-label={editing ? `Stop editing ${campaign.name}` : `Edit ${campaign.name}`}
+          onClick={() => {
+            setEditing(!editing)
+          }}
+        >
+          {editing ? <X size={14} aria-hidden /> : <Pencil size={14} aria-hidden />}
+        </Button>
+      }
+    >
+      {editing && (
+        <ArcEditor
+          campaign={campaign}
+          onDone={() => {
+            setEditing(false)
+          }}
+        />
+      )}
+
+      <Card>
+        {/*
+          The count in words, since the name and the aim have moved up
+          into the heading and this card would otherwise open with a bar
+          and no sentence.
+        */}
+        <p className="text-ink-500 text-xs">
+          {standing.done} of {standing.total} stages
+        </p>
+
+        {/*
+          The denominator is stages the person named, not a scale this
+          app invented — the same reason the season bar measures against
+          your own previous season.
+        */}
+        <Meter
+          className="mt-2 mb-1"
+          value={standing.done}
+          of={standing.total}
+          height={6}
+          label={`${campaign.name}, ${String(standing.done)} of ${String(standing.total)} stages`}
+        />
+
+        <ul>
+          {standing.stages.map((stage, index) => (
+            <StageRow key={stage.stage.id} standing={stage} campaign={standing} index={index} />
+          ))}
+        </ul>
+
+        <AddStage campaignId={campaign.id} />
+      </Card>
+    </Section>
+  )
+}
+
 export function Campaigns() {
   const campaigns = useCampaigns()
   const [adding, setAdding] = useState(false)
 
   const arcs = campaigns.data ?? []
 
-  return (
-    <Section
-      title="The long way round"
-      description="One arc across several areas. It pays nothing — everything under it already did."
-      action={
-        arcs.length === 0 ? undefined : (
-          <Button
-            variant={adding ? 'ghost' : 'outline'}
-            size="sm"
-            onClick={() => {
-              setAdding(!adding)
+  /*
+   * Nothing yet, so the app supplies a heading — the only place it does
+   * for this part of the screen. It says what the thing is rather than
+   * christening it, since the moment there is one it is named by
+   * whoever started it.
+   */
+  if (campaigns.data !== undefined && arcs.length === 0) {
+    return (
+      <Section
+        title="The arc"
+        description="One long run across several areas. It pays nothing — everything under it already did."
+      >
+        {adding ? (
+          <AddArc
+            onDone={() => {
+              setAdding(false)
             }}
-          >
-            {adding ? 'Close' : 'Add'}
-          </Button>
-        )
-      }
-    >
-      {adding && (
+          />
+        ) : (
+          <Card>
+            <Empty title="No arc yet">
+              <span className="block">
+                The long one — fix the house, improve the income, find somewhere, save the deposit,
+                sell, move. Its stages read from Base, Jobs and Finance, so the parts the app
+                already records tick themselves.
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-3"
+                onClick={() => {
+                  setAdding(true)
+                }}
+              >
+                <Flag size={14} aria-hidden />
+                Start one
+              </Button>
+            </Empty>
+          </Card>
+        )}
+      </Section>
+    )
+  }
+
+  return (
+    <>
+      {arcs.map((standing) => (
+        <Arc key={standing.campaign.id} standing={standing} />
+      ))}
+
+      {/*
+        Low-key and last. A second arc is rare, and its button should not
+        compete with the one somebody is actually running.
+      */}
+      {adding ? (
         <AddArc
           onDone={() => {
             setAdding(false)
           }}
         />
+      ) : (
+        arcs.length > 0 && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="mb-8"
+            onClick={() => {
+              setAdding(true)
+            }}
+          >
+            <Plus size={14} aria-hidden />
+            Another arc
+          </Button>
+        )
       )}
-
-      {campaigns.data !== undefined && arcs.length === 0 && !adding && (
-        <Card>
-          <Empty title="No arc yet">
-            <span className="block">
-              The long one — fix the house, improve the income, find somewhere, save the deposit,
-              sell, move. Its stages read from Base, Jobs and Finance, so the parts the app already
-              records tick themselves.
-            </span>
-            <Button
-              variant="outline"
-              size="sm"
-              className="mt-3"
-              onClick={() => {
-                setAdding(true)
-              }}
-            >
-              <Flag size={14} aria-hidden />
-              Start one
-            </Button>
-          </Empty>
-        </Card>
-      )}
-
-      <div className="space-y-3">
-        {arcs.map((standing) => (
-          <Card key={standing.campaign.id}>
-            <div className="flex items-baseline justify-between gap-3">
-              <div className="min-w-0 flex-1">
-                <p className="text-ink-50 truncate text-sm font-medium">{standing.campaign.name}</p>
-                {standing.campaign.aim !== undefined && (
-                  <p className="text-ink-700 truncate text-xs">{standing.campaign.aim}</p>
-                )}
-              </div>
-              <span className="text-ink-500 numeric shrink-0 text-xs">
-                {standing.done}/{standing.total}
-              </span>
-            </div>
-
-            {/*
-              The denominator is stages the person named, not a scale
-              this app invented — the same reason the season bar measures
-              against your own previous season.
-            */}
-            <Meter
-              className="mt-2 mb-1"
-              value={standing.done}
-              of={standing.total}
-              height={6}
-              label={`${standing.campaign.name}, ${String(standing.done)} of ${String(standing.total)} stages`}
-            />
-
-            <ul>
-              {standing.stages.map((stage, index) => (
-                <StageRow key={stage.stage.id} standing={stage} campaign={standing} index={index} />
-              ))}
-            </ul>
-
-            <AddStage campaignId={standing.campaign.id} />
-          </Card>
-        ))}
-      </div>
-    </Section>
+    </>
   )
 }
