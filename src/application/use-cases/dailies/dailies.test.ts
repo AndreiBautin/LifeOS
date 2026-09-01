@@ -6,6 +6,8 @@ import {
   keepToday,
   recadenceDaily,
   relabelDaily,
+  removeDaily,
+  retireDaily,
   undoOn,
   undoToday,
   type DailyDeps,
@@ -40,7 +42,14 @@ function deps(seed: Daily[]): DailyDeps & { readonly stored: Daily[] } {
         return Promise.resolve()
       },
       restoreMany: () => Promise.resolve(),
-      remove: () => Promise.resolve(),
+      // Actually removes, like the repository. A double that swallowed
+      // this would let a test about deleting pass while nothing was
+      // deleted, which is the only thing that test is for.
+      remove: (id) => {
+        const at = seed.findIndex((one) => one.id === id)
+        if (at >= 0) seed.splice(at, 1)
+        return Promise.resolve()
+      },
       purge: () => Promise.resolve(),
     },
     clock: { now: () => NOW },
@@ -476,5 +485,34 @@ describe('filing a habit to a section', () => {
     )
 
     expect(services.stored[0]?.done).toEqual(kept)
+  })
+})
+
+/*
+ * Reported: *"I seem to not be able to delete dailies."* You could not —
+ * `removeDaily` and `useRemoveDaily` were written and tested and called
+ * by nothing anywhere in the app, so the only way out was retiring,
+ * which keeps the record and cannot be undone from any screen.
+ */
+describe('removing a habit rather than retiring it', () => {
+  it('takes the record out of the store', async () => {
+    const services = deps([habit()])
+
+    await removeDaily(asDailyId('water'), services)
+
+    expect(services.stored).toHaveLength(0)
+  })
+
+  it('is not what retiring does, which keeps the days', async () => {
+    // The rule the row's two verbs turn on: a habit's kept days are the
+    // record, and a row created by mistake is a record of nothing.
+    const kept = ['2026-08-28', '2026-08-29']
+    const services = deps([{ ...habit(), done: kept }])
+
+    await retireDaily(asDailyId('water'), services)
+
+    expect(services.stored).toHaveLength(1)
+    expect(services.stored[0]?.done).toEqual(kept)
+    expect(services.stored[0]?.retiredAt).toBe('2026-08-30')
   })
 })

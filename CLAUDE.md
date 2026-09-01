@@ -3896,6 +3896,52 @@ where the temptation is strongest.
 **Habits retire rather than delete.** `retiredAt` makes them expected on
 no day, so they leave the list and their kept days survive. Eighty days
 of a habit you have finished with is a thing that happened.
+
+**That rule was right and it was also the only door, which made it a
+trap.** Reported: _"I seem to not be able to delete dailies."_ You could
+not. `removeDaily` and `useRemoveDaily` were written, exported and
+tested, and **called by nothing anywhere in the app** — the seventh
+instance of the pattern this file keeps recording, after
+`proposeLandmarks`, `readinessScore`, `moveDailyHome`, the fatigue
+percent, the stopping rule and the geocoder. So a habit typed with a
+typo, added twice, or thought better of an hour later could only be
+_retired_: kept forever, invisible on every screen, and travelling over
+sync for good.
+
+**The verb now follows what there is to lose, and the row says which it
+is doing.** A habit with no kept days is a record of _nothing_ and the
+button deletes; one that has been kept is a record of something and the
+button retires. That is not a new rule — it is the one `attempts`
+already states, where a problem logged by mistake is deleted because it
+is not a thing that happened, while a habit's kept days _are_ the
+record. Same predicate, applied where it had never been.
+
+**Permanent deletion for a habit with history lives in the editor, not
+on the row.** The more destructive thing sits further from the control
+pressed daily, which is the reason a pool's retire is in its editor
+too — and on a row already carrying a tick, a rename, a move and a
+retire there is nothing left to spend at 375 pixels.
+
+**It says the XP will go, because that is the part nobody expects.**
+`tallyActs` counts completions, so removing them takes back what they
+paid: a habit kept eighty times is 1,200 XP, and the character level can
+fall. This is the one place in the app where **a record of effort
+shrinks**, and it is allowed only because deleting is exactly the
+request to un-record it — the alternative, retiring, keeps both and only
+stops asking. Measured end to end: a habit with three kept days took the
+all-time total from **45 XP to 0**, which is what the warning promised.
+
+**A deletion writes a tombstone**, so it is a fact rather than an
+absence and the record does not come back from the other device on the
+next exchange. Verified: `dailies:<id>` in the store after the press.
+
+**What is still missing, named rather than implied: a retired habit
+cannot be brought back.** `dailiesToday` drops anything with `retiredAt`
+before anything else sees it, so there is no screen that lists one and
+nothing to press. Deleting the never-kept rows removes most of the
+pressure — that is where the accidents are — but a habit retired by
+mistake is still unreachable, and un-retiring needs a screen the day it
+needs a function.
 **Today and You are one screen, and that reverses the rule below.**
 The paragraph that follows is kept rather than deleted, because it is
 the argument this decision was made _against_ and it may well be right

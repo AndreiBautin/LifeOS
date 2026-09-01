@@ -1,4 +1,4 @@
-import { Archive, CalendarCog, Check, Flame, Home, Pencil, Plus, Undo2 } from 'lucide-react'
+import { Archive, CalendarCog, Check, Flame, Home, Pencil, Plus, Trash2, Undo2 } from 'lucide-react'
 import { useState } from 'react'
 
 import type { DailyView } from '@/application/use-cases/dailies/dailies'
@@ -31,6 +31,7 @@ import {
   useRelabelDaily,
   useDailies,
   useKeepToday,
+  useRemoveDaily,
   useRetireDaily,
   useUndoToday,
 } from './dailies-hooks'
@@ -136,6 +137,8 @@ export function RenameDaily({
   const [group, setGroup] = useState(daily.group ?? '')
   const [home, setHome] = useState(daily.belongsTo)
   const [showingCadence, setShowingCadence] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const remove = useRemoveDaily()
 
   return (
     <form
@@ -231,6 +234,70 @@ export function RenameDaily({
         </span>
         <DailyHistory view={view} />
       </div>
+
+      {/*
+        **Permanent deletion for a habit that has been kept**, which the
+        row deliberately does not offer: there the button retires,
+        because the days are the record. This is the way out for somebody
+        who wants the row gone anyway, and it is here rather than on the
+        row for the reason a pool's retire is in its editor — the more
+        destructive thing sits further from the control pressed daily.
+
+        **What it costs is named before it happens, and the XP is the
+        part nobody expects.** `tallyActs` counts completions, so
+        removing them takes back what they paid: a habit kept eighty
+        times is 1,200 XP that goes with it, and the character level can
+        fall. That is what deleting *means* — the alternative is retiring,
+        which keeps both — and it is the sharpest argument for retiring,
+        so it belongs on the screen rather than in this comment.
+      */}
+      {daily.done.length > 0 && (
+        <div className="border-ink-800 border-t pt-3">
+          {deleting ? (
+            <div className="space-y-2">
+              <p className="text-warn-500 text-xs">
+                This removes the habit and the {counted(daily.done.length, 'day', 'days')} it was
+                kept on, and the XP they paid. Retiring keeps all of it and only stops asking.
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="danger"
+                  disabled={remove.isPending}
+                  onClick={() => {
+                    remove.mutate(daily.id, { onSuccess: onDone })
+                  }}
+                >
+                  Delete permanently
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    setDeleting(false)
+                  }}
+                >
+                  Keep it
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setDeleting(true)
+              }}
+            >
+              <Trash2 size={14} aria-hidden />
+              Delete permanently
+            </Button>
+          )}
+        </div>
+      )}
     </form>
   )
 }
@@ -545,6 +612,7 @@ export function DailyRow({
   const nowPart = partOfDayAt(clock.now())
   const undo = useUndoToday()
   const retire = useRetireDaily()
+  const remove = useRemoveDaily()
   const moveHome = useMoveDailyHome()
   const [confirming, setConfirming] = useState(false)
   const [renaming, setRenaming] = useState(false)
@@ -571,6 +639,13 @@ export function DailyRow({
    * line of code.
    */
   const shownPart = part ?? partsOf(daily)[0]
+
+  /*
+   * Ever kept, not kept *today*. A habit ticked once in March and never
+   * since is still a record of a day that happened, and the count is
+   * what the retire/delete choice turns on.
+   */
+  const everKept = daily.done.length > 0
 
   if (renaming) {
     return (
@@ -703,19 +778,44 @@ export function DailyRow({
       </Button>
 
       {/*
-        Retire rather than delete: the days it was kept survive, and eighty
-        days of a habit you have finished with is a thing that happened.
+        **Retire what was kept, delete what never was**, and the button
+        says which it is doing. Reported simply as *"I seem to not be
+        able to delete dailies"* — you could not: `removeDaily` and
+        `useRemoveDaily` were written, tested, and called by **nothing
+        anywhere in the app**, so the only way out was retiring, which
+        keeps the record forever and cannot be undone from any screen.
+
+        The rule this follows is the one `attempts` already states: a
+        habit's kept days *are* the record and retiring keeps them, while
+        a row created by mistake — a typo, a duplicate, a habit added and
+        thought better of — is not a thing that happened, and leaving it
+        in the database and in every sync is worse than removing it.
+
+        So the same button does both, chosen by whether there is anything
+        to lose. That is also why the confirm reads differently: retiring
+        is reversible in principle and deleting is not.
       */}
       <Button
         size="sm"
         variant={confirming ? 'danger' : 'ghost'}
-        aria-label={confirming ? `Confirm retiring ${daily.title}` : `Retire ${daily.title}`}
+        aria-label={
+          confirming
+            ? `Confirm ${everKept ? 'retiring' : 'deleting'} ${daily.title}`
+            : `${everKept ? 'Retire' : 'Delete'} ${daily.title}`
+        }
         onClick={() => {
-          if (confirming) retire.mutate(daily.id)
-          else setConfirming(true)
+          if (!confirming) setConfirming(true)
+          else if (everKept) retire.mutate(daily.id)
+          else remove.mutate(daily.id)
         }}
       >
-        {confirming ? 'Sure?' : <Archive size={16} aria-hidden />}
+        {confirming ? (
+          'Sure?'
+        ) : everKept ? (
+          <Archive size={16} aria-hidden />
+        ) : (
+          <Trash2 size={16} aria-hidden />
+        )}
       </Button>
     </div>
   )
