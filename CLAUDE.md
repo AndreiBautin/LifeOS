@@ -2886,6 +2886,26 @@ belt. Narrowing it to the gear shelf would be more precise about the
 word and worse on the screen — somebody whose purchases are all tech
 would have an empty portrait to make a label read better.
 
+**Cancelled had nowhere honest to be, in two different wrong ways.**
+The tech tree filtered its list on `status !== 'purchased'`, so a
+dropped upgrade sat among the live ones — and if it was cheap enough it
+appeared under _what you can get today_, which is the screen
+recommending something you had decided against. Base then went the other
+way when its list was split: cancelled matched neither `isOpen` nor
+`isOwned` and rendered nowhere at all, which is worse, because the only
+control that can un-cancel one lives on its row.
+
+Both screens now end with a short **Dropped** list. `isOpen` is the
+filter for the live tree, and `dropped` is its counterpart, with a test
+that the three lists account for every upgrade between them.
+
+**The tech tree says what the whole list comes to, against the budget it
+already holds.** Two stated numbers subtracted — costs you typed and a
+budget you typed — so the shortfall is arithmetic rather than advice.
+The unpriced rows are named and the sentence says **"so this is a floor
+rather than a total"**, because a figure that folded them in as free
+would be understated in the direction that matters.
+
 **The house list is split into what you are saving for and what is
 already here.** It was flat — everything on the shelf in one column with
 a Wanted or Owned chip to tell them apart — which is fine at three rows

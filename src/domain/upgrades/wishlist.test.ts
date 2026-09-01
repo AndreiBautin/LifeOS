@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { asUpgradeId } from '@/domain/ids/ids'
 import type { Upgrade, UpgradeStatus } from '@/domain/upgrades/upgrade'
 
-import { owned, wanted, wishlistTotal } from './wishlist'
+import { dropped, owned, wanted, wishlistTotal } from './wishlist'
 
 function upgrade(title: string, status: UpgradeStatus, cost?: number, priority = 50): Upgrade {
   return {
@@ -67,5 +67,22 @@ describe('what the list comes to', () => {
 
   it('says nothing much about an empty list', () => {
     expect(wishlistTotal([])).toEqual({ minorUnits: 0, priced: 0, unpriced: 0 })
+  })
+})
+
+/*
+ * Cancelled belongs in neither list and must still be reachable: the
+ * only control that can un-cancel it lives on its row, so a screen that
+ * renders no row has taken the decision away.
+ */
+describe('things decided against', () => {
+  it('collects the cancelled ones', () => {
+    expect(dropped(list).map((one) => one.title)).toEqual(['Old lamp'])
+  })
+
+  it('accounts for every upgrade across the three lists', () => {
+    const total = wanted(list).length + owned(list).length + dropped(list).length
+
+    expect(total).toBe(list.length)
   })
 })

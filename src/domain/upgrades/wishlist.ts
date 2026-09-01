@@ -21,6 +21,26 @@ export function owned(upgrades: readonly Upgrade[]): readonly Upgrade[] {
   return [...upgrades].filter(isOwned).sort((a, b) => a.title.localeCompare(b.title))
 }
 
+/**
+ * Things decided against, kept reachable.
+ *
+ * **Cancelled belongs in neither of the lists above and must still be
+ * somewhere.** The tech tree showed it inside the tree itself — its
+ * filter was `status !== 'purchased'`, so a dropped upgrade sat among
+ * the live ones and could be offered under "what you can get today",
+ * which is the screen recommending something you had decided against.
+ * Base then went the other way and rendered it nowhere at all, which is
+ * worse: the only control that could un-cancel it is on the row, and the
+ * row had stopped existing.
+ *
+ * So: its own short list, last, on both screens.
+ */
+export function dropped(upgrades: readonly Upgrade[]): readonly Upgrade[] {
+  return [...upgrades]
+    .filter((one) => one.status === 'cancelled')
+    .sort((a, b) => a.title.localeCompare(b.title))
+}
+
 export interface WishlistTotal {
   /** The sum of the costs that exist. Integer minor units. */
   readonly minorUnits: number

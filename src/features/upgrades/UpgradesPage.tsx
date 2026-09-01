@@ -3,6 +3,7 @@ import { PageHeader } from '@/components/shared/PageHeader'
 import { useState } from 'react'
 
 import { Badge, Button, Card, Empty, Section } from '@/components/shared/primitives'
+import { wishlistTotal } from '@/domain/upgrades/wishlist'
 import {
   UPGRADE_SHELF_BLURBS,
   UPGRADE_SHELF_LABELS,
@@ -15,6 +16,7 @@ import type { UpgradeId } from '@/domain/ids/ids'
 import type { TreeEntry } from '@/domain/upgrades/recommendation'
 import {
   formatMinorUnits,
+  isOpen,
   toMinorUnits,
   UPGRADE_CATEGORIES,
   UPGRADE_CATEGORY_LABELS,
@@ -396,9 +398,25 @@ function ShelfPage({ shelf }: { readonly shelf: UpgradeShelf }) {
   const tree = useShelfTree(shelf, budget)
   const entries = tree.data ?? []
 
-  const open = entries.filter((entry) => entry.upgrade.status !== 'purchased')
+  /*
+   * `isOpen` rather than "not purchased", which is what this said and
+   * which quietly kept **cancelled** upgrades in the tree — and, if one
+   * was cheap enough, offered it under "what you can get today". A
+   * screen recommending something you had decided against.
+   */
+  const open = entries.filter((entry) => isOpen(entry.upgrade))
   const owned = entries.filter((entry) => entry.upgrade.status === 'purchased')
+  const gone = entries.filter((entry) => entry.upgrade.status === 'cancelled')
   const availableNow = open.filter((entry) => entry.affordable)
+
+  const total = wishlistTotal(entries.map((entry) => entry.upgrade))
+  /*
+   * What the list still needs beyond what you have. Two stated numbers
+   * subtracted — the budget you typed and the costs you typed — and it
+   * says how many rows carry no price, because a shortfall that folded
+   * those in as free is understated in the direction that matters.
+   */
+  const shortfall = Math.max(0, total.minorUnits - budget)
 
   return (
     <>
@@ -446,6 +464,23 @@ function ShelfPage({ shelf }: { readonly shelf: UpgradeShelf }) {
         title="The tree"
         description="Ordered by the priority each node inherits from the most important thing it unblocks."
       >
+        {total.priced > 0 && (
+          <Card className="mb-3">
+            <div className="flex items-baseline justify-between gap-3">
+              <span className="text-ink-500 text-sm">The whole list</span>
+              <span className="text-ink-50 numeric text-sm font-semibold">
+                {formatMinorUnits(total.minorUnits)}
+              </span>
+            </div>
+            <p className="text-ink-700 mt-1 text-xs">
+              Across {total.priced} priced {total.priced === 1 ? 'item' : 'items'}
+              {total.unpriced > 0 &&
+                ` · ${String(total.unpriced)} with no estimate, so this is a floor rather than a total`}
+              {shortfall > 0 && ` · ${formatMinorUnits(shortfall)} beyond your budget`}
+            </p>
+          </Card>
+        )}
+
         <AddUpgrade candidates={entries} shelf={shelf} />
 
         {open.length === 0 ? (
@@ -462,6 +497,20 @@ function ShelfPage({ shelf }: { readonly shelf: UpgradeShelf }) {
           </div>
         )}
       </Section>
+
+      {gone.length > 0 && (
+        <Section title="Dropped" description="Decided against, and still here to change your mind">
+          <div className="space-y-2">
+            {gone.map((entry) => (
+              <EntryCard
+                key={entry.upgrade.id}
+                entry={entry}
+                others={entries.filter((one) => one.upgrade.id !== entry.upgrade.id)}
+              />
+            ))}
+          </div>
+        </Section>
+      )}
 
       {owned.length > 0 && (
         <Section title="Owned">

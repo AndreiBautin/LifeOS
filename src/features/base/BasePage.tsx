@@ -12,7 +12,7 @@ import type { Project } from '@/domain/projects/project'
 import type { Upgrade } from '@/domain/upgrades/upgrade'
 import { BASE, JOB_APPROACHES, stepsFor, type JobApproach } from '@/domain/base/base'
 import { UPGRADE_SHELF_LABELS, UPGRADE_SHELVES } from '@/domain/upgrades/shelf'
-import { owned, wanted, wishlistTotal } from '@/domain/upgrades/wishlist'
+import { dropped, owned, wanted, wishlistTotal } from '@/domain/upgrades/wishlist'
 import { formatMinorUnits, isOwned } from '@/domain/upgrades/upgrade'
 import { cn } from '@/lib/cn'
 
@@ -465,6 +465,7 @@ export function BasePage() {
   const houseUpgrades = (upgrades.data ?? []).map((entry) => entry.upgrade)
   const houseWanted = wanted(houseUpgrades)
   const houseOwned = owned(houseUpgrades)
+  const houseDropped = dropped(houseUpgrades)
   const total = wishlistTotal(houseUpgrades)
 
   const dueChores = (chores.data ?? []).filter((view) => view.dueToday || view.doneToday)
@@ -645,6 +646,26 @@ export function BasePage() {
                   </span>
                   <ul className="space-y-1.5">
                     {houseOwned.map((upgrade) => (
+                      <UpgradeRow key={upgrade.id} upgrade={upgrade} />
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/*
+                Decided against, and still reachable. Splitting the list
+                put cancelled rows in neither section, which rendered
+                them nowhere — and the only control that can un-cancel
+                one lives on its row, so the decision had been taken
+                away rather than recorded.
+              */}
+              {houseDropped.length > 0 && (
+                <div className="mt-3">
+                  <span className="text-ink-700 mb-1.5 block text-xs tracking-wide uppercase">
+                    Dropped
+                  </span>
+                  <ul className="space-y-1.5">
+                    {houseDropped.map((upgrade) => (
                       <UpgradeRow key={upgrade.id} upgrade={upgrade} />
                     ))}
                   </ul>
