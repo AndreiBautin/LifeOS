@@ -22,6 +22,18 @@ import type { ReactNode } from 'react'
  * the same way. The test it failed is the only one decoration has: it was
  * asked about.
  *
+ * **The subtitle is a `div`, not a `p`, and that is a fix rather than a
+ * preference.** It takes a `ReactNode`, and what several screens hand it
+ * is a block element — Today passes a `Skeleton` while the avatar loads,
+ * which renders a `div`. A `div` inside a `p` is invalid HTML, so the
+ * browser closes the paragraph early and the DOM stops matching what
+ * React rendered: a hydration warning on **every screen in the app**,
+ * from one tag in one file. Nothing about the look depends on the `p` —
+ * preflight resets its margin and the classes carry the rest — so the
+ * cheaper fix is here rather than in `Skeleton`, which would have to
+ * become an inline-block `span` on every other call site to make one
+ * caller legal.
+ *
  * `leading` and `action` exist because three screens already had them —
  * Today's portrait, Character's settings link, Train's Plan and History
  * links. A component that could not hold those would have left three
@@ -45,7 +57,9 @@ export function PageHeader({
           {leading}
           <div className="min-w-0">
             <h1 className="text-ink-50 text-2xl font-semibold tracking-tight">{title}</h1>
-            {subtitle !== undefined && <p className="text-ink-500 mt-0.5 text-sm">{subtitle}</p>}
+            {subtitle !== undefined && (
+              <div className="text-ink-500 mt-0.5 text-sm">{subtitle}</div>
+            )}
           </div>
         </div>
         {action !== undefined && <div className="flex shrink-0 gap-1">{action}</div>}
