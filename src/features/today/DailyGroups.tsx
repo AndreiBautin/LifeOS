@@ -19,8 +19,22 @@ import { useDailies } from './dailies-hooks'
  * all, that means this renders exactly what the plain list used to.
  */
 
+/*
+ * `shrink-0` is the load-bearing word here, and `tap-target` is why it
+ * has to be said out loud. That class sets `min-width: 2.75rem` for the
+ * thumb, which **replaces the `min-width: auto` a flex item would
+ * otherwise carry** — and that automatic minimum is the thing that
+ * normally stops an item shrinking below its own content.
+ *
+ * So on a phone narrow enough to hold fewer chips than there are, every
+ * chip in the scrolling row below was squeezed to 44px while
+ * `whitespace-nowrap` held its label at full width, and the text ran
+ * straight out of its own border and across its neighbours. The row is
+ * `overflow-x-auto` precisely so that it may be wider than the screen;
+ * refusing to shrink is what lets it be.
+ */
 const CHIP =
-  'tap-target rounded-lg border px-2.5 text-xs font-medium whitespace-nowrap transition-colors'
+  'tap-target shrink-0 rounded-lg border px-2.5 text-xs font-medium whitespace-nowrap transition-colors'
 
 export function GroupedDailies({
   views,

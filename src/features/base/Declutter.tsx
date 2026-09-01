@@ -249,7 +249,11 @@ function AddRoom({ onDone, taken }: { readonly onDone: () => void; readonly take
               <button
                 key={one}
                 type="button"
-                className="border-ink-800 text-ink-500 tap-target rounded-lg border px-2.5 text-xs font-medium whitespace-nowrap"
+                // `shrink-0` for the reason `CHIP` in DailyGroups spells
+                // out: `tap-target`'s min-width replaces a flex item's
+                // automatic minimum, so without it these squeeze to 44px
+                // and the nowrap label runs outside its own border.
+                className="border-ink-800 text-ink-500 tap-target shrink-0 rounded-lg border px-2.5 text-xs font-medium whitespace-nowrap"
                 disabled={add.isPending}
                 onClick={() => {
                   add.mutate(one, { onSuccess: onDone })
