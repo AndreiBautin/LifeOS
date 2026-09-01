@@ -3,6 +3,8 @@ import { Skeleton } from '@/components/shared/Skeleton'
 import { Link } from 'react-router-dom'
 
 import { Card } from '@/components/shared/primitives'
+import { Fold } from '@/components/shared/Fold'
+import { counted } from '@/lib/counted'
 import { buttonStyles } from '@/components/shared/styles'
 import { directionOf } from '@/domain/vitals/charges'
 
@@ -34,7 +36,30 @@ export function LimitsCard() {
     )
   }
 
+  /*
+   * **A pool shut for today folds away, and is not dropped.** Reported:
+   * *"alcohol only applies on certain days, but it's still cluttering
+   * up the screen on days where I don't have charges available."* Right
+   * — a card headed *what you have left today* was giving a full band to
+   * a pool whose own caption said "not today", complete with a plus and
+   * an undo, on a screen that is scanned rather than read.
+   *
+   * **Folded rather than filtered, because spending is never refused.**
+   * That rule is load-bearing: an app that refused would be asking to be
+   * lied to, and a log you lie to is worth nothing. Hiding the row
+   * outright would make a Tuesday drink unloggable, which is the same
+   * mistake with a tidier screen — so it goes behind a lid, one tap
+   * away, exactly like the day's done and not-due habits above it.
+   *
+   * The Limits screen itself is untouched: that is where pools are
+   * managed, and a list you manage has to show everything in it.
+   */
+  const shut = (pool: (typeof vitals.data.pools)[number]): boolean =>
+    pool.reading.days !== undefined && !pool.reading.days.openToday
+
   const { pools } = vitals.data
+  const today = pools.filter((pool) => !shut(pool))
+  const notToday = pools.filter(shut)
 
   return (
     <Card>
@@ -61,29 +86,54 @@ export function LimitsCard() {
           them makes every row need its label read before its number
           means anything.
         */
-        [
-          { of: 'limit' as const, label: 'Limits' },
-          { of: 'target' as const, label: 'Targets' },
-        ]
-          .map((group) => ({
-            ...group,
-            rows: pools.filter((pool) => directionOf(pool.vice) === group.of),
-          }))
-          .filter((group) => group.rows.length > 0)
-          .map((group) => (
-            <div key={group.of} className="mb-3 last:mb-0">
-              {/* Only worth a heading when both are present — one group
-                  alone is not ambiguous about which it is. */}
-              {pools.some((pool) => directionOf(pool.vice) !== group.of) && (
-                <p className="text-ink-700 mb-1 text-xs tracking-wide uppercase">{group.label}</p>
-              )}
+        <>
+          {[
+            { of: 'limit' as const, label: 'Limits' },
+            { of: 'target' as const, label: 'Targets' },
+          ]
+            .map((group) => ({
+              ...group,
+              rows: today.filter((pool) => directionOf(pool.vice) === group.of),
+            }))
+            .filter((group) => group.rows.length > 0)
+            .map((group) => (
+              <div key={group.of} className="mb-3 last:mb-0">
+                {/* Only worth a heading when both are present — one group
+                    alone is not ambiguous about which it is. */}
+                {today.some((pool) => directionOf(pool.vice) !== group.of) && (
+                  <p className="text-ink-700 mb-1 text-xs tracking-wide uppercase">{group.label}</p>
+                )}
+                <div className="divide-ink-800 divide-y">
+                  {group.rows.map((pool) => (
+                    <PoolRow key={pool.vice.id} pool={pool} now={now} />
+                  ))}
+                </div>
+              </div>
+            ))}
+
+          {/*
+            Nothing at all for today is a real state and worth a sentence
+            rather than an empty card above a lid — the pools exist, they
+            are simply not on today.
+          */}
+          {today.length === 0 && <p className="text-ink-500 text-sm">Nothing on for today.</p>}
+
+          {/*
+            Flat inside the lid, with no Limits/Targets headings: a fold
+            is already a lid, and a second axis of headings inside one is
+            structure nobody asked to see — the call the day's folds
+            already make.
+          */}
+          {notToday.length > 0 && (
+            <Fold summary={`${counted(notToday.length, 'limit', 'limits')} not for today`}>
               <div className="divide-ink-800 divide-y">
-                {group.rows.map((pool) => (
+                {notToday.map((pool) => (
                   <PoolRow key={pool.vice.id} pool={pool} now={now} />
                 ))}
               </div>
-            </div>
-          ))
+            </Fold>
+          )}
+        </>
       )}
     </Card>
   )

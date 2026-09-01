@@ -1223,6 +1223,14 @@ stage is waiting on a reading, and naming a step for it would be the app
 telling somebody to go and have more money. Declared, money and
 houses-seen stages fall back to the stage name — absent, never invented.
 
+**The job's name leads that line, because the step alone says nothing.**
+Reported next: _"it just says find the right person, but that literally
+applies to all the jobs."_ It does — `HIRED_JOB_STEPS` opens every house
+job with the same three, so _Find the right person_ is the next step of
+the porch roof, the boiler and the leaking tap identically. The name and
+the step read as `Fix the porch roof · Find the right person`, in that
+order, so a truncated line keeps the half that distinguishes it.
+
 **`useRecommendation` takes the home, and `undefined` means "do not
 ask".** That is not a third home; it is how a caller that only sometimes
 has one keeps the hook unconditional, since hooks cannot be called in an
@@ -3484,6 +3492,23 @@ you lie to is worth nothing. `ChargeReading.over` is separate from
 `available` so the bar can clamp at empty while the record does not —
 otherwise the one day worth noticing looks exactly like a day at the
 limit.
+
+**That rule is why a pool shut for today folds rather than
+disappearing.** Reported: _"alcohol only applies on certain days, but
+it's still cluttering up the screen on days where I don't have charges
+available."_ Fair — a card headed _what you have left today_ was giving
+a full band to a pool whose own caption read "not today", plus a plus
+and an undo, on a screen that is scanned rather than read.
+
+Filtering it out is the obvious fix and is the one thing that must not
+happen: a Tuesday drink would become unloggable, which is the same
+mistake with a tidier screen. It goes behind a lid on **Today only**,
+counted in the summary, one tap from the same controls — the treatment
+the day's done and not-due habits already get. Driven: with the row
+folded, opening the lid and pressing the plus still records the spend.
+
+The Limits screen is untouched. That is where pools are managed, and a
+list you manage has to show everything in it.
 
 **Weigh-ins and conditions are keyed by the day, and are last-write-wins
 rather than unioned.** Two devices holding a row for one day are two

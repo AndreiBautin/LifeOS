@@ -72,7 +72,26 @@ function ArcSlot({ arc }: { readonly arc: CampaignStanding & { next: StageStandi
   const work = STAGE_WORK[stage.requirement.kind]
   const suggestion = useRecommendation(work)
 
-  const step = suggestion.data?.actionDescription
+  /*
+   * **The job's name leads, because the step alone says nothing.**
+   * Reported: *"it just says find the right person, but that literally
+   * applies to all the jobs."* It does — `HIRED_JOB_STEPS` opens every
+   * house job with the same three, so *Find the right person* is the
+   * next step of the porch roof, the boiler and the leaking tap
+   * identically, and naming it without the job is naming nothing.
+   *
+   * The job first and the step after, so that a truncated line keeps the
+   * half that distinguishes it: a clipped "Fix the porch roof · Find
+   * the…" is still useful, where "Find the right person · Fix the…" is
+   * the wrong way round.
+   */
+  const step =
+    suggestion.data?.actionDescription === undefined
+      ? undefined
+      : suggestion.data.projectName === undefined
+        ? suggestion.data.actionDescription
+        : `${suggestion.data.projectName} · ${suggestion.data.actionDescription}`
+
   const Icon = KIND_ICON.main
 
   return (
