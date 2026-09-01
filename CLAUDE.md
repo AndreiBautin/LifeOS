@@ -2329,6 +2329,20 @@ the domain refused correctly and no screen could ask it to. Adding a
 domain rule means adding the control that can trip it, or the guard is
 decoration with a test attached.
 
+**The agenda is called "Due elsewhere", because "Due" claimed the whole
+screen.** Reported: _"the due section seems broad, since dailies and
+stuff are also considered due."_ Fair — the habits above it are due, the
+limits are a today reading, and a bare _Due_ over a fourth list reads as
+though it were the authority on all of them.
+
+What that list actually holds is the things with a **when** that live in
+areas with no block of their own on this screen: a quest's deadline, a
+Codex goal, a trip, somebody you have not seen. So the title says
+_elsewhere_, in the sense "Everywhere else" already uses further down —
+**other areas**, not other times — and the description names the four
+rather than saying "across your areas", which was true of every section
+on the page.
+
 **Today reports what is due everywhere; the other screens own their
 lists.** Splitting chores to Base and upkeep to Vitals left Today's
 Dailies section meaning "recurring things that are not house chores and
@@ -2593,6 +2607,23 @@ nothing is outstanding — the defect Today had when it listed habits
 that were not due. Not-due goals are still _listed_, because logging on
 a day you did not plan to read happens and a row that vanished would
 read as lost.
+
+**Today's agenda was the caller that never asked.** `goalCovers` says
+in its own comment that it is "the one place the cadence is read, so
+every caller — the streak, the board, the day strip — agrees about which
+days count". `agendaFor` was a fourth caller and did not: it checked
+only whether today's amount had been met, so a Tues/Thurs book was
+listed as outstanding **every morning of the week**.
+
+Found from the report _"the due section seems broad, since dailies and
+stuff are also considered due"_ — which turned out to be half wording
+and half true. A list of things genuinely due had reading goals in it
+that were not due at all.
+
+**A comment claiming every caller agrees is worth grepping**, which is
+the second time that has paid this month: the digest's `void error`
+claimed to be logged and was not. Both were sentences describing a
+property nothing enforced.
 
 `isPlausibleDailyGoal` validates the cadence now. It arrives from a
 backup or another device and `cadenceCovers` reads `days.includes`, so

@@ -1,4 +1,4 @@
-import { getProgressOn } from '@/domain/backlog/daily-goal'
+import { getProgressOn, goalCovers } from '@/domain/backlog/daily-goal'
 import { isOverdue } from '@/domain/social/circle'
 import { OVERDUE_MONTHS } from '@/application/use-cases/social/social'
 import { toDayKey } from '@/domain/time/day'
@@ -124,6 +124,24 @@ export async function agendaFor(deps: AgendaDeps): Promise<readonly AgendaItem[]
     // `currently-using` is the backlog's word for started-but-not-finished
     // — it covers reading, watching and playing without picking one.
     if (item.dailyGoal === undefined || item.status !== 'currently-using') continue
+
+    /*
+     * **The goal's cadence, which this did not read.** A Codex goal
+     * carries the habits' own `Cadence`, so a book read on Tuesdays and
+     * Thursdays is expected on two days a week — and this loop listed it
+     * as outstanding every morning, because it only asked whether
+     * today's amount had been met.
+     *
+     * `goalCovers` says in its own comment that it is "the one place the
+     * cadence is read, so every caller agrees about which days count".
+     * The streak, the board and the day strip all ask it; this was a
+     * caller that did not, which is the second answer that comment
+     * exists to prevent.
+     *
+     * It is also most of why this section felt broad: a list of things
+     * genuinely due had reading goals in it that were not due at all.
+     */
+    if (!goalCovers(item.dailyGoal, today)) continue
 
     const done = getProgressOn(item.dailyProgress, today)
     if (done >= item.dailyGoal.amount) continue

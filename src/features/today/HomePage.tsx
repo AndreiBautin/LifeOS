@@ -288,9 +288,29 @@ export function HomePage() {
       <LeadsToday />
       <DigestCard />
 
+      {/*
+        **"Due elsewhere", because "Due" claimed the whole screen.**
+        Reported: *"the due section seems broad, since dailies and stuff
+        are also considered due."* Fair — the habits above are due, the
+        limits are a today reading, and a bare *Due* over a fourth list
+        reads as though it were the authority on all of it.
+
+        What this list actually is: the things with a *when* that live in
+        areas with no block of their own here — a quest's deadline, a
+        Codex goal, a trip, somebody you have not seen. So the title says
+        elsewhere, matching the sense "Everywhere else" uses further
+        down: **other areas**, not other times.
+
+        The description names the four rather than saying "across your
+        areas", which was true of every section on the page.
+      */}
       <Section
-        title="Due"
-        description={rows.length === 0 ? undefined : `${rows.length.toString()} across your areas`}
+        title="Due elsewhere"
+        description={
+          rows.length === 0
+            ? undefined
+            : `${rows.length.toString()} across quests, the Codex, trips and the party`
+        }
       >
         {rows.length === 0 ? (
           <Empty title="Nothing outstanding">
