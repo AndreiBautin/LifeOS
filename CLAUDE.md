@@ -851,6 +851,31 @@ character sheet, and `insufficient-data` counts as silence — it is the
 absence of a judgement rather than a bad one. Treating it as something
 said made six untouched areas report news on an empty database.
 
+**Training is a card in that list, not a section above it.** Reported:
+_"strength should be a card with everything else rather than its own
+section followed by everything else."_ It had been filtered out of
+`elsewhere` and drawn separately, on the reasoning that its rows show
+real loads rather than the ratios the ladder is scored on. That is true
+of the **rows** and was never a reason for a second heading — so the
+rows moved instead of the section staying.
+
+`AreaCard` takes an optional `ladders` node that replaces the generic
+rows, and Training passes the four `AttributeRow`s. **An override rather
+than a second card component**, because everything around the ladders —
+the heading, the link, the XP, the ratings — is the same question, and a
+parallel card is where those four start to drift.
+
+**The total comes from the character, not the sheet**, and cannot come
+from the sheet: it is derived from three ladders rather than being one,
+and `measure.ts` deliberately names the three lifts instead of computing
+it from `STRENGTH_LIFTS`. That is why the override was needed at all —
+`area.ladders` is the three lifts and can never hold the total.
+
+The card leads the list because Training is `phase: 0`, so it sits about
+where the section did, one heading shallower. Its heading now reads
+**Training** rather than _Strength_, since it is the area's own name and
+carries the Consistency rating too.
+
 **`domain/game/` is the model for the whole hub, and it is all wired up
 now.** [docs/GAME_MODEL.md](docs/GAME_MODEL.md) decided — before any area
 arrived — what a number is allowed to mean: three currencies (ladder,

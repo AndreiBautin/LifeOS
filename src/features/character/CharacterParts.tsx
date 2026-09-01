@@ -79,7 +79,31 @@ const OUTCOME_TONE: Record<RatingOutcome, 'good' | 'bad' | 'neutral'> = {
   'insufficient-data': 'neutral',
 }
 
-export function AreaCard({ area }: { readonly area: AreaStanding }) {
+export function AreaCard({
+  area,
+  ladders,
+}: {
+  readonly area: AreaStanding
+  /**
+   * Drawn in place of the generic ladder rows, for the one area whose
+   * ladders have a richer reading of their own.
+   *
+   * Training is that area: its ladders are the three competition lifts,
+   * and `AttributeRow` says a bodyweight multiple and the load needed
+   * for the next level where the generic row says a value and an anchor.
+   * Strength used to get a whole `Section` above this list because of
+   * that — reported as *"strength should be a card with everything else
+   * rather than its own section followed by everything else"* — so the
+   * override exists to let it join the list without losing what the
+   * section was drawing.
+   *
+   * An override rather than a second card component, because everything
+   * *around* the ladders is the same question: the heading, the link,
+   * the XP and the ratings underneath. A parallel card is where those
+   * four would start to drift.
+   */
+  readonly ladders?: React.ReactNode
+}) {
   const to = AREA_ROUTES[area.area]
 
   return (
@@ -97,35 +121,36 @@ export function AreaCard({ area }: { readonly area: AreaStanding }) {
         {area.xp > 0 && <span className="numeric text-ink-500 text-xs">{area.xp} XP</span>}
       </div>
 
-      {area.ladders.map((ladder) => (
-        <div key={ladder.id}>
-          <div className="flex items-baseline justify-between gap-2">
-            <span className="text-ink-300 text-sm font-medium">{ladder.name}</span>
-            {ladder.reading === undefined ? (
-              <span className="text-ink-600 text-xs">Nothing measured yet</span>
-            ) : (
-              <Badge tone={LEVEL_TONE[ladder.reading.level] ?? 'neutral'}>
-                {ladder.reading.level}
-              </Badge>
+      {ladders ??
+        area.ladders.map((ladder) => (
+          <div key={ladder.id}>
+            <div className="flex items-baseline justify-between gap-2">
+              <span className="text-ink-300 text-sm font-medium">{ladder.name}</span>
+              {ladder.reading === undefined ? (
+                <span className="text-ink-600 text-xs">Nothing measured yet</span>
+              ) : (
+                <Badge tone={LEVEL_TONE[ladder.reading.level] ?? 'neutral'}>
+                  {ladder.reading.level}
+                </Badge>
+              )}
+            </div>
+
+            {ladder.reading !== undefined && (
+              <>
+                <Meter
+                  className="mt-1.5"
+                  value={ladder.reading.progress}
+                  of={1}
+                  height={6}
+                  label={`${ladder.name}, toward the next level`}
+                />
+                <p className="text-ink-500 mt-1 text-xs">
+                  {formatLadderValue(ladder.value, ladder.unit)} · anchored to {ladder.anchor}
+                </p>
+              </>
             )}
           </div>
-
-          {ladder.reading !== undefined && (
-            <>
-              <Meter
-                className="mt-1.5"
-                value={ladder.reading.progress}
-                of={1}
-                height={6}
-                label={`${ladder.name}, toward the next level`}
-              />
-              <p className="text-ink-500 mt-1 text-xs">
-                {formatLadderValue(ladder.value, ladder.unit)} · anchored to {ladder.anchor}
-              </p>
-            </>
-          )}
-        </div>
-      ))}
+        ))}
 
       {area.ratings.map((rating) => (
         <div key={rating.id} className="flex items-baseline justify-between gap-2">

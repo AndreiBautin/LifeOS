@@ -137,9 +137,21 @@ export function HomePage() {
   const rows = agenda.data ?? []
   const today = toDayKey(services.clock.now())
 
-  // Training keeps its own section below, which shows real loads rather
-  // than the ratios the ladder is scored on.
-  const elsewhere = (sheet.data?.areas ?? []).filter((area) => area.area !== 'training')
+  /*
+   * **Training is in this list now, not a section above it.** Reported:
+   * *"strength should be a card with everything else rather than its own
+   * section followed by everything else."* It was excluded here and
+   * drawn separately, on the reasoning that its rows show real loads
+   * rather than the ratios the ladder is scored on — which is true of
+   * the *rows* and was never a reason for a second heading. `AreaCard`
+   * takes the richer rows as an override, so the card joins the list
+   * and loses nothing.
+   *
+   * It leads the list, because `phase: 0` puts it first in
+   * `sheet.areas` — so it sits roughly where the section did, one
+   * heading shallower.
+   */
+  const elsewhere = sheet.data?.areas ?? []
 
   return (
     /*
@@ -285,15 +297,6 @@ export function HomePage() {
         than mornings, and this is where they were already read from —
         scrolled to on purpose rather than met on the way to a checkbox.
       */}
-      <Section title="Strength" description="Squat, bench and deadlift make the total">
-        <Card className="space-y-4">
-          <AttributeRow attribute={character.totalAttribute} emphasis />
-          {character.lifts.map((lift) => (
-            <AttributeRow key={lift.name} attribute={lift} />
-          ))}
-        </Card>
-      </Section>
-
       <Section
         title="Everywhere else"
         description="Levels are measured, ratings are the last monthly judgement"
@@ -311,7 +314,36 @@ export function HomePage() {
             {elsewhere
               .filter((area) => !area.silent)
               .map((area) => (
-                <AreaCard key={area.area} area={area} />
+                <AreaCard
+                  key={area.area}
+                  area={area}
+                  {...(area.area === 'training'
+                    ? {
+                        /*
+                          The total leads and the three lifts follow —
+                          the shape the Strength section drew, kept
+                          because `AttributeRow` says a bodyweight
+                          multiple and the load needed for the next
+                          level where a generic ladder row would say a
+                          value and an anchor.
+
+                          The total is not one of the area's ladders and
+                          could not be: it is derived from three of
+                          them, and the registry deliberately does not
+                          compute it from `STRENGTH_LIFTS`. So it comes
+                          from the character rather than the sheet.
+                        */
+                        ladders: (
+                          <>
+                            <AttributeRow attribute={character.totalAttribute} emphasis />
+                            {character.lifts.map((lift) => (
+                              <AttributeRow key={lift.name} attribute={lift} />
+                            ))}
+                          </>
+                        ),
+                      }
+                    : {})}
+                />
               ))}
           </div>
         )}
