@@ -63,7 +63,8 @@ import type {
 import type { Tombstone, TombstonedCollection } from '@/domain/sync/tombstone'
 import { tombstoneKey } from '@/domain/sync/tombstone'
 
-import { fromStored, toStored, type AppDatabase } from './database'
+import { fromStored, toStored, type AppDatabase, type StoredDaily } from './database'
+import { UPKEEP_GROUP } from '@/domain/dailies/groups'
 
 /**
  * IndexedDB implementations of the domain's repository ports.
@@ -497,13 +498,45 @@ export function createPlaceRepository(db: AppDatabase, clock: Clock): PlaceRepos
   }
 }
 
+/**
+ * A stored habit, read as this build understands homes.
+ *
+ * Upkeep was `belongsTo: 'vitals'` and is the `Upkeep` **group** now.
+ * A row written by the old build matches no `RecordHome` and is not
+ * own-area either, so without this it would be filtered off every
+ * screen while sitting in the database — the worst kind of loss,
+ * because nothing errors and the record is still there.
+ *
+ * **A derivation, not a migration.** Nothing is rewritten on read; the
+ * row normalises the next time something saves it, since callers hand
+ * back what they were given. That is the rule `shelfOf` follows for an
+ * upgrade with no shelf, and it is what keeps this safe across sync: a
+ * device still on the old build goes on reading its own copy the way it
+ * always did.
+ *
+ * An existing `group` wins. Somebody who had already labelled a chore
+ * meant that label, and overwriting it here would be this function
+ * having an opinion about their filing.
+ */
+export function fromStoredDaily(stored: StoredDaily): Daily {
+  if (stored.belongsTo !== LEGACY_UPKEEP_HOME) return stored as Daily
+
+  const { belongsTo: _retired, ...rest } = stored
+
+  return { ...rest, group: stored.group ?? UPKEEP_GROUP }
+}
+
+/** The home upkeep habits were filed under before it became a label. */
+const LEGACY_UPKEEP_HOME = 'vitals'
+
 export function createDailyRepository(db: AppDatabase, clock: Clock): DailyRepository {
   return {
     async all() {
-      return db.getAll('dailies')
+      return (await db.getAll('dailies')).map(fromStoredDaily)
     },
     async byId(id: DailyId) {
-      return db.get('dailies', id)
+      const stored = await db.get('dailies', id)
+      return stored === undefined ? undefined : fromStoredDaily(stored)
     },
     async save(daily: Daily) {
       await db.put('dailies', stamp(daily, clock))

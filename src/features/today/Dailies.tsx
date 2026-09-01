@@ -6,7 +6,7 @@ import type { DailyView } from '@/application/use-cases/dailies/dailies'
 import { Button, Card, Empty } from '@/components/shared/primitives'
 import type { Cadence, Daily } from '@/domain/dailies/daily'
 
-import { BASE, TRAINING, UPKEEP, type RecordHome } from '@/domain/base/base'
+import { BASE, TRAINING, type RecordHome } from '@/domain/base/base'
 import { WEEKDAY_LABELS, WEEKDAY_NAMES, WEEKDAYS, WEEKEND } from '@/domain/time/day'
 import {
   PART_OF_DAY_LABELS,
@@ -18,6 +18,7 @@ import {
 import { useServices } from '@/app/context'
 import { Fold } from '@/components/shared/Fold'
 import { counted } from '@/lib/counted'
+import { UPKEEP_GROUP } from '@/domain/dailies/groups'
 import { GroupedDailies, GroupField } from './DailyGroups'
 import { DailyHistory } from './DailyHistory'
 import {
@@ -30,7 +31,6 @@ import {
   useKeepToday,
   useRetireDaily,
   useUndoToday,
-  useUpkeep,
 } from './dailies-hooks'
 
 /**
@@ -579,57 +579,36 @@ export function DailyRow({ view }: { readonly view: DailyView }) {
  * only difference between the two callers.
  */
 /**
- * Where a new habit can be filed, and what to offer for each.
+ * A habit offered by name, ready to file in one tap.
  *
- * Passed only by Today, which owns two homes — your own habits and
- * upkeep — and is therefore the one screen where "add" has to ask. Base
- * and Train each own exactly one, so they keep passing a fixed `home`
- * and this is absent.
+ * **This was `Filing`, and it carried a choice of home.** Today owned
+ * two — your own habits and upkeep — so the form had to ask. Upkeep is a
+ * `group` label now, so there is one home again and nothing to ask
+ * about: what is left is the four body chores, each carrying the group
+ * it belongs to.
  *
- * It exists because the alternative was a `Section` of its own holding
- * a single Add button, which is what upkeep had: reported as *"do we
- * even need the upkeep section under dailies, it seems redundant"* —
- * fair about the section, and the capability under it was not redundant
- * at all, since nothing else in the app could file a habit to upkeep.
+ * Passed already filtered. The caller knows every title in use across
+ * every home, and pushing that set through the form only to filter
+ * inside it would put the same decision in two places.
  */
-export interface Filing {
-  /*
-   * `| undefined` written out, not just `?`. Under
-   * `exactOptionalPropertyTypes` an absent key and one holding
-   * `undefined` are different types, and "your own area" *is* an
-   * explicit undefined here rather than an omission — that is what
-   * `belongsTo` means everywhere else.
-   */
-  readonly homes: readonly { readonly home?: RecordHome | undefined; readonly label: string }[]
-  /** One-tap habits, each offered only under the home it belongs to. */
-  readonly suggestions?: readonly {
-    readonly title: string
-    readonly home?: RecordHome | undefined
-    readonly timesPerDay?: number
-  }[]
-  /** Titles already in use, lower-cased, so nothing is offered twice. */
-  readonly taken: ReadonlySet<string>
+export interface Suggested {
+  readonly title: string
+  readonly group?: string | undefined
+  readonly timesPerDay?: number
 }
 
 export function AddDaily({
   onDone,
   home,
-  filing,
+  suggestions,
   placeholder = 'Something you mean to do daily',
 }: {
   readonly onDone: () => void
   readonly home?: RecordHome
-  readonly filing?: Filing
+  readonly suggestions?: readonly Suggested[]
   readonly placeholder?: string
 }) {
-  const [chosen, setChosen] = useState<RecordHome | undefined>(filing?.homes[0]?.home ?? home)
-
-  /*
-   * The fixed `home` when there is no choice to make, so the two screens
-   * that pass one are untouched by any of this.
-   */
-  const filedTo = filing === undefined ? home : chosen
-  const add = useAddDaily(filedTo)
+  const add = useAddDaily(home)
   const [title, setTitle] = useState('')
   const [days, setDays] = useState<readonly number[]>([])
   const [monthly, setMonthly] = useState(false)
@@ -679,73 +658,43 @@ export function AddDaily({
         />
 
         {/*
-          Where it is filed, first, because it decides which area scores
-          the habit — not merely which list it lands in. Only drawn where
-          there is a choice to make.
-        */}
-        {filing !== undefined && (
-          <div className="flex gap-1">
-            {filing.homes.map((option) => (
-              <button
-                key={option.label}
-                type="button"
-                aria-pressed={chosen === option.home}
-                className={[
-                  'tap-target flex-1 rounded-lg border px-2 text-xs font-medium',
-                  chosen === option.home
-                    ? 'border-accent-500 bg-accent-500/15 text-accent-400'
-                    : 'border-ink-800 text-ink-500',
-                ].join(' ')}
-                onClick={() => {
-                  setChosen(option.home)
-                }}
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {/*
-          The one-tap habits for whichever home is selected, minus the
-          ones already in use — the pools' rule, and the reason it is
-          *by name* rather than gated on an empty list: adding the first
-          must not take the other three away.
+          The habits offered by name, minus the ones already in use — the
+          pools' rule, and the reason it is *by name* rather than gated
+          on an empty list: adding the first must not take the other
+          three away.
 
           They submit on their own rather than filling the field, because
           a suggestion whose whole value is saving a tap should not cost
-          two.
+          two. The group travels with the suggestion, which is how upkeep
+          survives having stopped being a home.
         */}
-        {filing?.suggestions !== undefined && (
+        {suggestions !== undefined && suggestions.length > 0 && (
           <div className="flex flex-wrap gap-1.5">
-            {filing.suggestions
-              .filter(
-                (one) => one.home === filedTo && !filing.taken.has(one.title.trim().toLowerCase()),
-              )
-              .map((suggestion) => (
-                <Button
-                  key={suggestion.title}
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  disabled={add.isPending}
-                  onClick={() => {
-                    add.mutate(
-                      {
-                        title: suggestion.title,
-                        cadence: { kind: 'every-day' },
-                        ...(suggestion.timesPerDay === undefined
-                          ? {}
-                          : { timesPerDay: suggestion.timesPerDay }),
-                      },
-                      { onSuccess: onDone },
-                    )
-                  }}
-                >
-                  <Plus size={14} aria-hidden />
-                  {suggestion.title}
-                </Button>
-              ))}
+            {suggestions.map((suggestion) => (
+              <Button
+                key={suggestion.title}
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={add.isPending}
+                onClick={() => {
+                  add.mutate(
+                    {
+                      title: suggestion.title,
+                      cadence: { kind: 'every-day' },
+                      ...(suggestion.group === undefined ? {} : { group: suggestion.group }),
+                      ...(suggestion.timesPerDay === undefined
+                        ? {}
+                        : { timesPerDay: suggestion.timesPerDay }),
+                    },
+                    { onSuccess: onDone },
+                  )
+                }}
+              >
+                <Plus size={14} aria-hidden />
+                {suggestion.title}
+              </Button>
+            ))}
           </div>
         )}
 
@@ -983,13 +932,13 @@ export function AddDaily({
  */
 const UPKEEP_SUGGESTIONS: readonly {
   readonly title: string
-  readonly home?: RecordHome | undefined
+  readonly group?: string
   readonly timesPerDay?: number
 }[] = [
-  { title: 'Gallon of water', home: UPKEEP },
-  { title: 'Brush teeth', home: UPKEEP, timesPerDay: 2 },
-  { title: 'Floss', home: UPKEEP },
-  { title: 'Wash hair', home: UPKEEP },
+  { title: 'Gallon of water', group: UPKEEP_GROUP },
+  { title: 'Brush teeth', group: UPKEEP_GROUP, timesPerDay: 2 },
+  { title: 'Floss', group: UPKEEP_GROUP },
+  { title: 'Wash hair', group: UPKEEP_GROUP },
 ]
 
 const ELSEWHERE_GROUPS: readonly {
@@ -1000,7 +949,6 @@ const ELSEWHERE_GROUPS: readonly {
 }[] = [
   { home: BASE, label: 'House', to: '/base' },
   { home: TRAINING, label: 'Training', to: '/train' },
-  { home: UPKEEP, label: 'Upkeep' },
 ]
 
 function DueElsewhere({ views }: { readonly views: readonly DailyView[] }) {
@@ -1037,7 +985,6 @@ function DueElsewhere({ views }: { readonly views: readonly DailyView[] }) {
 export function Dailies() {
   const dailies = useDailies('own-area')
   const due = useDueElsewhere()
-  const upkeep = useUpkeep()
   const services = useServices()
   const [adding, setAdding] = useState(false)
   const [showLater, setShowLater] = useState(false)
@@ -1059,25 +1006,22 @@ export function Dailies() {
    * are, in the same shape the House and Upkeep groups already use.
    */
   /*
-   * **This section is the day, across every home.** It used to be the
-   * day *minus upkeep*, which had a section of its own three blocks
-   * below — so the header could read "2 left today" above an empty list
-   * while the two rows sat off-screen. A count and the rows beneath it
-   * have to be the same claim.
+   * **This section is the day, across every home**, and it got much
+   * simpler when upkeep stopped being one. It was own habits, House,
+   * Training and a separately-fetched upkeep list that had to be
+   * excluded from `elsewhere` so nothing was counted twice; upkeep is a
+   * `group` label now, so those habits arrive in `views` with everything
+   * else and `GroupedDailies` puts them under their own heading.
    *
-   * Upkeep arrives from `useUpkeep` rather than from `useDueElsewhere`
-   * because that hook keeps only what is due or done **today**, and this
-   * screen is where an upkeep habit is renamed and retired — so the
-   * other-days fold needs the ones that are neither. It is dropped from
-   * `elsewhere` in the same breath, or every upkeep row would be counted
-   * and drawn twice.
+   * What has to stay true is the rule that cost two attempts to find: a
+   * count and the rows beneath it are the same claim. "2 left today"
+   * over an empty list is the failure, and it is why `left` is built
+   * from the same two lists the section draws.
    */
   const elsewhere = due.data ?? []
-  const houseAndTraining = elsewhere.filter((view) => view.daily.belongsTo !== UPKEEP)
-  const upkeepViews = upkeep.data ?? []
 
   const outstanding = views.filter((view) => view.dueToday)
-  const outstandingElsewhere = [...houseAndTraining, ...upkeepViews].filter((view) => view.dueToday)
+  const outstandingElsewhere = elsewhere.filter((view) => view.dueToday)
 
   /*
    * **Done rows fold away, and this reverses a rule written directly
@@ -1092,14 +1036,14 @@ export function Dailies() {
    * protects is **undo**, which is the only route back from a mis-tap
    * and would be gone if these were filtered out rather than folded.
    */
-  const done = [...views, ...houseAndTraining, ...upkeepViews].filter((view) => view.doneToday)
+  const done = [...views, ...elsewhere].filter((view) => view.doneToday)
 
   /*
-   * Own habits and upkeep only. House and Training are managed on their
-   * own screens, and `useDueElsewhere` never offers their other days in
-   * the first place.
+   * Own habits only — which now includes upkeep. House and Training are
+   * managed on their own screens, and `useDueElsewhere` never offers
+   * their other days in the first place.
    */
-  const otherDays = [...views, ...upkeepViews].filter((view) => !view.dueToday && !view.doneToday)
+  const otherDays = views.filter((view) => !view.dueToday && !view.doneToday)
 
   /*
    * **Later today folds away, and the order never moves.**
@@ -1141,11 +1085,16 @@ export function Dailies() {
    */
   const left = outstanding.length + outstandingElsewhere.length
 
+  /* Every title in use, so nothing is offered that already exists. */
+  const taken = new Set(
+    [...views, ...elsewhere].map((view) => view.daily.title.trim().toLowerCase()),
+  )
+
   return (
     <>
       <div className="mb-2 flex items-center justify-between gap-2">
         <p className="text-ink-500 text-sm">
-          {views.length === 0 && elsewhere.length === 0 && upkeepViews.length === 0
+          {views.length === 0 && elsewhere.length === 0
             ? 'Nothing yet.'
             : left === 0
               ? 'All done for today.'
@@ -1163,32 +1112,22 @@ export function Dailies() {
 
       {adding && (
         <AddDaily
-          filing={{
-            /*
-             * Yours first, because it is the common case and the default
-             * the form opens on. Upkeep is the other home this screen
-             * owns; House and Training are not offered, since Base and
-             * Train each have an Add of their own and a second route to
-             * the same record is a second place for it to go wrong.
-             */
-            homes: [
-              { home: undefined, label: 'Yours' },
-              { home: UPKEEP, label: 'Upkeep' },
-            ],
-            suggestions: UPKEEP_SUGGESTIONS,
-            taken: new Set(
-              [...views, ...elsewhere, ...upkeepViews].map((view) =>
-                view.daily.title.trim().toLowerCase(),
-              ),
-            ),
-          }}
+          /*
+           * Filtered here rather than inside the form, which now needs no
+           * opinion about where a habit is filed: there is one home
+           * again, and what used to be the Upkeep chip is a group label
+           * the suggestions carry.
+           */
+          suggestions={UPKEEP_SUGGESTIONS.filter(
+            (one) => !taken.has(one.title.trim().toLowerCase()),
+          )}
           onDone={() => {
             setAdding(false)
           }}
         />
       )}
 
-      {views.length === 0 && elsewhere.length === 0 && upkeepViews.length === 0 && (
+      {views.length === 0 && elsewhere.length === 0 && (
         <Empty title="No dailies yet">
           A daily here is a checkbox and a streak. It cannot ring — nothing in a web app on iOS can
           — so it earns its place by being the first thing on this screen.

@@ -188,7 +188,7 @@ describe('which act keeping a daily performs', () => {
   it('reads the act off where the daily is filed', () => {
     expect(dailyActFor(undefined)).toBe('dailies.completed')
     expect(dailyActFor('base')).toBe('base.chore-kept')
-    expect(dailyActFor('vitals')).toBe('vitals.upkeep-kept')
+    expect(dailyActFor('training')).toBe('training.habit-kept')
   })
 
   it('names an act the registry actually declares, for every home', () => {

@@ -7,7 +7,6 @@ import {
   isJobs,
   isMind,
   isTraining,
-  isUpkeep,
   keepFor,
   RECORD_HOMES,
   type Homed,
@@ -43,10 +42,12 @@ describe('which area owns a record', () => {
     expect(isOwnArea(homed('base'))).toBe(false)
   })
 
-  it('treats a record filed to the body as neither of the other two', () => {
-    expect(isUpkeep(homed('vitals'))).toBe(true)
-    expect(isBase(homed('vitals'))).toBe(false)
-    expect(isOwnArea(homed('vitals'))).toBe(false)
+  it('treats a record filed to training as neither of the other two', () => {
+    // Was written about upkeep, which is a `group` label now rather than
+    // a home. The property is about the union, not about that member.
+    expect(isTraining(homed('training'))).toBe(true)
+    expect(isBase(homed('training'))).toBe(false)
+    expect(isOwnArea(homed('training'))).toBe(false)
   })
 
   /*
@@ -67,7 +68,6 @@ describe('which area owns a record', () => {
         [
           isOwnArea(record),
           isBase(record),
-          isUpkeep(record),
           isTraining(record),
           isJobs(record),
           isMind(record),
@@ -83,7 +83,7 @@ describe('filtering a list by side', () => {
   it('keeps only what the caller asked for', () => {
     expect(keepFor(records, 'own-area')).toHaveLength(2)
     expect(keepFor(records, 'base')).toHaveLength(2)
-    expect(keepFor([...records, homed('vitals')], 'vitals')).toHaveLength(1)
+    expect(keepFor([...records, homed('training')], 'training')).toHaveLength(1)
   })
 
   /*
@@ -96,7 +96,7 @@ describe('filtering a list by side', () => {
   })
 
   it('adds up to the whole, with nothing double-counted', () => {
-    const all = [...records, homed('vitals')]
+    const all = [...records, homed('training')]
     const counted =
       keepFor(all, 'own-area').length +
       RECORD_HOMES.reduce((total, home) => total + keepFor(all, home).length, 0)

@@ -1,6 +1,6 @@
 import { traitStandings, type TraitStanding } from '@/domain/game/traits'
 import { isResolved } from '@/domain/atlas/place/Place'
-import { isBase, isJobs, isMind, isOwnArea, isTraining, isUpkeep } from '@/domain/base/base'
+import { isBase, isJobs, isMind, isOwnArea, isTraining } from '@/domain/base/base'
 import type { Daily } from '@/domain/dailies/daily'
 import type { Project, QuestKind } from '@/domain/projects/project'
 import { readLadder, type LadderReading } from '@/domain/game/ladder'
@@ -162,7 +162,6 @@ export async function tallyActs(
   const baseProjects = projects.filter(isBase)
   const ownDailies = dailies.filter(isOwnArea)
   const baseDailies = dailies.filter(isBase)
-  const upkeepDailies = dailies.filter(isUpkeep)
   const trainingDailies = dailies.filter(isTraining)
   const applications = projects.filter(isJobs)
   const studyDailies = dailies.filter(isMind)
@@ -230,7 +229,6 @@ export async function tallyActs(
      */
     'dailies.completed': daysKept(ownDailies),
     'base.chore-kept': daysKept(baseDailies),
-    'vitals.upkeep-kept': daysKept(upkeepDailies),
     'training.habit-kept': daysKept(trainingDailies),
     'mind.habit-kept': daysKept(studyDailies),
     /*

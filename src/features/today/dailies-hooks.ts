@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { useServices } from '@/app/context'
-import { TRAINING, UPKEEP, type HomeFilter, type RecordHome } from '@/domain/base/base'
+import { TRAINING, type HomeFilter, type RecordHome } from '@/domain/base/base'
 import type { Cadence } from '@/domain/dailies/daily'
 import { dailyActFor } from '@/domain/game/registry'
 import {
@@ -90,13 +90,6 @@ export function useDueElsewhere() {
       )
     },
   })
-}
-
-/** Upkeep — the body's own chores, kept on Today since Vitals went. */
-export function useUpkeep() {
-  const services = useServices()
-
-  return useQuery({ queryKey: ['vitals', 'upkeep'], queryFn: () => dailiesToday(services, UPKEEP) })
 }
 
 /** Habits tied to lifting, for the Train screen. */

@@ -3833,6 +3833,53 @@ that are neither. It is dropped from `elsewhere` in the same breath or
 every upkeep row is counted and drawn twice, which is the bug the
 previous shape shipped with.
 
+**Upkeep is a `group` label now, not a home.** Asked for directly:
+_"drop upkeep as a home, use group labels instead."_ `UPKEEP` and
+`isUpkeep` are gone, `RECORD_HOMES` is back to four, and
+`vitals.upkeep-kept` went with them — a kept chore pays
+`dailies.completed`, which is the same fifteen points under the one name
+it always deserved. **The act was a second name for one thing**, and the
+distinction this codebase keeps drawing is why it could go: a group is a
+label, a home decides which area pays. Upkeep only ever needed the
+label.
+
+**A trait died with it, and letting it live would have been worse.**
+Vitality's only area was `vitals`, which now pays nothing at all —
+brushing pays Discipline, and the limits measure without paying. The
+sheet keeps _unproven_ bars on purpose, because "eight bars with three
+empty says where the time is going"; a bar **no act in the app can ever
+move** is a different thing, and it would have sat at "Nothing yet"
+forever while the XP it described appeared under Discipline. So Vitality
+is deleted and `vitals` joins Discipline, whose blurb now says "and
+limits held". The partition still has to be total — `traits.test.ts`
+asserts every area has exactly one trait — so `vitals` needed _a_ trait
+whether or not it pays.
+
+**The legacy rows are the part that would have gone wrong quietly.** A
+`belongsTo: 'vitals'` daily matches no `RecordHome` this build knows
+**and** is not own-area, so it is filtered off every screen while
+sitting in the database: nothing errors, nothing is deleted, and the
+habit is simply gone. `fromStoredDaily` in the repository reads one as
+an own habit in the `Upkeep` group, and `StoredDaily` in `database.ts`
+widens `belongsTo` to `string` so the stored shape can say something
+this build does not have a name for.
+
+**A derivation, not a migration**, the rule `shelfOf` already follows:
+nothing is rewritten on read, and a row normalises the next time
+anything saves it, because callers hand back what they were given.
+Driven end to end — ticking a legacy chore wrote it back with
+`belongsTo` absent and `group: 'Upkeep'`, and paid "Kept a daily". That
+also keeps it safe across sync, where a device still on the old build
+goes on reading its own copy the way it always did.
+
+**An existing `group` wins.** Somebody who had already labelled a chore
+"Teeth" meant that, and overwriting it would be the read path having an
+opinion about their filing.
+
+**`UPKEEP_GROUP` is the one group name the app itself writes**, and it
+leads `GROUP_SUGGESTIONS`. Every other group is the person's, which is
+why that list is offers rather than a union.
+
 **The Upkeep section is gone, and its one real job moved into the add
 form.** Reduced to a `Section` holding an Add button and four chips, it
 read as furniture: _"do we even need the upkeep section under dailies,

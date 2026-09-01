@@ -93,6 +93,17 @@ export function fromStored(stored: StoredWorkout): WorkoutLog {
 }
 
 /**
+ * A habit as it may sit on disk, which is not quite `Daily` any more.
+ *
+ * The one difference is `belongsTo`, which older builds could set to
+ * 'vitals' — a home that no longer exists. Widened to `string` rather
+ * than a union of old and new, because the point is to accept whatever
+ * is there and let one function decide what it means; a union would
+ * have to grow every time a home is retired.
+ */
+export type StoredDaily = Omit<Daily, 'belongsTo'> & { readonly belongsTo?: string }
+
+/**
  * The shape rows in the two retired day-keyed stores were written in.
  *
  * `conditions` held a self-rated day and `dayReadings` held sleep,
@@ -261,9 +272,24 @@ export interface LiftDB extends DBSchema {
    * merge by union — which is what makes two devices ticking the same
    * Tuesday converge instead of counting it twice.
    */
+  /**
+   * Habits, stored with whatever home the build that wrote them had.
+   *
+   * `StoredDaily` rather than `Daily` because upkeep **was** a home —
+   * `belongsTo: 'vitals'` — and is a `group` label now. Those rows are
+   * still on the disk of every device that ran the old build, and a
+   * `RecordHome` that no longer lists 'vitals' would make them match no
+   * home *and* not be own-area, so they would vanish from every screen
+   * while sitting in the database.
+   *
+   * `fromStoredDaily` in the repository is where they are read back as
+   * ungrouped own habits under the Upkeep group. Nothing is migrated:
+   * they normalise as they are next written, which is the rule
+   * `shelfOf` already follows for an upgrade with no shelf.
+   */
   dailies: {
     key: string
-    value: Daily
+    value: StoredDaily
   }
   /**
    * Things you mean to have less of, and every charge ever spent.

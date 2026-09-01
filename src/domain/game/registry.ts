@@ -1,4 +1,4 @@
-import { BASE, TRAINING, UPKEEP, type RecordHome } from '@/domain/base/base'
+import { BASE, TRAINING, type RecordHome } from '@/domain/base/base'
 import { STRENGTH_LIFT_SLUGS } from '@/domain/exercises/catalogue'
 
 import { STRENGTH_STANDARDS, TOTAL_STANDARDS } from './character'
@@ -359,29 +359,27 @@ export const SCORING: readonly AreaScoring[] = [
       },
     ],
     /*
-     * **One act, and the reason it is allowed is the reason the others
-     * are not.**
+     * **Back to no acts, and it is the same line drawn twice.**
      *
-     * This list was empty, and the note here said the area measures and
-     * never pays — because every candidate then fell on the wrong side of
-     * the act/outcome line. That reasoning has not changed and still
-     * holds for all of them: *not* drinking is an outcome, so paying for
-     * it would be the streak mistake in a new costume; and the only
-     * genuine acts were spending a charge and stepping on a scale, where
-     * paying XP for logging a beer is perverse and paying it for weighing
-     * in turns a measurement into a chore with a score attached.
+     * This list was empty, on the reasoning that every candidate fell on
+     * the wrong side of the act/outcome line: *not* drinking is an
+     * outcome, so paying for it is the streak mistake in a new costume,
+     * and the only genuine act was spending a charge, where paying XP
+     * for logging a beer is perverse.
      *
-     * Brushing your teeth is none of those. It is a thing you did — an
-     * act, in exactly the sense a kept daily is one — so paying for it is
-     * the rule applied rather than bent. What was true was that this area
-     * held nothing that qualified; what was never true is that it was
-     * forbidden from holding anything that does.
+     * Brushing your teeth was none of those — a thing you did, an act in
+     * exactly the sense a kept daily is one — so `vitals.upkeep-kept`
+     * was added and this note said the rule had been applied rather than
+     * bent. All of that is still true, and it is now true of
+     * `dailies.completed` instead: upkeep is a `group` label rather than
+     * a home, so a kept habit pays the same fifteen points under the one
+     * name it always deserved. **The act was a second name for one
+     * thing, and it went with the home that justified it.**
      *
-     * Same fifteen points as a daily and a chore, because it is the same
-     * kind of thing under a third name, and `tallyActs` splits by
-     * `belongsTo` so no record can pay two of them.
+     * What is left here is the limits, which measure and never pay. An
+     * area that measures without paying is not an incomplete area.
      */
-    acts: [{ id: 'vitals.upkeep-kept', area: 'vitals', label: 'Kept up', points: 15 }],
+    acts: [],
     hasTree: false,
   },
   {
@@ -592,7 +590,6 @@ export const ALL_ACTS: readonly ActDefinition[] = SCORING.flatMap((area) => area
  */
 export function dailyActFor(home: RecordHome | undefined): string {
   if (home === BASE) return 'base.chore-kept'
-  if (home === UPKEEP) return 'vitals.upkeep-kept'
   if (home === TRAINING) return 'training.habit-kept'
   return 'dailies.completed'
 }

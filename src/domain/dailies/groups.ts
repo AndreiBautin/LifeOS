@@ -25,7 +25,22 @@ import { PARTS_OF_DAY, type Daily } from './daily'
  * the list never becomes the set of legal answers. These are the ones
  * that came up — supplements and pet care were the two named directly.
  */
+/**
+ * The one group name the app itself writes.
+ *
+ * Upkeep was a **home** — `belongsTo: 'vitals'` — until it became a
+ * label, so this is the name a stored record from before that change
+ * reads back under, and the name the four body-chore suggestions carry.
+ * A constant rather than a string at three call sites, because a typo
+ * in one of them would silently make a second group with the same look.
+ *
+ * It is the only reserved name. Every other group is the person's, which
+ * is why `GROUP_SUGGESTIONS` is a list of offers and not a union.
+ */
+export const UPKEEP_GROUP = 'Upkeep'
+
 export const GROUP_SUGGESTIONS = [
+  UPKEEP_GROUP,
   'Supplements',
   'Pet care',
   'Teeth',

@@ -25,22 +25,29 @@ import type { Upgrade } from '@/domain/upgrades/upgrade'
 export const BASE = 'base'
 
 /**
- * The body, as a place records are filed — brushing, flossing, washing
- * your hair.
+/**
+ * **Upkeep was a home here and is a `group` label now.**
  *
- * The second answer the union below was written to expect. These are
- * dailies in every respect that matters: a cadence, a streak, and now a
- * count for the ones done twice a day. What they are not is *quests*, and
- * on Today they crowd out the things somebody actually chose — the same
- * argument that moved house work to Base, applied to the other set of
- * chores nobody thinks of as chores.
+ * It was `UPKEEP = 'vitals'`, on the reasoning that brushing and
+ * flossing crowd out the things somebody actually chose — the argument
+ * that moved house work to Base. That reasoning held while a home was
+ * the only way to say "these belong together". `Daily.group` is the
+ * other way, and it is the cheaper one: *"drop upkeep as a home, use
+ * group labels instead."*
  *
- * Filed under `vitals` because that is the area that scores them, and
- * `tallyActs` splits by area. The screen calls the section Upkeep, which
- * is what a person calls it; the code uses the area id, the way Quests
- * sits over `Project`.
+ * **The distinction this file draws is the whole reason it could go.** A
+ * group is a label; a home decides which screen owns the record **and
+ * which area pays its XP**. Upkeep only ever needed the first — it has
+ * no screen of its own any more, and its habits are worth the same
+ * fifteen points as any other. It was paying `vitals.upkeep-kept`
+ * rather than `dailies.completed`, which is the same fifteen points
+ * under a second name.
+ *
+ * A stored `belongsTo: 'vitals'` is read as an ungrouped own habit with
+ * the group *Upkeep* — see `fromStoredDaily` in the repository. Nothing
+ * is migrated; records normalise as they are next written, which is the
+ * rule `shelfOf` already follows for an absent shelf.
  */
-export const UPKEEP = 'vitals'
 
 /**
  * Training, as a place records are filed — pre-workout carbs, protein
@@ -172,7 +179,7 @@ export function stepsFor(approach: JobApproach): readonly string[] {
  * here, where an `isBase` flag would have had to be replaced everywhere
  * it was read.
  */
-export const RECORD_HOMES = [BASE, UPKEEP, TRAINING, JOBS, MIND] as const
+export const RECORD_HOMES = [BASE, TRAINING, JOBS, MIND] as const
 
 export type RecordHome = (typeof RECORD_HOMES)[number]
 
@@ -183,10 +190,6 @@ export interface Homed {
 
 export function isBase(record: Homed): boolean {
   return record.belongsTo === BASE
-}
-
-export function isUpkeep(record: Homed): boolean {
-  return record.belongsTo === UPKEEP
 }
 
 export function isTraining(record: Homed): boolean {

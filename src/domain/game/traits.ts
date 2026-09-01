@@ -72,12 +72,6 @@ export const TRAITS: readonly TraitDefinition[] = [
     areas: ['training'],
   },
   {
-    id: 'vitality',
-    label: 'Vitality',
-    blurb: 'The body kept up — brushing, water, supplements',
-    areas: ['vitals'],
-  },
-  {
     id: 'intellect',
     label: 'Intellect',
     blurb: 'Books and courses worked through, and problems practised',
@@ -92,8 +86,30 @@ export const TRAITS: readonly TraitDefinition[] = [
   {
     id: 'discipline',
     label: 'Discipline',
-    blurb: 'Habits kept on an ordinary day',
-    areas: ['dailies'],
+    blurb: 'Habits kept on an ordinary day, and limits held',
+    /*
+     * **`vitals` is here because Vitality was deleted, not because the
+     * bundle got looser.** Vitality's only area was `vitals`, and that
+     * area stopped paying anything the moment upkeep became a `group`
+     * label rather than a home: brushing pays `dailies.completed` now,
+     * and what is left under `vitals` is the limits, which measure and
+     * pay nothing.
+     *
+     * A trait fed by nothing is worse than one merely unproven. The
+     * sheet keeps unproven bars on purpose — "eight bars with three
+     * empty says where the time is going" — but that argument is about
+     * a bar somebody could still fill. One that **cannot** be filled by
+     * any act in the app is furniture, and it would sit at "Nothing yet"
+     * for the life of the app while the XP it described appeared under
+     * Discipline.
+     *
+     * The partition still has to be total, so `vitals` needs a trait
+     * whether or not it pays: `traits.test.ts` asserts every area has
+     * exactly one. Discipline is the honest home for it — staying under
+     * a limit and keeping a habit are the same kind of thing, and the
+     * upkeep XP lands here anyway now.
+     */
+    areas: ['dailies', 'vitals'],
   },
   {
     id: 'craft',
