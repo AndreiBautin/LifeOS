@@ -21,6 +21,9 @@ import { useServices } from '@/app/context'
 import { Fold } from '@/components/shared/Fold'
 import { counted } from '@/lib/counted'
 import { byGroup, HYGIENE_GROUP, homeOrGroup } from '@/domain/dailies/groups'
+import { GoalRow } from '@/features/backlog/GoalsToday'
+import { useDailyGoals } from '@/features/backlog/hooks'
+
 import { DayBands, GroupedDailies, GroupField } from './DailyGroups'
 import { DailyHistory } from './DailyHistory'
 import {
@@ -1237,6 +1240,21 @@ const HYGIENE_SUGGESTIONS: readonly {
 export function Dailies() {
   const dailies = useDailies('own-area')
   const due = useDueElsewhere()
+  /*
+   * **Codex reading goals are in this section, not the agenda.** Asked
+   * for as *"why not just group 'em with dailies, just separated."* A
+   * Codex goal carries the habits' own `Cadence`, is expected on named
+   * days, holds a streak, and is answered by logging a bit of it — a
+   * daily in every respect except the record type. It had been sitting
+   * among deadlines and trips, under a heading that then had to claim it
+   * covered everything due.
+   *
+   * Only what is expected today. `isDueToday` is the goal's own cadence
+   * answer, and the Codex screen still shows the rest for the reason it
+   * always did: logging on a day you did not plan to read happens, and a
+   * row that vanished there would read as lost.
+   */
+  const goals = (useDailyGoals().data?.statuses ?? []).filter((one) => one.isDueToday)
   const services = useServices()
   const [adding, setAdding] = useState(false)
   const [showLater, setShowLater] = useState(false)
@@ -1333,6 +1351,15 @@ export function Dailies() {
   const done = dueRows.filter((row) => row.done)
 
   /*
+   * Split the same way the habits are, so a met goal folds away with
+   * everything else finished rather than sitting on the list looking
+   * outstanding — and folded rather than dropped, because the minus on
+   * its row is the only way back from a mis-logged page.
+   */
+  const goalsLeft = goals.filter((one) => !one.isMet)
+  const goalsDone = goals.filter((one) => one.isMet)
+
+  /*
    * Own habits only — which now includes hygiene. House and Training are
    * managed on their own screens, and `useDueElsewhere` never offers
    * their other days in the first place.
@@ -1375,7 +1402,7 @@ export function Dailies() {
    * and the rows cannot come apart, which is what two passes made
    * possible.
    */
-  const left = outstanding.length
+  const left = outstanding.length + goalsLeft.length
 
   /* Every title in use, so nothing is offered that already exists. */
   const taken = new Set(
@@ -1419,7 +1446,7 @@ export function Dailies() {
         />
       )}
 
-      {views.length === 0 && elsewhere.length === 0 && (
+      {views.length === 0 && elsewhere.length === 0 && goals.length === 0 && (
         <Empty title="No dailies yet">
           A daily here is a checkbox and a streak. It cannot ring — nothing in a web app on iOS can
           — so it earns its place by being the first thing on this screen.
@@ -1443,6 +1470,24 @@ export function Dailies() {
         />
       )}
 
+      {/*
+        **Its own group, under the habits.** Separated rather than mixed
+        in, because a Codex goal is answered by logging an amount where a
+        habit is answered by a tick — so it gets one heading in the shape
+        House and Hygiene already use, and no attempt to band it by part
+        of day: a reading goal names no time.
+      */}
+      {goalsLeft.length > 0 && (
+        <div className="mt-2">
+          <span className="text-ink-700 mb-1 block text-xs tracking-wide uppercase">Codex</span>
+          <Card className="divide-ink-800 divide-y py-0">
+            {goalsLeft.map((status) => (
+              <GoalRow key={status.item.id} status={status} />
+            ))}
+          </Card>
+        </div>
+      )}
+
       {later.length > 0 && (
         <button
           type="button"
@@ -1464,9 +1509,16 @@ export function Dailies() {
         category, and `homeOrGroup` is what keeps a done chore and a done
         habit labelled House under one heading here too.
       */}
-      {done.length > 0 && (
-        <Fold summary={`${counted(done.length, 'done', 'done')} today`}>
-          <DoneRows rows={done} />
+      {done.length + goalsDone.length > 0 && (
+        <Fold summary={`${counted(done.length + goalsDone.length, 'done', 'done')} today`}>
+          {done.length > 0 && <DoneRows rows={done} />}
+          {goalsDone.length > 0 && (
+            <Card className="divide-ink-800 mt-2 divide-y py-0">
+              {goalsDone.map((status) => (
+                <GoalRow key={status.item.id} status={status} />
+              ))}
+            </Card>
+          )}
         </Fold>
       )}
 

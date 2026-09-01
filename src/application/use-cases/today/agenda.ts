@@ -1,9 +1,7 @@
-import { getProgressOn, goalCovers } from '@/domain/backlog/daily-goal'
 import { isOverdue } from '@/domain/social/circle'
 import { OVERDUE_MONTHS } from '@/application/use-cases/social/social'
 import { toDayKey } from '@/domain/time/day'
 import type {
-  BacklogItemRepository,
   Clock,
   FriendRepository,
   ProjectRepository,
@@ -14,11 +12,22 @@ import type {
  * Everything that wants something from you today, in one list.
  *
  * A calendar and a reminders app answer the same question — "what is due,
- * and when" — and this hub already knew the answer four times over without
- * anybody assembling it: quests carry deadlines, codex entries carry daily
- * goals, trips carry dates, and the party carries how long it has been.
- * They were readable only by opening four screens and doing the comparison
- * yourself.
+ * and when" — and this hub already knew the answer several times over
+ * without anybody assembling it: quests carry deadlines, trips carry
+ * dates, and the party carries how long it has been. They were readable
+ * only by opening three screens and doing the comparison yourself.
+ *
+ * **Codex reading goals used to be here and are not any more.** Asked
+ * for directly: *"why not just group 'em with dailies, just separated."*
+ * Right — a Codex goal carries the habits' own `Cadence`, is expected on
+ * named days, holds a streak and is answered by logging a bit of it. It
+ * is a *daily* in every respect except the record type, and sitting it
+ * among deadlines and trips made this list read as "everything due",
+ * which is the complaint that started this.
+ *
+ * What is left here is the things with a **date** rather than a cadence:
+ * a deadline you set, a trip that starts, somebody you have not seen for
+ * months. None of those recur.
  *
  * **Nothing here is stored.** There is no event record and no agenda
  * collection — every row is derived from something that already exists and
@@ -38,7 +47,7 @@ export type Urgency = 'overdue' | 'today' | 'soon'
 export interface AgendaItem {
   readonly id: string
   /** Which area it came from, for the icon and the link. */
-  readonly area: 'quests' | 'codex' | 'map' | 'party'
+  readonly area: 'quests' | 'map' | 'party'
   readonly title: string
   /** Why it is on the list — "due Friday", "6 weeks unseen". */
   readonly detail: string
@@ -48,7 +57,6 @@ export interface AgendaItem {
 
 export interface AgendaDeps {
   readonly projects: ProjectRepository
-  readonly items: BacklogItemRepository
   readonly trips: TripRepository
   readonly friends: FriendRepository
   readonly clock: Clock
@@ -83,9 +91,8 @@ function urgencyOf(days: number): Urgency {
 export async function agendaFor(deps: AgendaDeps): Promise<readonly AgendaItem[]> {
   const today = toDayKey(deps.clock.now())
 
-  const [projects, items, trips, friends] = await Promise.all([
+  const [projects, trips, friends] = await Promise.all([
     deps.projects.all(),
-    deps.items.all(),
     deps.trips.all(),
     deps.friends.all(),
   ])
@@ -110,49 +117,6 @@ export async function agendaFor(deps: AgendaDeps): Promise<readonly AgendaItem[]
       detail: `due ${whenPhrase(days)}`,
       urgency: urgencyOf(days),
       href: '/quests',
-    })
-  }
-
-  /*
-   * Codex entries with a daily goal that today has not met yet.
-   *
-   * Only ones in progress: a goal on something not started is an
-   * intention, and listing every book you own as overdue every morning is
-   * the fastest way to make this screen worthless.
-   */
-  for (const item of items) {
-    // `currently-using` is the backlog's word for started-but-not-finished
-    // — it covers reading, watching and playing without picking one.
-    if (item.dailyGoal === undefined || item.status !== 'currently-using') continue
-
-    /*
-     * **The goal's cadence, which this did not read.** A Codex goal
-     * carries the habits' own `Cadence`, so a book read on Tuesdays and
-     * Thursdays is expected on two days a week — and this loop listed it
-     * as outstanding every morning, because it only asked whether
-     * today's amount had been met.
-     *
-     * `goalCovers` says in its own comment that it is "the one place the
-     * cadence is read, so every caller agrees about which days count".
-     * The streak, the board and the day strip all ask it; this was a
-     * caller that did not, which is the second answer that comment
-     * exists to prevent.
-     *
-     * It is also most of why this section felt broad: a list of things
-     * genuinely due had reading goals in it that were not due at all.
-     */
-    if (!goalCovers(item.dailyGoal, today)) continue
-
-    const done = getProgressOn(item.dailyProgress, today)
-    if (done >= item.dailyGoal.amount) continue
-
-    rows.push({
-      id: `codex:${item.id}`,
-      area: 'codex',
-      title: item.title,
-      detail: `${(item.dailyGoal.amount - done).toString()} ${item.dailyGoal.unit} left today`,
-      urgency: 'today',
-      href: '/backlog',
     })
   }
 

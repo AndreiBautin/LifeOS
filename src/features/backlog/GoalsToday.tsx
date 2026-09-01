@@ -25,7 +25,14 @@ function StreakBadge({ status }: { readonly status: DailyGoalStatus }) {
   )
 }
 
-function GoalRow({ status }: { readonly status: DailyGoalStatus }) {
+/**
+ * One goal, as a row you can act on. Exported because Today draws these
+ * too — a Codex goal is a recurring, cadenced, streak-holding thing that
+ * is answered by logging a bit of it, so it belongs in the day's list,
+ * and a second copy of this row is where the two screens would start to
+ * disagree about what a plus does.
+ */
+export function GoalRow({ status }: { readonly status: DailyGoalStatus }) {
   const item = status.item
   const log = useLogProgress()
 

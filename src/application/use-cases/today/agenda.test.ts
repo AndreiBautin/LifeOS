@@ -40,7 +40,6 @@ function harness(seed: {
 
   return {
     projects: list(seed.projects ?? []),
-    items: list(seed.items ?? []),
     trips: list(seed.trips ?? []),
     friends: list(seed.friends ?? []),
     clock,
@@ -49,15 +48,6 @@ function harness(seed: {
 
 const aQuest = (over: Partial<Project>): Project =>
   ({ id: 'q1', name: 'Ship it', status: 'active', actions: [], ...over }) as unknown as Project
-
-const anEntry = (over: Partial<Item>): Item =>
-  ({
-    id: 'i1',
-    title: 'Dune',
-    status: 'currently-using',
-    dailyProgress: [],
-    ...over,
-  }) as unknown as Item
 
 describe('what reaches the agenda', () => {
   it('lists a quest deadline that is close', async () => {
@@ -92,110 +82,18 @@ describe('what reaches the agenda', () => {
   })
 })
 
-describe('codex entries with a daily goal', () => {
-  it('says how much is left when today is unfinished', async () => {
-    const rows = await agendaFor(
-      harness({
-        items: [
-          anEntry({
-            dailyGoal: { amount: 20, unit: 'pages' },
-            dailyProgress: [{ date: '2026-08-27', amount: 8 }],
-          }),
-        ],
-      }),
-    )
-
-    expect(rows[0]?.detail).toBe('12 pages left today')
-  })
-
-  it('drops it once today is met', async () => {
-    const rows = await agendaFor(
-      harness({
-        items: [
-          anEntry({
-            dailyGoal: { amount: 20, unit: 'pages' },
-            dailyProgress: [{ date: '2026-08-27', amount: 20 }],
-          }),
-        ],
-      }),
-    )
-
-    expect(rows).toHaveLength(0)
-  })
-
-  /*
-   * A goal on something not started is an intention. Listing every book
-   * you own as unfinished every morning is the fastest way to make this
-   * screen worthless.
-   */
-  it('ignores a goal on something not started', async () => {
-    const rows = await agendaFor(
-      harness({
-        items: [anEntry({ status: 'backlog', dailyGoal: { amount: 20, unit: 'pages' } })],
-      }),
-    )
-
-    expect(rows).toHaveLength(0)
-  })
-
-  /*
-   * The reported one: *"the due section seems broad, since dailies and
-   * stuff are also considered due."* Part of that was true rather than a
-   * matter of wording — a goal read on Tuesdays and Thursdays was listed
-   * as outstanding on a Thursday **and on every other morning**, because
-   * this loop asked whether today's amount had been met and never
-   * whether today was one of its days.
-   *
-   * `goalCovers` calls itself "the one place the cadence is read, so
-   * every caller agrees about which days count". The streak, the board
-   * and the day strip all ask it. This did not.
-   */
-  it('leaves out a goal that today is not one of the days for', async () => {
-    // The harness clock is Thursday 2026-08-27; this goal is Mondays.
-    const rows = await agendaFor(
-      harness({
-        items: [
-          anEntry({
-            dailyGoal: {
-              amount: 20,
-              unit: 'pages',
-              cadence: { kind: 'days-of-week', days: [1] },
-            },
-          }),
-        ],
-      }),
-    )
-
-    expect(rows).toHaveLength(0)
-  })
-
-  it('still lists it on a day it is expected', async () => {
-    // Thursday is 4, so this one does cover today.
-    const rows = await agendaFor(
-      harness({
-        items: [
-          anEntry({
-            dailyGoal: {
-              amount: 20,
-              unit: 'pages',
-              cadence: { kind: 'days-of-week', days: [4] },
-            },
-          }),
-        ],
-      }),
-    )
-
-    expect(rows[0]?.detail).toBe('20 pages left today')
-  })
-
-  it('lists a goal with no cadence every day, which is what absent means', async () => {
-    const rows = await agendaFor(
-      harness({ items: [anEntry({ dailyGoal: { amount: 20, unit: 'pages' } })] }),
-    )
-
-    expect(rows).toHaveLength(1)
-  })
-})
+/*
+ * **Codex goals left this list, so their tests left with it.** They are
+ * drawn in the Dailies section now: a Codex goal carries the habits' own
+ * `Cadence`, holds a streak and is answered by logging a bit of it, so
+ * it is a daily in every respect except the record type.
+ *
+ * The rule that brought them here — that a goal is only outstanding on a
+ * day its cadence covers — did not go with them. It is
+ * `getDailyGoalBoard` → `isDueToday` and is tested in
+ * `daily-goals.test.ts`, which is where it always belonged: the agenda
+ * had been answering it a second time, and badly.
+ */
 
 describe('trips', () => {
   const trip = (over: Partial<Trip>): Trip =>

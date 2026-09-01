@@ -1,4 +1,4 @@
-import { BookMarked, CalendarCheck, Map, Settings, Target, Users } from 'lucide-react'
+import { CalendarCheck, Map, Settings, Target, Users } from 'lucide-react'
 import { useCampaigns } from '@/features/campaign/hooks'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
@@ -63,9 +63,12 @@ import { useAgenda } from './hooks'
  * rather than met on the way to a checkbox.
  */
 
+/*
+ * The three areas the agenda can name. Codex left when its goals moved
+ * into the day's list, so the icon went with it.
+ */
 const AREA_ICON = {
   quests: Target,
-  codex: BookMarked,
   map: Map,
   party: Users,
 } as const
@@ -297,9 +300,14 @@ export function HomePage() {
 
         What this list actually is: the things with a *when* that live in
         areas with no block of their own here — a quest's deadline, a
-        Codex goal, a trip, somebody you have not seen. So the title says
-        elsewhere, matching the sense "Everywhere else" uses further
-        down: **other areas**, not other times.
+        trip, somebody you have not seen. So the title says elsewhere,
+        matching the sense "Everywhere else" uses further down: **other
+        areas**, not other times.
+
+        Codex goals were in it and are with the dailies now: they carry
+        the habits' own cadence and hold a streak, so what is left here
+        is the things with a **date** rather than a cadence. None of
+        these recur.
 
         The description names the four rather than saying "across your
         areas", which was true of every section on the page.
@@ -309,14 +317,14 @@ export function HomePage() {
         description={
           rows.length === 0
             ? undefined
-            : `${rows.length.toString()} across quests, the Codex, trips and the party`
+            : `${rows.length.toString()} across quests, trips and the party`
         }
       >
         {rows.length === 0 ? (
           <Empty title="Nothing outstanding">
             <span className="inline-flex items-center gap-2">
               <CalendarCheck size={16} aria-hidden />
-              No deadlines, no goals outstanding, nobody overdue.
+              No deadlines, no trips coming, nobody overdue.
             </span>
           </Empty>
         ) : (

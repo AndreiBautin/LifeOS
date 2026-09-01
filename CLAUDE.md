@@ -2337,7 +2337,7 @@ though it were the authority on all of them.
 
 What that list actually holds is the things with a **when** that live in
 areas with no block of their own on this screen: a quest's deadline, a
-Codex goal, a trip, somebody you have not seen. So the title says
+trip, somebody you have not seen. So the title says
 _elsewhere_, in the sense "Everywhere else" already uses further down —
 **other areas**, not other times — and the description names the four
 rather than saying "across your areas", which was true of every section
@@ -2624,6 +2624,39 @@ that were not due at all.
 the second time that has paid this month: the digest's `void error`
 claimed to be logged and was not. Both were sentences describing a
 property nothing enforced.
+
+**A Codex goal is drawn with the dailies now, in a group of its own.**
+Asked for as the fix to the same report: _"why not just group 'em with
+dailies, just separated."_ It is the right shape — a goal carries the
+habits' own `Cadence`, is expected on named days, holds a streak, and is
+answered by logging a bit of it. **A daily in every respect except the
+record type**, which is exactly why it sat oddly among deadlines and
+trips and made that heading claim everything.
+
+`GoalRow` is exported and shared rather than copied: a second row is
+where the Codex screen and Today would start disagreeing about what a
+plus does. It gets one heading in the shape House and Hygiene already
+use, and is **not banded by part of day** — a reading goal names no
+time.
+
+**It counts in "N left today", and a met goal folds with the rest.**
+The count and the rows beneath it are one claim, which is the rule that
+cost two attempts to find. Folded rather than dropped, for the reason
+every fold here exists: the minus on that row is the only way back from
+a mis-logged page.
+
+**Only what is due today reaches Today; the Codex screen still shows the
+rest.** `isDueToday` is the goal's own cadence answer. That split is the
+same one the habits make, and the Codex keeps its not-due rows because
+logging on a day you did not plan to read happens and a row that
+vanished there would read as lost.
+
+**What is left in the agenda is dated rather than cadenced** — a
+deadline, a trip, somebody unseen for months. None of those recur, and
+`AgendaItem.area` no longer has a `codex` member. Its tests went with it,
+and the rule they were protecting did not: it is `getDailyGoalBoard` →
+`isDueToday`, tested in `daily-goals.test.ts`, which is where it always
+belonged — the agenda had been answering it a second time and badly.
 
 `isPlausibleDailyGoal` validates the cadence now. It arrives from a
 backup or another device and `cadenceCovers` reads `days.includes`, so
