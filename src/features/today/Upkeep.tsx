@@ -1,21 +1,11 @@
-import { Flame, Plus, Undo2 } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import { useState } from 'react'
 
-import { Fold } from '@/components/shared/Fold'
-import { counted } from '@/lib/counted'
 import { Button, Card, Empty, Section } from '@/components/shared/primitives'
 import { UPKEEP } from '@/domain/base/base'
-import type { DailyView } from '@/application/use-cases/dailies/dailies'
 
-import { AddDaily, DailyTitle, RenameDaily } from './Dailies'
-import { GroupedDailies } from './DailyGroups'
-import {
-  useAddDaily,
-  useKeepToday,
-  useMoveDailyHome,
-  useUndoToday,
-  useUpkeep,
-} from './dailies-hooks'
+import { AddDaily } from './Dailies'
+import { useAddDaily, useUpkeep } from './dailies-hooks'
 
 /**
  * The body's chores, on the screen that now owns them.
@@ -37,94 +27,6 @@ import {
  * would have re-attributed every one of them to `dailies.completed` and
  * left Vitality permanently empty, since it has no other area.
  */
-
-/**
- * One thing you keep on top of, and how much of today's is done.
- *
- * A daily in every respect — cadence, streak, and the count that arrived
- * for chores done several times a day, which is exactly what brushing
- * twice needs. What it is not is a *quest*, which is why it keeps its
- * own section rather than joining the list above it.
- */
-function UpkeepRow({ view }: { readonly view: DailyView }) {
-  const keep = useKeepToday(view.daily.belongsTo)
-  const undo = useUndoToday()
-  const moveHome = useMoveDailyHome()
-  const [renaming, setRenaming] = useState(false)
-
-  const { daily, doneToday, expectedToday, doneCount, needed } = view
-
-  if (renaming) {
-    return (
-      <li>
-        <RenameDaily
-          view={view}
-          onDone={() => {
-            setRenaming(false)
-          }}
-        />
-      </li>
-    )
-  }
-
-  return (
-    <li className="flex items-center gap-3 py-2">
-      <Button
-        variant={doneToday ? 'primary' : 'outline'}
-        aria-label={
-          doneToday
-            ? `Undo ${daily.title}`
-            : needed > 1
-              ? `Log ${daily.title}, ${String(doneCount)} of ${String(needed)} done`
-              : `Mark ${daily.title} done`
-        }
-        aria-pressed={doneToday}
-        disabled={keep.isPending || undo.isPending}
-        onClick={() => {
-          if (doneToday) undo.mutate(daily.id)
-          else keep.mutate(daily.id)
-        }}
-      >
-        {doneToday ? '✓' : needed > 1 ? `${String(doneCount)}/${String(needed)}` : ''}
-      </Button>
-
-      <div className="min-w-0 flex-1">
-        <DailyTitle
-          daily={daily}
-          done={doneToday}
-          onRename={() => {
-            setRenaming(true)
-          }}
-        />
-        {needed > 1 && expectedToday && (
-          <p className="text-ink-700 text-xs">
-            {doneCount} of {needed} today
-          </p>
-        )}
-        {!expectedToday && <p className="text-ink-700 text-xs">Not due today</p>}
-      </div>
-
-      {view.streak > 0 && (
-        <span className="text-ink-500 numeric flex items-center gap-1 text-xs">
-          <Flame size={12} aria-hidden />
-          {view.streak}
-        </span>
-      )}
-
-      <Button
-        variant="ghost"
-        size="sm"
-        aria-label={`Move ${daily.title} back to Today`}
-        disabled={moveHome.isPending}
-        onClick={() => {
-          moveHome.mutate({ id: daily.id, home: undefined })
-        }}
-      >
-        <Undo2 size={14} aria-hidden />
-      </Button>
-    </li>
-  )
-}
 
 /**
  * The body's chores, offered by name.
@@ -199,25 +101,21 @@ export function Upkeep() {
   const views = upkeep.data ?? []
 
   /*
-   * The same three-way split the dailies above use, and it is needed
-   * here for a reason this section created: moving the full list onto
-   * Today meant every upkeep habit rendered whatever the day asked for,
-   * captioned "Not due today". That was the clutter reported —
-   * *"everything that gets checked off and stuff for other days"* — and
-   * it arrived with the move rather than being inherited.
+   * **The rows are not here; they are in the day above.** They were,
+   * briefly — the whole list, folds and all — and that put the day's
+   * remaining chores three blocks below the line counting them:
+   * *"I have two left but have to scroll all the way down to find em."*
+   * Upkeep is a group in the day list now, so this is what is left when
+   * the rows move out: the way to **add** one.
    *
-   * Folded rather than filtered, for the reason `Fold` gives: a done
-   * row is the only route to undo, and a not-due row is the only route
-   * to renaming or retiring one.
+   * It stays a section rather than folding into that group, because a
+   * group is not drawn when it has no rows — and the first upkeep habit
+   * has to be addable from a screen showing none.
    */
-  const outstanding = views.filter((view) => view.dueToday)
-  const done = views.filter((view) => view.doneToday)
-  const otherDays = views.filter((view) => !view.dueToday && !view.doneToday)
-
   return (
     <Section
       title="Upkeep"
-      description="Brushing, flossing, washing your hair — the body's chores"
+      description="Brushing, flossing, washing your hair — kept with the day above"
       action={
         <Button
           variant={adding ? 'ghost' : 'outline'}
@@ -241,53 +139,10 @@ export function Upkeep() {
       )}
 
       <Card>
-        {upkeep.data === undefined ? null : views.length === 0 ? (
+        {views.length === 0 && (
           <Empty title="Nothing yet">
             Things you either did today or did not — a gallon of water, brushing, flossing.
           </Empty>
-        ) : (
-          <>
-            {outstanding.length > 0 && (
-              <div className="mb-3">
-                <GroupedDailies
-                  bare
-                  views={outstanding}
-                  render={(view) => <UpkeepRow key={view.daily.id} view={view} />}
-                />
-              </div>
-            )}
-
-            {/*
-              Said in words rather than left as a gap. An empty card
-              under a heading reads as something that failed to load,
-              where the whole point is that there is nothing left.
-            */}
-            {outstanding.length === 0 && (
-              <p className="text-ink-500 mb-3 text-sm">Nothing left today.</p>
-            )}
-
-            {done.length > 0 && (
-              <Fold summary={`${counted(done.length, 'done', 'done')} today`}>
-                <GroupedDailies
-                  bare
-                  views={done}
-                  render={(view) => <UpkeepRow key={view.daily.id} view={view} />}
-                />
-              </Fold>
-            )}
-
-            {otherDays.length > 0 && (
-              <Fold summary={`${counted(otherDays.length, 'chore', 'chores')} on other days`}>
-                <GroupedDailies
-                  bare
-                  views={otherDays}
-                  render={(view) => <UpkeepRow key={view.daily.id} view={view} />}
-                />
-              </Fold>
-            )}
-
-            <div className="mt-3" />
-          </>
         )}
 
         <UpkeepSuggestions

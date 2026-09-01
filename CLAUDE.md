@@ -3810,6 +3810,42 @@ list onto Today meant every chore rendered whatever the day asked,
 captioned "Not due today" — the clutter arrived with that move rather
 than being found in it.
 
+**The Dailies section is the day across every home, and getting there
+took two wrong shapes.** Reported against the first: _"I have two left
+but have to scroll all the way down to find em."_ The header counted
+every home — "2 left today" — while the section drew own habits, House
+and Training only, with upkeep in a section three blocks below. So the
+number was right, the rows were off-screen, and the list directly under
+the count was **empty**.
+
+**A count and the rows beneath it have to be the same claim.** That is
+the rule this cost, and it is worth more than either arrangement: the
+count may describe the day rather than the section only when the section
+shows the day. Upkeep is a group in the list again — House, Training,
+Upkeep — and `ELSEWHERE_GROUPS` makes `to` optional, because House and
+Training point at the screens that manage them and **upkeep has no link,
+since this is that screen**.
+
+**Upkeep comes from `useUpkeep`, not from `useDueElsewhere`.** That hook
+keeps only what is due or done _today_, and Today is where an upkeep
+habit is renamed and retired — so the other-days fold needs the ones
+that are neither. It is dropped from `elsewhere` in the same breath or
+every upkeep row is counted and drawn twice, which is the bug the
+previous shape shipped with.
+
+**What is left of the Upkeep section is the way to add one.** It stays a
+`Section` rather than folding into that group because **a group is not
+drawn when it has no rows**, and the first upkeep habit has to be
+addable from a screen showing none.
+
+**`DailyRow` moves a habit the way it is not currently filed**, and this
+was a latent bug that only bit once upkeep joined the list. The button
+was Base unconditionally: harmless while the row drew own habits and
+House rows, where "move to Base" is merely useless. With upkeep in the
+day list it put a toothbrushing habit one tap from becoming a house
+chore with no way back on that screen. An own habit offers Base;
+anything already filed elsewhere offers the way back to Today.
+
 **One screen must not draw a record twice, and the first attempt did.**
 Today's done fold was built from own dailies plus everything
 `useDueElsewhere` returned, which includes upkeep — so a ticked Floss

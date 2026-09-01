@@ -243,6 +243,13 @@ export function HomePage() {
         <Dailies />
       </Section>
 
+      {/*
+        Directly under the day it belongs to. It is the way to add an
+        upkeep habit; the habits themselves are listed in the section
+        above, among everything else the day asks for.
+      */}
+      <Upkeep />
+
       <Section title="Active quests" description="One main, one side.">
         <ActiveQuests
           main={active.data?.main}
@@ -255,15 +262,6 @@ export function HomePage() {
       <Section title="Limits" description="What you have left today.">
         <LimitsCard />
       </Section>
-
-      {/*
-        Upkeep sits with the day's other recurring work rather than on a
-        screen of its own. It was on Vitals, which has gone with the
-        weight tracking — and Today already carried an Upkeep group under
-        "Due elsewhere", so the full list joining it here is the section
-        catching up with where the rows already were.
-      */}
-      <Upkeep />
 
       {/* Both silent unless this morning's read found something. */}
       <LeadsToday />

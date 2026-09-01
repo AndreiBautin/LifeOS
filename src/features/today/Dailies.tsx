@@ -1,4 +1,4 @@
-import { Archive, CalendarCog, Check, Flame, Home, Pencil, Plus } from 'lucide-react'
+import { Archive, CalendarCog, Check, Flame, Home, Pencil, Plus, Undo2 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useState } from 'react'
 
@@ -30,6 +30,7 @@ import {
   useKeepToday,
   useRetireDaily,
   useUndoToday,
+  useUpkeep,
 } from './dailies-hooks'
 
 /**
@@ -512,21 +513,42 @@ export function DailyRow({ view }: { readonly view: DailyView }) {
       )}
 
       {/*
-        Off to Base, for the hoovering somebody added here before noticing
-        it was house work. A move rather than a re-create — the days it
-        has been kept on are the whole value of the record — and it comes
-        straight back the same way from the Base screen.
+        **The move goes the way the row is not currently filed.** An own
+        habit offers Base, for the hoovering somebody added here before
+        noticing it was house work; anything already filed elsewhere
+        offers the way back.
+
+        It was Base unconditionally, which was harmless while this row
+        only ever drew own habits and House rows — a House row offering
+        "move to Base" is merely useless. It stopped being harmless when
+        upkeep joined the day list: a toothbrushing habit one tap from
+        becoming a house chore, with no way back on this screen.
+
+        A move rather than a re-create, either way: the days it has been
+        kept on are the whole value of the record.
       */}
       <Button
         size="sm"
         variant="ghost"
-        aria-label={`Move ${daily.title} to Base`}
+        aria-label={
+          daily.belongsTo === undefined
+            ? `Move ${daily.title} to Base`
+            : `Move ${daily.title} back to Today`
+        }
         disabled={moveHome.isPending}
         onClick={() => {
-          moveHome.mutate({ id: daily.id, home: BASE })
+          moveHome.mutate(
+            daily.belongsTo === undefined
+              ? { id: daily.id, home: BASE }
+              : { id: daily.id, home: undefined },
+          )
         }}
       >
-        <Home size={16} aria-hidden />
+        {daily.belongsTo === undefined ? (
+          <Home size={16} aria-hidden />
+        ) : (
+          <Undo2 size={16} aria-hidden />
+        )}
       </Button>
 
       {/*
@@ -822,34 +844,33 @@ export function AddDaily({
  * answer read twice — and the caller now has to split done from
  * outstanding anyway, so the split has to happen in one place or the
  * done fold and this list would disagree about what is left.
+ *
+ * **Upkeep is a group here again, and `to` is optional because of it.**
+ * It was pulled out when upkeep gained a section of its own further down
+ * the screen, and that put the day's remaining work three blocks below
+ * the line counting it — reported as *"I have two left but have to
+ * scroll all the way down to find em."* House and Training keep an
+ * "all →" because `/base` and `/train` are where those are managed;
+ * upkeep has no link because **this is that screen**, the same reason
+ * the own-dailies fold below carries none.
  */
+const ELSEWHERE_GROUPS: readonly {
+  readonly home: RecordHome
+  readonly label: string
+  /** Absent where Today is itself the screen that owns the rows. */
+  readonly to?: string
+}[] = [
+  { home: BASE, label: 'House', to: '/base' },
+  { home: TRAINING, label: 'Training', to: '/train' },
+  { home: UPKEEP, label: 'Upkeep' },
+]
+
 function DueElsewhere({ views }: { readonly views: readonly DailyView[] }) {
-  if (views.length === 0) return null
+  const groups = ELSEWHERE_GROUPS.map((group) => ({
+    ...group,
+    rows: views.filter((view) => view.daily.belongsTo === group.home),
+  })).filter((group) => group.rows.length > 0)
 
-  /*
-   * **Upkeep is deliberately not here any more.** It was, pointing at
-   * '/vitals' — and that screen has gone, so this screen owns those rows
-   * outright. They are listed in full in their own section instead; a
-   * group here as well would draw every due one of them twice on one
-   * screen. House and Training keep theirs because '/base' and '/train'
-   * are still where those are managed.
-   */
-  const groups = [
-    { home: BASE, label: 'House', to: '/base' },
-    { home: TRAINING, label: 'Training', to: '/train' },
-  ]
-    .map((group) => ({
-      ...group,
-      rows: views.filter((view) => view.daily.belongsTo === group.home),
-    }))
-    .filter((group) => group.rows.length > 0)
-
-  /*
-   * Checked after filtering, not before. `views` still carries upkeep —
-   * the count in the header is a claim about the day and must include it
-   * — so a day whose only work elsewhere is upkeep would otherwise draw
-   * an empty spacer under the list.
-   */
   if (groups.length === 0) return null
 
   return (
@@ -858,9 +879,11 @@ function DueElsewhere({ views }: { readonly views: readonly DailyView[] }) {
         <div key={group.home}>
           <div className="mb-1 flex items-baseline justify-between gap-2">
             <span className="text-ink-700 text-xs tracking-wide uppercase">{group.label}</span>
-            <Link to={group.to} className="text-ink-700 hover:text-ink-500 text-xs">
-              all →
-            </Link>
+            {group.to !== undefined && (
+              <Link to={group.to} className="text-ink-700 hover:text-ink-500 text-xs">
+                all →
+              </Link>
+            )}
           </div>
           <Card className="divide-ink-800 divide-y py-0">
             {group.rows.map((view) => (
@@ -876,6 +899,7 @@ function DueElsewhere({ views }: { readonly views: readonly DailyView[] }) {
 export function Dailies() {
   const dailies = useDailies('own-area')
   const due = useDueElsewhere()
+  const upkeep = useUpkeep()
   const services = useServices()
   const [adding, setAdding] = useState(false)
   const [showLater, setShowLater] = useState(false)
@@ -896,40 +920,48 @@ export function Dailies() {
    * They are below everything due, under a heading that says what they
    * are, in the same shape the House and Upkeep groups already use.
    */
+  /*
+   * **This section is the day, across every home.** It used to be the
+   * day *minus upkeep*, which had a section of its own three blocks
+   * below — so the header could read "2 left today" above an empty list
+   * while the two rows sat off-screen. A count and the rows beneath it
+   * have to be the same claim.
+   *
+   * Upkeep arrives from `useUpkeep` rather than from `useDueElsewhere`
+   * because that hook keeps only what is due or done **today**, and this
+   * screen is where an upkeep habit is renamed and retired — so the
+   * other-days fold needs the ones that are neither. It is dropped from
+   * `elsewhere` in the same breath, or every upkeep row would be counted
+   * and drawn twice.
+   */
+  const elsewhere = due.data ?? []
+  const houseAndTraining = elsewhere.filter((view) => view.daily.belongsTo !== UPKEEP)
+  const upkeepViews = upkeep.data ?? []
+
   const outstanding = views.filter((view) => view.dueToday)
-  const otherDays = views.filter((view) => !view.dueToday && !view.doneToday)
+  const outstandingElsewhere = [...houseAndTraining, ...upkeepViews].filter((view) => view.dueToday)
 
   /*
-   * **Done rows fold away, and this reverses the rule written directly
+   * **Done rows fold away, and this reverses a rule written directly
    * above.** That rule said only what is still to do gets hidden,
    * because hiding something already done invites doing it twice. The
    * report was that the screen is *"cluttered with everything that gets
-   * checked off"* — and on a list that grows all day, evidence of what
-   * is finished is exactly what buries what is not.
+   * checked off"* — and on a list that grows all day, the evidence of
+   * what is finished is exactly what buries what is not.
    *
-   * The tick is still the answer to doing it twice: a done row reads
+   * The tick still answers doing it twice: a done row reads
    * `aria-pressed` and the header says how many are left. What the fold
    * protects is **undo**, which is the only route back from a mis-tap
    * and would be gone if these were filtered out rather than folded.
    */
-  const doneOwn = views.filter((view) => view.doneToday)
-  const elsewhere = due.data ?? []
+  const done = [...views, ...houseAndTraining, ...upkeepViews].filter((view) => view.doneToday)
 
   /*
-   * **Upkeep is excluded from what this section draws, and included in
-   * what it counts.** It has a section of its own further down the same
-   * screen with its own folds, so listing it here as well put every
-   * ticked chore in two "done today" folds at once — found by driving
-   * it, with Floss appearing under both.
-   *
-   * The count is the exception on purpose: "3 left today" is a claim
-   * about the **day**, not about this section, so it reads the whole of
-   * `elsewhere` the way it always has.
+   * Own habits and upkeep only. House and Training are managed on their
+   * own screens, and `useDueElsewhere` never offers their other days in
+   * the first place.
    */
-  const otherHomes = elsewhere.filter((view) => view.daily.belongsTo !== UPKEEP)
-  const doneElsewhere = otherHomes.filter((view) => view.doneToday)
-  const dueElsewhere = otherHomes.filter((view) => view.dueToday)
-  const done = [...doneOwn, ...doneElsewhere]
+  const otherDays = [...views, ...upkeepViews].filter((view) => !view.dueToday && !view.doneToday)
 
   /*
    * **Later today folds away, and the order never moves.**
@@ -969,13 +1001,13 @@ export function Dailies() {
    * not about this section. "3 left today" that ignored the bins would
    * be answering a question nobody asked.
    */
-  const left = outstanding.length + elsewhere.filter((view) => view.dueToday).length
+  const left = outstanding.length + outstandingElsewhere.length
 
   return (
     <>
       <div className="mb-2 flex items-center justify-between gap-2">
         <p className="text-ink-500 text-sm">
-          {views.length === 0 && elsewhere.length === 0
+          {views.length === 0 && elsewhere.length === 0 && upkeepViews.length === 0
             ? 'Nothing yet.'
             : left === 0
               ? 'All done for today.'
@@ -999,7 +1031,7 @@ export function Dailies() {
         />
       )}
 
-      {views.length === 0 && elsewhere.length === 0 && (
+      {views.length === 0 && elsewhere.length === 0 && upkeepViews.length === 0 && (
         <Empty title="No dailies yet">
           A daily here is a checkbox and a streak. It cannot ring — nothing in a web app on iOS can
           — so it earns its place by being the first thing on this screen.
@@ -1025,7 +1057,7 @@ export function Dailies() {
         </button>
       )}
 
-      <DueElsewhere views={dueElsewhere} />
+      <DueElsewhere views={outstandingElsewhere} />
 
       {/*
         Both folds sit below everything the day asks for, in the order
