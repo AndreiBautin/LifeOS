@@ -113,7 +113,7 @@ function TrainingHabits() {
             bare
             categoryOf={groupOnly}
             views={views}
-            render={(view) => <DailyRow key={view.daily.id} view={view} />}
+            render={(view, part) => <DailyRow view={view} part={part} />}
           />
         )}
       </Card>

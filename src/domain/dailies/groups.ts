@@ -1,6 +1,6 @@
 import { BASE, TRAINING, type RecordHome } from '@/domain/base/base'
 
-import { PARTS_OF_DAY, type Daily, type PartOfDay } from './daily'
+import { PARTS_OF_DAY, type Daily, type DailyOccurrence, type PartOfDay } from './daily'
 
 /**
  * Grouping habits by what kind of thing they are.
@@ -134,7 +134,7 @@ export function sameGroup(a: string | undefined, b: string | undefined): boolean
 export interface DailyGroup {
   /** Absent for the habits that belong to no group. */
   readonly name?: string
-  readonly dailies: readonly Daily[]
+  readonly occurrences: readonly DailyOccurrence[]
 }
 
 /** How a caller names the category a habit is filed under. */
@@ -160,13 +160,14 @@ export const homeOrGroup: CategoryOf = (daily) =>
   normaliseGroup(daily.group)
 
 /**
- * How early in the day a habit sits, for ordering. No part sorts last.
+ * How early in the day an occurrence sits, for ordering. No part sorts
+ * last.
  *
  * The same rule a single habit already follows: a habit with no part
  * belongs to no point in the day rather than to the start of it.
  */
-function partRank(daily: Daily): number {
-  const index = PARTS_OF_DAY.indexOf(daily.partOfDay ?? ('' as never))
+function partRank(occurrence: DailyOccurrence): number {
+  const index = PARTS_OF_DAY.indexOf(occurrence.part ?? ('' as never))
 
   return index === -1 ? PARTS_OF_DAY.length : index
 }
@@ -199,23 +200,26 @@ function partRank(daily: Daily): number {
  * `HomeFilter` — a default here would be an opinion the call site did
  * not state.
  */
-export function byGroup(dailies: readonly Daily[], categoryOf: CategoryOf): readonly DailyGroup[] {
-  const groups: { name?: string; dailies: Daily[]; rank: number }[] = []
+export function byGroup(
+  occurrences: readonly DailyOccurrence[],
+  categoryOf: CategoryOf,
+): readonly DailyGroup[] {
+  const groups: { name?: string; occurrences: DailyOccurrence[]; rank: number }[] = []
 
-  for (const daily of dailies) {
-    const name = categoryOf(daily)
+  for (const occurrence of occurrences) {
+    const name = categoryOf(occurrence.daily)
     const existing = groups.find((one) => sameGroup(one.name, name))
 
     if (existing === undefined) {
       groups.push({
         ...(name === undefined ? {} : { name }),
-        dailies: [daily],
-        rank: partRank(daily),
+        occurrences: [occurrence],
+        rank: partRank(occurrence),
       })
     } else {
-      existing.dailies.push(daily)
+      existing.occurrences.push(occurrence)
       // The group sits where its earliest habit does.
-      existing.rank = Math.min(existing.rank, partRank(daily))
+      existing.rank = Math.min(existing.rank, partRank(occurrence))
     }
   }
 
@@ -227,9 +231,9 @@ export function byGroup(dailies: readonly Daily[], categoryOf: CategoryOf): read
 
       return a.rank - b.rank || a.name.localeCompare(b.name)
     })
-    .map(({ name, dailies: members }) => ({
+    .map(({ name, occurrences: members }) => ({
       ...(name === undefined ? {} : { name }),
-      dailies: members,
+      occurrences: members,
     }))
 }
 
@@ -264,17 +268,17 @@ export interface DailyBand {
  * time" rather than a fourth clock position it does not have.
  */
 export function byPartOfDay(
-  dailies: readonly Daily[],
+  occurrences: readonly DailyOccurrence[],
   categoryOf: CategoryOf,
 ): readonly DailyBand[] {
   const bands: DailyBand[] = []
 
   for (const part of PARTS_OF_DAY) {
-    const members = dailies.filter((daily) => daily.partOfDay === part)
+    const members = occurrences.filter((one) => one.part === part)
     if (members.length > 0) bands.push({ part, groups: byGroup(members, categoryOf) })
   }
 
-  const unbanded = dailies.filter((daily) => daily.partOfDay === undefined)
+  const unbanded = occurrences.filter((one) => one.part === undefined)
   if (unbanded.length > 0) bands.push({ groups: byGroup(unbanded, categoryOf) })
 
   return bands

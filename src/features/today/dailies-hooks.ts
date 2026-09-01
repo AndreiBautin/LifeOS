@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { useServices } from '@/app/context'
 import { TRAINING, type HomeFilter, type RecordHome } from '@/domain/base/base'
-import type { Cadence } from '@/domain/dailies/daily'
+import type { PartOfDay } from '@/domain/dailies/daily'
 import { dailyActFor } from '@/domain/game/registry'
 import {
   addDaily,
@@ -14,6 +14,7 @@ import {
   keepOn,
   recadenceDaily,
   relabelDaily,
+  type Recadence,
   undoOn,
   retireDaily,
   undoToday,
@@ -171,16 +172,31 @@ export function useMoveDailyHome() {
  * takes the day back, and the sheet will show that at the next read. An
  * acknowledgement is for acts.
  */
+/**
+ * The part is optional because most habits name none.
+ *
+ * A row on a banded list knows which part it is drawing and says so, so
+ * a habit set to morning and evening can be ticked in one band without
+ * the other going green. A row with no part passes none and the domain
+ * behaves exactly as it did.
+ */
+export interface KeptToday {
+  readonly id: DailyId
+  readonly part?: PartOfDay
+}
+
 export function useKeepToday(home?: RecordHome) {
-  return useDailyMutation<DailyId>(
+  return useDailyMutation<KeptToday>(
     'dailies.kept',
-    (id, services) => keepToday(id, services),
+    ({ id, part }, services) => keepToday(id, services, part),
     dailyActFor(home),
   )
 }
 
 export function useUndoToday() {
-  return useDailyMutation<DailyId>('dailies.undone', (id, services) => undoToday(id, services))
+  return useDailyMutation<KeptToday>('dailies.undone', ({ id, part }, services) =>
+    undoToday(id, services, part),
+  )
 }
 
 /**
@@ -233,8 +249,8 @@ export function useUndoOn() {
  * reason a rename pays nothing.
  */
 export function useRecadenceDaily() {
-  return useDailyMutation<{ id: DailyId; cadence: Cadence; timesPerDay: number }>(
+  return useDailyMutation<{ id: DailyId } & Recadence>(
     'dailies.recadenced',
-    ({ id, cadence, timesPerDay }, services) => recadenceDaily(id, cadence, timesPerDay, services),
+    ({ id, ...change }, services) => recadenceDaily(id, change, services),
   )
 }

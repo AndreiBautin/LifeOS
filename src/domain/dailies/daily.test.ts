@@ -5,6 +5,11 @@ import { asDailyId } from '@/domain/ids/ids'
 import {
   bestStreakFor,
   complete,
+  completePart,
+  isPartDoneOn,
+  occurrencesOf,
+  partsOf,
+  timesPerDay,
   isDueToday,
   isExpectedOn,
   isDoneOn,
@@ -384,5 +389,165 @@ describe('the part of the day a habit belongs to', () => {
 
     expect(isDoneOn(morning, '2026-08-30')).toBe(isDoneOn(evening, '2026-08-30'))
     expect(streakFor({ ...morning, done: ['2026-08-29'] }, '2026-08-30')).toBe(1)
+  })
+})
+
+/*
+ * The reported gap: *"some stuff, like brushing my teeth, is done twice
+ * a day, but I'd like it morning and evening — that doesn't seem to be
+ * supported right now since it's one row."* It was `timesPerDay: 2` and
+ * a single part, which states the number and says nothing about when.
+ */
+describe('a habit that names several parts of the day', () => {
+  const brushing = (over: Partial<Daily> = {}) =>
+    aDaily({ partsOfDay: ['morning', 'evening'], ...over })
+
+  it('is expected once for each part it names', () => {
+    // Naming morning and evening *is* saying twice a day, which is why
+    // there is no second field stating a count.
+    expect(timesPerDay(brushing())).toBe(2)
+    expect(timesPerDay(aDaily())).toBe(1)
+  })
+
+  it('ignores a stored count, so the two can never disagree', () => {
+    expect(timesPerDay(brushing({ timesPerDay: 5 }))).toBe(2)
+  })
+
+  it('draws one occurrence per part, and one for a habit with none', () => {
+    expect(occurrencesOf([brushing()]).map((one) => one.part)).toEqual(['morning', 'evening'])
+    expect(occurrencesOf([aDaily()])).toEqual([{ daily: aDaily() }])
+  })
+
+  it('reads the parts in the order the day happens, however they were stored', () => {
+    expect(partsOf(aDaily({ partsOfDay: ['evening', 'morning'] }))).toEqual(['morning', 'evening'])
+  })
+
+  it('drops a part named twice, which would otherwise mean twice over', () => {
+    expect(partsOf(aDaily({ partsOfDay: ['morning', 'morning'] }))).toEqual(['morning'])
+  })
+
+  it('ticks one part without touching the other', () => {
+    const after = completePart(brushing(), '2026-08-30', 'morning')
+
+    expect(isPartDoneOn(after, '2026-08-30', 'morning')).toBe(true)
+    expect(isPartDoneOn(after, '2026-08-30', 'evening')).toBe(false)
+    expect(isDoneOn(after, '2026-08-30')).toBe(false)
+  })
+
+  it('is done for the day once every part is in', () => {
+    const both = completePart(
+      completePart(brushing(), '2026-08-30', 'morning'),
+      '2026-08-30',
+      'evening',
+    )
+
+    expect(isDoneOn(both, '2026-08-30')).toBe(true)
+  })
+
+  /*
+   * The property the entry shape was chosen for. Two devices ticking the
+   * same morning write the same string and `unionDone` folds them —
+   * where a multi-times habit's timestamps genuinely must not fold,
+   * because the dog's second feed is not the first.
+   */
+  it('is idempotent per part, so two devices ticking one morning is one', () => {
+    const once = completePart(brushing(), '2026-08-30', 'morning')
+
+    expect(completePart(once, '2026-08-30', 'morning')).toBe(once)
+    expect(timesDoneOn(once, '2026-08-30')).toBe(1)
+  })
+
+  it('counts a parted entry under its own day', () => {
+    // The first ten characters are the day, which is the contract every
+    // shape in `done` keeps.
+    expect(timesDoneOn(completePart(brushing(), '2026-08-30', 'evening'), '2026-08-30')).toBe(1)
+  })
+
+  it('fills the earliest outstanding part when nobody says which', () => {
+    // The history strip presses without a part: a fortnight of small
+    // squares cannot say which half of the day was missed.
+    const after = complete(brushing(), '2026-08-30')
+
+    expect(isPartDoneOn(after, '2026-08-30', 'morning')).toBe(true)
+    expect(isPartDoneOn(after, '2026-08-30', 'evening')).toBe(false)
+  })
+
+  it('fills the second part on a second press, and then stops', () => {
+    const both = complete(complete(brushing(), '2026-08-30'), '2026-08-30')
+
+    expect(timesDoneOn(both, '2026-08-30')).toBe(2)
+    expect(complete(both, '2026-08-30')).toBe(both)
+  })
+
+  /*
+   * The alphabet is not the order of the day: `#afternoon` sorts before
+   * `#evening` sorts before `#morning`, so sorting the strings would
+   * undo the morning and report the evening as still kept.
+   */
+  it('takes back the latest part of the day, not the last string', () => {
+    const both = complete(complete(brushing(), '2026-08-30'), '2026-08-30')
+    const after = uncomplete(both, '2026-08-30')
+
+    expect(isPartDoneOn(after, '2026-08-30', 'morning')).toBe(true)
+    expect(isPartDoneOn(after, '2026-08-30', 'evening')).toBe(false)
+  })
+
+  it('counts a streak once every part of the day is in', () => {
+    const kept = brushing({
+      done: ['2026-08-29#morning', '2026-08-29#evening', '2026-08-30#morning'],
+    })
+
+    // Today is half done and does not break the run, which is the humane
+    // rule and has nothing to do with parts.
+    expect(streakFor(kept, '2026-08-30')).toBe(1)
+  })
+})
+
+/*
+ * A habit written before the list, which is every habit on every device.
+ * A derivation rather than a migration: nothing is rewritten on read.
+ */
+describe('the single-part shape a record was written in', () => {
+  it('reads as a list of one', () => {
+    expect(partsOf(aDaily({ partOfDay: 'evening' }))).toEqual(['evening'])
+  })
+
+  it('loses to the list once a record has one', () => {
+    expect(partsOf(aDaily({ partOfDay: 'evening', partsOfDay: ['morning'] }))).toEqual(['morning'])
+  })
+
+  it('still means once a day', () => {
+    expect(timesPerDay(aDaily({ partOfDay: 'evening' }))).toBe(1)
+  })
+})
+
+/*
+ * `bestStreakFor` asked `done.includes(day)`, which only ever matches
+ * the bare day key a once-a-day habit stores — so a habit done several
+ * times a day reported a best streak of 0 however long it had been kept.
+ */
+describe('the longest run ever', () => {
+  it('counts a habit done several times a day, which it used to read as zero', () => {
+    const fed = aDaily({
+      timesPerDay: 2,
+      done: [
+        '2026-08-28T08:00:00.000',
+        '2026-08-28T18:00:00.000',
+        '2026-08-29T08:00:00.000',
+        '2026-08-29T18:00:00.000',
+      ],
+    })
+
+    expect(bestStreakFor(fed)).toBe(2)
+  })
+
+  it('counts a parted habit too', () => {
+    const brushed = aDaily({
+      partsOfDay: ['morning', 'evening'],
+      done: ['2026-08-28#morning', '2026-08-28#evening', '2026-08-29#morning'],
+    })
+
+    // The 29th is half done, so the run is the 28th alone.
+    expect(bestStreakFor(brushed)).toBe(1)
   })
 })

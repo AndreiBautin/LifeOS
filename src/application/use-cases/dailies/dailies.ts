@@ -2,15 +2,18 @@ import { normaliseGroup } from '@/domain/dailies/groups'
 import { keepFor, type HomeFilter, type RecordHome } from '@/domain/base/base'
 import {
   complete,
+  completePart,
   isDoneOn,
   isDueToday,
   PARTS_OF_DAY,
   type PartOfDay,
   isExpectedOn,
+  partsOf,
   streakFor,
   timesDoneOn,
   timesPerDay,
   uncomplete,
+  uncompletePart,
   type Cadence,
   type Daily,
 } from '@/domain/dailies/daily'
@@ -64,8 +67,12 @@ export interface NewDaily {
   readonly cadence: Cadence
   /** Absent means once, which is what every record before this meant. */
   readonly timesPerDay?: number
-  /** Which part of the day it belongs to. Absent means no particular one. */
-  readonly partOfDay?: PartOfDay
+  /**
+   * Which parts of the day it belongs to. Absent or empty means no
+   * particular one, and naming more than one is what says it happens
+   * more than once — see `partsOfDay` on `Daily`.
+   */
+  readonly partsOfDay?: readonly PartOfDay[]
   /** What kind of thing it is. Absent means it belongs to no group. */
   readonly group?: string
   /** Absent means the record's own area. */
@@ -92,6 +99,7 @@ export async function addDaily(
   // Held rather than called twice in the spread: the second call is a
   // fresh `string | undefined` the compiler cannot narrow.
   const group = normaliseGroup(input.group)
+  const parts = PARTS_OF_DAY.filter((part) => input.partsOfDay?.includes(part) === true)
 
   await deps.dailies.save({
     id: deps.ids.next() as DailyId,
@@ -99,10 +107,17 @@ export async function addDaily(
     cadence: input.cadence,
     done: [],
     createdAt: deps.clock.now().toISOString(),
-    ...(input.timesPerDay === undefined || input.timesPerDay <= 1
+    /*
+     * The count is dropped when parts are named, because they *are* the
+     * count. Storing both would put two answers to "how many times a
+     * day" on one record, and the one that lost would sit there looking
+     * authoritative — the trap this codebase records over the fatigue
+     * allowance, where two fields would have left no sentence to say.
+     */
+    ...(parts.length > 0 || input.timesPerDay === undefined || input.timesPerDay <= 1
       ? {}
       : { timesPerDay: Math.round(input.timesPerDay) }),
-    ...(input.partOfDay === undefined ? {} : { partOfDay: input.partOfDay }),
+    ...(parts.length === 0 ? {} : { partsOfDay: parts }),
     ...(group === undefined ? {} : { group }),
     ...(input.belongsTo === undefined ? {} : { belongsTo: input.belongsTo }),
   })
@@ -110,14 +125,23 @@ export async function addDaily(
   return {}
 }
 
-/** Ticks today, or unticks it. Two names, because they are two things. */
-export async function keepToday(id: DailyId, deps: DailyDeps): Promise<void> {
+/**
+ * Ticks today, or unticks it. Two names, because they are two things.
+ *
+ * **The part is named where the screen knows it**, which is every row on
+ * a banded list: a habit set to morning and evening draws two rows, and
+ * a tick that did not say which one would leave the two indistinguishable
+ * in the record and make the second row impossible to draw. Callers with
+ * no part — the history strip — leave it out and `complete` fills the
+ * earliest one outstanding.
+ */
+export async function keepToday(id: DailyId, deps: DailyDeps, part?: PartOfDay): Promise<void> {
   const daily = await deps.dailies.byId(id)
   if (daily === undefined) return
 
   const now = deps.clock.now()
   const today = toDayKey(now)
-  const next = complete(daily, today, now)
+  const next = part === undefined ? complete(daily, today, now) : completePart(daily, today, part)
   // Identity means it was already ticked — no write, no sync traffic, and
   // no `updatedAt` churn that would make this device look newer than one
   // that actually changed something.
@@ -126,11 +150,12 @@ export async function keepToday(id: DailyId, deps: DailyDeps): Promise<void> {
   await deps.dailies.save(next)
 }
 
-export async function undoToday(id: DailyId, deps: DailyDeps): Promise<void> {
+export async function undoToday(id: DailyId, deps: DailyDeps, part?: PartOfDay): Promise<void> {
   const daily = await deps.dailies.byId(id)
   if (daily === undefined) return
 
-  const next = uncomplete(daily, toDayKey(deps.clock.now()))
+  const today = toDayKey(deps.clock.now())
+  const next = part === undefined ? uncomplete(daily, today) : uncompletePart(daily, today, part)
   if (next === daily) return
 
   await deps.dailies.save(next)
@@ -291,10 +316,19 @@ export async function dailiesToday(
        * anything is. Anything with no part sorts last, because it
        * belongs to no point in the day rather than to the start of it.
        */
-      const when = (view: DailyView) =>
-        view.daily.partOfDay === undefined
-          ? PARTS_OF_DAY.length
-          : PARTS_OF_DAY.indexOf(view.daily.partOfDay)
+      /*
+       * The **earliest** part it names, so a habit set to morning and
+       * evening sorts with the morning. This orders whole records, and a
+       * record that appears twice in the day has to be given one place
+       * in a list that holds it once — the banded list expands it into
+       * an occurrence per part and takes its order from the band.
+       */
+      const when = (view: DailyView) => {
+        const parts = partsOf(view.daily)
+        const first = parts[0]
+
+        return first === undefined ? PARTS_OF_DAY.length : PARTS_OF_DAY.indexOf(first)
+      }
 
       const byPart = when(a) - when(b)
       if (byPart !== 0) return byPart
@@ -377,24 +411,51 @@ export async function undoOn(id: DailyId, day: string, deps: DailyDeps): Promise
  * changes is which days it was expected on, and therefore what the
  * streak reads. The screen says so before the change rather than after.
  */
+export interface Recadence {
+  readonly cadence: Cadence
+  readonly timesPerDay: number
+  /**
+   * Which parts of the day, and therefore how many times.
+   *
+   * **This is where the parts are edited, not the rename form**, and the
+   * reason is the same one that put the cadence here: naming morning and
+   * evening changes how many completions a day needs, so it re-reads
+   * every streak the habit has ever had. A title and a group are labels
+   * and change nothing; this is not a label.
+   *
+   * It was editable nowhere at all until now — settable on the add form
+   * and then fixed forever, which is why a house chore filed months ago
+   * read "Any time" with no way to say otherwise. The fifth instance of
+   * a capability the model had and no screen could reach.
+   */
+  readonly partsOfDay: readonly PartOfDay[]
+}
+
 export async function recadenceDaily(
   id: DailyId,
-  cadence: Cadence,
-  timesPerDay: number,
+  change: Recadence,
   deps: DailyDeps,
 ): Promise<void> {
   const daily = await deps.dailies.byId(id)
   if (daily === undefined) return
 
-  const times = Math.max(1, Math.round(timesPerDay))
+  const times = Math.max(1, Math.round(change.timesPerDay))
+  const parts = PARTS_OF_DAY.filter((part) => change.partsOfDay.includes(part))
 
-  // Dropped from the spread rather than set to undefined: a key holding
-  // undefined is a key, and it would travel over sync as one.
-  const { timesPerDay: _cleared, ...rest } = daily
+  /*
+   * Three keys dropped from the spread rather than set to undefined: a
+   * key holding undefined is a key, and it would travel over sync as
+   * one. `partOfDay` goes with them because this is the write that
+   * normalises the old single-part shape — leaving it behind would have
+   * `partsOf` reading a stale answer the moment the list was cleared.
+   */
+  const { timesPerDay: _times, partsOfDay: _parts, partOfDay: _legacy, ...rest } = daily
 
   await deps.dailies.save({
     ...rest,
-    cadence,
-    ...(times > 1 ? { timesPerDay: times } : {}),
+    cadence: change.cadence,
+    // The parts are the count when there are any — see `addDaily`.
+    ...(parts.length === 0 && times > 1 ? { timesPerDay: times } : {}),
+    ...(parts.length === 0 ? {} : { partsOfDay: parts }),
   })
 }

@@ -1,7 +1,15 @@
+import { Fragment } from 'react'
+
 import type { DailyView } from '@/application/use-cases/dailies/dailies'
 import { Card } from '@/components/shared/primitives'
+import type { DailyId } from '@/domain/ids/ids'
 
-import { PART_OF_DAY_LABELS, type PartOfDay } from '@/domain/dailies/daily'
+import {
+  occurrencesOf,
+  PART_OF_DAY_LABELS,
+  type DailyOccurrence,
+  type PartOfDay,
+} from '@/domain/dailies/daily'
 import {
   byGroup,
   byPartOfDay,
@@ -10,6 +18,7 @@ import {
   homeOrGroup,
   sameGroup,
   type CategoryOf,
+  type DailyGroup,
 } from '@/domain/dailies/groups'
 
 import { useDailies } from './dailies-hooks'
@@ -45,6 +54,87 @@ import { useDailies } from './dailies-hooks'
 const CHIP =
   'tap-target shrink-0 rounded-lg border px-2.5 text-xs font-medium whitespace-nowrap transition-colors'
 
+/**
+ * Groups with headings, and the rows under them.
+ *
+ * Shared by the flat list and by each band, because a band *is* a
+ * grouped list with a heading over it — and a second copy of the keying
+ * below is where the two-rows-one-key bug would come back on one screen
+ * and not the other.
+ */
+function GroupList({
+  groups,
+  byId,
+  render,
+  bare = false,
+}: {
+  readonly groups: readonly DailyGroup[]
+  readonly byId: ReadonlyMap<DailyId, DailyView>
+  readonly render: (view: DailyView, part?: PartOfDay) => React.ReactNode
+  readonly bare?: boolean
+}) {
+  if (groups.length === 0) return null
+
+  /*
+   * A function returning an element, not a component declared here.
+   * A component defined during render is a *new type* every render, so
+   * React unmounts and remounts its whole subtree — which on these rows
+   * means a rename field losing focus mid-word. Caught by the lint rule
+   * rather than by anybody typing.
+   */
+  const rows = (children: React.ReactNode) =>
+    bare ? (
+      <div className="divide-ink-800 divide-y">{children}</div>
+    ) : (
+      <Card className="divide-ink-800 divide-y py-0">{children}</Card>
+    )
+
+  /*
+   * The key names the *occurrence*, not the record. A habit set to
+   * morning and evening draws two rows from one id, so keying on the id
+   * alone would have React reuse one element for both — two rows sharing
+   * a key is the case it warns about and then renders wrongly.
+   */
+  const drawn = (list: readonly DailyOccurrence[]) =>
+    list.map(({ daily, part }) => {
+      const view = byId.get(daily.id)
+
+      return view === undefined ? null : (
+        <Fragment key={`${daily.id}#${part ?? ''}`}>{render(view, part)}</Fragment>
+      )
+    })
+
+  /*
+   * One unnamed group is the flat list this replaced, rendered exactly
+   * as it was. Nothing about adding the *capability* to group should
+   * change a screen where nothing is grouped.
+   */
+  const only = groups[0]
+  if (groups.length === 1 && only !== undefined && only.name === undefined) {
+    return rows(drawn(only.occurrences))
+  }
+
+  return (
+    <div className={bare ? 'space-y-3' : 'space-y-2'}>
+      {groups.map((group) => (
+        <div key={group.name ?? '·ungrouped'}>
+          {/*
+            A heading only where there is a name. The ungrouped rows run
+            on without one, because a heading over the leftovers is a
+            category called "everything else" that nobody chose.
+          */}
+          {group.name !== undefined && (
+            <span className="text-ink-700 mb-1 block text-xs tracking-wide uppercase">
+              {group.name}
+            </span>
+          )}
+          {rows(drawn(group.occurrences))}
+        </div>
+      ))}
+    </div>
+  )
+}
+
 export function GroupedDailies({
   views,
   render,
@@ -52,7 +142,19 @@ export function GroupedDailies({
   categoryOf,
 }: {
   readonly views: readonly DailyView[]
-  readonly render: (view: DailyView) => React.ReactNode
+  /**
+   * Draws one row.
+   *
+   * Takes the part as well as the view, because a habit that names
+   * morning and evening is drawn **twice** — once in each band — and the
+   * row has to know which of the two it is to tick it. A caller with no
+   * interest in parts ignores the second argument and behaves as it did.
+   *
+   * The key is supplied here rather than by the caller, since only this
+   * knows that one record can produce more than one row and that an
+   * `id` alone would collide between them.
+   */
+  readonly render: (view: DailyView, part?: PartOfDay) => React.ReactNode
   /**
    * Render bands rather than cards, for the screens whose list already
    * sits inside one.
@@ -75,66 +177,19 @@ export function GroupedDailies({
   readonly categoryOf: CategoryOf
 }) {
   /*
-   * Grouped on the dailies and mapped back to views by id, so `byGroup`
-   * stays a domain function over `Daily` rather than knowing what a view
-   * is. The input order survives inside each group, which is what keeps
-   * the chronological sort the caller applied.
+   * Grouped on the occurrences and mapped back to views by id, so
+   * `byGroup` stays a domain function over `Daily` rather than knowing
+   * what a view is. The input order survives inside each group, which is
+   * what keeps the chronological sort the caller applied.
+   *
+   * Expands its own occurrences, unlike `DayBands`: the screens using
+   * this draw every row a habit has, and only Today filters them one at
+   * a time.
    */
   const byId = new Map(views.map((view) => [view.daily.id, view]))
-  const groups = byGroup(
-    views.map((view) => view.daily),
-    categoryOf,
-  )
+  const groups = byGroup(occurrencesOf(views.map((view) => view.daily)), categoryOf)
 
-  if (groups.length === 0) return null
-
-  /*
-   * A function returning an element, not a component declared here.
-   * A component defined during render is a *new type* every render, so
-   * React unmounts and remounts its whole subtree — which on these rows
-   * means a rename field losing focus mid-word. Caught by the lint rule
-   * rather than by anybody typing.
-   */
-  const rows = (children: React.ReactNode) =>
-    bare ? (
-      <div className="divide-ink-800 divide-y">{children}</div>
-    ) : (
-      <Card className="divide-ink-800 divide-y py-0">{children}</Card>
-    )
-
-  /*
-   * One unnamed group is the flat list this replaced, rendered exactly
-   * as it was. Nothing about adding the *capability* to group should
-   * change a screen where nothing is grouped.
-   */
-  if (groups.length === 1 && groups[0]?.name === undefined) {
-    return rows(views.map(render))
-  }
-
-  return (
-    <div className={bare ? 'space-y-3' : 'space-y-2'}>
-      {groups.map((group) => (
-        <div key={group.name ?? '·ungrouped'}>
-          {/*
-            A heading only where there is a name. The ungrouped rows run
-            on without one, because a heading over the leftovers is a
-            category called "everything else" that nobody chose.
-          */}
-          {group.name !== undefined && (
-            <span className="text-ink-700 mb-1 block text-xs tracking-wide uppercase">
-              {group.name}
-            </span>
-          )}
-          {rows(
-            group.dailies.map((daily) => {
-              const view = byId.get(daily.id)
-              return view === undefined ? null : render(view)
-            }),
-          )}
-        </div>
-      ))}
-    </div>
-  )
+  return <GroupList groups={groups} byId={byId} render={render} bare={bare} />
 }
 
 /**
@@ -168,12 +223,24 @@ const ANY_TIME = 'Any time'
  * should change nothing on a screen with nothing to band.
  */
 export function DayBands({
+  occurrences,
   views,
   render,
   now,
 }: {
+  /**
+   * The rows to draw, already filtered.
+   *
+   * Taken rather than expanded from `views` here, because **which
+   * occurrences belong on the screen is the caller's question**: Today
+   * hides a part that is still to come and folds one that is finished,
+   * and both of those are decisions about a single row of a habit rather
+   * than about the habit. Expanding again in here would undo them.
+   */
+  readonly occurrences: readonly DailyOccurrence[]
+  /** Every view the occurrences can refer to, for the lookup back. */
   readonly views: readonly DailyView[]
-  readonly render: (view: DailyView) => React.ReactNode
+  readonly render: (view: DailyView, part?: PartOfDay) => React.ReactNode
   /**
    * Which band is happening, lit rather than moved.
    *
@@ -184,21 +251,16 @@ export function DayBands({
   readonly now: PartOfDay
 }) {
   const byId = new Map(views.map((view) => [view.daily.id, view]))
-  const bands = byPartOfDay(
-    views.map((view) => view.daily),
-    homeOrGroup,
-  )
+  const bands = byPartOfDay(occurrences, homeOrGroup)
 
   if (bands.length === 0) return null
 
-  const inBand = (band: (typeof bands)[number]) =>
-    band.groups.flatMap((group) =>
-      group.dailies.map((daily) => byId.get(daily.id)).filter((view) => view !== undefined),
-    )
+  const inBand = (band: (typeof bands)[number]) => (
+    <GroupList groups={band.groups} byId={byId} render={render} />
+  )
 
-  if (bands.length === 1 && bands[0] !== undefined) {
-    return <GroupedDailies views={inBand(bands[0])} render={render} categoryOf={homeOrGroup} />
-  }
+  const only = bands[0]
+  if (bands.length === 1 && only !== undefined) return inBand(only)
 
   return (
     <div className="space-y-4">
@@ -222,7 +284,7 @@ export function DayBands({
             </span>
           </div>
 
-          <GroupedDailies views={inBand(band)} render={render} categoryOf={homeOrGroup} />
+          {inBand(band)}
         </div>
       ))}
     </div>

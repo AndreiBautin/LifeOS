@@ -8,16 +8,19 @@ import type { Cadence, Daily } from '@/domain/dailies/daily'
 import { BASE, type RecordHome } from '@/domain/base/base'
 import { WEEKDAY_LABELS, WEEKDAY_NAMES, WEEKDAYS, WEEKEND } from '@/domain/time/day'
 import {
+  isPartDoneOn,
   PART_OF_DAY_LABELS,
   PARTS_OF_DAY,
   partOfDayAt,
+  partsOf,
   timesPerDay,
   type PartOfDay,
 } from '@/domain/dailies/daily'
+import { toDayKey } from '@/domain/time/day'
 import { useServices } from '@/app/context'
 import { Fold } from '@/components/shared/Fold'
 import { counted } from '@/lib/counted'
-import { HYGIENE_GROUP, homeOrGroup } from '@/domain/dailies/groups'
+import { byGroup, HYGIENE_GROUP, homeOrGroup } from '@/domain/dailies/groups'
 import { DayBands, GroupedDailies, GroupField } from './DailyGroups'
 import { DailyHistory } from './DailyHistory'
 import {
@@ -232,13 +235,100 @@ export function RenameDaily({
  * *expected* changes — so the number under the habit can move without
  * any record moving. The warning says exactly that.
  */
+/**
+ * When in the day it belongs — none, one, or several.
+ *
+ * **Several, because that is what brushing your teeth is.** Reported:
+ * *"some stuff, like brushing my teeth, is done twice a day, but I'd
+ * like it morning and evening — that doesn't seem to be supported right
+ * now since it's one row."* It was one part and a count of two, which
+ * says the number and nothing about when, and drew a single row that
+ * could not be in two places at once.
+ *
+ * Choosing more than one therefore does two things, which the caption
+ * says out loud: it draws the habit once per part, and it **is** the
+ * times-a-day answer. Naming morning and evening is saying twice.
+ *
+ * "Any time" is a real choice rather than the absence of one, so it is a
+ * button beside the others and pressing it clears them. A picker where
+ * clearing means un-pressing whatever you had pressed is a picker whose
+ * empty state has to be discovered.
+ */
+function PartsField({
+  parts,
+  onChange,
+}: {
+  readonly parts: readonly PartOfDay[]
+  readonly onChange: (next: readonly PartOfDay[]) => void
+}) {
+  const toggle = (part: PartOfDay): void => {
+    const next = parts.includes(part) ? parts.filter((one) => one !== part) : [...parts, part]
+
+    // Kept in the order the day happens, so two rows never come out
+    // evening-first because that is the order they were tapped in.
+    onChange(PARTS_OF_DAY.filter((one) => next.includes(one)))
+  }
+
+  return (
+    <div className="space-y-1.5">
+      <span className="text-ink-500 block text-xs font-medium tracking-wide uppercase">
+        When in the day
+      </span>
+
+      <div className="flex gap-1">
+        <button
+          type="button"
+          aria-pressed={parts.length === 0}
+          className={[
+            'tap-target flex-1 rounded-lg border px-2 text-xs font-medium',
+            parts.length === 0
+              ? 'border-accent-500 bg-accent-500/15 text-accent-400'
+              : 'border-ink-800 text-ink-500',
+          ].join(' ')}
+          onClick={() => {
+            onChange([])
+          }}
+        >
+          Any time
+        </button>
+
+        {PARTS_OF_DAY.map((one) => (
+          <button
+            key={one}
+            type="button"
+            aria-pressed={parts.includes(one)}
+            className={[
+              'tap-target flex-1 rounded-lg border px-2 text-xs font-medium',
+              parts.includes(one)
+                ? 'border-accent-500 bg-accent-500/15 text-accent-400'
+                : 'border-ink-800 text-ink-500',
+            ].join(' ')}
+            onClick={() => {
+              toggle(one)
+            }}
+          >
+            {PART_OF_DAY_LABELS[one]}
+          </button>
+        ))}
+      </div>
+
+      {parts.length > 1 && (
+        <p className="text-ink-600 text-xs">
+          {counted(parts.length, 'row', 'rows')} a day — one in each, ticked separately.
+        </p>
+      )}
+    </div>
+  )
+}
+
 function CadenceEditor({ daily, onDone }: { readonly daily: Daily; readonly onDone: () => void }) {
   const recadence = useRecadenceDaily()
   const [monthly, setMonthly] = useState(daily.cadence.kind === 'days-of-month')
   const [days, setDays] = useState<readonly number[]>(
     daily.cadence.kind === 'every-day' ? [] : daily.cadence.days,
   )
-  const [times, setTimes] = useState(String(timesPerDay(daily)))
+  const [parts, setParts] = useState<readonly PartOfDay[]>(partsOf(daily))
+  const [times, setTimes] = useState(String(parts.length > 0 ? 1 : timesPerDay(daily)))
 
   const toggle = (day: number): void => {
     setDays(days.includes(day) ? days.filter((one) => one !== day) : [...days, day])
@@ -321,18 +411,28 @@ function CadenceEditor({ daily, onDone }: { readonly daily: Daily; readonly onDo
         ))}
       </div>
 
-      <label className="text-ink-500 flex items-center gap-2 text-xs">
-        <span className="shrink-0">Times a day</span>
-        <input
-          className="bg-ink-850 border-ink-800 text-ink-50 numeric tap-target w-16 rounded-lg border px-2 text-sm"
-          inputMode="decimal"
-          aria-label="Times a day"
-          value={times}
-          onChange={(event) => {
-            setTimes(event.target.value)
-          }}
-        />
-      </label>
+      <PartsField parts={parts} onChange={setParts} />
+
+      {/*
+        The count is hidden once parts are named, because they answer it.
+        Showing both would put two controls on one screen for one
+        question and let them disagree — the trap the fatigue allowance
+        records, where two fields would have left no sentence to say.
+      */}
+      {parts.length === 0 && (
+        <label className="text-ink-500 flex items-center gap-2 text-xs">
+          <span className="shrink-0">Times a day</span>
+          <input
+            className="bg-ink-850 border-ink-800 text-ink-50 numeric tap-target w-16 rounded-lg border px-2 text-sm"
+            inputMode="decimal"
+            aria-label="Times a day"
+            value={times}
+            onChange={(event) => {
+              setTimes(event.target.value)
+            }}
+          />
+        </label>
+      )}
 
       {/*
         Said before the change rather than after. Nothing is rewritten —
@@ -357,6 +457,7 @@ function CadenceEditor({ daily, onDone }: { readonly daily: Daily; readonly onDo
             {
               id: daily.id,
               timesPerDay: howMany,
+              partsOfDay: parts,
               // No days picked means every day — the same reading the add
               // form gives an untouched row.
               cadence:
@@ -414,17 +515,53 @@ export function DailyTitle({
   )
 }
 
-export function DailyRow({ view }: { readonly view: DailyView }) {
+export function DailyRow({
+  view,
+  part,
+}: {
+  readonly view: DailyView
+  /**
+   * Which appearance of the habit this row is, when it names parts.
+   *
+   * A habit set to morning and evening draws two rows, and each one
+   * ticks **its own part**: without this both would read the record's
+   * whole-day state, so keeping the morning would turn the evening green
+   * and there would be no way to say which had actually been done.
+   */
+  readonly part?: PartOfDay | undefined
+}) {
   // From the record, so a chore shown on Today still pays as a chore.
   const keep = useKeepToday(view.daily.belongsTo)
-  const nowPart = partOfDayAt(useServices().clock.now())
+  const clock = useServices().clock
+  const nowPart = partOfDayAt(clock.now())
   const undo = useUndoToday()
   const retire = useRetireDaily()
   const moveHome = useMoveDailyHome()
   const [confirming, setConfirming] = useState(false)
   const [renaming, setRenaming] = useState(false)
 
-  const { daily, doneToday, expectedToday, doneCount, needed } = view
+  const { daily, expectedToday } = view
+
+  /*
+   * A parted row answers about **its part** and an unparted one about
+   * the record, which is the whole of the difference between the two
+   * shapes. The counter — "1 of 3" — is what a habit with no named parts
+   * uses to say how far into the day it is; a parted row needs none,
+   * because it is one of the parts and is either done or not.
+   */
+  const today = toDayKey(clock.now())
+  const doneToday = part === undefined ? view.doneToday : isPartDoneOn(daily, today, part)
+  const doneCount = part === undefined ? view.doneCount : 0
+  const needed = part === undefined ? view.needed : 1
+
+  /*
+   * The row's own part where it has one, and otherwise the first the
+   * habit names. The fallback is for a caller that renders a row without
+   * expanding occurrences — there is none today, and a row that silently
+   * dropped the word would be a worse thing to find than a redundant
+   * line of code.
+   */
+  const shownPart = part ?? partsOf(daily)[0]
 
   if (renaming) {
     return (
@@ -465,8 +602,8 @@ export function DailyRow({ view }: { readonly view: DailyView }) {
               : 'border-ink-700 text-ink-700 hover:border-ink-500',
         ].join(' ')}
         onClick={() => {
-          if (doneToday) undo.mutate(daily.id)
-          else keep.mutate(daily.id)
+          if (doneToday) undo.mutate({ id: daily.id, ...(part === undefined ? {} : { part }) })
+          else keep.mutate({ id: daily.id, ...(part === undefined ? {} : { part }) })
         }}
       >
         {doneToday ? (
@@ -492,9 +629,15 @@ export function DailyRow({ view }: { readonly view: DailyView }) {
             the day is over — it only says which end of the day you are
             at.
           */}
-          {daily.partOfDay !== undefined && (
-            <span className={daily.partOfDay === nowPart ? 'text-accent-400' : undefined}>
-              {PART_OF_DAY_LABELS[daily.partOfDay]}
+          {/*
+            The row's own part where it has one, and otherwise the first
+            the habit names — a list drawn without bands still has to say
+            when each row belongs, and a row inside a band repeats its
+            heading cheaply rather than going silent about it.
+          */}
+          {shownPart !== undefined && (
+            <span className={shownPart === nowPart ? 'text-accent-400' : undefined}>
+              {PART_OF_DAY_LABELS[shownPart]}
               {' · '}
             </span>
           )}
@@ -612,7 +755,7 @@ export function AddDaily({
   const [days, setDays] = useState<readonly number[]>([])
   const [monthly, setMonthly] = useState(false)
   const [times, setTimes] = useState('1')
-  const [part, setPart] = useState<PartOfDay | ''>('')
+  const [parts, setParts] = useState<readonly PartOfDay[]>([])
   const [group, setGroup] = useState('')
 
   const toggle = (day: number): void => {
@@ -631,7 +774,7 @@ export function AddDaily({
             {
               title,
               ...(howMany > 1 ? { timesPerDay: howMany } : {}),
-              ...(part === '' ? {} : { partOfDay: part }),
+              ...(parts.length === 0 ? {} : { partsOfDay: parts }),
               ...(group.trim() === '' ? {} : { group }),
               // No days picked means every day, which is what somebody who
               // ignored this row meant by ignoring it.
@@ -700,28 +843,9 @@ export function AddDaily({
         {/*
           When in the day it belongs, which is a third question again:
           which days, how many on one of them, and whereabouts in it.
-          Coarse because nothing can ring — see `partOfDay`.
+          Coarse because nothing can ring — see `partsOfDay`.
         */}
-        <div className="flex gap-1">
-          {(['', ...PARTS_OF_DAY] as const).map((one) => (
-            <button
-              key={one === '' ? 'any' : one}
-              type="button"
-              aria-pressed={part === one}
-              className={[
-                'tap-target flex-1 rounded-lg border px-2 text-xs font-medium',
-                part === one
-                  ? 'border-accent-500 bg-accent-500/15 text-accent-400'
-                  : 'border-ink-800 text-ink-500',
-              ].join(' ')}
-              onClick={() => {
-                setPart(one)
-              }}
-            >
-              {one === '' ? 'Any time' : PART_OF_DAY_LABELS[one]}
-            </button>
-          ))}
-        </div>
+        <PartsField parts={parts} onChange={setParts} />
 
         {/*
           The group. Offered as chips rather than only a box, because the
@@ -737,19 +861,25 @@ export function AddDaily({
           above because the two answer different questions — which days,
           and how many on one of them — and a habit done three times on
           weekdays needs both.
+
+          Hidden once parts are named, because naming morning and evening
+          already answers it. Two controls for one question is how they
+          come to disagree.
         */}
-        <label className="text-ink-500 flex items-center gap-2 text-xs">
-          <span className="shrink-0">Times a day</span>
-          <input
-            className="bg-ink-850 border-ink-800 text-ink-50 numeric tap-target w-16 rounded-lg border px-2 text-sm"
-            inputMode="decimal"
-            aria-label="Times a day"
-            value={times}
-            onChange={(event) => {
-              setTimes(event.target.value)
-            }}
-          />
-        </label>
+        {parts.length === 0 && (
+          <label className="text-ink-500 flex items-center gap-2 text-xs">
+            <span className="shrink-0">Times a day</span>
+            <input
+              className="bg-ink-850 border-ink-800 text-ink-50 numeric tap-target w-16 rounded-lg border px-2 text-sm"
+              inputMode="decimal"
+              aria-label="Times a day"
+              value={times}
+              onChange={(event) => {
+                setTimes(event.target.value)
+              }}
+            />
+          </label>
+        )}
 
         <div className="space-y-2">
           <div className="flex gap-1">
@@ -833,7 +963,11 @@ export function AddDaily({
                    * and two pressed buttons describing one cadence is a
                    * worse answer than none.
                    */
-                  const on = sameDays(days, shape.days) && part === (shape.part ?? '')
+                  const on =
+                    sameDays(days, shape.days) &&
+                    (shape.part === undefined
+                      ? parts.length === 0
+                      : parts.length === 1 && parts[0] === shape.part)
 
                   return (
                     <button
@@ -848,7 +982,10 @@ export function AddDaily({
                       ].join(' ')}
                       onClick={() => {
                         setDays([...shape.days])
-                        if (shape.part !== undefined) setPart(shape.part)
+                        // A night shape names its part and nothing else;
+                        // a day shape says nothing about when, so it
+                        // leaves whatever was chosen alone.
+                        if (shape.part !== undefined) setParts([shape.part])
                       }}
                     >
                       {shape.label}
@@ -905,6 +1042,65 @@ export function AddDaily({
  * fails, where the point is whether the day's target was finished.
  * `timesPerDay` is on brushing because two is what brushing is.
  */
+/**
+ * One row of the day: a habit, which of its parts this is, and whether
+ * that part is done.
+ *
+ * The view is carried rather than looked up because every consumer here
+ * needs it, and `done` is precomputed because the answer differs by row
+ * — `view.doneToday` is about the whole record and is the wrong question
+ * for a habit that names two parts.
+ */
+interface Occurrence {
+  readonly view: DailyView
+  readonly part?: PartOfDay | undefined
+  readonly done: boolean
+}
+
+/**
+ * The finished rows, under the fold.
+ *
+ * Grouped by category and **not** banded by part of day: a fold is
+ * already a lid, and a second axis of headings inside one is structure
+ * nobody asked to see. `homeOrGroup` keeps a done chore and a done habit
+ * labelled House under one heading here too.
+ *
+ * It draws from the occurrences rather than from `GroupedDailies` so
+ * that a half-finished habit contributes only the row that is actually
+ * done — the morning brushing folds away while the evening one is still
+ * on the list above.
+ */
+function DoneRows({ rows }: { readonly rows: readonly Occurrence[] }) {
+  return (
+    <div className="space-y-2">
+      {byGroup(
+        rows.map(({ view, part }) => ({
+          daily: view.daily,
+          ...(part === undefined ? {} : { part }),
+        })),
+        homeOrGroup,
+      ).map((group) => (
+        <div key={group.name ?? '·ungrouped'}>
+          {group.name !== undefined && (
+            <span className="text-ink-700 mb-1 block text-xs tracking-wide uppercase">
+              {group.name}
+            </span>
+          )}
+          <Card className="divide-ink-800 divide-y py-0">
+            {group.occurrences.map(({ daily, part }) => {
+              const row = rows.find((one) => one.view.daily.id === daily.id && one.part === part)
+
+              return row === undefined ? null : (
+                <DailyRow key={`${daily.id}#${part ?? ''}`} view={row.view} part={part} />
+              )
+            })}
+          </Card>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 const HYGIENE_SUGGESTIONS: readonly {
   readonly title: string
   readonly group?: string
@@ -970,7 +1166,30 @@ export function Dailies() {
    */
   const elsewhere = due.data ?? []
 
-  const outstanding = [...views, ...elsewhere].filter((view) => view.dueToday)
+  /*
+   * **The unit of this screen is an occurrence, not a record**, and that
+   * is what makes morning-and-evening work. A habit naming two parts is
+   * two rows with two ticks, so every question the screen asks — is this
+   * outstanding, is it for later, is it finished — has to be asked of
+   * the row rather than of the habit. Asking the record would have
+   * keeping the morning turn the evening green.
+   *
+   * A habit naming no parts has exactly one occurrence with no part, so
+   * nothing about the ordinary case goes through a special branch.
+   */
+  const today = toDayKey(services.clock.now())
+  const rows = (source: readonly DailyView[]): readonly Occurrence[] =>
+    source.flatMap((view) => {
+      const parts = partsOf(view.daily)
+
+      return parts.length === 0
+        ? [{ view, done: view.doneToday }]
+        : parts.map((part) => ({ view, part, done: isPartDoneOn(view.daily, today, part) }))
+    })
+
+  const dueRows = rows([...views, ...elsewhere].filter((view) => view.expectedToday))
+
+  const outstanding = dueRows.filter((row) => !row.done)
 
   /*
    * **Done rows fold away, and this reverses a rule written directly
@@ -984,15 +1203,20 @@ export function Dailies() {
    * `aria-pressed` and the header says how many are left. What the fold
    * protects is **undo**, which is the only route back from a mis-tap
    * and would be gone if these were filtered out rather than folded.
+   *
+   * Per **occurrence**, so a habit brushed in the morning and not yet at
+   * night has its morning row folded away and its evening row still
+   * asking. Folding the record would hide half a day's work as though it
+   * were finished.
    */
-  const done = [...views, ...elsewhere].filter((view) => view.doneToday)
+  const done = dueRows.filter((row) => row.done)
 
   /*
    * Own habits only — which now includes hygiene. House and Training are
    * managed on their own screens, and `useDueElsewhere` never offers
    * their other days in the first place.
    */
-  const otherDays = views.filter((view) => !view.dueToday && !view.doneToday)
+  const otherDays = views.filter((view) => !view.expectedToday)
 
   /*
    * **Later today folds away, and the order never moves.**
@@ -1017,15 +1241,11 @@ export function Dailies() {
    */
   const nowPart = partOfDayAt(services.clock.now())
   const nowIndex = PARTS_OF_DAY.indexOf(nowPart)
-  const isLater = (view: DailyView): boolean => {
-    const part = view.daily.partOfDay
-    if (part === undefined || view.doneToday) return false
-
-    return PARTS_OF_DAY.indexOf(part) > nowIndex
-  }
+  const isLater = (row: Occurrence): boolean =>
+    row.part !== undefined && PARTS_OF_DAY.indexOf(row.part) > nowIndex
 
   const later = outstanding.filter(isLater)
-  const showing = showLater ? outstanding : outstanding.filter((view) => !isLater(view))
+  const showing = showLater ? outstanding : outstanding.filter((row) => !isLater(row))
 
   /*
    * Counted across every home, because the sentence is about the day and
@@ -1092,9 +1312,13 @@ export function Dailies() {
       */}
       {showing.length > 0 && (
         <DayBands
-          views={showing}
+          occurrences={showing.map(({ view, part }) => ({
+            daily: view.daily,
+            ...(part === undefined ? {} : { part }),
+          }))}
+          views={showing.map((row) => row.view)}
           now={nowPart}
-          render={(view) => <DailyRow key={view.daily.id} view={view} />}
+          render={(view, part) => <DailyRow view={view} part={part} />}
         />
       )}
 
@@ -1121,11 +1345,7 @@ export function Dailies() {
       */}
       {done.length > 0 && (
         <Fold summary={`${counted(done.length, 'done', 'done')} today`}>
-          <GroupedDailies
-            views={done}
-            categoryOf={homeOrGroup}
-            render={(view) => <DailyRow key={view.daily.id} view={view} />}
-          />
+          <DoneRows rows={done} />
         </Fold>
       )}
 
@@ -1140,7 +1360,7 @@ export function Dailies() {
           <GroupedDailies
             views={otherDays}
             categoryOf={homeOrGroup}
-            render={(view) => <DailyRow key={view.daily.id} view={view} />}
+            render={(view, part) => <DailyRow view={view} part={part} />}
           />
         </Fold>
       )}

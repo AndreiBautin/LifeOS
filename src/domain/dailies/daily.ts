@@ -119,10 +119,18 @@ export interface Daily {
    * On the daily rather than inside `Cadence` because the two are
    * orthogonal: the cadence answers *which days*, this answers *how many
    * on one of them*, and folding it in would mean saying it three times.
+   *
+   * **Ignored entirely when `partsOfDay` names any**, and read through
+   * `timesPerDay()` rather than directly for that reason. Naming morning
+   * and evening *is* saying twice a day, so a second field stating a
+   * count is a field that can disagree with the first — the trap this
+   * codebase keeps recording, most recently over the fatigue allowance,
+   * where two numbers would have left no sentence to say.
    */
   readonly timesPerDay?: number
   /**
-   * Which part of the day it belongs to. Absent means no particular one.
+   * Which parts of the day it belongs to. Absent or empty means no
+   * particular one.
    *
    * **Coarse on purpose, because nothing can ring.** A PWA on iOS cannot
    * schedule a notification and this app has no server to push one, so a
@@ -133,6 +141,27 @@ export interface Daily {
    * What it is for is reading a day as a routine: opening the house
    * belongs at one end and closing it at the other, and a flat
    * alphabetical list says nothing about which comes first.
+   *
+   * **A list, because the reported case was brushing your teeth.**
+   * *"Some stuff, like brushing my teeth, is done twice a day, but I'd
+   * like it morning and evening — that doesn't seem to be supported
+   * right now since it's one row."* It was `timesPerDay: 2` and a single
+   * part, which says the right number and nothing about when, and drew
+   * one row that could not be in two places.
+   *
+   * Naming parts therefore does two things at once: it decides where the
+   * habit is drawn *and* how many times it is expected, one row per
+   * part. `partsOf` is the accessor; nothing should read this field.
+   */
+  readonly partsOfDay?: readonly PartOfDay[]
+  /**
+   * The single-part shape every record was written in before the list.
+   *
+   * Read through `partsOf`, never directly. A derivation rather than a
+   * migration, the rule `shelfOf` follows: nothing is rewritten on read
+   * and a row normalises the next time anything saves it. It stays
+   * readable so a device still on the old build goes on reading its own
+   * copy the way it always did.
    */
   readonly partOfDay?: PartOfDay
   /**
@@ -238,9 +267,114 @@ export function cadenceCovers(cadence: Cadence, day: string): boolean {
     : cadence.days.includes(date.getUTCDate())
 }
 
-/** How many times it is expected on a day it is expected at all. */
+/**
+ * The parts of the day a habit names, in the order the day happens.
+ *
+ * The one reader of both shapes. `partsOfDay` wins where it holds
+ * anything; a record written before the list falls back to its single
+ * `partOfDay`; a habit that names none returns empty, which is what most
+ * do.
+ *
+ * Deduplicated and re-sorted rather than trusted, because this arrives
+ * from another device and from a backup file. Naming morning twice would
+ * otherwise mean "twice in the morning" by the `timesPerDay` rule below
+ * and draw two identical rows in one band.
+ */
+export function partsOf(daily: Daily): readonly PartOfDay[] {
+  const named = daily.partsOfDay ?? (daily.partOfDay === undefined ? [] : [daily.partOfDay])
+
+  return PARTS_OF_DAY.filter((part) => named.includes(part))
+}
+
+/**
+ * How many times it is expected on a day it is expected at all.
+ *
+ * **The parts win when there are any**, and that is the whole of the
+ * relationship between the two fields: "morning and evening" is a
+ * statement that it happens twice, so asking for a count as well would
+ * be asking the same question twice and accepting two answers.
+ */
 export function timesPerDay(daily: Daily): number {
+  const parts = partsOf(daily)
+  if (parts.length > 0) return parts.length
+
   return Math.max(1, Math.round(daily.timesPerDay ?? 1))
+}
+
+/**
+ * One appearance of a habit in a day: the record, and which part of the
+ * day this is.
+ *
+ * A habit naming no part has exactly one, with `part` absent — so every
+ * screen works in occurrences and none of them needs a branch for the
+ * ordinary case. A habit naming morning and evening has two, which is
+ * what makes it two rows in two bands rather than one row saying "0 of
+ * 2" in whichever band it happened to be filed under.
+ */
+export interface DailyOccurrence {
+  readonly daily: Daily
+  /** Absent when the habit names no part of the day. */
+  readonly part?: PartOfDay
+}
+
+/** Every habit's appearances, flattened, in the order given. */
+export function occurrencesOf(dailies: readonly Daily[]): readonly DailyOccurrence[] {
+  return dailies.flatMap((daily) => {
+    const parts = partsOf(daily)
+
+    return parts.length === 0 ? [{ daily }] : parts.map((part) => ({ daily, part }))
+  })
+}
+
+/**
+ * One completion of a named part, written so its first ten characters
+ * are still the day.
+ *
+ * `2026-09-01#morning`. That prefix is the contract `timesDoneOn` reads,
+ * exactly as it is for the bare key and the timestamp, so a parted habit
+ * needs no special case in the counting.
+ *
+ * **Idempotent per part, which is the reason for the shape.** Two
+ * devices ticking the morning write the same string and `unionDone`
+ * folds them — the property a once-a-day habit's bare day key has and a
+ * multi-times habit's timestamp deliberately does not. Here it is
+ * available and correct: the morning brushing is one event however many
+ * devices saw it, where the dog's second feed genuinely is not the
+ * first.
+ */
+function partEntry(day: string, part: PartOfDay): string {
+  return `${day}#${part}`
+}
+
+/** Whether a named part of a day has been ticked. */
+export function isPartDoneOn(daily: Daily, day: string, part: PartOfDay): boolean {
+  return daily.done.includes(partEntry(day, part))
+}
+
+/** Records the completion of one named part. Idempotent. */
+export function completePart(daily: Daily, day: string, part: PartOfDay): Daily {
+  if (isPartDoneOn(daily, day, part)) return daily
+
+  return { ...daily, done: [...daily.done, partEntry(day, part)].sort() }
+}
+
+/** Takes one named part back. Identity when it was not ticked. */
+export function uncompletePart(daily: Daily, day: string, part: PartOfDay): Daily {
+  const entry = partEntry(day, part)
+  const at = daily.done.lastIndexOf(entry)
+  if (at === -1) return daily
+
+  /*
+   * One entry, not every match. Two identical strings can only come from
+   * a merge, and dropping both would take away a completion that did
+   * happen — the rule `uncomplete` already follows.
+   */
+  return { ...daily, done: [...daily.done.slice(0, at), ...daily.done.slice(at + 1)] }
+}
+
+/** The parts of a day still outstanding, in the order the day happens. */
+function outstandingParts(daily: Daily, day: string): readonly PartOfDay[] {
+  return partsOf(daily).filter((part) => !isPartDoneOn(daily, day, part))
 }
 
 /**
@@ -274,6 +408,28 @@ export function isDoneOn(daily: Daily, day: string): boolean {
  * clock in the domain.
  */
 export function complete(daily: Daily, day: string, at?: Date): Daily {
+  /*
+   * A habit that names parts fills its **earliest outstanding** one.
+   *
+   * Every screen that draws a row knows which part it is drawing and
+   * calls `completePart`; this branch is for the callers that genuinely
+   * do not have one — the history strip, where a press means "that day
+   * had one more" and nothing on a fortnight of nine-pixel squares can
+   * say which half of the day it was.
+   *
+   * Earliest rather than latest because the strip is used to repair a
+   * day that was forgotten, and a day with one of two done is far more
+   * often the morning kept and the evening missed than the reverse.
+   * Pressing twice fills both, which is what the count already asked of
+   * a multi-times habit.
+   */
+  const outstanding = outstandingParts(daily, day)
+  if (partsOf(daily).length > 0) {
+    const next = outstanding[0]
+
+    return next === undefined ? daily : completePart(daily, day, next)
+  }
+
   if (timesPerDay(daily) === 1) {
     if (daily.done.includes(day)) return daily
     return { ...daily, done: [...daily.done, day].sort() }
@@ -336,6 +492,21 @@ function stampFor(day: string, at: Date | undefined): string {
 }
 
 export function uncomplete(daily: Daily, day: string): Daily {
+  /*
+   * A parted habit takes back its **latest** part, which cannot be found
+   * by sorting the strings: `#afternoon` sorts before `#evening` sorts
+   * before `#morning`, so the alphabet would undo the morning first and
+   * report the evening as still kept. The order of the day is the only
+   * thing that answers this, and `partsOf` already holds it.
+   */
+  const parts = partsOf(daily)
+  if (parts.length > 0) {
+    const done = parts.filter((part) => isPartDoneOn(daily, day, part))
+    const last = done[done.length - 1]
+
+    return last === undefined ? daily : uncompletePart(daily, day, last)
+  }
+
   const onDay = daily.done.filter((entry) => entry.slice(0, 10) === day)
   if (onDay.length === 0) return daily
 
@@ -390,11 +561,24 @@ export function streakFor(daily: Daily, today: string): number {
   return streak
 }
 
-/** The longest run ever, for the one number a streak cannot show. */
+/**
+ * The longest run ever, for the one number a streak cannot show.
+ *
+ * **Asks `isDoneOn` rather than `done.includes`, and that was a bug.**
+ * The membership test only ever matched a bare day key, which is the
+ * shape a *once-a-day* habit stores — so a habit done several times a
+ * day, whose entries are timestamps, reported a best streak of **0**
+ * however long it had been kept. Parted habits would have joined it,
+ * their entries being `<day>#<part>`. `isDoneOn` is the predicate that
+ * already knows all three shapes, and a second implementation of "was
+ * this day done" is a bug with a delay on it.
+ */
 export function bestStreakFor(daily: Daily): number {
   if (daily.done.length === 0) return 0
 
-  const days = [...daily.done].sort()
+  // The day part only, so a timestamp or a parted entry bounds the walk
+  // by its day rather than by the string that happens to sort last.
+  const days = [...daily.done].map((entry) => entry.slice(0, 10)).sort()
   const latest = days[days.length - 1]
   if (latest === undefined) return 0
 
@@ -404,7 +588,7 @@ export function bestStreakFor(daily: Daily): number {
 
   while (cursor <= latest) {
     if (isExpectedOn(daily, cursor)) {
-      if (daily.done.includes(cursor)) {
+      if (isDoneOn(daily, cursor)) {
         run += 1
         best = Math.max(best, run)
       } else {

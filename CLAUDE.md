@@ -3465,8 +3465,8 @@ The wrinkle it carries, stated so nobody treats it as a bug: a
 days-of-week cadence means a "daily" can happen weekly. Every MMO with
 dailies has the same thing and nobody is confused by it.
 
-**A habit can name a part of the day, and it is deliberately coarse.**
-`partOfDay` in `domain/dailies/daily.ts` — morning, afternoon, evening,
+**A habit can name parts of the day, and it is deliberately coarse.**
+`partsOfDay` in `domain/dailies/daily.ts` — morning, afternoon, evening,
 or none. A stored "07:00" would be precision with no consumer: nothing
 can ring (see below), so a time could order a list and do nothing else,
 which three named parts do just as well without inviting somebody to
@@ -3475,6 +3475,83 @@ expect an alarm.
 What it is for is reading a day as a routine — the house is opened at one
 end and closed at the other, and an alphabetical list says nothing about
 which comes first.
+
+**It is a list, and naming two parts is what says it happens twice.**
+Reported: _"some stuff, like brushing my teeth, is done twice a day, but
+I'd like it morning and evening — that doesn't seem to be supported
+right now since it's one row."_ It was `timesPerDay: 2` and a single
+`partOfDay`, which states the number and says nothing about when, and
+drew **one row that could not be in two places**.
+
+So naming parts does two things at once, and the form says so: the habit
+is drawn once per part, and the parts **are** the times-a-day answer.
+`timesPerDay` is ignored entirely when there are any, and the control
+for it is hidden — two fields answering "how many times a day" is the
+trap the fatigue allowance already records, where the loser sits there
+looking authoritative. What that costs is "twice in the morning", which
+is not expressible any more; it is rare enough to be the right thing to
+give up for one number with one meaning.
+
+**`partsOf` is the only reader, because two shapes are stored.** Every
+record on every device was written with the single `partOfDay`, which
+reads back as a list of one — a derivation rather than a migration, the
+rule `shelfOf` follows, normalising the next time anything saves it. The
+list is deduplicated and re-sorted on read too, since a `partsOfDay`
+naming morning twice would otherwise mean "twice in the morning" by the
+rule above and draw two identical rows in one band.
+
+**A completion of a named part is `<day>#<part>`**, so the first ten
+characters are still the day and `timesDoneOn` needs no special case.
+The shape was chosen for **idempotency**: two devices ticking the same
+morning write the same string and `unionDone` folds them — the property
+a once-a-day habit's bare day key has and a multi-times habit's
+timestamp deliberately does not. Here it is both available and correct,
+because the morning brushing is one event however many devices saw it,
+where the dog's second feed genuinely is not the first.
+
+**The unit of the Today list became an occurrence rather than a
+record.** Outstanding, later, done — every one of those is asked of a
+row, so keeping the morning folds the morning row away and leaves the
+evening one asking. Asking the record would have one tick turn both
+rows green. A habit naming no parts has exactly one occurrence with no
+part, so the ordinary case goes through no special branch, and
+`byGroup`/`byPartOfDay` take occurrences for the same reason. The React
+key is `${id}#${part}` — two rows from one id sharing a key is the case
+React warns about and then renders wrongly.
+
+**`complete` with no part fills the earliest outstanding one.** The
+history strip is the caller that has none: a fortnight of nine-pixel
+squares cannot say which half of a day was missed, and pressing twice
+fills both. Earliest rather than latest because the strip repairs a
+forgotten day, and a half-done day is far more often the morning kept
+and the evening missed than the reverse.
+
+**`uncomplete` cannot sort the strings.** `#afternoon` sorts before
+`#evening` sorts before `#morning`, so the alphabet would take back the
+morning and report the evening as still kept. The order of the day is
+the only thing that answers it, and `partsOf` already holds it.
+
+**Editing when in the day lives with the cadence, not with the name.**
+Reported: _"existing dailies, particularly the ones from home, don't
+seem to be able to update the time of day — they're all at any time."_
+They could not: `partOfDay` was settable on the add form and **nowhere
+else**, so a house chore filed before anybody thought about it read "Any
+time" forever. Another instance of the capability the model had and no
+screen could reach, which this file keeps recording.
+
+It belongs behind the cadence warning rather than in the rename form
+because it is **not a label**: naming morning and evening changes how
+many completions a day needs, so it re-reads every streak the habit has
+ever had. A title and a group change nothing about the record's
+meaning; this does.
+
+**`bestStreakFor` asked `done.includes(day)` and that was a bug.** The
+membership test only ever matched a bare day key — the shape a
+_once-a-day_ habit stores — so a habit done several times a day reported
+a best streak of **0** however long it had been kept, and parted habits
+would have joined it. It asks `isDoneOn` now, which is the predicate
+that already knows all three shapes. A second implementation of "was
+this day done" is a bug with a delay on it.
 
 **Later today folds away, and that is the version of "guide me" that
 does not move anything.** The report: _"can we not surface tasks until

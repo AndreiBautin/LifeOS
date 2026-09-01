@@ -1,5 +1,8 @@
 import { Declutter } from './Declutter'
+import { useServices } from '@/app/context'
 import { groupOnly } from '@/domain/dailies/groups'
+import { isPartDoneOn, PART_OF_DAY_LABELS, partsOf, type PartOfDay } from '@/domain/dailies/daily'
+import { toDayKey } from '@/domain/time/day'
 import { GroupedDailies } from '@/features/today/DailyGroups'
 import { Flame, Plus, Undo2, Wrench } from 'lucide-react'
 import { useState } from 'react'
@@ -44,13 +47,32 @@ import { useAddUpgrade, useMoveUpgradeToShelf, useUpgradeTree } from '../upgrade
  * stalls; upgrades last because wanting a dishwasher is not a task.
  */
 
-function ChoreRow({ view }: { readonly view: DailyView }) {
+function ChoreRow({
+  view,
+  part,
+}: {
+  readonly view: DailyView
+  readonly part?: PartOfDay | undefined
+}) {
   const keep = useKeepToday(view.daily.belongsTo)
   const undo = useUndoToday()
   const moveHome = useMoveDailyHome()
+  const clock = useServices().clock
   const [renaming, setRenaming] = useState(false)
 
-  const { daily, doneToday, expectedToday, doneCount, needed } = view
+  const { daily, expectedToday } = view
+
+  /*
+   * A chore that names parts is drawn once per part and each row answers
+   * about its own — see `DailyRow`, which makes the same split for the
+   * same reason. Asking the record would have keeping the morning turn
+   * the evening green.
+   */
+  const today = toDayKey(clock.now())
+  const doneToday = part === undefined ? view.doneToday : isPartDoneOn(daily, today, part)
+  const doneCount = part === undefined ? view.doneCount : 0
+  const needed = part === undefined ? view.needed : 1
+  const shownPart = part ?? partsOf(daily)[0]
 
   if (renaming) {
     return (
@@ -83,8 +105,8 @@ function ChoreRow({ view }: { readonly view: DailyView }) {
         aria-pressed={doneToday}
         disabled={keep.isPending || undo.isPending}
         onClick={() => {
-          if (doneToday) undo.mutate(daily.id)
-          else keep.mutate(daily.id)
+          if (doneToday) undo.mutate({ id: daily.id, ...(part === undefined ? {} : { part }) })
+          else keep.mutate({ id: daily.id, ...(part === undefined ? {} : { part }) })
         }}
       >
         {doneToday ? '✓' : needed > 1 ? `${String(doneCount)}/${String(needed)}` : ''}
@@ -98,6 +120,9 @@ function ChoreRow({ view }: { readonly view: DailyView }) {
             setRenaming(true)
           }}
         />
+        {shownPart !== undefined && expectedToday && (
+          <p className="text-ink-700 text-xs">{PART_OF_DAY_LABELS[shownPart]}</p>
+        )}
         {needed > 1 && expectedToday && (
           <p className="text-ink-700 text-xs">
             {doneCount} of {needed} today
@@ -520,7 +545,7 @@ export function BasePage() {
                 bare
                 categoryOf={groupOnly}
                 views={dueChores}
-                render={(view) => <ChoreRow key={view.daily.id} view={view} />}
+                render={(view, part) => <ChoreRow view={view} part={part} />}
               />
 
               {otherChores.length > 0 && (
@@ -530,7 +555,7 @@ export function BasePage() {
                     bare
                     categoryOf={groupOnly}
                     views={otherChores}
-                    render={(view) => <ChoreRow key={view.daily.id} view={view} />}
+                    render={(view, part) => <ChoreRow view={view} part={part} />}
                   />
                 </div>
               )}

@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest'
 
-import { addDaily, keepOn, recadenceDaily, relabelDaily, undoOn, type DailyDeps } from './dailies'
+import {
+  addDaily,
+  keepOn,
+  keepToday,
+  recadenceDaily,
+  relabelDaily,
+  undoOn,
+  undoToday,
+  type DailyDeps,
+} from './dailies'
 import { isDoneOn, timesDoneOn } from '@/domain/dailies/daily'
 import { asDailyId } from '@/domain/ids/ids'
 import type { Daily } from '@/domain/dailies/daily'
@@ -242,7 +251,11 @@ describe('changing a cadence', () => {
   it('changes which days are expected', async () => {
     const services = deps([habit()])
 
-    await recadenceDaily(asDailyId('water'), { kind: 'days-of-week', days: [1] }, 1, services)
+    await recadenceDaily(
+      asDailyId('water'),
+      { cadence: { kind: 'days-of-week', days: [1] }, timesPerDay: 1, partsOfDay: [] },
+      services,
+    )
 
     expect(services.stored[0]?.cadence).toEqual({ kind: 'days-of-week', days: [1] })
   })
@@ -251,7 +264,11 @@ describe('changing a cadence', () => {
     const kept = ['2026-08-28', '2026-08-29', '2026-08-30']
     const services = deps([{ ...habit(), done: kept }])
 
-    await recadenceDaily(asDailyId('water'), { kind: 'days-of-week', days: [1] }, 1, services)
+    await recadenceDaily(
+      asDailyId('water'),
+      { cadence: { kind: 'days-of-week', days: [1] }, timesPerDay: 1, partsOfDay: [] },
+      services,
+    )
 
     expect(services.stored[0]?.done).toEqual(kept)
   })
@@ -259,7 +276,11 @@ describe('changing a cadence', () => {
   it('changes the times a day, and drops the field when it is one', async () => {
     const services = deps([{ ...habit(), timesPerDay: 3 }])
 
-    await recadenceDaily(asDailyId('water'), { kind: 'every-day' }, 1, services)
+    await recadenceDaily(
+      asDailyId('water'),
+      { cadence: { kind: 'every-day' }, timesPerDay: 1, partsOfDay: [] },
+      services,
+    )
 
     // Removed, not set to undefined: a key holding undefined is a key,
     // and it would travel over sync as one.
@@ -269,8 +290,106 @@ describe('changing a cadence', () => {
   it('never lets the times a day fall below one', async () => {
     const services = deps([habit()])
 
-    await recadenceDaily(asDailyId('water'), { kind: 'every-day' }, 0, services)
+    await recadenceDaily(
+      asDailyId('water'),
+      { cadence: { kind: 'every-day' }, timesPerDay: 0, partsOfDay: [] },
+      services,
+    )
 
     expect('timesPerDay' in (services.stored[0] ?? {})).toBe(false)
+  })
+})
+
+/*
+ * The reported gap: *"existing dailies, particularly the ones from home,
+ * don't seem to be able to update the time of day — they're all at any
+ * time."* They could not. `partOfDay` was settable on the add form and
+ * nowhere else, so a chore filed before anybody thought about it was
+ * stuck reading "Any time" forever.
+ */
+describe('changing when in the day a habit sits', () => {
+  it('sets the parts on a habit that had none', async () => {
+    const services = deps([habit()])
+
+    await recadenceDaily(
+      asDailyId('water'),
+      { cadence: { kind: 'every-day' }, timesPerDay: 1, partsOfDay: ['evening', 'morning'] },
+      services,
+    )
+
+    // In the order the day happens, whatever order they were tapped in.
+    expect(services.stored[0]?.partsOfDay).toEqual(['morning', 'evening'])
+  })
+
+  it('clears them back to any time', async () => {
+    const services = deps([{ ...habit(), partsOfDay: ['morning'] as const }])
+
+    await recadenceDaily(
+      asDailyId('water'),
+      { cadence: { kind: 'every-day' }, timesPerDay: 1, partsOfDay: [] },
+      services,
+    )
+
+    expect('partsOfDay' in (services.stored[0] ?? {})).toBe(false)
+  })
+
+  it('normalises the single-part shape rather than leaving it behind', async () => {
+    // A stored `partOfDay` that survived the write would have `partsOf`
+    // reading a stale answer the moment the list was cleared.
+    const services = deps([{ ...habit(), partOfDay: 'morning' as const }])
+
+    await recadenceDaily(
+      asDailyId('water'),
+      { cadence: { kind: 'every-day' }, timesPerDay: 1, partsOfDay: ['evening'] },
+      services,
+    )
+
+    expect('partOfDay' in (services.stored[0] ?? {})).toBe(false)
+    expect(services.stored[0]?.partsOfDay).toEqual(['evening'])
+  })
+
+  it('drops the times a day, because the parts are the count', async () => {
+    const services = deps([{ ...habit(), timesPerDay: 3 }])
+
+    await recadenceDaily(
+      asDailyId('water'),
+      { cadence: { kind: 'every-day' }, timesPerDay: 3, partsOfDay: ['morning', 'evening'] },
+      services,
+    )
+
+    // Two answers to "how many times a day" on one record is how the
+    // loser ends up sitting there looking authoritative.
+    expect('timesPerDay' in (services.stored[0] ?? {})).toBe(false)
+    expect(services.stored[0]?.partsOfDay).toEqual(['morning', 'evening'])
+  })
+})
+
+describe('ticking one part of the day', () => {
+  const brushing = () => ({ ...habit(), partsOfDay: ['morning', 'evening'] as const, done: [] })
+
+  it('keeps that part and leaves the other outstanding', async () => {
+    const services = deps([brushing()])
+
+    await keepToday(asDailyId('water'), services, 'morning')
+
+    expect(services.stored[0]?.done).toEqual(['2026-08-30#morning'])
+  })
+
+  it('takes back the part it is given, not the last one written', async () => {
+    const services = deps([{ ...brushing(), done: ['2026-08-30#morning', '2026-08-30#evening'] }])
+
+    await undoToday(asDailyId('water'), services, 'morning')
+
+    expect(services.stored[0]?.done).toEqual(['2026-08-30#evening'])
+  })
+
+  it('is idempotent, so two devices ticking one morning is one morning', async () => {
+    const services = deps([{ ...brushing(), done: ['2026-08-30#morning'] }])
+
+    await keepToday(asDailyId('water'), services, 'morning')
+
+    // No second entry: the domain returned the same object, so nothing
+    // was written and no sync traffic was produced.
+    expect(services.stored[0]?.done).toEqual(['2026-08-30#morning'])
   })
 })

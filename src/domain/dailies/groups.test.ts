@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { asDailyId } from '@/domain/ids/ids'
 import { BASE, TRAINING } from '@/domain/base/base'
 
-import type { Daily, PartOfDay } from './daily'
+import { occurrencesOf, type Daily, type DailyOccurrence, type PartOfDay } from './daily'
 import {
   byGroup,
   byPartOfDay,
@@ -31,7 +31,11 @@ function chore(title: string, partOfDay?: PartOfDay): Daily {
 }
 
 /** The rule for a screen showing one home — Base, Train, Mind. */
-const byGroupOnly = (dailies: readonly Daily[]) => byGroup(dailies, groupOnly)
+const byGroupOnly = (dailies: readonly Daily[]) => byGroup(occurrencesOf(dailies), groupOnly)
+
+/** Titles, so an assertion reads as the list somebody would see. */
+const titles = (group: { readonly occurrences: readonly DailyOccurrence[] } | undefined) =>
+  group?.occurrences.map((one) => one.daily.title)
 
 describe('a group name', () => {
   it('is absent rather than empty', () => {
@@ -66,7 +70,7 @@ describe('grouping habits', () => {
     expect(groups).toHaveLength(2)
     // Found by name, not by position: with no part of day these tie on
     // rank and fall back to the alphabet, so Pet care leads.
-    expect(groups.find((one) => one.name === 'Supplements')?.dailies).toHaveLength(2)
+    expect(groups.find((one) => one.name === 'Supplements')?.occurrences).toHaveLength(2)
   })
 
   it('falls back to the alphabet when two groups run at the same time', () => {
@@ -128,7 +132,7 @@ describe('grouping habits', () => {
       daily('Third', 'Admin'),
     ])
 
-    expect(groups[0]?.dailies.map((one) => one.title)).toEqual(['First', 'Second', 'Third'])
+    expect(titles(groups[0])).toEqual(['First', 'Second', 'Third'])
   })
 
   it('says nothing about an empty list', () => {
@@ -152,11 +156,11 @@ describe('grouping habits', () => {
  */
 describe('naming a category across every home', () => {
   it('puts a house chore and a habit labelled House under one name', () => {
-    const groups = byGroup([chore('Bins'), daily('Hoover', 'House')], homeOrGroup)
+    const groups = byGroup(occurrencesOf([chore('Bins'), daily('Hoover', 'House')]), homeOrGroup)
 
     expect(groups).toHaveLength(1)
     expect(groups[0]?.name).toBe('House')
-    expect(groups[0]?.dailies.map((one) => one.title)).toEqual(['Bins', 'Hoover'])
+    expect(titles(groups[0])).toEqual(['Bins', 'Hoover'])
   })
 
   it('reads the home before the group, so a filed chore keeps its screen name', () => {
@@ -184,12 +188,12 @@ describe('naming a category across every home', () => {
 describe('banding the day', () => {
   it('runs morning, afternoon, evening, then whatever names no part', () => {
     const bands = byPartOfDay(
-      [
+      occurrencesOf([
         daily('Floss', 'Hygiene', 'evening'),
         daily('Creatine', 'Supplements'),
         daily('Walk', 'Pet care', 'morning'),
         daily('Emails', 'Admin', 'afternoon'),
-      ],
+      ]),
       groupOnly,
     )
 
@@ -199,18 +203,18 @@ describe('banding the day', () => {
   it('draws no band for a part of the day with nothing in it', () => {
     // An empty Afternoon heading claims the afternoon asks something of
     // you, which is the opposite of what the folding above is for.
-    const bands = byPartOfDay([daily('Walk', 'Pet care', 'morning')], groupOnly)
+    const bands = byPartOfDay(occurrencesOf([daily('Walk', 'Pet care', 'morning')]), groupOnly)
 
     expect(bands.map((one) => one.part)).toEqual(['morning'])
   })
 
   it('groups inside a band, so the categories sit under the time', () => {
     const bands = byPartOfDay(
-      [
+      occurrencesOf([
         chore('Bins', 'morning'),
         daily('Brush', 'Hygiene', 'morning'),
         daily('Floss', 'Hygiene', 'evening'),
-      ],
+      ]),
       homeOrGroup,
     )
 
@@ -220,6 +224,20 @@ describe('banding the day', () => {
 
   it('says nothing about an empty list', () => {
     expect(byPartOfDay([], homeOrGroup)).toEqual([])
+  })
+
+  /*
+   * The other half of the reported gap: *"brushing my teeth is done
+   * twice a day, but I'd like it morning and evening — that doesn't seem
+   * to be supported right now since it's one row."*
+   */
+  it('draws a habit naming two parts in both of their bands', () => {
+    const brushing: Daily = { ...daily('Brush'), partsOfDay: ['morning', 'evening'] }
+    const bands = byPartOfDay(occurrencesOf([brushing]), groupOnly)
+
+    expect(bands.map((one) => one.part)).toEqual(['morning', 'evening'])
+    expect(titles(bands[0]?.groups[0])).toEqual(['Brush'])
+    expect(titles(bands[1]?.groups[0])).toEqual(['Brush'])
   })
 })
 
