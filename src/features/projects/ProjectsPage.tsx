@@ -1,6 +1,6 @@
 import { Campaigns } from '@/features/campaign/Campaigns'
 import { useCampaigns } from '@/features/campaign/hooks'
-import { Check, ChevronDown, ChevronRight, Home, Plus, Trash2, Undo2 } from 'lucide-react'
+import { Check, ChevronDown, ChevronRight, Home, Plus, Trash2 } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { useState } from 'react'
 
@@ -59,16 +59,40 @@ function ActionRow({
 
   return (
     <div className="flex items-center gap-3 py-2">
-      <Button
-        variant="ghost"
-        size="sm"
+      {/*
+        **A box, empty or ticked — not a tick that means "press me".**
+        Reported: *"I added a new side quest, but the steps make it seem
+        like they're already completed once we add them."* They did: a
+        pending step drew a bare ✓ and a closed one drew an undo arrow,
+        so a fresh three-step quest opened as what looks exactly like a
+        finished checklist, with "0% done" above it saying the opposite.
+
+        The icon was the *affordance* — press this to close it — and
+        nothing on the row said which state it was in except a
+        strikethrough that is easy to miss. An empty square reads as
+        outstanding to everybody, which is why `DailyRow` has drawn one
+        since it was written; this is that control, not a new one.
+
+        Unticking is the same box, for the reason a daily's is: a mis-tap
+        on the thing you tap most should cost exactly one more tap, so
+        there is no separate undo to aim at.
+      */}
+      <button
+        type="button"
         aria-label={done ? `Re-open ${action.description}` : `Close ${action.description}`}
+        aria-pressed={done}
+        className={[
+          'tap-target grid size-9 shrink-0 place-items-center rounded-lg border transition-colors',
+          done
+            ? 'border-good-500 bg-good-500/15 text-good-500'
+            : 'border-ink-700 text-ink-700 hover:border-ink-500',
+        ].join(' ')}
         onClick={() => {
           set.mutate({ id: project.id, actionId: action.id, done: !done })
         }}
       >
-        {done ? <Undo2 size={16} aria-hidden /> : <Check size={16} aria-hidden />}
-      </Button>
+        {done && <Check size={16} aria-hidden />}
+      </button>
 
       <span
         className={

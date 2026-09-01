@@ -1328,6 +1328,26 @@ somewhere to type and this one did not. The field has its own row now.
 found a working form nobody could see was a form; the fix is layout, and
 saying so is more useful than a changelog line claiming a bug was fixed.
 
+**A step's tick is a box, empty or ticked — never a ✓ that means "press
+me".** Reported: _"I added a new side quest, but the steps make it seem
+like they're already completed once we add them."_ They did. A pending
+step drew a bare check and a closed one drew an **undo arrow**, so a
+fresh three-step quest opened looking exactly like a finished checklist,
+with _0% done_ directly above it saying the opposite.
+
+The icon was the **affordance** rather than the state — press this to
+close it — and nothing on the row reported which state it was in except
+a strikethrough that is easy to miss. An empty square reads as
+outstanding to everybody, which is why `DailyRow` has drawn one since it
+was written; `ActionRow` uses that control now rather than a new one.
+Unticking is the same box, for the same reason a daily's is.
+
+**The general rule this is the second instance of: an icon that changes
+between two actions cannot also be the record of which state you are
+in.** Both readings are available and the wrong one is the first one
+anybody takes. Where a control toggles, draw the _state_ and let the
+press be implied.
+
 **The quest log is the hub's front page, and two of its rules used to be
 the database's job.** `/next` is what `/` redirects to. Cycle detection
 (`validateBlockers`) was enforced in the schema as well as in code and is
