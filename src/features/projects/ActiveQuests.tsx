@@ -111,10 +111,11 @@ function ArcSlot({ arc }: { readonly arc: CampaignStanding & { next: StageStandi
               refusing to call it the main one left the screen declining
               to name what it was plainly showing.
 
-              What keeps it honest is everything around the badge — the
-              line below says *Arc*, there is no stand-down button
-              because there is nothing to stand down, and the link goes
-              where stages are actually worked.
+              What keeps it honest is everything around the badge: the
+              line below counts **stages**, which is the arc's own word
+              where a quest has steps; there is no stand-down button,
+              because there is nothing to stand down; and the link says
+              *arc* outright.
             */}
             <Badge tone="accent">{QUEST_KIND_LABELS.main}</Badge>
           </div>
@@ -127,16 +128,29 @@ function ArcSlot({ arc }: { readonly arc: CampaignStanding & { next: StageStandi
           <p className="text-ink-500 mt-0.5 truncate text-xs">Next: {step ?? stage.name}</p>
 
           {/*
-            The stage is named here when the line above did not, so the
-            card never stops saying which stage it is on — and the
-            position is `nextPosition`, the index of the stage named,
-            rather than a count of what is finished. `done + 1` said
-            "stage 2 of 6" under the words "Fix up the house", which is
-            stage one.
+            The stage, and where it sits. The position is `nextPosition`,
+            the index of the stage named, rather than a count of what is
+            finished: `done + 1` said "stage 2 of 6" under the words "Fix
+            up the house", which is stage one.
+
+            **The word _Arc_ used to lead this line and had to go.**
+            Reported: *"'Arc · Fix up the house' reads weird — it makes
+            it seem like every stage is an arc, when you add arcs and
+            each has stages."* Exactly: a middot between two nouns reads
+            as apposition, so the label meant to mark the *card* landed
+            on the *stage* beside it and renamed it.
+
+            Nothing is lost by dropping it. **"Stage" is the arc's own
+            word** — a quest has steps and only an arc has stages — so
+            the vocabulary still separates this card from the side quest
+            below it, and "Open the arc →" says so outright. Those,
+            plus the absent stand-down button, are what keep the *Main*
+            badge honest; the prefix was the one part doing it by
+            assertion rather than by construction.
           */}
           <p className="text-ink-600 mt-0.5 truncate text-xs">
-            Arc{step === undefined ? '' : ` · ${stage.name}`} · stage{' '}
-            {arc.nextPosition ?? arc.total} of {arc.total}
+            {step === undefined ? 'Stage' : `${stage.name} · stage`} {arc.nextPosition ?? arc.total}{' '}
+            of {arc.total}
           </p>
 
           <Link to="/quests" className="text-ink-500 hover:text-ink-300 mt-2 block text-xs">

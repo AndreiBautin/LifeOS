@@ -1198,9 +1198,24 @@ rather than a quest. All of that is still true and none of it was the
 question being asked: the card sits in the main quest slot, under a
 heading reading "one main quest, one side quest", so refusing to call it
 the main one left the screen declining to name what it was plainly
-showing. What keeps it honest is everything around the badge — the
-subtitle still says _Arc_, there is no stand-down button because there
-is nothing to stand down, and the link goes where the stages are worked.
+showing. What keeps it honest is everything around the badge: the
+line below counts **stages**, which is the arc's own word where a quest
+has steps; there is no stand-down button, because there is nothing to
+stand down; and the link says _arc_ outright.
+
+**The word _Arc_ used to prefix that line and had to go.** It read
+`Arc · Fix up the house · stage 1 of 6`, reported as _"that reads weird
+— it makes it seem like every stage is an arc, when you add arcs and
+each has stages."_ Exactly right: **a middot between two nouns reads as
+apposition**, so a label meant to mark the _card_ landed on the _stage_
+beside it and renamed it. It is `Fix up the house · stage 1 of 6` now,
+and `Stage 2 of 2` when the line above already named the stage.
+
+Nothing was lost, because the prefix was the one honest-marker doing its
+job by assertion rather than by construction — the vocabulary, the
+missing button and the link all still separate this card from a quest.
+**A label that has to announce what something is, next to the thing
+itself, is usually describing the wrong noun.**
 
 **The slot bottoms out in something you can actually go and do.**
 Reported: _"I think here it should show what the next house fix-up thing
