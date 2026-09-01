@@ -33,6 +33,43 @@ A pre-push hook runs this and refuses the push if it fails. The same
 command gates the deploy. If `pnpm verify` is green the change is
 shippable; if it is not, it is not — there is no third state.
 
+## Shipping
+
+**Finishing a change here includes pushing it to `main`.** Asked for
+directly — _"can we update the skills so this is always the case for
+this project at least? Once you're done running, I want to be able to
+open the app on my phone, click the reload thing, and see the changes in
+effect."_ This paragraph is that standing authorization, and it
+deliberately **overrides the global default** of committing only when
+asked. The `ship` skill in `.claude/skills/` carries the procedure.
+
+It has to be standing rather than requested each time because of the
+shape of this app. There is no staging and no way to look at a branch:
+the only build a person can actually use is the one on the phone, and
+the only route there is `main` → the Pages deploy → the update banner.
+A change that is green on a laptop has reached nobody, so leaving the
+push out is not stopping short of the risky part — it is stopping one
+step before the change exists.
+
+**It authorizes pushing finished work, not pushing anything.** A red
+`pnpm verify`, a half-built change, anything destructive, and anything
+touching `firestore.rules` or `VITE_ALLOWED_UIDS` all still stop and
+ask. A red gate is the one state that is never shippable, and pushing it
+burns the deploy and the phone together.
+
+**A push is not a deploy, and the gap is about three minutes.** The
+workflow re-runs `pnpm verify`, builds, publishes, and then fetches the
+live URL and greps it for the app shell and the manifest — so a green
+run means the site answered rather than that an upload succeeded. Do not
+tell anybody a change is on their phone before that run is green.
+
+**The sha is what makes the update banner falsifiable.** Settings shows
+the commit of the running build, so "Already the newest" beside a sha
+that does not match the one just deployed separates a phone that will
+not update from a deploy that never happened. That distinction is the
+whole reason the manual check exists, and it is useless if nobody says
+which sha was expected.
+
 ## The layer rule
 
 Dependencies point **inward only**, enforced by ESLint
