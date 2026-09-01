@@ -98,8 +98,16 @@ function Slot({
                 <Badge tone="accent">{QUEST_KIND_LABELS.main}</Badge>
               </div>
               <p className="text-ink-500 mt-0.5 truncate text-xs">Next: {arc.next.stage.name}</p>
+              {/*
+                The **position of the stage named above**, not a count of
+                what is finished. It read `done + 1` and so said "stage 2
+                of 6" under the words "Next: Fix up the house", which is
+                stage one — the arc is ordered but not gated, so ticking
+                anything further down moved the count while the first
+                outstanding stage stayed put.
+              */}
               <p className="text-ink-600 mt-0.5 truncate text-xs">
-                Arc · stage {arc.done + 1} of {arc.total}
+                Arc · stage {arc.nextPosition ?? arc.total} of {arc.total}
               </p>
               <Link to="/quests" className="text-ink-500 hover:text-ink-300 mt-2 block text-xs">
                 Open the arc →

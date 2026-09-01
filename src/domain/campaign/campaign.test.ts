@@ -193,10 +193,44 @@ describe('the arc as a whole', () => {
     expect(standing.next?.stage.name).toBe('Fix the house')
   })
 
+  /*
+   * The reported bug: *"why is this showing as stage 2 if we're only on
+   * stage one, fix up the house?"* The card named the right stage and
+   * then numbered it wrongly, because the number was `done + 1` — a
+   * count of what is finished, which is only the position of `next` when
+   * the met stages are a prefix of the list. This arc allows them not to
+   * be, on purpose.
+   */
+  it('numbers the outstanding stage by where it sits, not by how many are done', () => {
+    const standing = standingFor(
+      campaign(
+        stage('Fix the house', { kind: 'house-jobs', count: 3 }),
+        stage('Find a house', { kind: 'declared' }),
+        stage('Sell this house', { kind: 'declared' }, ['2026-09-01']),
+      ),
+      { houseJobsDone: 0 },
+    )
+
+    // One stage met, and it is the third — so a count says two and the
+    // position says one. The card names stage one, so it must say one.
+    expect(standing.done).toBe(1)
+    expect(standing.next?.stage.name).toBe('Fix the house')
+    expect(standing.nextPosition).toBe(1)
+  })
+
+  it('counts the position from one, so the first stage is stage one', () => {
+    const standing = standingFor(campaign(stage('Move', { kind: 'declared' })), {})
+
+    expect(standing.nextPosition).toBe(1)
+  })
+
   it('has nothing outstanding once every stage is met', () => {
     const standing = standingFor(campaign(stage('Move', { kind: 'declared' }, ['2026-12-01'])), {})
 
     expect(standing.next).toBeUndefined()
+    // Absent exactly when `next` is, so a caller cannot read a position
+    // for a stage that is not there.
+    expect(standing.nextPosition).toBeUndefined()
     expect(standing.done).toBe(standing.total)
   })
 

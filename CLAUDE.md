@@ -1256,6 +1256,25 @@ were written. A later stage can be met first; `next` names the earliest
 outstanding one and is _highlighted rather than moved_, for the reason
 habits sort chronologically rather than current-part-first.
 
+**`done` is a count and `nextPosition` is a position, and a screen
+confused them.** Reported: _"why is this showing as stage 2 if we're
+only on stage one, fix up the house?"_ The card named the right stage
+and then numbered it wrongly, because the number was `done + 1`.
+
+That is the position of `next` **only when the met stages are a prefix
+of the list**, and the paragraph above is the promise that they need not
+be: tick a declared stage further down and the count moves while the
+first outstanding stage stays exactly where it was. One met stage at the
+bottom of a six-stage arc made "Fix up the house" read as stage two.
+
+`standingFor` carries `nextPosition` now, computed from the **same
+search** that finds `next` — one `findIndex`, so the stage and its
+number cannot come apart — and absent exactly when `next` is, so nothing
+can read a position for a stage that is not there. A derived number
+belongs beside the thing it describes rather than being recomputed from
+a different quantity at the call site, which is the same lesson
+`slotVolume` and the sync cursor's `pages` array both cost.
+
 **An unlabelled field gets filled in with whatever it looks like it
 wants.** Reported from real use: an arc was created with the aim box
 holding a _description_ — "initially get out of someplace I despise" —

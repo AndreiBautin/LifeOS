@@ -147,10 +147,35 @@ export interface StageStanding {
 export interface CampaignStanding {
   readonly campaign: Campaign
   readonly stages: readonly StageStanding[]
+  /**
+   * How many stages are met, **anywhere in the list**.
+   *
+   * A count, not a position. The arc is ordered but not gated — a later
+   * stage can be met first — so this is not "how far along the chain you
+   * are" and must never be used as one. See `nextPosition`.
+   */
   readonly done: number
   readonly total: number
   /** The first stage not yet met — what the arc is currently waiting on. */
   readonly next?: StageStanding
+  /**
+   * Where `next` sits in the list, counting from one.
+   *
+   * **Carried rather than derived at the call site, because a screen
+   * computed it as `done + 1` and got it wrong.** Reported: *"why is
+   * this showing as stage 2 if we're only on stage one, fix up the
+   * house?"* — the card named *Fix up the house*, which is stage one,
+   * and then called it stage two on the line below.
+   *
+   * `done + 1` is only the position of `next` when the met stages are a
+   * **prefix** of the list, and this arc explicitly allows them not to
+   * be: tick a declared stage further down and the count moves while the
+   * first outstanding stage does not. Computing this beside `next`, from
+   * the same search, is what stops the two disagreeing.
+   *
+   * Absent exactly when `next` is.
+   */
+  readonly nextPosition?: number
 }
 
 /**
@@ -223,14 +248,17 @@ function standingForStage(stage: Stage, evidence: Evidence): StageStanding {
  */
 export function standingFor(campaign: Campaign, evidence: Evidence): CampaignStanding {
   const stages = campaign.stages.map((stage) => standingForStage(stage, evidence))
-  const next = stages.find((one) => !one.met)
+
+  // One search, so `next` and its position cannot come apart.
+  const at = stages.findIndex((one) => !one.met)
+  const next = at === -1 ? undefined : stages[at]
 
   return {
     campaign,
     stages,
     done: stages.filter((one) => one.met).length,
     total: stages.length,
-    ...(next === undefined ? {} : { next }),
+    ...(next === undefined ? {} : { next, nextPosition: at + 1 }),
   }
 }
 
