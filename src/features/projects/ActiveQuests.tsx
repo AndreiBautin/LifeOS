@@ -62,12 +62,44 @@ function Slot({
           <div className="flex items-start gap-2">
             <Icon size={16} className="text-accent-400 mt-0.5 shrink-0" aria-hidden />
             <div className="min-w-0 flex-1">
+              {/*
+                **The arc is the headline and the stage is the next
+                step**, which is the way round every other slot on this
+                screen already reads — and it was inverted here.
+                Reported: *"there should be some sort of designation to
+                say this is the main quest, and then under it the next
+                thing, in our case the specific job."*
+
+                Exactly right, and the old shape said the opposite: it
+                led with *Fix up the house* and put *Move out of GVR* a
+                size smaller underneath, so the thing you are working
+                towards read as a footnote to one of its own stages.
+                A quest slot names the quest and says "Next: …"; an arc
+                is the quest here, so it does the same.
+              */}
               <div className="flex items-center gap-2">
-                <p className="text-ink-50 truncate font-semibold">{arc.next.stage.name}</p>
-                <Badge tone="accent">Arc</Badge>
+                <p className="text-ink-50 truncate font-semibold">{arc.campaign.name}</p>
+                {/*
+                  **Badged _Main_, and this reverses a deliberate call.**
+                  It read *Arc*, on the reasoning that a campaign is a
+                  readout rather than a quest — nothing to activate,
+                  nothing to close, and it pays no XP. All of that is
+                  still true and none of it was the question being
+                  answered: the card sits in the main quest slot, under a
+                  heading that says "one main quest, one side quest", so
+                  refusing to call it the main one left the screen
+                  declining to name what it was plainly showing.
+
+                  What keeps it honest is everything around the badge —
+                  the subtitle says *Arc*, there is no stand-down button
+                  because there is nothing to stand down, and the link
+                  goes to where stages are actually worked.
+                */}
+                <Badge tone="accent">{QUEST_KIND_LABELS.main}</Badge>
               </div>
-              <p className="text-ink-500 mt-0.5 truncate text-xs">
-                {arc.campaign.name} · stage {arc.done + 1} of {arc.total}
+              <p className="text-ink-500 mt-0.5 truncate text-xs">Next: {arc.next.stage.name}</p>
+              <p className="text-ink-600 mt-0.5 truncate text-xs">
+                Arc · stage {arc.done + 1} of {arc.total}
               </p>
               <Link to="/quests" className="text-ink-500 hover:text-ink-300 mt-2 block text-xs">
                 Open the arc →

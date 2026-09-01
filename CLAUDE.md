@@ -1177,12 +1177,39 @@ arc."_ Nothing was broken — a campaign is deliberately not a `Project`
 who had just declared what they were working towards, which is the
 wrong answer to a fair question.
 
-**A readout, not a quest.** The slot names the arc's `next` stage,
-badges it _Arc_ rather than _Main_, and links to where stages are
-actually worked. Nothing to activate, nothing to close, and it pays
-nothing — the same footing as the arc itself. Making a stage into a
-`Project` to fill the slot is the move rule three forbids: closing it
-would pay XP for work its own area has already paid for.
+**A readout, not a quest.** The slot links to where stages are actually
+worked. Nothing to activate, nothing to close, and it pays nothing — the
+same footing as the arc itself. Making a stage into a `Project` to fill
+the slot is the move rule three forbids: closing it would pay XP for
+work its own area has already paid for.
+
+**The arc is the headline and the stage is the next step, and that was
+inverted.** Reported: _"there should be some sort of designation to say
+this is the main quest, and then under it the next thing — in our case
+the specific job."_ Right, and the slot said the opposite: it led with
+_Fix up the house_ and put _Move out of GVR_ a size smaller underneath,
+so the thing being worked towards read as a footnote to one of its own
+stages. Every other slot on that screen names the quest and says
+"Next: …"; the arc is the quest here, so it does the same.
+
+**It is badged _Main_ now, which reverses the call in the paragraph
+above.** It read _Arc_, on the reasoning that a campaign is a readout
+rather than a quest. All of that is still true and none of it was the
+question being asked: the card sits in the main quest slot, under a
+heading reading "one main quest, one side quest", so refusing to call it
+the main one left the screen declining to name what it was plainly
+showing. What keeps it honest is everything around the badge — the
+subtitle still says _Arc_, there is no stand-down button because there
+is nothing to stand down, and the link goes where the stages are worked.
+
+**The arc's own card carries a `Main quest` badge to match**, because
+the same thing appeared twice on one page with neither half mentioning
+the other. Both halves compute it from the same two facts — no main
+quest activated, and this is the first arc with something outstanding —
+in `Campaigns`, passed down as `isMain`. Two components deciding it
+separately is how the badge and the slot start disagreeing. Verified in
+both directions: activating a real main quest removes the badge and the
+arc slot together.
 
 **An activated quest wins.** The arc is the direction underneath; a
 quest you picked is the thing you chose this week. Verified by

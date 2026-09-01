@@ -18,6 +18,7 @@ import {
   useUndoStage,
 } from './hooks'
 import { StageEditor } from './StageEditor'
+import { useActiveQuests } from '@/features/projects/hooks'
 
 /**
  * The long arc — the move, and anything shaped like it.
@@ -599,7 +600,21 @@ function ArcEditor({
  * A consequence worth knowing: with two arcs there are two headings and
  * no wrapper over them, which is right. Nothing is "the" arc.
  */
-function Arc({ standing }: { readonly standing: CampaignStanding }) {
+function Arc({
+  standing,
+  isMain,
+}: {
+  readonly standing: CampaignStanding
+  /**
+   * Whether this arc is the one standing in for the main quest.
+   *
+   * Computed by the caller from the same two facts the slot uses — no
+   * main quest activated, and this is the first arc with something
+   * outstanding — because two components deciding it separately is how
+   * the badge here and the card there start disagreeing.
+   */
+  readonly isMain: boolean
+}) {
   const [editing, setEditing] = useState(false)
   const { campaign } = standing
 
@@ -636,10 +651,22 @@ function Arc({ standing }: { readonly standing: CampaignStanding }) {
           The count in words, since the name and the aim have moved up
           into the heading and this card would otherwise open with a bar
           and no sentence.
+
+          **The badge says what the Active section is already showing.**
+          Asked for as *"some sort of designation to say this is the main
+          quest"* — the arc fills that slot above, and down here nothing
+          connected the two, so the same thing appeared twice on one page
+          without either mentioning the other. It is conditional because
+          the claim is: an activated quest wins, and the moment one
+          exists this arc is the direction underneath rather than the
+          main quest itself.
         */}
-        <p className="text-ink-500 text-xs">
-          {standing.done} of {standing.total} stages
-        </p>
+        <div className="flex items-center gap-2">
+          {isMain && <Badge tone="accent">Main quest</Badge>}
+          <p className="text-ink-500 text-xs">
+            {standing.done} of {standing.total} stages
+          </p>
+        </div>
 
         {/*
           The denominator is stages the person named, not a scale this
@@ -668,9 +695,20 @@ function Arc({ standing }: { readonly standing: CampaignStanding }) {
 
 export function Campaigns() {
   const campaigns = useCampaigns()
+  const active = useActiveQuests()
   const [adding, setAdding] = useState(false)
 
   const arcs = campaigns.data ?? []
+
+  /*
+   * The arc currently filling the main quest slot, or none.
+   *
+   * The same two facts the slot itself uses: no main quest activated,
+   * and the first arc with something still outstanding. An arc that is
+   * finished has nothing to say about what you are working on now.
+   */
+  const standingIn =
+    active.data?.main === undefined ? arcs.find((one) => one.next !== undefined) : undefined
 
   /*
    * Nothing yet, so the app supplies a heading — the only place it does
@@ -719,7 +757,11 @@ export function Campaigns() {
   return (
     <>
       {arcs.map((standing) => (
-        <Arc key={standing.campaign.id} standing={standing} />
+        <Arc
+          key={standing.campaign.id}
+          standing={standing}
+          isMain={standing.campaign.id === standingIn?.campaign.id}
+        />
       ))}
 
       {/*
