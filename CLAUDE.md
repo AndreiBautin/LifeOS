@@ -1202,6 +1202,33 @@ showing. What keeps it honest is everything around the badge — the
 subtitle still says _Arc_, there is no stand-down button because there
 is nothing to stand down, and the link goes where the stages are worked.
 
+**The slot bottoms out in something you can actually go and do.**
+Reported: _"I think here it should show what the next house fix-up thing
+would be, you know."_ The two cards made the gap obvious side by side —
+the side quest named _Access IRA_, a thing you can do, while the arc
+named _Fix up the house_, which is a category. A slot whose whole job is
+"what am I on" should end in a sentence, not a heading.
+
+`STAGE_WORK` maps a stage's requirement to the home whose projects carry
+that work — house jobs to Base, offers to the job search — and
+`recommendation` over that home already picks the next step, skipping
+what is blocked. Same engine the Suggested section runs; no second
+answer to "what next".
+
+**One level deeper than `EVIDENCE_SCREENS` and a different question.**
+That map covers every measured kind and answers "which screen is this
+number kept on". This one answers "whose next _step_ is this stage
+waiting on", which only the two project-backed kinds can: a net-worth
+stage is waiting on a reading, and naming a step for it would be the app
+telling somebody to go and have more money. Declared, money and
+houses-seen stages fall back to the stage name — absent, never invented.
+
+**`useRecommendation` takes the home, and `undefined` means "do not
+ask".** That is not a third home; it is how a caller that only sometimes
+has one keeps the hook unconditional, since hooks cannot be called in an
+`if`. `ArcSlot` is its own component for the same reason — asking in
+`Slot` would query on every side quest too.
+
 **The arc's own card carries a `Main quest` badge to match**, because
 the same thing appeared twice on one page with neither half mentioning
 the other. Both halves compute it from the same two facts — no main

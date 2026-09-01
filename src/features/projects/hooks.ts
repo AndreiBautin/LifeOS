@@ -1,5 +1,4 @@
-import type { RecordHome } from '@/domain/base/base'
-import { JOBS } from '@/domain/base/base'
+import { JOBS, type HomeFilter, type RecordHome } from '@/domain/base/base'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { useServices } from '@/app/context'
@@ -65,12 +64,27 @@ export function useJobApplications() {
   })
 }
 
-export function useRecommendation() {
+/**
+ * The next thing to do, in one home or across your own area.
+ *
+ * The home is required rather than defaulted, the rule every list that
+ * can answer two ways already follows here — and the reason is on the
+ * record: this call read `projects.all()` once, so the Quests page
+ * suggested a leaking tap as the next thing to work on, on the one
+ * screen Base exists to keep house work off.
+ *
+ * `undefined` means "do not ask", which is not a third home. It is how a
+ * caller that only sometimes has a home to ask about keeps the hook
+ * unconditional — an arc stage reading from Base has one, a money stage
+ * has none, and hooks cannot be called in an `if`.
+ */
+export function useRecommendation(home: HomeFilter | undefined) {
   const services = useServices()
 
   return useQuery({
-    queryKey: [...PROJECTS, 'recommendation'],
-    queryFn: () => recommendation(services, 'own-area'),
+    queryKey: [...PROJECTS, 'recommendation', home ?? 'none'],
+    queryFn: () => recommendation(services, home ?? 'own-area'),
+    enabled: home !== undefined,
   })
 }
 

@@ -468,7 +468,7 @@ export function ProjectsPage() {
   const arcs = useCampaigns()
   const leadingArc = (arcs.data ?? []).find((one) => one.next !== undefined)
 
-  const recommendation = useRecommendation()
+  const recommendation = useRecommendation('own-area')
   const add = useAddProject()
   const setActive = useSetActiveQuest()
 
