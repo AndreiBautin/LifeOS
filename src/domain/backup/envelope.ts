@@ -7,7 +7,6 @@ import type { Campaign } from '@/domain/campaign/campaign'
 import type { Daily } from '@/domain/dailies/daily'
 import type { Resume } from '@/domain/resume/resume'
 import type { Vice } from '@/domain/vitals/charges'
-import type { WeighIn } from '@/domain/vitals/weight'
 import type { CheckIn } from '@/domain/autoregulation/check-in'
 import type { FinanceReading } from '@/domain/finance/reading'
 import type { Item } from '@/domain/backlog/item'
@@ -100,7 +99,6 @@ export interface BackupCounts {
   readonly trips: number
   readonly dailies: number
   readonly vices: number
-  readonly weighIns: number
   readonly finance: number
   readonly campaigns: number
   readonly attempts: number
@@ -156,7 +154,6 @@ export interface BackupData {
    * the whole reason these are optional and the older fields are not.
    */
   readonly vices?: readonly Vice[]
-  readonly weighIns?: readonly WeighIn[]
   readonly finance?: readonly FinanceReading[]
   readonly campaigns?: readonly Campaign[]
   readonly attempts?: readonly Attempt[]
@@ -187,7 +184,6 @@ export function countsFor(data: BackupData): BackupCounts {
     trips: data.trips?.length ?? 0,
     dailies: data.dailies?.length ?? 0,
     vices: data.vices?.length ?? 0,
-    weighIns: data.weighIns?.length ?? 0,
     finance: data.finance?.length ?? 0,
     campaigns: data.campaigns?.length ?? 0,
     attempts: data.attempts?.length ?? 0,
@@ -213,7 +209,6 @@ export const BACKUP_COUNT_KEYS = [
   'trips',
   'dailies',
   'vices',
-  'weighIns',
   'finance',
   'campaigns',
   'attempts',

@@ -34,7 +34,6 @@ export const TOMBSTONED_COLLECTIONS = [
   'trips',
   'dailies',
   'vices',
-  'weighIns',
   'finance',
   'campaigns',
   'attempts',

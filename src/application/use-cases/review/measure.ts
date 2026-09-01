@@ -20,12 +20,10 @@ import type {
   ViceRepository,
   AttemptRepository,
   FinanceRepository,
-  WeighInRepository,
   WorkoutRepository,
 } from '@/domain/repositories/ports'
 import { isOwned, isOpen } from '@/domain/upgrades/upgrade'
 import { amountSpentOn } from '@/domain/vitals/charges'
-import { phaseVerdict, weightTrend } from '@/domain/vitals/weight'
 import { atlasView } from '@/application/use-cases/atlas/atlas'
 
 /**
@@ -52,7 +50,6 @@ export interface MeasureDeps {
   readonly explored: ExploredAreaRepository
   readonly settings: SettingsRepository
   readonly vices: ViceRepository
-  readonly weighIns: WeighInRepository
   readonly finance: FinanceRepository
   readonly attempts: AttemptRepository
   readonly clock: Clock
@@ -276,27 +273,6 @@ export async function measureAll(deps: MeasureDeps): Promise<Readonly<Record<str
     }
 
     measured['vitals.days-within-limits'] = Math.round((100 * within) / Math.max(1, daysSoFar))
-  }
-
-  /*
-   * The share of this month's weeks whose weight trend sat in the band.
-   *
-   * Absent when there are not two windows of readings to compare, which
-   * is the same rule `weightTrend` follows and for the same reason: a
-   * month with no weigh-ins is not a month that held its phase perfectly.
-   */
-  const weighIns = await deps.weighIns.all()
-  const phaseSettings = await deps.settings.get()
-  const weeks = [0, 7, 14, 21]
-    .map((back) => weightTrend(weighIns, new Date(now.getTime() - back * 24 * 60 * 60 * 1000)))
-    .filter((trend) => trend?.ratePerWeek !== undefined)
-
-  if (weeks.length > 0) {
-    const held = weeks.filter(
-      (trend) => phaseVerdict(trend, phaseSettings.phaseRate) === 'on-track',
-    ).length
-
-    measured['vitals.weeks-in-band'] = Math.round((100 * held) / weeks.length)
   }
 
   /*

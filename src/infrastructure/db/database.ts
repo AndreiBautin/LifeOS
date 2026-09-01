@@ -17,7 +17,6 @@ import type { Place } from '@/domain/atlas/place/Place'
 import type { Trip } from '@/domain/atlas/trip/Trip'
 import type { Daily } from '@/domain/dailies/daily'
 import type { Vice } from '@/domain/vitals/charges'
-import type { WeighIn } from '@/domain/vitals/weight'
 import type { Tombstone } from '@/domain/sync/tombstone'
 import type { Exercise } from '@/domain/exercises/exercise'
 import type { WorkoutLog } from '@/domain/logging/workout-log'
@@ -280,18 +279,19 @@ export interface LiftDB extends DBSchema {
     value: Vice
   }
   /**
-   * One bodyweight reading per day, keyed by the day.
+   * Retired, the third of these and on the same terms as the two below.
    *
-   * The day is the key rather than a generated id, which is what makes
-   * weighing twice on one morning a *correction* rather than two data
-   * points. Two devices holding a reading for the same day are two
-   * opinions about one fact, and last-write-wins is the right answer to
-   * that — unlike a set of rows, where both would survive and quietly
-   * average.
+   * It held one bodyweight reading a day. The series went the way the
+   * day figures did — a scale and a phone already keep it between them,
+   * so a copy here was a second one — and the store stays because
+   * removing it would mean editing a migration step. `settings.bodyweight`
+   * is untouched and is not this: one figure somebody states, which
+   * `resolve.ts` loads a bodyweight-plus set from and the strength
+   * ladders divide by.
    */
   weighIns: {
     key: string
-    value: WeighIn
+    value: RetiredDayRow
   }
   /**
    * Retired, like `conditions` below and on the same terms.

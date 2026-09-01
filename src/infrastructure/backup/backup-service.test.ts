@@ -28,7 +28,6 @@ import {
   createTripRepository,
   createViceRepository,
   createFinanceRepository,
-  createWeighInRepository,
   createUpgradeRepository,
   createExerciseRepository,
   createWorkoutRepository,
@@ -84,7 +83,6 @@ beforeEach(async () => {
     explored: createExploredAreaRepository(db),
     dailies: createDailyRepository(db, testClock),
     vices: createViceRepository(db, testClock),
-    weighIns: createWeighInRepository(db, testClock),
     finance: createFinanceRepository(db, testClock),
   }
 })

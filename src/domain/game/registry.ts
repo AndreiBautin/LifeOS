@@ -320,34 +320,34 @@ export const SCORING: readonly AreaScoring[] = [
     hasTree: false,
   },
   {
+    /*
+     * The id stays `vitals` and the name no longer does.
+     *
+     * An area id is an **address** — it is written into `belongsTo` on
+     * every upkeep habit ever filed — so renaming it would orphan those
+     * records rather than relabel them. The name is a label, and the
+     * screen it named has gone: what is left under this id is the body's
+     * upkeep and the body's limits, which is what it is called now.
+     */
     area: 'vitals',
-    name: 'Vitals',
+    name: 'Upkeep',
     phase: 11,
     /*
-     * No ladder, and this is the area where one is most tempting.
+     * No ladder. Nobody publishes how much coffee a person ought to
+     * drink or how often they ought to floss, and a threshold invented
+     * here would be exactly the scale this model refuses everywhere.
      *
-     * Bodyweight has published standards — BMI, body-fat brackets — and
-     * every one of them is a claim about *health* rather than about the
-     * thing being measured here. A lifter deliberately at 15% on a bulk
-     * is not worse at anything than the same lifter at 10%, and a ladder
-     * saying so would be the app inventing a direction its user did not
-     * choose. The direction is the phase, and the phase is a decision.
-     *
-     * The charges are the clearer case: nobody publishes how much coffee
-     * a person ought to drink, and a threshold invented here would be
-     * exactly the scale this model refuses everywhere.
+     * Bodyweight used to be the tempting case, and the argument against
+     * it is kept because it is the general one: BMI and body-fat
+     * brackets are published and every one of them is a claim about
+     * *health* rather than about the thing measured — a lifter
+     * deliberately at 15% on a bulk is not worse at anything than the
+     * same lifter at 10%. It is moot now; the weight series is gone, and
+     * `vitals.phase-held` went with it because a rating whose source
+     * nothing produces reads as absent forever.
      */
     ladders: [],
     ratings: [
-      {
-        id: 'vitals.phase-held',
-        source: 'vitals.weeks-in-band',
-        name: 'Phase held',
-        unit: '% of weeks in the target band',
-        direction: 'stay-above',
-        cadence: 'monthly',
-        threshold: 60,
-      },
       {
         id: 'vitals.within-limits',
         source: 'vitals.days-within-limits',

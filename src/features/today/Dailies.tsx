@@ -6,7 +6,7 @@ import type { DailyView } from '@/application/use-cases/dailies/dailies'
 import { Button, Card, Empty } from '@/components/shared/primitives'
 import type { Cadence, Daily } from '@/domain/dailies/daily'
 
-import { BASE, TRAINING, UPKEEP, type RecordHome } from '@/domain/base/base'
+import { BASE, TRAINING, type RecordHome } from '@/domain/base/base'
 import { WEEKDAY_LABELS, WEEKDAY_NAMES, WEEKDAYS, WEEKEND } from '@/domain/time/day'
 import {
   PART_OF_DAY_LABELS,
@@ -821,34 +821,49 @@ function DueElsewhere() {
 
   if (views.length === 0) return null
 
+  /*
+   * **Upkeep is deliberately not here any more.** It was, pointing at
+   * '/vitals' — and that screen has gone, so this screen owns those rows
+   * outright. They are listed in full in their own section instead; a
+   * group here as well would draw every due one of them twice on one
+   * screen. House and Training keep theirs because '/base' and '/train'
+   * are still where those are managed.
+   */
   const groups = [
     { home: BASE, label: 'House', to: '/base' },
-    { home: UPKEEP, label: 'Upkeep', to: '/vitals' },
     { home: TRAINING, label: 'Training', to: '/train' },
-  ].map((group) => ({
-    ...group,
-    rows: views.filter((view) => view.daily.belongsTo === group.home),
-  }))
+  ]
+    .map((group) => ({
+      ...group,
+      rows: views.filter((view) => view.daily.belongsTo === group.home),
+    }))
+    .filter((group) => group.rows.length > 0)
+
+  /*
+   * Checked after filtering, not before. `views` still carries upkeep —
+   * the count in the header is a claim about the day and must include it
+   * — so a day whose only work elsewhere is upkeep would otherwise draw
+   * an empty spacer under the list.
+   */
+  if (groups.length === 0) return null
 
   return (
     <div className="mt-3 space-y-3">
-      {groups
-        .filter((group) => group.rows.length > 0)
-        .map((group) => (
-          <div key={group.home}>
-            <div className="mb-1 flex items-baseline justify-between gap-2">
-              <span className="text-ink-700 text-xs tracking-wide uppercase">{group.label}</span>
-              <Link to={group.to} className="text-ink-700 hover:text-ink-500 text-xs">
-                all →
-              </Link>
-            </div>
-            <Card className="divide-ink-800 divide-y py-0">
-              {group.rows.map((view) => (
-                <DailyRow key={view.daily.id} view={view} />
-              ))}
-            </Card>
+      {groups.map((group) => (
+        <div key={group.home}>
+          <div className="mb-1 flex items-baseline justify-between gap-2">
+            <span className="text-ink-700 text-xs tracking-wide uppercase">{group.label}</span>
+            <Link to={group.to} className="text-ink-700 hover:text-ink-500 text-xs">
+              all →
+            </Link>
           </div>
-        ))}
+          <Card className="divide-ink-800 divide-y py-0">
+            {group.rows.map((view) => (
+              <DailyRow key={view.daily.id} view={view} />
+            ))}
+          </Card>
+        </div>
+      ))}
     </div>
   )
 }

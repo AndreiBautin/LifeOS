@@ -27,7 +27,6 @@ import type { Place } from '@/domain/atlas/place/Place'
 import type { Trip } from '@/domain/atlas/trip/Trip'
 import type { Daily } from '@/domain/dailies/daily'
 import type { Vice } from '@/domain/vitals/charges'
-import type { WeighIn } from '@/domain/vitals/weight'
 import type { FinanceReading } from '@/domain/finance/reading'
 import type { Exercise } from '@/domain/exercises/exercise'
 import type { WorkoutLog } from '@/domain/logging/workout-log'
@@ -75,7 +74,6 @@ const COLLECTIONS = {
   trips: 'trips',
   dailies: 'dailies',
   vices: 'vices',
-  weighIns: 'weighIns',
   finance: 'finance',
   campaigns: 'campaigns',
   attempts: 'attempts',
@@ -163,7 +161,6 @@ const KEYED_BY: {
   trips: (record) => record.id,
   dailies: (record) => record.id,
   vices: (record) => record.id,
-  weighIns: (record) => record.day,
   finance: (record) => record.month,
   campaigns: (record) => record.id,
   attempts: (record) => record.id,
@@ -296,7 +293,6 @@ export function createFirestoreSyncTarget(options: FirestoreTargetOptions): Sync
         readSince(root(COLLECTIONS.trips), after),
         readSince(root(COLLECTIONS.dailies), after),
         readSince(root(COLLECTIONS.vices), after),
-        readSince(root(COLLECTIONS.weighIns), after),
         readSince(root(COLLECTIONS.finance), after),
         readSince(root(COLLECTIONS.campaigns), after),
         readSince(root(COLLECTIONS.attempts), after),
@@ -344,7 +340,6 @@ export function createFirestoreSyncTarget(options: FirestoreTargetOptions): Sync
         trips,
         dailies,
         vices,
-        weighIns,
         finance,
         campaigns,
         attempts,
@@ -393,7 +388,6 @@ export function createFirestoreSyncTarget(options: FirestoreTargetOptions): Sync
           trips: trips.records as readonly Trip[],
           dailies: dailies.records as readonly Daily[],
           vices: vices.records as readonly Vice[],
-          weighIns: weighIns.records as readonly WeighIn[],
           finance: finance.records as readonly FinanceReading[],
           campaigns: campaigns.records as readonly Campaign[],
           attempts: attempts.records as readonly Attempt[],

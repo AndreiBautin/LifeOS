@@ -45,7 +45,6 @@ function harness(region: number | undefined, cells: readonly Coordinates[]) {
     places: empty,
     dailies: empty,
     vices: empty,
-    weighIns: empty,
     finance: empty,
     attempts: empty,
     explored: {

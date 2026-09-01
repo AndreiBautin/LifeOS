@@ -35,7 +35,6 @@ import type {
   RoomRepository,
   CampaignRepository,
   FinanceRepository,
-  WeighInRepository,
   TripRepository,
   UpgradeRepository,
   WorkoutRepository,
@@ -92,7 +91,6 @@ export interface SynchroniseDeps {
   readonly trips: TripRepository
   readonly dailies: DailyRepository
   readonly vices: ViceRepository
-  readonly weighIns: WeighInRepository
   readonly finance: FinanceRepository
   readonly campaigns: CampaignRepository
   readonly attempts: AttemptRepository
@@ -180,7 +178,6 @@ export async function synchronise(target: SyncTarget, deps: SynchroniseDeps): Pr
   await deps.trips.restoreMany(accepted.trips)
   await deps.dailies.restoreMany(accepted.dailies)
   await deps.vices.restoreMany(accepted.vices)
-  await deps.weighIns.restoreMany(accepted.weighIns)
   await deps.finance.restoreMany(accepted.finance)
   await deps.campaigns.restoreMany(accepted.campaigns)
   await deps.attempts.restoreMany(accepted.attempts)
@@ -263,7 +260,6 @@ export async function synchronise(target: SyncTarget, deps: SynchroniseDeps): Pr
     accepted.trips.length +
     accepted.dailies.length +
     accepted.vices.length +
-    accepted.weighIns.length +
     accepted.finance.length +
     accepted.campaigns.length +
     accepted.attempts.length +
@@ -286,7 +282,6 @@ export async function synchronise(target: SyncTarget, deps: SynchroniseDeps): Pr
     incoming.trips.length +
     incoming.dailies.length +
     incoming.vices.length +
-    incoming.weighIns.length +
     incoming.finance.length +
     incoming.campaigns.length +
     incoming.attempts.length +
@@ -323,7 +318,6 @@ async function collectLocal(
     trips,
     dailies,
     vices,
-    weighIns,
     finance,
     campaigns,
     attempts,
@@ -347,7 +341,6 @@ async function collectLocal(
     deps.trips.all(),
     deps.dailies.all(),
     deps.vices.all(),
-    deps.weighIns.all(),
     deps.finance.all(),
     deps.campaigns.all(),
     deps.attempts.all(),
@@ -402,7 +395,6 @@ async function collectLocal(
     trips: changedSince(trips, watermark),
     dailies: changedSince(dailies, watermark),
     vices: changedSince(vices, watermark),
-    weighIns: changedSince(weighIns, watermark),
     finance: changedSince(finance, watermark),
     campaigns: changedSince(campaigns, watermark),
     attempts: changedSince(attempts, watermark),
@@ -588,13 +580,6 @@ async function applyDeletions(
         const local = (await deps.finance.all()).find((row) => row.month === tombstone.id)
         if (local !== undefined && !survives(local, tombstone)) {
           await deps.finance.purge(tombstone.id)
-        }
-        break
-      }
-      case 'weighIns': {
-        const local = (await deps.weighIns.all()).find((row) => row.day === tombstone.id)
-        if (local !== undefined && !survives(local, tombstone)) {
-          await deps.weighIns.purge(tombstone.id)
         }
         break
       }

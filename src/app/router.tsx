@@ -10,7 +10,6 @@ import { BacklogPage } from '@/features/backlog/BacklogPage'
 import { ProjectsPage } from '@/features/projects/ProjectsPage'
 import { ReviewPage } from '@/features/review/ReviewPage'
 import { BasePage } from '@/features/base/BasePage'
-import { VitalsPage } from '@/features/vitals/VitalsPage'
 import { LimitsPage } from '@/features/limits/LimitsPage'
 import { MindPage } from '@/features/mind/MindPage'
 import { HomesPage } from '@/features/homes/HomesPage'
@@ -61,7 +60,14 @@ export const router = createBrowserRouter(
         { path: 'upgrades', element: <UpgradesPage /> },
         { path: 'gear', element: <GearPage /> },
         { path: 'base', element: <BasePage /> },
-        { path: 'vitals', element: <VitalsPage /> },
+        /*
+         * Kept as a redirect rather than deleted, the rule '/next' and
+         * '/character' already follow: a PWA shortcut is registered with
+         * the operating system at install time, so an installed copy
+         * goes on asking for a path long after the app stops serving it.
+         * Upkeep is what was on this screen and is on Today now.
+         */
+        { path: 'vitals', element: <Navigate to="/today" replace /> },
         { path: 'limits', element: <LimitsPage /> },
         { path: 'mind', element: <MindPage /> },
         { path: 'houses', element: <HomesPage /> },

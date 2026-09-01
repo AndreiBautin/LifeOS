@@ -19,7 +19,6 @@ import type {
   CampaignRepository,
   FinanceRepository,
   ResumeRepository,
-  WeighInRepository,
   WorkoutRepository,
 } from '@/domain/repositories/ports'
 import type { CellId } from '@/domain/atlas/exploration/GeoCell'
@@ -55,7 +54,6 @@ export interface BackupRepositories {
   readonly trips: TripRepository
   readonly dailies: DailyRepository
   readonly vices: ViceRepository
-  readonly weighIns: WeighInRepository
   readonly finance: FinanceRepository
   readonly campaigns: CampaignRepository
   readonly attempts: AttemptRepository
@@ -265,13 +263,6 @@ export const COLLECTIONS: Readonly<Record<CollectionKey, Collection>> = {
     idOf: (row) => row.id,
     restore: (r, rows) => r.campaigns.restoreMany(rows),
     tombstoneCollection: 'campaigns',
-  }),
-  weighIns: define({
-    local: (r) => r.weighIns.all(),
-    fromFile: (data) => data.weighIns ?? [],
-    idOf: (row) => row.day,
-    restore: (r, rows) => r.weighIns.restoreMany(rows),
-    tombstoneCollection: 'weighIns',
   }),
 }
 

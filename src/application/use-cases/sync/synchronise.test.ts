@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest'
 import type { Campaign } from '@/domain/campaign/campaign'
 import type { Daily } from '@/domain/dailies/daily'
 import { readCharges, type Vice } from '@/domain/vitals/charges'
-import type { WeighIn } from '@/domain/vitals/weight'
 import type { FinanceReading } from '@/domain/finance/reading'
 import { asDailyId, asViceId } from '@/domain/ids/ids'
 
@@ -35,7 +34,6 @@ import type {
   TombstoneRepository,
   ViceRepository,
   FinanceRepository,
-  WeighInRepository,
   TripRepository,
   UpgradeRepository,
   WorkoutRepository,
@@ -396,27 +394,6 @@ function device(clock: Clock): Device {
     },
   }
 
-  const weighInStore = new Map<string, WeighIn>()
-  const weighIns: WeighInRepository = {
-    all: () => Promise.resolve([...weighInStore.values()]),
-    save: (row) => {
-      weighInStore.set(row.day, { ...row, updatedAt: clock.now().toISOString() })
-      return Promise.resolve()
-    },
-    restoreMany: (rows) => {
-      for (const row of rows) weighInStore.set(row.day, row)
-      return Promise.resolve()
-    },
-    remove: (day) => {
-      weighInStore.delete(day)
-      return Promise.resolve()
-    },
-    purge: (day) => {
-      weighInStore.delete(day)
-      return Promise.resolve()
-    },
-  }
-
   /*
    * A real double, like the backlog. The fog is the one thing in this
    * payload merged by union rather than by a record winner, and a stub
@@ -503,7 +480,6 @@ function device(clock: Clock): Device {
     resume,
     dailies,
     vices,
-    weighIns,
     finance,
     dailyStore,
     exercises,
@@ -922,29 +898,34 @@ describe('a backlog item’s progress log', () => {
   })
 
   /*
-   * The other half, and the reason weigh-ins are *not* unioned. Two
-   * devices holding a reading for the same morning are two opinions
+   * The other half, and the reason a date-keyed record is *not* unioned.
+   * Two devices holding a figure for the same month are two opinions
    * about one fact, so the later one wins outright — unioning would
    * leave both and quietly average a correction with the thing it was
    * correcting.
+   *
+   * Written against weigh-ins, which have gone. The rule did not: a
+   * finance row is keyed by its month on exactly the same reasoning, so
+   * this moved rather than being deleted along with the record that
+   * happened to be its first example.
    */
-  it('lets the later weigh-in for a day replace the earlier one', async () => {
+  it('lets the later figure for a month replace the earlier one', async () => {
     const clock = advancingClock()
     const server = createMemorySyncServer()
     const phone = device(clock)
     const desk = device(clock)
 
-    await phone.weighIns.save({ day: '2026-08-27', weight: 181 })
-    await desk.weighIns.save({ day: '2026-08-27', weight: 182.4 })
+    await phone.finance.save({ month: '2026-08', netWorthMinor: 100_000 })
+    await desk.finance.save({ month: '2026-08', netWorthMinor: 142_500 })
 
     await synchronise(createMemorySyncTarget(server, 'phone'), phone)
     await synchronise(createMemorySyncTarget(server, 'desk'), desk)
     await synchronise(createMemorySyncTarget(server, 'phone'), phone)
 
-    const rows = await phone.weighIns.all()
+    const rows = await phone.finance.all()
 
     expect(rows).toHaveLength(1)
-    expect(rows[0]?.weight).toBe(182.4)
+    expect(rows[0]?.netWorthMinor).toBe(142_500)
   })
 
   it('takes the larger count when both devices logged the same day', async () => {

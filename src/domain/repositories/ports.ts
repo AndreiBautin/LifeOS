@@ -44,7 +44,6 @@ import type { AppSettings } from '@/domain/settings/settings'
 import type { SyncPayload } from '@/domain/sync/payload'
 import type { Tombstone } from '@/domain/sync/tombstone'
 import type { Vice } from '@/domain/vitals/charges'
-import type { WeighIn } from '@/domain/vitals/weight'
 
 /**
  * The ports the application layer talks to.
@@ -357,21 +356,11 @@ export interface ViceRepository {
 }
 
 /**
- * Bodyweight readings, keyed by the day they were taken.
+ * The monthly money figures, keyed by month.
  *
- * No `byId` — the key *is* the day, and every caller either wants all of
- * them (to draw a trend) or wants to write today's. There is no case for
- * fetching one historical morning on its own.
+ * No `byId` — the key *is* the month, and every caller either wants all
+ * of them or wants to write this one.
  */
-export interface WeighInRepository {
-  all(): Promise<readonly WeighIn[]>
-  save(weighIn: WeighIn): Promise<void>
-  restoreMany(weighIns: readonly WeighIn[]): Promise<void>
-  remove(day: string): Promise<void>
-  purge(day: string): Promise<void>
-}
-
-/** The monthly money figures, keyed by month for the same reasons. */
 export interface FinanceRepository {
   all(): Promise<readonly FinanceReading[]>
   save(reading: FinanceReading): Promise<void>

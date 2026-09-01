@@ -3585,42 +3585,88 @@ reading is a correction, not an addition. That is the opposite of
 `spent` and of `done`, and the difference is the whole reason both rules
 are written down.
 
-**The weight trend is two windows compared, never a line fitted through
-the phase.** A regression over ten weeks is dominated by the first ones
-and barely moves when the current week goes wrong, and what a lifter
-needs on a Tuesday is whether _this_ week is going where it should.
-**Nothing is carried forward** — a week with no readings is absent, not
-the last known weight repeated, because a carried value shows a rate of
-exactly zero for a fortnight of not weighing in and that reads as a
-perfectly held maintenance phase.
+**The scale went too, and Vitals went with it.** Reported: _"no need to
+track weight either, same reason. Doesn't make sense to have a vitals
+section and the upkeep tasks should move somewhere else."_
+
+Gone: `domain/vitals/weight.ts`, the `weighIns` store's repository, the
+`WeighIn` record everywhere it travelled, `settings.phase` and
+`settings.phaseRate`, the trend, the projected corridor, the Vitals
+screen, its card on Today, and the `vitals.phase-held` rating with the
+`vitals.weeks-in-band` source that fed it — a rating whose source
+nothing produces reads as absent forever, which is worse than not
+declaring it.
+
+**`settings.bodyweight` stays, and the distinction is the whole point.**
+It is one figure somebody states, not a series: `resolve.ts` needs it to
+load a bodyweight-plus set, and the strength ladders are multiples of it.
+Removing the tracking did not remove the number, because the number was
+never the tracking.
+
+**The area survives under a different name, and the id did not move.**
+`area: 'vitals'` is an **address** — it is written into `belongsTo` on
+every upkeep habit ever filed — so renaming it would orphan those
+records rather than relabel them. `name` is a label and is now
+`Upkeep`, which is what is left under that id: the body's chores and the
+body's limits. It still pays `vitals.upkeep-kept` and still feeds
+Vitality.
+
+**Upkeep moved to Today, and it was already half there.** The obvious
+build was a new home or a new screen, and the reply was _"there's
+already an upkeep section on the You page though"_ — correct.
+`DueElsewhere` had rendered an Upkeep group all along, and Vitals was
+only ever where those habits were **added and edited**. So the section
+moved to `features/today/Upkeep.tsx` and `DueElsewhere` dropped its
+Upkeep group, because one screen must not draw the same record twice.
+
+**The full list had to come with it, not just the due ones.** That group
+showed only what was due, on the reasoning that anything else about
+these belonged on the screen that owned them. There is no such screen
+now, so a weekly hair wash on a Tuesday would have been invisible and
+impossible to retire.
+
+**What must not be done here is folding them into Today's own dailies.**
+That looks tidier and would re-file them from `UPKEEP` to no home,
+paying `dailies.completed` instead of `vitals.upkeep-kept` — which
+empties the **Vitality** trait permanently, since `vitals` is its only
+area and the limits rating pays no XP. **A home decides which area
+scores a record; a screen is only where you touch it**, and this is the
+case that shows the two are not the same question.
+
+**`/vitals` is a redirect to `/today`, not a deleted route**, the rule
+`/next` and `/character` already follow: a PWA shortcut is registered
+with the operating system at install time.
+
+**The `weighIns` store stays in `database.ts`**, typed locally as
+`RetiredDayRow` beside `conditions` and `dayReadings`. Three retired
+stores now, all for one reason: removing one means editing a migration
+step, which is the thing that file must never do.
+
+**A test moved rather than being deleted with its example.**
+`synchronise.test.ts` → "lets the later weigh-in for a day replace the
+earlier one" was the record that a date-keyed row is last-write-wins
+rather than unioned. The rule outlived the weigh-in: finance is keyed by
+its month on identical reasoning, so the test is written against that
+now. **Deleting a rule's only test because the record it used went away
+is how a rule stops being enforced without anybody deciding to stop
+enforcing it.**
 
 **Vitals pays no XP at all, and it is the first area that measures
 without paying.** Every candidate falls on the wrong side of the act/
 outcome line: not drinking is an _outcome_, so paying for it is the
-streak mistake in a new costume, and the only real _acts_ are spending a
-charge and standing on a scale — paying XP for logging a beer is
-perverse, and paying it for weighing in turns a measurement into a chore
-with a score attached. An area with no acts is not an incomplete area.
+streak mistake in a new costume, and the only real _act_ was spending a
+charge, where paying XP for logging a beer is perverse. Weighing in was
+the other one, and stepping on a scale is a measurement rather than a
+thing done — the reasoning that kept it unpaid is the same one that has
+now removed it altogether. An area with no acts is not an incomplete
+area, and this one has since gained `vitals.upkeep-kept` anyway.
 
-**No ladder either, and bodyweight is where one is most tempting.** BMI
-and body-fat brackets are published, and every one of them is a claim
-about _health_ rather than about the thing being measured: a lifter
-deliberately at 15% on a bulk is not worse at anything. The direction is
-the phase, and the phase is a decision.
-
-**Nothing here is self-reported any more.** `readinessScore` and the
-condition bar it fed are gone; see the note above for why. What that
-leaves is the point: every number on this screen is measured, and the
-one thing the area still cannot do is invent a scale for how a body is
-doing.
-
-**Vitals is a link from Today, not a ninth tab, and that was measured.**
-Every nav cell carries `.tap-target` (`min-width: 44px`), so nine cells
-need 396 pixels and a 375-pixel iPhone has 375 — a ninth tab overflows
-the _common_ width, not merely the 320 the note below warns about. It
-would need a horizontally scrolling nav. It belongs on Today anyway:
-Today is present tense, and spending a charge is the one action in the
-app that happens at an arbitrary moment.
+**Still no ladder.** Nobody publishes how much coffee a person ought
+to drink or how often they ought to floss. Bodyweight was the tempting
+case and the argument against it is kept as the general one: BMI and
+body-fat brackets are published, and every one of them is a claim about
+_health_ rather than about the thing measured — a lifter deliberately at
+15% on a bulk is not worse at anything. Moot now the series has gone.
 
 **The navigation is eight, and the eighth was measured rather than
 argued about.**

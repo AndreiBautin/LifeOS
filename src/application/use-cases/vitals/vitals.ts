@@ -1,12 +1,7 @@
 import { toDayKey } from '@/domain/time/day'
 import type { IdGenerator, ViceId } from '@/domain/ids/ids'
 import { asViceId } from '@/domain/ids/ids'
-import type {
-  Clock,
-  SettingsRepository,
-  ViceRepository,
-  WeighInRepository,
-} from '@/domain/repositories/ports'
+import type { Clock, SettingsRepository, ViceRepository } from '@/domain/repositories/ports'
 import type { ChargeCycle, ChargeDirection, ChargePreset, DaysLimit } from '@/domain/vitals/charges'
 import { saneDaysLimit } from '@/domain/vitals/charges'
 import {
@@ -18,14 +13,6 @@ import {
   type ChargeReading,
   type Vice,
 } from '@/domain/vitals/charges'
-import {
-  phaseVerdict,
-  weightTrend,
-  type Phase,
-  type PhaseVerdict,
-  type WeighIn,
-  type WeightTrend,
-} from '@/domain/vitals/weight'
 
 /**
  * Vitals: what the body is doing, and what you have left to spend on it.
@@ -36,8 +23,7 @@ import {
  * adjustment they were supposed to feed was never wired to a session —
  * so the whole of it was a number you typed in and then read back.
  *
- * What is left is measured: what the scale says and what the phase
- * asks for.
+ * What is left is the pools — a rule you set and then spend against.
  *
  * **Sleep, calories and macros are gone from here too**, and that was
  * asked for rather than tidied: *"what am I really getting from double
@@ -47,14 +33,17 @@ import {
  * disagree with the first. See CLAUDE.md for what went and why the
  * store it wrote to is still there.
  *
- * The weight trend sits with them because it answers the third question
- * a body asks — where is this going — and because it is the one number a
- * calorie app cannot tell you about your training.
+ * **The scale went the way the day figures did**, and for the reason
+ * given for them: *"no need to track weight either, same reason."* A
+ * weigh-in is a number a scale and a phone already keep between them, so
+ * a row here was a second copy of it. `settings.bodyweight` stays — a
+ * single figure somebody states, which `resolve.ts` needs to load a
+ * bodyweight-plus set and the strength ladders need to divide by. That
+ * is not tracking, and it is why removing the series did not take it.
  */
 
 export interface VitalsDeps {
   readonly vices: ViceRepository
-  readonly weighIns: WeighInRepository
   readonly settings: SettingsRepository
   readonly clock: Clock
   readonly ids: IdGenerator
@@ -67,37 +56,15 @@ export interface PoolView {
   readonly spentToday: number
 }
 
-export interface PhaseView {
-  readonly phase: Phase
-  readonly range: { readonly min: number; readonly max: number }
-  readonly trend?: WeightTrend
-  readonly verdict: PhaseVerdict
-  /** Today's reading, when there is one. */
-  readonly today?: number
-}
-
 export interface VitalsToday {
   readonly pools: readonly PoolView[]
-  /**
-   * Absent rather than neutral when nothing has been recorded today.
-   *
-   * A bar sitting at the midpoint would be a claim that the day is
-   * unremarkable, which is a different thing from not having been asked.
-   */
-  readonly phase: PhaseView
 }
 
 export async function vitalsToday(deps: VitalsDeps): Promise<VitalsToday> {
   const now = deps.clock.now()
   const today = toDayKey(now)
 
-  const [allVices, weighIns, settings] = await Promise.all([
-    deps.vices.all(),
-    deps.weighIns.all(),
-    deps.settings.get(),
-  ])
-
-  const pools = allVices
+  const pools = (await deps.vices.all())
     .filter(isActive)
     .map((vice) => ({
       vice,
@@ -111,28 +78,11 @@ export async function vitalsToday(deps: VitalsDeps): Promise<VitalsToday> {
      */
     .sort((a, b) => a.reading.available - b.reading.available)
 
-  const trend = weightTrend(weighIns, now)
-  const todayWeight = weighIns.find((row) => row.day === today)?.weight
-  const verdict = phaseVerdict(trend, settings.phaseRate)
-
-  return {
-    pools,
-    phase: {
-      phase: settings.phase,
-      range: settings.phaseRate,
-      ...(trend === undefined ? {} : { trend }),
-      verdict,
-      ...(todayWeight === undefined ? {} : { today: todayWeight }),
-    },
-  }
+  return { pools }
 }
 
 export async function listVices(deps: VitalsDeps): Promise<readonly Vice[]> {
   return (await deps.vices.all()).filter(isActive)
-}
-
-export async function listWeighIns(deps: VitalsDeps): Promise<readonly WeighIn[]> {
-  return [...(await deps.weighIns.all())].sort((a, b) => a.day.localeCompare(b.day))
 }
 
 /** The day limit as a spreadable, so an absent one writes no key at all. */
@@ -269,21 +219,4 @@ export async function retireVice(id: ViceId, deps: VitalsDeps): Promise<Vice | u
 
 export async function removeVice(id: ViceId, deps: VitalsDeps): Promise<void> {
   await deps.vices.remove(id)
-}
-
-/**
- * One weight per day, so weighing again corrects rather than appends.
- *
- * The day comes from the clock rather than from the caller: a weigh-in
- * is a thing you do now, and letting a screen pass a date would make
- * back-filling possible, which is how a trend stops being a measurement.
- */
-export async function recordWeighIn(weight: number, deps: VitalsDeps): Promise<void> {
-  if (!Number.isFinite(weight) || weight <= 0) return
-
-  await deps.weighIns.save({ day: toDayKey(deps.clock.now()), weight })
-}
-
-export async function clearWeighIn(day: string, deps: VitalsDeps): Promise<void> {
-  await deps.weighIns.remove(day)
 }

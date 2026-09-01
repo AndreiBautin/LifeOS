@@ -92,7 +92,7 @@ export function useDueElsewhere() {
   })
 }
 
-/** Upkeep, for the Vitals screen — the body's own chores. */
+/** Upkeep — the body's own chores, kept on Today since Vitals went. */
 export function useUpkeep() {
   const services = useServices()
 

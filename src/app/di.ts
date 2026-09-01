@@ -31,7 +31,6 @@ import type {
   ResumeRepository,
   TripRepository,
   ViceRepository,
-  WeighInRepository,
   UpgradeRepository,
   WorkoutRepository,
 } from '@/domain/repositories/ports'
@@ -57,7 +56,6 @@ import {
   createResumeRepository,
   createTripRepository,
   createViceRepository,
-  createWeighInRepository,
   createUpgradeRepository,
   createWorkoutRepository,
 } from '@/infrastructure/db/repositories'
@@ -124,7 +122,6 @@ export interface AppServices {
   readonly trips: TripRepository
   readonly dailies: DailyRepository
   readonly vices: ViceRepository
-  readonly weighIns: WeighInRepository
   readonly explored: ExploredAreaRepository
   /** The device's own position, behind a port so a test can fake it. */
   readonly geolocation: Geolocation
@@ -199,7 +196,6 @@ export async function bootstrap(): Promise<BootstrapResult> {
     trips: createTripRepository(db, systemClock),
     dailies: createDailyRepository(db, systemClock),
     vices: createViceRepository(db, systemClock),
-    weighIns: createWeighInRepository(db, systemClock),
     explored: createExploredAreaRepository(db),
     geolocation: createBrowserGeolocation(),
     placeSearch: new NominatimSearchProvider(),

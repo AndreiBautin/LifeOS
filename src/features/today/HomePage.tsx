@@ -20,7 +20,8 @@ import { Traits } from '@/features/character/Traits'
 import { SeasonCard } from '@/features/character/SeasonCard'
 import { useCharacterSheet, useSeasonProgress } from '@/features/character/hooks'
 import { useReviewDraft } from '@/features/review/hooks'
-import { LimitsCard, VitalsCard } from '@/features/vitals/VitalsCard'
+import { LimitsCard } from '@/features/vitals/LimitsCard'
+import { Upkeep } from './Upkeep'
 import { LeadsToday } from '@/features/jobs/LeadsToday'
 import { DigestCard } from '@/features/news/DigestCard'
 
@@ -255,9 +256,14 @@ export function HomePage() {
         <LimitsCard />
       </Section>
 
-      <Section title="Vitals" description="Where the scale is going.">
-        <VitalsCard />
-      </Section>
+      {/*
+        Upkeep sits with the day's other recurring work rather than on a
+        screen of its own. It was on Vitals, which has gone with the
+        weight tracking — and Today already carried an Upkeep group under
+        "Due elsewhere", so the full list joining it here is the section
+        catching up with where the rows already were.
+      */}
+      <Upkeep />
 
       {/* Both silent unless this morning's read found something. */}
       <LeadsToday />

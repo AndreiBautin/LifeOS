@@ -1,17 +1,9 @@
 import { describe, expect, it } from 'vitest'
 
-import {
-  editVice,
-  listVices,
-  recordWeighIn,
-  spendVice,
-  vitalsToday,
-  type VitalsDeps,
-} from './vitals'
+import { editVice, listVices, spendVice, vitalsToday, type VitalsDeps } from './vitals'
 import { DEFAULT_SETTINGS } from '@/domain/settings/settings'
 import { asViceId } from '@/domain/ids/ids'
 import type { Vice } from '@/domain/vitals/charges'
-import type { WeighIn } from '@/domain/vitals/weight'
 
 /**
  * The read model behind the two bars on Today.
@@ -24,13 +16,8 @@ import type { WeighIn } from '@/domain/vitals/weight'
 
 const NOW = new Date('2026-08-27T10:00:00.000Z')
 
-function deps(seed: {
-  vices?: Vice[]
-  weighIns?: WeighIn[]
-  phase?: (typeof DEFAULT_SETTINGS)['phase']
-}): VitalsDeps {
+function deps(seed: { vices?: Vice[] }): VitalsDeps {
   const vices = seed.vices ?? []
-  const weighIns = seed.weighIns ?? []
 
   return {
     vices: {
@@ -46,21 +33,8 @@ function deps(seed: {
       remove: () => Promise.resolve(),
       purge: () => Promise.resolve(),
     },
-    weighIns: {
-      all: () => Promise.resolve(weighIns),
-      save: (row) => {
-        const at = weighIns.findIndex((one) => one.day === row.day)
-        if (at >= 0) weighIns[at] = row
-        else weighIns.push(row)
-        return Promise.resolve()
-      },
-      restoreMany: () => Promise.resolve(),
-      remove: () => Promise.resolve(),
-      purge: () => Promise.resolve(),
-    },
     settings: {
-      get: () =>
-        Promise.resolve({ ...DEFAULT_SETTINGS, ...(seed.phase ? { phase: seed.phase } : {}) }),
+      get: () => Promise.resolve(DEFAULT_SETTINGS),
       save: () => Promise.resolve(),
     },
     clock: { now: () => NOW },
@@ -111,13 +85,6 @@ describe("what Today's card is handed", () => {
 
     expect(view.pools[0]?.spentToday).toBe(1)
   })
-
-  it('reports the phase as unknown rather than on track with no readings', async () => {
-    const view = await vitalsToday(deps({}))
-
-    expect(view.phase.verdict).toBe('unknown')
-    expect(view.phase.trend).toBeUndefined()
-  })
 })
 
 describe('recording', () => {
@@ -132,24 +99,6 @@ describe('recording', () => {
 
     expect(view.pools[0]?.reading.over).toBe(1)
     expect(view.pools[0]?.reading.available).toBe(0)
-  })
-
-  it('replaces rather than appends a second weigh-in on one day', async () => {
-    const services = deps({})
-
-    await recordWeighIn(181, services)
-    await recordWeighIn(182.4, services)
-
-    expect((await vitalsToday(services)).phase.today).toBe(182.4)
-  })
-
-  it('ignores a weight that is not a number it can use', async () => {
-    const services = deps({})
-
-    await recordWeighIn(Number.NaN, services)
-    await recordWeighIn(-5, services)
-
-    expect((await vitalsToday(services)).phase.today).toBeUndefined()
   })
 })
 

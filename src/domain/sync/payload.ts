@@ -15,7 +15,6 @@ import type { Place } from '@/domain/atlas/place/Place'
 import type { Trip } from '@/domain/atlas/trip/Trip'
 import type { Daily } from '@/domain/dailies/daily'
 import type { Vice } from '@/domain/vitals/charges'
-import type { WeighIn } from '@/domain/vitals/weight'
 import type { WorkoutLog } from '@/domain/logging/workout-log'
 
 import type { Resume } from '@/domain/resume/resume'
@@ -52,7 +51,6 @@ export interface SyncPayload {
   readonly trips: readonly Trip[]
   readonly dailies: readonly Daily[]
   readonly vices: readonly Vice[]
-  readonly weighIns: readonly WeighIn[]
   readonly finance: readonly FinanceReading[]
   readonly campaigns: readonly Campaign[]
   readonly attempts: readonly Attempt[]
@@ -115,7 +113,6 @@ export const EMPTY_PAYLOAD: SyncPayload = {
   dailies: [],
   exploredCells: [],
   vices: [],
-  weighIns: [],
   finance: [],
   campaigns: [],
   attempts: [],
@@ -139,7 +136,6 @@ export function isEmpty(payload: SyncPayload): boolean {
     payload.trips.length === 0 &&
     payload.dailies.length === 0 &&
     payload.vices.length === 0 &&
-    payload.weighIns.length === 0 &&
     payload.finance.length === 0 &&
     payload.campaigns.length === 0 &&
     payload.attempts.length === 0 &&
@@ -167,7 +163,6 @@ export function payloadSize(payload: SyncPayload): number {
     payload.trips.length +
     payload.dailies.length +
     payload.vices.length +
-    payload.weighIns.length +
     payload.finance.length +
     payload.campaigns.length +
     payload.attempts.length +
@@ -361,7 +356,6 @@ export function acceptableFrom(
      * nothing to union: unlike a set of completions, a second reading is
      * a correction rather than an addition.
      */
-    weighIns: incoming.weighIns.filter((item) => shouldAccept(item, 'weighIns', item.day, index)),
     finance: incoming.finance.filter((item) => shouldAccept(item, 'finance', item.month, index)),
     campaigns: incoming.campaigns.filter((item) => shouldAccept(item, 'campaigns', item.id, index)),
     attempts: incoming.attempts.filter((item) => shouldAccept(item, 'attempts', item.id, index)),

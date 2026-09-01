@@ -79,7 +79,6 @@ function listFields(): readonly string[] {
 const KEYED_BY_FIELD: Readonly<Record<string, string>> = {
   reviews: 'month',
   finance: 'month',
-  weighIns: 'day',
 }
 
 /** One plausible record in every collection, keyed the way it is stored. */
@@ -117,14 +116,13 @@ describe('planning what a push writes', () => {
     expect([...listFields()].filter((field) => !sent.has(field))).toEqual([])
   })
 
-  it('keys a weigh-in and a finance row by their date', () => {
-    // Not `id`, which none of the three carries. Writing them under a
-    // field they do not have files every one under the same key and
-    // leaves a single document per collection.
+  it('keys a finance row by its month rather than an id', () => {
+    // Not `id`, which it does not carry. Writing it under a field it
+    // does not have files every row under the same key and leaves a
+    // single document for the whole collection.
     const operations = pushOperations(fullPayload(), 'device-a')
     const idFor = (path: string) => operations.find((one) => one.path === path)?.id
 
-    expect(idFor('weighIns')).toBe('weighIns-1')
     expect(idFor('finance')).toBe('finance-1')
   })
 

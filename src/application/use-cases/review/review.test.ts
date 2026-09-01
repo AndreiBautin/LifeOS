@@ -110,7 +110,6 @@ function harness(
     places: stub(placeList),
     dailies: stub([]),
     vices: stub([]),
-    weighIns: stub([]),
     explored: {
       all: () => Promise.resolve(new Set(walkedCells)),
       reveal: () => Promise.resolve(0),

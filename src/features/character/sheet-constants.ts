@@ -21,7 +21,6 @@ import type { Level } from '@/domain/game/character'
  */
 export const AREA_LINKS = [
   { to: '/limits', label: 'Limits' },
-  { to: '/vitals', label: 'Vitals' },
   { to: '/jobs', label: 'Job search' },
   { to: '/mind', label: 'Mind' },
   { to: '/houses', label: 'Houses' },
@@ -57,7 +56,13 @@ export const AREA_ROUTES: Partial<Record<string, string>> = {
   upgrades: '/upgrades',
   places: '/map',
   base: '/base',
-  vitals: '/vitals',
+  /*
+   * Today, like `dailies` above it and for the same reason: upkeep is
+   * kept on the hub itself now that the screen it had has gone. A
+   * self-link rather than no link, because the card is what tells you
+   * where the records are.
+   */
+  vitals: '/today',
   dailies: '/today',
   jobs: '/jobs',
   finance: '/finance',
