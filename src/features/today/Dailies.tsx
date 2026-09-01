@@ -1,8 +1,10 @@
 import { Archive, CalendarCog, Check, Flame, Home, Pencil, Plus, Trash2, Undo2 } from 'lucide-react'
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 
 import type { DailyView } from '@/application/use-cases/dailies/dailies'
-import { Button, Card, Empty } from '@/components/shared/primitives'
+import type { AgendaItem, Urgency } from '@/application/use-cases/today/agenda'
+import { Badge, Button, Card, Empty } from '@/components/shared/primitives'
 import type { Cadence, Daily } from '@/domain/dailies/daily'
 
 import { BASE, type RecordHome } from '@/domain/base/base'
@@ -25,6 +27,7 @@ import { GoalRow } from '@/features/backlog/GoalsToday'
 import { useDailyGoals } from '@/features/backlog/hooks'
 
 import { DayBands, GroupedDailies, GroupField } from './DailyGroups'
+import { useAgenda } from './hooks'
 import { DailyHistory } from './DailyHistory'
 import {
   useAddDaily,
@@ -1225,6 +1228,51 @@ function DoneRows({ rows }: { readonly rows: readonly Occurrence[] }) {
   )
 }
 
+/**
+ * What an agenda row's area is called where it appears as a group.
+ *
+ * The three that are left once the Codex goals moved into the day's
+ * list: a quest's deadline, a trip, somebody unseen for months.
+ */
+const AGENDA_GROUPS: Record<AgendaItem['area'], string> = {
+  quests: 'Quests',
+  map: 'Trips',
+  party: 'Party',
+}
+
+const URGENCY_TONE: Record<Urgency, 'bad' | 'accent' | 'neutral'> = {
+  overdue: 'bad',
+  today: 'accent',
+  soon: 'neutral',
+}
+
+const URGENCY_LABEL: Record<Urgency, string> = {
+  overdue: 'Overdue',
+  today: 'Today',
+  soon: 'Soon',
+}
+
+/**
+ * A dated thing from another area, as a row in the day's list.
+ *
+ * **It links rather than ticks, and that is the honest difference.**
+ * Everything else here is answered where it is drawn; a deadline is
+ * answered on the quest, a trip on the map, a person by seeing them. So
+ * the whole row is the link, and it carries no control that would imply
+ * otherwise.
+ */
+function AgendaRow({ item }: { readonly item: AgendaItem }) {
+  return (
+    <Link to={item.href} className="hover:bg-ink-850 flex items-center gap-3 rounded-lg px-2 py-2">
+      <span className="min-w-0 flex-1">
+        <span className="text-ink-100 block truncate text-sm">{item.title}</span>
+        <span className="text-ink-500 block truncate text-xs">{item.detail}</span>
+      </span>
+      <Badge tone={URGENCY_TONE[item.urgency]}>{URGENCY_LABEL[item.urgency]}</Badge>
+    </Link>
+  )
+}
+
 const HYGIENE_SUGGESTIONS: readonly {
   readonly title: string
   readonly group?: string
@@ -1255,6 +1303,21 @@ export function Dailies() {
    * row that vanished there would read as lost.
    */
   const goals = (useDailyGoals().data?.statuses ?? []).filter((one) => one.isDueToday)
+
+  /*
+   * **The agenda is in here too, and "Due elsewhere" is gone.**
+   * Reported: *"I just see an empty due elsewhere now — that's not
+   * really helpful, why not move everything to where you moved the Codex
+   * stuff."* Fair on both counts. A section that renders a heading and
+   * an empty state on a screen whose own rule is *silent when there is
+   * nothing to say* was noise, and once the Codex goals had moved there
+   * was no reason the other three should not follow.
+   *
+   * So this section is the whole answer to "what does today ask of me",
+   * whatever record each row happens to be: habits, reading goals,
+   * deadlines, trips and people.
+   */
+  const agenda = useAgenda().data ?? []
   const services = useServices()
   const [adding, setAdding] = useState(false)
   const [showLater, setShowLater] = useState(false)
@@ -1360,6 +1423,24 @@ export function Dailies() {
   const goalsDone = goals.filter((one) => one.isMet)
 
   /*
+   * **Overdue and today are the day; soon is a fold.** A trip in four
+   * days is not what today asks, and putting it in the day's count would
+   * make that count say something it does not mean — the rule that a
+   * count and the rows under it are one claim.
+   *
+   * It is still worth having on the screen, which is why it folds rather
+   * than disappearing: the whole reason the agenda exists is that a
+   * deadline four days out was readable only by opening the quest.
+   */
+  const dueNow = agenda.filter((item) => item.urgency !== 'soon')
+  const soon = agenda.filter((item) => item.urgency === 'soon')
+
+  /* Grouped by area, in the order the agenda already sorted them. */
+  const agendaGroups = (['quests', 'map', 'party'] as const)
+    .map((area) => ({ area, rows: dueNow.filter((item) => item.area === area) }))
+    .filter((group) => group.rows.length > 0)
+
+  /*
    * Own habits only — which now includes hygiene. House and Training are
    * managed on their own screens, and `useDueElsewhere` never offers
    * their other days in the first place.
@@ -1402,7 +1483,12 @@ export function Dailies() {
    * and the rows cannot come apart, which is what two passes made
    * possible.
    */
-  const left = outstanding.length + goalsLeft.length
+  /*
+   * Everything outstanding today, whatever record it is. A deadline due
+   * today is outstanding today even though it is answered on another
+   * screen, so leaving it out would make the sentence quietly false.
+   */
+  const left = outstanding.length + goalsLeft.length + dueNow.length
 
   /* Every title in use, so nothing is offered that already exists. */
   const taken = new Set(
@@ -1446,12 +1532,15 @@ export function Dailies() {
         />
       )}
 
-      {views.length === 0 && elsewhere.length === 0 && goals.length === 0 && (
-        <Empty title="No dailies yet">
-          A daily here is a checkbox and a streak. It cannot ring — nothing in a web app on iOS can
-          — so it earns its place by being the first thing on this screen.
-        </Empty>
-      )}
+      {views.length === 0 &&
+        elsewhere.length === 0 &&
+        goals.length === 0 &&
+        agenda.length === 0 && (
+          <Empty title="No dailies yet">
+            A daily here is a checkbox and a streak. It cannot ring — nothing in a web app on iOS
+            can — so it earns its place by being the first thing on this screen.
+          </Empty>
+        )}
 
       {/*
         The day in bands, with the categories inside each — see
@@ -1487,6 +1576,24 @@ export function Dailies() {
           </Card>
         </div>
       )}
+
+      {/*
+        The dated things, one group per area, in the same shape as the
+        Codex group above. Below the habits and the goals because those
+        are answered here and these are answered somewhere else.
+      */}
+      {agendaGroups.map((group) => (
+        <div key={group.area} className="mt-2">
+          <span className="text-ink-700 mb-1 block text-xs tracking-wide uppercase">
+            {AGENDA_GROUPS[group.area]}
+          </span>
+          <Card className="divide-ink-800 divide-y py-0">
+            {group.rows.map((item) => (
+              <AgendaRow key={item.id} item={item} />
+            ))}
+          </Card>
+        </div>
+      ))}
 
       {later.length > 0 && (
         <button
@@ -1535,6 +1642,22 @@ export function Dailies() {
             categoryOf={homeOrGroup}
             render={(view, part) => <DailyRow view={view} part={part} />}
           />
+        </Fold>
+      )}
+
+      {/*
+        A deadline four days out is not what today asks, so it folds with
+        the rest of what the day is not asking — but it stays on the
+        screen, because being able to see it without opening the quest is
+        the entire reason the agenda exists.
+      */}
+      {soon.length > 0 && (
+        <Fold summary={`${counted(soon.length, 'thing', 'things')} coming up`}>
+          <Card className="divide-ink-800 divide-y py-0">
+            {soon.map((item) => (
+              <AgendaRow key={item.id} item={item} />
+            ))}
+          </Card>
         </Fold>
       )}
     </>

@@ -1,10 +1,9 @@
-import { CalendarCheck, Map, Settings, Target, Users } from 'lucide-react'
+import { CalendarCheck, Settings } from 'lucide-react'
 import { useCampaigns } from '@/features/campaign/hooks'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 
-import type { AgendaItem, Urgency } from '@/application/use-cases/today/agenda'
-import { Badge, Card, Empty, Section } from '@/components/shared/primitives'
+import { Badge, Card, Section } from '@/components/shared/primitives'
 import { buttonStyles } from '@/components/shared/styles'
 import { buildCharacter, LEVELS } from '@/domain/game/character'
 import { totalWorkingSets } from '@/domain/logging/workout-log'
@@ -25,7 +24,6 @@ import { LeadsToday } from '@/features/jobs/LeadsToday'
 import { DigestCard } from '@/features/news/DigestCard'
 
 import { Dailies } from './Dailies'
-import { useAgenda } from './hooks'
 
 /**
  * One screen: who you are, what today asks, and where you stand.
@@ -63,45 +61,7 @@ import { useAgenda } from './hooks'
  * rather than met on the way to a checkbox.
  */
 
-/*
- * The three areas the agenda can name. Codex left when its goals moved
- * into the day's list, so the icon went with it.
- */
-const AREA_ICON = {
-  quests: Target,
-  map: Map,
-  party: Users,
-} as const
-
-const URGENCY_TONE: Record<Urgency, 'bad' | 'accent' | 'neutral'> = {
-  overdue: 'bad',
-  today: 'accent',
-  soon: 'neutral',
-}
-
-const URGENCY_LABEL: Record<Urgency, string> = {
-  overdue: 'Overdue',
-  today: 'Today',
-  soon: 'Soon',
-}
-
-function AgendaRow({ item }: { readonly item: AgendaItem }) {
-  const Icon = AREA_ICON[item.area]
-
-  return (
-    <Link to={item.href} className="hover:bg-ink-850 flex items-center gap-3 rounded-lg px-2 py-2">
-      <Icon size={16} className="text-ink-500 shrink-0" aria-hidden />
-      <span className="min-w-0 flex-1">
-        <span className="text-ink-100 block truncate text-sm">{item.title}</span>
-        <span className="text-ink-500 block truncate text-xs">{item.detail}</span>
-      </span>
-      <Badge tone={URGENCY_TONE[item.urgency]}>{URGENCY_LABEL[item.urgency]}</Badge>
-    </Link>
-  )
-}
-
 export function HomePage() {
-  const agenda = useAgenda()
   const active = useActiveQuests()
   /*
    * The first arc with something outstanding. Several arcs are possible
@@ -137,7 +97,6 @@ export function HomePage() {
    * called "level" on one page, disagreeing, is worse than either alone.
    */
   const standing = sheet.data?.standing
-  const rows = agenda.data ?? []
   const today = toDayKey(services.clock.now())
 
   /*
@@ -270,7 +229,21 @@ export function HomePage() {
         whole lost when the progression moved above it — restored here at
         the level where it still applies.
       */}
-      <Section title="Dailies" description="A checkbox and a streak.">
+      {/*
+        **One section for the whole day.** It began as the habits, took
+        the Codex goals when those turned out to be habits in all but
+        record type, and then took the deadlines, trips and people when a
+        section holding only those was empty most mornings — reported as
+        *"I just see an empty due elsewhere now, that's not really
+        helpful, why not move everything to where you moved the Codex
+        stuff."*
+
+        So the heading is no longer "Dailies": it is the day, and the
+        dailies are the largest thing in it. `domain/dailies` keeps its
+        name — this is a screen word, the same split Quests keeps over
+        `Project`.
+      */}
+      <Section title="Today" description="Everything the day is asking for.">
         <Dailies />
       </Section>
 
@@ -290,51 +263,6 @@ export function HomePage() {
       {/* Both silent unless this morning's read found something. */}
       <LeadsToday />
       <DigestCard />
-
-      {/*
-        **"Due elsewhere", because "Due" claimed the whole screen.**
-        Reported: *"the due section seems broad, since dailies and stuff
-        are also considered due."* Fair — the habits above are due, the
-        limits are a today reading, and a bare *Due* over a fourth list
-        reads as though it were the authority on all of it.
-
-        What this list actually is: the things with a *when* that live in
-        areas with no block of their own here — a quest's deadline, a
-        trip, somebody you have not seen. So the title says elsewhere,
-        matching the sense "Everywhere else" uses further down: **other
-        areas**, not other times.
-
-        Codex goals were in it and are with the dailies now: they carry
-        the habits' own cadence and hold a streak, so what is left here
-        is the things with a **date** rather than a cadence. None of
-        these recur.
-
-        The description names the four rather than saying "across your
-        areas", which was true of every section on the page.
-      */}
-      <Section
-        title="Due elsewhere"
-        description={
-          rows.length === 0
-            ? undefined
-            : `${rows.length.toString()} across quests, trips and the party`
-        }
-      >
-        {rows.length === 0 ? (
-          <Empty title="Nothing outstanding">
-            <span className="inline-flex items-center gap-2">
-              <CalendarCheck size={16} aria-hidden />
-              No deadlines, no trips coming, nobody overdue.
-            </span>
-          </Empty>
-        ) : (
-          <Card className="divide-ink-800 divide-y py-0">
-            {rows.map((item) => (
-              <AgendaRow key={item.id} item={item} />
-            ))}
-          </Card>
-        )}
-      </Section>
 
       {/*
         ── Where you stand ─────────────────────────────────────────────

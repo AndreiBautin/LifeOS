@@ -2329,19 +2329,38 @@ the domain refused correctly and no screen could ask it to. Adding a
 domain rule means adding the control that can trip it, or the guard is
 decoration with a test attached.
 
-**The agenda is called "Due elsewhere", because "Due" claimed the whole
-screen.** Reported: _"the due section seems broad, since dailies and
-stuff are also considered due."_ Fair — the habits above it are due, the
-limits are a today reading, and a bare _Due_ over a fourth list reads as
-though it were the authority on all of them.
+**One section is the whole day, and "Due elsewhere" is gone.** It went
+through two reports. The first — _"the due section seems broad, since
+dailies and stuff are also considered due"_ — got the name narrowed and
+the Codex goals moved out. The second, once the section was empty most
+mornings: _"I just see an empty due elsewhere now, that's not really
+helpful, why not move everything to where you moved the Codex stuff."*
 
-What that list actually holds is the things with a **when** that live in
-areas with no block of their own on this screen: a quest's deadline, a
-trip, somebody you have not seen. So the title says
-_elsewhere_, in the sense "Everywhere else" already uses further down —
-**other areas**, not other times — and the description names the four
-rather than saying "across your areas", which was true of every section
-on the page.
+Right on both counts. A section rendering a heading and an empty state
+sat against this screen's own rule — **silent when there is nothing to
+say**, which the leads and digest cards already follow — and once the
+Codex goals had moved there was no principle keeping the other three
+out. The heading is **Today** and it answers one question: what does the
+day ask of me, whatever record each row happens to be.
+
+**Overdue and today are the day; soon is a fold.** A trip four days out
+is not what today asks, and counting it would make _"N left today"_ say
+something it does not mean — the rule that a count and the rows beneath
+it are one claim. It folds rather than disappearing, because seeing a
+deadline without opening the quest is the entire reason the agenda
+exists.
+
+**The dated rows link rather than tick, and that is left visible.** A
+habit and a reading goal are answered where they are drawn; a deadline
+is answered on the quest, a trip on the map, a person by seeing them. So
+those rows are wholly a link and carry no control implying otherwise —
+but they are still counted, because a deadline due today is outstanding
+today wherever it is answered.
+
+**The section heading is no longer `Dailies`, and the domain still is.**
+`domain/dailies` keeps its name; this is a screen word, the same split
+Quests keeps over `Project`. The habits are still the largest thing in
+the section and still the only thing banded by part of day.
 
 **Today reports what is due everywhere; the other screens own their
 lists.** Splitting chores to Base and upkeep to Vitals left Today's
