@@ -519,7 +519,14 @@ export function HomesPage() {
   const rows = homes.data ?? []
 
   return (
-    <div>
+    /*
+      The wrapper for the same reason Today has one: the card below states
+      no margin, and the sections after it space themselves at 2rem. It
+      was reaching for `mb-3` at the call site and landing at 12 pixels
+      against their 32, so the limitation read as attached to the heading
+      above it rather than as a block of its own.
+    */
+    <div className="space-y-8">
       <PageHeader title="Houses" subtitle="What you are considering, and what is around it" />
 
       {/*
@@ -528,7 +535,7 @@ export function HomesPage() {
         and none of them can be read from a browser — a search box that
         never found anything would be worse than saying so.
       */}
-      <Card className="mb-3">
+      <Card>
         <p className="text-ink-300 text-sm">
           Listing sites cannot be searched from here — none of them allow it. Paste a house in and
           the app does the part it can: it places the address, asks OpenStreetMap what is within

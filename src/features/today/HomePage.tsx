@@ -143,7 +143,27 @@ export function HomePage() {
   const elsewhere = (sheet.data?.areas ?? []).filter((area) => area.area !== 'training')
 
   return (
-    <>
+    /*
+      The page owns the rhythm between its blocks, because not every block
+      on it is a `Section`.
+
+      `Section` carries its own `mb-8` and every other screen is nothing
+      but sections, so the spacing looked like it came from somewhere.
+      Today is the one screen that also puts **bare cards** at page level
+      — the portrait, the condition, the leads and the digest — and a bare
+      card carries no margin at all. So the season heading sat flush
+      against the portrait while every other gap on the screen was 2rem,
+      which reads as a rendering fault rather than as a group.
+
+      `space-y-8` rather than an `mb-8` on each of the four, because the
+      fifth card added here would have the bug again. It cannot
+      double-space what is already spaced: a margin utility on the child
+      wins over the `:where()` rule this generates, so a section still
+      ends 2rem from what follows it and the header still ends 1.5rem
+      from what follows it. It reaches exactly the blocks that state
+      nothing.
+    */
+    <div className="space-y-8">
       {/*
         No portrait in the header any more. It was there as a small link
         to the sheet, and the sheet is now the first thing under it —
@@ -345,6 +365,6 @@ export function HomePage() {
           </p>
         </Card>
       </Section>
-    </>
+    </div>
   )
 }

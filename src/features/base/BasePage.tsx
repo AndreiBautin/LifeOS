@@ -472,7 +472,14 @@ export function BasePage() {
   const otherChores = (chores.data ?? []).filter((view) => !view.dueToday && !view.doneToday)
 
   return (
-    <div className="space-y-4">
+    /*
+      Nothing on this page states no margin of its own today, so this
+      changes nothing on screen. It is eight rather than four so that the
+      three wrappers agree: a page-level block with no margin gets the
+      same 2rem here as it does on Today and Vitals, rather than half of
+      it depending on which screen it was added to.
+    */
+    <div className="space-y-8">
       <PageHeader title="Base" subtitle="The place you live, and what it is asking for" />
 
       <Section

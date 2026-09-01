@@ -585,7 +585,15 @@ function CutLine() {
 
 export function VitalsPage() {
   return (
-    <div className="space-y-4">
+    /*
+      Eight rather than four, for the reason Today's wrapper exists: this
+      spacing only ever reaches a block that states none of its own, and
+      the only one here is `CutLine` — a bare card between two sections.
+      At `space-y-4` it sat half as far from its neighbours as they sit
+      from each other, which is the same defect the season heading had,
+      one notch less obvious.
+    */
+    <div className="space-y-8">
       <PageHeader title="Vitals" subtitle="What the body is doing" />
 
       <Section title="Phase" description="Where the scale is meant to be going">
