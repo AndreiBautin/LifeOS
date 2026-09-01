@@ -5,13 +5,15 @@ import { useState } from 'react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { Link } from 'react-router-dom'
 
-import { Badge, Button, Card, Empty, Section } from '@/components/shared/primitives'
+import { Button, Card, Empty, Section } from '@/components/shared/primitives'
 import { buttonStyles } from '@/components/shared/styles'
 import type { DailyView } from '@/application/use-cases/dailies/dailies'
 import type { Project } from '@/domain/projects/project'
 import type { Upgrade } from '@/domain/upgrades/upgrade'
 import { BASE, JOB_APPROACHES, stepsFor, type JobApproach } from '@/domain/base/base'
 import { UPGRADE_SHELF_LABELS, UPGRADE_SHELVES } from '@/domain/upgrades/shelf'
+import { owned, wanted, wishlistTotal } from '@/domain/upgrades/wishlist'
+import { formatMinorUnits, isOwned } from '@/domain/upgrades/upgrade'
 import { cn } from '@/lib/cn'
 
 import { useKeepToday, useMoveDailyHome, useUndoToday } from '../today/dailies-hooks'
@@ -186,9 +188,19 @@ function UpgradeRow({ upgrade }: { readonly upgrade: Upgrade }) {
   return (
     <li className="flex items-center justify-between gap-2">
       <span className="text-ink-300 min-w-0 flex-1 truncate text-sm">{upgrade.title}</span>
-      <Badge tone={upgrade.status === 'purchased' ? 'good' : 'neutral'}>
-        {upgrade.status === 'purchased' ? 'Owned' : 'Wanted'}
-      </Badge>
+      {/*
+        The cost, where there is one, in place of the badge that used to
+        sit here. Under a heading that says "Wanted", a chip saying
+        "Wanted" is noise — and the price is the thing you actually want
+        to see beside a name you are saving for. Silent when there is no
+        estimate rather than showing a nought, because an unpriced
+        dishwasher is not a free one.
+      */}
+      {upgrade.estimatedCostMinorUnits !== undefined && !isOwned(upgrade) && (
+        <span className="text-ink-700 numeric shrink-0 text-xs">
+          {formatMinorUnits(upgrade.estimatedCostMinorUnits)}
+        </span>
+      )}
       {/*
         Off the house shelf, and now it has to say *which* other one.
         A single "back to the tech tree" button was right while there
@@ -450,6 +462,10 @@ export function BasePage() {
    * duplicating it here would be two places to set one number.
    */
   const upgrades = useUpgradeTree(0, 'base')
+  const houseUpgrades = (upgrades.data ?? []).map((entry) => entry.upgrade)
+  const houseWanted = wanted(houseUpgrades)
+  const houseOwned = owned(houseUpgrades)
+  const total = wishlistTotal(houseUpgrades)
 
   const dueChores = (chores.data ?? []).filter((view) => view.dueToday || view.doneToday)
   const otherChores = (chores.data ?? []).filter((view) => !view.dueToday && !view.doneToday)
@@ -589,11 +605,52 @@ export function BasePage() {
               either way — a dishwasher and a barbell come out of the same money.
             </Empty>
           ) : (
-            <ul className="space-y-1.5">
-              {upgrades.data.map((entry) => (
-                <UpgradeRow key={entry.upgrade.id} upgrade={entry.upgrade} />
-              ))}
-            </ul>
+            <>
+              {/*
+                Split rather than badged. The two answer different
+                questions — what is in the house against what you are
+                saving for — and a Wanted chip is a poor substitute for a
+                heading once the list is longer than a glance.
+              */}
+              {houseWanted.length > 0 && (
+                <div className="mb-3">
+                  <div className="mb-1.5 flex items-baseline justify-between gap-2">
+                    <span className="text-ink-700 text-xs tracking-wide uppercase">Wanted</span>
+                    {/*
+                      What the list comes to, with the unpriced ones
+                      *named* rather than folded in as nothing. A couch
+                      with no estimate is not a free couch, and a total
+                      that pretended otherwise would be understated in
+                      the direction that matters.
+                    */}
+                    {total.priced > 0 && (
+                      <span className="text-ink-700 numeric text-xs">
+                        {formatMinorUnits(total.minorUnits)} across {total.priced}
+                        {total.unpriced > 0 && ` · ${String(total.unpriced)} unpriced`}
+                      </span>
+                    )}
+                  </div>
+                  <ul className="space-y-1.5">
+                    {houseWanted.map((upgrade) => (
+                      <UpgradeRow key={upgrade.id} upgrade={upgrade} />
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {houseOwned.length > 0 && (
+                <div>
+                  <span className="text-ink-700 mb-1.5 block text-xs tracking-wide uppercase">
+                    In the house
+                  </span>
+                  <ul className="space-y-1.5">
+                    {houseOwned.map((upgrade) => (
+                      <UpgradeRow key={upgrade.id} upgrade={upgrade} />
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </>
           )}
 
           <Link to="/upgrades" className={cn(buttonStyles({ variant: 'outline' }), 'mt-3 w-full')}>

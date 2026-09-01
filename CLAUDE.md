@@ -2886,6 +2886,28 @@ belt. Narrowing it to the gear shelf would be more precise about the
 word and worse on the screen — somebody whose purchases are all tech
 would have an empty portrait to make a label read better.
 
+**The house list is split into what you are saving for and what is
+already here.** It was flat — everything on the shelf in one column with
+a Wanted or Owned chip to tell them apart — which is fine at three rows
+and stops being fine at fifteen. The two answer different questions, and
+a badge is a poor substitute for a heading when the second is what you
+opened the screen to read.
+
+**The cost replaced the badge on the row.** Under a heading that says
+Wanted, a chip saying "Wanted" is noise, and the price is the thing you
+want beside a name you are saving for. Silent when there is no estimate
+rather than showing a nought.
+
+**The total names its unpriced rows rather than folding them in as
+zero**, which is why `wishlistTotal` is a type and not a `reduce` at
+the call site. A couch with no estimate is not a free couch, and a total
+that pretended otherwise would be understated **in the direction that
+matters** — you would be saving towards a figure the list cannot
+support. It reads "570.00 across 2 · 1 unpriced".
+
+Cancelled is in neither list. Something decided against is not on a
+wishlist, and it is not in the house either.
+
 **Base files upgrades; the tech tree edits them.** `moveUpgradeHome`
 was the last of the three move functions with no caller, which is why
 that panel could only ever be empty. The row on Base is deliberately
