@@ -3833,10 +3833,39 @@ that are neither. It is dropped from `elsewhere` in the same breath or
 every upkeep row is counted and drawn twice, which is the bug the
 previous shape shipped with.
 
-**What is left of the Upkeep section is the way to add one.** It stays a
-`Section` rather than folding into that group because **a group is not
-drawn when it has no rows**, and the first upkeep habit has to be
-addable from a screen showing none.
+**The Upkeep section is gone, and its one real job moved into the add
+form.** Reduced to a `Section` holding an Add button and four chips, it
+read as furniture: _"do we even need the upkeep section under dailies,
+it seems redundant."_ Fair about the section — and the capability under
+it was not redundant at all, because **nothing else in the app could
+file a habit to upkeep**. Today's Add filed to your own area, Base's to
+the house, and `moveDailyHome` only toggles between an area and Today.
+Deleting the section without moving that would have made upkeep a home
+you could own habits in and never create one in.
+
+`AddDaily` takes an optional `Filing`: the homes it may file to, the
+one-tap suggestions for each, and the titles already used. **Today is
+the only screen that passes one**, because it is the only screen that
+owns two homes; Base and Train own exactly one each and keep passing a
+fixed `home`, so nothing about them changed. House and Training are
+deliberately _not_ offered in the chips — those screens have an Add of
+their own, and a second route to the same record is a second place for
+it to go wrong.
+
+**The suggestions moved with it and are filtered by the chosen home**,
+so they appear when Upkeep is selected and not otherwise. They still
+offer by _name not already used_ rather than gating on an empty list,
+for the reason recorded when they were written: adding the first must
+not take the other three away. They submit on their own rather than
+filling the field — a suggestion whose whole value is saving a tap
+should not cost two.
+
+**`home?: RecordHome | undefined` is written out rather than left as
+`?`.** Under `exactOptionalPropertyTypes` an absent key and one holding
+`undefined` are different types, and "your own area" **is** an explicit
+undefined here rather than an omission — which is what `belongsTo` means
+everywhere else. Written as `?` alone the build refuses the `Yours`
+chip.
 
 **`DailyRow` moves a habit the way it is not currently filed**, and this
 was a latent bug that only bit once upkeep joined the list. The button

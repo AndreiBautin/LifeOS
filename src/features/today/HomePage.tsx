@@ -21,7 +21,6 @@ import { SeasonCard } from '@/features/character/SeasonCard'
 import { useCharacterSheet, useSeasonProgress } from '@/features/character/hooks'
 import { useReviewDraft } from '@/features/review/hooks'
 import { LimitsCard } from '@/features/vitals/LimitsCard'
-import { Upkeep } from './Upkeep'
 import { LeadsToday } from '@/features/jobs/LeadsToday'
 import { DigestCard } from '@/features/news/DigestCard'
 
@@ -242,13 +241,6 @@ export function HomePage() {
       <Section title="Dailies" description="A checkbox and a streak.">
         <Dailies />
       </Section>
-
-      {/*
-        Directly under the day it belongs to. It is the way to add an
-        upkeep habit; the habits themselves are listed in the section
-        above, among everything else the day asks for.
-      */}
-      <Upkeep />
 
       <Section title="Active quests" description="One main, one side.">
         <ActiveQuests

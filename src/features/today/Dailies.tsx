@@ -578,16 +578,58 @@ export function DailyRow({ view }: { readonly view: DailyView }) {
  * place a cadence bug lives on after the first is fixed. `home` is the
  * only difference between the two callers.
  */
+/**
+ * Where a new habit can be filed, and what to offer for each.
+ *
+ * Passed only by Today, which owns two homes — your own habits and
+ * upkeep — and is therefore the one screen where "add" has to ask. Base
+ * and Train each own exactly one, so they keep passing a fixed `home`
+ * and this is absent.
+ *
+ * It exists because the alternative was a `Section` of its own holding
+ * a single Add button, which is what upkeep had: reported as *"do we
+ * even need the upkeep section under dailies, it seems redundant"* —
+ * fair about the section, and the capability under it was not redundant
+ * at all, since nothing else in the app could file a habit to upkeep.
+ */
+export interface Filing {
+  /*
+   * `| undefined` written out, not just `?`. Under
+   * `exactOptionalPropertyTypes` an absent key and one holding
+   * `undefined` are different types, and "your own area" *is* an
+   * explicit undefined here rather than an omission — that is what
+   * `belongsTo` means everywhere else.
+   */
+  readonly homes: readonly { readonly home?: RecordHome | undefined; readonly label: string }[]
+  /** One-tap habits, each offered only under the home it belongs to. */
+  readonly suggestions?: readonly {
+    readonly title: string
+    readonly home?: RecordHome | undefined
+    readonly timesPerDay?: number
+  }[]
+  /** Titles already in use, lower-cased, so nothing is offered twice. */
+  readonly taken: ReadonlySet<string>
+}
+
 export function AddDaily({
   onDone,
   home,
+  filing,
   placeholder = 'Something you mean to do daily',
 }: {
   readonly onDone: () => void
   readonly home?: RecordHome
+  readonly filing?: Filing
   readonly placeholder?: string
 }) {
-  const add = useAddDaily(home)
+  const [chosen, setChosen] = useState<RecordHome | undefined>(filing?.homes[0]?.home ?? home)
+
+  /*
+   * The fixed `home` when there is no choice to make, so the two screens
+   * that pass one are untouched by any of this.
+   */
+  const filedTo = filing === undefined ? home : chosen
+  const add = useAddDaily(filedTo)
   const [title, setTitle] = useState('')
   const [days, setDays] = useState<readonly number[]>([])
   const [monthly, setMonthly] = useState(false)
@@ -635,6 +677,77 @@ export function AddDaily({
             setTitle(event.target.value)
           }}
         />
+
+        {/*
+          Where it is filed, first, because it decides which area scores
+          the habit — not merely which list it lands in. Only drawn where
+          there is a choice to make.
+        */}
+        {filing !== undefined && (
+          <div className="flex gap-1">
+            {filing.homes.map((option) => (
+              <button
+                key={option.label}
+                type="button"
+                aria-pressed={chosen === option.home}
+                className={[
+                  'tap-target flex-1 rounded-lg border px-2 text-xs font-medium',
+                  chosen === option.home
+                    ? 'border-accent-500 bg-accent-500/15 text-accent-400'
+                    : 'border-ink-800 text-ink-500',
+                ].join(' ')}
+                onClick={() => {
+                  setChosen(option.home)
+                }}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/*
+          The one-tap habits for whichever home is selected, minus the
+          ones already in use — the pools' rule, and the reason it is
+          *by name* rather than gated on an empty list: adding the first
+          must not take the other three away.
+
+          They submit on their own rather than filling the field, because
+          a suggestion whose whole value is saving a tap should not cost
+          two.
+        */}
+        {filing?.suggestions !== undefined && (
+          <div className="flex flex-wrap gap-1.5">
+            {filing.suggestions
+              .filter(
+                (one) => one.home === filedTo && !filing.taken.has(one.title.trim().toLowerCase()),
+              )
+              .map((suggestion) => (
+                <Button
+                  key={suggestion.title}
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={add.isPending}
+                  onClick={() => {
+                    add.mutate(
+                      {
+                        title: suggestion.title,
+                        cadence: { kind: 'every-day' },
+                        ...(suggestion.timesPerDay === undefined
+                          ? {}
+                          : { timesPerDay: suggestion.timesPerDay }),
+                      },
+                      { onSuccess: onDone },
+                    )
+                  }}
+                >
+                  <Plus size={14} aria-hidden />
+                  {suggestion.title}
+                </Button>
+              ))}
+          </div>
+        )}
 
         {/*
           When in the day it belongs, which is a third question again:
@@ -854,6 +967,31 @@ export function AddDaily({
  * upkeep has no link because **this is that screen**, the same reason
  * the own-dailies fold below carries none.
  */
+/**
+ * The body's chores, offered by name.
+ *
+ * Upkeep was the one list in the app with no suggestions — you typed
+ * every row — and it is the list whose contents are the least personal:
+ * everybody's is roughly brushing, flossing, hair and water. Water is
+ * the reason it still exists, since taking it off the pool suggestions
+ * left the only other way to it a form.
+ *
+ * Named for the thing being ticked rather than for the substance: a row
+ * reading just "Water" would be a checkbox against a question nobody
+ * fails, where the point is whether the day's target was finished.
+ * `timesPerDay` is on brushing because two is what brushing is.
+ */
+const UPKEEP_SUGGESTIONS: readonly {
+  readonly title: string
+  readonly home?: RecordHome | undefined
+  readonly timesPerDay?: number
+}[] = [
+  { title: 'Gallon of water', home: UPKEEP },
+  { title: 'Brush teeth', home: UPKEEP, timesPerDay: 2 },
+  { title: 'Floss', home: UPKEEP },
+  { title: 'Wash hair', home: UPKEEP },
+]
+
 const ELSEWHERE_GROUPS: readonly {
   readonly home: RecordHome
   readonly label: string
@@ -1025,6 +1163,25 @@ export function Dailies() {
 
       {adding && (
         <AddDaily
+          filing={{
+            /*
+             * Yours first, because it is the common case and the default
+             * the form opens on. Upkeep is the other home this screen
+             * owns; House and Training are not offered, since Base and
+             * Train each have an Add of their own and a second route to
+             * the same record is a second place for it to go wrong.
+             */
+            homes: [
+              { home: undefined, label: 'Yours' },
+              { home: UPKEEP, label: 'Upkeep' },
+            ],
+            suggestions: UPKEEP_SUGGESTIONS,
+            taken: new Set(
+              [...views, ...elsewhere, ...upkeepViews].map((view) =>
+                view.daily.title.trim().toLowerCase(),
+              ),
+            ),
+          }}
           onDone={() => {
             setAdding(false)
           }}
