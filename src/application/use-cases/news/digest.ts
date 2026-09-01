@@ -1,6 +1,7 @@
 import { canRead, rankDigest, type DigestPreferences, type RankedStory } from '@/domain/news/digest'
 import { SOURCE_LABELS, type NewsSource, type Story } from '@/domain/news/story'
 import type { Clock, NewsGateway } from '@/domain/repositories/ports'
+import { logger } from '@/shared/logging/logger'
 
 import { onceADay, type DailyOutcome, type DailyRunStore } from '../daily/once-a-day'
 
@@ -46,9 +47,17 @@ export async function readDigest(
         source,
         reason: `${SOURCE_LABELS[source]} could not be read`,
       })
-      // Kept for the log rather than the screen: a raw fetch error is
-      // not a sentence anybody can act on.
-      void error
+      /*
+       * **Logged, which it said it was and was not.** The line here read
+       * `void error` under a comment claiming it was "kept for the log",
+       * so the cause of every failure this screen has ever reported was
+       * discarded at the moment it was caught. A raw fetch error is
+       * still not a sentence for the screen — that part was right — but
+       * the difference between a 503, a CORS refusal and a phone with no
+       * signal is the whole of what anybody would need to know, and it
+       * went nowhere.
+       */
+      logger.error('digest.source-failed', { source, message: String(error) })
     }
   }
 

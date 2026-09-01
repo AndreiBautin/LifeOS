@@ -1,9 +1,10 @@
-import { Briefcase } from 'lucide-react'
+import { Briefcase, RefreshCw } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
-import { Badge, Card } from '@/components/shared/primitives'
+import { Badge, Button, Card } from '@/components/shared/primitives'
+import { useRetryToday } from '@/features/shared/useRetryToday'
 
-import { useMorningLeads } from './useDailySweep'
+import { DAILY_SWEEP, useMorningLeads } from './useDailySweep'
 
 /**
  * What this morning's read of the boards turned up, on Today.
@@ -26,6 +27,15 @@ export function LeadsToday() {
    * moment the day was marked, taking thirty leads with it.
    */
   const sweep = useMorningLeads()
+
+  /*
+   * The same missing control the digest had. `once-a-day.ts` promised a
+   * failed morning was "surfaced as `failed-earlier` with a manual
+   * control beside it" — there was none here either, so a sweep that
+   * failed on a resuming phone reported "The boards could not be read"
+   * until midnight with nothing able to try again.
+   */
+  const retry = useRetryToday((all) => all.sweepStore, DAILY_SWEEP)
 
   if (sweep === undefined) return null
 
@@ -58,6 +68,24 @@ export function LeadsToday() {
           <Badge tone={best.scored.score >= 70 ? 'good' : 'neutral'}>{best.scored.score}</Badge>
         )}
       </Link>
+
+      {/*
+        Outside the Link, because a button inside an anchor is a control
+        whose press navigates as well as fires.
+      */}
+      {failures.length > 0 && (
+        <Button
+          size="sm"
+          variant="ghost"
+          className="mt-1"
+          onClick={() => {
+            retry()
+          }}
+        >
+          <RefreshCw size={14} aria-hidden />
+          Try again
+        </Button>
+      )}
     </Card>
   )
 }

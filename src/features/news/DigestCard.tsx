@@ -1,4 +1,4 @@
-import { BookMarked, Newspaper } from 'lucide-react'
+import { BookMarked, Newspaper, RefreshCw } from 'lucide-react'
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
@@ -11,7 +11,9 @@ import { logger } from '@/shared/logging/logger'
 
 import { savedLinks } from '@/application/use-cases/news/digest'
 
-import { useDigest } from './useDigest'
+import { useRetryToday } from '@/features/shared/useRetryToday'
+
+import { DIGEST, useDigest } from './useDigest'
 
 /**
  * This morning's reading, on Today.
@@ -109,6 +111,7 @@ export function DigestCard() {
   const digest = useDigest()
   const services = useServices()
   const client = useQueryClient()
+  const retry = useRetryToday((all) => all.digestStore, DIGEST)
   /*
    * Which links are already in the Codex, read rather than remembered.
    *
@@ -188,11 +191,38 @@ export function DigestCard() {
         </p>
       )}
 
-      {failures.map((failure) => (
-        <p key={failure.source} className="text-warn-500 text-xs">
-          {failure.reason}
-        </p>
-      ))}
+      {/*
+        **The failures, and a way out of them.** They used to be two red
+        lines and nothing else: the gate remembers a run for the rest of
+        the day, and a run where every source failed is still a
+        remembered run — so a single bad moment on a resuming phone
+        pinned "Hacker News could not be read" to the screen until
+        midnight with nothing anywhere able to try again.
+
+        Pressing it forgets today and re-runs. That is a decision rather
+        than a storm, which is exactly the distinction `once-a-day.ts`
+        described and had no control for.
+      */}
+      {failures.length > 0 && (
+        <div className="mb-1">
+          {failures.map((failure) => (
+            <p key={failure.source} className="text-warn-500 text-xs">
+              {failure.reason}
+            </p>
+          ))}
+          <Button
+            size="sm"
+            variant="ghost"
+            className="mt-1"
+            onClick={() => {
+              retry()
+            }}
+          >
+            <RefreshCw size={14} aria-hidden />
+            Try again
+          </Button>
+        </div>
+      )}
 
       <ul>
         {shown.map((ranked) => (

@@ -1473,6 +1473,42 @@ whole list. The two are stored at different moments, which is what
 makes a failure (`failed-earlier`) distinguishable from a success that
 returned nothing.
 
+**The manual retry that sentence promised did not exist, and a failed
+morning was unrecoverable until midnight.** Reported as _"Hacker News
+could not be read / DEV could not be read"_. Both endpoints answer a
+browser fine — checked from the deployed origin, 200 with CORS on both —
+so the failure was real once and then **stuck**.
+
+Two mechanisms held it there, and they arrive at the same dead card by
+different routes:
+
+- `forgetToday` was written, exported and **called by nothing**, the
+  eighth instance of that shape here. So `failed-earlier` had no way
+  out.
+- **A total failure is remembered as a success.** `readDigest` catches
+  per source and returns the failures as _data_, so the gate stores a
+  perfectly good result that happens to be two error lines —
+  `remembered`, not `failed-earlier`. The sweep does the same.
+
+Both cards carry a **Try again** now, through `useRetryToday`: forget
+the day, invalidate the query, let the gate re-run. That is the decision
+rather than the storm the paragraph above describes. The queries stay
+`staleTime: Infinity` with every refetch off, because the point was
+never that this should retry _by itself_.
+
+**Why one bad moment is likely rather than rare:** both jobs run on the
+first open of a day, and a PWA's first open is a **resume from the
+background** — precisely when a phone is most likely to have no usable
+connection yet.
+
+**The cause was thrown away at the moment it was caught.** The catch
+read `void error` under a comment saying it was "kept for the log". It
+was not, so every failure this screen has ever reported was
+undiagnosable — a 503, a CORS refusal and a phone with no signal all
+rendered as the same sentence with nothing behind it. It logs
+`digest.source-failed` now. **A comment claiming something is logged is
+worth checking, not trusting.**
+
 **A saved story is checked against the Codex, not against component
 state.** A story sits on the front page two days running, and state
 alone resets on reload — which is exactly when the duplicate gets made.
