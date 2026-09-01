@@ -1209,7 +1209,15 @@ stand down; and the link says _arc_ outright.
 each has stages."_ Exactly right: **a middot between two nouns reads as
 apposition**, so a label meant to mark the _card_ landed on the _stage_
 beside it and renamed it. It is `Fix up the house · stage 1 of 6` now,
-and `Stage 2 of 2` when the line above already named the stage.
+and `Stage 2 of 2` when the other line already names the stage.
+
+**The stage sits above the step, which is the order the thing nests.**
+Asked for as _"it should read stage and then job, just flip those
+lines"_ — an arc holds stages and a stage is met by jobs, so reading the
+card downwards now goes arc → stage → the thing to do, rather than
+meeting the job before knowing what it is for. The stage line stays the
+dimmer of the two: it is context, and the line under it is what you can
+act on, which is the hierarchy the side quest's slot already draws.
 
 Nothing was lost, because the prefix was the one honest-marker doing its
 job by assertion rather than by construction — the vocabulary, the

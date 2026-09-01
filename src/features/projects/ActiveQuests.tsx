@@ -121,17 +121,23 @@ function ArcSlot({ arc }: { readonly arc: CampaignStanding & { next: StageStandi
           </div>
 
           {/*
-            The concrete step where there is one, and the stage itself
-            where there is not. Either way this line answers the same
-            question the side quest's does.
-          */}
-          <p className="text-ink-500 mt-0.5 truncate text-xs">Next: {step ?? stage.name}</p>
+            **The stage first and the step under it**, because that is
+            the order the thing actually nests: an arc holds stages and a
+            stage is met by jobs. Asked for directly — *"it should read
+            stage and then job, just flip those lines"* — and it also
+            puts the card in the same top-to-bottom order as the arc
+            itself, so somebody reading down goes arc → stage → the thing
+            to do rather than meeting the job before knowing what it is
+            for.
 
-          {/*
-            The stage, and where it sits. The position is `nextPosition`,
-            the index of the stage named, rather than a count of what is
-            finished: `done + 1` said "stage 2 of 6" under the words "Fix
-            up the house", which is stage one.
+            It stays the dimmer of the two lines. This one is context and
+            the one below is the thing you can act on, which is the
+            hierarchy the side quest's slot already draws.
+
+            The position is `nextPosition`, the index of the stage named,
+            rather than a count of what is finished: `done + 1` said
+            "stage 2 of 6" under the words "Fix up the house", which is
+            stage one.
 
             **The word _Arc_ used to lead this line and had to go.**
             Reported: *"'Arc · Fix up the house' reads weird — it makes
@@ -152,6 +158,13 @@ function ArcSlot({ arc }: { readonly arc: CampaignStanding & { next: StageStandi
             {step === undefined ? 'Stage' : `${stage.name} · stage`} {arc.nextPosition ?? arc.total}{' '}
             of {arc.total}
           </p>
+
+          {/*
+            The concrete step where there is one, and the stage itself
+            where there is not. Either way this line answers the same
+            question the side quest's does, and reads the same way.
+          */}
+          <p className="text-ink-500 truncate text-xs">Next: {step ?? stage.name}</p>
 
           <Link to="/quests" className="text-ink-500 hover:text-ink-300 mt-2 block text-xs">
             Open the arc →
