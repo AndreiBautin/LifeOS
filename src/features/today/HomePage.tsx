@@ -150,8 +150,25 @@ export function HomePage() {
    * It leads the list, because `phase: 0` puts it first in
    * `sheet.areas` — so it sits roughly where the section did, one
    * heading shallower.
+   *
+   * **Dailies is the one area left out, and the rule is not the one
+   * training was excluded by.** Reported: *"dailies probably doesn't
+   * belong there."* It does not: this screen already gives the habits a
+   * block of their own, with the day's list, the counts and the streaks
+   * — so a card down here saying *Dailies · Kept* is the same area
+   * appearing twice under one word, for two different readings.
+   *
+   * The test is **whether the area has its own block on this screen**,
+   * not whether some number is duplicated. Training has none, so it
+   * earns a card; Dailies has the largest block on the page. Base keeps
+   * its card because what it now reports — how clear the house is, and
+   * steps closed on house jobs — is nowhere else here; its chores appear
+   * in the day's list, but chores are no longer what Base is rated on.
+   *
+   * The rating itself is untouched and still judged in the monthly
+   * review, which is the screen whose job is monthly judgements.
    */
-  const elsewhere = sheet.data?.areas ?? []
+  const elsewhere = (sheet.data?.areas ?? []).filter((area) => area.area !== 'dailies')
 
   return (
     /*

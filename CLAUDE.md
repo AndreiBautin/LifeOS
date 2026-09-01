@@ -871,6 +871,45 @@ and `measure.ts` deliberately names the three lifts instead of computing
 it from `STRENGTH_LIFTS`. That is why the override was needed at all —
 `area.ladders` is the three lifts and can never hold the total.
 
+**Dailies is the one area kept out of that list, and the test is not the
+one Training was kept out by.** Reported: _"dailies probably doesn't
+belong there."_ It does not — this screen already gives the habits the
+largest block on it, with the day's list, the counts and the streaks, so
+a card underneath saying _Dailies · Kept_ is one area appearing twice
+under one word for two different readings.
+
+The rule is **whether the area has its own block on this screen**, not
+whether some number is duplicated. Training has none, so it earns a
+card. Base keeps its card because what it now reports is nowhere else
+here. The rating itself is untouched and still judged in the monthly
+review, which is the screen whose job is monthly judgements.
+
+**Base is rated on the house, not on its chores.** Reported in the same
+breath: _"base should be more about declutter and projects status vs
+recurring tasks."_ It read `Chores kept`, a share of expected days —
+which is the _dailies_ rating with another name over it, because a chore
+is a recurring task that happens to be filed here. Two areas were
+reporting the same shape of month.
+
+`base.clear` is how clear the house is, from `houseStanding` over the
+rooms with a reading, and `base.jobs` is steps closed on house jobs.
+Both are `increase` rather than a threshold: there is no published
+figure for how cleared a house ought to be, and inventing one would be
+the scale this model refuses — so what is judged is whether it moved the
+right way, which is also the honest shape for a level that goes both
+ways over months.
+
+**Steps rather than jobs finished**, because a house job is rarely
+finished in the month it was opened and a rating that only moved on
+completion would read flat through every month of real work.
+
+**It can be counted at all because `projects.actions-closed-in-month` is
+own-area only.** The two filters are complements, so a house job's steps
+land in exactly one of them and rule three holds by construction rather
+than by attention. `base.chore-share-in-month` went with the rating it
+fed — a source nothing declares is weight the spine would go on
+computing every month.
+
 The card leads the list because Training is `phase: 0`, so it sits about
 where the section did, one heading shallower. Its heading now reads
 **Training** rather than _Strength_, since it is the area's own name and

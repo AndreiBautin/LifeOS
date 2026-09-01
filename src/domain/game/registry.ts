@@ -276,15 +276,53 @@ export const SCORING: readonly AreaScoring[] = [
      * recorded.
      */
     ladders: [],
+    /*
+     * **The house, not its chores.** Reported: *"base should be more
+     * about declutter and projects status vs recurring tasks."* It read
+     * `Chores kept`, a share of expected days — which is the *dailies*
+     * rating with a different name over it, because a chore is a
+     * recurring task that happens to be filed here. Base is about the
+     * state of the place and the work outstanding on it, and both were
+     * already recorded and neither was reported.
+     *
+     * The chores still pay `base.chore-kept` and still show in the day's
+     * list. What changed is what the *month* says about this area.
+     */
     ratings: [
       {
-        id: 'base.chores-kept',
-        source: 'base.chore-share-in-month',
-        name: 'Chores kept',
-        unit: '% of days expected',
-        direction: 'stay-above',
+        /*
+         * A level that moves both ways, which is why the direction is
+         * `increase` rather than a threshold. There is no published
+         * figure for how cleared a house ought to be — inventing one
+         * would be the scale this model refuses — so what is judged is
+         * whether it went the right way, the same footing the weight
+         * phase used to sit on.
+         */
+        id: 'base.clear',
+        source: 'base.clear',
+        name: 'Clear',
+        unit: '% clear',
+        direction: 'increase',
         cadence: 'monthly',
-        threshold: 80,
+      },
+      {
+        /*
+         * Steps closed on house jobs, which is the Base half of
+         * `projects.throughput` — countable here precisely because that
+         * one is own-area only, so a house job's steps land in exactly
+         * one of the two.
+         *
+         * Steps rather than jobs finished, because a house job is rarely
+         * finished in the month it was opened and a rating that only
+         * moved on completion would read flat through every month of
+         * real work.
+         */
+        id: 'base.jobs',
+        source: 'base.job-steps-in-month',
+        name: 'House jobs',
+        unit: 'steps',
+        direction: 'increase',
+        cadence: 'monthly',
       },
     ],
     /*

@@ -63,6 +63,7 @@ function harness(
     friends: list([]),
     places: list(seed.places ?? []),
     dailies: list([]),
+    rooms: list([]),
     vices: list([]),
     weighIns: list([]),
     finance: list([]),

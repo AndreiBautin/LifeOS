@@ -1,6 +1,7 @@
 import { daysPractisedIn, solvedIn } from '@/domain/mind/practice'
 import { getGoalsStats } from '@/domain/backlog/goals-stats'
 import { isBase, isJobs, isOwnArea } from '@/domain/base/base'
+import { houseStanding } from '@/domain/base/declutter'
 import { latest } from '@/domain/finance/reading'
 import { STRENGTH_LIFT_SLUGS } from '@/domain/exercises/catalogue'
 import { asExerciseId } from '@/domain/ids/ids'
@@ -15,6 +16,7 @@ import type {
   DailyRepository,
   PlaceRepository,
   ProjectRepository,
+  RoomRepository,
   SettingsRepository,
   UpgradeRepository,
   ViceRepository,
@@ -49,6 +51,7 @@ export interface MeasureDeps {
   readonly dailies: DailyRepository
   readonly explored: ExploredAreaRepository
   readonly settings: SettingsRepository
+  readonly rooms: RoomRepository
   readonly vices: ViceRepository
   readonly finance: FinanceRepository
   readonly attempts: AttemptRepository
@@ -230,8 +233,53 @@ export async function measureAll(deps: MeasureDeps): Promise<Readonly<Record<str
   const ownShare = shareKept(dailies.filter(isOwnArea))
   if (ownShare !== undefined) measured['dailies.kept-share-in-month'] = ownShare
 
-  const choreShare = shareKept(dailies.filter(isBase))
-  if (choreShare !== undefined) measured['base.chore-share-in-month'] = choreShare
+  /*
+   * **Base is measured on the house, not on its chores.** Reported:
+   * *"base should be more about declutter and projects status vs
+   * recurring tasks."* Right — a chore is a recurring task that happens
+   * to be filed to Base, and reading Base's month as "did you keep your
+   * chores" made it a second dailies rating under another name. What
+   * Base is actually about is the state of the place and the work
+   * outstanding on it, and both are already recorded.
+   *
+   * `base.chore-share-in-month` is gone with the rating it fed. Nothing
+   * else read it, and a source nothing declares is dead weight the
+   * spine would go on computing every month.
+   */
+
+  /*
+   * How clear the house is, averaged over the rooms that have a reading.
+   *
+   * A **level**, not a count of jobs — clutter moves both ways over
+   * months, which is the whole reason a room carries a series of
+   * readings rather than a checklist. Absent until something has been
+   * read, so a house nobody has looked at reports nothing rather than
+   * nought: `houseStanding` leaves unread rooms out for exactly that
+   * reason, and folding them in as zero would make *adding a room* read
+   * as the house getting worse.
+   */
+  const house = houseStanding(await deps.rooms.all(), `${month}-01`)
+  if (house.clear !== undefined) measured['base.clear'] = house.clear
+
+  /*
+   * Steps closed on house jobs this month.
+   *
+   * The Base half of `projects.actions-closed-in-month`, and it can be
+   * counted the same way precisely because that one is own-area only —
+   * so a house job's steps land here and nowhere else. Rule three holds
+   * by the two filters being complements.
+   *
+   * Absent when there are no house jobs at all: a month with nothing to
+   * do on the house did not fail to do it.
+   */
+  const houseJobs = allProjects.filter(isBase)
+  if (houseJobs.length > 0) {
+    measured['base.job-steps-in-month'] = houseJobs.flatMap((project) =>
+      project.actions.filter(
+        (action) => action.status === 'done' && action.completedAt?.slice(0, 7) === toMonth(now),
+      ),
+    ).length
+  }
 
   /*
    * The share of days this month that stayed inside every pool.

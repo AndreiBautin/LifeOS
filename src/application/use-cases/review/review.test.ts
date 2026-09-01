@@ -109,6 +109,7 @@ function harness(
     friends: stub(friendList),
     places: stub(placeList),
     dailies: stub([]),
+    rooms: stub([]),
     vices: stub([]),
     explored: {
       all: () => Promise.resolve(new Set(walkedCells)),
