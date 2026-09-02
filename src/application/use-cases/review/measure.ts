@@ -3,6 +3,11 @@ import { getGoalsStats } from '@/domain/backlog/goals-stats'
 import { isBase, isJobs, isOwnArea } from '@/domain/base/base'
 import { houseStanding } from '@/domain/base/declutter'
 import { latest } from '@/domain/finance/reading'
+import {
+  ageFromBirthYear,
+  netWorthPercentile,
+  retirementAgainstBenchmark,
+} from '@/domain/finance/standards'
 import { STRENGTH_LIFT_SLUGS } from '@/domain/exercises/catalogue'
 import { asExerciseId } from '@/domain/ids/ids'
 import type { Daily } from '@/domain/dailies/daily'
@@ -174,12 +179,33 @@ export async function measureAll(deps: MeasureDeps): Promise<Readonly<Record<str
   const score = latest(finance, 'creditScore')
   if (score !== undefined) measured['finance.credit-score'] = score
 
-  const thisMonthFinance = finance.find((reading) => reading.month === toMonth(now))
-  if (thisMonthFinance?.netWorthMinor !== undefined) {
-    measured['finance.net-worth-in-month'] = thisMonthFinance.netWorthMinor
-  }
-  if (thisMonthFinance?.retirementMinor !== undefined) {
-    measured['finance.retirement-in-month'] = thisMonthFinance.retirementMinor
+  /*
+   * **The money figures are read live, like the credit score, and not
+   * for the month.** A ladder must not depend on whether a screen was
+   * opened: the two below used to be monthly *ratings*, where a series
+   * is the whole point, and as ladders what matters is the most recent
+   * statement whenever it was taken.
+   *
+   * Both are absent without a birth year, and retirement is absent
+   * without an income too. `domain/finance/standards.ts` says why an
+   * age has to be stated rather than assumed.
+   */
+  const money = await deps.settings.get()
+  const netWorth = latest(finance, 'netWorthMinor')
+  const retirement = latest(finance, 'retirementMinor')
+
+  if (money.birthYear !== undefined) {
+    const age = ageFromBirthYear(money.birthYear, now)
+
+    if (netWorth !== undefined) {
+      const percentile = netWorthPercentile(netWorth, age)
+      if (percentile !== undefined) measured['finance.net-worth-percentile'] = percentile
+    }
+
+    if (retirement !== undefined) {
+      const share = retirementAgainstBenchmark(retirement, money.annualIncomeMinor, age)
+      if (share !== undefined) measured['finance.retirement-share'] = share
+    }
   }
 
   const friends = await deps.friends.all()

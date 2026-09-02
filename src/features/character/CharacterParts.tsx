@@ -109,6 +109,14 @@ export function LadderRow({ ladder }: { readonly ladder: AreaStanding['ladders']
 /** A share reads as a percentage; everything else reads as itself. */
 function formatLadderValue(value: number | undefined, unit: string): string {
   if (value === undefined) return unit
+  /*
+   * An ordinal, because "78.00 percentile" reads as a measurement to two
+   * decimal places and it is an interpolation between four published
+   * points. Rounded to the whole number it honestly is.
+   */
+  if (unit === 'percentile for your age') {
+    return `${ordinal(Math.round(value))} ${unit}`
+  }
   if (unit === 'share of region') {
     const percent = value * 100
 
@@ -126,4 +134,12 @@ function formatLadderValue(value: number | undefined, unit: string): string {
 
 function formatValue(value: number): string {
   return Number.isInteger(value) ? value.toString() : value.toFixed(2)
+}
+
+/** 1st, 2nd, 3rd, 4th — including the teens, which are all "th". */
+function ordinal(value: number): string {
+  const tens = value % 100
+  if (tens >= 11 && tens <= 13) return `${String(value)}th`
+  const suffix = { 1: 'st', 2: 'nd', 3: 'rd' }[value % 10] ?? 'th'
+  return `${String(value)}${suffix}`
 }

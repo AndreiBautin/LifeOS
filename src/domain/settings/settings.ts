@@ -29,6 +29,29 @@ export interface AppSettings {
   readonly roundingIncrement: number
   readonly bodyweight?: number
   /**
+   * The year you were born, for the two finance ladders.
+   *
+   * **Not a birthday, and not stored as one.** Both published standards
+   * are bracketed in five-year bands, so a month and a day would be a
+   * date of birth in the database to make a reading half a percentile
+   * more accurate. See `domain/finance/standards.ts`.
+   *
+   * Absent by default and absent is a real answer: with no year the two
+   * ladders report nothing rather than guessing an age, which is the
+   * same stance `bodyweight` takes for the strength standards.
+   */
+  readonly birthYear?: number
+  /**
+   * Annual income in **integer minor units**, for the retirement ladder.
+   *
+   * Minor units like every other money figure here, for the reason
+   * `domain/upgrades/upgrade.ts` gives. The retirement benchmark is a
+   * multiple of salary, so this is to that ladder exactly what
+   * `bodyweight` is to the strength ones — the personal denominator a
+   * published standard is expressed against.
+   */
+  readonly annualIncomeMinor?: number
+  /**
    * Sets in one session, by level, and what a deload uses instead.
    *
    * Shared by every muscle. Per-muscle numbers were four landmarks each

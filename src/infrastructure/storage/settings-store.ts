@@ -168,6 +168,14 @@ function mergeWithDefaults(parsed: unknown): AppSettings {
      * install that had one waiting in the defaults.
      */
     ...bodyweightOf(stored.bodyweight),
+    /*
+     * Dropped rather than defaulted, unlike the bodyweight above. There
+     * is no sensible year to guess and a wrong one would put somebody on
+     * a rung nothing measured — so the finance ladders stay absent until
+     * this is stated.
+     */
+    ...positiveOf('birthYear', stored.birthYear),
+    ...positiveOf('annualIncomeMinor', stored.annualIncomeMinor),
     // Spread over the defaults so a muscle group added since this blob was
     // written gets the shipped numbers rather than being absent.
     setsPerSession: isRecord(stored.setsPerSession)
@@ -307,6 +315,21 @@ function bodyweightOf(stored: unknown): { bodyweight?: number } {
   return DEFAULT_SETTINGS.bodyweight === undefined
     ? {}
     : { bodyweight: DEFAULT_SETTINGS.bodyweight }
+}
+
+/**
+ * A positive number under its own key, or nothing at all.
+ *
+ * Built field by field like everything else in this parser: a spread of
+ * the stored blob would carry whatever a future version wrote, and a key
+ * holding `undefined` is a different type from an absent one under
+ * `exactOptionalPropertyTypes`.
+ */
+function positiveOf<K extends string>(key: K, stored: unknown): Partial<Record<K, number>> {
+  if (typeof stored === 'number' && Number.isFinite(stored) && stored > 0) {
+    return { [key]: stored } as Record<K, number>
+  }
+  return {}
 }
 
 function hasEntries(value: unknown): value is Record<string, unknown> {

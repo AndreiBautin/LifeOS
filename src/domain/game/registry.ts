@@ -488,19 +488,27 @@ export const SCORING: readonly AreaScoring[] = [
     name: 'Finance',
     phase: 7,
     /*
-     * **A ladder for the credit score and nothing else, which is the
-     * three rules working rather than an omission.**
+     * **Three ladders, and two of them reverse what this note used to
+     * say.** It read: a ladder must name an external standard, FICO
+     * publishes its bands, and net worth has no such figure — there is
+     * no published amount at which somebody has finished having money,
+     * so levelling it would invent a scale the app can move.
      *
-     * A ladder must name an external standard. FICO publishes its bands,
-     * every lender quotes them, and nothing this app does can move them
-     * — so credit has real levels in the same sense a powerlifting total
-     * does.
+     * The first half stands. The conclusion did not survive being
+     * asked for: _"net worth and savings should be displayed too, look
+     * up reasonable standards for a 32 year old."_ **"No finish line"
+     * is not "no external standard"** — a powerlifting ladder has no
+     * finish line either, and its levels come from where a lifter sits
+     * among lifters. The Federal Reserve publishes exactly that for
+     * household net worth, and Fidelity publishes a retirement
+     * benchmark by age. Neither is a figure this app can move.
      *
-     * Net worth has no such figure. There is no published amount at
-     * which somebody has finished having money, so giving it levels
-     * would be inventing a scale the app can move, which is the second
-     * rule exactly. It is judged on *direction* instead, which is what a
-     * rating is for.
+     * `domain/finance/standards.ts` holds both tables, why they are two
+     * different kinds of standard, and what they cost.
+     *
+     * **The two ratings that used to be here are gone**, rather than
+     * sitting beside the ladders. Rule two forbids one measurement being
+     * claimed as both, and the sources differed only in wording.
      */
     ladders: [
       {
@@ -511,25 +519,38 @@ export const SCORING: readonly AreaScoring[] = [
         anchor: 'The published FICO bands — fair at 580, exceptional at 800',
         thresholds: [...CREDIT_BANDS],
       },
-    ],
-    ratings: [
+      /*
+       * **The thresholds are the published breakpoints themselves**,
+       * which is what keeps this honest: the reading is interpolated
+       * between four points of a curve, and every place a *level*
+       * changes is one of those four points rather than a number chosen
+       * here.
+       */
       {
         id: 'finance.net-worth',
-        source: 'finance.net-worth-in-month',
+        source: 'finance.net-worth-percentile',
         name: 'Net worth',
-        unit: 'minor units',
-        direction: 'increase',
-        cadence: 'monthly',
+        unit: 'percentile for your age',
+        anchor:
+          'The 2022 Federal Reserve Survey of Consumer Finances — households your age, quarter by quarter',
+        thresholds: [0, 25, 50, 75, 90],
       },
+      /*
+       * One is exactly on track, so **Advanced is the benchmark met**
+       * rather than beaten. The rungs below it are the app's banding of
+       * a published target and are named as such on the screen; the
+       * target itself is Fidelity's.
+       */
       {
         id: 'finance.retirement',
-        source: 'finance.retirement-in-month',
+        source: 'finance.retirement-share',
         name: 'Retirement',
-        unit: 'minor units',
-        direction: 'increase',
-        cadence: 'monthly',
+        unit: '× the benchmark for your age',
+        anchor: "Fidelity's savings benchmark — 1× salary by 30, 3× by 40, 10× by 67",
+        thresholds: [0, 0.25, 0.5, 1, 1.5],
       },
     ],
+    ratings: [],
     /*
      * **No acts, deliberately, and this area is the clearest case for
      * it.** XP is paid for things you did. Typing your net worth in is a

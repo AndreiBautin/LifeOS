@@ -2060,14 +2060,54 @@ paying for an outcome. So `acts: []`, deliberately. An area that
 measures without paying is not an incomplete area; Vitals ran that way
 for most of its life.
 
-**The credit score is a ladder and net worth is not**, which is the
-three rules doing real work rather than a preference. A ladder must
-name an external standard: FICO publishes its bands, every lender
-quotes them, and nothing this app does can move them — so `CREDIT_BANDS`
-is `[300, 580, 670, 740, 800]` and the fit to five levels is genuine
-rather than arranged. Net worth has no published figure at which
-somebody has finished having money, so giving it levels would invent
-exactly the scale the model refuses. It is judged on direction.
+**All three figures are ladders now, and two of them were not.** A
+ladder must name an external standard, and the credit score always
+qualified: FICO publishes its bands, every lender quotes them, and
+nothing this app does can move them — so `CREDIT_BANDS` is
+`[300, 580, 670, 740, 800]` and the fit to five levels is genuine rather
+than arranged.
+
+This file used to say net worth could never join it, because there is no
+published figure at which somebody has finished having money. **That is
+still true and it was the wrong test.** A powerlifting ladder has no
+finish line either — its levels say where a lifter sits among lifters,
+and somebody published that. Asked for as _"net worth and savings should
+be displayed too, look up reasonable standards for a 32 year old"_, and
+the standards exist:
+
+- **Net worth reads as a percentile among households your age**, from
+  the 2022 Federal Reserve Survey of Consumer Finances. Descriptive —
+  where do I sit. The ladder's thresholds are the published 25th, 50th,
+  75th and 90th, so **every place a level changes is a published point**
+  and only the position between them is interpolated.
+- **Retirement reads against the benchmark for your age**, Fidelity's
+  1× salary by 30, 3× by 40, 10× by 67. Normative — am I on track — so
+  Advanced is the benchmark met rather than beaten.
+
+**Two standards rather than one, and the tidier option is useless.**
+Reading retirement as a percentile too would share a source and a
+method; the median household aged 30–34 holds about $12,700 in
+retirement accounts, so anybody contributing seriously lands at the top
+of that ladder at once and it stops discriminating.
+
+**Both need a fact about you, which is why `settings.birthYear` and
+`settings.annualIncomeMinor` exist.** They are the same shape as
+`bodyweight`: a standard expressed per person needs the person. Neither
+is guessed and neither is defaulted — with the year absent both ladders
+report nothing, which is the absent-never-zero rule doing exactly its
+job. The fields are on the Finance screen rather than in Settings,
+because the sentence that makes them meaningful — _"at 32 the benchmark
+is 1.4× your income"_ — is only sayable next to the figures it changes.
+
+**The SCF measures households and one person is not one**, so somebody
+living alone reads low against it. Nothing here can correct that, so the
+screen states it. `domain/finance/standards.ts` carries both tables and
+the reasoning.
+
+**The two ratings those replaced are gone rather than kept alongside**,
+because rule two forbids one measurement being claimed as both a ladder
+and a rating — and `finance.net-worth-in-month` differed from the new
+source only in wording.
 
 **No transactions, and that is the same call the macros made.** A
 ledger needs every purchase entered, it is the first thing to fall
