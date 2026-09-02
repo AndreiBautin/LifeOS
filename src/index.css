@@ -12,6 +12,21 @@
   --color-ink-850: oklch(0.24 0.009 265);
   --color-ink-800: oklch(0.29 0.01 265);
   --color-ink-700: oklch(0.38 0.012 265);
+  /*
+   * **This was missing, and twenty call sites were quietly rendering
+   * near-white because of it.** `text-ink-600` compiles to nothing when
+   * the token is undefined, so the text simply inherited the card's
+   * colour — which is `--text-primary` — and every "Nothing measured
+   * yet", every "Looking…" and every muted caption across the atlas,
+   * quests, dailies, train and character screens read at full strength
+   * instead of receding.
+   *
+   * It looked like a design choice rather than a fault, which is why it
+   * survived: a bright caption is legible, just wrong about its own
+   * importance. Found by inspecting a computed colour rather than by
+   * reading the class, because the class is spelled correctly.
+   */
+  --color-ink-600: oklch(0.48 0.013 265);
   --color-ink-500: oklch(0.58 0.014 265);
   --color-ink-300: oklch(0.76 0.01 265);
   --color-ink-100: oklch(0.93 0.006 265);

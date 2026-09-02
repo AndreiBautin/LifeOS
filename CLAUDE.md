@@ -712,6 +712,25 @@ routing every `text-ink-*` in the app through the semantic tokens
 first — that is the bug that made them useless, and re-adding the blocks
 without it recreates exactly the version that shipped broken.
 
+**`--color-ink-600` did not exist, and twenty call sites were rendering
+near-white because of it.** An undefined token compiles to no colour at
+all, so `text-ink-600` left the text inheriting `--text-primary` — every
+"Nothing measured yet", every "Looking…" and every muted caption across
+the atlas, quests, dailies, train and character screens read at full
+strength instead of receding.
+
+It survived because **it looked like a design choice rather than a
+fault**: a bright caption is perfectly legible, it is only wrong about
+its own importance. Nothing could catch it — the class is spelled
+correctly, so no linter or typecheck has an opinion, and it renders
+without error. It was found by inspecting a _computed_ colour in the
+browser while checking something else, which is the only way it could
+have been.
+
+The lesson is narrow and worth keeping: **a Tailwind colour class is not
+evidence that a colour was applied.** If a shade matters, read it back
+off the element.
+
 **A card reads as a panel through three cheap things**: a vertical
 gradient so the surface is not uniform, an inset hairline along the top
 so it catches light, and a shadow so it sits above the page. None of them
@@ -1003,9 +1022,74 @@ is what the traits already split, and no rating had been recordable
 since the review screen went the day before. So most of what was deleted
 was an empty frame.
 
-**Wayfaring's is the one genuine loss** — the share of a named region
-walked, the third ladder, now drawn nowhere. Adding it back is one entry
-in `traitLadders` in `HomePage.tsx`.
+**Wayfaring's was the one genuine loss and it is drawn again** — the
+share of a named region walked, the third ladder. It was exactly the one
+entry in `traitLadders` this paragraph promised, added the day every
+trait gained a section. It reads "Nothing measured yet" until
+`exploredRegionKm2` is set, which is the honest state rather than an
+empty one: the denominator is a person's statement about which region
+they mean, and nothing in the app can guess it.
+
+**Every trait has a section now, and what fills it is the trait's own
+bar split by area.** Asked for as _"create sections under each trait
+like strength and fortune do, and render them even if I didn't input
+data yet so that the section looks more symmetrical."_ `AreaXpRow` in
+`CharacterParts.tsx`, joined in `Traits.tsx` on
+`TraitDefinition.areas`.
+
+**It is not a fourth currency and could not become one.** A trait is
+already the sum of what its areas have paid, so these rows are the same
+XP one level finer — nothing new is counted, and they cannot disagree
+with the bar above them because they are its addends. That is what lets
+them sit above a ladder without the two reading as one kind of thing.
+
+**Only three areas declare a ladder**, so five of the seven traits had
+nothing indented under them and the panel read as ragged on any database
+and permanently on an empty one. Inventing ladders for the other four
+was the obvious fix and is the one thing this model refuses: there is no
+published table for how charismatic you ought to be.
+
+**No meter on these rows, deliberately.** `Meter` takes a real
+denominator and an area's XP has none — no target a life area is
+measured against — so a name and a number is the whole honest reading.
+
+**Ordered by the trait's authored area list, not by XP.** Craft reads
+quests, house, tree in the order somebody decided they belong together;
+sorting by size would reorder the rows as the numbers moved.
+
+**The row dims with its parent.** A trait's label drops to `ink-700`
+while unproven, and a child fixed at `ink-300` is then brighter than
+the thing it belongs to — on an empty database the panel read as a list
+of areas with faint headings over it, the hierarchy exactly inverted.
+One step below the trait in both states.
+
+**`AREA_LABELS` exists because this put area names back in front of a
+reader.** The registry calls them Backlog, Projects, Upgrades, Places
+and Social; the app calls those Codex, Quests, Tech tree, Map and Party.
+The vocabulary split has always said **any string a person reads says
+what the screens say**, and the area cards had been quietly breaking it
+before they were deleted. Partial on purpose, in `sheet-constants.ts`
+rather than the registry, because `domain/game/` must not know what the
+navigation says.
+
+**The cost is height, and it is measured rather than guessed: the day's
+first heading moved from 1,309 to 1,725 pixels**, +416 on a 375-wide
+phone. That is this file's own prediction arriving — _"if ticking a
+habit starts feeling buried, fold the traits"_ — and the fold is still
+the cheapest fix, now more clearly earned than when it was first
+written.
+
+**Two traits can never fill, and that is worth knowing before anybody
+reads their emptiness as a bug.** Charisma's only area declares
+`social.hangout-logged` and `tallyActs` **deliberately cannot count
+it** — a friend keeps one ratcheted `lastHangout`, not a list of them —
+so it pays nothing until hangouts are stored as events. Discipline's
+`vitals` has **no acts at all** since upkeep became a group label. This
+is the same shape of argument that deleted Vitality: a bar no act can
+move is furniture. Neither is deleted here, because both differ from
+Vitality in having a real route back — one migration and one act
+declaration — but if either is still empty in six months, that reasoning
+applies to it.
 
 **A trait and a ladder stay different currencies and the screen must not
 merge them.** The trait's bar is XP into a level; the ladder is a

@@ -143,3 +143,57 @@ function ordinal(value: number): string {
   const suffix = { 1: 'st', 2: 'nd', 3: 'rd' }[value % 10] ?? 'th'
   return `${String(value)}${suffix}`
 }
+
+/**
+ * One area's XP, drawn under the trait it feeds.
+ *
+ * **This is the trait's own bar split by where it came from, and not a
+ * fourth currency.** A trait is already a projection of XP — the sum of
+ * what its areas have paid — so listing those areas under it re-presents
+ * the same acts one level finer. Nothing new is counted, which is what
+ * lets it sit beside a ladder without the two being confused: the ladder
+ * is a reading against a published standard, and this is arithmetic on
+ * XP the sheet has already tallied.
+ *
+ * **It exists so every trait has a section.** Only three areas declare a
+ * ladder at all, so five of the seven traits had nothing indented under
+ * them and the panel read as ragged. Asked for as _"create sections
+ * under each trait like strength and fortune do, and render them even if
+ * I didn't input data yet so that the section looks more symmetrical."_
+ *
+ * **No meter, deliberately.** `Meter` takes a real denominator and an
+ * area's XP has none — there is no target a life area is measured
+ * against, and inventing one would be the scale this model refuses
+ * everywhere. A name and a number is the whole honest reading.
+ *
+ * Absent, never zero: an area that has paid nothing reads "Nothing yet"
+ * rather than `0 xp`, which is the rule the trait bar above it follows.
+ */
+export function AreaXpRow({ name, xp }: { readonly name: string; readonly xp: number }) {
+  const paid = xp > 0
+
+  return (
+    <div className="flex items-baseline justify-between gap-2">
+      {/*
+        **Dimmed when the area has paid nothing, because the trait above
+        does the same.** A trait's label drops to `ink-700` while it is
+        unproven, and a child row fixed at `ink-300` regardless is then
+        brighter than the thing it belongs to — on an empty database the
+        whole panel reads as a list of areas with faint headings over it,
+        which is the hierarchy exactly inverted.
+
+        One step below the trait in both states: `ink-50` over `ink-300`
+        when there is something to say, and both at `ink-700` when there
+        is not.
+      */}
+      <span className={cn('text-sm font-medium', paid ? 'text-ink-300' : 'text-ink-700')}>
+        {name}
+      </span>
+      {paid ? (
+        <span className="numeric text-ink-50 text-sm font-semibold">{xp} xp</span>
+      ) : (
+        <span className="text-ink-600 text-xs">Nothing yet</span>
+      )}
+    </div>
+  )
+}

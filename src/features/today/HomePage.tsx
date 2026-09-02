@@ -3,6 +3,7 @@ import { useCampaigns } from '@/features/campaign/hooks'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 
+import type { AreaStanding } from '@/application/use-cases/character/sheet'
 import { Badge, Card, Section } from '@/components/shared/primitives'
 import { buttonStyles } from '@/components/shared/styles'
 import { buildCharacter, LEVELS } from '@/domain/game/character'
@@ -120,7 +121,20 @@ export function HomePage() {
    * region walked. It is the third ladder and it is not drawn anywhere
    * now. Adding it back is one entry in this map.
    */
-  const financeLadders = (sheet.data?.areas ?? []).find((area) => area.area === 'finance')?.ladders
+  /*
+   * **Wayfaring's ladder is drawn again.** The note above called it the
+   * one genuine loss of deleting the area cards — the share of a named
+   * region walked, declared in the registry and rendered nowhere — and
+   * it was, for exactly as long as this map had two entries. It reads
+   * "Nothing measured yet" until `exploredRegionKm2` is set, which is
+   * correct rather than empty: the denominator is a person's statement
+   * about which region they mean, and the app cannot guess it.
+   */
+  const laddersFor = (area: string): AreaStanding['ladders'] | undefined =>
+    (sheet.data?.areas ?? []).find((one) => one.area === area)?.ladders
+
+  const financeLadders = laddersFor('finance')
+  const placesLadders = laddersFor('places')
 
   const traitLadders: Record<string, React.ReactNode> = {
     /*
@@ -147,6 +161,11 @@ export function HomePage() {
       ? {}
       : {
           fortune: financeLadders.map((ladder) => <LadderRow key={ladder.id} ladder={ladder} />),
+        }),
+    ...(placesLadders === undefined || placesLadders.length === 0
+      ? {}
+      : {
+          wayfaring: placesLadders.map((ladder) => <LadderRow key={ladder.id} ladder={ladder} />),
         }),
   }
 
@@ -183,6 +202,7 @@ export function HomePage() {
       <SheetCard
         {...(season.data === undefined ? {} : { season: season.data })}
         {...(sheet.data === undefined ? {} : { traits: sheet.data.traits })}
+        {...(sheet.data === undefined ? {} : { traitAreas: sheet.data.areas })}
         traitLadders={traitLadders}
         action={
           <Link

@@ -1,7 +1,11 @@
 import type { ReactNode } from 'react'
 
+import type { AreaStanding } from '@/application/use-cases/character/sheet'
 import { Meter } from '@/components/shared/Meter'
 import type { TraitStanding } from '@/domain/game/traits'
+
+import { AreaXpRow } from './CharacterParts'
+import { AREA_LABELS } from './sheet-constants'
 
 /**
  * The character sheet read as an RPG one: eight traits, each levelled.
@@ -52,9 +56,23 @@ function ordered(traits: readonly TraitStanding[]): readonly TraitStanding[] {
 
 function TraitRow({
   standing,
+  areas,
   ladders,
 }: {
   readonly standing: TraitStanding
+  /**
+   * The areas feeding this trait, already filtered to it.
+   *
+   * **The trait's own bar split by where it came from.** A trait is the
+   * sum of what its areas have paid, so these rows are the same XP one
+   * level finer — nothing new is counted, which is what lets them sit
+   * above a ladder without the two reading as one kind of thing.
+   *
+   * Every trait has at least one area, so this is what makes the panel
+   * symmetric: before it, five of the seven traits had nothing indented
+   * under them, because only three areas declare a ladder at all.
+   */
+  readonly areas: readonly AreaStanding[]
   /**
    * The ladders belonging to this trait's areas, drawn beneath it.
    *
@@ -121,8 +139,13 @@ function TraitRow({
         trait above rather than as another trait. They are measured on
         different scales and stacking them flush would say otherwise.
       */}
-      {ladders !== undefined && (
-        <div className="border-ink-800 mt-3 space-y-3 border-l pl-3">{ladders}</div>
+      {(areas.length > 0 || ladders !== undefined) && (
+        <div className="border-ink-800 mt-3 space-y-3 border-l pl-3">
+          {areas.map((area) => (
+            <AreaXpRow key={area.area} name={AREA_LABELS[area.area] ?? area.name} xp={area.xp} />
+          ))}
+          {ladders}
+        </div>
       )}
     </div>
   )
@@ -130,9 +153,21 @@ function TraitRow({
 
 export function Traits({
   traits,
+  areas,
   ladders,
 }: {
   readonly traits: readonly TraitStanding[]
+  /**
+   * Every area on the sheet, split per trait here rather than by the
+   * caller.
+   *
+   * The join is `TraitDefinition.areas`, which each standing already
+   * carries — so a trait gains a row here by gaining an area in
+   * `domain/game/traits.ts`, and nothing in this file names an area.
+   * That is the same reason `traitStandings` filters the act catalogue
+   * by area rather than by a list of act ids.
+   */
+  readonly areas?: readonly AreaStanding[]
   /** Ladder rows to draw under a trait, keyed by the trait's id. */
   readonly ladders?: Readonly<Record<string, ReactNode>>
 }) {
@@ -145,11 +180,23 @@ export function Traits({
 
       {ordered(traits).map((standing) => {
         const under = ladders?.[standing.trait.id]
+        /*
+         * Ordered by the trait's own area list rather than by XP, because
+         * that list is authored: Craft reads quests, house, tree in the
+         * order somebody decided they belong together. Sorting by size
+         * would reorder the rows as the numbers moved, which is the
+         * churn the dailies sort avoids for the same reason.
+         */
+        const feeding = standing.trait.areas.flatMap((id) => {
+          const found = (areas ?? []).find((area) => area.area === id)
+          return found === undefined ? [] : [found]
+        })
 
         return (
           <TraitRow
             key={standing.trait.id}
             standing={standing}
+            areas={feeding}
             {...(under === undefined ? {} : { ladders: under })}
           />
         )
