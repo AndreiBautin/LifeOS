@@ -17,7 +17,11 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 
 import type { WorkoutReport } from '@/application/use-cases/training/finish-workout'
-import { useSettings } from '@/app/context'
+import { useServices, useSettings } from '@/app/context'
+import { useQuery } from '@tanstack/react-query'
+import { buildCharacter } from '@/domain/game/character'
+import { totalWorkingSets } from '@/domain/logging/workout-log'
+import { AttributeRow } from '@/features/character/CharacterParts'
 import type { MuscleGroup } from '@/domain/exercises/taxonomy'
 import { MUSCLE_GROUP_LABELS } from '@/domain/exercises/taxonomy'
 import type { Exercise } from '@/domain/exercises/exercise'
@@ -64,6 +68,60 @@ import { SessionReport } from './SessionReport'
  * because Today's job is to say what the day asks for. What it stops
  * doing is listing them on the days it does not.
  */
+/**
+ * The strength ladders, on the screen the lifting happens on.
+ *
+ * **They were under the Strength trait and came back here**, asked for
+ * as *"let's move the powerlifting stuff to the train section."* That is
+ * the right home twice over: it is where the numbers are moved, and it
+ * is beside the estimated maxes that produce them — a reading next to
+ * the thing it measures needs no explaining, where the same reading
+ * under a trait bar needed a rule about why two different currencies
+ * were adjacent.
+ *
+ * **The total leads and the three lifts follow.** It is not one of the
+ * area's declared ladders and could not be: it is derived from three of
+ * them, and `measure.ts` deliberately names the three competition lifts
+ * rather than computing it from `STRENGTH_LIFTS`. So it comes off the
+ * character rather than off the sheet.
+ *
+ * **`buildCharacter` also computes a training-only level, which nothing
+ * here draws.** Two numbers called "level" in one app, disagreeing, is
+ * worse than either alone — the level is the hub's XP, and what is taken
+ * from the character is only these four rows.
+ */
+function StrengthStandards() {
+  const services = useServices()
+  const { settings } = useSettings()
+
+  const workouts = useQuery({
+    queryKey: ['workouts', 'all-for-character'],
+    queryFn: () => services.workouts.recent(500),
+  })
+
+  const completed = (workouts.data ?? []).filter((log) => log.status === 'completed')
+
+  const character = buildCharacter({
+    estimatedMaxes: settings.estimatedMaxes,
+    ...(settings.bodyweight !== undefined ? { bodyweight: settings.bodyweight } : {}),
+    sessions: completed.length,
+    workingSets: completed.reduce((total, log) => total + totalWorkingSets(log), 0),
+  })
+
+  return (
+    <Section title="Standards" description="Your lifts against the published bodyweight multiples">
+      <Card>
+        <div className="space-y-3">
+          <AttributeRow attribute={character.totalAttribute} emphasis />
+          {character.lifts.map((lift) => (
+            <AttributeRow key={lift.name} attribute={lift} />
+          ))}
+        </div>
+      </Card>
+    </Section>
+  )
+}
+
 function TrainingHabits() {
   const habits = useTrainingHabits()
   const [adding, setAdding] = useState(false)
@@ -264,6 +322,8 @@ export function TrainPage() {
           <p>One moment — the block is put together from your priorities each time.</p>
         </Empty>
       )}
+
+      <StrengthStandards />
 
       <TrainingHabits />
 

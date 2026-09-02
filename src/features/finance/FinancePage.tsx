@@ -1,6 +1,7 @@
 import { Plus } from 'lucide-react'
 import { useState } from 'react'
 
+import { AreaLadders } from '@/features/character/CharacterParts'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { Button, Card, Empty, Section } from '@/components/shared/primitives'
 import { CREDIT_RANGE, toMonthKey, type FinanceReading } from '@/domain/finance/reading'
@@ -204,6 +205,24 @@ export function FinancePage() {
   return (
     <div>
       <PageHeader title="Finance" subtitle="Four numbers, once a month" />
+
+      {/*
+        **The money ladders, on the money screen.** They were under the
+        Fortune trait; reported as *"for the finance stuff, let's move
+        that to a new page."* This is that page — it already exists, it
+        already carries the readings these are computed from, and a
+        second finance screen would be two places for one subject.
+
+        Read live rather than for the month, which is the ladder/rating
+        split made concrete: a ladder must not depend on whether you
+        opened the app this month, so it takes the most recent figure
+        whenever that was.
+      */}
+      <Section title="Standards" description="Where these numbers sit against published tables">
+        <Card>
+          <AreaLadders area="finance" />
+        </Card>
+      </Section>
 
       <Section
         title={`This month · ${month}`}

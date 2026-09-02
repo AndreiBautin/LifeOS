@@ -1022,74 +1022,53 @@ is what the traits already split, and no rating had been recordable
 since the review screen went the day before. So most of what was deleted
 was an empty frame.
 
-**Wayfaring's was the one genuine loss and it is drawn again** — the
-share of a named region walked, the third ladder. It was exactly the one
-entry in `traitLadders` this paragraph promised, added the day every
-trait gained a section. It reads "Nothing measured yet" until
-`exploredRegionKm2` is set, which is the honest state rather than an
-empty one: the denominator is a person's statement about which region
-they mean, and nothing in the app can guess it.
+**The traits are bars alone, and two different things have now been
+hung under them and taken off again.** Reported: _"I'm not really a fan.
+Let's keep all traits as purely bars to keep it more sleek cause this
+looks busy."_
 
-**Every trait has a section now, and what fills it is the trait's own
-bar split by area.** Asked for as _"create sections under each trait
-like strength and fortune do, and render them even if I didn't input
-data yet so that the section looks more symmetrical."_ `AreaXpRow` in
-`CharacterParts.tsx`, joined in `Traits.tsx` on
-`TraitDefinition.areas`.
+The history is the useful part, because it is one mistake made twice.
+First the measured ladders moved under the traits when the area cards
+were deleted — the lifts under Strength, the credit score under Fortune.
+That left content under two rows of seven, which read as ragged, so
+every trait then gained a section listing the areas feeding it. That
+fixed the symmetry and **made the panel busier than the raggedness it
+cured**: twelve extra rows on a panel of seven, nearly all reading
+"Nothing yet" on any database not yet lived in for months.
 
-**It is not a fourth currency and could not become one.** A trait is
-already the sum of what its areas have paid, so these rows are the same
-XP one level finer — nothing new is counted, and they cannot disagree
-with the bar above them because they are its addends. That is what lets
-them sit above a ladder without the two reading as one kind of thing.
+**This panel is a glance, not a breakdown.** It answers "where has my
+time gone" in seven bars, and both attempts to make it also answer "and
+which records paid for that" made it worse at the first job without
+being good at the second. Anything proposed under a trait row is this
+mistake a third time.
 
-**Only three areas declare a ladder**, so five of the seven traits had
-nothing indented under them and the panel read as ragged on any database
-and permanently on an empty one. Inventing ladders for the other four
-was the obvious fix and is the one thing this model refuses: there is no
-published table for how charismatic you ought to be.
+**The ladders were not deleted; they went to the screens that own
+them** — the lifts to Train (`StrengthStandards`), the money to Finance,
+the explored share to the Map. `AreaLadders` in `CharacterParts.tsx` is
+the shared lookup, by area id against the sheet, so an area gains a row
+by gaining a ladder in the registry. Strength does not go through it:
+its total is derived from three ladders rather than being one, so it is
+read off the character and drawn with `AttributeRow`.
 
-**No meter on these rows, deliberately.** `Meter` takes a real
-denominator and an area's XP has none — no target a life area is
-measured against — so a name and a number is the whole honest reading.
+**That home should stick, and it is better than where they started.** A
+reading beside the thing it measures and the controls that move it needs
+no explaining, where the same reading under a trait bar needed a rule
+about why two currencies were adjacent. The exploration ladder in
+particular has now been homeless twice and is finally beside the fog it
+is computed from.
 
-**Ordered by the trait's authored area list, not by XP.** Craft reads
-quests, house, tree in the order somebody decided they belong together;
-sorting by size would reorder the rows as the numbers moved.
+**Measured, because the cost of the busy version was measured too.** The
+day's first heading sat at 1,309 pixels before any of this, 1,725 with
+the area sections, and **941 now** — moving the ladders off took the day
+368 pixels closer to the top than it had ever been. The fold on the
+traits this file keeps recommending is no longer needed.
 
-**The row dims with its parent.** A trait's label drops to `ink-700`
-while unproven, and a child fixed at `ink-300` is then brighter than
-the thing it belongs to — on an empty database the panel read as a list
-of areas with faint headings over it, the hierarchy exactly inverted.
-One step below the trait in both states.
-
-**`AREA_LABELS` exists because this put area names back in front of a
-reader.** The registry calls them Backlog, Projects, Upgrades, Places
-and Social; the app calls those Codex, Quests, Tech tree, Map and Party.
-The vocabulary split has always said **any string a person reads says
-what the screens say**, and the area cards had been quietly breaking it
-before they were deleted. Partial on purpose, in `sheet-constants.ts`
-rather than the registry, because `domain/game/` must not know what the
-navigation says.
-
-**The cost is height, and it is measured rather than guessed: the day's
-first heading moved from 1,309 to 1,725 pixels**, +416 on a 375-wide
-phone. That is this file's own prediction arriving — _"if ticking a
-habit starts feeling buried, fold the traits"_ — and the fold is still
-the cheapest fix, now more clearly earned than when it was first
-written.
-
-**Two traits can never fill, and that is worth knowing before anybody
-reads their emptiness as a bug.** Charisma's only area declares
-`social.hangout-logged` and `tallyActs` **deliberately cannot count
-it** — a friend keeps one ratcheted `lastHangout`, not a list of them —
-so it pays nothing until hangouts are stored as events. Discipline's
-`vitals` has **no acts at all** since upkeep became a group label. This
-is the same shape of argument that deleted Vitality: a bar no act can
-move is furniture. Neither is deleted here, because both differ from
-Vitality in having a real route back — one migration and one act
-declaration — but if either is still empty in six months, that reasoning
-applies to it.
+**`AreaXpRow` and `AREA_LABELS` were deleted with the sections.** The
+label map is worth knowing about if area names ever go back in front of
+a reader: the registry says Backlog, Projects, Upgrades, Places and
+Social where the app says Codex, Quests, Tech tree, Map and Party, and
+the vocabulary rule is that **any string a person reads says what the
+screens say**. It is in the git history.
 
 **A trait and a ladder stay different currencies and the screen must not
 merge them.** The trait's bar is XP into a level; the ladder is a

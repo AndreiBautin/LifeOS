@@ -20,6 +20,7 @@ import type { PlaceSearchResult } from '@/domain/atlas/PlaceSearch'
 import { filterPlaces } from '@/application/use-cases/atlas/FilterPlaces'
 import { sortPlaces, type PlaceSortOption } from '@/application/use-cases/atlas/SortPlaces'
 import { Badge, Button, Card, Empty, Section } from '@/components/shared/primitives'
+import { AreaLadders } from '@/features/character/CharacterParts'
 import { buttonStyles } from '@/components/shared/styles'
 import type { CategoryId } from '@/domain/atlas/category/CategoryDefinition'
 import type { Coordinates } from '@/domain/atlas/place/Coordinates'
@@ -489,6 +490,25 @@ export function AtlasPage() {
               ` · accurate to ${Math.round(walk.fix.accuracyMeters).toString()} m`}
           </p>
         )}
+      </Section>
+
+      {/*
+        **The exploration ladder, on the screen the walking is drawn
+        on.** It has now been homeless twice: lost when the area cards
+        were deleted, restored under the Wayfaring trait, and moved here
+        when the traits went back to bars alone. This is the home that
+        should stick — the share of a region walked belongs beside the
+        fog it is computed from.
+
+        It reads "Nothing measured yet" until `exploredRegionKm2` is set
+        in Settings, which is the honest state rather than an empty one:
+        the denominator is a person's statement about which region they
+        mean, and nothing here can guess it.
+      */}
+      <Section title="Ground covered" description="The share of your named region walked">
+        <Card>
+          <AreaLadders area="places" />
+        </Card>
       </Section>
 
       <Section

@@ -1,14 +1,8 @@
-import type { ReactNode } from 'react'
-
-import type { AreaStanding } from '@/application/use-cases/character/sheet'
 import { Meter } from '@/components/shared/Meter'
 import type { TraitStanding } from '@/domain/game/traits'
 
-import { AreaXpRow } from './CharacterParts'
-import { AREA_LABELS } from './sheet-constants'
-
 /**
- * The character sheet read as an RPG one: eight traits, each levelled.
+ * The character sheet read as an RPG one: seven traits, each levelled.
  *
  * **Every bar here is XP you already earned, under a different name.**
  * Each life area belongs to exactly one trait, so these sum to the level
@@ -22,18 +16,34 @@ import { AREA_LABELS } from './sheet-constants'
  * with nothing under it is a number the app made up; one that says
  * "people you actually saw" is a count of hangouts you logged.
  *
- * **The measured ladders hang off them**, asked for as _"take finance
- * and strength and put those under their corresponding attributes in
- * the section above, and cut the rest out."_ So the three competition
- * lifts sit under Strength and the credit score under Fortune, and the
- * list of area cards that used to carry them is gone. What that costs
- * is named where the list was removed.
+ * **A bar and a blurb, and deliberately nothing else.** Two things have
+ * now been hung under these rows and both came off again, which is worth
+ * recording once rather than discovering a third time.
+ *
+ * First the measured ladders — the lifts under Strength, the credit
+ * score under Fortune — moved here when the area cards were deleted.
+ * Then every trait gained a section listing the areas feeding it, so
+ * that the panel would be symmetric rather than having content under two
+ * rows of seven. Reported: *"I'm not really a fan. Let's keep all traits
+ * as purely bars to keep it more sleek cause this looks busy."*
+ *
+ * It was busy, and the symmetric version was busier than the ragged one
+ * it fixed — twelve extra rows on a panel of seven, most of them reading
+ * "Nothing yet" on any database that has not been lived in for months.
+ * **The lesson is that this panel is a glance, not a breakdown.** It
+ * answers "where has my time gone" in seven bars, and every attempt to
+ * make it also answer "and exactly which records paid for that" has made
+ * it worse at the first job without being especially good at the second.
+ *
+ * **The ladders were not deleted, they went to the screens that own
+ * them** — the lifts to Train, the money to Finance, the exploration
+ * share to the Map. That is where each one is acted on, and a reading
+ * beside the thing it measures needs no explaining.
  *
  * **A band of the sheet card rather than a section of its own**, asked
  * for as *"merge in the season and attributes stuff into the first
- * card"*. These are the level above them split eight ways, so they are
- * a reading *of* the portrait rather than a separate one — which is
- * what a heading and 2rem of air between them had been claiming.
+ * card"*. These are the level above them split seven ways, so they are
+ * a reading *of* the portrait rather than a separate one.
  */
 
 /**
@@ -41,9 +51,9 @@ import { AREA_LABELS } from './sheet-constants'
  *
  * Absent, never zero — a trait nothing has fed has not scored badly, it
  * has not been measured. It stays on the screen rather than being hidden
- * because the *set* is the character sheet: eight bars with three empty
- * says what you have and have not been spending time on, where five bars
- * would just look like the app knows about five things.
+ * because the *set* is the character sheet: seven bars with three empty
+ * says what you have and have not been spending time on, where four bars
+ * would just look like the app knows about four things.
  */
 function ordered(traits: readonly TraitStanding[]): readonly TraitStanding[] {
   return [...traits].sort(
@@ -54,42 +64,7 @@ function ordered(traits: readonly TraitStanding[]): readonly TraitStanding[] {
   )
 }
 
-function TraitRow({
-  standing,
-  areas,
-  ladders,
-}: {
-  readonly standing: TraitStanding
-  /**
-   * The areas feeding this trait, already filtered to it.
-   *
-   * **The trait's own bar split by where it came from.** A trait is the
-   * sum of what its areas have paid, so these rows are the same XP one
-   * level finer — nothing new is counted, which is what lets them sit
-   * above a ladder without the two reading as one kind of thing.
-   *
-   * Every trait has at least one area, so this is what makes the panel
-   * symmetric: before it, five of the seven traits had nothing indented
-   * under them, because only three areas declare a ladder at all.
-   */
-  readonly areas: readonly AreaStanding[]
-  /**
-   * The ladders belonging to this trait's areas, drawn beneath it.
-   *
-   * **A trait and a ladder are different currencies and this is not a
-   * merge of them.** The trait's own bar is XP into a level; a ladder is
-   * a reading against a published standard the app cannot move. What
-   * this says is only that they are about the same part of your life —
-   * the lifts sit under Strength, the credit score under Fortune —
-   * which is what the areas list used to say with a heading each.
-   *
-   * Absent for most traits, and that is not a gap: only three areas
-   * declare a ladder at all, because a ladder needs an external standard
-   * and there is no published figure for how good at seeing your friends
-   * you ought to be.
-   */
-  readonly ladders?: ReactNode
-}) {
+function TraitRow({ standing }: { readonly standing: TraitStanding }) {
   const { trait, level, into, needed, xp, proven } = standing
 
   return (
@@ -133,44 +108,11 @@ function TraitRow({
       />
 
       <p className="text-ink-700 mt-1 text-xs">{trait.blurb}</p>
-
-      {/*
-        Indented and ruled off, so a ladder reads as belonging to the
-        trait above rather than as another trait. They are measured on
-        different scales and stacking them flush would say otherwise.
-      */}
-      {(areas.length > 0 || ladders !== undefined) && (
-        <div className="border-ink-800 mt-3 space-y-3 border-l pl-3">
-          {areas.map((area) => (
-            <AreaXpRow key={area.area} name={AREA_LABELS[area.area] ?? area.name} xp={area.xp} />
-          ))}
-          {ladders}
-        </div>
-      )}
     </div>
   )
 }
 
-export function Traits({
-  traits,
-  areas,
-  ladders,
-}: {
-  readonly traits: readonly TraitStanding[]
-  /**
-   * Every area on the sheet, split per trait here rather than by the
-   * caller.
-   *
-   * The join is `TraitDefinition.areas`, which each standing already
-   * carries — so a trait gains a row here by gaining an area in
-   * `domain/game/traits.ts`, and nothing in this file names an area.
-   * That is the same reason `traitStandings` filters the act catalogue
-   * by area rather than by a list of act ids.
-   */
-  readonly areas?: readonly AreaStanding[]
-  /** Ladder rows to draw under a trait, keyed by the trait's id. */
-  readonly ladders?: Readonly<Record<string, ReactNode>>
-}) {
+export function Traits({ traits }: { readonly traits: readonly TraitStanding[] }) {
   return (
     <div className="space-y-4">
       <div>
@@ -178,29 +120,9 @@ export function Traits({
         <p className="text-ink-500 text-xs">Your XP, split by what earned it</p>
       </div>
 
-      {ordered(traits).map((standing) => {
-        const under = ladders?.[standing.trait.id]
-        /*
-         * Ordered by the trait's own area list rather than by XP, because
-         * that list is authored: Craft reads quests, house, tree in the
-         * order somebody decided they belong together. Sorting by size
-         * would reorder the rows as the numbers moved, which is the
-         * churn the dailies sort avoids for the same reason.
-         */
-        const feeding = standing.trait.areas.flatMap((id) => {
-          const found = (areas ?? []).find((area) => area.area === id)
-          return found === undefined ? [] : [found]
-        })
-
-        return (
-          <TraitRow
-            key={standing.trait.id}
-            standing={standing}
-            areas={feeding}
-            {...(under === undefined ? {} : { ladders: under })}
-          />
-        )
-      })}
+      {ordered(traits).map((standing) => (
+        <TraitRow key={standing.trait.id} standing={standing} />
+      ))}
     </div>
   )
 }

@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react'
 
-import type { AreaStanding } from '@/application/use-cases/character/sheet'
 import type { SeasonProgress } from '@/application/use-cases/character/season-progress'
 import { Card } from '@/components/shared/primitives'
 import type { TraitStanding } from '@/domain/game/traits'
@@ -39,16 +38,10 @@ import { Traits } from './Traits'
 export function SheetCard({
   season,
   traits,
-  traitAreas,
-  traitLadders,
   action,
 }: {
   readonly season?: SeasonProgress | undefined
   readonly traits?: readonly TraitStanding[] | undefined
-  /** Every area, split under the trait it feeds. */
-  readonly traitAreas?: readonly AreaStanding[] | undefined
-  /** Ladder rows to draw under a trait, keyed by the trait's id. */
-  readonly traitLadders?: Readonly<Record<string, ReactNode>> | undefined
   /** The settings link, which used to be the page header's action. */
   readonly action?: ReactNode
 }) {
@@ -80,11 +73,7 @@ export function SheetCard({
 
       {traits !== undefined && (
         <div className="border-ink-800 mt-4 border-t pt-4">
-          <Traits
-            traits={traits}
-            {...(traitAreas === undefined ? {} : { areas: traitAreas })}
-            {...(traitLadders === undefined ? {} : { ladders: traitLadders })}
-          />
+          <Traits traits={traits} />
         </div>
       )}
     </Card>

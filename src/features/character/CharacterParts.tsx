@@ -4,6 +4,7 @@ import { Meter } from '@/components/shared/Meter'
 import type { Attribute } from '@/domain/game/character'
 import { cn } from '@/lib/cn'
 
+import { useCharacterSheet } from './hooks'
 import { LEVEL_TONE } from './sheet-constants'
 
 /**
@@ -145,55 +146,37 @@ function ordinal(value: number): string {
 }
 
 /**
- * One area's XP, drawn under the trait it feeds.
+ * Every ladder one area declares, on the screen that area belongs to.
  *
- * **This is the trait's own bar split by where it came from, and not a
- * fourth currency.** A trait is already a projection of XP — the sum of
- * what its areas have paid — so listing those areas under it re-presents
- * the same acts one level finer. Nothing new is counted, which is what
- * lets it sit beside a ladder without the two being confused: the ladder
- * is a reading against a published standard, and this is arithmetic on
- * XP the sheet has already tallied.
+ * **The ladders used to hang under the traits and now live where they
+ * are acted on** — money on Finance, the explored share on the Map —
+ * asked for as *"let's move the powerlifting stuff to the train
+ * section"* and *"for the finance stuff, let's move that to a new
+ * page."* Strength is the exception and does not go through here: its
+ * total is derived from three ladders rather than being one, so it is
+ * read off the character instead and drawn with `AttributeRow`, which
+ * says a bodyweight multiple where this says a value and an anchor.
  *
- * **It exists so every trait has a section.** Only three areas declare a
- * ladder at all, so five of the seven traits had nothing indented under
- * them and the panel read as ragged. Asked for as _"create sections
- * under each trait like strength and fortune do, and render them even if
- * I didn't input data yet so that the section looks more symmetrical."_
+ * **It renders nothing at all when the area declares no ladder**, which
+ * is a real state rather than a guard against one: only three areas
+ * declare any. A heading with an empty frame under it was what the area
+ * cards were deleted for.
  *
- * **No meter, deliberately.** `Meter` takes a real denominator and an
- * area's XP has none — there is no target a life area is measured
- * against, and inventing one would be the scale this model refuses
- * everywhere. A name and a number is the whole honest reading.
- *
- * Absent, never zero: an area that has paid nothing reads "Nothing yet"
- * rather than `0 xp`, which is the rule the trait bar above it follows.
+ * The lookup is by area id against the sheet, so an area gains a row
+ * here by gaining a ladder in `domain/game/registry.ts` and nothing in
+ * the calling screen changes.
  */
-export function AreaXpRow({ name, xp }: { readonly name: string; readonly xp: number }) {
-  const paid = xp > 0
+export function AreaLadders({ area }: { readonly area: string }) {
+  const sheet = useCharacterSheet()
+  const ladders = sheet.data?.areas.find((one) => one.area === area)?.ladders ?? []
+
+  if (ladders.length === 0) return null
 
   return (
-    <div className="flex items-baseline justify-between gap-2">
-      {/*
-        **Dimmed when the area has paid nothing, because the trait above
-        does the same.** A trait's label drops to `ink-700` while it is
-        unproven, and a child row fixed at `ink-300` regardless is then
-        brighter than the thing it belongs to — on an empty database the
-        whole panel reads as a list of areas with faint headings over it,
-        which is the hierarchy exactly inverted.
-
-        One step below the trait in both states: `ink-50` over `ink-300`
-        when there is something to say, and both at `ink-700` when there
-        is not.
-      */}
-      <span className={cn('text-sm font-medium', paid ? 'text-ink-300' : 'text-ink-700')}>
-        {name}
-      </span>
-      {paid ? (
-        <span className="numeric text-ink-50 text-sm font-semibold">{xp} xp</span>
-      ) : (
-        <span className="text-ink-600 text-xs">Nothing yet</span>
-      )}
+    <div className="space-y-3">
+      {ladders.map((ladder) => (
+        <LadderRow key={ladder.id} ladder={ladder} />
+      ))}
     </div>
   )
 }

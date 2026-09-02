@@ -1,17 +1,12 @@
 import { Settings } from 'lucide-react'
 import { useCampaigns } from '@/features/campaign/hooks'
 import { Link } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
 
-import type { AreaStanding } from '@/application/use-cases/character/sheet'
 import { Badge, Card, Section } from '@/components/shared/primitives'
 import { buttonStyles } from '@/components/shared/styles'
-import { buildCharacter, LEVELS } from '@/domain/game/character'
-import { totalWorkingSets } from '@/domain/logging/workout-log'
-import { useServices, useSettings } from '@/app/context'
+import { LEVELS } from '@/domain/game/character'
 import { ActiveQuests } from '@/features/projects/ActiveQuests'
 import { useActiveQuests } from '@/features/projects/hooks'
-import { AttributeRow, LadderRow } from '@/features/character/CharacterParts'
 import { AREA_LINKS, LEVEL_TONE } from '@/features/character/sheet-constants'
 import { SheetCard } from '@/features/character/SheetCard'
 import { useCharacterSheet, useSeasonProgress } from '@/features/character/hooks'
@@ -79,95 +74,20 @@ export function HomePage() {
 
   const season = useSeasonProgress()
   const sheet = useCharacterSheet()
-  const services = useServices()
-  const { settings } = useSettings()
-
-  const workouts = useQuery({
-    queryKey: ['workouts', 'all-for-character'],
-    queryFn: () => services.workouts.recent(500),
-  })
-
-  const completed = (workouts.data ?? []).filter((log) => log.status === 'completed')
-
-  const character = buildCharacter({
-    estimatedMaxes: settings.estimatedMaxes,
-    ...(settings.bodyweight !== undefined ? { bodyweight: settings.bodyweight } : {}),
-    sessions: completed.length,
-    workingSets: completed.reduce((total, log) => total + totalWorkingSets(log), 0),
-  })
 
   /*
-   * **`buildCharacter` computes a training-only level and this page
-   * deliberately ignores it.** Two numbers called "level" on one screen,
-   * disagreeing, is worse than either alone — the card's level is the
-   * hub's XP, read from the sheet. What is taken from the character here
-   * is only the strength ladders below.
-   */
+   * **The ladders are not on this screen any more, and the traits are
+   * bars alone.** Reported: *"let's keep all traits as purely bars to
+   * keep it more sleek cause this looks busy."*
 
-  /*
-   * **The area cards are gone, and the two measured ladders moved up
-   * under the traits that own them.** Asked for: _"take finance and
-   * strength and put those under their corresponding attributes in the
-   * section above, and cut the rest out."_
-   *
-   * It reads as a smaller change than it is, because **only three areas
-   * declare a ladder at all** — a ladder needs an external standard, and
-   * there is no published figure for how good at seeing your friends you
-   * ought to be. Every other card was carrying an area's name, its XP
-   * and its ratings; XP is what the traits already split, and no rating
-   * could be recorded any more once the monthly review went.
-   *
-   * **What is genuinely lost is Wayfaring's**, the share of a named
-   * region walked. It is the third ladder and it is not drawn anywhere
-   * now. Adding it back is one entry in this map.
+   * Each one went to the screen that owns it — the lifts to Train, the
+   * money to Finance, the exploration share to the Map — which is why
+   * `buildCharacter`, the workouts query and the whole `traitLadders`
+   * map came out of here with them. A reading belongs beside the thing
+   * it measures and beside the controls that move it; this screen is the
+   * glance, and it had been carrying four readings that are acted on
+   * elsewhere.
    */
-  /*
-   * **Wayfaring's ladder is drawn again.** The note above called it the
-   * one genuine loss of deleting the area cards — the share of a named
-   * region walked, declared in the registry and rendered nowhere — and
-   * it was, for exactly as long as this map had two entries. It reads
-   * "Nothing measured yet" until `exploredRegionKm2` is set, which is
-   * correct rather than empty: the denominator is a person's statement
-   * about which region they mean, and the app cannot guess it.
-   */
-  const laddersFor = (area: string): AreaStanding['ladders'] | undefined =>
-    (sheet.data?.areas ?? []).find((one) => one.area === area)?.ladders
-
-  const financeLadders = laddersFor('finance')
-  const placesLadders = laddersFor('places')
-
-  const traitLadders: Record<string, React.ReactNode> = {
-    /*
-     * The total leads and the three lifts follow — the shape the old
-     * Strength section drew, kept because `AttributeRow` says a
-     * bodyweight multiple and the load needed for the next level where a
-     * generic ladder row says a value and an anchor.
-     *
-     * The total is not one of the area's ladders and could not be: it is
-     * derived from three of them, and `measure.ts` deliberately names
-     * the three competition lifts rather than computing it from
-     * `STRENGTH_LIFTS`. So it comes from the character rather than the
-     * sheet.
-     */
-    strength: (
-      <>
-        <AttributeRow attribute={character.totalAttribute} emphasis />
-        {character.lifts.map((lift) => (
-          <AttributeRow key={lift.name} attribute={lift} />
-        ))}
-      </>
-    ),
-    ...(financeLadders === undefined || financeLadders.length === 0
-      ? {}
-      : {
-          fortune: financeLadders.map((ladder) => <LadderRow key={ladder.id} ladder={ladder} />),
-        }),
-    ...(placesLadders === undefined || placesLadders.length === 0
-      ? {}
-      : {
-          wayfaring: placesLadders.map((ladder) => <LadderRow key={ladder.id} ladder={ladder} />),
-        }),
-  }
 
   return (
     /*
@@ -202,8 +122,6 @@ export function HomePage() {
       <SheetCard
         {...(season.data === undefined ? {} : { season: season.data })}
         {...(sheet.data === undefined ? {} : { traits: sheet.data.traits })}
-        {...(sheet.data === undefined ? {} : { traitAreas: sheet.data.areas })}
-        traitLadders={traitLadders}
         action={
           <Link
             to="/settings"

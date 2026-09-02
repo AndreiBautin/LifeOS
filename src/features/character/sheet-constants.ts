@@ -51,30 +51,3 @@ export const LEVEL_TONE: Partial<Record<Level, 'neutral' | 'accent' | 'good' | '
  * than in the registry because `domain/game/` must not know a browser
  * exists.
  */
-
-/**
- * What a life area is called on screen, where that differs from its
- * name in the model.
- *
- * **Partial on purpose**, the way `AREA_ROUTES` was: an area whose
- * registry name already matches what the app calls it needs no entry,
- * and adding one would be a second place for the same word to drift.
- *
- * It exists because the trait sections put area names back in front of
- * a reader. The rule they have to meet is the one the vocabulary split
- * has always carried — the type names are what the files were written
- * under, and **any string a person reads says what the screens say.**
- * A row reading "Backlog" under Intellect, on a screen whose own
- * navigation says Codex, is the app calling one thing two names.
- *
- * It lives here rather than in the registry because `domain/game/` must
- * not know what the navigation says, which is the same reason the route
- * map could never live there either.
- */
-export const AREA_LABELS: Readonly<Record<string, string>> = {
-  projects: 'Quests',
-  backlog: 'Codex',
-  upgrades: 'Tech tree',
-  places: 'Map',
-  social: 'Party',
-}
