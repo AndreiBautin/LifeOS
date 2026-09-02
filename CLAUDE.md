@@ -4863,6 +4863,87 @@ The title went through three values in three days — the calling
 the ring, the season and the traits were what fixed it, and they are all
 still there. `SheetCard` is the whole first band.
 
+**Seasonal challenges, and a pass that fills against a real
+denominator.** Asked for as _"what if we added seasonal 'challenges'
+that would be worth extra xp, and completing them would be working
+through a 'battle pass'. Think more like completing holidays stuff and
+events related to that time."_ `domain/challenges/challenge.ts`.
+
+**A literal battle pass was the one part that could not be built, and
+the reason is written in this repository already.** `season.ts` refuses
+numbered tiers at thresholds the app picks, in nearly those words, as
+"a scale the app can move". So the pass counts **challenges done over
+challenges that exist** — nine this season, four finished. That is a
+denominator taken from a list rather than a number chosen here, which is
+what lets a progress bar mean something. It was flagged before building
+rather than after.
+
+**A challenge is an act, which is why it may pay at all.** Carving a
+pumpkin is a thing you decided to do and then did. Flat XP, like
+everything else: difficulty deliberately does not scale it, the rule the
+practice log holds, because paying more for a harder one turns a season
+into something to optimise.
+
+**Completion is never gated by the window.** A Halloween challenge
+ticked in January is odd and is still a thing you did. Refusing it would
+be the app policing a calendar, which is the call campaign stages
+already made in being ordered but not gated.
+
+**The catalogue ships and is editable, which is the only arrangement
+that survives both objections.** A shipped list makes the app assert
+what your year contains; an empty one makes a feature nobody fills. So
+every shipped challenge can be removed and any number of your own added.
+The list is northern-hemisphere and largely American, stated in the file
+as a limit rather than hidden.
+
+**Windows are `MM-DD` and the year comes from the season.** The
+catalogue describes Halloween, not Halloween 2026, so one row serves
+every year without a migration each December. A shipped row is placed by
+matching its month against the season's own `YYYY-MM` months — which is
+what makes **Winter** fall out with no special case, since it is named
+for the year it ends in and contains the previous December. A window
+closing in an earlier month has run into the next year.
+
+**A shipped instance is addressed `<slug>:<year>`.** A bare slug would
+mean carving a pumpkin once marked every future Halloween done.
+
+**Removal is `hiddenAt`, never a delete.** The catalogue lives in the
+bundle, so deleting a mark would put the challenge straight back on the
+next release. A completion already recorded is left underneath and goes
+on counting: removing a challenge says you do not want to see it, and it
+cannot unmake an afternoon you spent.
+
+**One stored shape covers all three edits** — a completion, a removal
+and a challenge of your own are all "something said about a challenge
+id". That is what keeps an editable shipped list to one store rather
+than two.
+
+**`challenges` is a `LifeArea` under Discipline, and that assignment is
+the weakest link.** It has to be an area to pay XP, and every area needs
+exactly one trait. A seasonal challenge is explicitly _not_ an ordinary
+day, which is what the rest of Discipline is about — the thread is
+deliberateness, and it was the closest of seven rather than an obvious
+one. Craft is things built, Charisma is people seen, and a trait of its
+own would be an eighth bar fed by one act. **If challenges grow past a
+seasonal list, revisit this first.**
+
+**`SheetDeps` gained the repository, `MeasureDeps` did not.** Nothing in
+the monthly readout measures challenges, and widening the spine's
+interface would make every evaluator and test double carry a repository
+none of them ask about.
+
+**The store joined in every place a collection has to**, and the
+machinery found most of them: the compiler caught the payload, both sync
+targets, the backup collection map and four test harnesses;
+`repositories.test.ts` caught the store list; `traits.test.ts` caught the
+missing trait; the `FIGURES`-style guards caught the rest. `DB_VERSION`
+went to 18 with a new guarded block.
+
+Driven end to end: ticking one took the pass to 1/5, the season to 40,
+the level to 40/100 and Discipline to 40 xp **in one render** — then add,
+hide and untick each behaved, and the denominator held at 5 across a
+hide and an add.
+
 **The season sits below the day, and this is its third position in as
 many passes.** Asked for as _"I'd move season info underneath traits and
 today."_ It was a section of its own, then a band merged into the

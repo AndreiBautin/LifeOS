@@ -3,6 +3,7 @@ import type { HomeCandidate } from '@/domain/homes/candidate'
 import type { NearbyKind, Neighbourhood } from '@/domain/homes/neighbourhood'
 import type { TrackExercise, TrackId } from '@/domain/mind/tracks'
 import type { Attempt } from '@/domain/mind/practice'
+import type { ChallengeMark } from '@/domain/challenges/challenge'
 import type { Campaign } from '@/domain/campaign/campaign'
 import type { NewsSource, Story } from '@/domain/news/story'
 import type { CheckIn } from '@/domain/autoregulation/check-in'
@@ -447,6 +448,23 @@ export interface AttemptRepository {
   remove(id: AttemptId): Promise<void>
   /** Deletes without a tombstone -- the receiving half of a sync. */
   purge(id: AttemptId): Promise<void>
+}
+
+/**
+ * What the person has said about a seasonal challenge.
+ *
+ * There is no `byId` because nothing looks one up: the screen resolves
+ * a whole season at a time against the shipped catalogue, and a single
+ * mark means nothing without it.
+ */
+export interface ChallengeRepository {
+  all(): Promise<readonly ChallengeMark[]>
+  save(mark: ChallengeMark): Promise<void>
+  /** Writes exactly as given, without stamping. See `ExerciseRepository`. */
+  restoreMany(marks: readonly ChallengeMark[]): Promise<void>
+  remove(id: string): Promise<void>
+  /** Deletes without a tombstone -- the receiving half of a sync. */
+  purge(id: string): Promise<void>
 }
 
 export interface CampaignRepository {

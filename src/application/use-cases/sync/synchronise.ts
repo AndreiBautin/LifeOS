@@ -31,6 +31,7 @@ import type {
   TombstoneRepository,
   ViceRepository,
   AttemptRepository,
+  ChallengeRepository,
   HomeRepository,
   RoomRepository,
   CampaignRepository,
@@ -94,6 +95,7 @@ export interface SynchroniseDeps {
   readonly finance: FinanceRepository
   readonly campaigns: CampaignRepository
   readonly attempts: AttemptRepository
+  readonly challenges: ChallengeRepository
   readonly homes: HomeRepository
   readonly rooms: RoomRepository
   readonly explored: ExploredAreaRepository
@@ -181,6 +183,7 @@ export async function synchronise(target: SyncTarget, deps: SynchroniseDeps): Pr
   await deps.finance.restoreMany(accepted.finance)
   await deps.campaigns.restoreMany(accepted.campaigns)
   await deps.attempts.restoreMany(accepted.attempts)
+  await deps.challenges.restoreMany(accepted.challenges)
   await deps.homes.restoreMany(accepted.homes)
   await deps.rooms.restoreMany(accepted.rooms)
   // Union, never replace. See `unionCells`.
@@ -263,6 +266,7 @@ export async function synchronise(target: SyncTarget, deps: SynchroniseDeps): Pr
     accepted.finance.length +
     accepted.campaigns.length +
     accepted.attempts.length +
+    accepted.challenges.length +
     accepted.homes.length +
     accepted.rooms.length +
     (settingsMoved ? 1 : 0) +
@@ -285,6 +289,7 @@ export async function synchronise(target: SyncTarget, deps: SynchroniseDeps): Pr
     incoming.finance.length +
     incoming.campaigns.length +
     incoming.attempts.length +
+    incoming.challenges.length +
     incoming.homes.length +
     incoming.rooms.length +
     (accepted.settings === undefined ? 0 : 1) +
@@ -321,6 +326,7 @@ async function collectLocal(
     finance,
     campaigns,
     attempts,
+    challenges,
     homes,
     rooms,
     explored,
@@ -344,6 +350,7 @@ async function collectLocal(
     deps.finance.all(),
     deps.campaigns.all(),
     deps.attempts.all(),
+    deps.challenges.all(),
     deps.homes.all(),
     deps.rooms.all(),
     deps.explored.all(),
@@ -398,6 +405,7 @@ async function collectLocal(
     finance: changedSince(finance, watermark),
     campaigns: changedSince(campaigns, watermark),
     attempts: changedSince(attempts, watermark),
+    challenges: changedSince(challenges, watermark),
     homes: changedSince(homes, watermark),
     rooms: changedSince(rooms, watermark),
     /*
@@ -559,6 +567,18 @@ async function applyDeletions(
         const local = await deps.homes.byId(asHomeCandidateId(tombstone.id))
         if (local !== undefined && !survives(local, tombstone)) {
           await deps.homes.purge(asHomeCandidateId(tombstone.id))
+        }
+        break
+      }
+      case 'challenges': {
+        /*
+         * No `byId` on this repository — nothing else needs one — so the
+         * comparison reads the set. A mark is a small record and the
+         * whole collection is a season's worth.
+         */
+        const local = (await deps.challenges.all()).find((one) => one.id === tombstone.id)
+        if (local !== undefined && !survives(local, tombstone)) {
+          await deps.challenges.purge(tombstone.id)
         }
         break
       }

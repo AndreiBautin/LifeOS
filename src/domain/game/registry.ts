@@ -4,6 +4,7 @@ import { STRENGTH_LIFT_SLUGS } from '@/domain/exercises/catalogue'
 import { STRENGTH_STANDARDS, TOTAL_STANDARDS } from './character'
 import type { Ladder } from './ladder'
 import type { Rating } from './rating'
+import { CHALLENGE_XP } from '@/domain/challenges/challenge'
 import { CREDIT_BANDS } from '@/domain/finance/reading'
 import { TRAINING_ACTS, type ActDefinition } from './xp'
 
@@ -35,6 +36,7 @@ export const LIFE_AREAS = [
   'vitals',
   'finance',
   'mind',
+  'challenges',
 ] as const
 
 export type LifeArea = (typeof LIFE_AREAS)[number]
@@ -563,6 +565,44 @@ export const SCORING: readonly AreaScoring[] = [
      * Vitals ran that way for most of its life.
      */
     acts: [],
+    hasTree: false,
+  },
+  {
+    /*
+     * **Seasonal challenges, and the one area whose content the app
+     * ships.** Everything else here counts records somebody made; this
+     * counts a list that arrives in the bundle and can then be edited.
+     * That is defensible only because a shipped challenge is an
+     * *offer* — removable, and joined by any number of your own — rather
+     * than the app asserting what your year contains.
+     *
+     * **No ladder, and no rating.** There is no published figure for how
+     * many seasonal things a person ought to do, and the pass is not a
+     * ladder either: it is a count against the challenges that exist,
+     * which is a real denominator rather than an external standard. The
+     * distinction matters — a ladder says where you stand in the world,
+     * and this says how much of a list you have got through.
+     */
+    area: 'challenges',
+    name: 'Challenges',
+    phase: 12,
+    ladders: [],
+    ratings: [],
+    /*
+     * **Flat, and on the right side of the act/outcome line.** Carving a
+     * pumpkin is a thing you decided to do and then did. Difficulty
+     * deliberately does not scale it, the rule the practice log already
+     * holds: paying more for a harder challenge turns a record of a
+     * season into a thing to optimise.
+     */
+    acts: [
+      {
+        id: 'challenges.completed',
+        area: 'challenges',
+        label: 'Finished a seasonal challenge',
+        points: CHALLENGE_XP,
+      },
+    ],
     hasTree: false,
   },
   {

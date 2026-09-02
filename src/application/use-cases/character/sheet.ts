@@ -7,6 +7,7 @@ import { readLadder, type LadderReading } from '@/domain/game/ladder'
 import { ALL_ACTS, SCORING } from '@/domain/game/registry'
 import { standing, xpFrom, type XpStanding } from '@/domain/game/xp'
 import { totalWorkingSets } from '@/domain/logging/workout-log'
+import type { ChallengeRepository } from '@/domain/repositories/ports'
 import type { RatingOutcome } from '@/domain/game/rating'
 
 import { measureAll } from '../review/measure'
@@ -98,7 +99,15 @@ export interface CharacterSheet {
   readonly acts: Readonly<Record<string, number>>
 }
 
-export type SheetDeps = ReviewDeps
+/**
+ * The review's dependencies, plus the challenge marks.
+ *
+ * **Added here rather than to `MeasureDeps`**, which is the review
+ * spine's own list: nothing in the monthly readout measures challenges,
+ * and widening that interface would make every evaluator and every test
+ * double carry a repository none of them ask about.
+ */
+export type SheetDeps = ReviewDeps & { readonly challenges: ChallengeRepository }
 
 /**
  * When an act happened, for the ones that can say.
@@ -133,13 +142,14 @@ export async function tallyActs(
   deps: SheetDeps,
   within: Within = ALWAYS,
 ): Promise<Readonly<Record<string, number>>> {
-  const [workouts, items, projects, places, dailies, attempts] = await Promise.all([
+  const [workouts, items, projects, places, dailies, attempts, challenges] = await Promise.all([
     deps.workouts.recent(500),
     deps.items.all(),
     deps.projects.all(),
     deps.places.all(),
     deps.dailies.all(),
     deps.attempts.all(),
+    deps.challenges.all(),
   ])
 
   /** No date, no act — see the note above on why this holds even all-time. */
@@ -253,6 +263,17 @@ export async function tallyActs(
      * reason to do a hard one is that it is hard.
      */
     'mind.problem-solved': attempts.filter((attempt) => within(attempt.solvedOn)).length,
+    /*
+     * **Counted from the mark, not from the catalogue.** A completion is
+     * a stamped record like every other act here, so a challenge ticked
+     * in October pays into the season it was ticked in — and a shipped
+     * challenge nobody has done has no mark and therefore costs nothing.
+     *
+     * A hidden challenge that was completed first still counts, which is
+     * deliberate: removing a challenge from the list says you do not want
+     * to see it, and it cannot unmake an afternoon you spent.
+     */
+    'challenges.completed': challenges.filter((mark) => dated(mark.completedAt)).length,
     'places.place-visited': places.filter(
       (place) => place.status === 'visited' && isResolved(place) && dated(place.dateVisited),
     ).length,

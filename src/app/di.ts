@@ -20,6 +20,7 @@ import type {
   SyncTarget,
   TombstoneRepository,
   AttemptRepository,
+  ChallengeRepository,
   HomeRepository,
   RoomRepository,
   NeighbourhoodGateway,
@@ -49,6 +50,7 @@ import {
   createReviewRepository,
   createTombstoneRepository,
   createAttemptRepository,
+  createChallengeRepository,
   createHomeRepository,
   createRoomRepository,
   createCampaignRepository,
@@ -109,6 +111,7 @@ export interface AppServices {
   readonly finance: FinanceRepository
   readonly campaigns: CampaignRepository
   readonly attempts: AttemptRepository
+  readonly challenges: ChallengeRepository
   readonly homes: HomeRepository
   readonly rooms: RoomRepository
   readonly neighbourhoods: NeighbourhoodGateway
@@ -184,6 +187,7 @@ export async function bootstrap(): Promise<BootstrapResult> {
     finance: createFinanceRepository(db, systemClock),
     campaigns: createCampaignRepository(db, systemClock),
     attempts: createAttemptRepository(db, systemClock),
+    challenges: createChallengeRepository(db, systemClock),
     homes: createHomeRepository(db, systemClock),
     rooms: createRoomRepository(db, systemClock),
     neighbourhoods: createNeighbourhoodGateway(systemClock),

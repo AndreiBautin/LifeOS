@@ -13,6 +13,7 @@ import {
 import {
   createCheckInRepository,
   createAttemptRepository,
+  createChallengeRepository,
   createHomeRepository,
   createRoomRepository,
   createCampaignRepository,
@@ -70,6 +71,7 @@ beforeEach(async () => {
     resume: createResumeRepository(db, testClock),
     campaigns: createCampaignRepository(db, testClock),
     attempts: createAttemptRepository(db, testClock),
+    challenges: createChallengeRepository(db, testClock),
     homes: createHomeRepository(db, testClock),
     rooms: createRoomRepository(db, testClock),
     tombstones: createTombstoneRepository(db),

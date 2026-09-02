@@ -1,6 +1,7 @@
 import type { Room } from '@/domain/base/declutter'
 import type { HomeCandidate } from '@/domain/homes/candidate'
 import type { Attempt } from '@/domain/mind/practice'
+import type { ChallengeMark } from '@/domain/challenges/challenge'
 import type { Campaign } from '@/domain/campaign/campaign'
 import type { DBSchema, IDBPDatabase } from 'idb'
 import { openDB } from 'idb'
@@ -66,7 +67,7 @@ export const DB_NAME = 'lifeos'
  * a device that already ran it will not run it again, so changing one
  * leaves two devices with different schemas and no way to tell.
  */
-export const DB_VERSION = 17
+export const DB_VERSION = 18
 
 /**
  * A workout as it is stored, which is not quite a workout as the domain
@@ -355,6 +356,18 @@ export interface LiftDB extends DBSchema {
     key: string
     value: Attempt
   }
+  /**
+   * What the person has said about a seasonal challenge.
+   *
+   * Marks rather than challenges: the shipped catalogue lives in the
+   * bundle, so what is stored is only the completions, the removals and
+   * the ones somebody wrote themselves. See
+   * `domain/challenges/challenge.ts`.
+   */
+  challenges: {
+    key: string
+    value: ChallengeMark
+  }
   /** The long arcs -- the move, and anything shaped like it. */
   campaigns: {
     key: string
@@ -589,6 +602,14 @@ export function openDatabase(name = DB_NAME): Promise<AppDatabase> {
         db.createObjectStore('homes', { keyPath: 'id' })
       }
 
+      if (oldVersion < 18) {
+        // Seasonal challenge marks. Keyed by id, which is `<slug>:<year>`
+        // for a shipped challenge and a generated id for one somebody
+        // wrote — so a completion is scoped to the year it happened in
+        // and cannot leak into the next.
+        db.createObjectStore('challenges', { keyPath: 'id' })
+      }
+
       if (oldVersion < 14) {
         // Problems solved. Keyed by id and indexed by nothing: the log is
         // read whole and filtered in memory, which is right for a few
@@ -666,6 +687,7 @@ export async function clearAllStores(db: AppDatabase): Promise<void> {
       'resume',
       'campaigns',
       'attempts',
+      'challenges',
       'homes',
       'dayReadings',
       'rooms',
@@ -695,6 +717,7 @@ export async function clearAllStores(db: AppDatabase): Promise<void> {
     tx.objectStore('resume').clear(),
     tx.objectStore('campaigns').clear(),
     tx.objectStore('attempts').clear(),
+    tx.objectStore('challenges').clear(),
     tx.objectStore('homes').clear(),
     tx.objectStore('dayReadings').clear(),
     tx.objectStore('rooms').clear(),

@@ -37,6 +37,7 @@ export const TOMBSTONED_COLLECTIONS = [
   'finance',
   'campaigns',
   'attempts',
+  'challenges',
   'homes',
   'rooms',
   /*

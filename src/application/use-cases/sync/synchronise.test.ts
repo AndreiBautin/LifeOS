@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import type { Campaign } from '@/domain/campaign/campaign'
+import type { ChallengeMark } from '@/domain/challenges/challenge'
 import type { Daily } from '@/domain/dailies/daily'
 import { readCharges, type Vice } from '@/domain/vitals/charges'
 import type { FinanceReading } from '@/domain/finance/reading'
@@ -23,6 +24,7 @@ import type {
   PlaceRepository,
   ProjectRepository,
   AttemptRepository,
+  ChallengeRepository,
   HomeRepository,
   RoomRepository,
   CampaignRepository,
@@ -346,6 +348,27 @@ function device(clock: Clock): Device {
     purge: () => Promise.resolve(),
   }
 
+  const challengeStore = new Map<string, ChallengeMark>()
+  const challenges: ChallengeRepository = {
+    all: () => Promise.resolve([...challengeStore.values()]),
+    save: (row) => {
+      challengeStore.set(row.id, { ...row, updatedAt: clock.now().toISOString() })
+      return Promise.resolve()
+    },
+    restoreMany: (rows) => {
+      for (const row of rows) challengeStore.set(row.id, row)
+      return Promise.resolve()
+    },
+    remove: (id) => {
+      challengeStore.delete(id)
+      return Promise.resolve()
+    },
+    purge: (id) => {
+      challengeStore.delete(id)
+      return Promise.resolve()
+    },
+  }
+
   const campaignStore = new Map<string, Campaign>()
   const campaigns: CampaignRepository = {
     all: () => Promise.resolve([...campaignStore.values()]),
@@ -476,6 +499,7 @@ function device(clock: Clock): Device {
 
     homes,
     attempts,
+    challenges,
     campaigns,
     resume,
     dailies,

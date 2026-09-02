@@ -3,6 +3,7 @@ import type { Trip } from '@/domain/atlas/trip/Trip'
 import type { Room } from '@/domain/base/declutter'
 import type { HomeCandidate } from '@/domain/homes/candidate'
 import type { Attempt } from '@/domain/mind/practice'
+import type { ChallengeMark } from '@/domain/challenges/challenge'
 import type { Campaign } from '@/domain/campaign/campaign'
 import type { Daily } from '@/domain/dailies/daily'
 import type { Resume } from '@/domain/resume/resume'
@@ -102,6 +103,7 @@ export interface BackupCounts {
   readonly finance: number
   readonly campaigns: number
   readonly attempts: number
+  readonly challenges: number
   readonly homes: number
   readonly rooms: number
   readonly resume: number
@@ -157,6 +159,7 @@ export interface BackupData {
   readonly finance?: readonly FinanceReading[]
   readonly campaigns?: readonly Campaign[]
   readonly attempts?: readonly Attempt[]
+  readonly challenges?: readonly ChallengeMark[]
   readonly homes?: readonly HomeCandidate[]
   readonly rooms?: readonly Room[]
   /**
@@ -187,6 +190,7 @@ export function countsFor(data: BackupData): BackupCounts {
     finance: data.finance?.length ?? 0,
     campaigns: data.campaigns?.length ?? 0,
     attempts: data.attempts?.length ?? 0,
+    challenges: data.challenges?.length ?? 0,
     homes: data.homes?.length ?? 0,
     rooms: data.rooms?.length ?? 0,
     resume: data.resume?.length ?? 0,
@@ -212,6 +216,7 @@ export const BACKUP_COUNT_KEYS = [
   'finance',
   'campaigns',
   'attempts',
+  'challenges',
   'homes',
   'rooms',
   'resume',

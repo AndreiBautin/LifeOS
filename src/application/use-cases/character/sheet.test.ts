@@ -1,4 +1,5 @@
 import type { Attempt } from '@/domain/mind/practice'
+import type { ChallengeMark } from '@/domain/challenges/challenge'
 import { describe, expect, it } from 'vitest'
 
 import { ALL_ACTS, SCORING } from '@/domain/game/registry'
@@ -23,6 +24,7 @@ function harness(
     readonly items?: Item[]
     readonly projects?: Project[]
     readonly attempts?: Attempt[]
+    readonly challenges?: ChallengeMark[]
     readonly settings?: Partial<AppSettings>
   } = {},
 ) {
@@ -58,6 +60,7 @@ function harness(
     items: list(seed.items ?? []),
     projects: list(seed.projects ?? []),
     attempts: list(seed.attempts ?? []),
+    challenges: list(seed.challenges ?? []),
     upgrades: list([]),
     workouts: list([]),
     friends: list([]),

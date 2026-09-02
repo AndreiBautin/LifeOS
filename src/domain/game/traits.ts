@@ -86,7 +86,7 @@ export const TRAITS: readonly TraitDefinition[] = [
   {
     id: 'discipline',
     label: 'Discipline',
-    blurb: 'Habits kept on an ordinary day, and limits held',
+    blurb: 'Habits kept, limits held, and the season taken up on its offers',
     /*
      * **`vitals` is here because Vitality was deleted, not because the
      * bundle got looser.** Vitality's only area was `vitals`, and that
@@ -109,7 +109,21 @@ export const TRAITS: readonly TraitDefinition[] = [
      * a limit and keeping a habit are the same kind of thing, and the
      * upkeep XP lands here anyway now.
      */
-    areas: ['dailies', 'vitals'],
+    /*
+     * **`challenges` is here because deliberateness is the shared
+     * thread, and it was the closest of seven rather than an obvious
+     * one.** A seasonal challenge is explicitly *not* an ordinary day,
+     * which is what the rest of this trait is about — so the case is
+     * narrower than the bundle looks: keeping a habit and carving a
+     * pumpkin in the week it is worth carving one are both doing a thing
+     * you meant to do rather than letting it pass.
+     *
+     * The alternatives were worse. Craft is things built and bought,
+     * Charisma is people seen, and a trait of its own would be an eighth
+     * bar fed by one act. If challenges ever grow past a seasonal list,
+     * this is the assignment to revisit first.
+     */
+    areas: ['dailies', 'vitals', 'challenges'],
   },
   {
     id: 'craft',

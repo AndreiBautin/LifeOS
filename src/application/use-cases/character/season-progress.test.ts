@@ -49,6 +49,7 @@ function harness(places: Place[], now: Date) {
   return {
     items: list([]),
     attempts: list([]),
+    challenges: list([]),
     projects: list([]),
     upgrades: list([]),
     workouts: list([]),

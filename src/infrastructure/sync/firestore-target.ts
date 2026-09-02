@@ -16,6 +16,7 @@ import {
 import type { Room } from '@/domain/base/declutter'
 import type { HomeCandidate } from '@/domain/homes/candidate'
 import type { Attempt } from '@/domain/mind/practice'
+import type { ChallengeMark } from '@/domain/challenges/challenge'
 import type { Campaign } from '@/domain/campaign/campaign'
 import type { CheckIn } from '@/domain/autoregulation/check-in'
 import type { Item } from '@/domain/backlog/item'
@@ -77,6 +78,7 @@ const COLLECTIONS = {
   finance: 'finance',
   campaigns: 'campaigns',
   attempts: 'attempts',
+  challenges: 'challenges',
   homes: 'homes',
   rooms: 'rooms',
   /*
@@ -164,6 +166,7 @@ const KEYED_BY: {
   finance: (record) => record.month,
   campaigns: (record) => record.id,
   attempts: (record) => record.id,
+  challenges: (record) => record.id,
   homes: (record) => record.id,
   rooms: (record) => record.id,
   tombstones: (record) => tombstoneKey(record.collection, record.id),
@@ -296,6 +299,7 @@ export function createFirestoreSyncTarget(options: FirestoreTargetOptions): Sync
         readSince(root(COLLECTIONS.finance), after),
         readSince(root(COLLECTIONS.campaigns), after),
         readSince(root(COLLECTIONS.attempts), after),
+        readSince(root(COLLECTIONS.challenges), after),
         readSince(root(COLLECTIONS.homes), after),
         readSince(root(COLLECTIONS.rooms), after),
         readSince(root(COLLECTIONS.exploredCells), after),
@@ -343,6 +347,7 @@ export function createFirestoreSyncTarget(options: FirestoreTargetOptions): Sync
         finance,
         campaigns,
         attempts,
+        challenges,
         homes,
         rooms,
         cells,
@@ -391,6 +396,7 @@ export function createFirestoreSyncTarget(options: FirestoreTargetOptions): Sync
           finance: finance.records as readonly FinanceReading[],
           campaigns: campaigns.records as readonly Campaign[],
           attempts: attempts.records as readonly Attempt[],
+          challenges: challenges.records as readonly ChallengeMark[],
           homes: homes.records as readonly HomeCandidate[],
           rooms: rooms.records as readonly Room[],
           exploredCells: cells.records.flatMap(

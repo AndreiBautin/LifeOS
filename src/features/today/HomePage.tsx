@@ -8,6 +8,7 @@ import { LEVELS } from '@/domain/game/character'
 import { ActiveQuests } from '@/features/projects/ActiveQuests'
 import { useActiveQuests } from '@/features/projects/hooks'
 import { AREA_LINKS, LEVEL_TONE } from '@/features/character/sheet-constants'
+import { ChallengePass } from '@/features/challenges/ChallengePass'
 import { SeasonBand } from '@/features/character/SeasonBand'
 import { SheetCard } from '@/features/character/SheetCard'
 import { useCharacterSheet, useSeasonProgress } from '@/features/character/hooks'
@@ -208,9 +209,20 @@ export function HomePage() {
               : 'The last day of it'
           }
         >
-          <Card>
-            <SeasonBand progress={season.data} />
-          </Card>
+          {/*
+            **The pass leads and the XP bar follows.** They are two
+            readings of one season and the order says which is being
+            worked on: the challenges are a list you act on, the season
+            bar is a total that accrues from everything else you did.
+            Work first, readout last — the ordering this screen has
+            argued about at every level.
+          */}
+          <div className="space-y-3">
+            <ChallengePass />
+            <Card>
+              <SeasonBand progress={season.data} />
+            </Card>
+          </div>
         </Section>
       )}
 

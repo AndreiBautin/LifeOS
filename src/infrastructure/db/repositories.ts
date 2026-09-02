@@ -1,6 +1,7 @@
 import type { Room } from '@/domain/base/declutter'
 import type { HomeCandidate } from '@/domain/homes/candidate'
 import type { Attempt } from '@/domain/mind/practice'
+import type { ChallengeMark } from '@/domain/challenges/challenge'
 import type { Campaign } from '@/domain/campaign/campaign'
 import type { AttemptId, CampaignId, HomeCandidateId, RoomId } from '@/domain/ids/ids'
 import type { CheckIn } from '@/domain/autoregulation/check-in'
@@ -43,6 +44,7 @@ import type {
   ExerciseRepository,
   FinanceRepository,
   AttemptRepository,
+  ChallengeRepository,
   HomeRepository,
   RoomRepository,
   CampaignRepository,
@@ -784,6 +786,29 @@ export function createAttemptRepository(db: AppDatabase, clock: Clock): AttemptR
     },
     async purge(id: AttemptId) {
       await db.delete('attempts', id)
+    },
+  }
+}
+
+/** Seasonal challenge marks -- completions, removals, and your own. */
+export function createChallengeRepository(db: AppDatabase, clock: Clock): ChallengeRepository {
+  return {
+    async all() {
+      return db.getAll('challenges')
+    },
+    async save(mark: ChallengeMark) {
+      await db.put('challenges', stamp(mark, clock))
+    },
+    async restoreMany(marks: readonly ChallengeMark[]) {
+      const tx = db.transaction('challenges', 'readwrite')
+      await Promise.all([...marks.map((one) => tx.store.put(one)), tx.done])
+    },
+    async remove(id: string) {
+      await db.delete('challenges', id)
+      await bury(db, clock, 'challenges', id)
+    },
+    async purge(id: string) {
+      await db.delete('challenges', id)
     },
   }
 }
