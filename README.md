@@ -245,3 +245,12 @@ removed once RTS became the only way strength is run — carrying two
 frameworks meant two assemblers, two recipe vocabularies and two
 progression models for a methodology no longer in use. It is in the git
 history.
+
+## Credits
+
+The character figures are from [game-icons.net](https://game-icons.net),
+by **Lorc** and **Delapouite**, used under
+[CC BY 3.0](https://creativecommons.org/licenses/by/3.0/). Five icons are
+committed as SVG paths in `src/features/character/figures.ts` rather than
+fetched, so the app adds no outbound host for them; the same credit is
+shown in the app at the foot of Settings.

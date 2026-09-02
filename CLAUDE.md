@@ -927,11 +927,39 @@ silhouette a level is worth. It is permitted precisely because it
 **measures nothing** — it re-draws a number already earned honestly,
 where a ladder makes a claim about you against the world.
 
-**Every mark sits on the outline, and the first attempt did not.** The
-mantle was drawn as its own curve below the shoulders and read as a
-detached bowl sharing the frame. It strokes the shoulder path the figure
-already has now, and the plates solve that same ellipse for their y — so
-widening the shoulders at band 1 moves everything that sits on them.
+**The bands are five different figures now, not five sets of marks on
+one.** Reported: _"I was also expecting the avatar progression to be more
+dramatic."_ Fair — the drawn version added a mantle, then plates, then an
+arc, which on a 120-pixel disc are small changes to an outline that never
+changed. `features/character/figures.ts` holds five silhouettes:
+plain, hooded, crowned, armoured, winged.
+
+**They are from game-icons.net, CC BY 3.0**, by Lorc and Delapouite. The
+licence costs nothing — no account, nothing to renew — and asks for a
+credit, which the foot of Settings carries and `README.md` repeats.
+`ATTRIBUTION` is a constant beside the paths it is about, so the credit
+and the art cannot drift apart.
+
+**Committed as paths, never fetched.** About 6 KB in the bundle, so no
+eighth outbound host was added for an icon. Each host here is a decision.
+
+**An icon set is allowed where gear is not**, and the distinction is the
+one `avatar.ts` already draws: gear is user-typed titles, so drawing a
+belt means guessing what an upgrade depicts. A rank is the app's own
+number, and these are five pictures of it.
+
+**Ordered by ink, not by story.** Crowned before armoured reads oddly as
+a narrative and correctly as a picture — three orderings were rendered
+side by side and the story-ordered one visibly dipped at band 3, because
+the crowned bust carries less ink than the armoured one. At 62 pixels
+nobody reads a narrative; they read _more_. The figure also takes the
+season tint from band 2, which is a second axis of escalation for free.
+
+**What the hand-drawn version got right, kept as a warning.** Its marks
+had to sit _on_ the outline — the mantle was first drawn as its own
+curve below the shoulders and read as a detached bowl sharing the frame.
+That problem disappears with whole figures and would come straight back
+the moment anything is layered on top of one.
 
 **The figure is geometric because there is nothing to illustrate
 honestly.** Gear is user-typed titles, so drawing a belt on a character

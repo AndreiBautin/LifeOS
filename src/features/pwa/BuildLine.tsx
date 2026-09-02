@@ -1,6 +1,7 @@
 import { useState } from 'react'
 
 import { Button } from '@/components/shared/primitives'
+import { ATTRIBUTION } from '@/features/character/figures'
 import { logger } from '@/shared/logging/logger'
 
 /**
@@ -115,6 +116,17 @@ export function BuildLine() {
         </Button>
       </div>
       {MESSAGES[state] !== undefined && <p className="text-ink-700 text-xs">{MESSAGES[state]}</p>}
+      {/*
+        **The credit the figures' licence asks for.** They are CC BY 3.0
+        from game-icons.net, which costs nothing and asks for this
+        sentence — see `features/character/figures.ts`, which holds the
+        string beside the paths it is about so the two cannot drift.
+
+        It rides with the build line because both answer the same
+        question — what is this copy of the app made of — and because
+        this is the foot of the one screen that is read rather than used.
+      */}
+      <p className="text-ink-700 text-center text-[11px]">{ATTRIBUTION}</p>
     </div>
   )
 }

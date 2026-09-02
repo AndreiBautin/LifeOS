@@ -2,6 +2,8 @@ import type { Avatar } from '@/domain/game/avatar'
 import { SEASON_LABELS, type Season } from '@/domain/game/season'
 import { cn } from '@/lib/cn'
 
+import { FIGURES } from './figures'
+
 /**
  * The character, drawn as what the sheet already knows.
  *
@@ -60,17 +62,25 @@ export function AvatarPortrait({
    */
   const build = Math.max(0, Math.min(4, Math.round(avatar.build)))
 
-  /* Band 1 onwards. Half the shoulder span, in the SVG's own units. */
-  const shoulder = build >= 1 ? 25 : 22
+  /*
+   * Falls back to the first rather than to nothing: a band with no
+   * figure would draw an empty disc, which looks like a load that never
+   * finished rather than like a bug.
+   */
+  const figure = FIGURES[build] ?? FIGURES[0]
+  if (figure === undefined) return null
 
   /*
-   * Where the shoulder curve is 6 units in from its outer edge, so a
-   * plate lands on the line rather than near it. The shoulders are the
-   * upper half of an ellipse `shoulder` wide and 20 tall centred on
-   * `CENTRE + 26`, and this is that ellipse solved for y.
+   * **The figure takes the season tint from band 2**, where the plain
+   * and hooded ones stay the app's own grey. It is a second axis of
+   * escalation for nothing: the outline changes at every band, and
+   * somewhere in the middle you also stop being drawn in the colour of
+   * furniture.
    */
-  const plateOffset = (shoulder - 6) / shoulder
-  const plateY = CENTRE + 26 - 20 * Math.sqrt(Math.max(0, 1 - plateOffset * plateOffset))
+  const figureFill = build >= 2 ? tint : 'var(--color-ink-300)'
+
+  /* Inside the ring's own track, with a little air. */
+  const size = compact ? 30 : 62
   const box = compact ? 56 : SIZE
 
   return (
@@ -136,78 +146,30 @@ export function AvatarPortrait({
         />
 
         {/*
-          **The figure grows with the level, and stays a silhouette.**
+          **The figure is a different figure at each band.** It was one
+          silhouette gaining marks — a mantle, then plates, then an arc —
+          and the report was that it was not dramatic enough, which it
+          was not: on a 120-pixel disc those are small changes to an
+          unchanged outline.
 
-          It was a head and a pair of shoulders at every level, which is
-          what made levelling feel like it moved a numeral and an arc.
-          `avatar.build` is the level in five bands and decides how much
-          of the below is drawn.
+          `figures.ts` says where the art comes from and what its licence
+          asks for. What it must not become is a *depiction of a thing
+          you own*: gear is user-typed titles, so drawing one means
+          guessing what it depicts. A rank is the app's own number, and
+          these are five pictures of it.
 
-          What it must not become is a *depiction*. The note this
-          replaces said anything more specific would be a claim about a
-          person, and that still holds: none of these is a face, a body
-          type, or an item somebody owns. They are marks of rank on an
-          outline — the same reasoning that keeps gear out of the
-          portrait, since gear is user-typed titles and drawing one would
-          mean guessing what it depicts.
+          Nested rather than transformed, so the icon keeps its own
+          512-unit box and only the frame here decides where it sits.
         */}
-        <g fill="var(--color-ink-300)">
-          <circle cx={CENTRE} cy={CENTRE - 13} r={11} />
-
-          {/* Band 1 widens the shoulders rather than adding to them, so
-              the first upgrade changes the outline you already know. */}
-          <path
-            d={`M ${String(CENTRE - shoulder)} ${String(CENTRE + 26)}
-                a ${String(shoulder)} 20 0 0 1 ${String(shoulder * 2)} 0 Z`}
-          />
-        </g>
-
-        {/*
-          Band 2: a mantle, drawn by **stroking the shoulder line the
-          figure already has** rather than adding a shape beneath it. The
-          first attempt added its own curve below the shoulders and read
-          as a detached bowl — the marks have to sit *on* the outline or
-          they are a second object sharing the frame.
-        */}
-        {build >= 2 && (
-          <path
-            d={`M ${String(CENTRE - shoulder)} ${String(CENTRE + 26)}
-                a ${String(shoulder)} 20 0 0 1 ${String(shoulder * 2)} 0`}
-            fill="none"
-            stroke={tint}
-            strokeWidth={4}
-            strokeLinecap="round"
-          />
-        )}
-
-        {/*
-          Band 3: plates, sitting on the shoulder line rather than beside
-          it — the y is the ellipse solved at that x, so they stay on the
-          curve when band 1 widens it. Two rather than one, because a
-          single mark reads as an accident of the outline.
-        */}
-        {build >= 3 && (
-          <g fill={tint}>
-            <circle cx={CENTRE - shoulder + 6} cy={plateY} r={4} />
-            <circle cx={CENTRE + shoulder - 6} cy={plateY} r={4} />
-          </g>
-        )}
-
-        {/*
-          Band 4: an arc above the head. Struck rather than filled, so it
-          reads as light rather than as a hat.
-        */}
-        {build >= 4 && (
-          <path
-            d={`M ${String(CENTRE - 18)} ${String(CENTRE - 20)}
-                a 18 18 0 0 1 36 0`}
-            fill="none"
-            stroke={tint}
-            strokeWidth={2.5}
-            strokeLinecap="round"
-            opacity={0.9}
-          />
-        )}
+        <svg
+          x={CENTRE - size / 2}
+          y={CENTRE - size / 2}
+          width={size}
+          height={size}
+          viewBox="0 0 512 512"
+        >
+          <path d={figure.path} fill={figureFill} />
+        </svg>
       </svg>
 
       {/* Outside the SVG so it uses the app's own type rather than SVG
