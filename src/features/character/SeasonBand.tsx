@@ -1,11 +1,15 @@
-import { CalendarRange } from 'lucide-react'
-import type { ReactNode } from 'react'
-
 import type { SeasonProgress } from '@/application/use-cases/character/season-progress'
 import { BarSeries, Meter } from '@/components/shared/Meter'
 
 /**
  * The season you are in, as a battle pass rather than a verdict.
+ *
+ * **The monthly review's link used to sit beside the season's name and
+ * the review is gone**, asked for as *"I don't really need a monthly
+ * review page or link since we can view trends on the home tab."* The
+ * argument for putting it here still stands and no longer has anything
+ * to point at: a season and a month were both "how is this stretch
+ * going", and this was the only prompt to file one.
  *
  * The bar fills against **last season's XP**, which is the only anchor
  * available that the app did not invent. A hundred tiers at thresholds
@@ -15,6 +19,15 @@ import { BarSeries, Meter } from '@/components/shared/Meter'
  *
  * A first season has nothing to beat. It says so and shows what it has
  * earned, rather than filling a bar against zero.
+ *
+ * **There was a "Where it came from" list at the foot of this and it is
+ * gone**, asked for as *"let's drop the where it came from section of
+ * the battle pass."* It named each area that had earned anything this
+ * season with its XP, biggest first, and the traits band directly below
+ * says the same thing over the whole of your history rather than one
+ * chapter — which is why removing it costs a comparison rather than a
+ * fact. `SeasonProgress.areas` went with it, because a field nothing
+ * reads is a tally the use case goes on computing every render.
  *
  * **A band of the sheet card rather than a section of its own.** Asked
  * for as *"merge in the season and attributes stuff into the first
@@ -44,19 +57,7 @@ function monthLabel(key: string): string {
   return MONTH_NAMES[month - 1] ?? key
 }
 
-export function SeasonBand({
-  progress,
-  action,
-}: {
-  readonly progress: SeasonProgress
-  /**
-   * Rendered beside the season's name. The monthly review lives here: a
-   * season and a month are both "how is this stretch going", and putting
-   * the two apart meant the only prompt to do the review was a link on a
-   * screen you had no reason to open.
-   */
-  readonly action?: ReactNode
-}) {
+export function SeasonBand({ progress }: { readonly progress: SeasonProgress }) {
   const { target } = progress
   const beaten = target !== undefined && progress.xp >= target
 
@@ -72,8 +73,8 @@ export function SeasonBand({
         label: a season has a name — "Autumn 2026" — and labelling that
         SEASON above it would be a caption over a proper noun.
       */}
-      <div className="flex items-baseline justify-between gap-2">
-        <div className="min-w-0">
+      <div className="min-w-0">
+        <div>
           <p className="text-ink-50 font-medium">{progress.label}</p>
           <p className="text-ink-500 text-xs">
             {progress.daysLeft === 0
@@ -81,7 +82,6 @@ export function SeasonBand({
               : `${progress.daysLeft.toString()} days left · ${Math.round(progress.elapsed * 100).toString()}% through`}
           </p>
         </div>
-        {action}
       </div>
 
       <div>
@@ -146,27 +146,6 @@ export function SeasonBand({
           ))}
         </div>
       </div>
-
-      {progress.areas.length === 0 ? (
-        <p className="text-ink-500 text-xs">
-          <CalendarRange size={14} className="mr-1 inline" aria-hidden />
-          Nothing earned yet this season.
-        </p>
-      ) : (
-        <div>
-          <span className="text-ink-500 mb-2 block text-xs font-medium tracking-wide uppercase">
-            Where it came from
-          </span>
-          <ul className="space-y-1">
-            {progress.areas.map((area) => (
-              <li key={area.area} className="flex items-baseline justify-between gap-2">
-                <span className="text-ink-300 text-sm">{area.name}</span>
-                <span className="numeric text-ink-500 text-xs">{area.xp} XP</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
     </div>
   )
 }

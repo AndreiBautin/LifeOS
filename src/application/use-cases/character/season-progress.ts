@@ -1,4 +1,4 @@
-import { ALL_ACTS, SCORING } from '@/domain/game/registry'
+import { ALL_ACTS } from '@/domain/game/registry'
 import {
   daysLeftIn,
   isInSeason,
@@ -41,12 +41,6 @@ export interface MonthProgress {
   readonly xp: number
 }
 
-export interface AreaProgress {
-  readonly area: string
-  readonly name: string
-  readonly xp: number
-}
-
 export interface SeasonProgress {
   readonly id: string
   readonly label: string
@@ -58,8 +52,6 @@ export interface SeasonProgress {
   readonly daysLeft: number
   /** The season's three months, in order, even the ones not yet begun. */
   readonly months: readonly MonthProgress[]
-  /** Only areas that earned something, biggest first. */
-  readonly areas: readonly AreaProgress[]
 }
 
 export interface SeasonDeps extends SheetDeps {
@@ -83,14 +75,6 @@ export async function seasonProgressFor(deps: SeasonDeps): Promise<SeasonProgres
     })),
   )
 
-  const areas = SCORING.map((area) => ({
-    area: area.area,
-    name: area.name,
-    xp: area.acts.reduce((sum, act) => sum + act.points * (acts[act.id] ?? 0), 0),
-  }))
-    .filter((area) => area.xp > 0)
-    .sort((a, b) => b.xp - a.xp)
-
   const target = xpFrom(lastActs, ALL_ACTS)
 
   return {
@@ -107,7 +91,6 @@ export async function seasonProgressFor(deps: SeasonDeps): Promise<SeasonProgres
     elapsed: seasonProgress(current, now),
     daysLeft: daysLeftIn(current, now),
     months,
-    areas,
   }
 }
 

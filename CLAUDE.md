@@ -2084,6 +2084,16 @@ added there would reach nobody who has already opened the app.
 scoring to a domain — declare the rating and let the spine do it, or there
 are two answers to "is this going well" within a release.
 
+**The spine still reads and nothing writes to it any more.** The review
+screen was removed and it was the only thing that filed a month, so the
+rating half of the model is dormant: declarations stand, `readout` runs,
+and it finds whatever was filed before. **If ratings are wanted back,
+the missing piece is a screen rather than a rule** — and if they are
+decided against for good, the removal is the registry's `ratings`
+declarations, `docs/GAME_MODEL.md`'s three-currency claim, and the
+sheet's `RatingStanding`, which is a deliberate model change rather
+than a tidy-up.
+
 **A measured value is stored under its metric id, not its source id.** The
 two names are separate on purpose — a source produces a number, a metric
 judges it — and `seriesFor` looks up by metric. Storing it the other way is
@@ -3906,10 +3916,11 @@ bar below says every control clears it — so a ninth tab, or support for
 **Measure before adding a ninth**, and measure it rather than reasoning
 about it: this paragraph is what an unmeasured warning costs.
 
-Settings, the tech tree and the monthly review are links from You, which
-is the hub. That is the line worth keeping: **a tab is somewhere you act,
-a link on the hub is somewhere you decide.** History hangs off Train,
-Trips and the inbox off the Map.
+Settings and the tech tree are links from You, which is the hub. That is
+the line worth keeping: **a tab is somewhere you act, a link on the hub
+is somewhere you decide.** History hangs off Train, Trips and the inbox
+off the Map. The monthly review was the third of those links and the
+screen is gone; see below.
 
 **The screens and the code use different words, on purpose.** Quests over
 `Project`, Codex over `backlog`, Tech tree over `upgrades`, Map over
@@ -4483,6 +4494,33 @@ show the arithmetic where the percentage reduced it to one figure.
 `mainstayFrom` is deleted rather than left exported, because a
 derivation nothing calls is the trap this file keeps recording.
 
+**Four things came off that card in the pass after it**, and each one
+had an argument for existing that is worth knowing before anybody
+rebuilds it.
+
+The **XP rule's fold** — "45 XP all time — what counts?" over a
+paragraph saying XP is paid for doing a thing and never for it having
+worked. This file argued that deleting it would be worse than folding
+it, because that sentence is what stops XP being read as a measure of
+how well anything went. The answer is that a rule is worth meeting once:
+it is still in `docs/GAME_MODEL.md` and `registry.ts`. **The number
+stayed** — deleting a measurement is a larger step than deleting an
+explanation of it.
+
+The **gear**: _"no need to track or show upgrades in that card."_
+Nothing about upgrades changed and the tech tree still owns them.
+`gearFrom` is deleted, which takes `upgrades` out of `buildAvatar` — so
+a portrait no longer loads a whole store — and leaves every field on the
+avatar a reading of XP or the calendar.
+
+The season's **"Where it came from"**, which listed each area that had
+earned anything this season. The traits band directly beneath says the
+same split over the whole of your history, so what was lost is a
+comparison rather than a fact. `SeasonProgress.areas` went with it,
+because a field nothing reads is a tally computed on every render.
+
+And the **review link**, covered above.
+
 **The cost is depth, and it is measured rather than guessed.** The
 day's first heading sits about 1,250 pixels down — a screen and a half
 on a phone. That is the cost this page's own note predicted when the
@@ -4514,12 +4552,32 @@ describe now, so they live on Today; levels, ladders and ratings describe
 where you have got to, so they live on You. The season was on You first
 and was wrong there — a season is a chapter you are _in_.
 
-The monthly review's link sits with the season for the same reason: both
-answer "how is this stretch going", and a link buried on a screen opened
-weekly was the only prompt to do a thing that wants doing monthly. It says
-`File 2026-08` or `2026-08 filed` rather than "Review" — a link that
-cannot tell you whether there is anything to do is a link you stop
-noticing.
+**The monthly review screen is gone**, asked for as _"I don't really
+need a monthly review page or link since we can view trends on the home
+tab."_ Its link sat beside the season, on the reasoning that both answer
+"how is this stretch going" and that a link nobody passed was the only
+prompt to file one. That reasoning was right and the conclusion it
+supported has been overtaken.
+
+**What that costs is not the screen, and it has to be said plainly: it
+is the ratings.** Filing a month was the only thing that ever wrote a
+`MonthlySnapshot`, and a rating is a **direction**, which needs two
+points in time. With nothing recording them, every area's rating is
+absent from here on and the area cards show ladders and XP only. Months
+already filed still read — `readout` is untouched — so this is a stop
+rather than a deletion.
+
+**`measureAll` is live and must stay**, which is the part that would be
+easy to get wrong when tidying: the sheet's **ladders** read it. Only
+the recording half went dark. The write use cases — `draftReview`,
+`saveReview`, `saveMetric`, `retireMetric` — are deliberately kept
+despite having no caller in the app, because they are how
+`review.test.ts` constructs a recorded month in order to test `readout`,
+which is live code. Deleting them would delete that coverage, and
+restoring the screen would then be a rewrite rather than a route.
+
+**Custom metrics can no longer be created**, for the same reason:
+`saveMetric` had no other door. Existing ones still read.
 
 Within Today the order is work first, readout last: the season sits below
 everything actionable, because a progress bar above the checkboxes makes

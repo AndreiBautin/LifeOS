@@ -1,4 +1,4 @@
-import { CalendarCheck, Settings } from 'lucide-react'
+import { Settings } from 'lucide-react'
 import { useCampaigns } from '@/features/campaign/hooks'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
@@ -15,7 +15,6 @@ import { AreaCard, AttributeRow } from '@/features/character/CharacterParts'
 import { AREA_LINKS, LEVEL_TONE } from '@/features/character/sheet-constants'
 import { SheetCard } from '@/features/character/SheetCard'
 import { useCharacterSheet, useSeasonProgress } from '@/features/character/hooks'
-import { useReviewDraft } from '@/features/review/hooks'
 import { LimitsCard } from '@/features/vitals/LimitsCard'
 import { LeadsToday } from '@/features/jobs/LeadsToday'
 import { DigestCard } from '@/features/news/DigestCard'
@@ -79,7 +78,6 @@ export function HomePage() {
   const leadingArc = (arcs.data ?? []).find((one) => one.next !== undefined)
 
   const season = useSeasonProgress()
-  const review = useReviewDraft()
   const sheet = useCharacterSheet()
   const services = useServices()
   const { settings } = useSettings()
@@ -181,21 +179,6 @@ export function HomePage() {
             className={buttonStyles({ variant: 'ghost', size: 'sm' })}
           >
             <Settings size={16} aria-hidden />
-          </Link>
-        }
-        reviewAction={
-          <Link to="/review" className={buttonStyles({ variant: 'ghost', size: 'sm' })}>
-            <CalendarCheck size={16} aria-hidden />
-            {/*
-              Says which month and whether it is done rather than just
-              "Review". A link that cannot tell you there is anything to
-              do is a link you stop noticing.
-            */}
-            {review.data === undefined
-              ? 'Review'
-              : review.data.started
-                ? `${review.data.month} filed`
-                : `File ${review.data.month}`}
           </Link>
         }
       />

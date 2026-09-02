@@ -18,11 +18,10 @@ import { characterSheet, type SheetDeps } from './sheet'
  * a comparison against last season that it never shows.
  */
 export async function avatarFor(deps: SheetDeps): Promise<Avatar> {
-  const [sheet, upgrades] = await Promise.all([characterSheet(deps), deps.upgrades.all()])
+  const sheet = await characterSheet(deps)
 
   return buildAvatar({
     standing: sheet.standing,
-    upgrades,
     season: seasonOf(deps.clock.now()).season,
   })
 }

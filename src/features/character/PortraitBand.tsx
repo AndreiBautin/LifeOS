@@ -2,16 +2,14 @@ import type { ReactNode } from 'react'
 
 import { Skeleton } from '@/components/shared/Skeleton'
 
-import { Badge } from '@/components/shared/primitives'
-
 import { AvatarPortrait } from './AvatarPortrait'
 import { useAvatar } from './hooks'
 
 /**
- * The top of the sheet: the figure, the level, and what you carry.
+ * The top of the sheet: the figure, the level, and the XP behind it.
  *
- * **It is a band rather than a card now, and the page has no heading
- * above it.** Asked for directly: *"let's just drop that entire heading
+ * **It is a band rather than a card, and the page has no heading above
+ * it.** Asked for directly: *"let's just drop that entire heading
  * section and just start with the card."* So the level and the date
  * moved down into it — they were the whole information content of the
  * header, and the portrait was already directly beneath it.
@@ -22,13 +20,32 @@ import { useAvatar } from './hooks'
  * Nothing else here is drawn twice — the ring *is* the XP bar, same
  * numerator and same denominator as the line under it.
  *
- * **There was a sentence here reading "83% of your XP is dailies" and it
- * is gone.** It was the evidence for a flavour title above it, outlived
- * the title by a day, and went on the ask that merged the season and the
- * traits in below. What replaced it is not nothing: the season band
- * names where this season's XP came from area by area, and the traits
- * split all of it eight ways. Both say what the percentage said, with
- * the arithmetic on screen instead of reduced to one figure.
+ * **Three things have been taken off this band and it is worth knowing
+ * what they were**, because each looked load-bearing when it was
+ * written.
+ *
+ * A sentence reading "83% of your XP is dailies" was the evidence for a
+ * flavour title above it and outlived the title by a day. The traits
+ * band below states the same split eight ways with the arithmetic
+ * visible, which is what the percentage was compressing.
+ *
+ * **The XP rule's fold went next**, asked for as *"let's remove the
+ * 'what counts' section."* It read "45 XP all time — what counts?" over
+ * a paragraph saying XP is paid for doing a thing and never for it
+ * having worked. This file used to argue that deleting it would be worse
+ * than keeping it folded, because it is the sentence that stops XP being
+ * read as a measure of how well anything went. That argument is answered
+ * by the sentence having been read: it is a rule worth meeting once, and
+ * it is still written down in `docs/GAME_MODEL.md` and in `registry.ts`.
+ * **The number stayed** — deleting a measurement is a larger step than
+ * deleting an explanation of it, and this is the only place the whole of
+ * your XP is stated.
+ *
+ * **And the gear went with them:** *"no need to track or show upgrades
+ * in that card."* Nothing about upgrades changed — the tech tree still
+ * owns them, bought or wanted. What is gone is this card's copy of them,
+ * which was a list of titles typed on another screen and the one thing
+ * on the band that was not a reading of the XP model.
  */
 export function PortraitBand({
   xp,
@@ -54,7 +71,7 @@ export function PortraitBand({
     )
   }
 
-  const { gear, gearCount, into, level, needed } = avatar.data
+  const { into, level, needed } = avatar.data
 
   return (
     <>
@@ -91,14 +108,6 @@ export function PortraitBand({
             */}
             {action}
           </div>
-
-          {gearCount > 0 && (
-            <div className="mt-2 flex flex-wrap items-center gap-1.5">
-              <Badge tone="cool">
-                {gearCount} {gearCount === 1 ? 'item' : 'items'}
-              </Badge>
-            </div>
-          )}
         </div>
       </div>
 
@@ -107,62 +116,14 @@ export function PortraitBand({
         and this is a fix rather than a preference: the column next to a
         120-pixel figure is about 200 wide at 375, which broke "45 / 100
         XP into the level" across two lines mid-phrase. They also belong
-        together — one is XP into this level, the other is XP over all
-        of it, and reading them adjacent is what makes the difference
+        together — one is XP into this level, the other is XP over all of
+        it, and reading them adjacent is what makes the difference
         obvious.
       */}
       <p className="text-ink-700 numeric mt-3 text-xs">
         {needed > 0 ? `${String(into)} / ${String(needed)} XP into the level` : 'Top of the ladder'}
       </p>
-
-      {/*
-        The number stays out; the sentence folds away.
-
-        Reported as *"the blurb underneath the avatar might be overkill,
-        explaining everything"*, and that is fair — it is a rule, and a
-        rule is worth reading once rather than every morning on the
-        screen you open most. Deleting it would be worse: it is the
-        sentence that stops XP being mistaken for a measure of how well
-        anything went, and somebody meeting the number for the first
-        time still needs it. A disclosure keeps both.
-      */}
-      <details className="group mt-1.5">
-        <summary className="text-ink-500 marker:content-none flex cursor-pointer list-none items-baseline gap-1.5 text-xs">
-          <span className="numeric">{xp} XP all time</span>
-          <span className="text-ink-700 group-open:hidden">— what counts?</span>
-        </summary>
-        <p className="text-ink-700 mt-1.5 text-xs">
-          Across everything you track. Paid for doing the thing, never for it having worked —
-          getting stronger moves a ladder, and paying it twice is how a number stops being a record
-          of effort.
-        </p>
-      </details>
-
-      {/*
-        Gear is what you actually bought, grouped by the upgrade's own
-        category. Purchased rather than wanted — a wishlist is not
-        equipment — and yours rather than the house's, which is the split
-        the Base screen already makes.
-      */}
-      <div className="border-ink-800 mt-4 border-t pt-3">
-        {gear.length === 0 ? (
-          <p className="text-ink-500 text-sm">
-            Nothing equipped. Upgrades you mark as bought show up here — the house&rsquo;s stay on
-            Base.
-          </p>
-        ) : (
-          <dl className="space-y-2">
-            {gear.map((slot) => (
-              <div key={slot.category} className="flex items-baseline gap-3">
-                <dt className="text-ink-700 w-20 shrink-0 text-xs tracking-wide uppercase">
-                  {slot.label}
-                </dt>
-                <dd className="text-ink-300 min-w-0 flex-1 text-sm">{slot.items.join(' · ')}</dd>
-              </div>
-            ))}
-          </dl>
-        )}
-      </div>
+      <p className="text-ink-700 numeric mt-1 text-xs">{xp} XP all time</p>
     </>
   )
 }

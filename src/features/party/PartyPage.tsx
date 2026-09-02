@@ -8,7 +8,7 @@ import { Badge, Button, Card, Empty, Section } from '@/components/shared/primiti
 import { CIRCLE_RATING_LABELS } from '@/domain/social/circle'
 import { toDayKey } from '@/domain/time/day'
 
-import { useAddFriend, useLogHangout, useRemoveFriend, useSocialSummary } from '../review/hooks'
+import { useAddFriend, useLogHangout, useRemoveFriend, useSocialSummary } from './hooks'
 
 const FIELD =
   'bg-ink-850 border-ink-800 text-ink-50 placeholder:text-ink-700 h-11 w-full rounded-xl border px-3 text-sm'

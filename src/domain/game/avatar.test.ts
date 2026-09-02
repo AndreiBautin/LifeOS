@@ -1,27 +1,15 @@
 import { describe, expect, it } from 'vitest'
 
-import { buildAvatar, gearFrom } from './avatar'
-import { asUpgradeId } from '@/domain/ids/ids'
-import type { Upgrade } from '@/domain/upgrades/upgrade'
+import { buildAvatar } from './avatar'
 
 /**
  * The avatar re-presents the sheet and must never add to it.
  *
  * That is the property these are really about. Every field has to be
- * traceable to XP, to an owned upgrade, or to the calendar — because a
- * portrait carrying a number of its own would be a fourth currency, and
- * the model has three deliberately.
+ * traceable to XP or to the calendar — because a portrait carrying a
+ * number of its own would be a fourth currency, and the model has three
+ * deliberately.
  */
-
-const upgrade = (over: Partial<Upgrade>): Upgrade => ({
-  id: asUpgradeId(over.title ?? 'u'),
-  title: 'Thing',
-  category: 'gym',
-  priority: 50,
-  status: 'purchased',
-  createdAt: '2026-01-01T00:00:00.000Z',
-  ...over,
-})
 
 /*
  * **There was a "what you are, mostly" block here and it is gone with
@@ -37,56 +25,21 @@ const upgrade = (over: Partial<Upgrade>): Upgrade => ({
  * XP total exactly.
  */
 
-describe('what you are carrying', () => {
-  it('counts what you bought and not what you want', () => {
-    const gear = gearFrom([
-      upgrade({ title: 'Belt', status: 'purchased' }),
-      upgrade({ title: 'Rack', status: 'idea' }),
-    ])
-
-    expect(gear.flatMap((slot) => slot.items)).toEqual(['Belt'])
-  })
-
-  /*
-   * The split you already make on the Base screen: a dishwasher is an
-   * upgrade to the place you live, a belt is an upgrade to you. Two
-   * existing fields decide it and no new one was added.
-   */
-  it('leaves the house’s upgrades to the house', () => {
-    const gear = gearFrom([
-      upgrade({ title: 'Belt' }),
-      upgrade({ title: 'Dishwasher', category: 'home', belongsTo: 'base' }),
-    ])
-
-    expect(gear.flatMap((slot) => slot.items)).toEqual(['Belt'])
-  })
-
-  it('groups by the upgrade’s own category', () => {
-    const gear = gearFrom([
-      upgrade({ title: 'Belt', category: 'gym' }),
-      upgrade({ title: 'Straps', category: 'gym' }),
-      upgrade({ title: 'Monitor', category: 'office' }),
-    ])
-
-    expect(gear[0]?.items).toEqual(['Belt', 'Straps'])
-    expect(gear[0]?.label).toBe('Gym')
-    expect(gear[1]?.items).toEqual(['Monitor'])
-  })
-
-  it('has nothing to show before anything is owned', () => {
-    expect(gearFrom([])).toEqual([])
-  })
-})
+/*
+ * **A "what you are carrying" block was here and went with `gearFrom`.**
+ * It asserted that the portrait counted what you had bought rather than
+ * what you wanted, and excluded the house's upgrades from yours. Both
+ * rules still exist and are still tested — `isOwned` and `isOwnArea` are
+ * the Base screen's own split, covered in `base.test.ts` and
+ * `shelf.test.ts`. What is gone is this model's copy of them, asked for
+ * as *"no need to track or show upgrades in that card."*
+ */
 
 describe('the portrait as a whole', () => {
   const standing = { xp: 250, level: 3, into: 50, needed: 200 }
 
   it('draws the ring from XP into the level, which is a real denominator', () => {
-    const avatar = buildAvatar({
-      standing,
-      upgrades: [],
-      season: 'autumn',
-    })
+    const avatar = buildAvatar({ standing, season: 'autumn' })
 
     expect(avatar.progress).toBeCloseTo(0.25, 5)
     expect(avatar.level).toBe(3)
@@ -100,7 +53,6 @@ describe('the portrait as a whole', () => {
   it('shows a full ring rather than NaN at the top of the ladder', () => {
     const avatar = buildAvatar({
       standing: { xp: 9999, level: 20, into: 0, needed: 0 },
-      upgrades: [],
       season: 'winter',
     })
 
@@ -108,30 +60,14 @@ describe('the portrait as a whole', () => {
     expect(Number.isNaN(avatar.progress)).toBe(false)
   })
 
-  it('totals the gear it is showing', () => {
-    const avatar = buildAvatar({
-      standing,
-      upgrades: [
-        upgrade({ title: 'Belt' }),
-        upgrade({ title: 'Straps' }),
-        upgrade({ title: 'Dishwasher', belongsTo: 'base' }),
-      ],
-      season: 'spring',
-    })
-
-    expect(avatar.gearCount).toBe(2)
-  })
-
   it('is drawable on an empty database', () => {
-    // Level 1 and no gear — and nothing undefined that a component
-    // would have to guard.
+    // Level 1 — and nothing undefined that a component would have to
+    // guard.
     const avatar = buildAvatar({
       standing: { xp: 0, level: 1, into: 0, needed: 100 },
-      upgrades: [],
       season: 'summer',
     })
 
-    expect(avatar.gear).toEqual([])
     expect(avatar.progress).toBe(0)
     expect(avatar.season).toBe('summer')
   })

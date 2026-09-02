@@ -8,7 +8,6 @@ import { SharePage } from '@/features/atlas/SharePage'
 import { TripsPage } from '@/features/atlas/TripsPage'
 import { BacklogPage } from '@/features/backlog/BacklogPage'
 import { ProjectsPage } from '@/features/projects/ProjectsPage'
-import { ReviewPage } from '@/features/review/ReviewPage'
 import { BasePage } from '@/features/base/BasePage'
 import { LimitsPage } from '@/features/limits/LimitsPage'
 import { MindPage } from '@/features/mind/MindPage'
@@ -92,7 +91,6 @@ export const router = createBrowserRouter(
         { path: 'character', element: <Navigate to="/today" replace /> },
         { path: 'today', element: <HomePage /> },
         { path: 'party', element: <PartyPage /> },
-        { path: 'review', element: <ReviewPage /> },
         { path: 'history', element: <HistoryPage /> },
         { path: 'settings', element: <SettingsPage /> },
         { path: '*', element: <NotFoundPage /> },

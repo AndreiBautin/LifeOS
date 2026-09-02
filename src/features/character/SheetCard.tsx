@@ -41,7 +41,6 @@ export function SheetCard({
   season,
   traits,
   action,
-  reviewAction,
 }: {
   readonly xp: number
   readonly today: string
@@ -49,8 +48,6 @@ export function SheetCard({
   readonly traits?: readonly TraitStanding[] | undefined
   /** The settings link, which used to be the page header's action. */
   readonly action?: ReactNode
-  /** The monthly review link, which belongs beside the season. */
-  readonly reviewAction?: ReactNode
 }) {
   return (
     <Card>
@@ -63,10 +60,7 @@ export function SheetCard({
       */}
       {season !== undefined && (
         <div className="border-ink-800 mt-4 border-t pt-4">
-          <SeasonBand
-            progress={season}
-            {...(reviewAction === undefined ? {} : { action: reviewAction })}
-          />
+          <SeasonBand progress={season} />
         </div>
       )}
 
