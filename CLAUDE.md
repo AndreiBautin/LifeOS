@@ -901,6 +901,38 @@ not what a character sheet is for.
 already makes: a dishwasher upgrades the place you live and a belt
 upgrades you. Slots are the upgrade's own `category`.
 
+**The figure grows with the level, in five bands.** Reported as _"is
+there a way to make the avatar more engaging instead of simply a blank
+figure? Perhaps levelling could upgrade it, since currently levelling is
+done simply for the sake of levelling."_ That was a fair account: the
+silhouette at level 1 was the silhouette at level 20, so levelling moved
+a numeral and an arc and nothing else.
+
+`avatar.build` is `0`-`4` from `BUILD_BANDS` at levels 1, 5, 10, 15 and
+20 — wider shoulders, then a mantle, then plates, then an arc above the
+head. **It is the level drawn and nothing more**, which is what lets it
+exist beside the three-currency rule: a portrait that moved on its own
+would be the fourth currency, and this one cannot move unless the level
+does. `avatar.test.ts` holds that it never goes backwards and never
+indexes past the geometry that exists.
+
+**A number, not a name.** The flavour titles were deleted from this file
+for being words the app invented, and a rank called _Ascendant_ would be
+the same thing wearing armour. Nothing prints the band; it only decides
+how much is drawn.
+
+**The thresholds are the app's own, and that is allowed here.** A ladder
+must name a published standard; there is no external table for how much
+silhouette a level is worth. It is permitted precisely because it
+**measures nothing** — it re-draws a number already earned honestly,
+where a ladder makes a claim about you against the world.
+
+**Every mark sits on the outline, and the first attempt did not.** The
+mantle was drawn as its own curve below the shoulders and read as a
+detached bowl sharing the frame. It strokes the shoulder path the figure
+already has now, and the plates solve that same ellipse for their y — so
+widening the shoulders at band 1 moves everything that sits on them.
+
 **The figure is geometric because there is nothing to illustrate
 honestly.** Gear is user-typed titles, so drawing a belt on a character
 means guessing what an upgrade depicts and guessing wrong on most of

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { buildAvatar } from './avatar'
+import { buildAvatar, buildFor, BUILD_BANDS } from './avatar'
 
 /**
  * The avatar re-presents the sheet and must never add to it.
@@ -85,3 +85,52 @@ describe('the portrait as a whole', () => {
  * — it asks `isOwned` and `isOwnArea` — and is still tested in "what you
  * are carrying".
  */
+
+/*
+ * The figure is the level, drawn. These are about the one property that
+ * keeps it honest: nothing about the picture can move unless the level
+ * does, so a portrait cannot become a fourth currency by accident.
+ */
+describe('how much figure a level has earned', () => {
+  it('starts at the plainest silhouette and rises with the level', () => {
+    expect(buildFor(1)).toBe(0)
+    expect(buildFor(5)).toBe(1)
+    expect(buildFor(10)).toBe(2)
+    expect(buildFor(15)).toBe(3)
+    expect(buildFor(20)).toBe(4)
+  })
+
+  it('holds a band until the next one is reached', () => {
+    expect(buildFor(4)).toBe(0)
+    expect(buildFor(9)).toBe(1)
+    expect(buildFor(14)).toBe(2)
+    expect(buildFor(19)).toBe(3)
+  })
+
+  /*
+   * Never above the top band, whatever the level does. The XP curve has
+   * no ceiling and the drawing does, so a level past the last threshold
+   * has to hold rather than index past the geometry that exists.
+   */
+  it('stops at the last band rather than running off the end', () => {
+    expect(buildFor(999)).toBe(BUILD_BANDS.length - 1)
+  })
+
+  it('never goes backwards as the level rises', () => {
+    let last = 0
+    for (let level = 1; level <= 40; level += 1) {
+      const band = buildFor(level)
+      expect(band, String(level)).toBeGreaterThanOrEqual(last)
+      last = band
+    }
+  })
+
+  it('is the level and nothing else, so the portrait carries it', () => {
+    const avatar = buildAvatar({
+      standing: { xp: 5_000, level: 12, into: 10, needed: 100 },
+      season: 'autumn',
+    })
+
+    expect(avatar.build).toBe(buildFor(12))
+  })
+})

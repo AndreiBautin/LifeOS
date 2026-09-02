@@ -43,6 +43,26 @@ import type { XpStanding } from './xp'
 
 export interface Avatar {
   readonly level: number
+  /**
+   * How much figure the portrait draws, `0`-`4`.
+   *
+   * **A re-presentation of the level and nothing else**, which is what
+   * lets it exist at all: the model has three currencies on purpose, and
+   * a portrait that changed on its own would be a fourth. This is the
+   * level, drawn.
+   *
+   * It came from _"is there a way to make the avatar more engaging
+   * instead of simply a blank figure? Perhaps levelling could upgrade it,
+   * since currently levelling is done simply for the sake of levelling."_
+   * That is a fair account of what levelling did — it moved a numeral and
+   * an arc, and the silhouette at level 1 was the silhouette at level 20.
+   *
+   * **A number rather than a name.** Flavour titles were deleted from
+   * this file for being words the app made up, and a rank called
+   * *Ascendant* would be the same thing wearing armour. Nothing prints
+   * this; it only decides how much is drawn.
+   */
+  readonly build: number
   /** XP into the current level, and what the level costs. A real bar. */
   readonly into: number
   readonly needed: number
@@ -72,12 +92,35 @@ export interface Avatar {
  * store to group something nothing shows.
  */
 
+/**
+ * The level at which each band of the figure appears.
+ *
+ * Five steps, at levels the XP curve actually reaches, so the picture
+ * changes about as often as it is worth noticing. **The thresholds are
+ * this app's own** — unlike a ladder, which must name a published
+ * standard, because there is nothing external to anchor "how much
+ * silhouette" to and nothing is being claimed by it. It is a scale the
+ * app invented, and that is allowed precisely because it measures
+ * nothing: it re-draws a number that was already earned honestly.
+ */
+export const BUILD_BANDS: readonly number[] = [1, 5, 10, 15, 20]
+
+/** How much figure a level has earned, `0`-`4`. */
+export function buildFor(level: number): number {
+  let band = 0
+  for (const [index, at] of BUILD_BANDS.entries()) {
+    if (level >= at) band = index
+  }
+  return band
+}
+
 export function buildAvatar(input: {
   readonly standing: XpStanding
   readonly season: Season
 }): Avatar {
   return {
     level: input.standing.level,
+    build: buildFor(input.standing.level),
     into: input.standing.into,
     needed: input.standing.needed,
     /*
