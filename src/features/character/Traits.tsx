@@ -106,20 +106,22 @@ function TraitRow({ standing }: { readonly standing: TraitStanding }) {
         height={6}
         label={`${trait.label}, level ${String(level)}`}
       />
-
-      <p className="text-ink-700 mt-1 text-xs">{trait.blurb}</p>
     </div>
   )
 }
 
 export function Traits({ traits }: { readonly traits: readonly TraitStanding[] }) {
+  /*
+   * **No heading and no description.** Asked for as _"let's drop the
+   * traits header and description"_ — four labelled bars under a
+   * portrait do not need to be told they are traits, and the caption
+   * ("your XP, split by what earned it") stopped being true the moment
+   * traits became a selection rather than a partition: they are *some*
+   * of your XP now, and a caption claiming otherwise would be the one
+   * thing on this card that is wrong.
+   */
   return (
     <div className="space-y-4">
-      <div>
-        <p className="text-ink-50 font-medium">Traits</p>
-        <p className="text-ink-500 text-xs">Your XP, split by what earned it</p>
-      </div>
-
       {ordered(traits).map((standing) => (
         <TraitRow key={standing.trait.id} standing={standing} />
       ))}

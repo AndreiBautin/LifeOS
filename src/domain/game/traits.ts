@@ -41,111 +41,72 @@ export interface TraitDefinition {
   readonly id: string
   readonly label: string
   /**
-   * What it is, in the terms of what fed it.
+   * The areas whose XP this trait re-presents.
    *
-   * On the screen beside the bar, because a bar labelled "Charisma" with
-   * no source is the invented scale this whole design is avoiding. The
-   * sentence names the acts.
+   * **No blurb any more.** Each row used to carry a sentence naming what
+   * fed it — "people you actually saw" — on the reasoning that a bar
+   * with no source is the invented scale this model refuses. That
+   * reasoning was about a bar somebody might not be able to trace; four
+   * bars called Strength, Stamina, Intellect and Craft, on a sheet whose
+   * every number comes from acts, do not need a paragraph each to be
+   * legible. Asked for as _"drop the descriptions on traits"_.
    */
-  readonly blurb: string
-  /** The areas whose XP this trait re-presents. */
   readonly areas: readonly LifeArea[]
 }
 
 /**
- * Eight traits over eleven areas, and every bundle is defensible in a
- * sentence.
+ * Four traits, and **they no longer partition the areas.**
  *
- * Six was the target, because six is what an RPG character sheet has —
- * and forcing eleven areas into six meant bundling things whose only
- * shared property was needing somewhere to go, which is invented
- * structure wearing a familiar name. Where a bundle *is* natural it is
- * made: a house job, a quest step and an upgrade are all Craft, and a
- * job application and a pound saved are both Fortune. Where it is not,
- * the trait stands alone.
+ * That is the change to know about before reading anything else here.
+ * Every area used to belong to exactly one trait, which made the trait
+ * totals sum to the XP total exactly — rule three holding by
+ * construction. Asked for: _"drop discipline, fortune and wayfaring
+ * completely"_, and there is no honest home among the four survivors for
+ * habits, limits, challenges, job search, finance or exploration.
+ * Forcing them in would have made Craft a catch-all holding half the
+ * app, which is the invented structure this file has always refused.
+ *
+ * **So a trait is now a selection, and the bars add up to less than the
+ * level above them.** That is a real cost and it is deliberate rather
+ * than accidental — which is the entire difference from the failure the
+ * old guard existed to catch, where an area fell out of the partition by
+ * mistake and nothing said so. `UNCLAIMED_AREAS` names the ones with no
+ * bar, and `traits.test.ts` asserts that list exactly, so a *new* area
+ * arriving without a trait is still a decision somebody has to make out
+ * loud rather than a silence.
+ *
+ * What has not changed: no area feeds two traits, and nothing here
+ * invents a number. A trait is still XP you already earned under a
+ * different name.
  */
 export const TRAITS: readonly TraitDefinition[] = [
-  {
-    id: 'strength',
-    label: 'Strength',
-    blurb: 'Sessions finished and sets logged',
-    areas: ['training'],
-  },
-  {
-    id: 'intellect',
-    label: 'Intellect',
-    blurb: 'Books and courses worked through, and problems practised',
-    areas: ['backlog', 'mind'],
-  },
-  {
-    id: 'discipline',
-    label: 'Discipline',
-    blurb: 'Habits kept, limits held, and the season taken up on its offers',
-    /*
-     * **`vitals` is here because Vitality was deleted, not because the
-     * bundle got looser.** Vitality's only area was `vitals`, and that
-     * area stopped paying anything the moment upkeep became a `group`
-     * label rather than a home: brushing pays `dailies.completed` now,
-     * and what is left under `vitals` is the limits, which measure and
-     * pay nothing.
-     *
-     * A trait fed by nothing is worse than one merely unproven. The
-     * sheet keeps unproven bars on purpose — "eight bars with three
-     * empty says where the time is going" — but that argument is about
-     * a bar somebody could still fill. One that **cannot** be filled by
-     * any act in the app is furniture, and it would sit at "Nothing yet"
-     * for the life of the app while the XP it described appeared under
-     * Discipline.
-     *
-     * The partition still has to be total, so `vitals` needs a trait
-     * whether or not it pays: `traits.test.ts` asserts every area has
-     * exactly one. Discipline is the honest home for it — staying under
-     * a limit and keeping a habit are the same kind of thing, and the
-     * upkeep XP lands here anyway now.
-     */
-    /*
-     * **`challenges` is here because deliberateness is the shared
-     * thread, and it was the closest of seven rather than an obvious
-     * one.** A seasonal challenge is explicitly *not* an ordinary day,
-     * which is what the rest of this trait is about — so the case is
-     * narrower than the bundle looks: keeping a habit and carving a
-     * pumpkin in the week it is worth carving one are both doing a thing
-     * you meant to do rather than letting it pass.
-     *
-     * The alternatives were worse. Craft is things built and bought,
-     * Charisma is people seen, and a trait of its own would be an eighth
-     * bar fed by one act. If challenges ever grow past a seasonal list,
-     * this is the assignment to revisit first.
-     */
-    areas: ['dailies', 'vitals', 'challenges'],
-  },
-  {
-    id: 'craft',
-    label: 'Craft',
-    blurb: 'Things built, fixed and bought — quests, the house, the tree',
-    areas: ['projects', 'base', 'upgrades'],
-  },
-  {
-    /*
-     * Fed by one act, and that is worth knowing rather than fixing.
-     * Finance deliberately declares no acts — typing in your net worth
-     * is a *measurement*, and paying XP for the number going up would be
-     * paying for an outcome — so Fortune moves only when an application
-     * is sent. The area belongs here regardless: leaving it out of the
-     * partition would mean an area with no trait, which is the gap the
-     * guard test exists to catch.
-     */
-    id: 'fortune',
-    label: 'Fortune',
-    blurb: 'Applications sent. Money is measured here, not earned',
-    areas: ['jobs', 'finance'],
-  },
-  {
-    id: 'wayfaring',
-    label: 'Wayfaring',
-    blurb: 'Ground covered and places marked',
-    areas: ['places'],
-  },
+  { id: 'strength', label: 'Strength', areas: ['training'] },
+  /*
+   * Its own area rather than a share of `training`, because an area
+   * feeds exactly one trait — see the note in `registry.ts`. The act is
+   * a session that contained conditioning actually done.
+   */
+  { id: 'stamina', label: 'Stamina', areas: ['cardio'] },
+  { id: 'intellect', label: 'Intellect', areas: ['backlog', 'mind'] },
+  { id: 'craft', label: 'Craft', areas: ['projects', 'base', 'upgrades'] },
+]
+
+/**
+ * The areas that pay XP into the level and into no bar.
+ *
+ * **Listed rather than derived, and that is the point.** It is the same
+ * guard the partition used to be, one step weaker: the test asserts this
+ * list matches reality exactly, so an area added without a trait fails
+ * the build until somebody says which of the two it is. Deriving it
+ * would make the answer always "correct" and never a decision.
+ */
+export const UNCLAIMED_AREAS: readonly LifeArea[] = [
+  'places',
+  'dailies',
+  'jobs',
+  'vitals',
+  'finance',
+  'challenges',
 ]
 
 /** Which trait an area feeds. Total, by the partition guard. */

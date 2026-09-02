@@ -1,33 +1,44 @@
 import { describe, expect, it } from 'vitest'
 
 import { ALL_ACTS, LIFE_AREAS } from './registry'
-import { areasWithoutTrait, traitForArea, traitStandings, TRAITS } from './traits'
+import { areasWithoutTrait, traitForArea, traitStandings, TRAITS, UNCLAIMED_AREAS } from './traits'
 import { xpFrom } from './xp'
 
 /**
- * The partition is the whole design, so it is the whole test file.
+ * **The traits used to partition the areas and now select from them**,
+ * so this file guards a weaker claim than it did — deliberately, and the
+ * difference between the two is the whole point of what is here.
  *
- * A trait is a projection of XP and nothing else. What makes that claim
- * true rather than aspirational is that the traits cover every area and
- * cover no area twice — which is what keeps the bars summing to exactly
- * the XP total, and keeps rule three ("nothing counted twice") holding
- * by construction.
+ * The old rule was that every area belonged to exactly one trait, which
+ * made the bars sum to the XP total exactly. Three traits were dropped
+ * and six areas have no bar as a result. What must still hold: **no area
+ * feeds two traits**, every claimed area exists, and the set with no
+ * trait is *exactly* the set somebody decided on. That last one is what
+ * keeps this a decision rather than a silence — an area added tomorrow
+ * with no trait fails here until it is either claimed or listed.
  */
-describe('the trait partition', () => {
+describe('the trait selection', () => {
   /*
-   * The silent failure. An area missing from the partition pays XP that
-   * appears in the character total and in no trait, so the bars quietly
-   * add up to less than the level above them and nothing errors. Exactly
-   * the shape of a muscle group belonging to no tier, which typechecked
-   * cleanly.
+   * The failure this replaces was silent: an area falling out of the
+   * partition by accident paid XP into the level and into no bar, and
+   * nothing said so. Naming the unclaimed areas keeps that impossible
+   * while allowing the state on purpose.
    */
-  it('gives every life area a trait', () => {
-    expect(areasWithoutTrait()).toEqual([])
+  it('leaves exactly the areas somebody decided to leave', () => {
+    expect([...areasWithoutTrait()].sort()).toEqual([...UNCLAIMED_AREAS].sort())
+  })
+
+  it('claims every area that is not on that list', () => {
+    const claimed = LIFE_AREAS.filter((area) => !UNCLAIMED_AREAS.includes(area))
+
+    for (const area of claimed) {
+      expect(traitForArea(area)).toBeDefined()
+    }
   })
 
   it('gives no area two traits', () => {
     for (const area of LIFE_AREAS) {
-      expect(TRAITS.filter((trait) => trait.areas.includes(area))).toHaveLength(1)
+      expect(TRAITS.filter((trait) => trait.areas.includes(area)).length).toBeLessThanOrEqual(1)
     }
   })
 
@@ -46,32 +57,35 @@ describe('the trait partition', () => {
     expect(new Set(TRAITS.map((one) => one.label)).size).toBe(TRAITS.length)
   })
 
-  /*
-   * Every trait says what fed it. A bar labelled "Charisma" with no
-   * source is the invented scale this design exists to avoid.
-   */
-  it('says what feeds each one', () => {
+  it('feeds every trait from at least one area', () => {
+    // A trait claiming nothing is a bar no act can ever move — the
+    // reason Vitality was deleted rather than left unproven.
     for (const trait of TRAITS) {
-      expect(trait.blurb.trim()).not.toBe('')
+      expect(trait.areas.length).toBeGreaterThan(0)
     }
   })
 })
 
 describe('levelling a trait', () => {
   /*
-   * The load-bearing arithmetic. If the trait totals ever stopped
-   * summing to the XP total, either an area is counted twice or one is
-   * counted not at all — and both look like a slightly wrong bar rather
-   * than like a bug.
+   * **The bars sum to the claimed areas, not to the level**, which is
+   * the arithmetic that replaced "splits the XP total exactly". Counting
+   * twice would still be a bug and still shows up here: the trait totals
+   * must equal the XP of the areas the traits claim, no more and no
+   * less. What they may not do any more is equal the total, and the
+   * second assertion pins that the gap is real rather than accidental.
    */
-  it('splits the XP total exactly, with nothing lost or doubled', () => {
+  it('sums to the XP of the areas it claims, and falls short of the total', () => {
     const tally = Object.fromEntries(ALL_ACTS.map((act, index) => [act.id, index + 1]))
 
+    const claimedActs = ALL_ACTS.filter((act) => traitForArea(act.area as never) !== undefined)
+
     const total = xpFrom(tally, ALL_ACTS)
+    const claimed = xpFrom(tally, claimedActs)
     const across = traitStandings(tally, ALL_ACTS).reduce((sum, one) => sum + one.xp, 0)
 
-    expect(across).toBe(total)
-    expect(total).toBeGreaterThan(0)
+    expect(across).toBe(claimed)
+    expect(claimed).toBeLessThan(total)
   })
 
   it('counts an act under the trait its area belongs to', () => {
@@ -119,19 +133,15 @@ describe('levelling a trait', () => {
 })
 
 describe('finding an area’s trait', () => {
-  it('answers for every declared area', () => {
-    for (const area of LIFE_AREAS) {
-      expect(traitForArea(area)).toBeDefined()
-    }
-  })
+  it('answers for a claimed area and is absent for an unclaimed one', () => {
+    expect(traitForArea('training')?.id).toBe('strength')
+    expect(traitForArea('cardio')?.id).toBe('stamina')
 
-  /*
-   * Finance pays into Fortune and will never move it, because it
-   * declares no acts on purpose — a net worth is measured, not done.
-   * Belonging to the partition anyway is what stops it reading as an
-   * area somebody forgot.
-   */
-  it('gives finance a trait even though it pays no XP', () => {
-    expect(traitForArea('finance')?.id).toBe('fortune')
+    /*
+     * **Absent rather than a throw, and that is the shape the sheet
+     * needs.** Six areas have no bar now; a lookup that failed on them
+     * would make every caller branch on a state that is ordinary.
+     */
+    expect(traitForArea('finance')).toBeUndefined()
   })
 })

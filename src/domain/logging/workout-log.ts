@@ -148,6 +148,32 @@ export function workingSets(entry: LogEntry): readonly LoggedSet[] {
   return entry.sets.filter((set) => !set.isWarmup && set.outcome === 'completed')
 }
 
+/**
+ * Whether a session actually contained conditioning that was done.
+ *
+ * **The source of the Stamina trait**, and it reads records that already
+ * exist: `LogEntry.role` is copied off the slot when the session starts,
+ * so a Zone 2 walk or a block of swings is identifiable in the log
+ * without anything new being written down.
+ *
+ * **Completed sets only, never the presence of the slot.** A conditioning
+ * row the programme scheduled and the lifter skipped is a slot that
+ * existed, not cardio that happened — and `pending` is a real outcome
+ * here rather than an absence, which is the distinction this file was
+ * built around.
+ *
+ * It asks *whether*, not how much. One walk and one brutal interval
+ * session are one act each, which is the flat-rate rule every act in
+ * this app follows: paying by duration would turn the easy Zone 2 work
+ * the programme depends on into the least valuable thing in it.
+ */
+export function hasConditioning(log: WorkoutLog): boolean {
+  return log.entries.some(
+    (entry) =>
+      entry.role === 'conditioning' && entry.sets.some((set) => set.outcome === 'completed'),
+  )
+}
+
 export function isEntryComplete(entry: LogEntry): boolean {
   return entry.sets.every((set) => set.outcome !== 'pending')
 }

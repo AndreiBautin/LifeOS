@@ -6,7 +6,7 @@ import type { Project, QuestKind } from '@/domain/projects/project'
 import { readLadder, type LadderReading } from '@/domain/game/ladder'
 import { ALL_ACTS, SCORING } from '@/domain/game/registry'
 import { standing, xpFrom, type XpStanding } from '@/domain/game/xp'
-import { totalWorkingSets } from '@/domain/logging/workout-log'
+import { hasConditioning, totalWorkingSets } from '@/domain/logging/workout-log'
 import type { ChallengeRepository } from '@/domain/repositories/ports'
 import type { RatingOutcome } from '@/domain/game/rating'
 
@@ -183,6 +183,19 @@ export async function tallyActs(
 
   return {
     'training.session-finished': completed.length,
+    /*
+     * **One act per session that contained conditioning actually done**,
+     * counted off the same completed workouts — so nothing new is
+     * logged and nothing is counted twice: finishing the session and
+     * doing the conditioning in it are two different acts, the way
+     * finishing a session and logging its sets already are.
+     *
+     * Flat, so a twenty-minute walk and a brutal interval session are
+     * worth the same. Paying by duration or by heart rate would make the
+     * easy Zone 2 work the programme leans on the least valuable thing
+     * in it, which is the opposite of what the programme thinks.
+     */
+    'cardio.session-logged': completed.filter(hasConditioning).length,
     'training.working-set-logged': completed.reduce(
       (total, log) => total + totalWorkingSets(log),
       0,

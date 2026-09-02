@@ -4863,6 +4863,62 @@ The title went through three values in three days — the calling
 the ring, the season and the traits were what fixed it, and they are all
 still there. `SheetCard` is the whole first band.
 
+**Four traits, no header, no blurbs — and traits stopped being a
+partition.** Asked for as _"drop the traits header and description …
+drop the descriptions on traits and drop discipline, fortune and
+wayfaring completely. Add stamina as a trait that gets boosted from
+cardio work."_
+
+**This is the model change on the page, so it goes first.** Every area
+used to belong to exactly one trait, which is what made the bars sum to
+the XP total exactly and rule three hold by construction. Dropping three
+traits left six areas — habits, limits, challenges, job search, finance,
+exploration — with no honest home among the survivors. Forcing them in
+would have made Craft a catch-all holding half the app, which is the
+invented structure this file has refused since the traits were written.
+
+**So the bars now add up to less than the level above them.** That is
+the exact symptom the old guard existed to catch. What makes it a
+decision rather than the bug: `UNCLAIMED_AREAS` names the six, and
+`traits.test.ts` asserts that list _exactly_, so an area added tomorrow
+with no trait still fails the build until somebody says which it is. The
+sum test changed from "splits the XP total exactly" to "sums to the XP
+of the areas it claims, and falls short of the total" — the
+double-counting half is still guarded; only the totality claim moved.
+
+**The caption had to go with the header, not just because it was asked
+for.** "Your XP, split by what earned it" stopped being true the moment
+this became a selection: it is _some_ of your XP now, and a caption
+saying otherwise would be the one wrong thing on the card.
+
+**Stamina needed its own area, and that is the whole mechanism.** A
+trait re-presents the XP of the areas it claims and an area feeds
+exactly one trait — so conditioning could not stay inside `training` and
+feed a second bar. `cardio` is a `LifeArea` with one act,
+`cardio.session-logged`. Nothing about how conditioning is planned or
+logged changed; its sets still pay `training.working-set-logged`. What
+changed is which bar the doing of it shows under.
+
+**Counted from `hasConditioning`, which asks whether, not how much.**
+A completed session containing a conditioning entry with at least one
+_completed_ set. **The slot is not enough** — every session of the
+shipped programme schedules conditioning, so counting the slot would pay
+Stamina on every lifting day whether or not anybody walked anywhere.
+That is the case `conditioning.test.ts` exists for.
+
+**30 points against a session's 50**, because conditioning usually rides
+along with a lifting session rather than replacing it — it fires on a
+day that has often already paid for the session and its sets. Matching
+50 would make Stamina climb fastest on heavy days, which is the reading
+backwards. Flat, so a twenty-minute walk and a brutal interval session
+are worth the same: paying by duration would make the easy Zone 2 work
+the programme leans on the least valuable thing in it.
+
+Driven with three seeded sessions — lifting only, lift plus a completed
+walk, and a walk that was skipped. Strength 165 (3 × 50 + 3 sets × 5),
+Stamina 30, total 195 against a level-2 reading of 95/300. **The skipped
+session paid Strength and not Stamina**, which is the whole point.
+
 **"Earned this season" and the ladder legend are both gone, and Today
 now ends on the challenges.** Asked for as _"let's actually entirely get
 rid of the 'xp earned this season' section, along with the last 'the

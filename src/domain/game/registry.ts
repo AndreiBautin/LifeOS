@@ -25,6 +25,7 @@ import { TRAINING_ACTS, type ActDefinition } from './xp'
 
 export const LIFE_AREAS = [
   'training',
+  'cardio',
   'backlog',
   'projects',
   'upgrades',
@@ -114,6 +115,47 @@ export const SCORING: readonly AreaScoring[] = [
       },
     ],
     acts: TRAINING_ACTS,
+    hasTree: false,
+  },
+  {
+    /*
+     * **Conditioning, as its own area, and that is what makes Stamina
+     * possible at all.** A trait re-presents the XP of the areas it
+     * claims, and an area belongs to exactly one trait — so cardio could
+     * not live inside `training` and feed a second bar. Splitting it out
+     * is the whole mechanism.
+     *
+     * It is not a second training area in any other sense: the programme
+     * still schedules conditioning as part of a session, the sets still
+     * pay `training.working-set-logged`, and nothing about how it is
+     * planned or logged changed. What changed is which bar the doing of
+     * it shows up under.
+     *
+     * **No ladder.** There was one once and it was removed for being a
+     * mile time nobody was running — a fixed Untrained on a screen whose
+     * job is to show movement. Nothing here measures conditioning
+     * against a published standard, so nothing scores it that way.
+     */
+    area: 'cardio',
+    name: 'Conditioning',
+    phase: 13,
+    ladders: [],
+    ratings: [],
+    acts: [
+      {
+        id: 'cardio.session-logged',
+        area: 'cardio',
+        label: 'Did the conditioning',
+        /*
+         * **30, against a session's 50.** Conditioning usually rides
+         * along with a lifting session rather than replacing it, so this
+         * fires on a day that has often already paid for the session and
+         * its sets. Matching 50 would make Stamina climb fastest on
+         * heavy days, which is precisely the wrong reading.
+         */
+        points: 30,
+      },
+    ],
     hasTree: false,
   },
   {
