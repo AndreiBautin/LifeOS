@@ -48,11 +48,9 @@ import { useAvatar } from './hooks'
  * on the band that was not a reading of the XP model.
  */
 export function PortraitBand({
-  xp,
   today,
   action,
 }: {
-  readonly xp: number
   readonly today: string
   readonly action?: ReactNode
 }) {
@@ -97,6 +95,30 @@ export function PortraitBand({
               <h1 className="text-ink-50 text-lg font-semibold">
                 Level <span className="numeric">{level}</span>
               </h1>
+
+              {/*
+                **The bar's own numbers, and none of the words that used
+                to explain them.** It read "45 / 100 XP into the level"
+                over "45 XP all time", reported as _"let's get rid of the
+                phrase into the level and XP all time — I'm trying to
+                move away from the app explaining everything, rather than
+                it just being self explanatory like in a game."_
+
+                `45 / 100 XP` beside a level, above a ring filled to the
+                same fraction, needs no sentence; every game has taught
+                it already.
+
+                **The all-time total went with its words** rather than
+                losing them, because the words were the whole of what
+                made it a second quantity: "45" under a level bar reads
+                as the level bar again, and only the phrase naming it
+                said otherwise. It is one line to bring back if the
+                number is missed.
+              */}
+              <p className="text-ink-500 numeric mt-0.5 text-sm">
+                {needed > 0 ? `${String(into)} / ${String(needed)} XP` : 'Top of the ladder'}
+              </p>
+
               <p className="text-ink-700 numeric mt-0.5 text-xs">{today}</p>
             </div>
 
@@ -110,20 +132,6 @@ export function PortraitBand({
           </div>
         </div>
       </div>
-
-      {/*
-        The two XP lines sit below the portrait rather than beside it,
-        and this is a fix rather than a preference: the column next to a
-        120-pixel figure is about 200 wide at 375, which broke "45 / 100
-        XP into the level" across two lines mid-phrase. They also belong
-        together — one is XP into this level, the other is XP over all of
-        it, and reading them adjacent is what makes the difference
-        obvious.
-      */}
-      <p className="text-ink-700 numeric mt-3 text-xs">
-        {needed > 0 ? `${String(into)} / ${String(needed)} XP into the level` : 'Top of the ladder'}
-      </p>
-      <p className="text-ink-700 numeric mt-1 text-xs">{xp} XP all time</p>
     </>
   )
 }

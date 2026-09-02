@@ -673,6 +673,39 @@ data-conditional ones after.** Page background, card, navigation,
 section heading, primary button. Those five are on screen on an empty
 database, and they are what "does it look different" actually means.
 
+**The accent is cool, and the palette is one place.** Asked for as
+_"I'm not a fan of the orange in the app, I'm more a cool dark tones
+guy."_ `--color-accent-*` went from orange at hue 44 to cyan at 200, and
+that one trio reaches the navigation, every meter, the level ring, the
+focus outline and the glow behind the page — which is the whole argument
+for a token: the change is three lines rather than forty files.
+
+**`--color-cool-500` had to move with it**, from blue at 235 to violet
+at 285. It was a blue distinct from an orange accent, and against a cyan
+accent it was two shades of one idea — Elite and Intermediate sit beside
+each other in the ladder legend and stopped being two badges. Checked on
+the legend, which is the one place all five levels appear at once.
+
+**`--glow-warm` is `--glow-accent` now.** A token named for a
+temperature that is no longer true is the kind of name this file keeps
+warning about; it is named for the token it mixes from instead.
+
+**`.numeric` dropped the monospaced face and kept `tabular-nums`.**
+Reported as _"that font is hard to read"_ — and at `text-xs` on a dim
+ink a typewriter face costs legibility for nothing. What the class is
+_for_ is figures that do not shift width between renders, which the sans
+stack does just as well. `--font-mono` still exists as a Tailwind theme
+token and nothing uses it.
+
+**Light mode is broken and this did not break it.** Headings are
+`text-ink-50` directly rather than through `--text-primary`, so they
+stay near-white when the semantic tokens flip — the sign-in card's own
+title is invisible on the deployed build too, which is how it was
+checked. The honest fix is inverting the `--color-ink-*` scale inside
+the light block rather than remapping semantics on top of it, and it is
+**not done**: it is a real change to every surface and border in the app,
+on a screen nobody here uses.
+
 **A card reads as a panel through three cheap things**: a vertical
 gradient so the surface is not uniform, an inset hairline along the top
 so it catches light, and a shadow so it sits above the page. None of them
@@ -4628,9 +4661,22 @@ paragraph saying XP is paid for doing a thing and never for it having
 worked. This file argued that deleting it would be worse than folding
 it, because that sentence is what stops XP being read as a measure of
 how well anything went. The answer is that a rule is worth meeting once:
-it is still in `docs/GAME_MODEL.md` and `registry.ts`. **The number
-stayed** — deleting a measurement is a larger step than deleting an
-explanation of it.
+it is still in `docs/GAME_MODEL.md` and `registry.ts`.
+
+**The number stayed at the time and has since gone too**, on _"let's get
+rid of the phrase into the level and XP all time — I'm trying to move
+away from the app explaining everything, rather than it just being self
+explanatory like in a game."_ The card reads `45 / 100 XP` under the
+level and nothing else: a level, a fraction and a ring filled to the
+same fraction is a thing every game has already taught, where the two
+removed phrases were the app narrating its own model.
+
+**The all-time total went with its words rather than losing them**, and
+that is the part worth keeping: "45" under a level bar reads as the
+level bar again, so the phrase naming it was the whole of what made it a
+second quantity. Deleting a measurement is still a larger step than
+deleting an explanation — this one is a line in `PortraitBand` if the
+number is missed.
 
 The **gear**: _"no need to track or show upgrades in that card."_
 Nothing about upgrades changed and the tech tree still owns them.

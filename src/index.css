@@ -16,9 +16,21 @@
   --color-ink-100: oklch(0.93 0.006 265);
   --color-ink-50: oklch(0.97 0.004 265);
 
-  --color-accent-500: oklch(0.68 0.17 44);
-  --color-accent-400: oklch(0.75 0.16 46);
-  --color-accent-600: oklch(0.6 0.17 42);
+  /*
+   * **The accent is cool, and it was orange.** Asked for directly:
+   * _"I'm not a fan of the orange in the app, I'm more a cool dark tones
+   * guy."_ It is one token trio and it reaches the whole app — the
+   * navigation, every meter, the level ring, the focus outline and the
+   * glow behind the page — which is what makes a palette a palette
+   * rather than a set of decisions repeated in forty files.
+   *
+   * Cyan at hue 200 against ink at 265: close enough to the ground to
+   * sit in the same family, far enough from `cool` below that a level
+   * badge and an Elite badge are still telling two different things.
+   */
+  --color-accent-500: oklch(0.72 0.12 200);
+  --color-accent-400: oklch(0.79 0.11 200);
+  --color-accent-600: oklch(0.63 0.12 200);
 
   --color-good-500: oklch(0.72 0.16 152);
   --color-warn-500: oklch(0.78 0.15 85);
@@ -31,8 +43,13 @@
    * same level as strength and conditioning. It read as grey until the
    * sub-category badges arrived and claimed grey, at which point a
    * warm-up looked like a sub-heading of whatever preceded it.
+   *
+   * **Moved from blue to violet when the accent went cool.** It had been
+   * a blue distinct from an orange accent, and against a cyan accent it
+   * was two shades of one idea — so Elite and Advanced, which sit beside
+   * each other on the ladder legend, stopped being two badges.
    */
-  --color-cool-500: oklch(0.72 0.11 235);
+  --color-cool-500: oklch(0.7 0.13 285);
 
   --font-sans:
     ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
@@ -85,7 +102,7 @@
     /* The glow behind the whole app. Warm at the top, cool at one corner
        — enough to give the background a direction without competing with
        anything on it. */
-    --glow-warm: color-mix(in oklab, var(--color-accent-500) 13%, transparent);
+    --glow-accent: color-mix(in oklab, var(--color-accent-500) 13%, transparent);
     --glow-cool: color-mix(in oklab, var(--color-cool-500) 9%, transparent);
     --text-primary: var(--color-ink-50);
     --text-secondary: var(--color-ink-300);
@@ -105,7 +122,7 @@
       --card-sheen: rgb(255 255 255 / 0%);
       --card-shadow: 0 6px 18px -14px rgb(0 0 0 / 25%);
       --card-tint: transparent;
-      --glow-warm: color-mix(in oklab, var(--color-accent-500) 7%, transparent);
+      --glow-accent: color-mix(in oklab, var(--color-accent-500) 7%, transparent);
       --glow-cool: color-mix(in oklab, var(--color-cool-500) 5%, transparent);
       --text-primary: var(--color-ink-950);
       --text-secondary: var(--color-ink-800);
@@ -124,7 +141,7 @@
     --card-sheen: rgb(255 255 255 / 0%);
     --card-shadow: 0 6px 18px -14px rgb(0 0 0 / 25%);
     --card-tint: transparent;
-    --glow-warm: color-mix(in oklab, var(--color-accent-500) 7%, transparent);
+    --glow-accent: color-mix(in oklab, var(--color-accent-500) 7%, transparent);
     --glow-cool: color-mix(in oklab, var(--color-cool-500) 5%, transparent);
     --text-primary: var(--color-ink-950);
     --text-secondary: var(--color-ink-800);
@@ -163,7 +180,7 @@
        six pixels tall, and a flat background underneath all of it meant
        the app looked the same as before. */
     background-image:
-      radial-gradient(130% 55% at 50% -12%, var(--glow-warm), transparent 62%),
+      radial-gradient(130% 55% at 50% -12%, var(--glow-accent), transparent 62%),
       radial-gradient(90% 45% at 105% 2%, var(--glow-cool), transparent 58%);
     background-attachment: fixed;
     background-repeat: no-repeat;
@@ -228,8 +245,17 @@
     min-width: 2.75rem;
   }
 
+  /*
+   * Figures that line up, in the app's own face.
+   *
+   * **It was the mono stack and that is what made it hard to read**,
+   * reported as _"that font is hard to read"_ — at `text-xs` on a dim
+   * ink, a typewriter face costs legibility for nothing. What the class
+   * is actually for is `tabular-nums`: a column of loads or dates whose
+   * digits do not shift width between renders. That survives in the sans
+   * stack, so the alignment is kept and the typewriter is not.
+   */
   .numeric {
-    font-family: var(--font-mono);
     font-variant-numeric: tabular-nums;
   }
 

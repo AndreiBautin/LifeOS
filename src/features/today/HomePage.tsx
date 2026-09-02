@@ -97,11 +97,12 @@ export function HomePage() {
   })
 
   /*
-   * The hub's XP, never training's. `buildCharacter` still computes a
-   * training-only level and it is deliberately unused here: two numbers
-   * called "level" on one page, disagreeing, is worse than either alone.
+   * **`buildCharacter` computes a training-only level and this page
+   * deliberately ignores it.** Two numbers called "level" on one screen,
+   * disagreeing, is worse than either alone — the card's level is the
+   * hub's XP, read from the sheet. What is taken from the character here
+   * is only the strength ladders below.
    */
-  const standing = sheet.data?.standing
   const today = toDayKey(services.clock.now())
 
   /*
@@ -182,7 +183,6 @@ export function HomePage() {
         in it draws that quantity twice.
       */}
       <SheetCard
-        xp={standing?.xp ?? 0}
         today={today}
         {...(season.data === undefined ? {} : { season: season.data })}
         {...(sheet.data === undefined ? {} : { traits: sheet.data.traits })}

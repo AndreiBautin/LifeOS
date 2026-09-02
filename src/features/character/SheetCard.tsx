@@ -36,14 +36,12 @@ import { Traits } from './Traits'
  * what they are, since a card holding three readings has to.
  */
 export function SheetCard({
-  xp,
   today,
   season,
   traits,
   traitLadders,
   action,
 }: {
-  readonly xp: number
   readonly today: string
   readonly season?: SeasonProgress | undefined
   readonly traits?: readonly TraitStanding[] | undefined
@@ -54,7 +52,7 @@ export function SheetCard({
 }) {
   return (
     <Card>
-      <PortraitBand xp={xp} today={today} {...(action === undefined ? {} : { action })} />
+      <PortraitBand today={today} {...(action === undefined ? {} : { action })} />
 
       {/*
         Separated by a rule rather than by a gap, so the bands read as
