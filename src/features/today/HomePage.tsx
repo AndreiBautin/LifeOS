@@ -2,14 +2,11 @@ import { Settings } from 'lucide-react'
 import { useCampaigns } from '@/features/campaign/hooks'
 import { Link } from 'react-router-dom'
 
-import { Badge, Card, Section } from '@/components/shared/primitives'
+import { Card, Section } from '@/components/shared/primitives'
 import { buttonStyles } from '@/components/shared/styles'
-import { LEVELS } from '@/domain/game/character'
 import { ActiveQuests } from '@/features/projects/ActiveQuests'
 import { useActiveQuests } from '@/features/projects/hooks'
-import { LEVEL_TONE } from '@/features/character/sheet-constants'
 import { ChallengePass } from '@/features/challenges/ChallengePass'
-import { SeasonBand } from '@/features/character/SeasonBand'
 import { SheetCard } from '@/features/character/SheetCard'
 import { useCharacterSheet, useSeasonProgress } from '@/features/character/hooks'
 import { LimitsCard } from '@/features/vitals/LimitsCard'
@@ -210,26 +207,22 @@ export function HomePage() {
           }
         >
           {/*
-            **The pass leads and the XP bar follows.** They are two
-            readings of one season and the order says which is being
-            worked on: the challenges are a list you act on, the season
-            bar is a total that accrues from everything else you did.
-            Work first, readout last — the ordering this screen has
-            argued about at every level.
+            **The season is the challenges now, and nothing else.** The
+            "Earned this season" band went — the XP against last season
+            and the three monthly bars — leaving one reading under this
+            heading rather than two.
+
+            The rule between them went with it, which is the point: a
+            rule says "these are two different readings", and there is
+            one. What the heading names is a chapter of the year, and
+            what is under it is what you have taken that chapter up on.
+
+            The XP itself is not lost — it is the ring and the level at
+            the top of this screen, over all of your time rather than
+            this quarter of it.
           */}
           <Card>
             <ChallengePass />
-
-            {/*
-              A rule, because these genuinely are two readings — what you
-              have taken up this season, and what the season has earned.
-              The sheet card omits one between the portrait and its
-              season for the opposite reason: those are one quantity over
-              two windows.
-            */}
-            <div className="border-ink-800 mt-4 border-t pt-4">
-              <SeasonBand progress={season.data} />
-            </div>
           </Card>
         </Section>
       )}
@@ -247,21 +240,20 @@ export function HomePage() {
         than a leftover, which is what the block could never be.
       */}
 
-      <Section title="The ladder">
-        <Card>
-          <div className="flex flex-wrap gap-1.5">
-            {LEVELS.map((level) => (
-              <Badge key={level} tone={LEVEL_TONE[level] ?? 'neutral'}>
-                {level}
-              </Badge>
-            ))}
-          </div>
-          <p className="text-ink-500 mt-3 text-xs">
-            Bodyweight multiples in the region of the ExRx and Symmetric Strength tables. They are
-            fixed on purpose: a scale the app can move is a scale that means nothing.
-          </p>
-        </Card>
-      </Section>
+      {/*
+        **The ladder legend is gone too.** It listed Untrained through
+        Elite with a note that the bodyweight multiples are fixed on
+        purpose, and it was the last thing on the screen — a key to
+        badges that appear on Train and Finance rather than here.
+
+        What it cost is worth naming: the five words now have no
+        explanation anywhere in the app. They are still anchored — the
+        thresholds live in `domain/game/character.ts` and each ladder row
+        states the load or figure its next rung needs — but the sentence
+        saying the scale is not the app's to move is only in the code
+        now. If a rung ever reads as arbitrary, that is the sentence to
+        bring back, on Train rather than here.
+      */}
     </div>
   )
 }

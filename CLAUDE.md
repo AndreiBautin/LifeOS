@@ -4863,6 +4863,43 @@ The title went through three values in three days — the calling
 the ring, the season and the traits were what fixed it, and they are all
 still there. `SheetCard` is the whole first band.
 
+**"Earned this season" and the ladder legend are both gone, and Today
+now ends on the challenges.** Asked for as _"let's actually entirely get
+rid of the 'xp earned this season' section, along with the last 'the
+ladder' section."_
+
+**The season card holds one reading now, so the rule inside it went
+too.** A rule says "these are two different readings" and there is one:
+the heading names a chapter of the year and what is under it is what you
+have taken that chapter up on. `SeasonBand.tsx` is deleted. The XP is
+not lost — it is the ring and the level at the top of the screen, over
+all of your time rather than this quarter of it.
+
+**What the legend cost is worth naming.** Untrained through Elite now
+have no explanation anywhere on screen. They are still anchored — the
+thresholds are in `domain/game/character.ts` and every ladder row states
+the load or figure its next rung needs — but the sentence saying the
+scale is not the app's to move lives only in the code. **If a rung ever
+reads as arbitrary, that sentence goes on Train**, beside the badges it
+explains, rather than back on the home page where it was a key to
+symbols that appear elsewhere.
+
+**Four `SeasonProgress` fields are now computed and read by nothing** —
+`xp`, `target`, `elapsed` and `months`; only `label` and `daysLeft`
+survive, for the section heading. That is the shape this file already
+condemns once, where `SeasonProgress.areas` was deleted "because a field
+nothing reads is a tally computed on every render", and `useSeasonProgress`
+runs `tallyActs` **twice** — this season and last — for numbers nothing
+draws.
+
+It is left in deliberately rather than trimmed in the same breath.
+Removing `xp` takes the previous-season comparison and the windowed
+tally with it, and with them `season-progress.test.ts` → "sums the
+seasons to the all-time total" and "excludes an act with no date from
+the all-time total too" — the guard that keeps all-time equal to the sum
+of its seasons. **That is a measurement to stop taking, not a section to
+delete**, and it is a separate decision from this one.
+
 **The stray-links block is gone entirely, and each screen found a
 parent instead.** Reported as _"it just felt random having those as
 stray links while everything else fit nicely into a gamified layout"_ —
