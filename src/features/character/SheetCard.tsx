@@ -1,11 +1,9 @@
 import type { ReactNode } from 'react'
 
-import type { SeasonProgress } from '@/application/use-cases/character/season-progress'
 import { Card } from '@/components/shared/primitives'
 import type { TraitStanding } from '@/domain/game/traits'
 
 import { PortraitBand } from './PortraitBand'
-import { SeasonBand } from './SeasonBand'
 import { Traits } from './Traits'
 
 /**
@@ -36,11 +34,9 @@ import { Traits } from './Traits'
  * what they are, since a card holding three readings has to.
  */
 export function SheetCard({
-  season,
   traits,
   action,
 }: {
-  readonly season?: SeasonProgress | undefined
   readonly traits?: readonly TraitStanding[] | undefined
   /** The settings link, which used to be the page header's action. */
   readonly action?: ReactNode
@@ -60,16 +56,7 @@ export function SheetCard({
         — and the traits below still get their rule, because that is
         genuinely the same quantity split a third way.
       */}
-      <PortraitBand
-        {...(season === undefined ? {} : { season })}
-        {...(action === undefined ? {} : { action })}
-      />
-
-      {season !== undefined && (
-        <div className="mt-4">
-          <SeasonBand progress={season} />
-        </div>
-      )}
+      <PortraitBand {...(action === undefined ? {} : { action })} />
 
       {traits !== undefined && (
         <div className="border-ink-800 mt-4 border-t pt-4">

@@ -4863,7 +4863,34 @@ The title went through three values in three days — the calling
 the ring, the season and the traits were what fixed it, and they are all
 still there. `SheetCard` is the whole first band.
 
-**The season sits in the avatar's own row now, and the rule between
+**The season sits below the day, and this is its third position in as
+many passes.** Asked for as _"I'd move season info underneath traits and
+today."_ It was a section of its own, then a band merged into the
+portrait's row, and it is now a `Section` of its own again — beneath
+Today, above the Areas list and the ladder legend.
+
+The reason it settles here is one the earlier moves did not have: **a
+season is the slowest thing on this screen.** It changes four times a
+year where everything above it changes today, and the ordering this
+screen has always argued about — work first, readout last — puts the
+slowest readout at the bottom rather than in the first thing seen each
+morning. It sits above Areas and the legend because those two are
+navigation and reference rather than readings.
+
+**Both halves moved, and that is the rule worth keeping from three
+attempts.** The name went with the measurement rather than staying in
+the portrait column: a label at the top and its bar two screens down is
+one quantity drawn in two places, which is the split the sheet card was
+assembled to close. Wherever it goes next, the name and the reading
+travel together.
+
+Measured: Today's first heading is at **783 pixels**, from 941 after the
+ladders left and 1,309 before any of it.
+
+The paragraph below is the arrangement this replaced, kept because it is
+the argument that will be made again.
+
+**The season sat in the avatar's own row, and the rule between
 them is gone.** Asked for as _"can we move the season progress up into
 the row with the avatar and clean it up a bit."_ The season names itself
 in the column beside the portrait — label on one line, days left on the

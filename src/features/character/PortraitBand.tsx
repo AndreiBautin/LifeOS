@@ -47,22 +47,18 @@ import { useAvatar } from './hooks'
  * which was a list of titles typed on another screen and the one thing
  * on the band that was not a reading of the XP model.
  */
-export function PortraitBand({
-  season,
-  action,
-}: {
-  /**
-   * The season, named in the column beside the figure.
-   *
-   * **It replaced the date there**, which is the trade worth stating:
-   * the date was the page header's, kept when the header went, and a
-   * screen opened every morning does not need to be told what day it is.
-   * The season line says where you are in time at the scale the card
-   * actually works on — the chapter, and how much of it is left.
-   */
-  readonly season?: { readonly label: string; readonly daysLeft: number } | undefined
-  readonly action?: ReactNode
-}) {
+/**
+ * **The season is not here any more.** It was moved into this column
+ * from a band of its own — *"can we move the season progress up into the
+ * row with the avatar"* — and moved out again to below the day:
+ * *"I'd move season info underneath traits and today."*
+ *
+ * Both halves went, rather than leaving the name here and the reading
+ * below. A label at the top and its measurement two screens down is one
+ * quantity drawn in two places, which is the split this card was
+ * assembled to close in the first place.
+ */
+export function PortraitBand({ action }: { readonly action?: ReactNode }) {
   const avatar = useAvatar()
 
   if (avatar.data === undefined) {
@@ -127,20 +123,6 @@ export function PortraitBand({
               <p className="text-ink-500 numeric mt-0.5 text-sm">
                 {needed > 0 ? `${String(into)} / ${String(needed)} XP` : 'Top of the ladder'}
               </p>
-
-              {/*
-                Two lines rather than one joined by a middot. The column
-                beside a 120-pixel figure loses another 40 to the gear,
-                and "Autumn 2026 · 90 days left" wrapped after the middot
-                — leaving "days left" alone on the second line, which is
-                the mid-phrase break this card has now hit twice.
-              */}
-              {season !== undefined && (
-                <div className="text-ink-700 mt-1.5 text-xs">
-                  <p>{season.label}</p>
-                  {season.daysLeft > 0 && <p className="numeric">{season.daysLeft} days left</p>}
-                </div>
-              )}
             </div>
 
             {/*

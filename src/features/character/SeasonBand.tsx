@@ -68,11 +68,15 @@ export function SeasonBand({ progress }: { readonly progress: SeasonProgress }) 
   return (
     <div className="space-y-3">
       {/*
-        **No heading here any more — the season names itself beside the
-        portrait.** Asked for as _"can we move the season progress up
-        into the row with the avatar and clean it up a bit."_ What is
-        left is the reading: a bar against last season, and the months
-        that made it.
+        **No heading here, because the section around it carries one.**
+        The season was briefly named beside the portrait and is named by
+        its own `Section` now — *"I'd move season info underneath traits
+        and today"* — so what is left in this component is the reading
+        alone: a bar against last season, and the months that made it.
+
+        It has moved twice, so the rule rather than the position: the
+        name and the measurement travel together. A label in one place
+        and its bar in another is one quantity drawn twice.
       */}
       <div>
         <div className="flex items-baseline justify-between gap-2">

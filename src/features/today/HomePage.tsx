@@ -8,6 +8,7 @@ import { LEVELS } from '@/domain/game/character'
 import { ActiveQuests } from '@/features/projects/ActiveQuests'
 import { useActiveQuests } from '@/features/projects/hooks'
 import { AREA_LINKS, LEVEL_TONE } from '@/features/character/sheet-constants'
+import { SeasonBand } from '@/features/character/SeasonBand'
 import { SheetCard } from '@/features/character/SheetCard'
 import { useCharacterSheet, useSeasonProgress } from '@/features/character/hooks'
 import { LimitsCard } from '@/features/vitals/LimitsCard'
@@ -120,7 +121,6 @@ export function HomePage() {
         in it draws that quantity twice.
       */}
       <SheetCard
-        {...(season.data === undefined ? {} : { season: season.data })}
         {...(sheet.data === undefined ? {} : { traits: sheet.data.traits })}
         action={
           <Link
@@ -183,6 +183,36 @@ export function HomePage() {
       {/* Both silent unless this morning's read found something. */}
       <LeadsToday />
       <DigestCard />
+
+      {/*
+        **The season sits below the day now**, asked for as _"I'd move
+        season info underneath traits and today."_ That reverses its last
+        move, which brought it up into the portrait's own row, and the
+        reversal has a reason the earlier arrangement did not: a season
+        is the slowest thing on this screen. It changes four times a
+        year, where everything above it changes today, and the ordering
+        this screen has always argued about — work first, readout last —
+        puts the slowest readout at the bottom rather than in the first
+        thing you see each morning.
+
+        Above the Areas list and the ladder legend, because those two are
+        **navigation and reference** rather than readings. This is still
+        something to look at; they are ways to leave.
+      */}
+      {season.data !== undefined && (
+        <Section
+          title={season.data.label}
+          description={
+            season.data.daysLeft > 0
+              ? `${String(season.data.daysLeft)} days left`
+              : 'The last day of it'
+          }
+        >
+          <Card>
+            <SeasonBand progress={season.data} />
+          </Card>
+        </Section>
+      )}
 
       {/*
         **The screens with no tab, listed so they can be found.**
