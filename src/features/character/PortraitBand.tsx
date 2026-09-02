@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react'
 
+import { HealthBar } from './HealthBar'
+
 import { Skeleton } from '@/components/shared/Skeleton'
 
 import { AvatarPortrait } from './AvatarPortrait'
@@ -123,6 +125,15 @@ export function PortraitBand({ action }: { readonly action?: ReactNode }) {
               <p className="text-ink-500 numeric mt-0.5 text-sm">
                 {needed > 0 ? `${String(into)} / ${String(needed)} XP` : 'Top of the ladder'}
               </p>
+
+              {/*
+                **The health bar, under the XP.** Two bars in one column
+                and they measure different things on purpose: the XP is
+                everything you have ever done and only goes up, and this
+                is the last seven days and goes both ways. A game puts
+                them together for exactly that contrast.
+              */}
+              <HealthBar />
             </div>
 
             {/*

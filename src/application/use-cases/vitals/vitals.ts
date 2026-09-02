@@ -107,6 +107,8 @@ export interface NewVice {
   readonly presets?: readonly ChargePreset[]
   /** Which days the pool may be touched at all — a count, or named days. */
   readonly daysLimit?: DaysLimit
+  /** Which silhouette it is drawn with. A label, like the name. */
+  readonly icon?: string
 }
 
 export async function addVice(input: NewVice, deps: VitalsDeps): Promise<Vice> {
@@ -118,6 +120,7 @@ export async function addVice(input: NewVice, deps: VitalsDeps): Promise<Vice> {
     ...(input.unit === undefined ? {} : { unit: input.unit }),
     ...(input.direction === undefined ? {} : { direction: input.direction }),
     ...(input.presets === undefined ? {} : { presets: input.presets }),
+    ...(input.icon === undefined ? {} : { icon: input.icon }),
     ...daysOrNothing(input.daysLimit),
     spent: [],
     createdAt: deps.clock.now().toISOString(),
@@ -176,7 +179,7 @@ export async function editVice(
      * drawing a bar for a pool the lifter had just turned back into a
      * count.
      */
-    const { daysLimit: _days, unit: _unit, presets: _presets, ...rest } = vice
+    const { daysLimit: _days, unit: _unit, presets: _presets, icon: _icon, ...rest } = vice
 
     return {
       ...rest,
@@ -192,6 +195,7 @@ export async function editVice(
        */
       ...(input.unit === undefined || input.unit.trim() === '' ? {} : { unit: input.unit.trim() }),
       ...(input.direction === undefined ? {} : { direction: input.direction }),
+      ...(input.icon === undefined ? {} : { icon: input.icon }),
       /*
        * Presets are replaced wholesale rather than merged, because the
        * editor shows the whole list — a merge would make a removed row

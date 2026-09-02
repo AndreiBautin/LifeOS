@@ -23,6 +23,9 @@ import {
 } from '@/domain/vitals/charges'
 import type { NewVice } from '@/application/use-cases/vitals/vitals'
 
+import { PoolIconMark } from './PoolIconMark'
+import { DEFAULT_POOL_ICON, POOL_ICONS } from './pool-icons'
+
 import { PoolRow } from '../vitals/PoolRow'
 import { useAddVice, useEditVice, useRetireVice, useVices } from '../vitals/hooks'
 
@@ -71,10 +74,21 @@ const SUGGESTIONS: readonly NewVice[] = [
    * than gaining a unit: four is small enough to read as pips, and a
    * standard drink already *is* the unit.
    */
-  { name: 'Kush', capacity: 1, cycle: { kind: 'calendar', period: 'day' } },
+  /*
+   * **The names stay the substances, and the icons do the gamifying.**
+   * Asked for as _"instead of calling them all potions can you make
+   * gamified names and icons for em?"_ — the icons are here and the
+   * names are not, for a reason worth stating: a suggestion is offered
+   * by *name not already used*, so renaming these would stop matching
+   * the pools already on the device and offer a second Caffeine beside
+   * the first. Any pool can be renamed in its own editor, which is where
+   * a name you chose belongs anyway.
+   */
+  { name: 'Kush', capacity: 1, cycle: { kind: 'calendar', period: 'day' }, icon: 'smoke' },
   {
     name: 'Alcohol',
     capacity: 3,
+    icon: 'beer',
     cycle: { kind: 'calendar', period: 'day' },
     /*
      * Two numbers because it is two decisions. A weekly total alone
@@ -104,6 +118,7 @@ const SUGGESTIONS: readonly NewVice[] = [
     name: 'Caffeine',
     capacity: 400,
     unit: 'mg',
+    icon: 'coffee',
     direction: 'limit',
     cycle: { kind: 'calendar', period: 'day' },
     /*
@@ -116,6 +131,61 @@ const SUGGESTIONS: readonly NewVice[] = [
       { label: 'Energy drink', amount: 160 },
       { label: 'Pre-workout', amount: 200 },
     ],
+  },
+
+  /*
+   * **Water is back as a target, which reverses the note above.** That
+   * note argued a gallon is a thing you either finished or did not, so
+   * it belonged in Upkeep as a habit with a streak rather than as a pool
+   * with a running total.
+   *
+   * What changed is that the pools now feed something. The health bar
+   * reads *daily targets met* over the last week — see
+   * `domain/vitals/vitality.ts` — so a target here is no longer a
+   * running total nobody keeps; it is the thing the bar is made of.
+   * Asked for directly, with the jug: _"water 128oz goal with a 128oz
+   * gallon jug as a preset."_
+   *
+   * The habit version is not deleted and nothing migrates. If both exist
+   * they are two records of one intention, and the pool is the one that
+   * moves the bar.
+   */
+  {
+    name: 'Water',
+    capacity: 128,
+    unit: 'oz',
+    icon: 'droplet',
+    direction: 'target',
+    cycle: { kind: 'calendar', period: 'day' },
+    /*
+     * The jug first because it is the whole goal in one tap, which is
+     * how somebody carrying one actually logs it. The smaller amounts
+     * are for the days you are drinking from a glass.
+     */
+    presets: [
+      { label: 'Gallon jug', amount: 128 },
+      { label: 'Bottle', amount: 32 },
+      { label: 'Glass', amount: 16 },
+    ],
+  },
+  /*
+   * **Two servings each, counted rather than measured.** A serving is
+   * already the unit anybody thinks in, and putting grams on it would be
+   * the precision the caffeine pool earns and this one does not.
+   */
+  {
+    name: 'Fruit',
+    capacity: 2,
+    icon: 'apple',
+    direction: 'target',
+    cycle: { kind: 'calendar', period: 'day' },
+  },
+  {
+    name: 'Vegetables',
+    capacity: 2,
+    icon: 'carrot',
+    direction: 'target',
+    cycle: { kind: 'calendar', period: 'day' },
   },
 ]
 
@@ -180,6 +250,7 @@ function ViceRow({ vice, now }: { readonly vice: Vice; readonly now: Date }) {
                   direction: shape.direction,
                   ...(shape.unit.trim() === '' ? {} : { unit: shape.unit.trim() }),
                   ...(shape.value.length === 0 ? {} : { presets: shape.value }),
+                  icon: shape.icon,
                   ...(dayLimit.value === undefined ? {} : { daysLimit: dayLimit.value }),
                 },
               },
@@ -345,6 +416,52 @@ function ViceRow({ vice, now }: { readonly vice: Vice; readonly now: Date }) {
  * days, and water has neither.
  */
 /**
+ * A row of silhouettes, one of which is the pool's.
+ *
+ * **Pressed state is computed from the value rather than remembered from
+ * the tap**, the rule the week shortcuts already follow: the control
+ * shows what the record says, so it cannot drift from it.
+ *
+ * The shapes are this app's own rather than game-icons.net art — see
+ * `pool-icons.ts` for why that distinction is kept rather than blurred
+ * into the avatar's credit.
+ */
+function IconPicker({
+  value,
+  onChange,
+}: {
+  readonly value: string
+  readonly onChange: (id: string) => void
+}) {
+  return (
+    <div>
+      <span className="text-ink-500 mb-1 block text-xs">Icon</span>
+      <div className="flex flex-wrap gap-1.5">
+        {POOL_ICONS.map((one) => (
+          <button
+            key={one.id}
+            type="button"
+            aria-label={one.label}
+            aria-pressed={value === one.id}
+            className={[
+              'tap-target grid place-items-center rounded-lg border',
+              value === one.id
+                ? 'border-accent-500 bg-accent-500/15 text-accent-400'
+                : 'border-ink-800 text-ink-500',
+            ].join(' ')}
+            onClick={() => {
+              onChange(one.id)
+            }}
+          >
+            <PoolIconMark icon={one.id} size={20} />
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+/**
  * What a pool *is* — which way it runs and what it counts.
  *
  * Shared by the add form and the editor, and it had to be: the editor
@@ -359,12 +476,15 @@ function usePoolShape(vice?: Vice, fallback: ChargeDirection = 'limit') {
   )
   const [unit, setUnit] = useState(vice?.unit ?? '')
   const [presets, setPresets] = useState<readonly ChargePreset[]>(vice?.presets ?? [])
+  const [icon, setIcon] = useState(vice?.icon ?? DEFAULT_POOL_ICON)
 
   return {
     direction,
     setDirection,
     unit,
     setUnit,
+    icon,
+    setIcon,
     presets,
     setPresets,
     /*
@@ -454,6 +574,13 @@ function PresetFields({ state }: { readonly state: ReturnType<typeof usePoolShap
 function PoolShapeFields({ state }: { readonly state: ReturnType<typeof usePoolShape> }) {
   return (
     <>
+      {/*
+        In the shared fields rather than in each form, so the add form
+        and the editor cannot offer different icons — the reason the unit
+        and direction controls live here too.
+      */}
+      <IconPicker value={state.icon} onChange={state.setIcon} />
+
       <div className="flex gap-1">
         {CHARGE_DIRECTIONS.map((one) => (
           <Button
@@ -745,6 +872,7 @@ function AddVice({ of }: { readonly of: ChargeDirection }) {
           direction: shape.direction,
           ...(shape.unit.trim() === '' ? {} : { unit: shape.unit.trim() }),
           ...(shape.value.length === 0 ? {} : { presets: shape.value }),
+          icon: shape.icon,
           ...(dayLimit.value === undefined ? {} : { daysLimit: dayLimit.value }),
         })
         setName('')
@@ -853,8 +981,8 @@ export function LimitsPage() {
   return (
     <div>
       <PageHeader
-        title="Limits"
-        subtitle="What you are keeping under, and what you are reaching for"
+        title="Buffs"
+        subtitle="Potions you spend, and rations that keep your health up"
       />
 
       {/*
@@ -872,7 +1000,19 @@ export function LimitsPage() {
         form itself uses on its direction toggle, so the heading and the
         control that produces it agree.
       */}
-      <Section title="Staying under">
+      {/*
+        **"Potions" rather than "Staying under".** Asked for as _"can we
+        rename limits to make them buffs, to make it feel more like
+        gamified potions that recharge on cooldown instead of something
+        I'm limiting myself on."_
+
+        The mechanism is untouched and so is the honesty: going over is
+        still the thing worth seeing, and `poolStanding` still says
+        **Over** when you are. What changed is the frame around it — a
+        flask with charges that come back reads as a resource you are
+        spending, which is what a daily allowance actually is.
+      */}
+      <Section title="Potions">
         <Card>
           {vices.data === undefined ? null : limits.length === 0 ? (
             <Empty title="Nothing limited yet">
@@ -898,7 +1038,12 @@ export function LimitsPage() {
         </Card>
       </Section>
 
-      <Section title="Reaching for">
+      {/*
+        **"Rations" — the things that put health back.** These feed the
+        bar on the portrait, which is what makes them a section rather
+        than a curiosity: a target met is a day the bar counts.
+      */}
+      <Section title="Rations">
         <Card>
           {vices.data === undefined ? null : targets.length === 0 ? (
             <Empty title="Nothing to reach yet">

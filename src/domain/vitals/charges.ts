@@ -145,6 +145,19 @@ export interface Vice {
   /** Offered when logging, so a glass of water is one tap and not a form. */
   readonly presets?: readonly ChargePreset[]
   /**
+   * Which silhouette the pool is drawn with.
+   *
+   * A pure label, like the name: it changes nothing about what the pool
+   * counts or when it refills. Absent means the default flask, which is
+   * what every pool written before this shows — a derivation rather than
+   * a migration, the rule `shelfOf` already follows.
+   *
+   * The ids live in `features/limits/pool-icons.ts` and the domain
+   * deliberately does not know what they draw: this is a string the
+   * screen resolves, the same way a backlog category's `icon` is.
+   */
+  readonly icon?: string
+  /**
    * The rolling window, in hours.
    *
    * Optional now, and kept because devices already hold pools written

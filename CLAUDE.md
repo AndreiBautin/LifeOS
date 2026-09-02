@@ -4863,6 +4863,71 @@ The title went through three values in three days — the calling
 the ring, the season and the traits were what fixed it, and they are all
 still there. `SheetCard` is the whole first band.
 
+**Intellect is Intelligence**, a label change only — the trait id stays
+`intellect`, because nothing user-visible reads it and an id is an
+address.
+
+**Limits are Buffs: Potions you spend, Rations that keep you up.** Asked
+for as _"can we rename limits to make them buffs, to make it feel more
+like gamified potions that recharge on cooldown instead of something I'm
+limiting myself on."_ The mechanism is untouched and so is the honesty —
+going over is still the thing worth seeing and `poolStanding` still says
+**Over**. What changed is the frame: a flask with charges that come back
+is what a daily allowance actually is.
+
+**The names stayed the substances and the icons do the gamifying.** A
+suggestion is offered by _name not already used_, so renaming Caffeine
+to something flavourful would stop matching the pool already on the
+device and offer a second one beside the first. Any pool can be renamed
+in its own editor, which is where a name somebody chose belongs.
+
+**Water is back as a target, reversing the note that removed it.** That
+note said a gallon is a thing you either finished or did not, so it
+belonged in Upkeep as a habit with a streak rather than as a pool with a
+running total nobody keeps. What changed is that a target now _feeds
+something_: the health bar reads daily targets met, so a ration is the
+thing the bar is made of. 128 oz with a **Gallon jug** preset, plus
+Fruit and Vegetables at two servings a day. Nothing migrates; if the
+habit and the pool both exist they are two records of one intention and
+the pool is the one that moves the bar.
+
+**The health bar is a rolling seven-day reading, never a stored level.**
+`domain/vitals/vitality.ts`. A bar that decayed on a timer needs
+somewhere to keep how full it was, and device state with no correct
+merge is the trap `readCharges` was written to avoid. Reading the last
+week means it **drains by itself for free**: a day you hit ages out, so
+stopping makes it fall with nothing ticking.
+
+**Its numbers are the app's own and that is said out loud.** Seven days,
+and a day over a limit cancels a day of hitting a target. It is allowed
+for the same reason the avatar's build bands are — it _measures nothing
+about the world_, only pools you set against targets you chose.
+
+**A day before the pool existed is not a day you missed**, and this was
+found by looking rather than by reasoning. Three rations set up and all
+three hit on the first afternoon read **14% in red**: six of the seven
+days counted against pools that did not exist yet. A bar calling a
+perfect day a failure is worse than no bar. The denominator now counts
+only days the pool has existed for — absent-never-zero applied to the
+window — and the same reading is 100%.
+
+**A weekly target is left out of the denominator entirely** rather than
+counted as missed. Three of seven days is not a third of a weekly goal
+in any sense the bar could use, and being unmeasurable is not being
+failed. A weekly _limit_ is judged through `readCharges` at the end of
+each day, so going past four drinks on Friday reads as over on Saturday
+too — the pool's own rule rather than a second opinion.
+
+**The pool icons are this app's own shapes and are not credited to
+game-icons.net.** They were written with that attribution and it was
+false: the avatar figures in `figures.ts` genuinely are Lorc and
+Delapouite's work under CC BY 3.0, and these are plain shapes drawn here
+on the same 512 viewBox to sit beside them. Widening the one credit this
+app carries to cover work those artists did not make would make it
+untrue. **If real game-icons art is wanted, the route is the one
+`figures.ts` took** — copy the paths in, and the existing credit covers
+them.
+
 **Craft became Crafting, and it is things you built.** Asked for as
 _"can we make craft into crafting and it shouldn't be any dailies or
 housework, just the diy stuff I work on myself or Legos from my codex."_

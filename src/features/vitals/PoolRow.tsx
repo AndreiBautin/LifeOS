@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 
 import { Badge, Button } from '@/components/shared/primitives'
 import { Meter } from '@/components/shared/Meter'
+import { PoolIconMark } from '@/features/limits/PoolIconMark'
 import type { PoolView } from '@/application/use-cases/vitals/vitals'
 import {
   cycleOf,
@@ -360,6 +361,7 @@ export function PoolRow({
       <div className="flex items-center gap-2 py-1.5">
         <div className="min-w-0 flex-1">
           <p className="text-ink-50 flex items-center gap-1.5 truncate text-sm font-medium">
+            <PoolIconMark icon={vice.icon} size={16} className="text-ink-500 shrink-0" />
             <span className="truncate">{vice.name}</span>
             <StandingBadge pool={pool} />
           </p>
@@ -390,6 +392,7 @@ export function PoolRow({
     <div className="py-3">
       <div className="flex items-baseline justify-between gap-2">
         <span className="text-ink-50 flex min-w-0 items-center gap-1.5 text-sm font-medium">
+          <PoolIconMark icon={vice.icon} size={16} className="text-ink-500 shrink-0" />
           <span className="truncate">{vice.name}</span>
           <StandingBadge pool={pool} />
         </span>
