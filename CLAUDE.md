@@ -4939,6 +4939,21 @@ targets, the backup collection map and four test harnesses;
 missing trait; the `FIGURES`-style guards caught the rest. `DB_VERSION`
 went to 18 with a new guarded block.
 
+**The pass and the season's XP are one card, with a rule between.**
+Asked for as _"let's group together the season challenges and progress
+into one card so that it's a distinct season section."_ They were two
+cards under one heading, which drew the boundary in the wrong place —
+the same merge `SheetCard` already made of the portrait, the season and
+the traits.
+
+`ChallengePass` renders a **band rather than a card** for that reason:
+the card belongs to the caller, which is what lets it place the rule
+between the two rather than each band guessing what follows it. The rule
+is there because these genuinely are two readings — what you have taken
+up this season, and what the season has earned. The sheet card omits one
+between the portrait and its season for the opposite reason: those are
+one quantity over two windows.
+
 Driven end to end: ticking one took the pass to 1/5, the season to 40,
 the level to 40/100 and Discipline to 40 xp **in one render** — then add,
 hide and untick each behaved, and the denominator held at 5 across a

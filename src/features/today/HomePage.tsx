@@ -217,12 +217,20 @@ export function HomePage() {
             Work first, readout last — the ordering this screen has
             argued about at every level.
           */}
-          <div className="space-y-3">
+          <Card>
             <ChallengePass />
-            <Card>
+
+            {/*
+              A rule, because these genuinely are two readings — what you
+              have taken up this season, and what the season has earned.
+              The sheet card omits one between the portrait and its
+              season for the opposite reason: those are one quantity over
+              two windows.
+            */}
+            <div className="border-ink-800 mt-4 border-t pt-4">
               <SeasonBand progress={season.data} />
-            </Card>
-          </div>
+            </div>
+          </Card>
         </Section>
       )}
 

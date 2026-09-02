@@ -1,7 +1,7 @@
 import { Check, Plus, X } from 'lucide-react'
 import { useState } from 'react'
 
-import { Button, Card, Empty } from '@/components/shared/primitives'
+import { Button, Empty } from '@/components/shared/primitives'
 import { Meter } from '@/components/shared/Meter'
 import type { Challenge } from '@/domain/challenges/challenge'
 
@@ -129,8 +129,19 @@ export function ChallengePass() {
   const data = pass.data
   if (data === undefined) return null
 
+  /*
+   * **A band, not a card.** Asked for as _"let's group together the
+   * season challenges and progress into one card so that it's a distinct
+   * season section."_ The pass and the season's XP are two readings of
+   * one season, so two cards under one heading drew the boundary in the
+   * wrong place — the same argument that merged the portrait, the season
+   * and the traits into `SheetCard`.
+   *
+   * The card is the caller's, which is what lets it put the rule between
+   * the two bands rather than each band guessing what follows it.
+   */
   return (
-    <Card>
+    <div>
       <div className="flex items-baseline justify-between gap-3">
         <span className="text-ink-500 text-sm">Challenges done</span>
         <span className="numeric text-ink-50 text-sm font-semibold">
@@ -232,6 +243,6 @@ export function ChallengePass() {
           </Button>
         )}
       </div>
-    </Card>
+    </div>
   )
 }
