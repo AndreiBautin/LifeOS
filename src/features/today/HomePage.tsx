@@ -13,10 +13,7 @@ import { ActiveQuests } from '@/features/projects/ActiveQuests'
 import { useActiveQuests } from '@/features/projects/hooks'
 import { AreaCard, AttributeRow } from '@/features/character/CharacterParts'
 import { AREA_LINKS, LEVEL_TONE } from '@/features/character/sheet-constants'
-import { AvatarCard } from '@/features/character/AvatarCard'
-import { CharacterHeader } from '@/features/character/CharacterHeader'
-import { Traits } from '@/features/character/Traits'
-import { SeasonCard } from '@/features/character/SeasonCard'
+import { SheetCard } from '@/features/character/SheetCard'
 import { useCharacterSheet, useSeasonProgress } from '@/features/character/hooks'
 import { useReviewDraft } from '@/features/review/hooks'
 import { LimitsCard } from '@/features/vitals/LimitsCard'
@@ -59,6 +56,16 @@ import { Dailies } from './Dailies'
  * that only changes over months. The third band is at the bottom because
  * that is where it was already read from — scrolled to, deliberately,
  * rather than met on the way to a checkbox.
+ *
+ * **The first band is now one card and no page header.** Asked for as
+ * *"let's just drop that entire heading section and just start with the
+ * card"*, with the season and the traits merged into it. The page is
+ * therefore the only screen in the app with no `PageHeader` — which is
+ * a deliberate exception rather than a miss: every other heading says
+ * what the screen is, and a portrait of you at the top of a page opened
+ * every morning says it without a word. The header's two pieces of
+ * information, the level and the date, moved into the card, and its
+ * settings link went with them.
  */
 
 export function HomePage() {
@@ -155,12 +162,18 @@ export function HomePage() {
     */
     <div className="space-y-8">
       {/*
-        No portrait in the header any more. It was there as a small link
-        to the sheet, and the sheet is now the first thing under it —
-        two portraits on one screen is one quantity drawn twice.
+        ── The glance ──────────────────────────────────────────────────
+        Who you are, the chapter you are in, and the same XP split eight
+        ways. One card, because those are one quantity at three
+        resolutions rather than three questions. The ring on the portrait
+        **is** the XP bar — same numerator, same denominator — so nothing
+        in it draws that quantity twice.
       */}
-      <CharacterHeader
+      <SheetCard
+        xp={standing?.xp ?? 0}
         today={today}
+        {...(season.data === undefined ? {} : { season: season.data })}
+        {...(sheet.data === undefined ? {} : { traits: sheet.data.traits })}
         action={
           <Link
             to="/settings"
@@ -170,48 +183,22 @@ export function HomePage() {
             <Settings size={16} aria-hidden />
           </Link>
         }
+        reviewAction={
+          <Link to="/review" className={buttonStyles({ variant: 'ghost', size: 'sm' })}>
+            <CalendarCheck size={16} aria-hidden />
+            {/*
+              Says which month and whether it is done rather than just
+              "Review". A link that cannot tell you there is anything to
+              do is a link you stop noticing.
+            */}
+            {review.data === undefined
+              ? 'Review'
+              : review.data.started
+                ? `${review.data.month} filed`
+                : `File ${review.data.month}`}
+          </Link>
+        }
       />
-
-      {/*
-        ── The glance ──────────────────────────────────────────────────
-        Who you are and where you are in the chapter. The ring on the
-        portrait **is** the XP bar — same numerator, same denominator —
-        so nothing here draws that quantity twice.
-      */}
-      <AvatarCard xp={standing?.xp ?? 0} />
-
-      {/*
-        The season moved up from the foot of the old Today, because it
-        belongs with the progression rather than after the work: it is
-        the chapter you are in, which is the same question the level
-        answers on a longer scale.
-      */}
-      {season.data !== undefined && (
-        <SeasonCard
-          progress={season.data}
-          action={
-            <Link to="/review" className={buttonStyles({ variant: 'ghost', size: 'sm' })}>
-              <CalendarCheck size={16} aria-hidden />
-              {/*
-                Says which month and whether it is done rather than just
-                "Review". A link that cannot tell you there is anything
-                to do is a link you stop noticing.
-              */}
-              {review.data === undefined
-                ? 'Review'
-                : review.data.started
-                  ? `${review.data.month} filed`
-                  : `File ${review.data.month}`}
-            </Link>
-          }
-        />
-      )}
-
-      {sheet.data !== undefined && (
-        <Section title="Traits" description="Your XP, split by what earned it">
-          <Traits traits={sheet.data.traits} />
-        </Section>
-      )}
 
       {/*
         ── The day ─────────────────────────────────────────────────────

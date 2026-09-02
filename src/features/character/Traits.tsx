@@ -1,4 +1,3 @@
-import { Card } from '@/components/shared/primitives'
 import { Meter } from '@/components/shared/Meter'
 import type { TraitStanding } from '@/domain/game/traits'
 
@@ -16,6 +15,12 @@ import type { TraitStanding } from '@/domain/game/traits'
  * and the invented scale the model refuses. A bar labelled "Charisma"
  * with nothing under it is a number the app made up; one that says
  * "people you actually saw" is a count of hangouts you logged.
+ *
+ * **A band of the sheet card rather than a section of its own**, asked
+ * for as *"merge in the season and attributes stuff into the first
+ * card"*. These are the level above them split eight ways, so they are
+ * a reading *of* the portrait rather than a separate one — which is
+ * what a heading and 2rem of air between them had been claiming.
  */
 
 /**
@@ -86,10 +91,15 @@ function TraitRow({ standing }: { readonly standing: TraitStanding }) {
 
 export function Traits({ traits }: { readonly traits: readonly TraitStanding[] }) {
   return (
-    <Card className="space-y-4">
+    <div className="space-y-4">
+      <div>
+        <p className="text-ink-50 font-medium">Traits</p>
+        <p className="text-ink-500 text-xs">Your XP, split by what earned it</p>
+      </div>
+
       {ordered(traits).map((standing) => (
         <TraitRow key={standing.trait.id} standing={standing} />
       ))}
-    </Card>
+    </div>
   )
 }

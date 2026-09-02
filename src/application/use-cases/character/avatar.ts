@@ -22,7 +22,6 @@ export async function avatarFor(deps: SheetDeps): Promise<Avatar> {
 
   return buildAvatar({
     standing: sheet.standing,
-    areas: sheet.areas.map((area) => ({ area: area.area, name: area.name, xp: area.xp })),
     upgrades,
     season: seasonOf(deps.clock.now()).season,
   })

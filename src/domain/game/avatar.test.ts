@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { buildAvatar, mainstayFrom, gearFrom } from './avatar'
+import { buildAvatar, gearFrom } from './avatar'
 import { asUpgradeId } from '@/domain/ids/ids'
 import type { Upgrade } from '@/domain/upgrades/upgrade'
 
@@ -13,8 +13,6 @@ import type { Upgrade } from '@/domain/upgrades/upgrade'
  * the model has three deliberately.
  */
 
-const area = (name: string, xp: number) => ({ area: name, name, xp })
-
 const upgrade = (over: Partial<Upgrade>): Upgrade => ({
   id: asUpgradeId(over.title ?? 'u'),
   title: 'Thing',
@@ -25,56 +23,19 @@ const upgrade = (over: Partial<Upgrade>): Upgrade => ({
   ...over,
 })
 
-describe('what you are, mostly', () => {
-  it('is the area that has paid the most XP', () => {
-    const mainstay = mainstayFrom([area('training', 300), area('places', 120)])
-
-    expect(mainstay?.area).toBe('training')
-    expect(mainstay?.areaName).toBe('training')
-  })
-
-  /*
-   * XP is the only quantity comparable across areas — that is the whole
-   * reason it is a single currency. Ladders cannot answer this: Advanced
-   * on the squat and Advanced at exploration are anchored to different
-   * external standards and are not the same distance from anywhere.
-   */
-  it('reports the share, which is the whole of what it claims', () => {
-    const mainstay = mainstayFrom([area('training', 300), area('places', 100)])
-
-    expect(mainstay?.share).toBeCloseTo(0.75, 5)
-  })
-
-  /*
-   * Absent, never a nought. "You have not done anything yet" and "0% of
-   * your XP is training" are different statements, and only the first is
-   * true of an empty database.
-   */
-  it('has no mainstay before anything has been done', () => {
-    expect(mainstayFrom([])).toBeUndefined()
-    expect(mainstayFrom([area('training', 0), area('places', 0)])).toBeUndefined()
-  })
-
-  it('breaks a tie by the registry’s order, not the caller’s', () => {
-    const forwards = mainstayFrom([area('training', 100), area('backlog', 100)])
-    const backwards = mainstayFrom([area('backlog', 100), area('training', 100)])
-
-    expect(forwards?.area).toBe(backwards?.area)
-  })
-
-  /*
-   * **There was a guard here that every area had a flavour title**, so a
-   * new one could not quietly read as "Adventurer" forever. The titles
-   * are gone, and with them the gap it watched: an area's own name is
-   * what the sentence says now, and `registry.test.ts` already requires
-   * every area to have one.
-   */
-  it('names the area in its own words, not a word of its own', () => {
-    const mainstay = mainstayFrom([{ area: 'dailies', name: 'Dailies', xp: 50 }])
-
-    expect(mainstay?.areaName).toBe('Dailies')
-  })
-})
+/*
+ * **There was a "what you are, mostly" block here and it is gone with
+ * the derivation it covered.** `mainstayFrom` named the area that had
+ * paid the most XP and its share of the whole, which the card read as
+ * "100% of your XP is dailies"; the line was dropped along with the
+ * flavour titles it had been the evidence for.
+ *
+ * Nothing it asserted is now unwatched. The tie-break it tested was
+ * about that function alone, and what it existed to prove — that XP is
+ * comparable across areas and can be split by where it came from — is
+ * `traits.test.ts`, which requires the eight trait totals to sum to the
+ * XP total exactly.
+ */
 
 describe('what you are carrying', () => {
   it('counts what you bought and not what you want', () => {
@@ -123,7 +84,6 @@ describe('the portrait as a whole', () => {
   it('draws the ring from XP into the level, which is a real denominator', () => {
     const avatar = buildAvatar({
       standing,
-      areas: [area('training', 250)],
       upgrades: [],
       season: 'autumn',
     })
@@ -140,7 +100,6 @@ describe('the portrait as a whole', () => {
   it('shows a full ring rather than NaN at the top of the ladder', () => {
     const avatar = buildAvatar({
       standing: { xp: 9999, level: 20, into: 0, needed: 0 },
-      areas: [area('training', 9999)],
       upgrades: [],
       season: 'winter',
     })
@@ -152,7 +111,6 @@ describe('the portrait as a whole', () => {
   it('totals the gear it is showing', () => {
     const avatar = buildAvatar({
       standing,
-      areas: [area('training', 250)],
       upgrades: [
         upgrade({ title: 'Belt' }),
         upgrade({ title: 'Straps' }),
@@ -165,16 +123,14 @@ describe('the portrait as a whole', () => {
   })
 
   it('is drawable on an empty database', () => {
-    // Level 1, no mainstay, no gear — and nothing undefined that a
-    // component would have to guard.
+    // Level 1 and no gear — and nothing undefined that a component
+    // would have to guard.
     const avatar = buildAvatar({
       standing: { xp: 0, level: 1, into: 0, needed: 100 },
-      areas: [],
       upgrades: [],
       season: 'summer',
     })
 
-    expect(avatar.mainstay).toBeUndefined()
     expect(avatar.gear).toEqual([])
     expect(avatar.progress).toBe(0)
     expect(avatar.season).toBe('summer')

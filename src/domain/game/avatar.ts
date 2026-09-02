@@ -1,7 +1,6 @@
 import { isOwnArea } from '@/domain/base/base'
 import { isOwned, UPGRADE_CATEGORY_LABELS, type Upgrade } from '@/domain/upgrades/upgrade'
 
-import { LIFE_AREAS, type LifeArea } from './registry'
 import type { Season } from './season'
 import type { XpStanding } from './xp'
 
@@ -18,49 +17,34 @@ import type { XpStanding } from './xp'
  * therefore move, which is what `docs/GAME_MODEL.md` refuses everywhere.
  *
  * So every field below is a re-presentation. The level is the XP level.
- * The ring is how far into that level you are. The mainstay is whichever
- * area has paid the most XP. The gear is upgrades you actually bought.
+ * The ring is how far into that level you are. The gear is upgrades you
+ * actually bought.
  * The avatar is a *way of looking at* the character sheet, not a second
  * one.
  */
 
 /**
- * **There were flavour titles here and they are gone.**
+ * **There were flavour titles here, then a share, and both are gone.**
  *
  * Each area named somebody who spent their time there — Devotee for
- * dailies, Steward for the house, Athlete for training — and whichever
- * area had paid the most XP put its word at the top of the screen as the
- * page heading.
+ * dailies, Steward for the house — and whichever area had paid the most
+ * XP put its word up as the page heading. That went on the report
+ * *"I don't really care too much about the level names."* What was kept
+ * was the half that was a measurement: `mainstayFrom`, naming the area
+ * that had paid the most and what share of everything that was, read on
+ * the card as "100% of your XP is dailies".
  *
- * Asked for directly: *"I don't really care too much about the level
- * names like Devotee, could we drop those."* What is kept is the half
- * that was never the label: **which area has paid the most, and what
- * share of everything that is.** A share is a measurement and can be
- * checked against the breakdown beneath it; a word invented here could
- * only be taken on trust. The card's own note already called the share
- * "the difference between a label and a claim" — what is left is the
- * claim.
+ * The share went a day later, asked for in the same breath as merging
+ * the season and the traits into one card: *"let's get rid of the info
+ * like 100 percent of xp from dailies."* It is not a loss of evidence.
+ * **The season band names where this season's XP came from, area by
+ * area, and the traits split the whole of it eight ways** — both of
+ * which say what a single percentage said, with the arithmetic on
+ * screen rather than reduced to one figure.
  *
- * It was also the one heading in the app that was *derived* rather than
- * read. Every other one says what the screen is; this one said what you
- * were.
+ * The function is deleted rather than left exported, because a
+ * derivation nothing calls is the trap this codebase keeps finding.
  */
-
-/** One area's XP, as much of `AreaStanding` as this needs. */
-export interface AreaXp {
-  readonly area: string
-  readonly name: string
-  readonly xp: number
-}
-
-export interface Mainstay {
-  readonly area: string
-  /** The area's own name, which is what the sentence says out loud. */
-  readonly areaName: string
-  readonly xp: number
-  /** This area's share of all XP earned, 0–1. */
-  readonly share: number
-}
 
 export interface GearSlot {
   readonly category: string
@@ -76,55 +60,9 @@ export interface Avatar {
   /** `0`–`1` through the level, for the ring around the figure. */
   readonly progress: number
   readonly season: Season
-  /**
-   * Absent until something has actually been done.
-   *
-   * Absent rather than a nought-per-cent reading, for the reason every
-   * reading in this app is absent rather than zero: "you have not done
-   * anything yet" is a different statement from "0% of your XP is
-   * training", and only one of them is true on an empty database.
-   */
-  readonly mainstay?: Mainstay
   readonly gear: readonly GearSlot[]
   /** Owned upgrades that are yours rather than the house's. */
   readonly gearCount: number
-}
-
-/**
- * Which area has paid the most XP.
- *
- * XP is the one quantity that is comparable across areas — that is the
- * whole reason it exists as a single currency — so it is the only honest
- * basis for a question like "what am I, mostly". Ladders cannot answer
- * it: they are anchored to different external standards, and Advanced on
- * the squat and Advanced at exploration are not the same distance from
- * anywhere.
- *
- * Ties break by `LIFE_AREAS` order rather than by whichever the caller
- * happened to list first, so the answer does not depend on an array's
- * order somewhere else.
- */
-export function mainstayFrom(areas: readonly AreaXp[]): Mainstay | undefined {
-  const total = areas.reduce((sum, area) => sum + area.xp, 0)
-  if (total <= 0) return undefined
-
-  const rank = (area: string) => {
-    const at = LIFE_AREAS.indexOf(area as LifeArea)
-    return at < 0 ? LIFE_AREAS.length : at
-  }
-
-  const best = [...areas]
-    .filter((area) => area.xp > 0)
-    .sort((a, b) => b.xp - a.xp || rank(a.area) - rank(b.area))[0]
-
-  if (best === undefined) return undefined
-
-  return {
-    area: best.area,
-    areaName: best.name,
-    xp: best.xp,
-    share: best.xp / total,
-  }
 }
 
 /**
@@ -193,11 +131,9 @@ export function gearFrom(upgrades: readonly Upgrade[]): readonly GearSlot[] {
 
 export function buildAvatar(input: {
   readonly standing: XpStanding
-  readonly areas: readonly AreaXp[]
   readonly upgrades: readonly Upgrade[]
   readonly season: Season
 }): Avatar {
-  const mainstay = mainstayFrom(input.areas)
   const gear = gearFrom(input.upgrades)
 
   return {
@@ -212,7 +148,6 @@ export function buildAvatar(input: {
      */
     progress: input.standing.needed > 0 ? input.standing.into / input.standing.needed : 1,
     season: input.season,
-    ...(mainstay === undefined ? {} : { mainstay }),
     gear,
     gearCount: gear.reduce((sum, slot) => sum + slot.items.length, 0),
   }

@@ -561,10 +561,26 @@ whose job is to show movement. Consistency levelled the session count,
 which XP already spends. Nothing measures conditioning, so nothing scores
 it; that is the same rule every other area follows.
 
-**Every screen's header comes from `PageHeader`.** It was seventeen
-copies of one class string, and the duplication was the smaller half of
-the problem: a heading over a grey line is what a settings pane looks
-like, so every screen in the app opened the way a form does.
+**Every screen's header comes from `PageHeader` — except Today, which
+has none.** It was seventeen copies of one class string, and the
+duplication was the smaller half of the problem: a heading over a grey
+line is what a settings pane looks like, so every screen in the app
+opened the way a form does.
+
+The exception was asked for: _"let's just drop that entire heading
+section and just start with the card."_ It holds because every other
+title says what the screen is, and **a portrait of you at the top of the
+page says it without a word** — so what the header added there was a
+noun over an ISO date, above a picture that had already answered. The
+level and the date moved into the card and the settings link went with
+them. **Do not extend the exception**: a screen that opens on a list
+needs to be named, and this one opens on a face.
+
+The page's `h1` had to move with it, and did not for a commit — Today's
+headings started at `h2`, leaving somebody navigating by heading no
+title for the screen the app opens on. It is the visible `Level N` line
+now rather than a hidden "You" beside it: a hidden title is a second
+name for the same thing and drifts the moment either changes.
 
 It briefly carried a lit accent rule above the title, and that is gone
 again — asked about, within a day, by the person using it. **Decoration
@@ -4441,16 +4457,39 @@ components and values breaks fast refresh and the lint rule says so.
 _"simply rendering 'You' followed by a date underneath feels very
 barebones and non-gamified"_, and it was — a noun over an ISO date is
 what a settings pane opens with, on the screen the app opens to.
-`CharacterHeader` reads `Level 5 · Summer · 2026-08-31` under the
-title.
 
-**The title was the calling and is `You` again**, for the reasons above.
-What that paragraph reversed is worth stating plainly, because the
-report it answered is still true: a noun over an ISO date is what a
-settings pane opens with. The heading was never what fixed that — the
-portrait, the ring, the season bar and the traits were, and all four are
-still there. The card below keeps "83% of your XP is dailies", which is
-the evidence the heading used to be a label for.
+**There is no header on this screen at all now**, and the whole of that
+report is answered by what replaced it rather than by a better heading.
+The title went through three values in three days — the calling
+(_Devotee_), then `You`, then nothing — which is itself the finding:
+**a heading was never what was wrong with that screen.** The portrait,
+the ring, the season and the traits were what fixed it, and they are all
+still there. `SheetCard` is the whole first band.
+
+**The season and the traits are bands of that card, not sections after
+it.** Asked for in the same breath: _"merge in the season and attributes
+stuff into the first card."_ They merge cleanly because they are one
+reading at three resolutions — the level is XP over all of it, the
+season is XP over this chapter, the traits are the same XP split eight
+ways. Three headings and 2rem of air between them had been claiming
+three separate questions.
+
+**The share went with them.** _"Let's get rid of the info like 100
+percent of xp from dailies."_ It was the evidence for the calling and
+outlived it by a day. What it said is not lost and is better said by
+what is now under it: the season band names **where this season's XP
+came from, area by area**, and the traits split the whole of it — both
+show the arithmetic where the percentage reduced it to one figure.
+`mainstayFrom` is deleted rather than left exported, because a
+derivation nothing calls is the trap this file keeps recording.
+
+**The cost is depth, and it is measured rather than guessed.** The
+day's first heading sits about 1,250 pixels down — a screen and a half
+on a phone. That is the cost this page's own note predicted when the
+progression moved above the checkboxes, arriving in full. If ticking a
+habit starts to feel buried, **fold the traits** rather than restoring
+a section heading: they are eight rows with a blurb each and by far the
+tallest thing in the card.
 
 **Nothing is drawn twice, and one commit got that wrong.** The
 `Section title="Level N"` wrapper is gone, because the header names the
