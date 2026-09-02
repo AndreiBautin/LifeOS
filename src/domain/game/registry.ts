@@ -26,6 +26,7 @@ import { TRAINING_ACTS, type ActDefinition } from './xp'
 export const LIFE_AREAS = [
   'training',
   'cardio',
+  'crafting',
   'backlog',
   'projects',
   'upgrades',
@@ -154,6 +155,54 @@ export const SCORING: readonly AreaScoring[] = [
          * heavy days, which is precisely the wrong reading.
          */
         points: 30,
+      },
+    ],
+    hasTree: false,
+  },
+  {
+    /*
+     * **Things you built, and only things you built.** Craft used to be
+     * quests, the house and the tech tree; asked for as _"it shouldn't be
+     * any dailies or housework, just the diy stuff I work on myself or
+     * Legos from my codex."_
+     *
+     * Two sources, both split off records that already exist rather than
+     * newly logged:
+     *
+     * - **Lego in the Codex.** A set is built rather than consumed,
+     *   which is why it feeds this instead of Intellect. `tallyActs`
+     *   takes those items *out* of the backlog acts, so no item pays
+     *   twice — the same split `belongsTo` already makes for a chore.
+     * - **House jobs done yourself.** A DIY job's closed steps pay here
+     *   and not `base.action-closed`, by the same rule.
+     *
+     * A hired job still pays Base. Getting a plumber in is a thing you
+     * did and worth the points; it is not crafting.
+     */
+    area: 'crafting',
+    name: 'Crafting',
+    phase: 14,
+    ladders: [],
+    ratings: [],
+    acts: [
+      /*
+       * The same rates the areas these are split from use, so moving a
+       * record between them never changes what it is worth. A build day
+       * is a backlog progress day (10), a finished set is a finished
+       * item (40), and a DIY step is a house step (20).
+       */
+      {
+        id: 'crafting.build-progress',
+        area: 'crafting',
+        label: 'Built some of it',
+        points: 5,
+      },
+      { id: 'crafting.build-finished', area: 'crafting', label: 'Finished a build', points: 40 },
+      {
+        id: 'crafting.diy-step-closed',
+        area: 'crafting',
+        label: 'Did a bit of it yourself',
+        points: 20,
       },
     ],
     hasTree: false,

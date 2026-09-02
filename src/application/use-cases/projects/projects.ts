@@ -1,5 +1,5 @@
 import { settleContract } from '@/domain/projects/contract'
-import { keepFor, type HomeFilter, type RecordHome } from '@/domain/base/base'
+import { keepFor, type HomeFilter, type JobApproach, type RecordHome } from '@/domain/base/base'
 import { activate, activeQuest, kindOf, standDown } from '@/domain/projects/active'
 import {
   asActionId,
@@ -61,6 +61,8 @@ export interface NewProject {
    * precisely because a partial write leaves the graph lying.
    */
   readonly steps?: readonly string[]
+  /** DIY or hired, for a house job. See `Project.approach`. */
+  readonly approach?: JobApproach
   /** Where it lives on the web — see `Project.link`. */
   readonly link?: string
   readonly description?: string
@@ -113,6 +115,7 @@ export async function addProject(input: NewProject, deps: ProjectDeps): Promise<
     blockedBy: input.blockedBy ?? [],
     ...(input.deadline === undefined ? {} : { deadline: input.deadline }),
     ...(input.belongsTo === undefined ? {} : { belongsTo: input.belongsTo }),
+    ...(input.approach === undefined ? {} : { approach: input.approach }),
     ...(input.link === undefined || input.link === '' ? {} : { link: input.link }),
     createdAt: now,
     actions: (input.steps ?? []).map((description, index) => ({

@@ -88,7 +88,19 @@ export const TRAITS: readonly TraitDefinition[] = [
    */
   { id: 'stamina', label: 'Stamina', areas: ['cardio'] },
   { id: 'intellect', label: 'Intellect', areas: ['backlog', 'mind'] },
-  { id: 'craft', label: 'Craft', areas: ['projects', 'base', 'upgrades'] },
+  /*
+   * **Crafting is things you built, and it used to be much wider.** It
+   * was quests, the house and the tech tree — asked for as _"it
+   * shouldn't be any dailies or housework, just the diy stuff I work on
+   * myself or Legos from my codex."_
+   *
+   * So it claims one area, and that area is split off two others rather
+   * than being a new place to log things: Lego comes out of the Codex
+   * and DIY house jobs come out of Base. Buying an upgrade and hiring a
+   * plumber are still things you did and still pay the level; they are
+   * not crafting, and they have no bar now.
+   */
+  { id: 'crafting', label: 'Crafting', areas: ['crafting'] },
 ]
 
 /**
@@ -102,6 +114,9 @@ export const TRAITS: readonly TraitDefinition[] = [
  */
 export const UNCLAIMED_AREAS: readonly LifeArea[] = [
   'places',
+  'projects',
+  'upgrades',
+  'base',
   'dailies',
   'jobs',
   'vitals',

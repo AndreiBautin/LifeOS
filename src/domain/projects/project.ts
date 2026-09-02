@@ -1,5 +1,5 @@
 import type { ActionId, ProjectId } from '@/domain/ids/ids'
-import type { RecordHome } from '@/domain/base/base'
+import type { JobApproach, RecordHome } from '@/domain/base/base'
 
 /**
  * A project, its checklist, and what it is waiting on.
@@ -173,6 +173,29 @@ export interface Project {
    * record shows up in two places at once.
    */
   readonly belongsTo?: RecordHome
+
+  /**
+   * Whether a house job is one you do yourself or one you hire out.
+   *
+   * **This reverses a decision recorded in `CLAUDE.md`, deliberately.**
+   * That note said the approach must *not* be stored: a project already
+   * carries its steps, and "Find the right person" against "Work out
+   * what it needs" says which errand this is more plainly than a field
+   * would — and the rule around here is that a field needs something
+   * that reads it.
+   *
+   * Something reads it now. Crafting is fed by the DIY jobs and not by
+   * the hired ones, so which errand this was became a **scoring**
+   * question rather than a display one, and the steps cannot answer it:
+   * they are free text the moment anybody edits one, and a job whose
+   * three steps were retyped would silently stop paying.
+   *
+   * **Absent means neither**, which is the honest reading for every job
+   * filed before this existed — there is no way to tell from a step list
+   * what somebody meant, and guessing would hand XP to jobs on the
+   * strength of a string match. They pay Base as they always did.
+   */
+  readonly approach?: JobApproach
 
   readonly actions: readonly ActionItem[]
 

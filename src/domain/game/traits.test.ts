@@ -98,13 +98,23 @@ describe('levelling a trait', () => {
   })
 
   it('gathers a bundled trait from every area that feeds it', () => {
-    // Craft is quests, the house and the tree — three areas, one bar.
+    /*
+     * Intellect is the Codex and Mind — two areas, one bar. It used to
+     * be Craft that showed this, over quests, the house and the tree;
+     * Crafting claims a single area now, so the rule needed a trait that
+     * still bundles or it would have been asserting nothing.
+     */
     const standings = traitStandings(
-      { 'projects.main-action-closed': 1, 'base.chore-kept': 1 },
+      { 'backlog.item-finished': 1, 'mind.problem-solved': 1 },
       ALL_ACTS,
     )
 
-    expect(standings.find((one) => one.trait.id === 'craft')?.xp).toBe(55)
+    const intellect = standings.find((one) => one.trait.id === 'intellect')?.xp ?? 0
+    const backlogOnly = traitStandings({ 'backlog.item-finished': 1 }, ALL_ACTS).find(
+      (one) => one.trait.id === 'intellect',
+    )?.xp
+
+    expect(intellect).toBeGreaterThan(backlogOnly ?? 0)
   })
 
   /*

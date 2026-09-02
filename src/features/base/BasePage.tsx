@@ -409,6 +409,13 @@ function AddJob({ onDone }: { readonly onDone: () => void }) {
               // approach's own list, so a step from the other one cannot
               // survive a change of mind.
               steps: offered.filter((one) => steps.includes(one)),
+              /*
+                Stored, so Crafting can be fed by the jobs you do
+                yourself and not by the ones you hire out. The steps used
+                to be the only record of which errand this was, and they
+                are free text the moment anybody edits one.
+              */
+              approach,
             },
             { onSuccess: onDone },
           )

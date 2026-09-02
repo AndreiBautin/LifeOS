@@ -1,4 +1,5 @@
 import {
+  Blocks,
   BookMarked,
   BookOpen,
   Clapperboard,
@@ -17,6 +18,7 @@ import type { CategoryId } from '@/domain/backlog/category-registry'
 
 /** Maps each category to its icon component (kept in sync with CATEGORY_REGISTRY's icon names). */
 export const CATEGORY_ICONS: Record<CategoryId, LucideIcon> = {
+  lego: Blocks,
   games: Gamepad2,
   'tv-shows': Tv,
   movies: Clapperboard,

@@ -2,6 +2,7 @@ import { traitStandings, type TraitStanding } from '@/domain/game/traits'
 import { isResolved } from '@/domain/atlas/place/Place'
 import { isBase, isJobs, isMind, isOwnArea, isTraining } from '@/domain/base/base'
 import type { Daily } from '@/domain/dailies/daily'
+import type { Item } from '@/domain/backlog/item'
 import type { Project, QuestKind } from '@/domain/projects/project'
 import { readLadder, type LadderReading } from '@/domain/game/ladder'
 import { ALL_ACTS, SCORING } from '@/domain/game/registry'
@@ -169,7 +170,27 @@ export async function tallyActs(
    * mean every future caller inheriting an opinion it did not ask for.
    */
   const ownProjects = projects.filter(isOwnArea)
-  const baseProjects = projects.filter(isBase)
+  /*
+   * **A house job splits by how it gets done.** A DIY job's steps pay
+   * Crafting and a hired job's pay Base — one record, one act, which is
+   * rule three holding by the same split `belongsTo` already makes.
+   *
+   * A job with no `approach` is a job filed before the field existed.
+   * It pays Base, which is where it always paid: there is no way to tell
+   * from a step list what somebody meant, and guessing would hand
+   * Crafting XP out on a string match.
+   */
+  const houseProjects = projects.filter(isBase)
+  const diyProjects = houseProjects.filter((one) => one.approach === 'diy')
+  const baseProjects = houseProjects.filter((one) => one.approach !== 'diy')
+
+  /*
+   * **Lego splits off the backlog the same way.** A set is built rather
+   * than read, so it feeds Crafting — and it must leave the backlog acts
+   * entirely or one item would pay two bars.
+   */
+  const builds = items.filter((item) => item.category === 'lego')
+  const readItems = items.filter((item) => item.category !== 'lego')
   const ownDailies = dailies.filter(isOwnArea)
   const baseDailies = dailies.filter(isBase)
   const trainingDailies = dailies.filter(isTraining)
@@ -203,15 +224,16 @@ export async function tallyActs(
     // One act per item per day with progress on it. Entries are already
     // keyed by day, so logging twice against the same item on the same
     // afternoon is one act rather than two.
-    'backlog.progress-logged': items.reduce(
-      (total, item) =>
-        total + item.dailyProgress.filter((entry) => entry.amount > 0 && within(entry.date)).length,
-      0,
-    ),
+    'backlog.progress-logged': progressDays(readItems, within),
     // Counted from `dateCompleted` rather than from the status, so an item
     // reopened and finished again is one finish and not two — the stamp is
     // set once, on the first completion.
-    'backlog.item-finished': items.filter((item) => dated(item.dateCompleted)).length,
+    'backlog.item-finished': readItems.filter((item) => dated(item.dateCompleted)).length,
+    /* The same two counts over the builds, at the same rates. */
+    'crafting.build-progress': progressDays(builds, within),
+    'crafting.build-finished': builds.filter((item) => dated(item.dateCompleted)).length,
+    'crafting.diy-step-closed':
+      closedActions(diyProjects, dated, 'main') + closedActions(diyProjects, dated, 'side'),
     /*
      * Counted by the kind stamped on the action, never by the quest's
      * current one. An action closed before quests had kinds carries none
@@ -291,6 +313,21 @@ export async function tallyActs(
       (place) => place.status === 'visited' && isResolved(place) && dated(place.dateVisited),
     ).length,
   }
+}
+
+/**
+ * Days an item had progress logged on it, within a window.
+ *
+ * Extracted because the backlog and the builds both count it, and two
+ * copies of this reduce is where the two would drift — the defect this
+ * file keeps recording under a hand-written second list.
+ */
+function progressDays(items: readonly Item[], within: Within): number {
+  return items.reduce(
+    (total, item) =>
+      total + item.dailyProgress.filter((entry) => entry.amount > 0 && within(entry.date)).length,
+    0,
+  )
 }
 
 /** Closed actions of one kind, within a window. */

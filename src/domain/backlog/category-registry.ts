@@ -13,6 +13,23 @@ export interface CategoryDefinition {
  */
 export const CATEGORY_REGISTRY = [
   {
+    /*
+     * **Lego, and it is the one category that is not something you
+     * consume.** Everything else here is read, watched or played; a set
+     * is built, which is why it feeds Crafting rather than Intellect —
+     * see `domain/game/traits.ts`.
+     *
+     * Counted in **bags**, because that is the unit a set actually
+     * arrives in and the one you stop at. Pieces would be the precise
+     * answer and a useless one: nobody logs 47 of 7,541.
+     */
+    id: 'lego',
+    label: 'Lego',
+    icon: 'Blocks',
+    suggestedGoalUnit: 'bag',
+    suggestedPlatforms: ['Physical'],
+  },
+  {
     id: 'games',
     label: 'Games',
     icon: 'Gamepad2',

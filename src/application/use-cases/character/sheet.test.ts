@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest'
 import { ALL_ACTS, SCORING } from '@/domain/game/registry'
 import type { Place } from '@/domain/atlas/place/Place'
 import type { Item } from '@/domain/backlog/item'
+import { BASE } from '@/domain/base/base'
 import type { Project } from '@/domain/projects/project'
 import type { Clock, ReviewRepository } from '@/domain/repositories/ports'
 import { DEFAULT_SETTINGS, type AppSettings } from '@/domain/settings/settings'
@@ -354,5 +355,86 @@ describe('what a job application pays', () => {
     const sheet = await characterSheet(harness({ projects: [application()] }))
 
     expect(sheet.areas.find((area) => area.area === 'projects')?.xp).toBe(0)
+  })
+})
+
+/**
+ * Crafting is split off two other areas, so the thing worth testing is
+ * that nothing pays twice — rule three, at the one place it is easiest
+ * to break.
+ */
+describe('what feeds Crafting', () => {
+  const houseJob = (approach: 'diy' | 'hired' | undefined) =>
+    ({
+      id: 'j1',
+      name: 'Fix the porch',
+      status: 'active',
+      belongsTo: BASE,
+      ...(approach === undefined ? {} : { approach }),
+      actions: [
+        {
+          id: 'a1',
+          description: 'Do the work',
+          status: 'done',
+          order: 0,
+          createdAt: '2026-08-01T00:00:00.000Z',
+          completedAt: '2026-08-10T00:00:00.000Z',
+          completedAsKind: 'side',
+        },
+      ],
+    }) as unknown as Project
+
+  const build = (category: string) =>
+    ({
+      id: 'b1',
+      title: 'Millennium Falcon',
+      category,
+      status: 'active',
+      dailyProgress: [{ date: '2026-08-10', amount: 3 }],
+      dateCompleted: '2026-08-12',
+    }) as unknown as Item
+
+  const xpOf = (sheet: Awaited<ReturnType<typeof characterSheet>>, area: string) =>
+    sheet.areas.find((one) => one.area === area)?.xp ?? 0
+
+  it('pays a DIY house job into Crafting and not into Base', async () => {
+    const sheet = await characterSheet(harness({ projects: [houseJob('diy')] }))
+
+    expect(xpOf(sheet, 'crafting')).toBe(20)
+    expect(xpOf(sheet, 'base')).toBe(0)
+  })
+
+  it('leaves a hired job paying Base, because getting a plumber in is not crafting', async () => {
+    const sheet = await characterSheet(harness({ projects: [houseJob('hired')] }))
+
+    expect(xpOf(sheet, 'base')).toBe(20)
+    expect(xpOf(sheet, 'crafting')).toBe(0)
+  })
+
+  /*
+   * Every house job filed before the field existed. Guessing from the
+   * step list would hand Crafting XP out on a string match, so an absent
+   * approach pays where it always paid.
+   */
+  it('pays a job with no recorded approach into Base, as it always did', async () => {
+    const sheet = await characterSheet(harness({ projects: [houseJob(undefined)] }))
+
+    expect(xpOf(sheet, 'base')).toBe(20)
+    expect(xpOf(sheet, 'crafting')).toBe(0)
+  })
+
+  it('pays a Lego build into Crafting and not into the Codex', async () => {
+    const sheet = await characterSheet(harness({ items: [build('lego')] }))
+
+    // A progress day at 5 and a finish at 40, the backlog's own rates.
+    expect(xpOf(sheet, 'crafting')).toBe(45)
+    expect(xpOf(sheet, 'backlog')).toBe(0)
+  })
+
+  it('leaves every other category paying the Codex', async () => {
+    const sheet = await characterSheet(harness({ items: [build('books')] }))
+
+    expect(xpOf(sheet, 'backlog')).toBe(45)
+    expect(xpOf(sheet, 'crafting')).toBe(0)
   })
 })

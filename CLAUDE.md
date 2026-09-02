@@ -4863,6 +4863,49 @@ The title went through three values in three days — the calling
 the ring, the season and the traits were what fixed it, and they are all
 still there. `SheetCard` is the whole first band.
 
+**Craft became Crafting, and it is things you built.** Asked for as
+_"can we make craft into crafting and it shouldn't be any dailies or
+housework, just the diy stuff I work on myself or Legos from my codex."_
+It was quests, the house and the tech tree; it is now one area, split
+off two others rather than being a new place to log things.
+
+- **Lego is a Codex category**, counted in **bags** — the unit a set
+  arrives in and the one you stop at, where pieces would be precise and
+  useless. It is the one category that is not something you consume,
+  which is why it feeds Crafting rather than Intellect.
+- **House jobs you do yourself.** A DIY job's closed steps pay Crafting;
+  a hired job's still pay Base. Getting a plumber in is a thing you did
+  and worth the points, and it is not crafting.
+
+**Nothing pays twice.** `tallyActs` takes Lego items out of the backlog
+acts and DIY jobs out of `base.action-closed` before counting — the same
+split `belongsTo` already makes for a chore, which is rule three holding
+by construction. The crafting acts use the **same rates** as the acts
+they are split from (5 a progress day, 40 a finish, 20 a step), so
+moving a record between areas never changes what it is worth.
+
+**`Project.approach` is stored now, and that reverses a decision
+recorded in this file.** The old note said the approach must not be
+stored: a project carries its steps, and "Find the right person" against
+"Work out what it needs" says which errand it is more plainly than a
+field would — and a field needs something that reads it.
+
+Something reads it now. Which errand a job was became a **scoring**
+question rather than a display one, and the steps cannot answer it: they
+are free text the moment anybody edits one, and a job whose steps were
+retyped would silently stop paying. **Absent means neither**, which is
+the honest reading of every job filed before the field existed — there
+is no telling from a step list what somebody meant, and guessing would
+hand XP out on a string match. Those keep paying Base.
+
+**`projects`, `base` and `upgrades` joined `UNCLAIMED_AREAS`.** Quests,
+housework and buying things pay the level and have no bar, which the
+traits-as-a-selection change made expressible.
+
+Driven: a finished Lego build paid **Crafting 45** (a progress day at 5
+and a finish at 40) and the Codex nothing, while a book in progress paid
+**Intellect 5** — 50 total against a level reading of 50/100.
+
 **Four traits, no header, no blurbs — and traits stopped being a
 partition.** Asked for as _"drop the traits header and description …
 drop the descriptions on traits and drop discipline, fortune and
