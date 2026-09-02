@@ -7,7 +7,7 @@ import { buttonStyles } from '@/components/shared/styles'
 import { LEVELS } from '@/domain/game/character'
 import { ActiveQuests } from '@/features/projects/ActiveQuests'
 import { useActiveQuests } from '@/features/projects/hooks'
-import { AREA_LINKS, LEVEL_TONE } from '@/features/character/sheet-constants'
+import { LEVEL_TONE } from '@/features/character/sheet-constants'
 import { ChallengePass } from '@/features/challenges/ChallengePass'
 import { SeasonBand } from '@/features/character/SeasonBand'
 import { SheetCard } from '@/features/character/SheetCard'
@@ -235,31 +235,17 @@ export function HomePage() {
       )}
 
       {/*
-        **What is left of the Areas block: the three screens with no
-        other way in at all.** Reported as _"let's clean up the areas
-        section, seems unnecessary"_ — and four of its seven chips had
-        indeed grown a better route, so what is here is the residue that
-        would otherwise be unreachable rather than a list of areas.
+        **The stray-links block is gone.** Reported as _"it just felt
+        random having those as stray links while everything else fit
+        nicely into a gamified layout"_ — and it was: a row of chips for
+        screens whose only shared property was lacking a tab, which is a
+        fact about the navigation rather than about the person.
 
-        Named "More" rather than "Areas" because it no longer describes
-        areas: it is three links, and calling them areas invites the next
-        area to be added to a list that is trying to empty.
+        Each one went where it belongs instead. Resume and Mind hang off
+        Job search, which hangs off Quests; Houses off the house-search
+        stage of the arc. Every route is now *about* something rather
+        than a leftover, which is what the block could never be.
       */}
-      <Section title="More" description="Screens with no tab of their own">
-        <Card>
-          <div className="flex flex-wrap gap-1.5">
-            {AREA_LINKS.map((area) => (
-              <Link
-                key={area.to}
-                to={area.to}
-                className={buttonStyles({ variant: 'outline', size: 'sm' })}
-              >
-                {area.label}
-              </Link>
-            ))}
-          </div>
-        </Card>
-      </Section>
 
       <Section title="The ladder">
         <Card>

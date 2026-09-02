@@ -1,7 +1,9 @@
-import { FileText, Plus } from 'lucide-react'
+import { Brain, FileText, Plus } from 'lucide-react'
 import { useState } from 'react'
 
 import { PageHeader } from '@/components/shared/PageHeader'
+import { buttonStyles } from '@/components/shared/styles'
+import { Link } from 'react-router-dom'
 import { Badge, Button, Card, Empty, Section } from '@/components/shared/primitives'
 import { JOBS } from '@/domain/base/base'
 import { APPLICATION_STAGES } from '@/domain/jobs/application'
@@ -311,7 +313,40 @@ export function JobsPage() {
 
   return (
     <div>
-      <PageHeader title="Job search" subtitle="What is out, and how far each one has got" />
+      {/*
+        **Resume and Mind hang off this screen**, asked for as _"resume
+        should be navigable from the improve income/job search stuff, and
+        mind is really training for job interviews so it should probably
+        go to there."_
+
+        Both were stray links in a block on the home page. A header
+        action is where this app already puts the screens that belong to
+        another — Train carries Plan and History the same way — and the
+        difference from the block is that these are *about* job hunting
+        rather than merely also lacking a tab.
+
+        The resume is the document these applications are matched
+        against, so the link is where the matching happens. Mind is a
+        wider area than interview prep and this is the reading of it that
+        earns the link; if practice ever stops being about interviews,
+        this is the placement to revisit.
+      */}
+      <PageHeader
+        title="Job search"
+        subtitle="What is out, and how far each one has got"
+        action={
+          <>
+            <Link to="/resume" className={buttonStyles({ variant: 'ghost', size: 'sm' })}>
+              <FileText size={16} aria-hidden />
+              Resume
+            </Link>
+            <Link to="/mind" className={buttonStyles({ variant: 'ghost', size: 'sm' })}>
+              <Brain size={16} aria-hidden />
+              Mind
+            </Link>
+          </>
+        }
+      />
 
       <Section
         title="Out there"

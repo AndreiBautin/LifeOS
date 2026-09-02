@@ -4863,6 +4863,46 @@ The title went through three values in three days — the calling
 the ring, the season and the traits were what fixed it, and they are all
 still there. `SheetCard` is the whole first band.
 
+**The stray-links block is gone entirely, and each screen found a
+parent instead.** Reported as _"it just felt random having those as
+stray links while everything else fit nicely into a gamified layout"_ —
+which is exactly right about what it was: a row of chips whose members
+shared only the absence of a tab, which is a fact about the navigation
+rather than about the person.
+
+- **Resume and Mind hang off Job search**, in its header. _"Resume
+  should be navigable from the improve income/job search stuff, and mind
+  is really training for job interviews so it should probably go to
+  there."_ The resume is the document these applications are matched
+  against, so the link sits where the matching happens.
+- **Job search hangs off Quests**, in its header, and that link is what
+  makes the two above safe. An arc stage does link to Jobs — but only
+  once an `offers` stage exists, and the leads card is silent when
+  nothing is out. **Two conditionals deep is how a screen becomes
+  unreachable**, which is what the block existed to prevent. A tab is
+  unconditional, so the chain is rooted there.
+- **Houses hangs off the arc's house-search stage**, which already
+  worked: `EVIDENCE_SCREENS` maps `homes-viewed` to `/houses`. Nothing
+  was built for it; it was verified by seeding a real arc and clicking
+  through, because it is now the _only_ route.
+
+**A header action is the established place for a related screen** —
+Train has carried Plan and History that way for a long time. What makes
+these different from the block is that each is _about_ the screen it
+sits on.
+
+**`AREA_LINKS` is deleted, and the note where it stood says not to
+bring it back.** The right fix for a routeless screen is to find the
+screen it belongs to. Its members were only ever united by a gap in the
+navigation.
+
+**The verification caught nothing and the method still mattered.** The
+first pass at checking the Houses link reported it missing — the link
+renders as "Houses →" and the test matched "Houses" exactly. The app was
+right and the check was wrong, which is worth recording because the
+opposite conclusion was one keystroke away: a route deleted on the
+strength of a bad assertion.
+
 **Social is gone, and the navigation is eight tabs.** Asked for as
 _"let's clean up the areas section, seems unnecessary … tech tree and
 finances should be its own tab, let's replace the party section … I'm

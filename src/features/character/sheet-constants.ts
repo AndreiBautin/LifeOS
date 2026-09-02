@@ -10,31 +10,21 @@ import type { Level } from '@/domain/game/character'
  * are all components, so editing a colour would remount the screen.
  */
 
-/**
- * The screens with **no other way in at all**, listed so they can be
- * found.
+/*
+ * **`AREA_LINKS` is gone, and the reason it existed is worth keeping.**
+ * It listed the screens with no tab so they could be found at all, and
+ * every entry was eventually a symptom: a screen nobody could reach is a
+ * screen the app does not have.
  *
- * Reported as _"let's clean up the areas section, seems unnecessary"_,
- * and it mostly was: of the seven chips it carried, four had grown a
- * route somewhere better. Finance and the Tech tree are tabs now, Job
- * search is reached from a main quest's stage and from the leads card,
- * and Limits from the "Set up" on its own card on this screen.
+ * It emptied the right way — not by deleting the list, but by each
+ * screen finding a parent that is *about* it. Resume and Mind sit on Job
+ * search, Job search on Quests, Houses on the arc's house-search stage,
+ * Limits on its own card, Finance and the tree on tabs of their own.
  *
- * **The three left are here because deleting the block outright would
- * have orphaned them**, which is the trap this list exists for: `/mind`
- * and `/resume` were linked from nowhere else in the app, and
- * `/houses` only from a campaign stage that has to exist first. A screen
- * you cannot reach is a screen the app does not have — the same shape as
- * the geocoder nothing could call.
- *
- * Checked by grep rather than assumed. If one of these gains a home
- * elsewhere, it comes off this list and the list goes when it empties.
+ * **If a screen is ever added with no route, do not bring this back.**
+ * Find the screen it belongs to. The block read as random because it
+ * was: its members shared only the absence of a tab.
  */
-export const AREA_LINKS = [
-  { to: '/mind', label: 'Mind' },
-  { to: '/resume', label: 'Resume' },
-  { to: '/houses', label: 'Houses' },
-] as const
 
 /** The tone each rung of the strength ladder reads in. */
 export const LEVEL_TONE: Partial<Record<Level, 'neutral' | 'accent' | 'good' | 'cool'>> = {

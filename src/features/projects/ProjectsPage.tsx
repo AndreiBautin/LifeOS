@@ -1,7 +1,9 @@
 import { Campaigns } from '@/features/campaign/Campaigns'
 import { useCampaigns } from '@/features/campaign/hooks'
-import { Check, ChevronDown, ChevronRight, Home, Plus, Trash2 } from 'lucide-react'
+import { Briefcase, Check, ChevronDown, ChevronRight, Home, Plus, Trash2 } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
+import { buttonStyles } from '@/components/shared/styles'
+import { Link } from 'react-router-dom'
 import { useState } from 'react'
 
 import { useServices } from '@/app/context'
@@ -501,9 +503,26 @@ export function ProjectsPage() {
 
   return (
     <>
+      {/*
+        **Job search is reached from here**, which is what makes the two
+        links on that screen safe to rely on.
+
+        Reported as _"job search should be linked through main quest"_,
+        and an arc stage does link to it — but only once a stage of that
+        kind exists, and the leads card on Today is silent when there is
+        nothing out. Two conditionals deep is how a screen becomes
+        unreachable, which is the trap the deleted block existed to
+        prevent. A tab is unconditional; this is the root of the chain.
+      */}
       <PageHeader
         title="Quests"
         subtitle="What you are trying to get done, and what is blocking what."
+        action={
+          <Link to="/jobs" className={buttonStyles({ variant: 'ghost', size: 'sm' })}>
+            <Briefcase size={16} aria-hidden />
+            Job search
+          </Link>
+        }
       />
 
       {/*
