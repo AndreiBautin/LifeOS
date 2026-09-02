@@ -26,14 +26,26 @@ import type { RecordHome } from '@/domain/base/base'
  */
 
 /**
- * Three shelves — see `shelf.ts` for what each means and why.
+ * Two shelves — see `shelf.ts` for what each means and why.
  *
  * The names live here rather than beside their functions because the
  * `shelf` field below needs the type, and `shelf.ts` needs `Upgrade`:
  * declaring it there made a cycle that quietly resolved every
  * `TreeEntry` to `any`.
+ *
+ * **There were three, and `gear` is gone.** Asked for: *"I don't really
+ * have anything in gear that I want right now and don't foresee typing
+ * progress to that — let's get rid of it."* A shelf nobody files to is a
+ * screen, a route, a wishlist and a set of labels earning nothing, and
+ * the split it existed for — you versus your tools — was never the
+ * expensive one. `base` against everything else is.
+ *
+ * Nothing is orphaned: `shelfOf` reads a stored `gear` as `tech`, so a
+ * pair of boots filed there before this appears in the tech tree rather
+ * than nowhere. A derivation, not a migration, the rule this file
+ * already follows for an absent shelf.
  */
-export const UPGRADE_SHELVES = ['base', 'tech', 'gear'] as const
+export const UPGRADE_SHELVES = ['base', 'tech'] as const
 
 export type UpgradeShelf = (typeof UPGRADE_SHELVES)[number]
 

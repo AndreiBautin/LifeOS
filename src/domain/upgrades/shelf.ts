@@ -36,13 +36,11 @@ export { UPGRADE_SHELVES, type UpgradeShelf }
 export const UPGRADE_SHELF_LABELS: Readonly<Record<UpgradeShelf, string>> = {
   base: 'Base',
   tech: 'Tech tree',
-  gear: 'Gear',
 }
 
 export const UPGRADE_SHELF_BLURBS: Readonly<Record<UpgradeShelf, string>> = {
   base: 'The place you live — furniture, appliances, fittings',
   tech: 'The tools you work and play with — phones, screens, machines',
-  gear: 'You — apparel, shoes, accessories',
 }
 
 /**
@@ -52,14 +50,25 @@ export const UPGRADE_SHELF_BLURBS: Readonly<Record<UpgradeShelf, string>> = {
  * itself follows: filed to Base reads as `base`, and anything else reads
  * as `tech`. That is exactly the two-way split that shipped, so nothing
  * migrates and nothing moves on its own — a stored record written before
- * shelves existed lands where it already was, and the gear shelf starts
- * empty because nobody has put anything on it yet.
+ * shelves existed lands where it already was.
+ *
+ * **A stored `gear` reads as `tech`**, which is the same derivation one
+ * value further on. That shelf was removed for want of anything on it,
+ * and a record still carrying the word would otherwise match no shelf
+ * and be drawn by no screen — the silent loss this function exists to
+ * prevent. It normalises the next time anything saves the record.
  */
 export function shelfOf(upgrade: Upgrade): UpgradeShelf {
+  // Widened, because the value is no longer in the field's own union:
+  // the record on disk can still say it, and the type cannot.
+  if ((upgrade.shelf as string | undefined) === RETIRED_GEAR_SHELF) return 'tech'
   if (upgrade.shelf !== undefined) return upgrade.shelf
 
   return isBase(upgrade) ? 'base' : 'tech'
 }
+
+/** What the third shelf was called before it was removed. */
+const RETIRED_GEAR_SHELF = 'gear'
 
 /**
  * The area a shelf files its records to.

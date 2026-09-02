@@ -16,7 +16,7 @@ import { HomesPage } from '@/features/homes/HomesPage'
 import { JobsPage } from '@/features/jobs/JobsPage'
 import { FinancePage } from '@/features/finance/FinancePage'
 import { ResumePage } from '@/features/resume/ResumePage'
-import { GearPage, UpgradesPage } from '@/features/upgrades/UpgradesPage'
+import { UpgradesPage } from '@/features/upgrades/UpgradesPage'
 import { HistoryPage } from '@/features/history/HistoryPage'
 import { PlanPage } from '@/features/plan/PlanPage'
 import { ProgramPage } from '@/features/plan/ProgramPage'
@@ -58,7 +58,18 @@ export const router = createBrowserRouter(
         { path: 'program', element: <ProgramPage /> },
         { path: 'backlog', element: <BacklogPage /> },
         { path: 'upgrades', element: <UpgradesPage /> },
-        { path: 'gear', element: <GearPage /> },
+        /*
+         * The Gear shelf was removed for want of anything on it, and its
+         * path is kept as a redirect rather than deleted — the rule
+         * `/next` and `/character` already follow, because a PWA
+         * shortcut is registered with the operating system at install
+         * time and an installed copy goes on asking for the old path.
+         *
+         * It lands on the tech tree because that is where the records
+         * went: `shelfOf` reads a stored `gear` as `tech`, so anything
+         * filed there is on that screen rather than nowhere.
+         */
+        { path: 'gear', element: <Navigate to="/upgrades" replace /> },
         { path: 'base', element: <BasePage /> },
         /*
          * Kept as a redirect rather than deleted, the rule '/next' and

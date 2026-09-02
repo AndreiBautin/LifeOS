@@ -2990,6 +2990,43 @@ places to set one number — but worth stating plainly rather than
 implying both screens reason about money. They do not; one number is
 stored, one screen applies it.
 
+**There were three shelves and there are two: `gear` is gone.** Asked
+for directly: _"I don't really have anything in gear that I want right
+now and don't foresee typing progress to that — let's get rid of it."_ A
+shelf nobody files to is a screen, a route, a wishlist and two sets of
+labels earning nothing. The split it existed for — you against your
+tools — was never the expensive one; `base` against everything else is,
+and that is the one the paragraph below was actually written about.
+
+**Nothing is orphaned, by the rule `shelfOf` already followed.** A
+stored `gear` reads as `tech`, so a pair of boots filed there before this
+appears in the tech tree rather than matching no shelf and being drawn
+by no screen — the silent loss that function exists to prevent. A
+derivation, not a migration: the record normalises the next time
+anything saves it. The comparison is widened to `string`, because the
+value is no longer in the field's own union and the record on disk can
+still say it.
+
+**`/gear` is a redirect, not a deletion**, the rule `/next` and
+`/character` follow: a PWA shortcut is registered with the operating
+system at install time, so an installed copy goes on asking for the old
+path. It lands on the tech tree, which is where the records went.
+
+**The wishlist went with the shelf, and the portrait did not.**
+`wantedFrom` listed open upgrades on the gear shelf — deliberately that
+shelf only, because wanted _tech_ already has a screen doing it better
+with gates, prerequisites and a budget. With no shelf it read from
+nothing. The **equipped** list is untouched and never depended on it: it
+asks `isOwned` and `isOwnArea`, so a bought phone and a bought pair of
+boots both still show in the portrait.
+
+**The hero card carries no links now.** Asked for in the same breath —
+_"maybe move tech tree out of the initial hero card."_ It is a
+**portrait**: who you are and what you are carrying. Two navigation
+buttons at the bottom made the first thing on the screen half a menu.
+Both screens are one tap away in _Areas_, which is the list that exists
+for exactly that and repeats none of the numbers above it.
+
 **Three shelves, because "is this the house or not" was answering two
 questions at once.** The report: _"base upgrades should be separate from
 the tech tree — I put a MacBook and a monitor on base upgrades but those

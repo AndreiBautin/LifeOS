@@ -541,6 +541,3 @@ export function UpgradesPage() {
 }
 
 /** Apparel, shoes and accessories, at `/gear`. */
-export function GearPage() {
-  return <ShelfPage shelf="gear" />
-}

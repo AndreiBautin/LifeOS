@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { buildAvatar, callingFrom, gearFrom, wantedFrom, WANTED_SHOWN, AREA_TITLES } from './avatar'
+import { buildAvatar, callingFrom, gearFrom, AREA_TITLES } from './avatar'
 import { LIFE_AREAS } from './registry'
 import { asUpgradeId } from '@/domain/ids/ids'
 import type { Upgrade } from '@/domain/upgrades/upgrade'
@@ -175,91 +175,15 @@ describe('the portrait as a whole', () => {
   })
 })
 
-describe('what you mean to be carrying', () => {
-  it('lists gear you have not bought, most wanted first', () => {
-    const wanted = wantedFrom([
-      upgrade({ title: 'Boots', shelf: 'gear', status: 'idea', priority: 60 }),
-      upgrade({ title: 'Jacket', shelf: 'gear', status: 'idea', priority: 90 }),
-    ])
-
-    expect(wanted.map((one) => one.title)).toEqual(['Jacket', 'Boots'])
-  })
-
-  it('leaves out what you already own', () => {
-    const wanted = wantedFrom([
-      upgrade({ title: 'Belt', shelf: 'gear', status: 'purchased' }),
-      upgrade({ title: 'Boots', shelf: 'gear', status: 'idea' }),
-    ])
-
-    expect(wanted.map((one) => one.title)).toEqual(['Boots'])
-  })
-
-  /*
-   * Something you decided against is not something you want, which is
-   * why this reads `isOpen` rather than "not purchased".
-   */
-  it('leaves out what you cancelled', () => {
-    expect(wantedFrom([upgrade({ title: 'Boots', shelf: 'gear', status: 'cancelled' })])).toEqual(
-      [],
-    )
-  })
-
-  /*
-   * The deliberate asymmetry with the equipped list, which counts both
-   * non-house shelves. Wanted tech already has a screen that does it
-   * better — with gates, prerequisites and a budget — so duplicating it
-   * on the character sheet would add nothing and make "gear" mean
-   * something else.
-   */
-  it('is the gear shelf only, not the tech tree', () => {
-    const wanted = wantedFrom([
-      upgrade({ title: 'Boots', shelf: 'gear', status: 'idea' }),
-      upgrade({ title: 'Monitor', shelf: 'tech', status: 'idea' }),
-      upgrade({ title: 'Dishwasher', shelf: 'base', belongsTo: 'base', status: 'idea' }),
-    ])
-
-    expect(wanted.map((one) => one.title)).toEqual(['Boots'])
-  })
-
-  it('carries the cost when there is one, and says nothing when there is not', () => {
-    const [priced, unpriced] = wantedFrom([
-      upgrade({
-        title: 'Boots',
-        shelf: 'gear',
-        status: 'idea',
-        priority: 90,
-        estimatedCostMinorUnits: 12_000,
-      }),
-      upgrade({ title: 'Cap', shelf: 'gear', status: 'idea', priority: 10 }),
-    ])
-
-    expect(priced?.costMinorUnits).toBe(12_000)
-    expect(unpriced?.costMinorUnits).toBeUndefined()
-  })
-
-  /*
-   * A wishlist that scrolls is a list, and this sits on a screen that is
-   * scanned. The rest is on the Gear page, and the overflow is counted
-   * rather than dropped silently.
-   */
-  it('shows a few and counts the rest', () => {
-    const many = Array.from({ length: WANTED_SHOWN + 3 }, (_unused, index) =>
-      upgrade({
-        title: `Item ${String(index)}`,
-        shelf: 'gear',
-        status: 'idea',
-        priority: 100 - index,
-      }),
-    )
-
-    const avatar = buildAvatar({
-      standing: { level: 3, into: 10, needed: 100, xp: 10 },
-      season: 'summer',
-      areas: [],
-      upgrades: many,
-    })
-
-    expect(avatar.wanted).toHaveLength(WANTED_SHOWN)
-    expect(avatar.wantedBeyond).toBe(3)
-  })
-})
+/*
+ * **The wishlist tests went with the wishlist.** `wantedFrom` listed
+ * open upgrades on the `gear` shelf, and that shelf was removed for want
+ * of anything on it — so there is nothing left for these to assert
+ * about.
+ *
+ * The rule they were protecting is not lost by deletion, because it was
+ * a rule *about* that shelf: "the wishlist is the gear shelf only". What
+ * survives is the equipped list above, which never read the shelf at all
+ * — it asks `isOwned` and `isOwnArea` — and is still tested in "what you
+ * are carrying".
+ */

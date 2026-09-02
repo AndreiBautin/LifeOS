@@ -28,22 +28,34 @@ describe('which shelf an upgrade sits on', () => {
     expect(shelfOf(upgrade('Monitor'))).toBe('tech')
   })
 
-  it('starts the gear shelf empty rather than inventing members', () => {
-    const stored = [upgrade('Dishwasher', { belongsTo: BASE }), upgrade('Monitor')]
+  it('puts a record on one shelf rather than inventing members for the other', () => {
+    const stored = [upgrade('Dishwasher', { belongsTo: BASE })]
 
-    expect(onShelf(stored, 'gear')).toEqual([])
+    expect(onShelf(stored, 'tech')).toEqual([])
   })
 
   it('takes a stored shelf over the fallback', () => {
-    expect(shelfOf(upgrade('Boots', { shelf: 'gear' }))).toBe('gear')
     expect(shelfOf(upgrade('MacBook', { belongsTo: BASE, shelf: 'tech' }))).toBe('tech')
+  })
+
+  /*
+   * The third shelf was removed for want of anything on it. A record
+   * still carrying the word would otherwise match no shelf and be drawn
+   * by no screen, which is the silent loss `shelfOf` exists to prevent —
+   * so it reads as tech and normalises the next time anything saves it.
+   */
+  it('reads a record still on the retired gear shelf as tech', () => {
+    const stored = { ...upgrade('Boots'), shelf: 'gear' } as unknown as Parameters<
+      typeof shelfOf
+    >[0]
+
+    expect(shelfOf(stored)).toBe('tech')
   })
 
   it('files each record to exactly one shelf', () => {
     const stored = [
       upgrade('Desk', { belongsTo: BASE, shelf: 'base' }),
       upgrade('Monitor', { shelf: 'tech' }),
-      upgrade('Boots', { shelf: 'gear' }),
     ]
 
     const counted = UPGRADE_SHELVES.reduce((sum, shelf) => sum + onShelf(stored, shelf).length, 0)
@@ -62,7 +74,6 @@ describe('the area a shelf files to', () => {
   it('puts only the base shelf in the Base area', () => {
     expect(homeForShelf('base')).toBe(BASE)
     expect(homeForShelf('tech')).toBeUndefined()
-    expect(homeForShelf('gear')).toBeUndefined()
   })
 
   it('agrees with isBase for every shelf', () => {

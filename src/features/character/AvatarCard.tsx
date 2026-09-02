@@ -1,11 +1,6 @@
-import { Shirt, Wrench } from 'lucide-react'
 import { Skeleton } from '@/components/shared/Skeleton'
-import { Link } from 'react-router-dom'
 
 import { Badge, Card } from '@/components/shared/primitives'
-import { buttonStyles } from '@/components/shared/styles'
-import { formatMinorUnits } from '@/domain/upgrades/upgrade'
-import { cn } from '@/lib/cn'
 
 import { AvatarPortrait } from './AvatarPortrait'
 import { useAvatar } from './hooks'
@@ -38,7 +33,7 @@ export function AvatarCard({ xp }: { readonly xp: number }) {
     )
   }
 
-  const { calling, gear, gearCount, into, needed, wanted, wantedBeyond } = avatar.data
+  const { calling, gear, gearCount, into, needed } = avatar.data
 
   return (
     <Card>
@@ -137,57 +132,20 @@ export function AvatarCard({ xp }: { readonly xp: number }) {
         )}
 
         {/*
-          The other half of an inventory: what you mean to carry.
+          **The wishlist and the two links are gone from this card.**
+          Asked for as *"I don't really have anything in gear that I want
+          right now and don't foresee typing progress to that — let's get
+          rid of it, and maybe move tech tree out of the initial hero
+          card."*
 
-          **The gear shelf only**, which is a deliberate asymmetry with
-          the equipped list above — that counts both non-house shelves,
-          because a phone is a thing you carry and somebody whose
-          purchases are all tech would otherwise have an empty portrait.
-          A wishlist has no such problem: wanted tech already has a
-          screen that does it better, with gates, prerequisites and a
-          budget, so repeating it here would add nothing and make
-          "gear" mean something else.
-
-          Silent when there is nothing on it. An empty "Wanted" heading
-          is a prompt to go shopping, which is not what a character sheet
-          is for.
+          The wishlist read the gear shelf alone, so it went with the
+          shelf. The links went because this card is a **portrait** — who
+          you are and what you are carrying — and two navigation buttons
+          at the bottom of it made the first thing on the screen half a
+          menu. Both screens are still one tap away in *Areas*, which is
+          the list that exists for exactly this and repeats none of the
+          numbers above.
         */}
-        {wanted.length > 0 && (
-          <div className="border-ink-800 mt-3 border-t pt-3">
-            <p className="text-ink-700 mb-1.5 text-xs tracking-wide uppercase">Wanted</p>
-            <ul className="space-y-1">
-              {wanted.map((item) => (
-                <li key={item.title} className="flex items-baseline justify-between gap-3">
-                  <span className="text-ink-300 min-w-0 truncate text-sm">{item.title}</span>
-                  <span className="text-ink-700 numeric shrink-0 text-xs">
-                    {item.costMinorUnits === undefined
-                      ? item.slot
-                      : formatMinorUnits(item.costMinorUnits)}
-                  </span>
-                </li>
-              ))}
-            </ul>
-            {wantedBeyond > 0 && (
-              <p className="text-ink-700 mt-1.5 text-xs">
-                and {wantedBeyond} more on the gear shelf
-              </p>
-            )}
-          </div>
-        )}
-
-        <div className="mt-2 flex gap-1.5">
-          <Link to="/gear" className={cn(buttonStyles({ variant: 'ghost', size: 'sm' }), 'flex-1')}>
-            <Shirt size={14} aria-hidden />
-            Gear
-          </Link>
-          <Link
-            to="/upgrades"
-            className={cn(buttonStyles({ variant: 'ghost', size: 'sm' }), 'flex-1')}
-          >
-            <Wrench size={14} aria-hidden />
-            Tech tree
-          </Link>
-        </div>
       </div>
     </Card>
   )

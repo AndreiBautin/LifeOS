@@ -1,6 +1,5 @@
 import { isOwnArea } from '@/domain/base/base'
-import { isOpen, isOwned, UPGRADE_CATEGORY_LABELS, type Upgrade } from '@/domain/upgrades/upgrade'
-import { shelfOf } from '@/domain/upgrades/shelf'
+import { isOwned, UPGRADE_CATEGORY_LABELS, type Upgrade } from '@/domain/upgrades/upgrade'
 
 import { LIFE_AREAS, type LifeArea } from './registry'
 import type { Season } from './season'
@@ -118,10 +117,6 @@ export interface Avatar {
   readonly gear: readonly GearSlot[]
   /** Owned upgrades that are yours rather than the house's. */
   readonly gearCount: number
-  /** Gear you have not bought yet — see {@link wantedFrom}. */
-  readonly wanted: readonly WantedItem[]
-  /** How many more there are than the few listed. */
-  readonly wantedBeyond: number
 }
 
 /**
@@ -187,55 +182,22 @@ export function callingFrom(areas: readonly AreaXp[]): Calling | undefined {
  * invented here and mapped onto them.
  */
 
-export interface WantedItem {
-  readonly title: string
-  readonly slot: string
-  readonly costMinorUnits?: number
-}
-
 /**
- * Kept short on purpose. A wishlist that scrolls is a list, and this sits
- * on a screen that is scanned — the Gear page holds the whole thing.
+ * **There was a wishlist here and it is gone with its shelf.** It listed
+ * open upgrades on the `gear` shelf — *"what you mean to carry"* — and
+ * was deliberately that shelf only, on the reasoning that wanted tech
+ * already has a screen doing it better with gates, prerequisites and a
+ * budget. Removing the shelf left it reading from nothing.
+ *
+ * Asked for directly: *"I don't really have anything in gear that I want
+ * right now and don't foresee typing progress to that."* The tech tree
+ * is where a wanted thing lives now, which is where the better version
+ * always was.
+ *
+ * The **equipped** list below is untouched and never depended on that
+ * shelf: it reads `isOwned` and `isOwnArea`, so a bought phone and a
+ * bought pair of boots both still show in the portrait.
  */
-export const WANTED_SHOWN = 4
-
-/**
- * What you are saving up for, on the shelf that is about you.
- *
- * The ask: *"gear/cosmetics to track apparel, shoes and accessories that
- * I would like to purchase."* The character sheet already shows what you
- * are carrying; this is the other half of an inventory — what you mean
- * to carry.
- *
- * **The gear shelf only, and that is a deliberate asymmetry with the
- * equipped list above it.** `gearFrom` counts both non-house shelves,
- * because a phone is a thing you carry and somebody whose purchases are
- * all tech would otherwise have an empty portrait. A *wishlist* has no
- * such problem: wanted tech already has a screen that does it better,
- * with gates, prerequisites and a budget. Duplicating it here would add
- * nothing and would make "gear/cosmetics" mean something else.
- *
- * **Open, not merely unbought.** `isOpen` excludes cancelled as well as
- * purchased — something you decided against is not something you want.
- *
- * Ordered by the upgrade's own priority, which is **not** the tech
- * tree's ranking: that one inherits priority from whatever a node
- * unblocks, and recomputing it here would put a second ordering on the
- * same records for a four-row summary.
- */
-export function wantedFrom(upgrades: readonly Upgrade[]): readonly WantedItem[] {
-  return upgrades
-    .filter((upgrade) => isOpen(upgrade) && shelfOf(upgrade) === 'gear')
-    .sort((a, b) => b.priority - a.priority || a.title.localeCompare(b.title))
-    .map((upgrade) => ({
-      title: upgrade.title,
-      slot: UPGRADE_CATEGORY_LABELS[upgrade.category],
-      ...(upgrade.estimatedCostMinorUnits === undefined
-        ? {}
-        : { costMinorUnits: upgrade.estimatedCostMinorUnits }),
-    }))
-}
-
 export function gearFrom(upgrades: readonly Upgrade[]): readonly GearSlot[] {
   const worn = upgrades.filter((upgrade) => isOwned(upgrade) && isOwnArea(upgrade))
 
@@ -271,7 +233,6 @@ export function buildAvatar(input: {
 }): Avatar {
   const calling = callingFrom(input.areas)
   const gear = gearFrom(input.upgrades)
-  const wanted = wantedFrom(input.upgrades)
 
   return {
     level: input.standing.level,
@@ -288,7 +249,5 @@ export function buildAvatar(input: {
     ...(calling === undefined ? {} : { calling }),
     gear,
     gearCount: gear.reduce((sum, slot) => sum + slot.items.length, 0),
-    wanted: wanted.slice(0, WANTED_SHOWN),
-    wantedBeyond: Math.max(0, wanted.length - WANTED_SHOWN),
   }
 }
