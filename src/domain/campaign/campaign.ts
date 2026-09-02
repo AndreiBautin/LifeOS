@@ -56,6 +56,17 @@ export type Requirement =
   | { readonly kind: 'net-worth'; readonly minorUnits: number }
   /** Retirement savings, in minor units. */
   | { readonly kind: 'retirement'; readonly minorUnits: number }
+  /**
+   * Annual salary, in minor units, from the latest finance reading.
+   *
+   * Added for the income leg of a moving arc — _"we should track salary
+   * and then update the main quest thing too."_ It is the one money
+   * requirement that is a **rate** rather than a balance, which changes
+   * nothing about how it is measured and everything about what a target
+   * means: a net worth of 40,000 is a thing you accumulate, and a salary
+   * of 90,000 is a thing you are either being paid or not.
+   */
+  | { readonly kind: 'salary'; readonly minorUnits: number }
   | { readonly kind: 'credit-score'; readonly score: number }
 
 export const REQUIREMENT_KINDS = [
@@ -65,6 +76,7 @@ export const REQUIREMENT_KINDS = [
   'homes-viewed',
   'net-worth',
   'retirement',
+  'salary',
   'credit-score',
 ] as const
 
@@ -127,6 +139,7 @@ export interface Evidence {
   readonly homesViewed?: number
   readonly netWorthMinor?: number
   readonly retirementMinor?: number
+  readonly salaryMinor?: number
   readonly creditScore?: number
 }
 
@@ -200,6 +213,8 @@ function readingFor(requirement: Requirement, evidence: Evidence): number | unde
       return evidence.netWorthMinor
     case 'retirement':
       return evidence.retirementMinor
+    case 'salary':
+      return evidence.salaryMinor
     case 'credit-score':
       return evidence.creditScore
   }
@@ -298,12 +313,13 @@ export const REQUIREMENT_LABELS: Record<Requirement['kind'], string> = {
   'homes-viewed': 'Houses seen',
   'net-worth': 'Net worth reaches',
   retirement: 'Retirement reaches',
+  salary: 'Salary reaches',
   'credit-score': 'Credit score reaches',
 }
 
 /** Whether a kind's target is money, so a screen knows to convert. */
 export function isMoney(kind: Requirement['kind']): boolean {
-  return kind === 'net-worth' || kind === 'retirement'
+  return kind === 'net-worth' || kind === 'retirement' || kind === 'salary'
 }
 
 /** The target a requirement carries, for an editor to open on. */
@@ -317,6 +333,7 @@ export function targetOf(requirement: Requirement): number | undefined {
       return requirement.count
     case 'net-worth':
     case 'retirement':
+    case 'salary':
       return requirement.minorUnits
     case 'credit-score':
       return requirement.score
@@ -347,6 +364,8 @@ export function requirementOf(kind: Requirement['kind'], target: number): Requir
       return { kind: 'net-worth', minorUnits: value }
     case 'retirement':
       return { kind: 'retirement', minorUnits: value }
+    case 'salary':
+      return { kind: 'salary', minorUnits: value }
     case 'credit-score':
       return { kind: 'credit-score', score: value }
   }

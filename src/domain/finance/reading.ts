@@ -35,6 +35,20 @@ export interface FinanceReading {
   readonly netWorthMinor?: number
   /** Retirement accounts, integer minor units. */
   readonly retirementMinor?: number
+  /**
+   * Annual salary before tax, integer minor units.
+   *
+   * **Tracked as a monthly reading rather than held in settings**, which
+   * is where it briefly lived. Asked for as _"we should track salary"_,
+   * and it belongs here for the reason the other three do: a raise is a
+   * thing that happens on a date, and a single settings field records
+   * only the latest one with no history to show a campaign stage.
+   *
+   * It is read live rather than for the month, like the credit score:
+   * the retirement benchmark is a multiple of what you earn *now*, not
+   * of what you earned in whichever month somebody last opened a screen.
+   */
+  readonly salaryMinor?: number
   /** 300–850. Absent when it was not checked that month. */
   readonly creditScore?: number
   readonly updatedAt?: string

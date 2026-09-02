@@ -175,7 +175,6 @@ function mergeWithDefaults(parsed: unknown): AppSettings {
      * this is stated.
      */
     ...positiveOf('birthYear', stored.birthYear),
-    ...positiveOf('annualIncomeMinor', stored.annualIncomeMinor),
     // Spread over the defaults so a muscle group added since this blob was
     // written gets the shipped numbers rather than being absent.
     setsPerSession: isRecord(stored.setsPerSession)

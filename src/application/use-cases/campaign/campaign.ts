@@ -91,6 +91,7 @@ export async function gatherEvidence(deps: CampaignDeps): Promise<Evidence> {
    */
   const netWorthMinor = latest(finance, 'netWorthMinor')
   const retirementMinor = latest(finance, 'retirementMinor')
+  const salaryMinor = latest(finance, 'salaryMinor')
   const creditScore = latest(finance, 'creditScore')
 
   /*
@@ -107,6 +108,7 @@ export async function gatherEvidence(deps: CampaignDeps): Promise<Evidence> {
     homesViewed,
     ...(netWorthMinor === undefined ? {} : { netWorthMinor }),
     ...(retirementMinor === undefined ? {} : { retirementMinor }),
+    ...(salaryMinor === undefined ? {} : { salaryMinor }),
     ...(creditScore === undefined ? {} : { creditScore }),
   }
 }

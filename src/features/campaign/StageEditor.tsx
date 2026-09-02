@@ -1,7 +1,9 @@
 import { ChevronDown, ChevronUp, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 
+import { useServices, useSettings } from '@/app/context'
 import { Button } from '@/components/shared/primitives'
+import { buttonStyles } from '@/components/shared/styles'
 import {
   isMoney,
   REQUIREMENT_KINDS,
@@ -12,7 +14,8 @@ import {
   type Stage,
 } from '@/domain/campaign/campaign'
 import type { CampaignId } from '@/domain/ids/ids'
-import { toMinorUnits } from '@/domain/upgrades/upgrade'
+import { ageFromBirthYear, salaryReferences } from '@/domain/finance/standards'
+import { formatMinorUnits, toMinorUnits } from '@/domain/upgrades/upgrade'
 
 import { useDropStage, useMoveStage, useReshapeStage } from './hooks'
 
@@ -75,6 +78,19 @@ export function StageEditor({
 
   const laps = stage.reached.length
 
+  /*
+   * Only for a salary target, and only with a birth year: the published
+   * table is income by age, so without an age there is nothing to look
+   * up and a guess would be worse than no offer at all.
+   */
+  const { settings } = useSettings()
+  const services = useServices()
+
+  const suggestions =
+    kind === 'salary' && settings.birthYear !== undefined
+      ? salaryReferences(ageFromBirthYear(settings.birthYear, services.clock.now()))
+      : []
+
   return (
     <div className="border-ink-800 bg-ink-850/40 space-y-3 rounded-xl border p-3">
       <div>
@@ -126,6 +142,46 @@ export function StageEditor({
               setTarget(event.target.value)
             }}
           />
+
+          {/*
+            **The published figures, as one tap each.** Asked as _"we
+            probably need to set some sort of target for that then huh,
+            any way to automate that."_
+
+            The target itself is not automatable and offering to compute
+            one would be the invented scale this app refuses everywhere —
+            nothing here knows what you ought to earn. What *is*
+            automatable is not having to make the number up: these are
+            the Census Bureau's own breakpoints for people your age.
+
+            They fill the box rather than setting the stage, so the
+            figure is still chosen and still editable — the same
+            offered-never-applied stance the estimate apply and the
+            config paste both take. Absent without a birth year, and
+            absent outside the ages the published table covers.
+          */}
+          {suggestions.length > 0 && (
+            <div className="mt-2">
+              <div className="flex flex-wrap gap-1.5">
+                {suggestions.map((one) => (
+                  <button
+                    key={one.label}
+                    type="button"
+                    className={buttonStyles({ variant: 'outline', size: 'sm' })}
+                    onClick={() => {
+                      setTarget(String(one.minorUnits / 100))
+                    }}
+                  >
+                    {one.label} · {formatMinorUnits(one.minorUnits)}
+                  </button>
+                ))}
+              </div>
+              <p className="text-ink-700 mt-1.5 text-xs">
+                Individual income, 2024 Census ASEC. A reference rather than a recommendation —
+                nothing here knows what you should be earning.
+              </p>
+            </div>
+          )}
         </div>
       )}
 

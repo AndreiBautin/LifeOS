@@ -193,6 +193,12 @@ export async function measureAll(deps: MeasureDeps): Promise<Readonly<Record<str
   const money = await deps.settings.get()
   const netWorth = latest(finance, 'netWorthMinor')
   const retirement = latest(finance, 'retirementMinor')
+  /*
+   * The salary is a tracked reading rather than a settings field, so the
+   * benchmark follows a raise the month it is recorded. It briefly lived
+   * in settings and that was one number in two places.
+   */
+  const salary = latest(finance, 'salaryMinor')
 
   if (money.birthYear !== undefined) {
     const age = ageFromBirthYear(money.birthYear, now)
@@ -203,7 +209,7 @@ export async function measureAll(deps: MeasureDeps): Promise<Readonly<Record<str
     }
 
     if (retirement !== undefined) {
-      const share = retirementAgainstBenchmark(retirement, money.annualIncomeMinor, age)
+      const share = retirementAgainstBenchmark(retirement, salary, age)
       if (share !== undefined) measured['finance.retirement-share'] = share
     }
   }

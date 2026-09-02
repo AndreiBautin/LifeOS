@@ -221,3 +221,54 @@ export function retirementAgainstBenchmark(
 
   return Math.max(0, minorUnits) / wanted
 }
+
+/**
+ * Published individual income for ages 25-34, so a salary target can be
+ * a real figure rather than one somebody made up at eleven at night.
+ *
+ * The question this answers came as _"we probably need to set some sort
+ * of target for that then huh, any way to automate that."_ **The target
+ * itself cannot be automated** — nothing here knows what you should earn
+ * — and that is the same refusal every invented scale gets. What can be
+ * automated is not having to invent the number: these are the Census
+ * Bureau's own breakpoints, offered as one tap each, and the field stays
+ * free text so any figure of your own still goes in.
+ *
+ * 2024 Annual Social and Economic Supplement, individual gross income,
+ * ages 25-34. **One bracket, deliberately**: it is the one bracket whose
+ * three breakpoints came from a single consistent cut of the survey, and
+ * mixing a median from one vintage with quartiles from another to cover
+ * more ages would make every figure here slightly untrue. Adding a
+ * bracket is adding a row, and outside this range nothing is offered
+ * rather than something being extrapolated.
+ */
+const INCOME_REFERENCES = {
+  from: 25,
+  to: 34,
+  points: [
+    { label: 'Median for 25-34', dollars: 48_000 },
+    { label: '75th percentile', dollars: 75_000 },
+    { label: '90th percentile', dollars: 115_000 },
+  ],
+} as const
+
+export interface SalaryReference {
+  readonly label: string
+  readonly minorUnits: number
+}
+
+/**
+ * Published salary figures worth aiming at, for an age, in minor units.
+ *
+ * Empty outside the bracket the table covers, which is the honest answer
+ * rather than the nearest one: a suggestion is only worth offering if it
+ * is a figure somebody published about people your age.
+ */
+export function salaryReferences(age: number): readonly SalaryReference[] {
+  if (age < INCOME_REFERENCES.from || age > INCOME_REFERENCES.to) return []
+
+  return INCOME_REFERENCES.points.map((point) => ({
+    label: point.label,
+    minorUnits: dollars(point.dollars),
+  }))
+}

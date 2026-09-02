@@ -40,6 +40,35 @@ describe('recording a month', () => {
   })
 
   /*
+   * **Every figure a reading can hold reaches the database.**
+   *
+   * The salary did not, and nothing caught it: the input type still
+   * named three fields while `FinanceReading` had four, and the merge
+   * was built with conditional spreads — which defeat excess-property
+   * checking, so a value the form collected compiled cleanly and went
+   * nowhere. Found by driving the app, not by the suite.
+   *
+   * Written over the figures rather than naming them one by one, because
+   * a hand-written list beside a list that already exists is the thing
+   * that drifted in the first place.
+   */
+  it('writes every figure it is given, not the ones it used to know about', async () => {
+    const services = deps()
+    const given = {
+      netWorthMinor: 150_000_00,
+      retirementMinor: 95_000_00,
+      salaryMinor: 120_000_00,
+      creditScore: 762,
+    }
+
+    const saved = await recordFinance(given, services)
+
+    for (const [key, value] of Object.entries(given)) {
+      expect(saved[key as keyof typeof given], key).toBe(value)
+    }
+  })
+
+  /*
    * The reason this is a merge and not a save. The three figures arrive
    * at different times — a statement on the 1st, a credit score whenever
    * the issuer refreshes it — so entering one must not blank the others.

@@ -42,16 +42,6 @@ export interface AppSettings {
    */
   readonly birthYear?: number
   /**
-   * Annual income in **integer minor units**, for the retirement ladder.
-   *
-   * Minor units like every other money figure here, for the reason
-   * `domain/upgrades/upgrade.ts` gives. The retirement benchmark is a
-   * multiple of salary, so this is to that ladder exactly what
-   * `bodyweight` is to the strength ones — the personal denominator a
-   * published standard is expressed against.
-   */
-  readonly annualIncomeMinor?: number
-  /**
    * Sets in one session, by level, and what a deload uses instead.
    *
    * Shared by every muscle. Per-muscle numbers were four landmarks each

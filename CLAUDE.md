@@ -2104,6 +2104,70 @@ living alone reads low against it. Nothing here can correct that, so the
 screen states it. `domain/finance/standards.ts` carries both tables and
 the reasoning.
 
+**The salary is tracked as a monthly reading, not held in settings.**
+Asked for as _"we should track salary"_, and it was the right correction
+twice over: a raise happens on a date and belongs in the record with the
+rest of the money, and `settings.annualIncomeMinor` — which had shipped
+an hour earlier — was a second copy of a number waiting to disagree with
+the first. It is gone; the retirement benchmark reads
+`latest(finance, 'salaryMinor')`. **A birth year stays in settings**,
+because it is not a series: a reading of it would be the same number
+written down repeatedly.
+
+**A stage can require a salary**, so the income leg of a moving arc is
+measured rather than declared. It is the one money requirement that is a
+**rate** rather than a balance — which changes nothing about how it is
+read and everything about what a target means.
+
+**A target cannot be automated and the offer of published figures can.**
+Asked as _"we probably need to set some sort of target then huh, any way
+to automate that."_ Computing one would be the invented scale this model
+refuses — nothing here knows what somebody ought to earn. What the stage
+editor does instead is offer the **Census Bureau's own breakpoints for
+your age** as one tap each, which fill the box rather than setting the
+stage: offered, never applied, the stance `ApplyEstimates` and the
+config paste both take. Absent without a birth year, and absent outside
+the ages the table covers — `salaryReferences` returns nothing rather
+than the nearest bracket, because a suggestion is only worth making if
+somebody published it about people your age.
+
+**The published income table covers 25-34 only, deliberately.** It is
+the one bracket whose three breakpoints came from a single consistent
+cut of the survey; mixing a median from one vintage with quartiles from
+another to cover more ages would make every figure slightly untrue.
+Adding a bracket is adding a row.
+
+**A month's row draws every figure it holds, and drew two of four.**
+Reported as _"I thought I recorded all three, but it says I only put
+credit score — went to the finance page and it shows a row but I only
+see 2."_ The retirement figure had been written correctly every time and
+there was no screen that showed it. The figures are labelled now rather
+than positional: four numbers separated by dots are four numbers nobody
+can tell apart, which is the shape the bug hid in.
+
+**The form opens on what is already recorded**, which is what makes it
+an editor — _"any way to edit?"_ There had been no way to see a stored
+figure, let alone correct one, so fixing a typo meant remembering what
+you had typed. It is keyed on the month, so the fields fill in when the
+record loads and reset if the month turns over with the screen open. The
+merge rule is unchanged and now visible: **an empty box keeps what it
+had** rather than clearing it, because there is no telling "I did not
+check" from "I meant zero".
+
+**`NewFinanceReading` is derived from the record and its fields are a
+mapped type, because this dropped one silently.** A salary was added to
+`FinanceReading`, collected by the form, passed to `recordFinance`, and
+written nowhere: the input type still named three fields and the merge
+was built with conditional spreads, **which defeat excess-property
+checking**. Nothing failed to compile and the suite was green.
+
+Second instance — `addDaily` lost `timesPerDay` by the same route — and
+the fix is the same: `Omit<FinanceReading, 'month' | 'updatedAt'>` plus
+a `Record<keyof NewFinanceReading, true>` the compiler makes you fill
+in. Found by driving the app. There is a test now that walks the
+figures rather than naming them, because a hand-written list beside a
+list that already exists is what drifted.
+
 **The two ratings those replaced are gone rather than kept alongside**,
 because rule two forbids one measurement being claimed as both a ladder
 and a rating — and `finance.net-worth-in-month` differed from the new

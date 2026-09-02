@@ -85,6 +85,10 @@ function describe(requirement: Requirement, standing: StageStanding): string {
       return standing.unproven
         ? `Retirement of ${formatMinorUnits(requirement.minorUnits)} — nothing recorded yet`
         : `${formatMinorUnits(progress?.value ?? 0)} of ${formatMinorUnits(requirement.minorUnits)}`
+    case 'salary':
+      return standing.unproven
+        ? `Salary of ${formatMinorUnits(requirement.minorUnits)} — nothing recorded yet`
+        : `${formatMinorUnits(progress?.value ?? 0)} of ${formatMinorUnits(requirement.minorUnits)}`
     case 'credit-score':
       return standing.unproven
         ? `Credit score of ${String(requirement.score)} — nothing recorded yet`
@@ -123,6 +127,7 @@ const EVIDENCE_SCREENS: Partial<Record<Requirement['kind'], { to: string; label:
   offers: { to: '/jobs', label: 'Job search' },
   'homes-viewed': { to: '/houses', label: 'Houses' },
   'net-worth': { to: '/finance', label: 'Finance' },
+  salary: { to: '/finance', label: 'Finance' },
   retirement: { to: '/finance', label: 'Finance' },
   'credit-score': { to: '/finance', label: 'Finance' },
 }
