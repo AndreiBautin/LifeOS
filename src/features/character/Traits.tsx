@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react'
+
 import { Meter } from '@/components/shared/Meter'
 import type { TraitStanding } from '@/domain/game/traits'
 
@@ -15,6 +17,13 @@ import type { TraitStanding } from '@/domain/game/traits'
  * and the invented scale the model refuses. A bar labelled "Charisma"
  * with nothing under it is a number the app made up; one that says
  * "people you actually saw" is a count of hangouts you logged.
+ *
+ * **The measured ladders hang off them**, asked for as _"take finance
+ * and strength and put those under their corresponding attributes in
+ * the section above, and cut the rest out."_ So the three competition
+ * lifts sit under Strength and the credit score under Fortune, and the
+ * list of area cards that used to carry them is gone. What that costs
+ * is named where the list was removed.
  *
  * **A band of the sheet card rather than a section of its own**, asked
  * for as *"merge in the season and attributes stuff into the first
@@ -41,7 +50,28 @@ function ordered(traits: readonly TraitStanding[]): readonly TraitStanding[] {
   )
 }
 
-function TraitRow({ standing }: { readonly standing: TraitStanding }) {
+function TraitRow({
+  standing,
+  ladders,
+}: {
+  readonly standing: TraitStanding
+  /**
+   * The ladders belonging to this trait's areas, drawn beneath it.
+   *
+   * **A trait and a ladder are different currencies and this is not a
+   * merge of them.** The trait's own bar is XP into a level; a ladder is
+   * a reading against a published standard the app cannot move. What
+   * this says is only that they are about the same part of your life —
+   * the lifts sit under Strength, the credit score under Fortune —
+   * which is what the areas list used to say with a heading each.
+   *
+   * Absent for most traits, and that is not a gap: only three areas
+   * declare a ladder at all, because a ladder needs an external standard
+   * and there is no published figure for how good at seeing your friends
+   * you ought to be.
+   */
+  readonly ladders?: ReactNode
+}) {
   const { trait, level, into, needed, xp, proven } = standing
 
   return (
@@ -85,11 +115,27 @@ function TraitRow({ standing }: { readonly standing: TraitStanding }) {
       />
 
       <p className="text-ink-700 mt-1 text-xs">{trait.blurb}</p>
+
+      {/*
+        Indented and ruled off, so a ladder reads as belonging to the
+        trait above rather than as another trait. They are measured on
+        different scales and stacking them flush would say otherwise.
+      */}
+      {ladders !== undefined && (
+        <div className="border-ink-800 mt-3 space-y-3 border-l pl-3">{ladders}</div>
+      )}
     </div>
   )
 }
 
-export function Traits({ traits }: { readonly traits: readonly TraitStanding[] }) {
+export function Traits({
+  traits,
+  ladders,
+}: {
+  readonly traits: readonly TraitStanding[]
+  /** Ladder rows to draw under a trait, keyed by the trait's id. */
+  readonly ladders?: Readonly<Record<string, ReactNode>>
+}) {
   return (
     <div className="space-y-4">
       <div>
@@ -97,9 +143,17 @@ export function Traits({ traits }: { readonly traits: readonly TraitStanding[] }
         <p className="text-ink-500 text-xs">Your XP, split by what earned it</p>
       </div>
 
-      {ordered(traits).map((standing) => (
-        <TraitRow key={standing.trait.id} standing={standing} />
-      ))}
+      {ordered(traits).map((standing) => {
+        const under = ladders?.[standing.trait.id]
+
+        return (
+          <TraitRow
+            key={standing.trait.id}
+            standing={standing}
+            {...(under === undefined ? {} : { ladders: under })}
+          />
+        )
+      })}
     </div>
   )
 }

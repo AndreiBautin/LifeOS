@@ -11,7 +11,7 @@ import { toDayKey } from '@/domain/time/day'
 import { useServices, useSettings } from '@/app/context'
 import { ActiveQuests } from '@/features/projects/ActiveQuests'
 import { useActiveQuests } from '@/features/projects/hooks'
-import { AreaCard, AttributeRow } from '@/features/character/CharacterParts'
+import { AttributeRow, LadderRow } from '@/features/character/CharacterParts'
 import { AREA_LINKS, LEVEL_TONE } from '@/features/character/sheet-constants'
 import { SheetCard } from '@/features/character/SheetCard'
 import { useCharacterSheet, useSeasonProgress } from '@/features/character/hooks'
@@ -105,37 +105,51 @@ export function HomePage() {
   const today = toDayKey(services.clock.now())
 
   /*
-   * **Training is in this list now, not a section above it.** Reported:
-   * *"strength should be a card with everything else rather than its own
-   * section followed by everything else."* It was excluded here and
-   * drawn separately, on the reasoning that its rows show real loads
-   * rather than the ratios the ladder is scored on — which is true of
-   * the *rows* and was never a reason for a second heading. `AreaCard`
-   * takes the richer rows as an override, so the card joins the list
-   * and loses nothing.
+   * **The area cards are gone, and the two measured ladders moved up
+   * under the traits that own them.** Asked for: _"take finance and
+   * strength and put those under their corresponding attributes in the
+   * section above, and cut the rest out."_
    *
-   * It leads the list, because `phase: 0` puts it first in
-   * `sheet.areas` — so it sits roughly where the section did, one
-   * heading shallower.
+   * It reads as a smaller change than it is, because **only three areas
+   * declare a ladder at all** — a ladder needs an external standard, and
+   * there is no published figure for how good at seeing your friends you
+   * ought to be. Every other card was carrying an area's name, its XP
+   * and its ratings; XP is what the traits already split, and no rating
+   * could be recorded any more once the monthly review went.
    *
-   * **Dailies is the one area left out, and the rule is not the one
-   * training was excluded by.** Reported: *"dailies probably doesn't
-   * belong there."* It does not: this screen already gives the habits a
-   * block of their own, with the day's list, the counts and the streaks
-   * — so a card down here saying *Dailies · Kept* is the same area
-   * appearing twice under one word, for two different readings.
-   *
-   * The test is **whether the area has its own block on this screen**,
-   * not whether some number is duplicated. Training has none, so it
-   * earns a card; Dailies has the largest block on the page. Base keeps
-   * its card because what it now reports — how clear the house is, and
-   * steps closed on house jobs — is nowhere else here; its chores appear
-   * in the day's list, but chores are no longer what Base is rated on.
-   *
-   * The rating itself is untouched and still judged in the monthly
-   * review, which is the screen whose job is monthly judgements.
+   * **What is genuinely lost is Wayfaring's**, the share of a named
+   * region walked. It is the third ladder and it is not drawn anywhere
+   * now. Adding it back is one entry in this map.
    */
-  const elsewhere = (sheet.data?.areas ?? []).filter((area) => area.area !== 'dailies')
+  const financeLadders = (sheet.data?.areas ?? []).find((area) => area.area === 'finance')?.ladders
+
+  const traitLadders: Record<string, React.ReactNode> = {
+    /*
+     * The total leads and the three lifts follow — the shape the old
+     * Strength section drew, kept because `AttributeRow` says a
+     * bodyweight multiple and the load needed for the next level where a
+     * generic ladder row says a value and an anchor.
+     *
+     * The total is not one of the area's ladders and could not be: it is
+     * derived from three of them, and `measure.ts` deliberately names
+     * the three competition lifts rather than computing it from
+     * `STRENGTH_LIFTS`. So it comes from the character rather than the
+     * sheet.
+     */
+    strength: (
+      <>
+        <AttributeRow attribute={character.totalAttribute} emphasis />
+        {character.lifts.map((lift) => (
+          <AttributeRow key={lift.name} attribute={lift} />
+        ))}
+      </>
+    ),
+    ...(financeLadders === undefined || financeLadders.length === 0
+      ? {}
+      : {
+          fortune: financeLadders.map((ladder) => <LadderRow key={ladder.id} ladder={ladder} />),
+        }),
+  }
 
   return (
     /*
@@ -172,6 +186,7 @@ export function HomePage() {
         today={today}
         {...(season.data === undefined ? {} : { season: season.data })}
         {...(sheet.data === undefined ? {} : { traits: sheet.data.traits })}
+        traitLadders={traitLadders}
         action={
           <Link
             to="/settings"
@@ -233,64 +248,6 @@ export function HomePage() {
       {/* Both silent unless this morning's read found something. */}
       <LeadsToday />
       <DigestCard />
-
-      {/*
-        ── Where you stand ─────────────────────────────────────────────
-        Last, and that is not a demotion. These move over months rather
-        than mornings, and this is where they were already read from —
-        scrolled to on purpose rather than met on the way to a checkbox.
-      */}
-      <Section
-        title="Everywhere else"
-        description="Levels are measured, ratings are the last monthly judgement"
-      >
-        {elsewhere.every((area) => area.silent) ? (
-          <Card>
-            <p className="text-ink-500 text-sm">
-              Nothing else has anything to say yet. An area speaks once it has a measurement, a
-              recorded rating, or something you did — never before, because a level nobody earned is
-              worse than an obvious gap.
-            </p>
-          </Card>
-        ) : (
-          <div className="space-y-3">
-            {elsewhere
-              .filter((area) => !area.silent)
-              .map((area) => (
-                <AreaCard
-                  key={area.area}
-                  area={area}
-                  {...(area.area === 'training'
-                    ? {
-                        /*
-                          The total leads and the three lifts follow —
-                          the shape the Strength section drew, kept
-                          because `AttributeRow` says a bodyweight
-                          multiple and the load needed for the next
-                          level where a generic ladder row would say a
-                          value and an anchor.
-
-                          The total is not one of the area's ladders and
-                          could not be: it is derived from three of
-                          them, and the registry deliberately does not
-                          compute it from `STRENGTH_LIFTS`. So it comes
-                          from the character rather than the sheet.
-                        */
-                        ladders: (
-                          <>
-                            <AttributeRow attribute={character.totalAttribute} emphasis />
-                            {character.lifts.map((lift) => (
-                              <AttributeRow key={lift.name} attribute={lift} />
-                            ))}
-                          </>
-                        ),
-                      }
-                    : {})}
-                />
-              ))}
-          </div>
-        )}
-      </Section>
 
       {/*
         **The screens with no tab, listed so they can be found.**

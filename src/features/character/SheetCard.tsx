@@ -40,12 +40,15 @@ export function SheetCard({
   today,
   season,
   traits,
+  traitLadders,
   action,
 }: {
   readonly xp: number
   readonly today: string
   readonly season?: SeasonProgress | undefined
   readonly traits?: readonly TraitStanding[] | undefined
+  /** Ladder rows to draw under a trait, keyed by the trait's id. */
+  readonly traitLadders?: Readonly<Record<string, ReactNode>> | undefined
   /** The settings link, which used to be the page header's action. */
   readonly action?: ReactNode
 }) {
@@ -66,7 +69,10 @@ export function SheetCard({
 
       {traits !== undefined && (
         <div className="border-ink-800 mt-4 border-t pt-4">
-          <Traits traits={traits} />
+          <Traits
+            traits={traits}
+            {...(traitLadders === undefined ? {} : { ladders: traitLadders })}
+          />
         </div>
       )}
     </Card>

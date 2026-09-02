@@ -889,19 +889,38 @@ character sheet, and `insufficient-data` counts as silence — it is the
 absence of a judgement rather than a bad one. Treating it as something
 said made six untouched areas report news on an empty database.
 
-**Training is a card in that list, not a section above it.** Reported:
-_"strength should be a card with everything else rather than its own
-section followed by everything else."_ It had been filtered out of
-`elsewhere` and drawn separately, on the reasoning that its rows show
-real loads rather than the ratios the ladder is scored on. That is true
-of the **rows** and was never a reason for a second heading — so the
-rows moved instead of the section staying.
+**The list of area cards is gone, and the two measured ladders moved
+under the traits that own them.** Asked for: _"take finance and strength
+and put those under their corresponding attributes in the section above,
+and cut the rest out."_ The lifts are under **Strength**, the credit
+score under **Fortune**, indented behind a rule so a ladder reads as
+belonging to the trait rather than as another trait.
 
-`AreaCard` takes an optional `ladders` node that replaces the generic
-rows, and Training passes the four `AttributeRow`s. **An override rather
-than a second card component**, because everything around the ladders —
-the heading, the link, the XP, the ratings — is the same question, and a
-parallel card is where those four start to drift.
+**It reads as a smaller change than it is, because only three areas ever
+declared a ladder** — a ladder must name an external standard, and there
+is no published figure for how good at seeing your friends you ought to
+be. Every other card carried an area's name, its XP and its ratings: XP
+is what the traits already split, and no rating had been recordable
+since the review screen went the day before. So most of what was deleted
+was an empty frame.
+
+**Wayfaring's is the one genuine loss** — the share of a named region
+walked, the third ladder, now drawn nowhere. Adding it back is one entry
+in `traitLadders` in `HomePage.tsx`.
+
+**A trait and a ladder stay different currencies and the screen must not
+merge them.** The trait's bar is XP into a level; the ladder is a
+reading against a standard the app cannot move. Putting them adjacent
+says only that they are about the same part of your life. The visible
+consequence, which looks like a bug and is not: on a fresh database
+**Strength reads "Nothing yet" directly above a Powerlifting total of
+959 lb** — no session has been logged, and the estimated maxes are still
+a real measurement.
+
+**`LadderRow` came out of `AreaCard` when that was deleted**, and
+Training keeps its `AttributeRow`s rather than using it, because those
+say a bodyweight multiple and the load needed for the next level where
+the generic row says a value and an anchor.
 
 **The total comes from the character, not the sheet**, and cannot come
 from the sheet: it is derived from three ladders rather than being one,
@@ -4435,11 +4454,13 @@ ordering had been reversed once already, for a stated reason — and then
 made, which is the right way round for a decision about somebody’s own
 app.
 
-**Three bands: the glance, the day, where you stand.** Portrait, season
-and traits; then limits, vitals, dailies, quests, leads, digest and due;
-then the strength ladders and the area cards. The third band is last
-because that is where it was already read from — scrolled to on purpose
-rather than met on the way to a checkbox.
+**Two bands now, and it was three.** The sheet card — portrait, season,
+traits and the ladders under them — then the day: dailies, quests,
+limits, leads and the digest. The third band was "where you stand", a
+list of one card per area, and it is gone: what was worth reading in it
+is in the card at the top, and the rest could no longer say anything.
+The only thing left below the day is navigation — the screens with no
+tab, and the ladder legend.
 
 **The cost is exactly what the old rule predicted.** The dailies now sit
 below three blocks of readout where they sat below two, so opening the
@@ -4563,8 +4584,10 @@ supported has been overtaken.
 is the ratings.** Filing a month was the only thing that ever wrote a
 `MonthlySnapshot`, and a rating is a **direction**, which needs two
 points in time. With nothing recording them, every area's rating is
-absent from here on and the area cards show ladders and XP only. Months
-already filed still read — `readout` is untouched — so this is a stop
+absent from here on. The area cards that displayed them have since been
+removed too, which is the tidier end state: the rating half of the model
+is dormant and nothing on screen implies otherwise. Months already filed
+still read — `readout` is untouched — so this is a stop
 rather than a deletion.
 
 **`measureAll` is live and must stay**, which is the part that would be

@@ -1,13 +1,10 @@
-import { Link } from 'react-router-dom'
-
 import type { AreaStanding } from '@/application/use-cases/character/sheet'
-import { Badge, Card } from '@/components/shared/primitives'
+import { Badge } from '@/components/shared/primitives'
 import { Meter } from '@/components/shared/Meter'
 import type { Attribute } from '@/domain/game/character'
-import type { RatingOutcome } from '@/domain/game/rating'
 import { cn } from '@/lib/cn'
 
-import { AREA_ROUTES, LEVEL_TONE } from './sheet-constants'
+import { LEVEL_TONE } from './sheet-constants'
 
 /**
  * The pieces the character sheet is made of, on their own.
@@ -59,113 +56,53 @@ export function AttributeRow({
 }
 
 /**
- * What an outcome is worth saying, and how loudly.
+ * One ladder, read against its own external standard.
  *
- * `insufficient-data` gets no tone at all: it is not a bad result, it is
- * the absence of one, and colouring it would make a second month of
- * tracking look like a setback.
+ * **This was the generic half of `AreaCard`, which is gone.** That card
+ * drew an area's name, its XP, its ladders and its ratings, and the
+ * screen listed one per area under "Everywhere else". Asked for: _"take
+ * finance and strength and put those under their corresponding
+ * attributes in the section above, and cut the rest out."_
+ *
+ * So a ladder is now drawn **under the trait that owns its area** — the
+ * lifts under Strength, the credit score under Fortune — and the row had
+ * to come out of the card to get there. Nothing about the reading
+ * changed: a value, a level, a bar to the next one, and the anchor it is
+ * measured against, which is the sentence that makes it a ladder rather
+ * than a scale this app invented.
+ *
+ * **The ratings went with the card and nothing is hidden by that.**
+ * Filing a month was the only thing that ever recorded one, and that
+ * screen was removed the day before, so every rating was already
+ * permanently absent. What this deletes is the empty frame around them.
  */
-const OUTCOME_LABEL: Record<RatingOutcome, string> = {
-  improved: 'Improving',
-  regressed: 'Slipping',
-  stagnant: 'Flat',
-  'insufficient-data': 'Not enough months yet',
-}
-
-const OUTCOME_TONE: Record<RatingOutcome, 'good' | 'bad' | 'neutral'> = {
-  improved: 'good',
-  regressed: 'bad',
-  stagnant: 'neutral',
-  'insufficient-data': 'neutral',
-}
-
-export function AreaCard({
-  area,
-  ladders,
-}: {
-  readonly area: AreaStanding
-  /**
-   * Drawn in place of the generic ladder rows, for the one area whose
-   * ladders have a richer reading of their own.
-   *
-   * Training is that area: its ladders are the three competition lifts,
-   * and `AttributeRow` says a bodyweight multiple and the load needed
-   * for the next level where the generic row says a value and an anchor.
-   * Strength used to get a whole `Section` above this list because of
-   * that — reported as *"strength should be a card with everything else
-   * rather than its own section followed by everything else"* — so the
-   * override exists to let it join the list without losing what the
-   * section was drawing.
-   *
-   * An override rather than a second card component, because everything
-   * *around* the ladders is the same question: the heading, the link,
-   * the XP and the ratings underneath. A parallel card is where those
-   * four would start to drift.
-   */
-  readonly ladders?: React.ReactNode
-}) {
-  const to = AREA_ROUTES[area.area]
-
+export function LadderRow({ ladder }: { readonly ladder: AreaStanding['ladders'][number] }) {
   return (
-    <Card className="space-y-3">
+    <div>
       <div className="flex items-baseline justify-between gap-2">
-        {to === undefined ? (
-          <h3 className="text-ink-50 font-semibold">{area.name}</h3>
+        <span className="text-ink-300 text-sm font-medium">{ladder.name}</span>
+        {ladder.reading === undefined ? (
+          <span className="text-ink-600 text-xs">Nothing measured yet</span>
         ) : (
-          <h3 className="font-semibold">
-            <Link to={to} className="text-ink-50 hover:text-accent-400">
-              {area.name}
-            </Link>
-          </h3>
+          <Badge tone={LEVEL_TONE[ladder.reading.level] ?? 'neutral'}>{ladder.reading.level}</Badge>
         )}
-        {area.xp > 0 && <span className="numeric text-ink-500 text-xs">{area.xp} XP</span>}
       </div>
 
-      {ladders ??
-        area.ladders.map((ladder) => (
-          <div key={ladder.id}>
-            <div className="flex items-baseline justify-between gap-2">
-              <span className="text-ink-300 text-sm font-medium">{ladder.name}</span>
-              {ladder.reading === undefined ? (
-                <span className="text-ink-600 text-xs">Nothing measured yet</span>
-              ) : (
-                <Badge tone={LEVEL_TONE[ladder.reading.level] ?? 'neutral'}>
-                  {ladder.reading.level}
-                </Badge>
-              )}
-            </div>
-
-            {ladder.reading !== undefined && (
-              <>
-                <Meter
-                  className="mt-1.5"
-                  value={ladder.reading.progress}
-                  of={1}
-                  height={6}
-                  label={`${ladder.name}, toward the next level`}
-                />
-                <p className="text-ink-500 mt-1 text-xs">
-                  {formatLadderValue(ladder.value, ladder.unit)} · anchored to {ladder.anchor}
-                </p>
-              </>
-            )}
-          </div>
-        ))}
-
-      {area.ratings.map((rating) => (
-        <div key={rating.id} className="flex items-baseline justify-between gap-2">
-          <span className="text-ink-300 text-sm font-medium">{rating.name}</span>
-          <div className="flex items-center gap-2">
-            {rating.value !== undefined && (
-              <span className="numeric text-ink-500 text-xs">{formatValue(rating.value)}</span>
-            )}
-            {rating.outcome !== undefined && (
-              <Badge tone={OUTCOME_TONE[rating.outcome]}>{OUTCOME_LABEL[rating.outcome]}</Badge>
-            )}
-          </div>
-        </div>
-      ))}
-    </Card>
+      {ladder.reading !== undefined && (
+        <>
+          <Meter
+            className="mt-1.5"
+            value={ladder.reading.progress}
+            of={1}
+            height={6}
+            label={`${ladder.name}, toward the next level`}
+          />
+          <p className="text-ink-500 mt-1 text-xs">
+            {formatLadderValue(ladder.value, ladder.unit)} · anchored to {ladder.anchor}
+          </p>
+        </>
+      )}
+    </div>
   )
 }
 

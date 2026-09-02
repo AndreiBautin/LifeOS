@@ -116,7 +116,7 @@ function describe(requirement: Requirement, standing: StageStanding): string {
  * stage that wants one is a retarget away in the editor.
  *
  * The routes live here rather than in `domain/campaign` for the reason
- * `AREA_ROUTES` does: the domain must not know that a browser exists.
+ * `AREA_LINKS` does: the domain must not know that a browser exists.
  */
 const EVIDENCE_SCREENS: Partial<Record<Requirement['kind'], { to: string; label: string }>> = {
   'house-jobs': { to: '/base', label: 'Base' },

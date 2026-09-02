@@ -38,32 +38,16 @@ export const LEVEL_TONE: Partial<Record<Level, 'neutral' | 'accent' | 'good' | '
   Elite: 'cool',
 }
 
-/**
- * Where each area is actually done, so the hub is a hub.
+/*
+ * **`AREA_ROUTES` was here and went with the area cards.** It mapped
+ * each life area to the screen where that area is actually done, so a
+ * card's heading could link to it. With the cards gone nothing asks the
+ * question any more, and `AREA_LINKS` above is the surviving answer to
+ * the one that still matters: how to reach a screen that has no tab.
  *
- * Here rather than in the registry because `domain/game/` must not know
- * that a browser exists — an area is a way of scoring, and which URL
- * shows it is a fact about this front end.
- *
- * Partial on purpose: an area with no screen of its own is a heading and
- * nothing more, which is honest rather than a link that goes nowhere.
+ * If area cards ever return, note what that map got right — it was
+ * **partial on purpose**, because an area with no screen of its own is a
+ * heading rather than a link that goes nowhere, and it lived here rather
+ * than in the registry because `domain/game/` must not know a browser
+ * exists.
  */
-export const AREA_ROUTES: Partial<Record<string, string>> = {
-  training: '/train',
-  projects: '/quests',
-  backlog: '/backlog',
-  upgrades: '/upgrades',
-  places: '/map',
-  base: '/base',
-  /*
-   * Today, like `dailies` above it and for the same reason: upkeep is
-   * kept on the hub itself now that the screen it had has gone. A
-   * self-link rather than no link, because the card is what tells you
-   * where the records are.
-   */
-  vitals: '/today',
-  dailies: '/today',
-  jobs: '/jobs',
-  finance: '/finance',
-  mind: '/mind',
-}
