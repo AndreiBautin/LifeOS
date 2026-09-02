@@ -4,7 +4,6 @@ import type { Item } from '@/domain/backlog/item'
 import type { Project } from '@/domain/projects/project'
 import { asProjectId } from '@/domain/ids/ids'
 import type { Clock } from '@/domain/repositories/ports'
-import type { Friend } from '@/domain/social/circle'
 import type { Trip } from '@/domain/atlas/trip/Trip'
 
 import { agendaFor, type AgendaDeps } from './agenda'
@@ -19,12 +18,7 @@ import { agendaFor, type AgendaDeps } from './agenda'
  */
 const TODAY = new Date(2026, 7, 27, 9, 0)
 
-function harness(seed: {
-  projects?: Project[]
-  items?: Item[]
-  trips?: Trip[]
-  friends?: Friend[]
-}) {
+function harness(seed: { projects?: Project[]; items?: Item[]; trips?: Trip[] }) {
   const clock: Clock = { now: () => TODAY }
   const list = <T>(rows: readonly T[]) => ({
     all: () => Promise.resolve(rows),
@@ -41,7 +35,6 @@ function harness(seed: {
   return {
     projects: list(seed.projects ?? []),
     trips: list(seed.trips ?? []),
-    friends: list(seed.friends ?? []),
     clock,
   } as unknown as AgendaDeps
 }

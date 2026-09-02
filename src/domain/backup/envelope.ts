@@ -13,7 +13,6 @@ import type { FinanceReading } from '@/domain/finance/reading'
 import type { Item } from '@/domain/backlog/item'
 import type { Project } from '@/domain/projects/project'
 import type { MetricDefinition, MonthlySnapshot } from '@/domain/review/metric'
-import type { Friend } from '@/domain/social/circle'
 import type { Upgrade } from '@/domain/upgrades/upgrade'
 import type { Exercise } from '@/domain/exercises/exercise'
 import type { WorkoutLog } from '@/domain/logging/workout-log'
@@ -93,7 +92,6 @@ export interface BackupCounts {
   readonly items: number
   readonly projects: number
   readonly upgrades: number
-  readonly friends: number
   readonly metrics: number
   readonly reviews: number
   readonly places: number
@@ -131,7 +129,6 @@ export interface BackupData {
   readonly items?: readonly Item[]
   readonly projects?: readonly Project[]
   readonly upgrades?: readonly Upgrade[]
-  readonly friends?: readonly Friend[]
   readonly metrics?: readonly MetricDefinition[]
   readonly reviews?: readonly MonthlySnapshot[]
   readonly places?: readonly Place[]
@@ -180,7 +177,6 @@ export function countsFor(data: BackupData): BackupCounts {
     items: data.items?.length ?? 0,
     projects: data.projects?.length ?? 0,
     upgrades: data.upgrades?.length ?? 0,
-    friends: data.friends?.length ?? 0,
     metrics: data.metrics?.length ?? 0,
     reviews: data.reviews?.length ?? 0,
     places: data.places?.length ?? 0,
@@ -206,7 +202,6 @@ export const BACKUP_COUNT_KEYS = [
   'items',
   'projects',
   'upgrades',
-  'friends',
   'metrics',
   'reviews',
   'places',

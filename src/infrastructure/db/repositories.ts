@@ -11,7 +11,6 @@ import type { Item } from '@/domain/backlog/item'
 import type { Project } from '@/domain/projects/project'
 import type { Upgrade } from '@/domain/upgrades/upgrade'
 import type { MetricDefinition, MonthlySnapshot } from '@/domain/review/metric'
-import type { Friend } from '@/domain/social/circle'
 import type { Place } from '@/domain/atlas/place/Place'
 import type { PlaceId } from '@/domain/atlas/place/PlaceId'
 import type { Trip } from '@/domain/atlas/trip/Trip'
@@ -28,7 +27,6 @@ import type {
   CheckInId,
   DailyId,
   ExerciseId,
-  FriendId,
   MetricId,
   ProjectId,
   UpgradeId,
@@ -50,7 +48,6 @@ import type {
   CampaignRepository,
   ResumeRepository,
   ExploredAreaRepository,
-  FriendRepository,
   PlaceRepository,
   PositionRepository,
   ProjectRepository,
@@ -393,34 +390,6 @@ export function createUpgradeRepository(db: AppDatabase, clock: Clock): UpgradeR
     },
     async count() {
       return db.count('upgrades')
-    },
-  }
-}
-
-export function createFriendRepository(db: AppDatabase, clock: Clock): FriendRepository {
-  return {
-    async all() {
-      return db.getAll('friends')
-    },
-    async byId(id: FriendId) {
-      return db.get('friends', id)
-    },
-    async save(friend: Friend) {
-      await db.put('friends', stamp(friend, clock))
-    },
-    async restoreMany(friends: readonly Friend[]) {
-      const tx = db.transaction('friends', 'readwrite')
-      await Promise.all([...friends.map((friend) => tx.store.put(friend)), tx.done])
-    },
-    async remove(id: FriendId) {
-      await db.delete('friends', id)
-      await bury(db, clock, 'friends', id)
-    },
-    async purge(id: FriendId) {
-      await db.delete('friends', id)
-    },
-    async count() {
-      return db.count('friends')
     },
   }
 }

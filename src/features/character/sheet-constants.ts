@@ -11,22 +11,29 @@ import type { Level } from '@/domain/game/character'
  */
 
 /**
- * The screens with no tab of their own, listed so they can be found.
+ * The screens with **no other way in at all**, listed so they can be
+ * found.
  *
- * It exists because the area cards were the only way in and a silent
- * area renders no card: Job search had nothing to say until an
- * application existed, and the only route to the screen that creates one
- * was the card that could not appear until it did. A link makes no claim
- * about standing, so it can be shown where a card cannot.
+ * Reported as _"let's clean up the areas section, seems unnecessary"_,
+ * and it mostly was: of the seven chips it carried, four had grown a
+ * route somewhere better. Finance and the Tech tree are tabs now, Job
+ * search is reached from a main quest's stage and from the leads card,
+ * and Limits from the "Set up" on its own card on this screen.
+ *
+ * **The three left are here because deleting the block outright would
+ * have orphaned them**, which is the trap this list exists for: `/mind`
+ * and `/resume` were linked from nowhere else in the app, and
+ * `/houses` only from a campaign stage that has to exist first. A screen
+ * you cannot reach is a screen the app does not have — the same shape as
+ * the geocoder nothing could call.
+ *
+ * Checked by grep rather than assumed. If one of these gains a home
+ * elsewhere, it comes off this list and the list goes when it empties.
  */
 export const AREA_LINKS = [
-  { to: '/limits', label: 'Limits' },
-  { to: '/jobs', label: 'Job search' },
   { to: '/mind', label: 'Mind' },
-  { to: '/houses', label: 'Houses' },
-  { to: '/finance', label: 'Finance' },
   { to: '/resume', label: 'Resume' },
-  { to: '/upgrades', label: 'Tech tree' },
+  { to: '/houses', label: 'Houses' },
 ] as const
 
 /** The tone each rung of the strength ladder reads in. */

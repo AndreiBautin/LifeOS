@@ -11,7 +11,6 @@ import type { Exercise } from '@/domain/exercises/exercise'
 import type { Project } from '@/domain/projects/project'
 import type { Upgrade } from '@/domain/upgrades/upgrade'
 import type { MetricDefinition, MonthlySnapshot } from '@/domain/review/metric'
-import type { Friend } from '@/domain/social/circle'
 import type { Place } from '@/domain/atlas/place/Place'
 import type { Trip } from '@/domain/atlas/trip/Trip'
 import type { Daily } from '@/domain/dailies/daily'
@@ -45,7 +44,6 @@ export interface SyncPayload {
   readonly items: readonly Item[]
   readonly projects: readonly Project[]
   readonly upgrades: readonly Upgrade[]
-  readonly friends: readonly Friend[]
   readonly metrics: readonly MetricDefinition[]
   readonly reviews: readonly MonthlySnapshot[]
   readonly places: readonly Place[]
@@ -107,7 +105,6 @@ export const EMPTY_PAYLOAD: SyncPayload = {
   items: [],
   projects: [],
   upgrades: [],
-  friends: [],
   metrics: [],
   reviews: [],
   places: [],
@@ -132,7 +129,6 @@ export function isEmpty(payload: SyncPayload): boolean {
     payload.items.length === 0 &&
     payload.projects.length === 0 &&
     payload.upgrades.length === 0 &&
-    payload.friends.length === 0 &&
     payload.metrics.length === 0 &&
     payload.reviews.length === 0 &&
     payload.places.length === 0 &&
@@ -160,7 +156,6 @@ export function payloadSize(payload: SyncPayload): number {
     payload.items.length +
     payload.projects.length +
     payload.upgrades.length +
-    payload.friends.length +
     payload.metrics.length +
     payload.reviews.length +
     payload.places.length +
@@ -319,7 +314,6 @@ export function acceptableFrom(
       }),
     projects: incoming.projects.filter((item) => shouldAccept(item, 'projects', item.id, index)),
     upgrades: incoming.upgrades.filter((item) => shouldAccept(item, 'upgrades', item.id, index)),
-    friends: incoming.friends.filter((item) => shouldAccept(item, 'friends', item.id, index)),
     // Metrics carry no tombstone: removing a hand-defined metric is rare,
     // local, and leaves months of readings behind that would be orphaned
     // by a deletion travelling. It is deactivated rather than deleted.

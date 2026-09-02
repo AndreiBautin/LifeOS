@@ -1,12 +1,5 @@
-import { isOverdue } from '@/domain/social/circle'
-import { OVERDUE_MONTHS } from '@/application/use-cases/social/social'
 import { toDayKey } from '@/domain/time/day'
-import type {
-  Clock,
-  FriendRepository,
-  ProjectRepository,
-  TripRepository,
-} from '@/domain/repositories/ports'
+import type { Clock, ProjectRepository, TripRepository } from '@/domain/repositories/ports'
 
 /**
  * Everything that wants something from you today, in one list.
@@ -47,7 +40,13 @@ export type Urgency = 'overdue' | 'today' | 'soon'
 export interface AgendaItem {
   readonly id: string
   /** Which area it came from, for the icon and the link. */
-  readonly area: 'quests' | 'map' | 'party'
+  /*
+   * **`party` is gone with the social area.** Nothing tracks people any
+   * more, so an agenda row could never say somebody was overdue to see —
+   * a member of this union with no producer is a row the screen would
+   * hold a branch for and never draw.
+   */
+  readonly area: 'quests' | 'map'
   readonly title: string
   /** Why it is on the list — "due Friday", "6 weeks unseen". */
   readonly detail: string
@@ -58,7 +57,6 @@ export interface AgendaItem {
 export interface AgendaDeps {
   readonly projects: ProjectRepository
   readonly trips: TripRepository
-  readonly friends: FriendRepository
   readonly clock: Clock
 }
 
@@ -91,11 +89,7 @@ function urgencyOf(days: number): Urgency {
 export async function agendaFor(deps: AgendaDeps): Promise<readonly AgendaItem[]> {
   const today = toDayKey(deps.clock.now())
 
-  const [projects, trips, friends] = await Promise.all([
-    deps.projects.all(),
-    deps.trips.all(),
-    deps.friends.all(),
-  ])
+  const [projects, trips] = await Promise.all([deps.projects.all(), deps.trips.all()])
 
   const rows: AgendaItem[] = []
 
@@ -140,26 +134,6 @@ export async function agendaFor(deps: AgendaDeps): Promise<readonly AgendaItem[]
       detail: running ? 'on now' : `starts ${whenPhrase(days)}`,
       urgency: running ? 'today' : 'soon',
       href: '/trips',
-    })
-  }
-
-  /*
-   * People you are overdue to see. `isOverdue` owns what overdue means —
-   * this asks rather than re-deciding, so the party screen and this one
-   * cannot disagree about who is on the list.
-   */
-  for (const friend of friends) {
-    // The threshold is the social use case's, not a second opinion: the
-    // party screen and this list must not disagree about who is overdue.
-    if (!isOverdue(friend, OVERDUE_MONTHS, today)) continue
-
-    rows.push({
-      id: `party:${friend.id}`,
-      area: 'party',
-      title: friend.name,
-      detail: `last seen ${whenPhrase(daysBetween(today, friend.lastHangout))}`,
-      urgency: 'overdue',
-      href: '/party',
     })
   }
 

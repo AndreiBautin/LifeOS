@@ -20,7 +20,6 @@ import type {
   DailyRepository,
   ExerciseRepository,
   ExploredAreaRepository,
-  FriendRepository,
   PlaceRepository,
   ProjectRepository,
   AttemptRepository,
@@ -204,17 +203,6 @@ function device(clock: Clock): Device {
     clear: () => Promise.resolve(),
     count: () => Promise.resolve(0),
   }
-
-  const friends: FriendRepository = {
-    all: () => Promise.resolve([]),
-    byId: () => Promise.resolve(undefined),
-    save: () => Promise.resolve(),
-    restoreMany: () => Promise.resolve(),
-    remove: () => Promise.resolve(),
-    purge: () => Promise.resolve(),
-    count: () => Promise.resolve(0),
-  }
-
   const review: ReviewRepository = {
     metrics: () => Promise.resolve([]),
     saveMetric: () => Promise.resolve(),
@@ -512,7 +500,6 @@ function device(clock: Clock): Device {
     items,
     projects,
     upgrades,
-    friends,
     review,
     places,
     trips,

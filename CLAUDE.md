@@ -4863,6 +4863,66 @@ The title went through three values in three days — the calling
 the ring, the season and the traits were what fixed it, and they are all
 still there. `SheetCard` is the whole first band.
 
+**Social is gone, and the navigation is eight tabs.** Asked for as
+_"let's clean up the areas section, seems unnecessary … tech tree and
+finances should be its own tab, let's replace the party section … I'm
+not interested in tracking social for now so let's drop charisma and
+related stuff."_
+
+**Eight cells, measured rather than reasoned about.** 47 pixels each at
+375, the widest label ("Finance") 41 — nothing clips. At **320** the bar
+is 352 against 320 and the last tab is cut by 32, exactly the figure
+this file predicted; the 44-pixel target is an accessibility floor and
+does not shrink, so 320 would need a scrolling bar. Taken deliberately.
+
+**"Tech" rather than "Tech tree"**, because nine characters measure past
+the 47 available. The screen keeps its full name. Same trade "You" made
+for "Character".
+
+**The Areas block became "More", and shrank from seven chips to three.**
+Four had grown a better route — Finance and the tree are tabs, Job
+search is reached from a main quest's stage and the leads card, Limits
+from its own card's "Set up". **The three left are there because
+deleting the block outright would have orphaned them**: `/mind` and
+`/resume` were linked from _nowhere_ else, and `/houses` only from a
+campaign stage that has to exist first. Checked by grep before deleting,
+which is the whole reason that list exists. It is named "More" rather
+than "Areas" because it no longer describes areas — calling them areas
+invites the next area onto a list that is trying to empty.
+
+**Charisma is the second trait deleted, and for the opposite reason to
+Vitality.** Vitality went because no act could ever fill it; Charisma
+went because the person stopped wanting the thing measured. The area,
+its act, its rating, the screen, the tab and the agenda's overdue rows
+all went with it.
+
+**The records were deleted, and the store was not.** A new migration
+step at `DB_VERSION` 19 clears `friends`; the store stays because
+removing it means editing the step that creates it, which is the one
+thing `database.ts` must never do. Fourth retired store, typed locally
+as `RetiredRow`. It also had to leave the sync payload, both targets,
+the backup collection and the tombstone list — otherwise another device
+would push the people straight back and the deletion would not stick.
+
+**`/party` is a redirect, not a deleted route**, the rule `/next`,
+`/character`, `/vitals` and `/gear` already follow: a PWA shortcut is
+registered with the operating system at install time.
+
+**One guard got stronger.** `sheet.test.ts` → "has a counted or
+deliberately absent entry for every declared act" used to permit
+`social.hangout-logged`, the one act the registry declared that
+`tallyActs` could not count. It asserts `[]` now: every declared act is
+actually wired. A second test asserting hangouts stay uncounted was
+deleted rather than kept, because with the act gone it passed for the
+wrong reason — a test that cannot fail is worse than no test.
+
+**Four review tests moved rather than being deleted with their
+example.** They used social as the _vehicle_ for testing the spine —
+what a draft opens on, what a save re-reads, and the source-vs-metric
+key bug this file calls "silent and total". Deleting a rule's tests
+because the example went away is how a rule stops being enforced without
+anybody deciding to. They run on `upgrades.owned-share` now.
+
 **Seasonal challenges, and a pass that fills against a real
 denominator.** Asked for as _"what if we added seasonal 'challenges'
 that would be worth extra xp, and completing them would be working

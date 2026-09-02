@@ -28,7 +28,6 @@ export type ProjectId = Branded<'ProjectId'>
 export type ActionId = Branded<'ActionId'>
 export type UpgradeId = Branded<'UpgradeId'>
 export type MetricId = Branded<'MetricId'>
-export type FriendId = Branded<'FriendId'>
 export type DailyId = Branded<'DailyId'>
 /**
  * Something you mean to have less of — coffee, a beer — held as a pool of
@@ -63,7 +62,6 @@ export const asProjectId = (value: string): ProjectId => value as ProjectId
 export const asActionId = (value: string): ActionId => value as ActionId
 export const asUpgradeId = (value: string): UpgradeId => value as UpgradeId
 export const asMetricId = (value: string): MetricId => value as MetricId
-export const asFriendId = (value: string): FriendId => value as FriendId
 export const asDailyId = (value: string): DailyId => value as DailyId
 export const asViceId = (value: string): ViceId => value as ViceId
 export const asCampaignId = (value: string): CampaignId => value as CampaignId

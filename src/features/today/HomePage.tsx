@@ -235,16 +235,17 @@ export function HomePage() {
       )}
 
       {/*
-        **The screens with no tab, listed so they can be found.**
-        Navigation rather than a reading, which is why it repeats none of
-        the numbers above.
+        **What is left of the Areas block: the three screens with no
+        other way in at all.** Reported as _"let's clean up the areas
+        section, seems unnecessary"_ — and four of its seven chips had
+        indeed grown a better route, so what is here is the residue that
+        would otherwise be unreachable rather than a list of areas.
 
-        It exists because the area cards were the only way in and a
-        silent area renders no card: Job search had nothing to say until
-        an application existed, and the only route to the screen that
-        creates one was the card that could not appear until it did.
+        Named "More" rather than "Areas" because it no longer describes
+        areas: it is three links, and calling them areas invites the next
+        area to be added to a list that is trying to empty.
       */}
-      <Section title="Areas" description="The ones without a tab of their own">
+      <Section title="More" description="Screens with no tab of their own">
         <Card>
           <div className="flex flex-wrap gap-1.5">
             {AREA_LINKS.map((area) => (

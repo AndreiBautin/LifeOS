@@ -10,7 +10,6 @@ import type {
   DailyRepository,
   ExerciseRepository,
   ExploredAreaRepository,
-  FriendRepository,
   PlaceRepository,
   PositionRepository,
   ProjectRepository,
@@ -43,7 +42,6 @@ import {
   createDailyRepository,
   createExerciseRepository,
   createExploredAreaRepository,
-  createFriendRepository,
   createPlaceRepository,
   createPositionRepository,
   createProjectRepository,
@@ -105,7 +103,6 @@ export interface AppServices {
   readonly items: BacklogItemRepository
   readonly projects: ProjectRepository
   readonly upgrades: UpgradeRepository
-  readonly friends: FriendRepository
   readonly review: ReviewRepository
   readonly places: PlaceRepository
   readonly finance: FinanceRepository
@@ -181,7 +178,6 @@ export async function bootstrap(): Promise<BootstrapResult> {
     items: createBacklogItemRepository(db, systemClock),
     projects: createProjectRepository(db, systemClock),
     upgrades: createUpgradeRepository(db, systemClock),
-    friends: createFriendRepository(db, systemClock),
     review: createReviewRepository(db, systemClock),
     places: createPlaceRepository(db, systemClock),
     finance: createFinanceRepository(db, systemClock),

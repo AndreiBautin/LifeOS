@@ -5,20 +5,12 @@ import type { CellId } from '@/domain/atlas/exploration/GeoCell'
 import type { Place } from '@/domain/atlas/place/Place'
 import { DEFAULT_SETTINGS } from '@/domain/settings/settings'
 import { SCORING } from '@/domain/game/registry'
-import {
-  asExerciseId,
-  asFriendId,
-  asMetricId,
-  asProjectId,
-  asUpgradeId,
-  type MetricId,
-} from '@/domain/ids/ids'
+import { asExerciseId, asMetricId, asProjectId, asUpgradeId, type MetricId } from '@/domain/ids/ids'
 import type { Item } from '@/domain/backlog/item'
 import type { Project } from '@/domain/projects/project'
 import type { FinanceReading } from '@/domain/finance/reading'
 import type { Clock, WorkoutRepository, ReviewRepository } from '@/domain/repositories/ports'
 import type { MetricDefinition, MonthlySnapshot } from '@/domain/review/metric'
-import type { Friend } from '@/domain/social/circle'
 import type { Upgrade } from '@/domain/upgrades/upgrade'
 import { aWorkout } from '@/test/builders/workout'
 
@@ -54,7 +46,6 @@ function harness(
   const projectList: Project[] = []
   const financeList: FinanceReading[] = []
   const upgradeList: Upgrade[] = []
-  const friendList: Friend[] = []
   const workoutList: ReturnType<typeof aWorkout>[] = []
 
   const definedMetrics = new Map<string, MetricDefinition>()
@@ -106,7 +97,6 @@ function harness(
     attempts: stub([]),
     upgrades: stub(upgradeList),
     workouts: stub(workoutList) as unknown as WorkoutRepository,
-    friends: stub(friendList),
     places: stub(placeList),
     dailies: stub([]),
     rooms: stub([]),
@@ -133,7 +123,6 @@ function harness(
     projectList,
     financeList,
     upgradeList,
-    friendList,
     workoutList,
     placeList,
     snapshotStore,
@@ -242,17 +231,6 @@ describe('measuring the hub', () => {
     expect((await measureAll(deps))['upgrades.owned-share']).toBe(33)
   })
 
-  it('counts the active circle', async () => {
-    const { deps, friendList } = harness()
-
-    friendList.push(
-      { id: asFriendId('a'), name: 'A', lastHangout: '2026-08-01', createdAt: '' },
-      { id: asFriendId('b'), name: 'B', lastHangout: '2020-01-01', createdAt: '' },
-    )
-
-    expect((await measureAll(deps))['social.contacts-in-month']).toBe(1)
-  })
-
   it('counts the actions closed this month, and not last month’s', async () => {
     const { deps, projectList } = harness()
 
@@ -300,16 +278,47 @@ describe('measuring the hub', () => {
   })
 })
 
+/**
+ * Two upgrades, one bought — a measured 50% for the spine tests below.
+ *
+ * A builder rather than four copies, because these tests care about the
+ * spine rather than about upgrades, and the fixture should not be the
+ * loudest thing in them.
+ */
+function halfBought(): Upgrade[] {
+  const base: Omit<Upgrade, 'id' | 'title' | 'status'> = {
+    category: 'office',
+    priority: 50,
+    createdAt: '2026-01-01T00:00:00.000Z',
+  }
+
+  return [
+    { ...base, id: asUpgradeId('x'), title: 'X', status: 'purchased' },
+    { ...base, id: asUpgradeId('y'), title: 'Y', status: 'idea' },
+  ]
+}
+
 describe('the monthly review', () => {
+  /*
+   * **These four moved off social when that area was removed, rather
+   * than being deleted with it.** They are about the *spine* — what a
+   * draft opens on, what a save re-reads, which key a measured value is
+   * stored under — and social was only ever the vehicle. Deleting a
+   * rule's tests because the example went away is how a rule stops being
+   * enforced without anybody deciding to stop enforcing it.
+   *
+   * The vehicle is now `upgrades.owned-share`, which is measured the
+   * same way and is already driven by this harness.
+   */
   it('opens on measured values nobody has to type', async () => {
-    const { deps, friendList } = harness()
-    friendList.push({ id: asFriendId('a'), name: 'A', lastHangout: '2026-08-01', createdAt: '' })
+    const { deps, upgradeList } = harness()
+    upgradeList.push(...halfBought())
 
     const draft = await draftReview(deps)
 
     expect(draft.month).toBe('2026-08')
     expect(draft.started).toBe(false)
-    expect(draft.measured['social.contacts-in-month']).toBe(1)
+    expect(draft.measured['upgrades.owned-share']).toBe(50)
   })
 
   /*
@@ -342,12 +351,12 @@ describe('the monthly review', () => {
    * shadow something the app counted.
    */
   it('re-reads measured values at save rather than trusting the caller', async () => {
-    const { deps, friendList, snapshotStore } = harness()
-    friendList.push({ id: asFriendId('a'), name: 'A', lastHangout: '2026-08-01', createdAt: '' })
+    const { deps, upgradeList, snapshotStore } = harness()
+    upgradeList.push(...halfBought())
 
-    await saveReview({ 'social.contact': 99 }, deps)
+    await saveReview({ 'upgrades.progress': 99 }, deps)
 
-    expect(snapshotStore.get('2026-08')?.values['social.contact']).toBe(1)
+    expect(snapshotStore.get('2026-08')?.values['upgrades.progress']).toBe(50)
   })
 
   /*
@@ -359,14 +368,14 @@ describe('the monthly review', () => {
    * file.
    */
   it('stores a measured value under the metric that reads it, not the source', async () => {
-    const { deps, friendList, snapshotStore } = harness()
-    friendList.push({ id: asFriendId('a'), name: 'A', lastHangout: '2026-08-01', createdAt: '' })
+    const { deps, upgradeList, snapshotStore } = harness()
+    upgradeList.push(...halfBought())
 
     await saveReview({}, deps)
 
     const values = snapshotStore.get('2026-08')?.values ?? {}
-    expect(values['social.contact']).toBe(1)
-    expect(values['social.contacts-in-month']).toBeUndefined()
+    expect(values['upgrades.progress']).toBe(50)
+    expect(values['upgrades.owned-share']).toBeUndefined()
   })
 
   /*
@@ -375,28 +384,22 @@ describe('the monthly review', () => {
    * nobody having typed a number.
    */
   it('judges a measured area from two months of counting', async () => {
-    const { deps, friendList, snapshotStore } = harness()
-    friendList.push(
-      { id: asFriendId('a'), name: 'A', lastHangout: '2026-08-01', createdAt: '' },
-      { id: asFriendId('b'), name: 'B', lastHangout: '2026-08-02', createdAt: '' },
-      { id: asFriendId('c'), name: 'C', lastHangout: '2026-08-03', createdAt: '' },
-      { id: asFriendId('d'), name: 'D', lastHangout: '2026-08-04', createdAt: '' },
-      { id: asFriendId('e'), name: 'E', lastHangout: '2026-08-05', createdAt: '' },
-    )
+    const { deps, upgradeList, snapshotStore } = harness()
+    upgradeList.push(...halfBought())
 
-    // Last month the circle was below the threshold of four.
+    // Last month a quarter of the list was bought; half of it is now.
     snapshotStore.set('2026-07', {
       month: '2026-07',
-      values: { 'social.contact': 2 },
+      values: { 'upgrades.progress': 25 },
       createdAt: '',
     })
     await saveReview({}, deps)
 
-    const social = (await readout(deps)).areas.find((area) => area.area === 'social')
+    const upgrades = (await readout(deps)).areas.find((area) => area.area === 'upgrades')
 
-    // Five active now, threshold four: crossed back over, so improved.
-    expect(social?.metrics[0]?.latest).toBe(5)
-    expect(social?.metrics[0]?.outcome).toBe('improved')
+    // 25 to 50 on an `increase` metric: counted twice, judged once.
+    expect(upgrades?.metrics[0]?.latest).toBe(50)
+    expect(upgrades?.metrics[0]?.outcome).toBe('improved')
   })
 
   it('carries entered values forward into the next draft of the same month', async () => {

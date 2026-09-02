@@ -3,7 +3,6 @@ import {
   asCheckInId,
   asDailyId,
   asExerciseId,
-  asFriendId,
   asProjectId,
   asUpgradeId,
   asAttemptId,
@@ -20,7 +19,6 @@ import type {
   DailyRepository,
   ExerciseRepository,
   ExploredAreaRepository,
-  FriendRepository,
   PlaceRepository,
   ProjectRepository,
   ReviewRepository,
@@ -86,7 +84,6 @@ export interface SynchroniseDeps {
   readonly items: BacklogItemRepository
   readonly projects: ProjectRepository
   readonly upgrades: UpgradeRepository
-  readonly friends: FriendRepository
   readonly review: ReviewRepository
   readonly places: PlaceRepository
   readonly trips: TripRepository
@@ -173,7 +170,6 @@ export async function synchronise(target: SyncTarget, deps: SynchroniseDeps): Pr
   await deps.items.restoreMany(accepted.items)
   await deps.projects.restoreMany(accepted.projects)
   await deps.upgrades.restoreMany(accepted.upgrades)
-  await deps.friends.restoreMany(accepted.friends)
   await deps.review.restoreMetrics(accepted.metrics)
   await deps.review.restoreSnapshots(accepted.reviews)
   await deps.places.restoreMany(accepted.places)
@@ -256,7 +252,6 @@ export async function synchronise(target: SyncTarget, deps: SynchroniseDeps): Pr
     accepted.items.length +
     accepted.projects.length +
     accepted.upgrades.length +
-    accepted.friends.length +
     accepted.metrics.length +
     accepted.reviews.length +
     accepted.places.length +
@@ -279,7 +274,6 @@ export async function synchronise(target: SyncTarget, deps: SynchroniseDeps): Pr
     incoming.items.length +
     incoming.projects.length +
     incoming.upgrades.length +
-    incoming.friends.length +
     incoming.metrics.length +
     incoming.reviews.length +
     incoming.places.length +
@@ -316,7 +310,6 @@ async function collectLocal(
     items,
     projects,
     upgrades,
-    friends,
     metrics,
     reviews,
     places,
@@ -340,7 +333,6 @@ async function collectLocal(
     deps.items.all(),
     deps.projects.all(),
     deps.upgrades.all(),
-    deps.friends.all(),
     deps.review.metrics(),
     deps.review.snapshots(),
     deps.places.all(),
@@ -395,7 +387,6 @@ async function collectLocal(
     items: changedSince(items, watermark),
     projects: changedSince(projects, watermark),
     upgrades: changedSince(upgrades, watermark),
-    friends: changedSince(friends, watermark),
     metrics: changedSince(metrics, watermark),
     reviews: changedSince(reviews, watermark),
     places: changedSince(places, watermark),
@@ -466,13 +457,6 @@ async function applyDeletions(
         const local = await deps.checkIns.byId(asCheckInId(tombstone.id))
         if (local !== undefined && !survives(local, tombstone)) {
           await deps.checkIns.purge(asCheckInId(tombstone.id))
-        }
-        break
-      }
-      case 'friends': {
-        const local = await deps.friends.byId(asFriendId(tombstone.id))
-        if (local !== undefined && !survives(local, tombstone)) {
-          await deps.friends.purge(asFriendId(tombstone.id))
         }
         break
       }

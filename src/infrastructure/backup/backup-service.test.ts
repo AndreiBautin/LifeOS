@@ -21,7 +21,6 @@ import {
   createBacklogItemRepository,
   createDailyRepository,
   createExploredAreaRepository,
-  createFriendRepository,
   createPlaceRepository,
   createProjectRepository,
   createReviewRepository,
@@ -35,7 +34,6 @@ import {
 } from '@/infrastructure/db/repositories'
 import { anEntry, aPostCheckIn, aWorkout, SQUAT } from '@/test/builders/workout'
 import { createItem } from '@/domain/backlog/item'
-import { asFriendId } from '@/domain/ids/ids'
 import { countsFor } from '@/domain/backup/envelope'
 
 const anItemDeps = {
@@ -78,7 +76,6 @@ beforeEach(async () => {
     items: createBacklogItemRepository(db, testClock),
     projects: createProjectRepository(db, testClock),
     upgrades: createUpgradeRepository(db, testClock),
-    friends: createFriendRepository(db, testClock),
     review: createReviewRepository(db, testClock),
     places: createPlaceRepository(db, testClock),
     trips: createTripRepository(db, testClock),
@@ -328,13 +325,6 @@ async function populateEverything(): Promise<void> {
   await populate()
 
   await repositories.items.save(createItem({ title: 'Dune', category: 'books' }, anItemDeps))
-  await repositories.friends.save({
-    id: asFriendId('friend-1'),
-    name: 'Sam',
-    cadenceDays: 30,
-    lastHangout: '2026-08-01',
-    createdAt: '2026-01-01T00:00:00.000Z',
-  } as never)
   await repositories.places.save({
     id: 'place-1',
     name: 'Kiln',
@@ -365,7 +355,6 @@ describe('everything the hub holds, not only the training half', () => {
     await applyBackup(parsed.envelope, repositories, 'replace')
 
     expect(await repositories.items.all()).toHaveLength(1)
-    expect(await repositories.friends.all()).toHaveLength(1)
     expect(await repositories.places.all()).toHaveLength(1)
     expect(await repositories.trips.all()).toHaveLength(1)
     expect((await repositories.explored.all()).size).toBe(2)
@@ -378,7 +367,6 @@ describe('everything the hub holds, not only the training half', () => {
 
     expect(envelope.counts).toMatchObject({
       items: 1,
-      friends: 1,
       places: 1,
       trips: 1,
       exploredCells: 2,

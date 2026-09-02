@@ -1232,12 +1232,11 @@ function DoneRows({ rows }: { readonly rows: readonly Occurrence[] }) {
  * What an agenda row's area is called where it appears as a group.
  *
  * The three that are left once the Codex goals moved into the day's
- * list: a quest's deadline, a trip, somebody unseen for months.
+ * list: a quest's deadline, or a trip.
  */
 const AGENDA_GROUPS: Record<AgendaItem['area'], string> = {
   quests: 'Quests',
   map: 'Trips',
-  party: 'Party',
 }
 
 const URGENCY_TONE: Record<Urgency, 'bad' | 'accent' | 'neutral'> = {
@@ -1436,7 +1435,7 @@ export function Dailies() {
   const soon = agenda.filter((item) => item.urgency === 'soon')
 
   /* Grouped by area, in the order the agenda already sorted them. */
-  const agendaGroups = (['quests', 'map', 'party'] as const)
+  const agendaGroups = (['quests', 'map'] as const)
     .map((area) => ({ area, rows: dueNow.filter((item) => item.area === area) }))
     .filter((group) => group.rows.length > 0)
 

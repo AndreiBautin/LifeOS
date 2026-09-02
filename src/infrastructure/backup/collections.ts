@@ -4,7 +4,6 @@ import type {
   CheckInRepository,
   ExerciseRepository,
   ExploredAreaRepository,
-  FriendRepository,
   PlaceRepository,
   ProjectRepository,
   ReviewRepository,
@@ -49,7 +48,6 @@ export interface BackupRepositories {
   readonly items: BacklogItemRepository
   readonly projects: ProjectRepository
   readonly upgrades: UpgradeRepository
-  readonly friends: FriendRepository
   readonly review: ReviewRepository
   readonly places: PlaceRepository
   readonly trips: TripRepository
@@ -149,13 +147,6 @@ export const COLLECTIONS: Readonly<Record<CollectionKey, Collection>> = {
     idOf: (row) => row.id,
     restore: (r, rows) => r.upgrades.restoreMany(rows),
     tombstoneCollection: 'upgrades',
-  }),
-  friends: define({
-    local: (r) => r.friends.all(),
-    fromFile: (data) => data.friends ?? [],
-    idOf: (row) => row.id,
-    restore: (r, rows) => r.friends.restoreMany(rows),
-    tombstoneCollection: 'friends',
   }),
   metrics: define({
     local: (r) => r.review.metrics(),

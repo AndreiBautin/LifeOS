@@ -78,12 +78,6 @@ export const TRAITS: readonly TraitDefinition[] = [
     areas: ['backlog', 'mind'],
   },
   {
-    id: 'charisma',
-    label: 'Charisma',
-    blurb: 'People you actually saw',
-    areas: ['social'],
-  },
-  {
     id: 'discipline',
     label: 'Discipline',
     blurb: 'Habits kept, limits held, and the season taken up on its offers',

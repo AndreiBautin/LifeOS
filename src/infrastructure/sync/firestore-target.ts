@@ -23,7 +23,6 @@ import type { Item } from '@/domain/backlog/item'
 import type { Project } from '@/domain/projects/project'
 import type { Upgrade } from '@/domain/upgrades/upgrade'
 import type { MetricDefinition, MonthlySnapshot } from '@/domain/review/metric'
-import type { Friend } from '@/domain/social/circle'
 import type { Place } from '@/domain/atlas/place/Place'
 import type { Trip } from '@/domain/atlas/trip/Trip'
 import type { Daily } from '@/domain/dailies/daily'
@@ -68,7 +67,6 @@ const COLLECTIONS = {
   items: 'items',
   projects: 'projects',
   upgrades: 'upgrades',
-  friends: 'friends',
   metrics: 'metrics',
   reviews: 'reviews',
   places: 'places',
@@ -156,7 +154,6 @@ const KEYED_BY: {
   items: (record) => record.id,
   projects: (record) => record.id,
   upgrades: (record) => record.id,
-  friends: (record) => record.id,
   metrics: (record) => record.id,
   reviews: (record) => record.month,
   places: (record) => record.id,
@@ -289,7 +286,6 @@ export function createFirestoreSyncTarget(options: FirestoreTargetOptions): Sync
         readSince(root(COLLECTIONS.items), after),
         readSince(root(COLLECTIONS.projects), after),
         readSince(root(COLLECTIONS.upgrades), after),
-        readSince(root(COLLECTIONS.friends), after),
         readSince(root(COLLECTIONS.metrics), after),
         readSince(root(COLLECTIONS.reviews), after),
         readSince(root(COLLECTIONS.places), after),
@@ -337,7 +333,6 @@ export function createFirestoreSyncTarget(options: FirestoreTargetOptions): Sync
         items,
         projects,
         upgrades,
-        friends,
         metrics,
         reviews,
         places,
@@ -386,7 +381,6 @@ export function createFirestoreSyncTarget(options: FirestoreTargetOptions): Sync
           items: items.records as readonly Item[],
           projects: projects.records as readonly Project[],
           upgrades: upgrades.records as readonly Upgrade[],
-          friends: friends.records as readonly Friend[],
           metrics: metrics.records as readonly MetricDefinition[],
           reviews: reviews.records as readonly MonthlySnapshot[],
           places: places.records as readonly Place[],

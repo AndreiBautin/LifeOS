@@ -173,25 +173,6 @@ describe('counting acts', () => {
   })
 
   /*
-   * The one act the registry declares that cannot be counted: a friend
-   * record keeps the last hangout, not a list of them. Absent costs zero
-   * XP; a friends-with-a-date count would stop growing after the first
-   * coffee and read as a social life that happened once.
-   */
-  it('leaves hangouts uncounted rather than guessing at them', async () => {
-    const tally = await tallyActs(harness())
-
-    expect(tally['social.hangout-logged']).toBeUndefined()
-  })
-
-  it('pays no XP for an act it cannot witness', async () => {
-    const sheet = await characterSheet(harness())
-    const social = sheet.areas.find((area) => area.area === 'social')
-
-    expect(social?.xp).toBe(0)
-  })
-
-  /*
    * Every act the registry declares should either be counted or knowingly
    * absent — this catches a new area arriving with an act nobody wired up,
    * which would otherwise show as a permanent zero nobody questions.
@@ -200,8 +181,15 @@ describe('counting acts', () => {
     const tally = await tallyActs(harness())
     const uncounted = ALL_ACTS.filter((act) => tally[act.id] === undefined).map((act) => act.id)
 
-    // `social.*` belongs to the one area still deliberately not absorbed.
-    expect(uncounted).toEqual(['social.hangout-logged'])
+    /*
+     * **Empty, and it got stronger when social went.** This used to
+     * permit `social.hangout-logged`, the one act the registry declared
+     * that `tallyActs` could not count — a friend kept a single ratcheted
+     * `lastHangout` rather than a list of them. That area is gone, so
+     * every act the registry declares is now actually wired, and the
+     * exception this test carried can go with it.
+     */
+    expect(uncounted).toEqual([])
   })
 })
 

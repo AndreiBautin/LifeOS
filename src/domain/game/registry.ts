@@ -28,7 +28,6 @@ export const LIFE_AREAS = [
   'backlog',
   'projects',
   'upgrades',
-  'social',
   'places',
   'dailies',
   'jobs',
@@ -210,25 +209,6 @@ export const SCORING: readonly AreaScoring[] = [
     ],
     acts: [],
     hasTree: true,
-  },
-  {
-    area: 'social',
-    name: 'Social',
-    phase: 4,
-    ladders: [],
-    ratings: [
-      {
-        id: 'social.contact',
-        source: 'social.contacts-in-month',
-        name: 'Contact frequency',
-        unit: 'people seen',
-        direction: 'stay-above',
-        cadence: 'monthly',
-        threshold: 4,
-      },
-    ],
-    acts: [{ id: 'social.hangout-logged', area: 'social', label: 'Saw somebody', points: 40 }],
-    hasTree: false,
   },
   {
     area: 'dailies',

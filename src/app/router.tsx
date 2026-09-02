@@ -2,7 +2,6 @@ import { createBrowserRouter, Navigate } from 'react-router-dom'
 
 import { AtlasPage } from '@/features/atlas/AtlasPage'
 import { InboxPage } from '@/features/atlas/InboxPage'
-import { PartyPage } from '@/features/party/PartyPage'
 import { HomePage } from '@/features/today/HomePage'
 import { SharePage } from '@/features/atlas/SharePage'
 import { TripsPage } from '@/features/atlas/TripsPage'
@@ -90,7 +89,15 @@ export const router = createBrowserRouter(
         { path: 'trips', element: <TripsPage /> },
         { path: 'character', element: <Navigate to="/today" replace /> },
         { path: 'today', element: <HomePage /> },
-        { path: 'party', element: <PartyPage /> },
+        /*
+         * **`/party` is a redirect, not a deleted route.** Social is not
+         * tracked any more and the screen is gone, but a PWA shortcut is
+         * registered with the operating system at install time — an
+         * installed copy goes on asking for the path it was installed
+         * with. The rule `/next`, `/character`, `/vitals` and `/gear`
+         * all follow.
+         */
+        { path: 'party', element: <Navigate to="/today" replace /> },
         { path: 'history', element: <HistoryPage /> },
         { path: 'settings', element: <SettingsPage /> },
         { path: '*', element: <NotFoundPage /> },

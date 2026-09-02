@@ -14,7 +14,6 @@ import type { Item } from '@/domain/backlog/item'
 import type { Project } from '@/domain/projects/project'
 import type { Upgrade } from '@/domain/upgrades/upgrade'
 import type { MetricDefinition, MonthlySnapshot } from '@/domain/review/metric'
-import type { Friend } from '@/domain/social/circle'
 import type { Place } from '@/domain/atlas/place/Place'
 import type { PlaceId } from '@/domain/atlas/place/PlaceId'
 import type { Trip } from '@/domain/atlas/trip/Trip'
@@ -28,7 +27,6 @@ import type {
   CheckInId,
   DailyId,
   ExerciseId,
-  FriendId,
   MetricId,
   ProjectId,
   UpgradeId,
@@ -276,16 +274,6 @@ export interface UpgradeRepository {
  * the active circle is a reading over `lastHangout` rather than a list
  * anyone curates.
  */
-export interface FriendRepository {
-  all(): Promise<readonly Friend[]>
-  byId(id: FriendId): Promise<Friend | undefined>
-  save(friend: Friend): Promise<void>
-  restoreMany(friends: readonly Friend[]): Promise<void>
-  remove(id: FriendId): Promise<void>
-  purge(id: FriendId): Promise<void>
-  count(): Promise<number>
-}
-
 /**
  * Metrics defined by hand, and the months they were recorded in.
  *

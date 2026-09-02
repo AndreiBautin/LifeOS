@@ -13,7 +13,6 @@ import type { Item } from '@/domain/backlog/item'
 import type { Project } from '@/domain/projects/project'
 import type { Upgrade } from '@/domain/upgrades/upgrade'
 import type { MetricDefinition, MonthlySnapshot } from '@/domain/review/metric'
-import type { Friend } from '@/domain/social/circle'
 import type { Place } from '@/domain/atlas/place/Place'
 import type { Trip } from '@/domain/atlas/trip/Trip'
 import type { Daily } from '@/domain/dailies/daily'
@@ -67,7 +66,7 @@ export const DB_NAME = 'lifeos'
  * a device that already ran it will not run it again, so changing one
  * leaves two devices with different schemas and no way to tell.
  */
-export const DB_VERSION = 18
+export const DB_VERSION = 19
 
 /**
  * A workout as it is stored, which is not quite a workout as the domain
@@ -113,6 +112,12 @@ export type StoredDaily = Omit<Daily, 'belongsTo'> & { readonly belongsTo?: stri
  */
 interface RetiredDayRow {
   readonly day: string
+  readonly [field: string]: unknown
+}
+
+/** A row of a retired store keyed by id rather than by day. */
+interface RetiredRow {
+  readonly id: string
   readonly [field: string]: unknown
 }
 
@@ -226,10 +231,23 @@ export interface LiftDB extends DBSchema {
     value: Upgrade
     indexes: { 'by-status': string }
   }
-  /** The people in your circle. */
+  /**
+   * **Retired, emptied, and still here — the fourth store in this
+   * position.** Social is not tracked any more: the area, the trait, the
+   * screen and the tab are gone, and the records were deleted rather
+   * than left, which is what was asked for.
+   *
+   * The *store* stays because removing it would mean editing the
+   * migration that creates it, which is the one thing this file must
+   * never do — a device that has run that step keeps the store and one
+   * that has not would never make it, and the two schemas diverge with
+   * nothing able to tell them apart. It is typed loosely for the same
+   * reason `conditions` and `dayReadings` are: the domain no longer has
+   * an opinion about the shape.
+   */
   friends: {
     key: string
-    value: Friend
+    value: RetiredRow
     indexes: { 'by-last-hangout': string }
   }
   /**
@@ -430,7 +448,7 @@ let connection: Promise<AppDatabase> | undefined
 
 export function openDatabase(name = DB_NAME): Promise<AppDatabase> {
   connection ??= openDB<LiftDB>(name, DB_VERSION, {
-    upgrade(db, oldVersion) {
+    upgrade(db, oldVersion, _newVersion, transaction) {
       // Each step is guarded by the version it was introduced at, and
       // runs in order, so a device three versions behind catches up in
       // one open rather than needing an intermediate release.
@@ -600,6 +618,14 @@ export function openDatabase(name = DB_NAME): Promise<AppDatabase> {
 
       if (oldVersion < 15) {
         db.createObjectStore('homes', { keyPath: 'id' })
+      }
+
+      if (oldVersion < 19) {
+        // Social is not tracked any more and the people were deleted
+        // rather than left behind. The store itself stays — removing it
+        // would mean editing the step that creates it — so this empties
+        // it instead, once, on the way past.
+        void transaction.objectStore('friends').clear()
       }
 
       if (oldVersion < 18) {

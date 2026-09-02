@@ -1,4 +1,4 @@
-import { BookMarked, Dumbbell, Home, Map, Target, User, Users } from 'lucide-react'
+import { BookMarked, Dumbbell, Home, Map, Network, Target, User, Wallet } from 'lucide-react'
 import { NavLink, Outlet } from 'react-router-dom'
 
 import { BackupReminder } from '@/features/backup/BackupReminder'
@@ -53,7 +53,25 @@ const NAV = [
   { to: '/quests', label: 'Quests', Icon: Target },
   { to: '/backlog', label: 'Codex', Icon: BookMarked },
   { to: '/map', label: 'Map', Icon: Map },
-  { to: '/party', label: 'Party', Icon: Users },
+  /*
+   * **Party's seat became two**, asked for as _"tech tree and finances
+   * should be its own tab, let's replace the party section."_ Social is
+   * not being tracked, so the tab went with the trait and the area.
+   *
+   * That takes the bar to **eight**, which this file's own measurement
+   * says is fine at 375 — 46.9 pixels a cell — and clips on a 320-wide
+   * iPhone SE 1st-gen, where 8 × 44 = 352 against 320. The 44-pixel tap
+   * target is an accessibility floor and does not shrink, so 320 would
+   * need a scrolling bar. Chosen deliberately rather than stumbled into.
+   *
+   * **"Tech" rather than "Tech tree"**, because the label has to fit the
+   * cell: at nine characters it measures past the 46.9 available and
+   * would wrap or clip. The screen keeps its full name; this is the
+   * abbreviation the bar can hold, the same trade "You" made for
+   * "Character".
+   */
+  { to: '/finance', label: 'Finance', Icon: Wallet },
+  { to: '/upgrades', label: 'Tech', Icon: Network },
   { to: '/base', label: 'Base', Icon: Home },
 ] as const
 

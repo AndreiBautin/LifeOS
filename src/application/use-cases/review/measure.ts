@@ -12,12 +12,10 @@ import { STRENGTH_LIFT_SLUGS } from '@/domain/exercises/catalogue'
 import { asExerciseId } from '@/domain/ids/ids'
 import type { Daily } from '@/domain/dailies/daily'
 import { isDoneOn, isExpectedOn, shiftDay } from '@/domain/dailies/daily'
-import { isActive } from '@/domain/social/circle'
 import type {
   BacklogItemRepository,
   Clock,
   ExploredAreaRepository,
-  FriendRepository,
   DailyRepository,
   PlaceRepository,
   ProjectRepository,
@@ -51,7 +49,6 @@ export interface MeasureDeps {
   readonly projects: ProjectRepository
   readonly upgrades: UpgradeRepository
   readonly workouts: WorkoutRepository
-  readonly friends: FriendRepository
   readonly places: PlaceRepository
   readonly dailies: DailyRepository
   readonly explored: ExploredAreaRepository
@@ -212,14 +209,6 @@ export async function measureAll(deps: MeasureDeps): Promise<Readonly<Record<str
       const share = retirementAgainstBenchmark(retirement, salary, age)
       if (share !== undefined) measured['finance.retirement-share'] = share
     }
-  }
-
-  const friends = await deps.friends.all()
-  if (friends.length > 0) {
-    const asOf = toDay(now)
-    measured['social.contacts-in-month'] = friends.filter((friend) =>
-      isActive(friend, 12, asOf),
-    ).length
   }
 
   /*
