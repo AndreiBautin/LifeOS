@@ -4673,6 +4673,36 @@ The title went through three values in three days — the calling
 the ring, the season and the traits were what fixed it, and they are all
 still there. `SheetCard` is the whole first band.
 
+**The season sits in the avatar's own row now, and the rule between
+them is gone.** Asked for as _"can we move the season progress up into
+the row with the avatar and clean it up a bit."_ The season names itself
+in the column beside the portrait — label on one line, days left on the
+next — and its bar runs full width underneath, which is the only place a
+meter fits: the column beside a 120-pixel figure is about 200 wide at
+375 and loses another 40 to the settings link.
+
+**No rule between the two, and still one before the traits.** A rule
+says these are separate readings; the level and the season are one
+quantity over two windows. The traits keep theirs because they are that
+same quantity split a third way, which is a change of kind rather than
+of scale.
+
+**Three things went in the clean-up and one is a rule worth knowing.**
+The "By month" caption — three bars labelled Sep, Oct and Nov under a
+season already write that sentence. The paragraph explaining that the
+target is last season's own figure rather than a curve the app made up —
+true, in `domain/game/season.ts`, and printing it every morning is the
+narration being moved away from. And **the date**, which the header had
+left behind: the season line says where you are in time at the scale
+this card works on, and a screen opened daily does not need telling what
+day it is.
+
+**"Autumn 2026 · 90 days left" wrapped after the middot**, leaving _days
+left_ alone on a line. That is the second mid-phrase break this column
+has produced — the first was "45 / 100 XP into the level" — so the rule
+it earns is plain: **a joined phrase does not go in that column**, it
+stacks or it goes full width.
+
 **The season and the traits are bands of that card, not sections after
 it.** Asked for in the same breath: _"merge in the season and attributes
 stuff into the first card."_ They merge cleanly because they are one

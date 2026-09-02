@@ -48,10 +48,19 @@ import { useAvatar } from './hooks'
  * on the band that was not a reading of the XP model.
  */
 export function PortraitBand({
-  today,
+  season,
   action,
 }: {
-  readonly today: string
+  /**
+   * The season, named in the column beside the figure.
+   *
+   * **It replaced the date there**, which is the trade worth stating:
+   * the date was the page header's, kept when the header went, and a
+   * screen opened every morning does not need to be told what day it is.
+   * The season line says where you are in time at the scale the card
+   * actually works on — the chapter, and how much of it is left.
+   */
+  readonly season?: { readonly label: string; readonly daysLeft: number } | undefined
   readonly action?: ReactNode
 }) {
   const avatar = useAvatar()
@@ -119,7 +128,19 @@ export function PortraitBand({
                 {needed > 0 ? `${String(into)} / ${String(needed)} XP` : 'Top of the ladder'}
               </p>
 
-              <p className="text-ink-700 numeric mt-0.5 text-xs">{today}</p>
+              {/*
+                Two lines rather than one joined by a middot. The column
+                beside a 120-pixel figure loses another 40 to the gear,
+                and "Autumn 2026 · 90 days left" wrapped after the middot
+                — leaving "days left" alone on the second line, which is
+                the mid-phrase break this card has now hit twice.
+              */}
+              {season !== undefined && (
+                <div className="text-ink-700 mt-1.5 text-xs">
+                  <p>{season.label}</p>
+                  {season.daysLeft > 0 && <p className="numeric">{season.daysLeft} days left</p>}
+                </div>
+              )}
             </div>
 
             {/*

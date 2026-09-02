@@ -36,13 +36,11 @@ import { Traits } from './Traits'
  * what they are, since a card holding three readings has to.
  */
 export function SheetCard({
-  today,
   season,
   traits,
   traitLadders,
   action,
 }: {
-  readonly today: string
   readonly season?: SeasonProgress | undefined
   readonly traits?: readonly TraitStanding[] | undefined
   /** Ladder rows to draw under a trait, keyed by the trait's id. */
@@ -52,15 +50,26 @@ export function SheetCard({
 }) {
   return (
     <Card>
-      <PortraitBand today={today} {...(action === undefined ? {} : { action })} />
-
       {/*
-        Separated by a rule rather than by a gap, so the bands read as
-        parts of one card. A gap wide enough to group would be the
-        spacing the sections already had, which is what this replaced.
+        **The figure and its season are one block, with no rule between
+        them.** Asked for as _"can we move the season progress up into
+        the row with the avatar."_ The season names itself in the column
+        beside the portrait and its bar runs full width underneath, which
+        is the only place a meter fits: the column next to a 120-pixel
+        figure is about 200 wide at 375.
+
+        A rule here would say these are two readings. They are one — the
+        level is XP over all of it and the season is XP over this chapter
+        — and the traits below still get their rule, because that is
+        genuinely the same quantity split a third way.
       */}
+      <PortraitBand
+        {...(season === undefined ? {} : { season })}
+        {...(action === undefined ? {} : { action })}
+      />
+
       {season !== undefined && (
-        <div className="border-ink-800 mt-4 border-t pt-4">
+        <div className="mt-4">
           <SeasonBand progress={season} />
         </div>
       )}

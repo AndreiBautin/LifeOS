@@ -66,70 +66,54 @@ export function SeasonBand({ progress }: { readonly progress: SeasonProgress }) 
   const busiest = Math.max(1, ...progress.months.map((one) => one.xp))
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {/*
-        The band names itself, because a card holding three readings has
-        to say which is which. It is a heading rather than an uppercase
-        label: a season has a name — "Autumn 2026" — and labelling that
-        SEASON above it would be a caption over a proper noun.
+        **No heading here any more — the season names itself beside the
+        portrait.** Asked for as _"can we move the season progress up
+        into the row with the avatar and clean it up a bit."_ What is
+        left is the reading: a bar against last season, and the months
+        that made it.
       */}
-      <div className="min-w-0">
-        <div>
-          <p className="text-ink-50 font-medium">{progress.label}</p>
-          <p className="text-ink-500 text-xs">
-            {progress.daysLeft === 0
-              ? 'This season is over.'
-              : `${progress.daysLeft.toString()} days left · ${Math.round(progress.elapsed * 100).toString()}% through`}
-          </p>
-        </div>
-      </div>
-
       <div>
         <div className="flex items-baseline justify-between gap-2">
-          <span className="text-ink-300 text-sm">Earned this season</span>
+          <span className="text-ink-500 text-xs">Earned this season</span>
           <span className="numeric text-ink-50 text-sm font-semibold">
-            {progress.xp} XP
+            {progress.xp}
             {target !== undefined && <span className="text-ink-500 font-normal"> / {target}</span>}
           </span>
         </div>
 
         {target === undefined ? (
           <p className="text-ink-500 mt-2 text-xs">
-            Your first season, so there is nothing to beat yet. Next season this bar fills against
-            what you earn now.
+            Your first season, so there is nothing to beat yet.
           </p>
         ) : (
-          <>
-            <Meter
-              className="mt-2"
-              value={progress.xp}
-              of={target}
-              tone={beaten ? 'good' : 'accent'}
-              glow
-              label={`${String(progress.xp)} XP against last season's ${String(target)}`}
-            />
-            <p className="text-ink-500 mt-2 text-xs">
-              {beaten
-                ? 'Past last season already.'
-                : `${(target - progress.xp).toString()} XP to beat last season.`}{' '}
-              The target is what you actually earned last season — not a curve this app made up.
-            </p>
-          </>
+          <Meter
+            className="mt-2"
+            value={progress.xp}
+            of={target}
+            tone={beaten ? 'good' : 'accent'}
+            glow
+            label={`${String(progress.xp)} XP against last season's ${String(target)}`}
+          />
         )}
       </div>
 
+      {/*
+        **The "By month" caption is gone and the bars are not.** Three
+        bars labelled Sep, Oct and Nov under a season are already the
+        sentence the caption was writing — and the paragraph that used to
+        sit above them, explaining that the target is last season's own
+        figure rather than a curve the app made up, went with it. That
+        rule is worth knowing once and is in `domain/game/season.ts`;
+        printing it under the bar every morning is the app narrating
+        itself, which is the thing being moved away from.
+
+        Against the busiest month, which is the caller naming its own
+        scale rather than the component picking one — visible at the call
+        site instead of hidden in a chart.
+      */}
       <div>
-        <span className="text-ink-500 mb-2 block text-xs font-medium tracking-wide uppercase">
-          By month
-        </span>
-        {/*
-            Against the busiest month, which is the caller naming its own
-            scale rather than the component picking one. Three months of a
-            season are being compared with each other and with nothing
-            else, so the tallest of the three is the honest denominator —
-            and it is passed in, so it is visible at the call site rather
-            than hidden in a chart.
-          */}
         <BarSeries
           of={busiest}
           bars={progress.months.map((month) => ({

@@ -7,7 +7,6 @@ import { Badge, Card, Section } from '@/components/shared/primitives'
 import { buttonStyles } from '@/components/shared/styles'
 import { buildCharacter, LEVELS } from '@/domain/game/character'
 import { totalWorkingSets } from '@/domain/logging/workout-log'
-import { toDayKey } from '@/domain/time/day'
 import { useServices, useSettings } from '@/app/context'
 import { ActiveQuests } from '@/features/projects/ActiveQuests'
 import { useActiveQuests } from '@/features/projects/hooks'
@@ -103,7 +102,6 @@ export function HomePage() {
    * hub's XP, read from the sheet. What is taken from the character here
    * is only the strength ladders below.
    */
-  const today = toDayKey(services.clock.now())
 
   /*
    * **The area cards are gone, and the two measured ladders moved up
@@ -183,7 +181,6 @@ export function HomePage() {
         in it draws that quantity twice.
       */}
       <SheetCard
-        today={today}
         {...(season.data === undefined ? {} : { season: season.data })}
         {...(sheet.data === undefined ? {} : { traits: sheet.data.traits })}
         traitLadders={traitLadders}
