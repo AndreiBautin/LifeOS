@@ -8,12 +8,12 @@ import { useAvatar } from './hooks'
 /**
  * The portrait, with the two things it is a portrait *of*.
  *
- * The calling and the gear are shown as words beside the figure rather
- * than drawn onto it, and both carry the evidence for themselves: the
- * calling states its share of your XP, and the gear names the actual
- * upgrades. Somebody who distrusts "Athlete" can see that it means 74%
- * of everything you have earned came from training — which is the
- * difference between a label and a claim.
+ * What you do most of, and what you are carrying. Both are shown as
+ * words beside the figure rather than drawn onto it, and both are
+ * evidence rather than labels: the first is a share of your XP with the
+ * area named, the second names the actual upgrades. There was a word
+ * for the first — "Athlete", "Devotee" — and it is gone; the sentence
+ * that made it checkable is what was worth keeping.
  */
 export function AvatarCard({ xp }: { readonly xp: number }) {
   const avatar = useAvatar()
@@ -33,7 +33,7 @@ export function AvatarCard({ xp }: { readonly xp: number }) {
     )
   }
 
-  const { calling, gear, gearCount, into, needed } = avatar.data
+  const { mainstay, gear, gearCount, into, needed } = avatar.data
 
   return (
     <Card>
@@ -42,21 +42,20 @@ export function AvatarCard({ xp }: { readonly xp: number }) {
 
         <div className="min-w-0 flex-1">
           {/*
-            No name here any more — the header carries it. What stays is
-            the *evidence*, which is the half worth keeping beside the
-            figure: somebody who distrusts "Devotee" can read that it
-            means 83% of everything earned came from dailies, and that is
-            the difference between a label and a claim.
+            The one line that used to sit under a derived title, and now
+            stands on its own. It is a *share* with the area named, so it
+            can be weighed against the XP breakdown rather than taken on
+            trust — which is why it outlived the word above it.
           */}
           <p className="text-ink-300 text-sm">
-            {calling === undefined ? (
-              // Absent, never a default class. Nothing has been done yet,
-              // which is a different statement from being a novice
-              // anything.
+            {mainstay === undefined ? (
+              // Absent, never a nought-per-cent reading. Nothing has been
+              // done yet, which is a different statement from none of it
+              // having been training.
               'Do something and this becomes what you do most of.'
             ) : (
               <>
-                {Math.round(calling.share * 100)}% of your XP is {calling.areaName.toLowerCase()}
+                {Math.round(mainstay.share * 100)}% of your XP is {mainstay.areaName.toLowerCase()}
               </>
             )}
           </p>

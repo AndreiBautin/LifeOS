@@ -14,11 +14,18 @@ import { useAvatar } from './hooks'
  * an ISO date is what a settings pane opens with, on the screen the app
  * opens to.
  *
- * **The label moves up and the evidence stays down.** The header names
- * the calling, and the card below keeps the line that earns it — "83% of
- * your XP is dailies". That split is deliberate: the card's own note
- * says the share is "the difference between a label and a claim", and a
- * claim belongs next to the thing it is about rather than in a heading.
+ * **The heading is the screen's name again, and the claim stays in the
+ * card.** It used to be a derived title — Devotee, Steward, Athlete,
+ * whichever area had paid the most XP — dropped on the report *"I don't
+ * really care too much about the level names."* What is under it is the
+ * half that was a measurement rather than a word: the card still reads
+ * "83% of your XP is dailies", which is what that heading was standing
+ * in for.
+ *
+ * It says **You** because that is what the tab says. A page title is the
+ * largest thing on the screen and every other one in the app names the
+ * screen; this was the only heading that named the reader, and getting
+ * it wrong therefore looked like the app asserting an identity.
  *
  * **No second ring, and no second XP figure.** The portrait is the
  * largest thing on the screen and the ring on it *is* the XP bar, so a
@@ -30,9 +37,6 @@ import { useAvatar } from './hooks'
  * here; with the ring's own badge that is the two copies this screen
  * already accepted when the level lived in a section heading.
  *
- * Unproven is a real state and reads as itself. A calling appears once
- * something has been done, and defaulting to a class before then would
- * be the app inventing an identity.
  */
 export function CharacterHeader({
   today,
@@ -53,11 +57,11 @@ export function CharacterHeader({
     )
   }
 
-  const { calling, level, season } = avatar.data
+  const { level, season } = avatar.data
 
   return (
     <PageHeader
-      title={calling === undefined ? 'Unproven' : calling.title}
+      title="You"
       subtitle={
         <span className="flex flex-wrap items-baseline gap-x-2">
           <span>

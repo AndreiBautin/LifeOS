@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { buildAvatar, callingFrom, gearFrom, AREA_TITLES } from './avatar'
-import { LIFE_AREAS } from './registry'
+import { buildAvatar, mainstayFrom, gearFrom } from './avatar'
 import { asUpgradeId } from '@/domain/ids/ids'
 import type { Upgrade } from '@/domain/upgrades/upgrade'
 
@@ -28,10 +27,10 @@ const upgrade = (over: Partial<Upgrade>): Upgrade => ({
 
 describe('what you are, mostly', () => {
   it('is the area that has paid the most XP', () => {
-    const calling = callingFrom([area('training', 300), area('places', 120)])
+    const mainstay = mainstayFrom([area('training', 300), area('places', 120)])
 
-    expect(calling?.area).toBe('training')
-    expect(calling?.title).toBe(AREA_TITLES.training)
+    expect(mainstay?.area).toBe('training')
+    expect(mainstay?.areaName).toBe('training')
   })
 
   /*
@@ -40,33 +39,40 @@ describe('what you are, mostly', () => {
    * on the squat and Advanced at exploration are anchored to different
    * external standards and are not the same distance from anywhere.
    */
-  it('reports the share, so the label can be weighed', () => {
-    const calling = callingFrom([area('training', 300), area('places', 100)])
+  it('reports the share, which is the whole of what it claims', () => {
+    const mainstay = mainstayFrom([area('training', 300), area('places', 100)])
 
-    expect(calling?.share).toBeCloseTo(0.75, 5)
+    expect(mainstay?.share).toBeCloseTo(0.75, 5)
   })
 
   /*
-   * Absent, never a default. "You have not done anything yet" and "you
-   * are a novice Athlete" are different statements, and only the first
-   * is true of an empty database.
+   * Absent, never a nought. "You have not done anything yet" and "0% of
+   * your XP is training" are different statements, and only the first is
+   * true of an empty database.
    */
-  it('has no calling before anything has been done', () => {
-    expect(callingFrom([])).toBeUndefined()
-    expect(callingFrom([area('training', 0), area('places', 0)])).toBeUndefined()
+  it('has no mainstay before anything has been done', () => {
+    expect(mainstayFrom([])).toBeUndefined()
+    expect(mainstayFrom([area('training', 0), area('places', 0)])).toBeUndefined()
   })
 
   it('breaks a tie by the registry’s order, not the caller’s', () => {
-    const forwards = callingFrom([area('training', 100), area('backlog', 100)])
-    const backwards = callingFrom([area('backlog', 100), area('training', 100)])
+    const forwards = mainstayFrom([area('training', 100), area('backlog', 100)])
+    const backwards = mainstayFrom([area('backlog', 100), area('training', 100)])
 
     expect(forwards?.area).toBe(backwards?.area)
   })
 
-  it('names every area the registry declares', () => {
-    // A new area with no title would read as "Adventurer" forever, which
-    // is the kind of gap that survives because nothing fails.
-    for (const one of LIFE_AREAS) expect(AREA_TITLES[one]).toBeTruthy()
+  /*
+   * **There was a guard here that every area had a flavour title**, so a
+   * new one could not quietly read as "Adventurer" forever. The titles
+   * are gone, and with them the gap it watched: an area's own name is
+   * what the sentence says now, and `registry.test.ts` already requires
+   * every area to have one.
+   */
+  it('names the area in its own words, not a word of its own', () => {
+    const mainstay = mainstayFrom([{ area: 'dailies', name: 'Dailies', xp: 50 }])
+
+    expect(mainstay?.areaName).toBe('Dailies')
   })
 })
 
@@ -159,7 +165,7 @@ describe('the portrait as a whole', () => {
   })
 
   it('is drawable on an empty database', () => {
-    // Level 1, no calling, no gear — and nothing undefined that a
+    // Level 1, no mainstay, no gear — and nothing undefined that a
     // component would have to guard.
     const avatar = buildAvatar({
       standing: { xp: 0, level: 1, into: 0, needed: 100 },
@@ -168,7 +174,7 @@ describe('the portrait as a whole', () => {
       season: 'summer',
     })
 
-    expect(avatar.calling).toBeUndefined()
+    expect(avatar.mainstay).toBeUndefined()
     expect(avatar.gear).toEqual([])
     expect(avatar.progress).toBe(0)
     expect(avatar.season).toBe('summer')

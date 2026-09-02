@@ -776,8 +776,8 @@ of XP.
 `domain/game/avatar.ts`. The temptation in a portrait is to give it a
 number of its own — a power rating, a gear score — and that would be a
 fourth currency where the model has three on purpose. Every field is
-traceable: the level is the XP level, the calling is whichever area has
-paid the most XP, the gear is upgrades actually bought.
+traceable: the level is the XP level, the mainstay is whichever area
+has paid the most XP, the gear is upgrades actually bought.
 
 **The ring is the level bar, not a frame around one.** XP into the
 current level over what the level costs — a real denominator — so the
@@ -786,14 +786,33 @@ that used to sit in the Level card rather than joining it, because
 drawing one quantity twice on one screen is how two figures start
 disagreeing after somebody edits one.
 
-**XP is the only honest basis for a class.** It is the one quantity
-comparable across areas, which is the whole reason it is a single
-currency; ladders cannot answer "what am I mostly", because Advanced on
-the squat and Advanced at exploration are anchored to different external
-standards. The calling always shows its **share**, so a reader who
-distrusts "Devotee" can see it means 100% of earned XP came from
-dailies — the difference between a label and a claim. No calling at all
-before anything has been done.
+**XP is the only honest basis for "what am I mostly", and the answer is
+a share rather than a word.** It is the one quantity comparable across
+areas, which is the whole reason it is a single currency; ladders cannot
+answer it, because Advanced on the squat and Advanced at exploration are
+anchored to different external standards. `mainstayFrom` names the area
+that has paid the most and **what share of everything that is**, and the
+card reads "100% of your XP is dailies". Absent before anything has been
+done — a share of nothing is not nought per cent.
+
+**There were flavour titles over the top of that and they are gone.**
+`AREA_TITLES` gave each area a word — Devotee for dailies, Steward for
+the house, Athlete for training — and the winning area's word was the
+page heading. Asked for directly: _"I don't really care too much about
+the level names like Devotee, could we drop those."_
+
+The half that survived is the half that was a measurement. The card's
+own note had always called the share _"the difference between a label
+and a claim"_, which was an argument for keeping the share and, read
+again, not much of an argument for the label: a word invented here could
+only be taken on trust, where a percentage can be checked against the
+breakdown under it.
+
+It was also **the only derived heading in the app.** Every other page
+title says what the screen is; this one said what you were, which is why
+getting it wrong read as the app asserting an identity rather than as a
+mislabelled tab. The heading is `You` now, which is what the nav cell
+says.
 
 **The wishlist is the other half of an inventory, and it is the gear
 shelf only.** The ask: _"gear/cosmetics to track apparel, shoes and
@@ -832,7 +851,10 @@ honestly.** Gear is user-typed titles, so drawing a belt on a character
 means guessing what an upgrade depicts and guessing wrong on most of
 them. Items are named beside the portrait instead. The whole portrait
 carries one `aria-label` rather than being `aria-hidden` — level,
-calling and season are information, not ornament.
+season and how far through are information, not ornament. It names
+exactly what is drawn: the title was in there too and went with the
+titles, and what replaced it on screen is an ordinary sentence beside
+the figure, which a screen reader reaches without help.
 
 **A silent area still needs a way in, and that is navigation rather
 than a reading.** The rule below is right and it had a hole: the area
@@ -1066,8 +1088,7 @@ ticked — the shape of a `WorkoutLog`, not of a habit. That is
 supplements and pet care to `Daily.group` instead. A group is a label; a
 home decides which screen owns the record _and_ which area pays its XP.
 Mind wants both halves, so it earns the full cost — a registry area, two
-acts, a branch in `tallyActs`, an `AREA_TITLES` entry, a line in the
-"exactly one side" test.
+acts, a branch in `tallyActs`, a line in the "exactly one side" test.
 
 **Its trait is Intellect, joining the backlog there.** Practice is the
 other half of what that bar meant: one is what you have read, the other
@@ -2705,9 +2726,11 @@ that qualified; what was never true is that it was barred from holding
 anything that does. Same fifteen points, and `tallyActs` splits by
 `belongsTo` so no record pays two of them.
 
-That also makes `AREA_TITLES.vitals` reachable, where its comment
-asserted it never could be. Somebody whose XP is mostly upkeep reads as
-an Ascetic.
+That also made `AREA_TITLES.vitals` reachable, where its comment
+asserted it never could be — an area that pays nothing can never be the
+one that has paid the most. The titles have since gone; the trap the
+comment recorded has not, and it is why every "this can never happen"
+in that file is written down rather than assumed.
 
 **Preferences move as pasted text, because a file round trip was the
 slow part.** The report: _"passing files back and forth is a slow
@@ -3435,8 +3458,11 @@ Over against Not yet / Part way / Reached.
 **No new quantity, which is what keeps this honest.** Every state is
 read off a `ChargeReading` already on the screen as a number; this only
 says what that number means at a glance. It is a re-presentation, the
-same footing the avatar's calling sits on, and not a fourth currency —
-a word that can be wrong is worse than a number that is plain.
+same footing `describeClear` sits on, and not a fourth currency — a word
+that can be wrong is worse than a number that is plain, which is why the
+number stays on the row beside the word. The avatar's calling was the
+other example here and is gone, for a related reason: its word had no
+number beside it.
 
 **A target is never Over, however much is logged.** Reporting a fourth
 glass of water as exceeding something would be scolding somebody for
@@ -4415,14 +4441,16 @@ components and values breaks fast refresh and the lint rule says so.
 _"simply rendering 'You' followed by a date underneath feels very
 barebones and non-gamified"_, and it was — a noun over an ISO date is
 what a settings pane opens with, on the screen the app opens to.
-`CharacterHeader` names the calling and reads `Level 5 · Summer ·
-2026-08-31`.
+`CharacterHeader` reads `Level 5 · Summer · 2026-08-31` under the
+title.
 
-**The label moved up and the evidence stayed down.** The card below
-keeps "83% of your XP is dailies" without repeating "Devotee" above it.
-That split is the card's own rule applied: the share is _"the difference
-between a label and a claim"_, and a claim belongs beside the thing it
-describes rather than in a heading.
+**The title was the calling and is `You` again**, for the reasons above.
+What that paragraph reversed is worth stating plainly, because the
+report it answered is still true: a noun over an ISO date is what a
+settings pane opens with. The heading was never what fixed that — the
+portrait, the ring, the season bar and the traits were, and all four are
+still there. The card below keeps "83% of your XP is dailies", which is
+the evidence the heading used to be a label for.
 
 **Nothing is drawn twice, and one commit got that wrong.** The
 `Section title="Level N"` wrapper is gone, because the header names the

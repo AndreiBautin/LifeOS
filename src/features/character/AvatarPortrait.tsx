@@ -64,13 +64,16 @@ export function AvatarPortrait({
           /*
            * The whole portrait in one label rather than a decorative
            * `aria-hidden`. Everything it shows is information — level,
-           * calling, season — and a screen reader losing all three
-           * because the figure is "just an icon" would be the visual
-           * version of a number nobody can reach.
+           * season, how far through — and a screen reader losing all
+           * three because the figure is "just an icon" would be the
+           * visual version of a number nobody can reach.
+           *
+           * It names exactly what is drawn. A derived title used to sit
+           * in here too and went with the titles; what replaced it on
+           * screen is an ordinary sentence beside the figure, which a
+           * screen reader already reaches without help.
            */
-          `Level ${String(avatar.level)}${
-            avatar.calling === undefined ? '' : `, ${avatar.calling.title}`
-          }, ${SEASON_LABELS[avatar.season]}, ${String(Math.round(avatar.progress * 100))}% through the level`
+          `Level ${String(avatar.level)}, ${SEASON_LABELS[avatar.season]}, ${String(Math.round(avatar.progress * 100))}% through the level`
         }
       >
         <defs>

@@ -569,9 +569,10 @@ export function rollingHours(vice: Vice): number {
  * which, in the vocabulary each direction actually deserves.
  *
  * **No new quantity.** Every state is read off a `ChargeReading` that
- * already exists — this is a re-presentation, the same footing the
- * avatar's calling sits on, and not a fourth currency. A word that could
- * be wrong is worse than a number that is plain.
+ * already exists — this is a re-presentation, the same footing
+ * `describeClear` sits on, and not a fourth currency. A word that could
+ * be wrong is worse than a number that is plain, which is why the number
+ * stays on the row beside the word.
  */
 export type PoolStanding =
   /** Limit: nothing spent yet. */

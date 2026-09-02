@@ -18,61 +18,33 @@ import type { XpStanding } from './xp'
  * therefore move, which is what `docs/GAME_MODEL.md` refuses everywhere.
  *
  * So every field below is a re-presentation. The level is the XP level.
- * The ring is how far into that level you are. The calling is whichever
+ * The ring is how far into that level you are. The mainstay is whichever
  * area has paid the most XP. The gear is upgrades you actually bought.
  * The avatar is a *way of looking at* the character sheet, not a second
  * one.
  */
 
 /**
- * What each area calls someone who spends their time there.
+ * **There were flavour titles here and they are gone.**
  *
- * Flavour, and flavour is allowed — this is a label on a derivation, not
- * a number entering one. The constraint it does have to meet is that it
- * must never be the *only* place something is said: a reader who
- * distrusts "Wayfarer" can look at the XP breakdown underneath and see
- * exactly which acts produced it.
+ * Each area named somebody who spent their time there — Devotee for
+ * dailies, Steward for the house, Athlete for training — and whichever
+ * area had paid the most XP put its word at the top of the screen as the
+ * page heading.
+ *
+ * Asked for directly: *"I don't really care too much about the level
+ * names like Devotee, could we drop those."* What is kept is the half
+ * that was never the label: **which area has paid the most, and what
+ * share of everything that is.** A share is a measurement and can be
+ * checked against the breakdown beneath it; a word invented here could
+ * only be taken on trust. The card's own note already called the share
+ * "the difference between a label and a claim" — what is left is the
+ * claim.
+ *
+ * It was also the one heading in the app that was *derived* rather than
+ * read. Every other one says what the screen is; this one said what you
+ * were.
  */
-export const AREA_TITLES: Record<LifeArea, string> = {
-  training: 'Athlete',
-  backlog: 'Scholar',
-  projects: 'Builder',
-  upgrades: 'Artificer',
-  social: 'Companion',
-  places: 'Wayfarer',
-  dailies: 'Devotee',
-  jobs: 'Journeyman',
-  base: 'Steward',
-  /*
-   * **Unreachable today, and written down anyway.**
-   *
-   * Finance declares no acts — a net worth is measured, not done — so it
-   * pays no XP and can never be the area that has paid the most. The
-   * calling below cannot currently be shown to anybody.
-   *
-   * It is here because `avatar.test.ts` requires a title for every
-   * declared area, and that guard is right: an area without one reads as
-   * "Adventurer" forever, which is a gap that survives precisely because
-   * nothing fails. The Vitals entry a few lines down was written under
-   * the same "can never happen" and stopped being true the day upkeep
-   * arrived.
-   */
-  finance: 'Provider',
-  /* Somebody whose XP is mostly practice -- problems worked, patterns
-     studied. "Adept" over "Scholar", which the backlog already has: one
-     is what you have read and the other is what you can do. */
-  mind: 'Adept',
-  /*
-   * Reachable now, and it was not when this was written.
-   *
-   * The note here said Vitals pays no XP so this could never be the
-   * calling — true of an area holding only charges and a scale, and
-   * false the moment it held upkeep. Brushing your teeth is an act and
-   * pays like one, so somebody whose XP is mostly upkeep reads as an
-   * Ascetic, which is the right word for it.
-   */
-  vitals: 'Ascetic',
-}
 
 /** One area's XP, as much of `AreaStanding` as this needs. */
 export interface AreaXp {
@@ -81,11 +53,10 @@ export interface AreaXp {
   readonly xp: number
 }
 
-export interface Calling {
+export interface Mainstay {
   readonly area: string
-  /** The area's own name, so the label can be checked against it. */
+  /** The area's own name, which is what the sentence says out loud. */
   readonly areaName: string
-  readonly title: string
   readonly xp: number
   /** This area's share of all XP earned, 0–1. */
   readonly share: number
@@ -108,12 +79,12 @@ export interface Avatar {
   /**
    * Absent until something has actually been done.
    *
-   * Absent rather than a default class, for the reason every reading in
-   * this app is absent rather than zero: "you have not done anything
-   * yet" is a different statement from "you are a novice Athlete", and
-   * only one of them is true on an empty database.
+   * Absent rather than a nought-per-cent reading, for the reason every
+   * reading in this app is absent rather than zero: "you have not done
+   * anything yet" is a different statement from "0% of your XP is
+   * training", and only one of them is true on an empty database.
    */
-  readonly calling?: Calling
+  readonly mainstay?: Mainstay
   readonly gear: readonly GearSlot[]
   /** Owned upgrades that are yours rather than the house's. */
   readonly gearCount: number
@@ -133,7 +104,7 @@ export interface Avatar {
  * happened to list first, so the answer does not depend on an array's
  * order somewhere else.
  */
-export function callingFrom(areas: readonly AreaXp[]): Calling | undefined {
+export function mainstayFrom(areas: readonly AreaXp[]): Mainstay | undefined {
   const total = areas.reduce((sum, area) => sum + area.xp, 0)
   if (total <= 0) return undefined
 
@@ -151,11 +122,6 @@ export function callingFrom(areas: readonly AreaXp[]): Calling | undefined {
   return {
     area: best.area,
     areaName: best.name,
-    // Read through a partial view rather than an assertion, the way
-    // `slotRoleLabel` does: casting a plain string to `LifeArea` would
-    // tell the compiler the fallback is dead when it is exactly what
-    // catches an area this build has not heard of.
-    title: (AREA_TITLES as Partial<Record<string, string>>)[best.area] ?? 'Adventurer',
     xp: best.xp,
     share: best.xp / total,
   }
@@ -231,7 +197,7 @@ export function buildAvatar(input: {
   readonly upgrades: readonly Upgrade[]
   readonly season: Season
 }): Avatar {
-  const calling = callingFrom(input.areas)
+  const mainstay = mainstayFrom(input.areas)
   const gear = gearFrom(input.upgrades)
 
   return {
@@ -246,7 +212,7 @@ export function buildAvatar(input: {
      */
     progress: input.standing.needed > 0 ? input.standing.into / input.standing.needed : 1,
     season: input.season,
-    ...(calling === undefined ? {} : { calling }),
+    ...(mainstay === undefined ? {} : { mainstay }),
     gear,
     gearCount: gear.reduce((sum, slot) => sum + slot.items.length, 0),
   }
