@@ -1,7 +1,12 @@
 import { Plus } from 'lucide-react'
 import { useState } from 'react'
 
+import { Link } from 'react-router-dom'
+
 import { AreaLadders } from '@/features/character/CharacterParts'
+import { useSpendingPool, useWholeTree } from '@/features/upgrades/hooks'
+import { isOpen } from '@/domain/upgrades/upgrade'
+import { wishlistTotal } from '@/domain/upgrades/wishlist'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { Button, Card, Empty, Section } from '@/components/shared/primitives'
 import { CREDIT_RANGE, toMonthKey, type FinanceReading } from '@/domain/finance/reading'
@@ -9,6 +14,8 @@ import { formatMinorUnits, toMinorUnits } from '@/domain/upgrades/upgrade'
 
 import { useServices, useSettings } from '@/app/context'
 import { ageFromBirthYear, retirementMultipleFor } from '@/domain/finance/standards'
+
+import type { NewFinanceReading } from '@/application/use-cases/finance/finance'
 
 import { useFinance, useRecordFinance } from './hooks'
 
@@ -59,13 +66,124 @@ const FIELD =
  * are four numbers nobody can tell apart, and that is the shape the bug
  * hid in.
  */
+/**
+ * The pool, and everything it is being saved towards.
+ *
+ * Asked for as *"add all the other upgrades on that page"* — so the
+ * money screen carries what there is to spend and what it is for, across
+ * every branch, and the tech tree keeps the picture and the gates.
+ *
+ * **It is a readout, not a second editor.** Nothing here changes an
+ * upgrade: the pool is derived from records, and the way to move it is
+ * to record a surplus above or mark something bought on the tree. A
+ * control here would be a second place for the gate rules to be got
+ * wrong, which is the reason Base's rows are read-only too.
+ *
+ * Capped, because a wishlist that scrolls is a list on a screen that is
+ * scanned — the overflow is counted rather than dropped, the rule the
+ * character sheet's own wanted list follows.
+ */
+const WANTED_SHOWN = 6
+
+function PoolSection() {
+  const pool = useSpendingPool()
+  const data = pool.data
+  /*
+   * Ranked against the pool rather than zero, so this list and the tree
+   * agree about what is reachable. Only the records are read here — the
+   * gates are the tree's job — but passing a different figure would be a
+   * second answer to the same question.
+   */
+  const tree = useWholeTree(data?.availableMinor ?? 0)
+  const open = (tree.data ?? []).map((entry) => entry.upgrade).filter(isOpen)
+  const total = wishlistTotal(open)
+
+  if (data === undefined) return null
+
+  const over = data.availableMinor < 0
+  const shown = [...open].sort((a, b) => b.priority - a.priority).slice(0, WANTED_SHOWN)
+
+  return (
+    <Section title="The pool" description="Surplus banked, and what it is going towards">
+      <Card>
+        <div className="flex items-baseline justify-between gap-3">
+          <span className="text-ink-500 text-sm">To spend</span>
+          <span className={`numeric font-semibold ${over ? 'text-bad-500' : 'text-ink-50'}`}>
+            {formatMinorUnits(data.availableMinor)}
+          </span>
+        </div>
+
+        <p className="text-ink-700 mt-1 text-xs">
+          {data.monthsBanked === 0
+            ? 'Nothing banked yet — record a surplus below and it lands here.'
+            : `${formatMinorUnits(data.bankedMinor)} banked over ${String(data.monthsBanked)} ${
+                data.monthsBanked === 1 ? 'month' : 'months'
+              } · ${formatMinorUnits(data.spentMinor)} spent`}
+          {data.unpricedPurchases > 0 &&
+            ` · ${String(data.unpricedPurchases)} bought with no cost recorded, so this reads high`}
+        </p>
+
+        {shown.length > 0 && (
+          <div className="border-ink-800 mt-3 space-y-2 border-t pt-3">
+            <p className="text-ink-500 text-xs">Saving for</p>
+
+            {shown.map((upgrade) => (
+              <div key={upgrade.id} className="flex items-baseline justify-between gap-3">
+                <span className="text-ink-300 truncate text-sm">{upgrade.title}</span>
+                <span className="numeric text-ink-500 shrink-0 text-xs">
+                  {upgrade.estimatedCostMinorUnits === undefined
+                    ? '—'
+                    : formatMinorUnits(upgrade.estimatedCostMinorUnits)}
+                </span>
+              </div>
+            ))}
+
+            <p className="text-ink-700 pt-1 text-xs">
+              {formatMinorUnits(total.minorUnits)} across {total.priced}{' '}
+              {total.priced === 1 ? 'item' : 'items'}
+              {total.unpriced > 0 && ` · ${String(total.unpriced)} unpriced, so this is a floor`}
+              {open.length > WANTED_SHOWN && ` · ${String(open.length - WANTED_SHOWN)} more`}
+              {' · '}
+              <Link to="/upgrades" className="text-accent-400 underline">
+                the tree
+              </Link>
+            </p>
+          </div>
+        )}
+      </Card>
+    </Section>
+  )
+}
+
+/**
+ * How each figure is drawn in the history, as a mapped type over the
+ * input.
+ *
+ * **A field added to `FinanceReading` fails the build here until it is
+ * listed**, which is the `FIGURES` mechanism the use case already uses
+ * — and this is the second time that has been needed. The row was a
+ * hand-written array, so adding the surplus left two months of real
+ * readings displaying "Nothing recorded" while the figure sat in the
+ * database. That is the same defect this file's history already records
+ * as *"a month's row draws every figure it holds, and drew two of
+ * four"*, arriving again by exactly the route it did the first time.
+ *
+ * The recording path's own walking test passed throughout, because the
+ * surplus was stored correctly. What drifted was the display, which had
+ * its own copy of the list.
+ */
+const SHOWN: Readonly<Record<keyof NewFinanceReading, { label: string; money: boolean }>> = {
+  netWorthMinor: { label: 'Worth', money: true },
+  retirementMinor: { label: 'Retirement', money: true },
+  salaryMinor: { label: 'Salary', money: true },
+  surplusMinor: { label: 'Surplus', money: true },
+  creditScore: { label: 'Credit', money: false },
+}
+
 function Row({ reading }: { readonly reading: FinanceReading }) {
-  const figures = [
-    { label: 'Worth', value: reading.netWorthMinor, money: true },
-    { label: 'Retirement', value: reading.retirementMinor, money: true },
-    { label: 'Salary', value: reading.salaryMinor, money: true },
-    { label: 'Credit', value: reading.creditScore, money: false },
-  ].filter((one) => one.value !== undefined)
+  const figures = (Object.keys(SHOWN) as (keyof NewFinanceReading)[])
+    .map((key) => ({ ...SHOWN[key], value: reading[key] }))
+    .filter((one) => one.value !== undefined)
 
   return (
     <li className="border-ink-800 border-b py-2 last:border-b-0">
@@ -183,6 +301,7 @@ export function FinancePage() {
   const [retirement, setRetirement] = useState('')
   const [salary, setSalary] = useState('')
   const [credit, setCredit] = useState('')
+  const [surplus, setSurplus] = useState('')
   const [openedOn, setOpenedOn] = useState<string | undefined>(undefined)
 
   if (readings.data !== undefined && openedOn !== month) {
@@ -195,6 +314,9 @@ export function FinancePage() {
     )
     setSalary(thisMonth?.salaryMinor === undefined ? '' : formatMinorUnits(thisMonth.salaryMinor))
     setCredit(thisMonth?.creditScore === undefined ? '' : String(thisMonth.creditScore))
+    setSurplus(
+      thisMonth?.surplusMinor === undefined ? '' : formatMinorUnits(thisMonth.surplusMinor),
+    )
   }
 
   const score = Number(credit)
@@ -204,7 +326,7 @@ export function FinancePage() {
 
   return (
     <div>
-      <PageHeader title="Finance" subtitle="Four numbers, once a month" />
+      <PageHeader title="Finance" subtitle="Five numbers, once a month" />
 
       {/*
         **The money ladders, on the money screen.** They were under the
@@ -223,6 +345,15 @@ export function FinancePage() {
           <AreaLadders area="finance" />
         </Card>
       </Section>
+
+      {/*
+        **The pool and what it is for, on the money screen.** Asked for
+        as *"at the end of the month, whatever surplus I have leftover
+        will be added to the pool to spend of that, and this will help me
+        decide what to get next"* — so the deciding half is here beside
+        the banking half, and the tech tree keeps the browsing.
+      */}
+      <PoolSection />
 
       <Section
         title={`This month · ${month}`}
@@ -246,12 +377,14 @@ export function FinancePage() {
               const worth = toMinorUnits(netWorth)
               const saved = toMinorUnits(retirement)
               const earned = toMinorUnits(salary)
+              const spare = toMinorUnits(surplus)
 
               const input = {
                 ...(worth === undefined ? {} : { netWorthMinor: worth }),
                 ...(saved === undefined ? {} : { retirementMinor: saved }),
                 ...(earned === undefined ? {} : { salaryMinor: earned }),
                 ...(credit.trim() === '' ? {} : { creditScore: Math.round(score) }),
+                ...(spare === undefined ? {} : { surplusMinor: spare }),
               }
 
               if (Object.keys(input).length === 0) return
@@ -303,6 +436,26 @@ export function FinancePage() {
                 value={salary}
                 onChange={(event) => {
                   setSalary(event.target.value)
+                }}
+              />
+            </label>
+
+            {/*
+              **The one figure here that is spent rather than read.** It
+              banks into the pool the tech tree buys from, which is why
+              the hint says where it goes — a box whose effect is on
+              another screen has to say so.
+            */}
+            <label className="block space-y-1">
+              <span className="text-ink-500 text-xs">Surplus left over</span>
+              <input
+                className={FIELD}
+                inputMode="decimal"
+                aria-label="Surplus left over"
+                placeholder="What was spare at the end of the month"
+                value={surplus}
+                onChange={(event) => {
+                  setSurplus(event.target.value)
                 }}
               />
             </label>

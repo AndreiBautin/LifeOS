@@ -33,9 +33,26 @@ import type { RecordHome } from '@/domain/base/base'
 
 export { UPGRADE_SHELVES, type UpgradeShelf }
 
+/**
+ * **The `tech` shelf is called Gadgets, and the screen is the Tech
+ * tree.** Asked for as _"instead of the tech tree being one thing, I
+ * want that to be renamed to gadgets and just have the tech tree be an
+ * actual tree with the different list we've made as literally branches
+ * of that tree."_
+ *
+ * One word was doing two jobs: the screen was called Tech tree and so
+ * was one of the two shelves on it, so "the tech tree" meant either the
+ * whole thing or half of it depending on where you were standing. The
+ * screen keeps the name — it is the tree — and the branch takes a name
+ * that describes what is on it.
+ *
+ * `base` stays **Base** rather than becoming Home, because that is what
+ * its own tab says and a branch reading Home beside a tab reading Base
+ * is the same collision one level down.
+ */
 export const UPGRADE_SHELF_LABELS: Readonly<Record<UpgradeShelf, string>> = {
   base: 'Base',
-  tech: 'Tech tree',
+  tech: 'Gadgets',
 }
 
 export const UPGRADE_SHELF_BLURBS: Readonly<Record<UpgradeShelf, string>> = {

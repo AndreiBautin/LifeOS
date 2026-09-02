@@ -41,6 +41,7 @@ const FIGURES: Readonly<Record<keyof NewFinanceReading, true>> = {
   retirementMinor: true,
   salaryMinor: true,
   creditScore: true,
+  surplusMinor: true,
 }
 
 /**

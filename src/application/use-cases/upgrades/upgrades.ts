@@ -1,7 +1,8 @@
 import { keepFor, type HomeFilter, type RecordHome } from '@/domain/base/base'
 import { homeForShelf, shelfOf, type UpgradeShelf } from '@/domain/upgrades/shelf'
 import { asUpgradeId, type IdGenerator, type UpgradeId } from '@/domain/ids/ids'
-import type { Clock, UpgradeRepository } from '@/domain/repositories/ports'
+import type { Clock, FinanceRepository, UpgradeRepository } from '@/domain/repositories/ports'
+import { spendingPool, type SpendingPool } from '@/domain/upgrades/pool'
 import {
   dependentsOf,
   rankTree,
@@ -33,6 +34,12 @@ export interface UpgradeDeps {
   readonly upgrades: UpgradeRepository
   readonly clock: Clock
   readonly ids: IdGenerator
+}
+
+/** The pool spans two areas, so it takes both repositories and no clock. */
+export interface PoolDeps {
+  readonly upgrades: UpgradeRepository
+  readonly finance: FinanceRepository
 }
 
 export interface NewUpgrade {
@@ -261,6 +268,27 @@ export async function upgradeTree(
  * and the entries are narrowed afterwards, or a cross-shelf parent
  * would read as missing.
  */
+/**
+ * The whole tree, every shelf at once, ranked together.
+ *
+ * **This is what the tech tree screen draws now**, where it used to draw
+ * one shelf at a time behind a toggle: the shelves are branches of one
+ * picture, so narrowing to a shelf would leave a branch with nothing on
+ * it and a cross-branch prerequisite pointing off the canvas.
+ *
+ * Ranked over the whole set rather than per shelf, which is the one
+ * thing `shelfTree` deliberately does differently — its note explains
+ * why a graphics card should not disturb the order of the boots. Here
+ * there is one order because there is one tree, and the layout puts each
+ * node under its own branch regardless of where it ranks.
+ */
+export async function wholeTree(
+  availableMinorUnits: number,
+  deps: UpgradeDeps,
+): Promise<readonly TreeEntry[]> {
+  return rankTree(await deps.upgrades.all(), availableMinorUnits)
+}
+
 export async function shelfTree(
   shelf: UpgradeShelf,
   availableMinorUnits: number,
@@ -342,4 +370,18 @@ export async function listUpgrades(
   home: HomeFilter,
 ): Promise<readonly Upgrade[]> {
   return keepFor(await deps.upgrades.all(), home)
+}
+
+/**
+ * What there is to spend, read from the records that already exist.
+ *
+ * The pool is derived — every surplus ever recorded, minus what the
+ * purchased upgrades cost — so this loads both sides and hands them to
+ * `spendingPool`. Nothing stores a balance; see `domain/upgrades/pool.ts`
+ * for why a running total was the obvious build and the wrong one.
+ */
+export async function readSpendingPool(deps: PoolDeps): Promise<SpendingPool> {
+  const [readings, upgrades] = await Promise.all([deps.finance.all(), deps.upgrades.all()])
+
+  return spendingPool(readings, upgrades)
 }

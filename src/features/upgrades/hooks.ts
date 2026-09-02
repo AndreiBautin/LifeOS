@@ -1,7 +1,6 @@
 import type { HomeFilter } from '@/domain/base/base'
 import type { UpgradeShelf } from '@/domain/upgrades/shelf'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useState } from 'react'
 
 import { useServices } from '@/app/context'
 import {
@@ -11,14 +10,12 @@ import {
   deleteUpgrade,
   updateUpgrade,
   upgradeTree,
+  wholeTree,
+  readSpendingPool,
   type NewUpgrade,
   type UpgradeChanges,
   type UpgradeResult,
 } from '@/application/use-cases/upgrades/upgrades'
-import {
-  readUpgradeBudget,
-  writeUpgradeBudget,
-} from '@/infrastructure/storage/upgrade-budget-store'
 import type { UpgradeId } from '@/domain/ids/ids'
 import { logger } from '@/shared/logging/logger'
 
@@ -46,6 +43,38 @@ export function useShelfTree(shelf: UpgradeShelf, availableMinorUnits: number) {
   return useQuery({
     queryKey: [...UPGRADES, 'shelf', shelf, availableMinorUnits],
     queryFn: () => shelfTree(shelf, availableMinorUnits, services),
+  })
+}
+
+/**
+ * The whole tree and the pool it is measured against.
+ *
+ * One hook because the two are read together and the tree's
+ * affordability depends on the pool — asking for them separately would
+ * render a tree ranked against a stale zero for a frame, which reads as
+ * everything being unaffordable and then flickering.
+ *
+ * **Recording a surplus has to invalidate this**, and it did not at
+ * first: `useRecordFinance` cleared `finance` and `character` and left
+ * `upgrades` alone, so banking a month's surplus would leave the tree
+ * showing the old gates until something else happened to reload it. The
+ * pool spans two areas, so the mutation on either side has to say so.
+ */
+export function useSpendingPool() {
+  const services = useServices()
+
+  return useQuery({
+    queryKey: [...UPGRADES, 'pool'],
+    queryFn: () => readSpendingPool(services),
+  })
+}
+
+export function useWholeTree(availableMinorUnits: number) {
+  const services = useServices()
+
+  return useQuery({
+    queryKey: [...UPGRADES, 'whole', availableMinorUnits],
+    queryFn: () => wholeTree(availableMinorUnits, services),
   })
 }
 
@@ -108,17 +137,4 @@ export function useDeleteUpgrade() {
     'upgrades.delete',
     (id, services) => deleteUpgrade(id, services),
   )
-}
-
-/** What you have to spend right now — device-local, never synced. */
-export function useBudget(): readonly [number, (minorUnits: number) => void] {
-  const [budget, setBudget] = useState(readUpgradeBudget)
-
-  return [
-    budget,
-    (minorUnits: number) => {
-      setBudget(minorUnits)
-      writeUpgradeBudget(minorUnits)
-    },
-  ]
 }

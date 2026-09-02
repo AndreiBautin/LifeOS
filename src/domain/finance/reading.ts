@@ -51,6 +51,29 @@ export interface FinanceReading {
   readonly salaryMinor?: number
   /** 300–850. Absent when it was not checked that month. */
   readonly creditScore?: number
+  /**
+   * What was left over at the end of the month, integer minor units.
+   *
+   * **This is the one figure here that is spent rather than only read.**
+   * The other four are measurements — where you stand against a
+   * published table — and this one accumulates into the pool the tech
+   * tree buys from: *"at the end of the month, whatever surplus I have
+   * leftover will be added to the pool to spend of that, and this will
+   * help me decide what to get next."*
+   *
+   * **Typed, not derived from the net worth series**, which is the
+   * tempting shortcut and is wrong. Net worth moves for reasons that are
+   * not surplus — a market swing, a valuation, a debt revalued — so a
+   * month where investments rose would hand you money you never had to
+   * spend. What is banked is what you decided was spare.
+   *
+   * Signed, because a month can genuinely go backwards, and a pool that
+   * silently floored an overspend at zero would forget it by the next
+   * month. Absent means the month was not tallied, which is not the same
+   * as a surplus of nothing — the absent-never-zero rule the rest of
+   * this file follows.
+   */
+  readonly surplusMinor?: number
   readonly updatedAt?: string
 }
 

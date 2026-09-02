@@ -1,11 +1,11 @@
 import { Check, Lock, Plus, Trash2, Wallet } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 
 import { Badge, Button, Card, Empty, Section } from '@/components/shared/primitives'
 import { wishlistTotal } from '@/domain/upgrades/wishlist'
 import {
-  UPGRADE_SHELF_BLURBS,
   UPGRADE_SHELF_LABELS,
   UPGRADE_SHELVES,
   shelfOf,
@@ -26,12 +26,13 @@ import {
 
 import {
   useAddUpgrade,
-  useBudget,
   useDeleteUpgrade,
   useMoveUpgradeToShelf,
-  useShelfTree,
+  useSpendingPool,
   useUpdateUpgrade,
+  useWholeTree,
 } from './hooks'
+import { TechTree } from './TechTree'
 
 /**
  * The tech tree.
@@ -143,7 +144,10 @@ function EntryCard({
   const error = update.data?.error ?? remove.data?.error
 
   return (
-    <Card className={affordable ? 'border-accent-500/30 py-3' : 'py-3'}>
+    <Card
+      id={`upgrade-${upgrade.id}`}
+      className={affordable ? 'border-accent-500/30 py-3' : 'py-3'}
+    >
       <div className="flex items-start gap-3">
         <div className="min-w-0 flex-1">
           <p
@@ -253,14 +257,24 @@ function EntryCard({
 
 function AddUpgrade({
   candidates,
-  shelf,
+  defaultShelf,
 }: {
   readonly candidates: readonly TreeEntry[]
-  readonly shelf: UpgradeShelf
+  /**
+   * Which branch a new upgrade lands on unless it is changed.
+   *
+   * **Chosen on the form rather than fixed by the screen**, which it was
+   * when there was a screen per shelf: with one tree showing every
+   * branch there is no longer a screen to infer it from, and adding a
+   * desk from the tree only to move it afterwards is the round trip Base
+   * was given its own add form to avoid.
+   */
+  readonly defaultShelf: UpgradeShelf
 }) {
   const add = useAddUpgrade()
 
   const [title, setTitle] = useState('')
+  const [shelf, setShelf] = useState<UpgradeShelf>(defaultShelf)
   const [category, setCategory] = useState<UpgradeCategory>('other')
   const [priority, setPriority] = useState('50')
   const [cost, setCost] = useState('')
@@ -307,6 +321,23 @@ function AddUpgrade({
         />
 
         <div className="grid grid-cols-2 gap-3">
+          <label className="block">
+            <span className={LABEL}>Branch</span>
+            <select
+              className={FIELD}
+              value={shelf}
+              onChange={(event) => {
+                setShelf(event.target.value as UpgradeShelf)
+              }}
+            >
+              {UPGRADE_SHELVES.map((one) => (
+                <option key={one} value={one}>
+                  {UPGRADE_SHELF_LABELS[one]}
+                </option>
+              ))}
+            </select>
+          </label>
+
           <label className="block">
             <span className={LABEL}>Category</span>
             <select
@@ -391,11 +422,72 @@ function AddUpgrade({
  * a second copy of this file is where a gate bug would outlive its fix.
  * What differs is the heading and which shelf is read.
  */
-function ShelfPage({ shelf }: { readonly shelf: UpgradeShelf }) {
-  const [budget, setBudget] = useBudget()
-  const [budgetText, setBudgetText] = useState(() => (budget === 0 ? '' : formatMinorUnits(budget)))
+/**
+ * What there is to spend, and where it came from.
+ *
+ * **Read-only here on purpose.** The pool is derived from the monthly
+ * surpluses, so the way to change it is to record a surplus — and that
+ * belongs on the screen that already collects the month's figures. A
+ * second box here would be a second answer to "how much have I got",
+ * which is exactly what the device-local budget was.
+ *
+ * It shows the arithmetic rather than only the answer: banked, spent,
+ * and what that leaves. A single number nobody can trace is the thing
+ * the old budget box was.
+ */
+function PoolCard() {
+  const pool = useSpendingPool()
+  const data = pool.data
 
-  const tree = useShelfTree(shelf, budget)
+  if (data === undefined) return null
+
+  const over = data.availableMinor < 0
+
+  return (
+    <Card className="mb-3">
+      <div className="flex items-baseline justify-between gap-3">
+        <span className="text-ink-500 text-sm">The pool</span>
+        <span className={`numeric text-sm font-semibold ${over ? 'text-bad-500' : 'text-ink-50'}`}>
+          {formatMinorUnits(data.availableMinor)}
+        </span>
+      </div>
+
+      <p className="text-ink-700 mt-1 text-xs">
+        {data.monthsBanked === 0 ? (
+          <>
+            Nothing banked yet. Record a month&rsquo;s surplus on{' '}
+            <Link to="/finance" className="text-accent-400 underline">
+              Finance
+            </Link>{' '}
+            and it lands here.
+          </>
+        ) : (
+          <>
+            {formatMinorUnits(data.bankedMinor)} banked over {data.monthsBanked}{' '}
+            {data.monthsBanked === 1 ? 'month' : 'months'} · {formatMinorUnits(data.spentMinor)}{' '}
+            spent
+            {data.unpricedPurchases > 0 &&
+              ` · ${String(data.unpricedPurchases)} bought with no cost recorded, so this reads high`}
+            {over && ' · you are over'}
+          </>
+        )}
+      </p>
+    </Card>
+  )
+}
+
+function ShelfPage() {
+  /*
+   * **The pool replaced the budget box**, which was a number typed into
+   * `localStorage` on one device. What is affordable now comes from the
+   * surpluses recorded on the finance readings minus what the purchased
+   * upgrades cost — derived, synced, and inspectable. See
+   * `domain/upgrades/pool.ts`.
+   */
+  const pool = useSpendingPool()
+  const available = pool.data?.availableMinor ?? 0
+
+  const tree = useWholeTree(available)
   const entries = tree.data ?? []
 
   /*
@@ -416,36 +508,41 @@ function ShelfPage({ shelf }: { readonly shelf: UpgradeShelf }) {
    * says how many rows carry no price, because a shortfall that folded
    * those in as free is understated in the direction that matters.
    */
-  const shortfall = Math.max(0, total.minorUnits - budget)
+  const shortfall = Math.max(0, total.minorUnits - available)
 
   return (
     <>
-      <PageHeader title={UPGRADE_SHELF_LABELS[shelf]} subtitle={UPGRADE_SHELF_BLURBS[shelf]} />
+      <PageHeader title="Tech tree" subtitle="What you are saving for, and what unlocks what" />
+
+      {/*
+        **The tree itself leads, because it is the thing that was asked
+        for.** The lists below it are how a node is edited; the picture
+        is how it is understood.
+      */}
+      <Section title="The tree" description="Every branch, and what each node needs first">
+        {entries.length === 0 ? (
+          <Empty title="Nothing planned">Add the first thing you are saving up for.</Empty>
+        ) : (
+          <TechTree
+            entries={entries}
+            onPick={(id) => {
+              document
+                .getElementById(`upgrade-${id}`)
+                ?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+            }}
+          />
+        )}
+      </Section>
 
       <Section
         title="What you can get today"
         description={
           availableNow.length === 0
-            ? 'Nothing is within reach at this budget.'
+            ? 'Nothing is within reach at this pool.'
             : `${availableNow.length.toString()} within reach.`
         }
       >
-        <Card className="mb-3">
-          <label className="block">
-            <span className={LABEL}>Budget</span>
-            <input
-              className={FIELD}
-              inputMode="decimal"
-              value={budgetText}
-              placeholder="0.00"
-              aria-label="What you have to spend"
-              onChange={(event) => {
-                setBudgetText(event.target.value)
-                setBudget(toMinorUnits(event.target.value) ?? 0)
-              }}
-            />
-          </label>
-        </Card>
+        <PoolCard />
 
         {availableNow.length > 0 && (
           <div className="space-y-2">
@@ -460,8 +557,15 @@ function ShelfPage({ shelf }: { readonly shelf: UpgradeShelf }) {
         )}
       </Section>
 
+      {/*
+        The same nodes as the diagram, as rows that can be edited — the
+        picture is how the tree is read and this is how it is changed.
+        It is not called "The tree" any more, because the diagram above
+        is, and one screen calling two things the same name is the
+        collision the Gadgets rename was made to fix.
+      */}
       <Section
-        title="The tree"
+        title="Every node"
         description="Ordered by the priority each node inherits from the most important thing it unblocks."
       >
         {total.priced > 0 && (
@@ -476,12 +580,12 @@ function ShelfPage({ shelf }: { readonly shelf: UpgradeShelf }) {
               Across {total.priced} priced {total.priced === 1 ? 'item' : 'items'}
               {total.unpriced > 0 &&
                 ` · ${String(total.unpriced)} with no estimate, so this is a floor rather than a total`}
-              {shortfall > 0 && ` · ${formatMinorUnits(shortfall)} beyond your budget`}
+              {shortfall > 0 && ` · ${formatMinorUnits(shortfall)} beyond the pool`}
             </p>
           </Card>
         )}
 
-        <AddUpgrade candidates={entries} shelf={shelf} />
+        <AddUpgrade candidates={entries} defaultShelf="tech" />
 
         {open.length === 0 ? (
           <Empty title="Nothing planned">Add the first thing you are saving up for.</Empty>
@@ -537,7 +641,7 @@ function ShelfPage({ shelf }: { readonly shelf: UpgradeShelf }) {
  * shortcut is registered with the operating system at install time.
  */
 export function UpgradesPage() {
-  return <ShelfPage shelf="tech" />
+  return <ShelfPage />
 }
 
 /** Apparel, shoes and accessories, at `/gear`. */

@@ -1695,6 +1695,105 @@ now the only guard there is; cascade delete is `withoutBlocker`, called by
 hand, because a dangling blocker id would otherwise sit in the record,
 travel over sync, and come back if a later project reused the id.
 
+**The tech tree is drawn as a tree, and the shelf that shared its name
+is called Gadgets.** Asked for as _"instead of the tech tree being one
+thing, I want that to be renamed to gadgets and just have the tech tree
+be an actual tree with the different list we've made (home, tech, etc)
+as literally branches of that tree instead like a video game."_
+
+One word had been doing two jobs: the screen was Tech tree and so was
+one of the two shelves on it, so "the tech tree" meant the whole thing
+or half of it depending on where you stood. The screen keeps the name
+and the branch takes one describing what is on it. `base` stays **Base**
+rather than becoming Home, because that is what its own tab says.
+
+**`tree-layout.ts` is pure and lives in the feature, not the domain.**
+It is geometry over a graph, so it is testable without a browser — and
+positions are presentation, which `domain/upgrades/` has no business
+holding an opinion about. Columns are fractional because a parent sits
+at the midpoint of its outermost children, which is what makes a tidy
+tree look drawn rather than stacked.
+
+**SVG for the connectors, HTML for the nodes.** Lines need arbitrary
+endpoints; nodes need wrapping text and a 44-pixel tap target. Drawing
+labels inside the SVG would mean reimplementing text wrapping and losing
+the target the mobile bar requires.
+
+**It scrolls sideways, and that is the one place in this app where that
+is correct.** A tree of any width cannot be squeezed into 375 pixels
+with readable nodes, so the canvas is as wide as it needs and the
+container scrolls — the _page_ must still never scroll sideways, so the
+overflow is on that container alone.
+
+**A gutter between branches, found by looking rather than by reasoning.**
+Columns are handed out in one running sequence, so the last node of Base
+and the first of Gadgets sat adjacent with nothing between them; since a
+connector leaves the top of a node, telling which branch something was
+on meant tracing a line. On the first tree with content on both
+branches a Monitor filed under Gadgets appeared to hang off Base.
+
+**A cross-branch prerequisite is laid out as a root and linked with a
+dashed edge.** Gates are global — "the desk before the monitor arm" is
+real and crosses branches — so nesting it would drag the arm into Home,
+and dropping the link would leave a locked node with nothing explaining
+why. A dangling prerequisite degrades to a root for the same reason:
+drawn oddly is visible, drawn nowhere is not.
+
+**The pool replaced the device-local budget, and it is derived.**
+`domain/upgrades/pool.ts`: every surplus recorded on a finance reading,
+minus what the purchased upgrades cost. Asked for as _"at the end of the
+month, whatever surplus I have leftover will be added to the pool to
+spend of that."_
+
+**A stored balance was the obvious build and the wrong one**, for the
+third time in this app after `readCharges` and `tallyActs`: a running
+total drifts on a lost write, cannot survive two devices incrementing
+it, and hides a mistyped entry forever. Both halves here are records
+that already exist and already sync, so the pool is an opinion about
+records rather than a record of its own. It also fixes what the budget
+box was — a `localStorage` number, so the phone and the laptop
+disagreed about what was affordable and neither was inspectable.
+
+**The surplus is typed, never derived from the net-worth series.** Net
+worth moves for reasons that are not surplus — a market swing, a
+revaluation — so a good month would hand you money you never had to
+spend. What is banked is what you decided was spare.
+
+**It is allowed to go negative.** Flooring an overspend at zero would
+forget it by the next month, so the pool would refill to the next
+surplus rather than starting from the hole. Same reason
+`ChargeReading.over` is separate from `available`: the screen may clamp
+a bar, the record must not.
+
+**A pool spanning two areas means both mutations have to invalidate.**
+`useRecordFinance` cleared `finance` and `character` and left `upgrades`
+alone, so banking a surplus left the tree showing the old gates until
+something else happened to reload it. Caught by driving the round trip,
+not by a test.
+
+**The history row drifted the same way it drifted before.** Adding the
+surplus left two months of real readings displaying "Nothing recorded"
+while the figure sat in the database — the defect this file already
+records as _"a month's row draws every figure it holds, and drew two of
+four"_, arriving again by exactly the route it did the first time. The
+recording path's walking test passed throughout, because the storing was
+correct; what drifted was the **display**, which kept its own
+hand-written copy of the list. It is a `Record<keyof NewFinanceReading,
+…>` now, so the next field fails the build here too. **A guard on one
+end of a field does not guard the other.**
+
+**Finance is the money hub.** Asked for as _"add all the other upgrades
+on that page"_ — so it carries the standards, the monthly readings, the
+pool and what the pool is going towards, and the tree keeps the picture
+and the gates. The list there is a **readout, not a second editor**: a
+control would be a second place for the gate rules to be got wrong,
+which is why Base's upgrade rows are read-only too.
+
+**Adding to the tree picks its branch.** With one screen per shelf the
+screen implied it; with one tree showing every branch there is nothing
+to infer it from, and adding a desk only to move it afterwards is the
+round trip Base was given its own add form to avoid.
+
 **The tech tree is where `domain/game/` stops being unwired.**
 `domain/upgrades/` projects an upgrade onto the model's `TreeNode`, so
 `GATE_KINDS` — money and a prerequisite, nothing bought with points — now
