@@ -697,14 +697,20 @@ _for_ is figures that do not shift width between renders, which the sans
 stack does just as well. `--font-mono` still exists as a Tailwind theme
 token and nothing uses it.
 
-**Light mode is broken and this did not break it.** Headings are
-`text-ink-50` directly rather than through `--text-primary`, so they
-stay near-white when the semantic tokens flip — the sign-in card's own
-title is invisible on the deployed build too, which is how it was
-checked. The honest fix is inverting the `--color-ink-*` scale inside
-the light block rather than remapping semantics on top of it, and it is
-**not done**: it is a real change to every surface and border in the app,
-on a screen nobody here uses.
+**There is no light theme, and what was removed had never worked.**
+Headings are `text-ink-50` directly rather than through
+`--text-primary`, so the semantic tokens flipped and the headings stayed
+near-white on white — the deployed sign-in card had an invisible title.
+Reported and settled in one line: _"I don't care about light theme, can
+we just gut that code."_ Gone are the `prefers-color-scheme: light`
+block, the `[data-theme='light']` block, and `light` from the
+`color-scheme` meta, which would otherwise have the browser paint form
+controls for a theme the app does not have.
+
+**Bringing one back is not putting those blocks back.** The work is
+routing every `text-ink-*` in the app through the semantic tokens
+first — that is the bug that made them useless, and re-adding the blocks
+without it recreates exactly the version that shipped broken.
 
 **A card reads as a panel through three cheap things**: a vertical
 gradient so the surface is not uniform, an inset hairline along the top

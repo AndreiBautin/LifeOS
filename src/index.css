@@ -1,9 +1,10 @@
 @import 'tailwindcss';
 
 /*
- * Dark by default, and unapologetically so — this app is used in a gym,
- * often in poor light, one-handed, between sets. Light mode follows the
- * system preference for anyone who wants it.
+ * Dark, and only dark — this app is used in a gym, often in poor light,
+ * one-handed, between sets. There was a light theme that had never
+ * worked and it has been removed; the note further down says what that
+ * costs and what bringing one back would actually take.
  */
 @theme {
   --color-ink-950: oklch(0.16 0.008 265);
@@ -90,11 +91,14 @@
     /* The lit top edge of a panel, and the shadow under it.
 
        These are what make a card read as a surface with a thickness
-       rather than as a rectangle of a slightly different colour. They are
-       tokens rather than literals because they have to invert for the
-       light theme: a highlight is white on dark and the *absence* of one
-       on white, so a hardcoded `rgba(255,255,255,…)` would put a bright
-       smear along the top of every card in daylight. */
+       rather than as a rectangle of a slightly different colour.
+
+       They stay **tokens rather than literals**, and the reason has
+       narrowed: it used to be that they had to invert for the light
+       theme, since a highlight is white on dark and the *absence* of one
+       on white. With no light theme there is nothing to invert for, and
+       what is left is still worth having — a sheen and a shadow named
+       once are a sheen and a shadow every card agrees about. */
     --card-sheen: rgb(255 255 255 / 5%);
     --card-shadow: 0 8px 24px -14px rgb(0 0 0 / 70%);
     --card-tint: transparent;
@@ -111,44 +115,30 @@
     color-scheme: dark;
   }
 
-  @media (prefers-color-scheme: light) {
-    :root:not([data-theme='dark']) {
-      --surface: oklch(0.99 0.002 265);
-      --surface-raised: oklch(1 0 0);
-      --surface-inset: oklch(0.96 0.004 265);
-      --border-subtle: oklch(0.9 0.006 265);
-
-      /* Inverted, as the note on the dark tokens explains. */
-      --card-sheen: rgb(255 255 255 / 0%);
-      --card-shadow: 0 6px 18px -14px rgb(0 0 0 / 25%);
-      --card-tint: transparent;
-      --glow-accent: color-mix(in oklab, var(--color-accent-500) 7%, transparent);
-      --glow-cool: color-mix(in oklab, var(--color-cool-500) 5%, transparent);
-      --text-primary: var(--color-ink-950);
-      --text-secondary: var(--color-ink-800);
-      --text-muted: var(--color-ink-700);
-
-      color-scheme: light;
-    }
-  }
-
-  :root[data-theme='light'] {
-    --surface: oklch(0.99 0.002 265);
-    --surface-raised: oklch(1 0 0);
-    --surface-inset: oklch(0.96 0.004 265);
-    --border-subtle: oklch(0.9 0.006 265);
-
-    --card-sheen: rgb(255 255 255 / 0%);
-    --card-shadow: 0 6px 18px -14px rgb(0 0 0 / 25%);
-    --card-tint: transparent;
-    --glow-accent: color-mix(in oklab, var(--color-accent-500) 7%, transparent);
-    --glow-cool: color-mix(in oklab, var(--color-cool-500) 5%, transparent);
-    --text-primary: var(--color-ink-950);
-    --text-secondary: var(--color-ink-800);
-    --text-muted: var(--color-ink-700);
-
-    color-scheme: light;
-  }
+  /*
+   * **There is no light theme, and it is not an omission.** Asked for
+   * as _"I don't care about light theme, can we just gut that code since
+   * it's not needed."_
+   *
+   * What was here: a `prefers-color-scheme: light` block and a
+   * `[data-theme='light']` block, each remapping the surfaces, the card
+   * sheen and the three text tokens. **They had never worked** — headings
+   * are `text-ink-50` directly rather than through `--text-primary`, so
+   * the semantic tokens flipped and the headings stayed near-white on
+   * white. It shipped that way, and the deployed sign-in card had an
+   * invisible title to prove it.
+   *
+   * So this removes a broken alternative rather than a working one, and
+   * `color-scheme: dark` above is now the whole statement: the app is
+   * dark, the form controls and scrollbars are told so, and a phone in
+   * light mode gets the app as designed rather than half of it.
+   *
+   * **What the removal costs, stated because it is a real limit:**
+   * nothing here adapts to a bright room. If that is ever wanted, the
+   * work is not putting these blocks back — it is routing every
+   * `text-ink-*` in the app through the semantic tokens first, which is
+   * the bug that made them useless.
+   */
 
   html {
     /* Stops iOS Safari inflating text in landscape, which breaks a layout
