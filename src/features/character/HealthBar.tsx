@@ -1,3 +1,5 @@
+import { Link } from 'react-router-dom'
+
 import { useServices } from '@/app/context'
 import { Meter } from '@/components/shared/Meter'
 import { vitality } from '@/domain/vitals/vitality'
@@ -16,10 +18,18 @@ import { useVices } from '@/features/vitals/hooks'
  * how full it was, and device state with no correct merge is the trap
  * this app keeps refusing.
  *
- * **Absent when there is no daily target set**, rather than empty. A
- * health bar pinned at nought reads as dying; one that is not there
- * reads as not measured, which is the truth before anything has been
- * asked of it.
+ * **Unmeasured is drawn, not hidden — and that is a correction.** It
+ * returned `null` with no rations set, on the reasoning that a bar
+ * pinned at nought reads as dying where an absent one reads as not
+ * measured. True of the bar, and it made the whole feature invisible:
+ * reported as _"not seeing … the vitality/health bar which I would
+ * assume to be by the avatar."_ It was by the avatar, and it was
+ * nowhere, because nothing had been set up and nothing said so.
+ *
+ * So the unmeasured state is a **flat track and a way in** rather than
+ * either a number or a hole. Absent-never-zero is kept — no percentage
+ * is shown and no colour is claimed — while the thing itself is
+ * discoverable, which is the half the first version lost.
  */
 export function HealthBar() {
   const pools = useVices()
@@ -28,7 +38,24 @@ export function HealthBar() {
   if (pools.data === undefined) return null
 
   const reading = vitality(pools.data, services.clock.now())
-  if (reading.value === undefined) return null
+
+  if (reading.value === undefined) {
+    return (
+      <div className="mt-2">
+        <div className="flex items-baseline justify-between gap-2">
+          <span className="text-ink-700 text-xs">Health</span>
+          <Link to="/limits" className="text-accent-400 text-xs underline">
+            Set rations
+          </Link>
+        </div>
+        {/*
+          `of` of nought draws the track alone — nothing over nothing is
+          not empty, which is exactly the state being reported.
+        */}
+        <Meter className="mt-1" value={0} of={0} height={6} label="Health, not measured yet" />
+      </div>
+    )
+  }
 
   const percent = Math.round(reading.value * 100)
 

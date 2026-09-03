@@ -248,9 +248,12 @@ history.
 
 ## Credits
 
-The character figures are from [game-icons.net](https://game-icons.net),
-by **Lorc** and **Delapouite**, used under
-[CC BY 3.0](https://creativecommons.org/licenses/by/3.0/). Five icons are
-committed as SVG paths in `src/features/character/figures.ts` rather than
-fetched, so the app adds no outbound host for them; the same credit is
-shown in the app at the foot of Settings.
+The character figures and the buff icons are from
+[game-icons.net](https://game-icons.net), by **Lorc** and
+**Delapouite**, used under
+[CC BY 3.0](https://creativecommons.org/licenses/by/3.0/). They are
+committed as SVG paths — five figures in
+`src/features/character/figures.ts` and ten icons in
+`src/features/limits/pool-icons.ts` — rather than fetched, so the app
+adds no outbound host for them; the same credit is shown in the app at
+the foot of Settings.

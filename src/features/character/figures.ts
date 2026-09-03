@@ -43,7 +43,14 @@ export interface Figure {
 }
 
 /** The credit CC BY asks for. Shown in Settings, repeated in the README. */
-export const ATTRIBUTION = 'Figures by Lorc and Delapouite, game-icons.net, CC BY 3.0'
+/**
+ * **"Figures and icons", because it now covers both.** The pool
+ * silhouettes in `features/limits/pool-icons.ts` are by the same two
+ * artists under the same licence, so widening this is accurate rather
+ * than convenient — it was written for the figures alone and would have
+ * been an under-credit the day the icons landed.
+ */
+export const ATTRIBUTION = 'Figures and icons by Lorc and Delapouite, game-icons.net, CC BY 3.0'
 
 /**
  * Indexed by `avatar.build`, so the array's order **is** the

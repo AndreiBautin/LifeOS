@@ -76,15 +76,19 @@ const SUGGESTIONS: readonly NewVice[] = [
    */
   /*
    * **The names stay the substances, and the icons do the gamifying.**
-   * Asked for as _"instead of calling them all potions can you make
-   * gamified names and icons for em?"_ — the icons are here and the
-   * names are not, for a reason worth stating: a suggestion is offered
-   * by *name not already used*, so renaming these would stop matching
-   * the pools already on the device and offer a second Caffeine beside
-   * the first. Any pool can be renamed in its own editor, which is where
-   * a name you chose belongs anyway.
+   * A suggestion is offered by *name not already used*, so renaming
+   * these would stop matching the pools already on a device and offer a
+   * second Caffeine beside the first. Any pool renames in its own
+   * editor, which is where a name somebody chose belongs.
+   *
+   * **Kush was here and was removed on request** — _"a hard coded kush
+   * button that needs to be removed"_. What is shipped as a suggestion
+   * is the app guessing at somebody's life, and a guess nobody wanted is
+   * worse than an empty list: the add form is one tap away and takes any
+   * name. The two left are the ones with a *number* worth shipping — a
+   * published caffeine ceiling and a standard-drink count — rather than
+   * substances the app assumes you use.
    */
-  { name: 'Kush', capacity: 1, cycle: { kind: 'calendar', period: 'day' }, icon: 'smoke' },
   {
     name: 'Alcohol',
     capacity: 3,
@@ -422,9 +426,9 @@ function ViceRow({ vice, now }: { readonly vice: Vice; readonly now: Date }) {
  * the tap**, the rule the week shortcuts already follow: the control
  * shows what the record says, so it cannot drift from it.
  *
- * The shapes are this app's own rather than game-icons.net art — see
- * `pool-icons.ts` for why that distinction is kept rather than blurred
- * into the avatar's credit.
+ * game-icons.net art by Lorc and Delapouite, CC BY 3.0 — the same
+ * source, artists and licence as the avatar figures, so the credit at
+ * the foot of Settings already covers them.
  */
 function IconPicker({
   value,
@@ -594,7 +598,7 @@ function PoolShapeFields({ state }: { readonly state: ReturnType<typeof usePoolS
               state.setDirection(one)
             }}
           >
-            {one === 'limit' ? 'Stay under' : 'Reach'}
+            {one === 'limit' ? 'Potion' : 'Ration'}
           </Button>
         ))}
       </div>
@@ -689,7 +693,7 @@ function DaysLimitFields({
           state.setEnabled(!state.enabled)
         }}
       >
-        {state.enabled ? 'Limiting days too' : 'Also limit days'}
+        {state.enabled ? 'Only on some days' : 'Only on some days?'}
       </Button>
 
       {state.enabled && (
@@ -849,7 +853,7 @@ function AddVice({ of }: { readonly of: ChargeDirection }) {
         }}
       >
         <Plus size={14} aria-hidden />
-        {of === 'limit' ? 'New limit' : 'New target'}
+        {of === 'limit' ? 'New potion' : 'New ration'}
       </Button>
     )
   }
@@ -889,7 +893,7 @@ function AddVice({ of }: { readonly of: ChargeDirection }) {
           makes it.
         */
         placeholder={
-          shape.direction === 'target' ? 'What are you reaching for?' : 'What are you limiting?'
+          shape.direction === 'target' ? 'What keeps you going?' : 'What are you drinking?'
         }
         aria-label="Name"
         value={name}
@@ -982,7 +986,7 @@ export function LimitsPage() {
     <div>
       <PageHeader
         title="Buffs"
-        subtitle="Potions you spend, and rations that keep your health up"
+        subtitle="Charges that come back on their own, and the rations that keep you standing"
       />
 
       {/*
@@ -1015,8 +1019,9 @@ export function LimitsPage() {
       <Section title="Potions">
         <Card>
           {vices.data === undefined ? null : limits.length === 0 ? (
-            <Empty title="Nothing limited yet">
-              Charges you spend down, rather than rules you keep or break.
+            <Empty title="No potions yet">
+              Charges you drink and that come back on their own. Going over is worth seeing; it is
+              not a rule you broke.
             </Empty>
           ) : (
             <ul className="divide-ink-800 mb-3 divide-y">
@@ -1046,8 +1051,9 @@ export function LimitsPage() {
       <Section title="Rations">
         <Card>
           {vices.data === undefined ? null : targets.length === 0 ? (
-            <Empty title="Nothing to reach yet">
-              The same pools read from the other end: how far there is to go.
+            <Empty title="No rations yet">
+              The other half of the flask: what you top up rather than spend. Hitting these is what
+              keeps the health bar on your portrait up.
             </Empty>
           ) : (
             <ul className="divide-ink-800 mb-3 divide-y">

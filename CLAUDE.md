@@ -4918,15 +4918,42 @@ failed. A weekly _limit_ is judged through `readCharges` at the end of
 each day, so going past four drinks on Friday reads as over on Saturday
 too — the pool's own rule rather than a second opinion.
 
-**The pool icons are this app's own shapes and are not credited to
-game-icons.net.** They were written with that attribution and it was
-false: the avatar figures in `figures.ts` genuinely are Lorc and
-Delapouite's work under CC BY 3.0, and these are plain shapes drawn here
-on the same 512 viewBox to sit beside them. Widening the one credit this
-app carries to cover work those artists did not make would make it
-untrue. **If real game-icons art is wanted, the route is the one
-`figures.ts` took** — copy the paths in, and the existing credit covers
-them.
+**The pool icons are real game-icons.net art, and getting there took
+three states worth recording.** They shipped first as ten shapes drawn
+here **carrying a false CC BY credit to Lorc and Delapouite** — caught
+and corrected before the deploy, because a licence note is a claim about
+provenance and one written from memory is a claim about nothing. The
+honest version credited nobody and looked it: reported back as the icons
+all being much of a muchness, and the carrot read as a dagger.
+
+They are now the genuine article, fetched from game-icons.net and
+committed as paths — the route `figures.ts` took, which is what the
+corrected comment had already pointed at. **`ATTRIBUTION` widened from
+"Figures" to "Figures and icons"**, which is accurate rather than
+convenient: same two artists, same licence, and it would have been an
+under-credit the day these landed.
+
+**"Limits" survived the first rename in every place that was not a
+heading.** Reported as _"it's still framed as limits when I want it
+framed like rechargeable buffs."_ The page title and the two section
+names had changed and the working copy had not: "New limit", "Stay
+under", "What are you limiting?", "Nothing limited yet". A rename that
+only reaches the headings is a rename of the table of contents — the
+controls are where somebody actually reads the words.
+
+**The shipped Kush suggestion is gone**, on request. What ships as a
+suggestion is the app guessing at somebody's life, and a guess nobody
+wanted is worse than an empty list. The two left are the ones with a
+_number_ worth shipping — a published caffeine ceiling, a standard-drink
+count — rather than substances the app assumes you use.
+
+**The health bar was invisible and that was my absent-never-zero rule
+misapplied.** It returned nothing when no ration existed, on the
+reasoning that a bar at nought reads as dying. True of the _bar_, and it
+made the whole feature undiscoverable: nothing had been set up and
+nothing said so. It draws a flat track and a **Set rations** link now —
+no percentage claimed, no colour claimed, and a way in. **Absent is the
+right answer for a number and the wrong one for a control.**
 
 **Craft became Crafting, and it is things you built.** Asked for as
 _"can we make craft into crafting and it shouldn't be any dailies or
