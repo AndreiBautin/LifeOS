@@ -370,7 +370,11 @@ describe('the assembled block', () => {
       }
     }
 
-    expect(styles.get(asExerciseId('incline-walk'))).toBe('Zone 2')
+    /*
+     * The Zone 2 half went with the treadmill block — see "is programmed
+     * rather than left to the lifter". Two domains still exist in
+     * `ZONE_2_VARIANT` and the plans; only one is scheduled.
+     */
     expect(styles.get(asExerciseId('kb-swing'))).toBe('HIIT')
   })
 })
@@ -1265,24 +1269,17 @@ describe('conditioning', () => {
     )
 
     /*
-     * The treadmill on every day, asked for directly, and the swings
-     * still on the lower ones. Two conditioning slots on a lower day and
-     * one on an upper day.
+     * **Swings on the lower days and nothing on the upper ones.** The
+     * treadmill block left the programme: _"a 30 minute dog walk covers
+     * my cardio and doesn't need tracked in the train app."_ A walk that
+     * happens anyway is not a thing to schedule, and a slot for it is a
+     * checkbox for something you were doing regardless.
      *
-     * **Swings before the walk**, asked for after seeing it the other way
-     * round. It is the ordering the rest of the session already follows:
-     * the piece that wants a fresh athlete goes first, and half an hour
-     * of Zone 2 before a hard EMOM is the same mistake as an accessory
-     * before a competition lift.
+     * The swings stay because they are *programmed* — ten on the minute
+     * with a 60 lb bell is a dose somebody decided on, where a dog walk
+     * is a fact about owning a dog.
      */
-    expect(all).toEqual([
-      'incline-walk',
-      'kb-swing',
-      'incline-walk',
-      'incline-walk',
-      'kb-swing',
-      'incline-walk',
-    ])
+    expect(all).toEqual(['kb-swing', 'kb-swing'])
   })
 
   it('runs every day, split by domain rather than by spare time', () => {
@@ -1300,10 +1297,10 @@ describe('conditioning', () => {
     const domainOn = (dayIndex: number) =>
       conditioningIn(dayIndex).map((slot) => slot.variant ?? '')
 
-    expect(domainOn(0)).toEqual(['Zone 2'])
-    expect(domainOn(1)).toEqual(['HIIT', 'Zone 2'])
-    expect(domainOn(2)).toEqual(['Zone 2'])
-    expect(domainOn(3)).toEqual(['HIIT', 'Zone 2'])
+    expect(domainOn(0)).toEqual([])
+    expect(domainOn(1)).toEqual(['HIIT'])
+    expect(domainOn(2)).toEqual([])
+    expect(domainOn(3)).toEqual(['HIIT'])
   })
 
   /*
@@ -1354,16 +1351,22 @@ describe('conditioning', () => {
           ),
         )
 
-    expect(minutesOf('incline-walk')).toEqual([30, 30, 30, 30])
     expect(minutesOf('kb-swing')).toEqual([15, 15])
   })
 
   it('counts toward the session budget rather than riding along free', () => {
-    // A twenty-minute walk costed as one thirty-second set let the
-    // planner stack conditioning onto the longest day and still believe
-    // the day fitted inside the target.
-    const withWalk = estimateDayMinutes(week.days[0] as never)
-    const conditioningMinutes = conditioningIn(0).reduce(
+    /*
+     * Read off a *lower* day, because the upper days no longer carry any
+     * conditioning at all. Written against Monday when the treadmill
+     * block was on every day, which made it pass for a reason it was not
+     * testing the moment that block came off.
+     *
+     * The failure it guards: a twenty-minute walk costed as one
+     * thirty-second set let the planner stack conditioning onto the
+     * longest day and still believe it fitted inside the target.
+     */
+    const withWalk = estimateDayMinutes(week.days[1] as never)
+    const conditioningMinutes = conditioningIn(1).reduce(
       (total, slot) =>
         total +
         slot.sets.reduce((sum, set) => sum + (set.reps.kind === 'time' ? set.reps.seconds : 0), 0) /
@@ -1371,21 +1374,18 @@ describe('conditioning', () => {
       0,
     )
 
-    expect(conditioningMinutes).toBeGreaterThanOrEqual(20)
+    expect(conditioningMinutes).toBeGreaterThanOrEqual(15)
     expect(withWalk).toBeGreaterThan(conditioningMinutes)
   })
 
   it('is cut on the deload like everything else', () => {
+    /* On the swings, which are the conditioning that is left. */
     const deloadRun = weekAt(program, 6)
       .days.flatMap((day) => day.slots)
-      .find(
-        (slot) => slot.exercise.kind === 'specific' && slot.exercise.exerciseId === 'incline-walk',
-      )
+      .find((slot) => slot.exercise.kind === 'specific' && slot.exercise.exerciseId === 'kb-swing')
     const workingRun = week.days
       .flatMap((day) => day.slots)
-      .find(
-        (slot) => slot.exercise.kind === 'specific' && slot.exercise.exerciseId === 'incline-walk',
-      )
+      .find((slot) => slot.exercise.kind === 'specific' && slot.exercise.exerciseId === 'kb-swing')
 
     const seconds = (slot: typeof deloadRun): number => {
       const set = slot?.sets[0]

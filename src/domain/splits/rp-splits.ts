@@ -269,7 +269,6 @@ const WEEK_5: RpSplit = {
        */
       muscles: UPPER_1,
       carries: ['upper'],
-      conditioning: ['incline-walk'],
       warmUp: 'upper',
     },
     {
@@ -279,23 +278,29 @@ const WEEK_5: RpSplit = {
       muscles: LOWER,
       carries: ['lower'],
       /*
-       * Intervals on the lower days, easy work on the upper days.
+       * **Intervals on the lower days, and nothing on the upper ones.**
        *
-       * The split is by *domain*, not by which day has room. Swings are a
+       * The Zone 2 block left the programme entirely: _"let's drop the
+       * post workout cardio — I'd like to just merge that with my dog
+       * walks and make em daily. A 30 minute dog walk covers my cardio
+       * and doesn't need tracked in the train app."_ Which is the same
+       * argument that removed the macros and the sleep row: a walk that
+       * happens anyway, every day, is not a thing the training screen
+       * needs to schedule, and a slot for it is a checkbox you tick for
+       * something you were doing regardless.
+       *
+       * The swings stay, and the reason they are different is that they
+       * are *programmed*. Ten on the minute with a 60 lb bell is a dose
+       * somebody decided on; a dog walk is a fact about owning a dog.
+       *
+       * What survives of the old note is why they sit here: swings are a
        * hinge with a real systemic cost, so they belong beside the
        * lifting that already loads the hips rather than on a bench day
        * where they would be the only lower-body stress of the session.
-       * The trade is that Thursday stacks a hinge on the heaviest pull of
-       * the week — a deliberate concentration of lower-body fatigue on
-       * lower-body days, chosen over spreading it thin across five.
-       *
-       * This used to be balanced by session length instead: conditioning
-       * went wherever the day was short, which put the walk on Thursday
-       * and kept the upper days clear. That evened out the clock and made
-       * the arrangement unquotable — you could not say what trained when
-       * without reading the minute totals.
+       * That concentrates lower-body fatigue on lower-body days, which is
+       * chosen over spreading it thin across the week.
        */
-      conditioning: ['kb-swing', 'incline-walk'],
+      conditioning: ['kb-swing'],
       warmUp: 'lower',
     },
     {
@@ -304,7 +309,6 @@ const WEEK_5: RpSplit = {
       focusName: 'Upper 2',
       muscles: UPPER_2,
       carries: ['upper'],
-      conditioning: ['incline-walk'],
       warmUp: 'upper',
     },
     {
@@ -313,7 +317,7 @@ const WEEK_5: RpSplit = {
       focusName: 'Lower 2',
       muscles: LOWER,
       carries: ['lower'],
-      conditioning: ['kb-swing', 'incline-walk'],
+      conditioning: ['kb-swing'],
       warmUp: 'lower',
     },
     {
@@ -332,7 +336,6 @@ const WEEK_5: RpSplit = {
        */
       muscles: UPPER,
       carries: ['upper'],
-      conditioning: ['incline-walk'],
       warmUp: 'upper',
     },
   ],
@@ -355,8 +358,7 @@ const WEEK_5: RpSplit = {
 const WEEK_4: RpSplit = {
   id: 'rp-week-4',
   name: '4-day upper/lower',
-  description:
-    'Upper, lower, rest, upper, lower. Every day opens with competition lifting. Wednesday and the weekend off.',
+  description: 'Upper, lower, rest, upper, lower. Wednesday and the weekend off.',
   daysPerWeek: 4,
   days: [
     {
@@ -365,7 +367,6 @@ const WEEK_4: RpSplit = {
       focusName: 'Upper 1',
       muscles: UPPER_1,
       carries: ['upper'],
-      conditioning: ['incline-walk'],
       warmUp: 'upper',
     },
     {
@@ -374,7 +375,7 @@ const WEEK_4: RpSplit = {
       focusName: 'Lower 1',
       muscles: LOWER,
       carries: ['lower'],
-      conditioning: ['kb-swing', 'incline-walk'],
+      conditioning: ['kb-swing'],
       warmUp: 'lower',
     },
     {
@@ -383,7 +384,6 @@ const WEEK_4: RpSplit = {
       focusName: 'Upper 2',
       muscles: UPPER_2,
       carries: ['upper'],
-      conditioning: ['incline-walk'],
       warmUp: 'upper',
     },
     {
@@ -392,7 +392,7 @@ const WEEK_4: RpSplit = {
       focusName: 'Lower 2',
       muscles: LOWER,
       carries: ['lower'],
-      conditioning: ['kb-swing', 'incline-walk'],
+      conditioning: ['kb-swing'],
       warmUp: 'lower',
     },
   ],

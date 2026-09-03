@@ -3365,6 +3365,44 @@ registered in all of the places a collection has to register. The
 compiler and the guard tests found most of them, which is that machinery
 working as intended.
 
+**The Zone 2 block left the programme, and the swings stayed.** Asked for
+as _"let's drop the post workout cardio — I'd like to just merge that
+with my dog walks and make em daily. A 30 minute dog walk covers my
+cardio and doesn't need tracked in the train app."_
+
+**It is the argument that removed the macros and the sleep row.** A walk
+that happens anyway, every day, is not a thing the training screen needs
+to schedule; a slot for it is a checkbox you tick for something you were
+doing regardless, and the count it produces is a second copy of a fact
+kept better elsewhere — in this case, in the dog.
+
+**The swings stay because they are _programmed_.** Ten on the minute with
+a 60 lb bell is a dose somebody decided on; a dog walk is a fact about
+owning a dog. That is the line, and it is a better one than "hard against
+easy": if the walk were prescribed at a pace and a duration nobody would
+otherwise hold to, it would belong here too.
+
+**The upper days now carry no conditioning at all**, which is the visible
+consequence. `describeDay` reads a day off its finished slots, so nothing
+claims otherwise.
+
+**`incline-walk` stays in the catalogue with its plan**, unscheduled, and
+that is not the silent-retirement trap the overhead press was. A
+conditioning exercise is only ever reached by a split naming its slug —
+`running` has sat there unscheduled all along — so the catalogue is the
+menu a split picks from rather than a list of things the assembler can
+find on its own.
+
+**The cost to name: Stamina is now fed by the swings alone.**
+`cardio.session-logged` fires on a completed session containing a
+completed conditioning set, so it pays on the two lower days and on
+nothing else. **The dog walk pays Discipline, not Stamina**, because it
+is an ordinary daily — and wiring it to Stamina would mean a new
+`RecordHome`, which is a registry area, an act, a branch in `tallyActs`
+and a line in the "exactly one side" test. That is a decision to take
+deliberately rather than a side effect of moving a walk, and it is worth
+knowing the bar reads lower until somebody takes it.
+
 **The overhead press is out of training, and `STRENGTH_LIFTS` is three
 again.** Asked for as _"let's drop overhead press from training since
 there's more compounds on that day already"_ — true, the second upper day
