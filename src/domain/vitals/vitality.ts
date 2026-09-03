@@ -10,6 +10,13 @@ import { amountSpentOn, cycleOf, directionOf, isActive, readCharges, type Vice }
  * Going over on limits drains the health bar faster, which drains
  * overtime by itself and gets replaced with obviously hitting those."_
  *
+ * **It starts full and depletes**, asked for as _"it should really start
+ * full, and deplete with the things replacing them."_ That is what the
+ * arithmetic says read forwards: every target-day you were keeping is
+ * worth a share of the bar, and what takes a share away is **missing one
+ * or going over a limit**. With nothing missed and nothing over — a
+ * fresh set of restoratives, or a good week — it is full.
+ *
  * **A rolling window rather than a stored level, and that is what makes
  * it honest.** A bar that decays on a timer needs somewhere to keep how
  * full it was, which is device state with no correct merge — the trap
@@ -103,33 +110,45 @@ export function vitality(
   let possible = 0
 
   for (const day of window) {
-    for (const pool of targets) {
-      /*
-       * **A day before the pool existed is not a day you missed.**
-       * Without this the denominator is always seven days per target, so
-       * setting three rations up and hitting all three on the first
-       * afternoon reads as 14% and draws in red — the bar calling a
-       * perfect day a failure because it has no history yet.
-       *
-       * Absent-never-zero, applied to the window: a day that could not
-       * have been hit is left out of the count rather than counted
-       * against you. Same reason a weekly target is left out entirely.
-       */
-      if (!existedOn(pool, day)) continue
-      possible += 1
-      if (metOn(pool, day)) met += 1
-    }
-    for (const pool of limits) if (overOn(pool, day)) over += 1
+    /*
+     * **A day with nothing to measure is skipped whole, and that is the
+     * bug this shape exists to fix.** Targets only counted days since
+     * they were created — correctly — while limits were judged across
+     * the entire window, so a caffeine pool that predated the
+     * restoratives could spend seven days' worth of overruns against a
+     * single day of hitting everything.
+     *
+     * Reported as _"hit my water and veggie/fruit goals and my health
+     * bar is empty still."_ Reproduced exactly: met 3, over 7, possible
+     * 3 — an empty bar on a perfect day.
+     *
+     * A day before you were keeping any restorative is not a day you
+     * failed, and it cannot drain a bar that was not being kept. So the
+     * two halves share one window now: the day counts, or it does not.
+     */
+    const live = targets.filter((pool) => existedOn(pool, day))
+    if (live.length === 0) continue
+
+    possible += live.length
+    for (const pool of live) if (metOn(pool, day)) met += 1
+    for (const pool of limits) if (existedOn(pool, day) && overOn(pool, day)) over += 1
   }
 
   if (possible === 0) return { met, over, possible, days }
 
   /*
-   * Clamped at both ends. A week of overruns cannot take it below empty
-   * — there is no debt to carry, and a bar that had to be climbed out of
-   * would punish a bad week into the next one.
+   * **Full, less what was missed and what went over.** Written as the
+   * depletion it is rather than as a score climbing from nothing: the
+   * two are the same number — `1 - (missed + over)/possible` is
+   * `(met - over)/possible` — and only one of them reads the way the
+   * bar behaves.
+   *
+   * Clamped at both ends. A terrible week cannot take it below empty:
+   * there is no debt to carry, and a bar that had to be climbed out of
+   * would punish one bad week into the next.
    */
-  const value = Math.min(1, Math.max(0, (met - over) / possible))
+  const missed = possible - met
+  const value = Math.min(1, Math.max(0, 1 - (missed + over) / possible))
 
   return { value, met, over, possible, days }
 }

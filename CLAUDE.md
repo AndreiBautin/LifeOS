@@ -4903,6 +4903,30 @@ and a day over a limit cancels a day of hitting a target. It is allowed
 for the same reason the avatar's build bands are — it _measures nothing
 about the world_, only pools you set against targets you chose.
 
+**The bar starts full and depletes**, asked for as _"it should really
+start full, and deplete with the things replacing them."_ The arithmetic
+is written that way now — full, less what was missed and what went over
+— rather than as a score climbing from nothing. They are the same
+number, and only one of them reads the way the bar behaves.
+
+**Targets and limits share one window, and getting that wrong made a
+perfect day read as empty.** Reported: _"hit my water and veggie/fruit
+goals and my health bar is empty still."_ Reproduced exactly before
+changing anything: **met 3, over 7, possible 3**.
+
+The cause is worth keeping because it is a shape rather than a typo.
+Targets only counted days since _they_ were created, which is right; the
+limits were judged across the whole seven days, which is not. A caffeine
+pool running for months could therefore spend a week of overruns against
+a single day of hitting everything — and the restoratives are always the
+newer records, so this was going to happen to everybody who set them up.
+
+**A day with nothing to measure is now skipped whole.** A day before you
+were keeping any restorative is not a day you failed, and it cannot
+drain a bar that was not being kept. The two halves ask the same
+question of the same days, or neither does. An overrun on a day that
+_was_ being kept still costs — there is a test for each direction.
+
 **A day before the pool existed is not a day you missed**, and this was
 found by looking rather than by reasoning. Three rations set up and all
 three hit on the first afternoon read **14% in red**: six of the seven
