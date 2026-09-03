@@ -1260,16 +1260,22 @@ describe('conditioning', () => {
 
     /*
      * The treadmill on every day, asked for directly, and the swings
-     * still after the lower ones. Two conditioning slots on a lower day
-     * and one on an upper day.
+     * still on the lower ones. Two conditioning slots on a lower day and
+     * one on an upper day.
+     *
+     * **Swings before the walk**, asked for after seeing it the other way
+     * round. It is the ordering the rest of the session already follows:
+     * the piece that wants a fresh athlete goes first, and half an hour
+     * of Zone 2 before a hard EMOM is the same mistake as an accessory
+     * before a competition lift.
      */
     expect(all).toEqual([
       'incline-walk',
-      'incline-walk',
       'kb-swing',
       'incline-walk',
       'incline-walk',
       'kb-swing',
+      'incline-walk',
     ])
   })
 
@@ -1289,9 +1295,9 @@ describe('conditioning', () => {
       conditioningIn(dayIndex).map((slot) => slot.variant ?? '')
 
     expect(domainOn(0)).toEqual(['Zone 2'])
-    expect(domainOn(1)).toEqual(['Zone 2', 'HIIT'])
+    expect(domainOn(1)).toEqual(['HIIT', 'Zone 2'])
     expect(domainOn(2)).toEqual(['Zone 2'])
-    expect(domainOn(3)).toEqual(['Zone 2', 'HIIT'])
+    expect(domainOn(3)).toEqual(['HIIT', 'Zone 2'])
   })
 
   /*

@@ -6315,8 +6315,8 @@ leg raise on the other — it has exactly two movements and uses both, so
 it joins `TWICE` without repeating an exercise. The lower days had the
 room the moment they stopped carrying two competition lifts each.
 
-**Conditioning is a treadmill block on every day and swings after the
-lower ones**, and the swings are **one checkbox** rather than fifteen
+**Conditioning is a treadmill block on every day, after the swings on
+the lower ones**, and the swings are **one checkbox** rather than fifteen
 rows. `asSets` is deleted: it materialised a thirty-minute EMOM as thirty
 sets of ten so the session screen could log each one, and the reply was
 _"no need to track that specific part, just a checkbox like we have now,
@@ -6375,10 +6375,10 @@ shipped default no longer does, which is not the same as the rule being
 gone.
 
 Driven end to end. Monday: bench, row, curl, French press, lateral
-raise, 30 min walk. Tuesday: low bar squat, calf raise, ab wheel, 30 min
-walk, 15 min swings. Thursday: press, pull-up, dips, EZ curl,
+raise, 30 min walk. Tuesday: low bar squat, calf raise, ab wheel, 15 min
+swings, 30 min walk. Thursday: press, pull-up, dips, EZ curl,
 skullcrusher, rear delt raise, 30 min walk. Friday: sumo deadlift, calf
-raise, hanging leg raise, 30 min walk, 15 min swings. **Every target met
+raise, hanging leg raise, 15 min swings, 30 min walk. **Every target met
 exactly** — 6/6 for the four at twice a week, 3/3 for the five at once —
 every slot three sets, and no exercise twice in the week but the calf
 raise.

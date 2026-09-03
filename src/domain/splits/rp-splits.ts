@@ -295,7 +295,7 @@ const WEEK_5: RpSplit = {
        * the arrangement unquotable — you could not say what trained when
        * without reading the minute totals.
        */
-      conditioning: ['incline-walk', 'kb-swing'],
+      conditioning: ['kb-swing', 'incline-walk'],
       warmUp: 'lower',
     },
     {
@@ -313,7 +313,7 @@ const WEEK_5: RpSplit = {
       focusName: 'Lower 2',
       muscles: LOWER,
       carries: ['lower'],
-      conditioning: ['incline-walk', 'kb-swing'],
+      conditioning: ['kb-swing', 'incline-walk'],
       warmUp: 'lower',
     },
     {
@@ -374,7 +374,7 @@ const WEEK_4: RpSplit = {
       focusName: 'Lower 1',
       muscles: LOWER,
       carries: ['lower'],
-      conditioning: ['incline-walk', 'kb-swing'],
+      conditioning: ['kb-swing', 'incline-walk'],
       warmUp: 'lower',
     },
     {
@@ -392,7 +392,7 @@ const WEEK_4: RpSplit = {
       focusName: 'Lower 2',
       muscles: LOWER,
       carries: ['lower'],
-      conditioning: ['incline-walk', 'kb-swing'],
+      conditioning: ['kb-swing', 'incline-walk'],
       warmUp: 'lower',
     },
   ],
