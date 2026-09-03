@@ -2,6 +2,7 @@ import { BookOpen, Plus, Search, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 
 import { PageHeader } from '@/components/shared/PageHeader'
+import { DigestCard } from '@/features/news/DigestCard'
 import { Badge, Button, Card, Empty, Section } from '@/components/shared/primitives'
 import { MIND } from '@/domain/base/base'
 import {
@@ -481,6 +482,27 @@ export function MindPage() {
           )}
         </Card>
       </Section>
+
+      {/*
+        **The morning digest lives here now**, asked for as _"let's move
+        the this morning hacker news stuff to the other mental training
+        page."_ It fits: Mind is study and practice, and a front page of
+        things worth reading is the study half arriving from outside.
+
+        **At the foot rather than the head.** What this screen is *for*
+        is the practice log — a thing you did — and the digest is a
+        reading surface that pays nothing. Putting it first would open
+        the screen on the one block that cannot be acted on.
+
+        **The cost is when it fetches, and it is worth knowing.** The
+        digest reads on the first *open of a day*, and that gate fires
+        when this component mounts. On Today it ran when the app did; on
+        Mind it runs the first time Mind is opened. If a morning goes by
+        without visiting this screen, the sweep simply has not happened
+        yet — which is the same shape as the job sweep and is why both
+        remember their result rather than re-running.
+      */}
+      <DigestCard />
     </div>
   )
 }

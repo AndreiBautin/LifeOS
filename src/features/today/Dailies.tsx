@@ -1284,6 +1284,28 @@ const HYGIENE_SUGGESTIONS: readonly {
   { title: 'Wash hair', group: HYGIENE_GROUP },
 ]
 
+/**
+ * The header's disclosure mark.
+ *
+ * Drawn rather than imported so the open and closed states are one
+ * shape with one line changing — a swap between two lucide icons reads
+ * as two different controls at 16 pixels.
+ */
+function EyeIcon({ open }: { readonly open: boolean }) {
+  return (
+    <svg viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" aria-hidden>
+      <path
+        d="M1.5 12S5 5.5 12 5.5 22.5 12 22.5 12 19 18.5 12 18.5 1.5 12 1.5 12Z"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <circle cx="12" cy="12" r="3.2" strokeWidth="1.8" />
+      {!open && <path d="M4 20 20 4" strokeWidth="1.8" strokeLinecap="round" />}
+    </svg>
+  )
+}
+
 export function Dailies() {
   const dailies = useDailies('own-area')
   const due = useDueElsewhere()
@@ -1319,6 +1341,12 @@ export function Dailies() {
   const agenda = useAgenda().data ?? []
   const services = useServices()
   const [adding, setAdding] = useState(false)
+  /*
+   * Not persisted, deliberately. It is a glance at what is already done
+   * rather than a preference — the day resets it, which is the right
+   * default for a screen whose whole job is the present tense.
+   */
+  const [showingRest, setShowingRest] = useState(false)
   const [showLater, setShowLater] = useState(false)
 
   const views = dailies.data ?? []
@@ -1494,6 +1522,12 @@ export function Dailies() {
     [...views, ...elsewhere].map((view) => view.daily.title.trim().toLowerCase()),
   )
 
+  /*
+   * What the header's eye reveals: everything the day is not asking for
+   * but that still has a control on it.
+   */
+  const resting = [...done, ...goalsDone, ...otherDays]
+
   return (
     <>
       <div className="mb-2 flex items-center justify-between gap-2">
@@ -1504,14 +1538,47 @@ export function Dailies() {
               ? 'All done for today.'
               : `${left.toString()} left today`}
         </p>
-        <Button
-          size="sm"
-          onClick={() => {
-            setAdding(!adding)
-          }}
-        >
-          {adding ? 'Close' : 'Add'}
-        </Button>
+        <div className="flex items-center gap-1">
+          {/*
+            **One control in the header, where two lids used to sit in
+            the flow.** Reported: _"get rid of the done today and habits
+            on other days lines, it breaks up the flow of the cards."_
+            It did — two summary rows between cards, each announcing a
+            list nobody had asked to see.
+
+            The rows themselves could not simply go: a ticked habit's row
+            is the only route to **undo**, and a not-due habit's is the
+            only route to renaming or retiring it. Dropping them would
+            take working controls away to tidy a list, which is the shape
+            of mistake this file keeps recording. So the disclosure moved
+            to the header and the lines went.
+
+            Hidden from a reader when there is nothing behind it, rather
+            than shown disabled: a control that cannot do anything is
+            worse than one that is not there.
+          */}
+          {resting.length > 0 && (
+            <Button
+              size="sm"
+              variant={showingRest ? 'primary' : 'ghost'}
+              aria-pressed={showingRest}
+              aria-label={`${showingRest ? 'Hide' : 'Show'} ${String(resting.length)} done and not due today`}
+              onClick={() => {
+                setShowingRest(!showingRest)
+              }}
+            >
+              <EyeIcon open={showingRest} />
+            </Button>
+          )}
+          <Button
+            size="sm"
+            onClick={() => {
+              setAdding(!adding)
+            }}
+          >
+            {adding ? 'Close' : 'Add'}
+          </Button>
+        </div>
       </div>
 
       {adding && (
@@ -1615,8 +1682,8 @@ export function Dailies() {
         category, and `homeOrGroup` is what keeps a done chore and a done
         habit labelled House under one heading here too.
       */}
-      {done.length + goalsDone.length > 0 && (
-        <Fold summary={`${counted(done.length + goalsDone.length, 'done', 'done')} today`}>
+      {showingRest && done.length + goalsDone.length > 0 && (
+        <div className="mt-2">
           {done.length > 0 && <DoneRows rows={done} />}
           {goalsDone.length > 0 && (
             <Card className="divide-ink-800 mt-2 divide-y py-0">
@@ -1625,7 +1692,7 @@ export function Dailies() {
               ))}
             </Card>
           )}
-        </Fold>
+        </div>
       )}
 
       {/*
@@ -1634,14 +1701,14 @@ export function Dailies() {
         screen's rather than the list's and a copy that differed would
         only be waiting for the day this list stops being own-only.
       */}
-      {otherDays.length > 0 && (
-        <Fold summary={`${counted(otherDays.length, 'habit', 'habits')} on other days`}>
+      {showingRest && otherDays.length > 0 && (
+        <div className="mt-2">
           <GroupedDailies
             views={otherDays}
             categoryOf={homeOrGroup}
             render={(view, part) => <DailyRow view={view} part={part} />}
           />
-        </Fold>
+        </div>
       )}
 
       {/*

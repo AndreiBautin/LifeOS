@@ -4933,6 +4933,42 @@ corrected comment had already pointed at. **`ATTRIBUTION` widened from
 convenient: same two artists, same licence, and it would have been an
 under-credit the day these landed.
 
+**The two fold lids became one control in the header.** Reported:
+_"get rid of the done today and habits on other days lines, it breaks up
+the flow of the cards."_ They did — two summary rows sitting between
+cards, each announcing a list nobody had asked to see.
+
+**The rows themselves could not simply go**, which is why this is a move
+rather than a deletion: a ticked habit's row is the only route to
+**undo**, and a not-due habit's is the only route to renaming or
+retiring it. Dropping them would take working controls away in order to
+tidy a list, which is the shape of mistake this file keeps recording.
+So the disclosure is an eye beside **Add** and the lines are gone.
+
+**Hidden when there is nothing behind it**, rather than shown disabled —
+a control that cannot do anything is worse than one that is not there.
+Not persisted either: it is a glance at what is already done rather than
+a preference, and the day should reset it.
+
+**"N left today" is unchanged and still counts only what is
+outstanding**, which is the rule that cost two attempts to find: the
+count and the rows beneath it are one claim. Revealing the rest does not
+move it, because a done habit is not left to do.
+
+**The morning digest moved to Mind.** Asked for as _"let's move the this
+morning hacker news stuff to the other mental training page."_ It fits —
+Mind is study and practice, and a front page of things worth reading is
+the study half arriving from outside — and it sits at the **foot**,
+because what the screen is for is the practice log and the digest is a
+reading surface that pays nothing.
+
+**The cost is when it fetches.** The digest reads on the first open of a
+day and that gate fires when the component mounts: on Today it ran when
+the app did, and on Mind it runs the first time Mind is opened. A
+morning without visiting the screen is simply a morning it has not swept
+yet — the same shape as the job sweep, and why both remember their
+result rather than re-running.
+
 **The rename missed the card on Today, which is where it is read
 most.** Reported with a screenshot: _"why do I still see limits."_ The
 `/limits` page had been renamed twice by then and `LimitsCard` had not —
