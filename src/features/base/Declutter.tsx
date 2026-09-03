@@ -1,9 +1,9 @@
-import { Plus, Trash2, X } from 'lucide-react'
+import { Plus, Sofa, Trash2, X } from 'lucide-react'
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { useServices } from '@/app/context'
-import { Badge, Button, Card, Empty, Section } from '@/components/shared/primitives'
+import { Badge, Button, Card, CardHeading, Empty } from '@/components/shared/primitives'
 import { Meter } from '@/components/shared/Meter'
 import { describeClear, ROOM_SUGGESTIONS, type RoomStanding } from '@/domain/base/declutter'
 import {
@@ -302,23 +302,32 @@ export function Declutter() {
   const taken = new Set(rooms.map((one) => one.room.name.toLowerCase()))
 
   return (
-    <Section
-      title="Clutter"
-      description="A level that moves both ways, not a job that finishes."
-      action={
-        rooms.length === 0 ? undefined : (
-          <Button
-            variant={adding ? 'ghost' : 'outline'}
-            size="sm"
-            onClick={() => {
-              setAdding(!adding)
-            }}
-          >
-            {adding ? 'Close' : 'Add a room'}
-          </Button>
-        )
-      }
-    >
+    /*
+      One card that names itself, where this was a `Section` wrapping up
+      to two of them. The description went with the heading: "a level
+      that moves both ways, not a job that finishes" is the reasoning
+      behind the feature rather than something you need in front of you
+      every time you open the screen, and the empty state still says it
+      where somebody meeting it for the first time will read it.
+    */
+    <Card>
+      <CardHeading
+        icon={<Sofa size={16} aria-hidden />}
+        title="Clutter"
+        action={
+          rooms.length === 0 ? undefined : (
+            <Button
+              size="sm"
+              onClick={() => {
+                setAdding(!adding)
+              }}
+            >
+              {adding ? 'Close' : 'Add'}
+            </Button>
+          )
+        }
+      />
+
       {adding && (
         <AddRoom
           taken={taken}
@@ -329,29 +338,27 @@ export function Declutter() {
       )}
 
       {standing !== undefined && rooms.length === 0 && !adding && (
-        <Card>
-          <Empty title="No rooms yet">
-            <span className="block">
-              Add the rooms that actually collect things. Each one carries a level you set by
-              looking at it, and the house is the average of the ones you have looked at.
-            </span>
-            <Button
-              variant="outline"
-              size="sm"
-              className="mt-3"
-              onClick={() => {
-                setAdding(true)
-              }}
-            >
-              <Plus size={14} aria-hidden />
-              Add a room
-            </Button>
-          </Empty>
-        </Card>
+        <Empty title="No rooms yet">
+          <span className="block">
+            Add the rooms that actually collect things. Each one carries a level you set by looking
+            at it, and the house is the average of the ones you have looked at.
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            className="mt-3"
+            onClick={() => {
+              setAdding(true)
+            }}
+          >
+            <Plus size={14} aria-hidden />
+            Add a room
+          </Button>
+        </Empty>
       )}
 
       {rooms.length > 0 && (
-        <Card>
+        <>
           {/*
             The house first, and absent until something has been read.
             The average covers only the rooms with a reading — an
@@ -407,8 +414,8 @@ export function Declutter() {
               <RoomRow key={one.room.id} standing={one} />
             ))}
           </ul>
-        </Card>
+        </>
       )}
-    </Section>
+    </Card>
   )
 }

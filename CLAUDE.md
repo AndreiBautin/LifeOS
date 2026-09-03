@@ -3310,6 +3310,53 @@ registered in all of the places a collection has to register. The
 compiler and the guard tests found most of them, which is that machinery
 working as intended.
 
+**Base shows what is pending and folds the rest, and its sections became
+cards.** Asked for as _"you're greeted with a long list of every base
+related daily task… show only pending items like the home tab does"_ and
+_"refactor its looks so it's cleaner like we did with the homepage."_
+
+**The list was three lists pretending to be one.** Chores drew everything
+due _or done_ in one block and everything else under a permanent "Not due
+today" heading, so a fifteen-chore house rendered fifteen rows whatever
+the day asked for — the same clutter Today was fixed for, arriving on the
+screen that had not been. Outstanding is drawn; done and not-due sit
+behind the eye in the card header, with an `N left today` line that
+counts exactly what is on screen. **Folded, never filtered**: a ticked
+row is the only route to undo and a not-due row the only route to
+renaming or retiring one.
+
+**`CardHeading` replaced four `Section`s**, and the argument is the
+home screen's own: a heading over a lit rule over a description, four
+times down one screen, is what a settings pane looks like, and each of
+those headings named something the card beneath it already said.
+`Section` is still right where a heading groups **several** cards; it
+was wrong for one card with a title over it, which is what every use on
+Base had become. `space-y-8` went to `space-y-4` with them — two rem
+was holding apart blocks that had a heading each.
+
+**The upgrade list folds the same way.** What is already in the house and
+what was decided against are records rather than things to do; what you
+open the card for is what you are saving for. The "Wanted" label went
+with them — with the other two behind the eye, that list is the only one
+on screen and a heading over it said nothing the card's own name did not.
+
+**`ChoreRow` draws `DailyRow`'s box rather than a `Button`.** The same
+record was rendering its tick as two different controls — a full-size
+primary button on Base against a 36-pixel bordered box on Today — which
+made a chore read as a heavier commitment on one screen than the other
+and took the row to nearly twice the height. It is also the rule this
+file already holds for `ActionRow`: an icon that changes between two
+actions cannot also be the record of which state you are in.
+
+**`EyeIcon` moved to `components/shared/`.** Two screens now reveal what
+they are not asking for, and a second hand-drawn eye is where the two
+would start disagreeing about which way the stroke goes.
+
+**The page header stays, and that is deliberate.** Today has none because
+it opens on a portrait, which says what the screen is without a word;
+Base opens on a list of chores, and a list needs naming. The note on
+`PageHeader` says not to extend that exception.
+
 **Base is an area that files records rather than storing them.**
 `domain/base/base.ts`. A house job is a `Project`, a chore is a `Daily`,
 a house upgrade is an `Upgrade` — the app already knows all three shapes,

@@ -4,12 +4,13 @@ import { groupOnly } from '@/domain/dailies/groups'
 import { isPartDoneOn, PART_OF_DAY_LABELS, partsOf, type PartOfDay } from '@/domain/dailies/daily'
 import { toDayKey } from '@/domain/time/day'
 import { GroupedDailies } from '@/features/today/DailyGroups'
-import { Flame, Plus, Undo2, Wrench } from 'lucide-react'
+import { Brush, Check, Flame, Hammer, Plus, Undo2, Wrench } from 'lucide-react'
 import { useState } from 'react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { Link } from 'react-router-dom'
 
-import { Button, Card, Empty, Section } from '@/components/shared/primitives'
+import { Button, Card, CardHeading, Empty } from '@/components/shared/primitives'
+import { EyeIcon } from '@/components/shared/EyeIcon'
 import { buttonStyles } from '@/components/shared/styles'
 import type { DailyView } from '@/application/use-cases/dailies/dailies'
 import type { Project } from '@/domain/projects/project'
@@ -88,29 +89,54 @@ function ChoreRow({
   return (
     <div className="flex items-center gap-3 py-2">
       {/*
-        Counts rather than toggles when the chore asks for more than one —
-        letting the dog out is the case this exists for, and a tap at the
-        second time of day has to record a third rather than undo the
-        first. It only becomes an undo once the day is full.
+        **The same box `DailyRow` draws, rather than a `Button`.** A
+        chore is a habit filed to the house, and the two were rendering
+        their tick as two different controls: a full-size primary button
+        here against a 36-pixel box on Today, which made the same record
+        read as a heavier commitment on one screen than the other and
+        took a chore row to nearly twice the height.
+
+        The box is also the honest shape. This file already records the
+        rule for `ActionRow` — an icon that changes between two actions
+        cannot also be the record of which state you are in — and a
+        bordered square that fills when ticked reads as state to
+        everybody.
+
+        Counts rather than toggles when the chore asks for more than one:
+        a tap at the second time of day has to record a third rather than
+        undo the first, and it only becomes an untick once the day is
+        full.
       */}
-      <Button
-        variant={doneToday ? 'primary' : 'outline'}
+      <button
+        type="button"
         aria-label={
           doneToday
-            ? `Undo ${daily.title}`
+            ? `Untick ${daily.title}`
             : needed > 1
               ? `Log ${daily.title}, ${String(doneCount)} of ${String(needed)} done`
-              : `Mark ${daily.title} done`
+              : `Tick ${daily.title}`
         }
         aria-pressed={doneToday}
         disabled={keep.isPending || undo.isPending}
+        className={[
+          'tap-target grid size-9 shrink-0 place-items-center rounded-lg border text-xs font-semibold transition-colors',
+          doneToday
+            ? 'border-good-500 bg-good-500/15 text-good-500'
+            : doneCount > 0
+              ? 'border-good-500/50 text-good-500'
+              : 'border-ink-700 text-ink-700 hover:border-ink-500',
+        ].join(' ')}
         onClick={() => {
           if (doneToday) undo.mutate({ id: daily.id, ...(part === undefined ? {} : { part }) })
           else keep.mutate({ id: daily.id, ...(part === undefined ? {} : { part }) })
         }}
       >
-        {doneToday ? '✓' : needed > 1 ? `${String(doneCount)}/${String(needed)}` : ''}
-      </Button>
+        {doneToday ? (
+          <Check size={18} aria-hidden />
+        ) : (
+          needed > 1 && doneCount > 0 && `${String(doneCount)}/${String(needed)}`
+        )}
+      </button>
 
       <div className="min-w-0 flex-1">
         <DailyTitle
@@ -487,6 +513,15 @@ export function BasePage() {
   const [addingChore, setAddingChore] = useState(false)
   const [addingUpgrade, setAddingUpgrade] = useState(false)
   const [addingJob, setAddingJob] = useState(false)
+  /*
+   * What the eye in each card header reveals: rows the house is not
+   * asking for today, which still carry the only control that can undo,
+   * rename or retire them. Folded, never filtered — the rule Today's
+   * header already follows.
+   */
+  const [showingRestChores, setShowingRestChores] = useState(false)
+  const [showingRestUpgrades, setShowingRestUpgrades] = useState(false)
+
   const chores = useChores()
   const jobs = useBaseProjects()
   /*
@@ -501,35 +536,90 @@ export function BasePage() {
   const houseDropped = dropped(houseUpgrades)
   const total = wishlistTotal(houseUpgrades)
 
-  const dueChores = (chores.data ?? []).filter((view) => view.dueToday || view.doneToday)
-  const otherChores = (chores.data ?? []).filter((view) => !view.dueToday && !view.doneToday)
+  /*
+   * **Outstanding, done, and not due — three lists where there were
+   * two.** The screen drew everything due *or done* in one block and
+   * everything else under a permanent "Not due today" heading, so a
+   * fifteen-chore house rendered fifteen rows whatever the day asked
+   * for. Reported as _"you're greeted with a long list of every base
+   * related daily task… show only pending items like the home tab
+   * does."_
+   */
+  const views = chores.data ?? []
+  const outstanding = views.filter((view) => view.dueToday && !view.doneToday)
+  const restingChores = views.filter((view) => !view.dueToday || view.doneToday)
+
+  const restingUpgrades = [...houseOwned, ...houseDropped]
 
   return (
-    /*
-      Nothing on this page states no margin of its own today, so this
-      changes nothing on screen. It is eight rather than four so that the
-      three wrappers agree: a page-level block with no margin gets the
-      same 2rem here as it does on Today and Vitals, rather than half of
-      it depending on which screen it was added to.
-    */
-    <div className="space-y-8">
+    <div className="space-y-4">
+      {/*
+        **The page header stays**, and that is deliberate rather than an
+        oversight while the sections around it went. Today has none
+        because it opens on a portrait of you, which says what the screen
+        is without a word; this one opens on a list of chores, and a list
+        needs naming. The note on `PageHeader` says not to extend that
+        exception.
+      */}
       <PageHeader title="Base" subtitle="The place you live, and what it is asking for" />
 
-      <Section
-        title="Chores"
-        description="What the house wants today"
-        action={
-          <Button
-            variant={addingChore ? 'ghost' : 'outline'}
-            size="sm"
-            onClick={() => {
-              setAddingChore(!addingChore)
-            }}
-          >
-            {addingChore ? 'Close' : 'Add'}
-          </Button>
-        }
-      >
+      {/*
+        **Cards that name themselves, where four `Section`s used to stack
+        a heading and a lit rule above each one.** Asked for as _"refactor
+        its looks so it's cleaner like we did with the homepage"_ — and
+        the home screen's own note is the argument: a heading over a rule
+        over a description, four times down one screen, is what a settings
+        pane looks like. Each of those headings named something the card
+        beneath it already said.
+
+        `space-y-4` rather than `space-y-8` for the same reason. Two rem
+        between cards was holding apart blocks that had a heading each;
+        without them the gap reads as a gulf.
+      */}
+      <Card>
+        <CardHeading
+          icon={<Brush size={16} aria-hidden />}
+          title="Chores"
+          action={
+            <>
+              {restingChores.length > 0 && (
+                <Button
+                  size="sm"
+                  variant={showingRestChores ? 'primary' : 'ghost'}
+                  aria-pressed={showingRestChores}
+                  aria-label={`${showingRestChores ? 'Hide' : 'Show'} ${String(restingChores.length)} done and not due today`}
+                  onClick={() => {
+                    setShowingRestChores(!showingRestChores)
+                  }}
+                >
+                  <EyeIcon open={showingRestChores} />
+                </Button>
+              )}
+              <Button
+                size="sm"
+                onClick={() => {
+                  setAddingChore(!addingChore)
+                }}
+              >
+                {addingChore ? 'Close' : 'Add'}
+              </Button>
+            </>
+          }
+        />
+
+        {/*
+          The count and the rows beneath it are one claim — the rule
+          Today's header cost two attempts to get right. This counts what
+          is outstanding, which is exactly what is drawn.
+        */}
+        <p className="text-ink-500 mb-2 text-sm">
+          {views.length === 0
+            ? 'Nothing yet.'
+            : outstanding.length === 0
+              ? 'All done for today.'
+              : `${String(outstanding.length)} left today`}
+        </p>
+
         {addingChore && (
           <AddDaily
             home={BASE}
@@ -540,36 +630,32 @@ export function BasePage() {
           />
         )}
 
-        <Card>
-          {chores.data === undefined ? null : dueChores.length === 0 && otherChores.length === 0 ? (
-            <Empty title="No chores yet">
-              Add one above — the hoovering, the bins, anything on a daily, weekly or monthly
-              cadence.
-            </Empty>
-          ) : (
-            <>
-              <GroupedDailies
-                bare
-                categoryOf={groupOnly}
-                views={dueChores}
-                render={(view, part) => <ChoreRow view={view} part={part} />}
-              />
+        {views.length === 0 ? (
+          <Empty title="No chores yet">
+            Add one above — the hoovering, the bins, anything on a daily, weekly or monthly cadence.
+          </Empty>
+        ) : (
+          <>
+            <GroupedDailies
+              bare
+              categoryOf={groupOnly}
+              views={outstanding}
+              render={(view, part) => <ChoreRow view={view} part={part} />}
+            />
 
-              {otherChores.length > 0 && (
-                <div className="border-ink-800 mt-2 border-t pt-2">
-                  <p className="text-ink-700 mb-1 text-xs tracking-wide uppercase">Not due today</p>
-                  <GroupedDailies
-                    bare
-                    categoryOf={groupOnly}
-                    views={otherChores}
-                    render={(view, part) => <ChoreRow view={view} part={part} />}
-                  />
-                </div>
-              )}
-            </>
-          )}
-        </Card>
-      </Section>
+            {showingRestChores && (
+              <div className="border-ink-800 mt-2 border-t pt-2">
+                <GroupedDailies
+                  bare
+                  categoryOf={groupOnly}
+                  views={restingChores}
+                  render={(view, part) => <ChoreRow view={view} part={part} />}
+                />
+              </div>
+            )}
+          </>
+        )}
+      </Card>
 
       {/*
         Between the chores and the jobs, because it is between them in
@@ -578,21 +664,22 @@ export function BasePage() {
       */}
       <Declutter />
 
-      <Section
-        title="Jobs"
-        description="Things that need fixing, and who is coming"
-        action={
-          <Button
-            variant={addingJob ? 'ghost' : 'outline'}
-            size="sm"
-            onClick={() => {
-              setAddingJob(!addingJob)
-            }}
-          >
-            {addingJob ? 'Close' : 'Add'}
-          </Button>
-        }
-      >
+      <Card>
+        <CardHeading
+          icon={<Hammer size={16} aria-hidden />}
+          title="Jobs"
+          action={
+            <Button
+              size="sm"
+              onClick={() => {
+                setAddingJob(!addingJob)
+              }}
+            >
+              {addingJob ? 'Close' : 'Add'}
+            </Button>
+          }
+        />
+
         {addingJob && (
           <AddJob
             onDone={() => {
@@ -601,38 +688,60 @@ export function BasePage() {
           />
         )}
 
-        <Card>
-          {jobs.data === undefined ? null : jobs.data.length === 0 ? (
-            <Empty title="Nothing broken">
-              A job opens with the errand it usually is — find the right person, get a quote, book
-              the appointment — or with the one you do yourself: work out what it needs, get the
-              materials, do the work.
-            </Empty>
-          ) : (
-            <ul>
-              {jobs.data.map((project) => (
-                <JobRow key={project.id} project={project} />
-              ))}
-            </ul>
-          )}
-        </Card>
-      </Section>
+        {jobs.data === undefined ? null : jobs.data.length === 0 ? (
+          <Empty title="Nothing broken">
+            A job opens with the errand it usually is — find the right person, get a quote, book the
+            appointment — or with the one you do yourself: work out what it needs, get the
+            materials, do the work.
+          </Empty>
+        ) : (
+          <ul>
+            {jobs.data.map((project) => (
+              <JobRow key={project.id} project={project} />
+            ))}
+          </ul>
+        )}
+      </Card>
 
-      <Section
-        title="Upgrades"
-        description="Things for the place rather than for you"
-        action={
-          <Button
-            variant={addingUpgrade ? 'ghost' : 'outline'}
-            size="sm"
-            onClick={() => {
-              setAddingUpgrade(!addingUpgrade)
-            }}
-          >
-            {addingUpgrade ? 'Close' : 'Add'}
-          </Button>
-        }
-      >
+      <Card>
+        <CardHeading
+          icon={<Wrench size={16} aria-hidden />}
+          title="Upgrades"
+          action={
+            <>
+              {/*
+                **What is already in the house, and what was decided
+                against, behind the same eye the chores use.** Both are
+                records rather than things to do: the list you open this
+                card for is what you are saving for. Folded rather than
+                dropped, because the only control that can un-cancel a
+                dropped upgrade lives on its row.
+              */}
+              {restingUpgrades.length > 0 && (
+                <Button
+                  size="sm"
+                  variant={showingRestUpgrades ? 'primary' : 'ghost'}
+                  aria-pressed={showingRestUpgrades}
+                  aria-label={`${showingRestUpgrades ? 'Hide' : 'Show'} ${String(restingUpgrades.length)} owned and dropped`}
+                  onClick={() => {
+                    setShowingRestUpgrades(!showingRestUpgrades)
+                  }}
+                >
+                  <EyeIcon open={showingRestUpgrades} />
+                </Button>
+              )}
+              <Button
+                size="sm"
+                onClick={() => {
+                  setAddingUpgrade(!addingUpgrade)
+                }}
+              >
+                {addingUpgrade ? 'Close' : 'Add'}
+              </Button>
+            </>
+          }
+        />
+
         {addingUpgrade && (
           <AddHouseUpgrade
             onDone={() => {
@@ -641,87 +750,82 @@ export function BasePage() {
           />
         )}
 
-        <Card>
-          {upgrades.data === undefined ? null : upgrades.data.length === 0 ? (
-            <Empty title="Nothing on the list">
-              Add one above, or send something across from the tech tree. It shares the same wallet
-              either way — a dishwasher and a barbell come out of the same money.
-            </Empty>
-          ) : (
-            <>
-              {/*
-                Split rather than badged. The two answer different
-                questions — what is in the house against what you are
-                saving for — and a Wanted chip is a poor substitute for a
-                heading once the list is longer than a glance.
-              */}
-              {houseWanted.length > 0 && (
-                <div className="mb-3">
-                  <div className="mb-1.5 flex items-baseline justify-between gap-2">
-                    <span className="text-ink-700 text-xs tracking-wide uppercase">Wanted</span>
-                    {/*
-                      What the list comes to, with the unpriced ones
-                      *named* rather than folded in as nothing. A couch
-                      with no estimate is not a free couch, and a total
-                      that pretended otherwise would be understated in
-                      the direction that matters.
-                    */}
-                    {total.priced > 0 && (
-                      <span className="text-ink-700 numeric text-xs">
-                        {formatMinorUnits(total.minorUnits)} across {total.priced}
-                        {total.unpriced > 0 && ` · ${String(total.unpriced)} unpriced`}
-                      </span>
-                    )}
+        {upgrades.data === undefined ? null : upgrades.data.length === 0 ? (
+          <Empty title="Nothing on the list">
+            Add one above, or send something across from the tech tree. It shares the same wallet
+            either way — a dishwasher and a barbell come out of the same money.
+          </Empty>
+        ) : (
+          <>
+            {houseWanted.length > 0 && (
+              <div>
+                {/*
+                  What the list comes to, with the unpriced ones *named*
+                  rather than folded in as nothing. A couch with no
+                  estimate is not a free couch, and a total that pretended
+                  otherwise would be understated in the direction that
+                  matters.
+
+                  The "Wanted" label above it is gone: with the owned and
+                  dropped rows behind the eye, this list is the only one
+                  on screen and a heading over it says nothing the card's
+                  own name did not.
+                */}
+                {total.priced > 0 && (
+                  <p className="text-ink-700 numeric mb-1.5 text-xs">
+                    {formatMinorUnits(total.minorUnits)} across {total.priced}
+                    {total.unpriced > 0 && ` · ${String(total.unpriced)} unpriced`}
+                  </p>
+                )}
+                <ul className="space-y-1.5">
+                  {houseWanted.map((upgrade) => (
+                    <UpgradeRow key={upgrade.id} upgrade={upgrade} />
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {houseWanted.length === 0 && !showingRestUpgrades && (
+              <p className="text-ink-500 text-sm">Nothing on the wishlist.</p>
+            )}
+
+            {showingRestUpgrades && (
+              <div className="border-ink-800 mt-3 space-y-3 border-t pt-3">
+                {houseOwned.length > 0 && (
+                  <div>
+                    <span className="text-ink-700 mb-1.5 block text-xs tracking-wide uppercase">
+                      In the house
+                    </span>
+                    <ul className="space-y-1.5">
+                      {houseOwned.map((upgrade) => (
+                        <UpgradeRow key={upgrade.id} upgrade={upgrade} />
+                      ))}
+                    </ul>
                   </div>
-                  <ul className="space-y-1.5">
-                    {houseWanted.map((upgrade) => (
-                      <UpgradeRow key={upgrade.id} upgrade={upgrade} />
-                    ))}
-                  </ul>
-                </div>
-              )}
+                )}
 
-              {houseOwned.length > 0 && (
-                <div>
-                  <span className="text-ink-700 mb-1.5 block text-xs tracking-wide uppercase">
-                    In the house
-                  </span>
-                  <ul className="space-y-1.5">
-                    {houseOwned.map((upgrade) => (
-                      <UpgradeRow key={upgrade.id} upgrade={upgrade} />
-                    ))}
-                  </ul>
-                </div>
-              )}
+                {houseDropped.length > 0 && (
+                  <div>
+                    <span className="text-ink-700 mb-1.5 block text-xs tracking-wide uppercase">
+                      Dropped
+                    </span>
+                    <ul className="space-y-1.5">
+                      {houseDropped.map((upgrade) => (
+                        <UpgradeRow key={upgrade.id} upgrade={upgrade} />
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
+          </>
+        )}
 
-              {/*
-                Decided against, and still reachable. Splitting the list
-                put cancelled rows in neither section, which rendered
-                them nowhere — and the only control that can un-cancel
-                one lives on its row, so the decision had been taken
-                away rather than recorded.
-              */}
-              {houseDropped.length > 0 && (
-                <div className="mt-3">
-                  <span className="text-ink-700 mb-1.5 block text-xs tracking-wide uppercase">
-                    Dropped
-                  </span>
-                  <ul className="space-y-1.5">
-                    {houseDropped.map((upgrade) => (
-                      <UpgradeRow key={upgrade.id} upgrade={upgrade} />
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </>
-          )}
-
-          <Link to="/upgrades" className={cn(buttonStyles({ variant: 'outline' }), 'mt-3 w-full')}>
-            <Wrench size={16} aria-hidden />
-            The rest of the tech tree
-          </Link>
-        </Card>
-      </Section>
+        <Link to="/upgrades" className={cn(buttonStyles({ variant: 'outline' }), 'mt-3 w-full')}>
+          <Wrench size={16} aria-hidden />
+          The rest of the tech tree
+        </Link>
+      </Card>
     </div>
   )
 }

@@ -57,6 +57,43 @@ export function Section({ title, description, action, children }: SectionProps) 
   )
 }
 
+/**
+ * A card that names itself, with its controls on the same line.
+ *
+ * The alternative is `Section`, which puts a large heading and a lit
+ * accent rule *above* the card. That reads as a settings pane — a title
+ * over a grey line is what a form looks like — and it is what the home
+ * screen dropped when it was asked to stop breaking up the flow of the
+ * cards. A game screen is cards; a card says what it is inside itself.
+ *
+ * `Section` is still right where a heading genuinely groups **several**
+ * cards. It is wrong for one card with a title over it, which is what
+ * every use of it on Base had become.
+ *
+ * The heading is deliberately `text-sm` and dim: it is a label on a
+ * panel rather than the page's own title, and the largest thing on a
+ * screen should be the thing you came to read.
+ */
+export function CardHeading({
+  icon,
+  title,
+  action,
+}: {
+  readonly icon?: ReactNode
+  readonly title: string
+  readonly action?: ReactNode
+}) {
+  return (
+    <div className="mb-2 flex items-center justify-between gap-2">
+      <h2 className="text-ink-500 flex items-center gap-2 text-sm">
+        {icon}
+        {title}
+      </h2>
+      {action !== undefined && <div className="flex items-center gap-1">{action}</div>}
+    </div>
+  )
+}
+
 interface NumberFieldProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'type'> {
   readonly label: string
   /** Shown greyed inside the field — last time's number, or the prescription. */
