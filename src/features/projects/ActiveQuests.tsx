@@ -207,19 +207,28 @@ function Slot({
       return <ArcSlot arc={{ ...arc, next: arc.next }} />
     }
 
+    /*
+     * **An empty slot is one line, not a card with a paragraph in it.**
+     *
+     * It drew a full card carrying the name of the missing quest and a
+     * sentence telling you to pick one from the board — twice over,
+     * since there are two slots. On an empty board that is the two
+     * largest things on the screen, both saying nothing, above the list
+     * they are telling you to go and read.
+     *
+     * The instruction went with the card. "Pick one from the board
+     * below" is only ever read by somebody who can already see the
+     * board, and the quest cards down there carry the control that does
+     * it — so the sentence was describing a button that is visible from
+     * where it was printed.
+     */
     return (
-      <Card>
-        <div className="flex items-center gap-2">
-          <Icon size={16} className="text-ink-600 shrink-0" aria-hidden />
-          <span className="text-ink-500 text-sm">
-            No {QUEST_KIND_LABELS[kind].toLowerCase()} quest active.
-          </span>
-        </div>
-        <p className="text-ink-600 mt-1 text-xs">
-          Pick one from the board below to make it your {QUEST_KIND_LABELS[kind].toLowerCase()}{' '}
-          quest.
-        </p>
-      </Card>
+      <div className="border-ink-800 flex items-center gap-2 rounded-xl border border-dashed px-3 py-2.5">
+        <Icon size={14} className="text-ink-700 shrink-0" aria-hidden />
+        <span className="text-ink-600 text-sm">
+          No {QUEST_KIND_LABELS[kind].toLowerCase()} quest
+        </span>
+      </div>
     )
   }
 

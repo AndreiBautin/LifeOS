@@ -1,6 +1,18 @@
 import { Campaigns } from '@/features/campaign/Campaigns'
 import { useCampaigns } from '@/features/campaign/hooks'
-import { Briefcase, Check, ChevronDown, ChevronRight, Home, Plus, Trash2 } from 'lucide-react'
+import {
+  Briefcase,
+  Check,
+  ChevronDown,
+  ChevronRight,
+  ClipboardList,
+  Home,
+  Lightbulb,
+  Plus,
+  Receipt,
+  Swords,
+  Trash2,
+} from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { buttonStyles } from '@/components/shared/styles'
 import { Link } from 'react-router-dom'
@@ -11,7 +23,8 @@ import { kindOf } from '@/domain/projects/active'
 import { QUEST_KIND_LABELS, type QuestKind } from '@/domain/projects/project'
 import { board, byOutstanding, contracts } from '@/domain/projects/contract'
 import { ActiveQuests } from './ActiveQuests'
-import { Badge, Button, Card, Empty, Section } from '@/components/shared/primitives'
+import { Badge, Button, Card, CardHeading, Empty } from '@/components/shared/primitives'
+import { EyeIcon } from '@/components/shared/EyeIcon'
 
 import { computeProgress, computeScore } from '@/domain/projects/priority'
 import { PROJECT_STATUS_LABELS, type Project } from '@/domain/projects/project'
@@ -408,7 +421,8 @@ function Contracts({
   const [name, setName] = useState('')
 
   return (
-    <Section title="Contracts" description="Small one-off things, off the board and out of the way">
+    <div>
+      <CardHeading icon={<Receipt size={16} aria-hidden />} title="Contracts" />
       <form
         className="mb-3 flex gap-2"
         onSubmit={(event) => {
@@ -453,13 +467,15 @@ function Contracts({
           ))}
         </div>
       )}
-    </Section>
+    </div>
   )
 }
 
 export function ProjectsPage() {
   const [name, setName] = useState('')
   const [kind, setKind] = useState<QuestKind>('side')
+  /* What the eye on the board reveals — see the note beside it. */
+  const [showingFinished, setShowingFinished] = useState(false)
   const projects = useProjects()
   const active = useActiveQuests()
   /*
@@ -502,7 +518,13 @@ export function ProjectsPage() {
   const done = (projects.data ?? []).filter((project) => project.status === 'completed')
 
   return (
-    <>
+    /*
+      `space-y-4` between blocks, where five `Section`s each supplied
+      their own two rem. That gap was holding apart divisions of a page;
+      these are labelled runs of cards, and at 2rem they read as separate
+      screens stacked on one route.
+    */
+    <div className="space-y-4">
       {/*
         **Job search is reached from here**, which is what makes the two
         links on that screen safe to rely on.
@@ -534,13 +556,14 @@ export function ProjectsPage() {
       */}
       <Campaigns />
 
-      <Section title="Active" description="One main quest, one side quest.">
+      <div>
+        <CardHeading icon={<Swords size={16} aria-hidden />} title="Active" />
         <ActiveQuests
           main={active.data?.main}
           side={active.data?.side}
           {...(leadingArc === undefined ? {} : { arc: leadingArc })}
         />
-      </Section>
+      </div>
 
       {/*
         The recommendation stopped being the top of this page and became a
@@ -552,38 +575,65 @@ export function ProjectsPage() {
         mean to be working on. So it proposes something to activate, and
         you ignore it or you do not.
       */}
-      <Section
-        title="Suggested"
-        description="What the scoring would pick, if you want a second opinion."
-      >
-        {recommendation.data !== undefined && (
-          <>
-            <NextAction recommendation={recommendation.data} />
-            {suggested !== undefined && (
-              <Button
-                className="mt-2"
-                full
-                onClick={() => {
-                  setActive.mutate({ id: suggested.id, kind: kindOf(suggested) })
-                }}
-              >
-                Make this my {QUEST_KIND_LABELS[kindOf(suggested)].toLowerCase()} quest
-              </Button>
-            )}
-          </>
-        )}
-      </Section>
+      {/*
+        **Silent when there is nothing to suggest**, where it used to draw
+        a heading and a description over nothing. A section that renders
+        its title and no content is the defect Today was fixed for, and
+        this page had it on an empty board — a "Suggested" heading with a
+        blank space under it, on the screen you open to find something to
+        do.
+      */}
+      {recommendation.data?.actionId !== undefined && (
+        <div>
+          <CardHeading icon={<Lightbulb size={16} aria-hidden />} title="Suggested" />
+          <NextAction recommendation={recommendation.data} />
+          {suggested !== undefined && (
+            <Button
+              className="mt-2"
+              full
+              onClick={() => {
+                setActive.mutate({ id: suggested.id, kind: kindOf(suggested) })
+              }}
+            >
+              Make this my {QUEST_KIND_LABELS[kindOf(suggested)].toLowerCase()} quest
+            </Button>
+          )}
+        </div>
+      )}
 
       <Contracts projects={oneOffs} today={today} all={projects.data ?? []} />
 
-      <Section
-        title="The board"
-        description={
-          projects.data === undefined
-            ? undefined
-            : `${open.length.toString()} open · ${done.length.toString()} finished`
-        }
-      >
+      <div>
+        {/*
+          **Finished quests fold behind the eye rather than getting a
+          section of their own.** A completed quest is a record, not
+          something to do — the same call the done chores got on Base —
+          and its card carries the only route back to reopening it, so it
+          folds rather than being dropped.
+
+          The count moved into the card body with the rows it describes.
+          As a section *description* it sat above the add form, which put
+          "3 open" two controls away from the three cards it was about.
+        */}
+        <CardHeading
+          icon={<ClipboardList size={16} aria-hidden />}
+          title="The board"
+          action={
+            done.length > 0 && (
+              <Button
+                size="sm"
+                variant={showingFinished ? 'primary' : 'ghost'}
+                aria-pressed={showingFinished}
+                aria-label={`${showingFinished ? 'Hide' : 'Show'} ${String(done.length)} finished`}
+                onClick={() => {
+                  setShowingFinished(!showingFinished)
+                }}
+              >
+                <EyeIcon open={showingFinished} />
+              </Button>
+            )
+          }
+        />
         {/*
           **Two rows, because three controls do not fit on one.**
           Reported as *"I don't seem to be able to add new side quests at
@@ -659,6 +709,14 @@ export function ProjectsPage() {
           </div>
         </form>
 
+        {projects.data !== undefined && (
+          <p className="text-ink-500 mb-2 text-sm">
+            {open.length === 0
+              ? 'Nothing on the board.'
+              : `${open.length.toString()} open${done.length > 0 ? ` · ${done.length.toString()} finished` : ''}`}
+          </p>
+        )}
+
         {open.length === 0 ? (
           <Empty title="Nothing on">Add the thing you keep meaning to get round to.</Empty>
         ) : (
@@ -673,11 +731,9 @@ export function ProjectsPage() {
             ))}
           </div>
         )}
-      </Section>
 
-      {done.length > 0 && (
-        <Section title="Finished">
-          <div className="space-y-2">
+        {showingFinished && done.length > 0 && (
+          <div className="border-ink-800 mt-3 space-y-2 border-t pt-3">
             {done.map((project) => (
               <ProjectCard
                 key={project.id}
@@ -687,8 +743,8 @@ export function ProjectsPage() {
               />
             ))}
           </div>
-        </Section>
-      )}
-    </>
+        )}
+      </div>
+    </div>
   )
 }

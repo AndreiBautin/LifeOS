@@ -4,7 +4,7 @@ import { useState } from 'react'
 import type { CampaignId } from '@/domain/ids/ids'
 import { Link } from 'react-router-dom'
 
-import { Badge, Button, Card, Empty, Section } from '@/components/shared/primitives'
+import { Badge, Button, Card, CardHeading, Empty, Section } from '@/components/shared/primitives'
 import { Meter } from '@/components/shared/Meter'
 import type { CampaignStanding, Requirement, StageStanding } from '@/domain/campaign/campaign'
 import { formatMinorUnits } from '@/domain/upgrades/upgrade'
@@ -723,10 +723,7 @@ export function Campaigns() {
    */
   if (campaigns.data !== undefined && arcs.length === 0) {
     return (
-      <Section
-        title="The arc"
-        description="One long run across several areas. It pays nothing — everything under it already did."
-      >
+      <div>
         {adding ? (
           <AddArc
             onDone={() => {
@@ -735,6 +732,14 @@ export function Campaigns() {
           />
         ) : (
           <Card>
+            {/*
+              The heading moved inside the card and the description went.
+              "One long run across several areas" is the same sentence the
+              empty state below already makes at length, and printing both
+              was a title, a description and an empty state saying one
+              thing three times.
+            */}
+            <CardHeading icon={<Flag size={16} aria-hidden />} title="The arc" />
             <Empty title="No arc yet">
               <span className="block">
                 The long one — fix the house, improve the income, find somewhere, save the deposit,
@@ -755,7 +760,7 @@ export function Campaigns() {
             </Empty>
           </Card>
         )}
-      </Section>
+      </div>
     )
   }
 

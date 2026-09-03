@@ -66,9 +66,15 @@ export function Section({ title, description, action, children }: SectionProps) 
  * screen dropped when it was asked to stop breaking up the flow of the
  * cards. A game screen is cards; a card says what it is inside itself.
  *
- * `Section` is still right where a heading genuinely groups **several**
- * cards. It is wrong for one card with a title over it, which is what
- * every use of it on Base had become.
+ * **Used inside a card, or directly above a run of them.** Quests is the
+ * second case: `ActiveQuests` and every `ProjectCard` draw their own
+ * card, so a wrapper would be a card inside a card. The heading row is
+ * the same either way, which is the point — the two screens should not
+ * grow two different ideas of what a block title looks like.
+ *
+ * `Section` remains for the case it was written for: a heading that has
+ * to carry a **description** as well, and read as a division of the page
+ * rather than a label on a panel.
  *
  * The heading is deliberately `text-sm` and dim: it is a label on a
  * panel rather than the page's own title, and the largest thing on a

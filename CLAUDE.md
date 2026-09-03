@@ -3310,6 +3310,46 @@ registered in all of the places a collection has to register. The
 compiler and the guard tests found most of them, which is that machinery
 working as intended.
 
+**Quests got the same treatment, and the differences are where the rule
+had to bend.** Asked for as _"now let's do the same cleanup for the
+quests page."_
+
+**Finished quests fold behind the eye instead of getting a section of
+their own.** A completed quest is a record rather than something to do,
+and its card carries the only route to reopening it — so it folds rather
+than being dropped, the call the done chores got on Base. The count moved
+into the body with the rows it describes: as a `Section` description it
+sat above the add form, which put "3 open" two controls away from the
+three cards it was about.
+
+**`CardHeading` also heads a run of cards, which Base did not need.**
+`ActiveQuests` and every `ProjectCard` draw their own card, so a wrapper
+here would be a card inside a card. The heading row is the same either
+way, which is the point — two screens should not grow two ideas of what a
+block title looks like.
+
+**`Section` survives for the case it was written for, and an arc is
+it.** Each campaign is titled by its `name` with its `aim` as the
+description; both are the record's own and `CardHeading` deliberately
+carries no description. **Only the arc's _empty state_ converted** —
+that was a title, a description and an empty state saying one thing three
+times.
+
+**Suggested is silent when there is nothing to suggest**, and the guard
+had to be `recommendation.data?.actionId` rather than `data !==
+undefined`: the recommendation always resolves, and `NextAction` renders
+its own "nothing to do next" card inside it. So the first version still
+drew a heading over an empty state — the defect it was meant to remove,
+surviving one layer down.
+
+**An empty quest slot is one dashed line, not a card with a paragraph.**
+Two slots each drew a full card naming the missing quest and telling you
+to pick one from the board, which on an empty board made the two largest
+things on screen the two that said nothing. The instruction went with the
+card: "pick one from the board below" is only read by somebody who can
+already see the board, and the cards down there carry the control that
+does it.
+
 **Base shows what is pending and folds the rest, and its sections became
 cards.** Asked for as _"you're greeted with a long list of every base
 related daily task… show only pending items like the home tab does"_ and
