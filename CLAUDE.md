@@ -1650,19 +1650,34 @@ one, and `repositories.test.ts` caught the store list. That is the
 machinery working: five of the seven were found by the compiler or a
 guard rather than by memory.
 
-**Three controls do not fit on one row at 375, and the board's add form
-was the proof.** Reported as _"I don't seem to be able to add new side
-quests at the bottom of the quests page"_ — and **the form worked**,
-which is what makes this worth recording rather than filing as a styling
-nit. The name field, the Side/Main pair and the Add button shared a flex
-row, so the field was squeezed to **177 pixels** and clipped its own
-placeholder mid-word to _"Something you are tr…"_. A control that cannot
-finish saying what it is for reads as disabled, and the loud button
-beside it reads as the whole form.
+**A text field does not share a row with two other controls at 375.**
+This has now shipped four times, and it is written as a constraint rather
+than as a story about one form because the story is what let it recur:
 
-The Contracts section directly above gets this right by accident — one
-field, one plus, full width — which is exactly why that one looks like
-somewhere to type and this one did not. The field has its own row now.
+| Where                                                     | The field came out at                          |
+| --------------------------------------------------------- | ---------------------------------------------- |
+| Quests, add form (name + Side/Main + Add)                 | **177 px**, clipping _"Something you are tr…"_ |
+| Codex, filter row (search + status + sort)                | **26 px**                                      |
+| Map, filter row (search + kind + sort)                    | **109 px**                                     |
+| Map, "The world" heading (title + Trips + waiting + Walk) | the **title** wrapped to "The / world"         |
+
+**The mechanism is always the same**: a `select` takes its intrinsic
+width from its longest option — "Currently Using", "Recently Added" — and
+a button from its label, so `flex-1` on the field gets the remainder,
+and the remainder at 375 is nothing. Two of these were found by
+_measuring_ rather than by looking, which is the only thing that finds a
+26-pixel box: it does not look broken, it looks like a narrow control.
+
+**The fix is a row of its own for the field**, with the remaining
+controls sharing the next row at `flex-1` each. Measured after: 343, then
+168 · 168.
+
+**A report of "I can't do X" is not always a broken X.** The quests one
+was reported as _"I don't seem to be able to add new side quests"_ and
+**the form worked**. A control that cannot finish saying what it is for
+reads as disabled, and the loud button beside it reads as the whole form.
+The fix is layout, and saying so is more useful than a changelog line
+claiming a bug was fixed.
 
 **A report of "I can't do X" is not always a broken X.** Driving it
 found a working form nobody could see was a form; the fix is layout, and
@@ -3309,6 +3324,33 @@ deliberately not on that of a strength standard.
 registered in all of the places a collection has to register. The
 compiler and the guard tests found most of them, which is that machinery
 working as intended.
+
+**The Map finished the sweep, and the four screens now read the same.**
+Asked for as _"now the map page."_
+
+**Places you have been fold behind the eye.** The list is a list of
+somewhere to go, and a map used for a year is mostly somewhere you
+already went — so what it opened on was the part with nothing left to do
+about it. `archived` folds with `visited`, both being decisions already
+taken.
+
+**A favourite never folds, however often you have been.** That is what
+the flag is for: somewhere you go back to is still somewhere to go. It is
+the one place in this sweep where "done" is not simply a status —
+verified by favouriting a place and then marking it visited, which leaves
+it in the list.
+
+**The fold suspends while a search or a kind is on**, the rule the Codex
+version follows.
+
+**"The world" lost Trips and the inbox prompt**, because its heading
+carried four things at 375 and the _title_ was what gave way — wrapping
+to "The / world". Trips went to the page header, which is the established
+home for a related screen (Train carries Plan and History that way,
+Quests carries Job search). The inbox prompt went down to Places as a
+full-width link, which is where the pile it counts actually is: places
+with no point yet are a fact about that list rather than about the fog.
+Walk stayed, being the one control that acts on what is drawn under it.
 
 **The Codex got the same treatment, and it is where the pattern paid for
 itself.** Asked for as _"now do the same for the codex page."_

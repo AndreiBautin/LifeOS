@@ -3,7 +3,9 @@ import {
   CalendarDays,
   Check,
   ClipboardList,
+  Compass,
   Footprints,
+  Globe2,
   Heart,
   Inbox,
   MapPin,
@@ -19,7 +21,9 @@ import { exploredBounds, formatArea } from '@/application/use-cases/atlas/explor
 import type { PlaceSearchResult } from '@/domain/atlas/PlaceSearch'
 import { filterPlaces } from '@/application/use-cases/atlas/FilterPlaces'
 import { sortPlaces, type PlaceSortOption } from '@/application/use-cases/atlas/SortPlaces'
-import { Badge, Button, Card, Empty, Section } from '@/components/shared/primitives'
+import { Badge, Button, Card, CardHeading, Empty } from '@/components/shared/primitives'
+import { EyeIcon } from '@/components/shared/EyeIcon'
+import { cn } from '@/lib/cn'
 import { AreaLadders } from '@/features/character/CharacterParts'
 import { buttonStyles } from '@/components/shared/styles'
 import type { CategoryId } from '@/domain/atlas/category/CategoryDefinition'
@@ -355,6 +359,8 @@ export function AtlasPage() {
   const [search, setSearch] = useState('')
   const [category, setCategory] = useState<string>('')
   const [sortBy, setSortBy] = useState<PlaceSortOption>('recentlyAdded')
+  /* What the eye on Places reveals — see the note beside it. */
+  const [showingBeen, setShowingBeen] = useState(false)
 
   // Stabilised, so the marker memo below is not rebuilt on every render by
   // a fresh empty array — which following, once a second, would do.
@@ -388,6 +394,26 @@ export function AtlasPage() {
     [places, search, category, sortBy, walk.fix],
   )
 
+  /*
+   * **Places you have been fold away, the way finished quests and done
+   * chores do.** The list is a list of somewhere to go, and a map you
+   * have used for a year is mostly somewhere you already went — so the
+   * thing it opens on was the part with nothing left to do about it.
+   *
+   * `archived` joins `visited`: both are decisions already taken. A
+   * favourite is not resting however often you have been, because that
+   * is the flag for somewhere you go back to.
+   *
+   * **Suspended while a kind or a search is on**, the rule the Codex
+   * fold follows: filtering is an explicit request, and hiding half the
+   * answer to it would be the screen arguing with its own control.
+   */
+  const been = (place: Place): boolean =>
+    !place.favorite && (place.status === 'visited' || place.status === 'archived')
+  const filtering = search.trim() !== '' || category !== ''
+  const listed = filtering ? shown : shown.filter((place) => !been(place))
+  const restingPlaces = filtering ? [] : shown.filter(been)
+
   // Deliberately built from the filtered list rather than from everything:
   // a map still showing forty pins while the list underneath shows three
   // reads as a bug, whichever one you happen to trust.
@@ -418,28 +444,37 @@ export function AtlasPage() {
     walk.fix?.coordinates ?? places.find(isResolved)?.location.coordinates ?? FALLBACK_CENTRE
 
   return (
-    <>
-      <PageHeader title="Map" subtitle="Places worth going, and the ground you have covered." />
+    <div className="space-y-4">
+      {/*
+        **Trips moved up here, and the inbox prompt moved down.**
 
-      <Section
-        title="The world"
-        description={
-          atlas.data === undefined
-            ? undefined
-            : `${formatArea(atlas.data.areaKm2)} covered · ${atlas.data.cellCount.toString()} squares`
-        }
+        The world's heading carried four things at 375 — its own title,
+        Trips, "N waiting" and Walk — and the title lost, wrapping to
+        "The / world". That is the row-crowding lesson this file already
+        records twice, arriving one level up in the heading itself rather
+        than in a form.
+
+        A header action is the established home for a related screen:
+        Train carries Plan and History that way and Quests carries Job
+        search. Walk stays on the map, because it is the one control that
+        acts on what is drawn under it.
+      */}
+      <PageHeader
+        title="Map"
+        subtitle="Places worth going, and the ground you have covered."
         action={
-          <div className="flex gap-2">
-            <Link to="/trips" className={buttonStyles({ variant: 'ghost', size: 'sm' })}>
-              <CalendarDays size={16} aria-hidden />
-              Trips
-            </Link>
-            {unplaced > 0 && (
-              <Link to="/map/inbox" className={buttonStyles({ variant: 'ghost', size: 'sm' })}>
-                <Inbox size={16} aria-hidden />
-                {unplaced.toString()} waiting
-              </Link>
-            )}
+          <Link to="/trips" className={buttonStyles({ variant: 'ghost', size: 'sm' })}>
+            <CalendarDays size={16} aria-hidden />
+            Trips
+          </Link>
+        }
+      />
+
+      <div>
+        <CardHeading
+          icon={<Globe2 size={16} aria-hidden />}
+          title="The world"
+          action={
             <Button
               size="sm"
               variant={walk.following ? 'danger' : 'primary'}
@@ -448,9 +483,15 @@ export function AtlasPage() {
               <Footprints size={16} aria-hidden />
               {walk.following ? 'Stop' : 'Walk'}
             </Button>
-          </div>
-        }
-      >
+          }
+        />
+
+        {atlas.data !== undefined && (
+          <p className="text-ink-500 mb-2 text-sm">
+            {formatArea(atlas.data.areaKm2)} covered · {atlas.data.cellCount.toString()} squares
+          </p>
+        )}
+
         <Card className="h-80 overflow-hidden p-0">
           <Suspense
             fallback={
@@ -490,7 +531,7 @@ export function AtlasPage() {
               ` · accurate to ${Math.round(walk.fix.accuracyMeters).toString()} m`}
           </p>
         )}
-      </Section>
+      </div>
 
       {/*
         **The exploration ladder, on the screen the walking is drawn
@@ -505,42 +546,84 @@ export function AtlasPage() {
         the denominator is a person's statement about which region they
         mean, and nothing here can guess it.
       */}
-      <Section title="Ground covered" description="The share of your named region walked">
-        <Card>
-          <AreaLadders area="places" />
-        </Card>
-      </Section>
+      <Card>
+        {/*
+          The heading moved inside the card and the description went. "The
+          share of your named region walked" is what the row underneath
+          says in its own words, and `AreaLadders` already reads "Nothing
+          measured yet" when no region is set.
+        */}
+        <CardHeading icon={<Compass size={16} aria-hidden />} title="Ground covered" />
+        <AreaLadders area="places" />
+      </Card>
 
-      <Section
-        title="Places"
-        description={`${places.length.toString()} saved · ${places
-          .filter((place) => place.status === 'visited')
-          .length.toString()} visited`}
-        action={
-          <div className="flex gap-2">
-            <Button
-              size="sm"
-              onClick={() => {
-                setPasting(!pasting)
-                setAdding(false)
-              }}
-            >
-              <ClipboardList size={16} aria-hidden />
-              {pasting ? 'Close' : 'Paste'}
-            </Button>
-            <Button
-              size="sm"
-              onClick={() => {
-                setAdding(!adding)
-                setPasting(false)
-              }}
-            >
-              <MapPin size={16} aria-hidden />
-              {adding ? 'Close' : 'Add'}
-            </Button>
-          </div>
-        }
-      >
+      <div>
+        <CardHeading
+          icon={<MapPin size={16} aria-hidden />}
+          title="Places"
+          action={
+            <>
+              {restingPlaces.length > 0 && (
+                <Button
+                  size="sm"
+                  variant={showingBeen ? 'primary' : 'ghost'}
+                  aria-pressed={showingBeen}
+                  aria-label={`${showingBeen ? 'Hide' : 'Show'} ${String(restingPlaces.length)} already visited`}
+                  onClick={() => {
+                    setShowingBeen(!showingBeen)
+                  }}
+                >
+                  <EyeIcon open={showingBeen} />
+                </Button>
+              )}
+              <Button
+                size="sm"
+                onClick={() => {
+                  setPasting(!pasting)
+                  setAdding(false)
+                }}
+              >
+                <ClipboardList size={16} aria-hidden />
+                {pasting ? 'Close' : 'Paste'}
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => {
+                  setAdding(!adding)
+                  setPasting(false)
+                }}
+              >
+                <MapPin size={16} aria-hidden />
+                {adding ? 'Close' : 'Add'}
+              </Button>
+            </>
+          }
+        />
+
+        {places.length > 0 && (
+          <p className="text-ink-500 mb-2 text-sm">
+            {places.length.toString()} saved ·{' '}
+            {places.filter((place) => place.status === 'visited').length.toString()} visited
+          </p>
+        )}
+
+        {/*
+          The pile the paste path creates, named where the places are
+          rather than beside the map — it is a list of things with no
+          point yet, which is a fact about this section and not about the
+          fog. Shown only when there is one: a permanent "0 waiting" is a
+          chore that never goes away.
+        */}
+        {unplaced > 0 && (
+          <Link
+            to="/map/inbox"
+            className={cn(buttonStyles({ variant: 'outline', size: 'sm' }), 'mb-3 w-full')}
+          >
+            <Inbox size={16} aria-hidden />
+            {unplaced.toString()} waiting for a location
+          </Link>
+        )}
+
         {adding && (
           <AddPlace
             {...(walk.fix === undefined ? {} : { at: walk.fix.coordinates })}
@@ -555,9 +638,22 @@ export function AtlasPage() {
           </Empty>
         ) : (
           <>
-            <div className="mb-3 flex gap-2">
+            {/*
+              **Search on its own row, the two selects below it.** Third
+              screen with this shape and third time it measured wrong: at
+              375 the field and both selects came out at 109 pixels each,
+              which is a search box that cannot show a word and two
+              dropdowns that cannot show their own options. The Codex
+              version of this was 26 pixels; the quest add form was 177.
+
+              The rule is not "this screen's form is cramped" — it is that
+              a text field and two selects do not share a row at 375. It
+              is written into `CLAUDE.md` as that now, rather than as a
+              third note about a third screen.
+            */}
+            <div className="mb-2">
               <input
-                className={FIELD}
+                className={`${FIELD} w-full`}
                 value={search}
                 aria-label="Search places"
                 placeholder="Search"
@@ -565,8 +661,11 @@ export function AtlasPage() {
                   setSearch(event.target.value)
                 }}
               />
+            </div>
+
+            <div className="mb-3 flex gap-2">
               <select
-                className={FIELD}
+                className={`${FIELD} min-w-0 flex-1`}
                 value={category}
                 aria-label="Filter by kind"
                 onChange={(event) => {
@@ -581,7 +680,7 @@ export function AtlasPage() {
                 ))}
               </select>
               <select
-                className={FIELD}
+                className={`${FIELD} min-w-0 flex-1`}
                 value={sortBy}
                 aria-label="Sort places"
                 onChange={(event) => {
@@ -596,18 +695,30 @@ export function AtlasPage() {
               </select>
             </div>
 
-            {shown.length === 0 ? (
-              <Empty title="Nothing matches">Try a different search or kind.</Empty>
+            {listed.length === 0 ? (
+              <Empty title={filtering ? 'Nothing matches' : 'Nowhere left to go'}>
+                {filtering
+                  ? 'Try a different search or kind.'
+                  : 'Everywhere saved has been visited. What you have been to is behind the eye above.'}
+              </Empty>
             ) : (
               <Card className="divide-ink-800 divide-y py-0">
-                {shown.map((place) => (
+                {listed.map((place) => (
+                  <PlaceRow key={place.id} place={place} />
+                ))}
+              </Card>
+            )}
+
+            {showingBeen && restingPlaces.length > 0 && (
+              <Card className="divide-ink-800 divide-y mt-2 py-0">
+                {restingPlaces.map((place) => (
                   <PlaceRow key={place.id} place={place} />
                 ))}
               </Card>
             )}
           </>
         )}
-      </Section>
-    </>
+      </div>
+    </div>
   )
 }
