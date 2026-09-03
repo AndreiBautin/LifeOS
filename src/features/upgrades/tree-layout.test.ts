@@ -27,6 +27,8 @@ describe('layoutTree', () => {
     expect(at(layout, TRUNK_ID)?.row).toBe(0)
     expect(at(layout, branchId('base'))?.row).toBe(1)
     expect(at(layout, 'desk')?.row).toBe(2)
+    /* The second branch is below the first, not beside it. */
+    expect(at(layout, branchId('tech'))?.row).toBeGreaterThan(2)
   })
 
   /*
@@ -40,10 +42,53 @@ describe('layoutTree', () => {
       node('bulb', 'base', 'lamp'),
     ])
 
-    expect(at(layout, 'desk')?.row).toBe(2)
-    expect(at(layout, 'lamp')?.row).toBe(3)
-    expect(at(layout, 'bulb')?.row).toBe(4)
-    expect(layout.rows).toBe(5)
+    /*
+     * **Relative to the branch, not to the canvas.** These were absolute
+     * rows — 2, 3, 4 — which was the same thing while every branch's
+     * roots sat on row 2. Branches stack into bands of their own now, so
+     * a root's row depends on how deep the branches above it run, and an
+     * absolute figure here would be asserting the *order of the shelves*
+     * while claiming to assert nesting.
+     */
+    const base = at(layout, branchId('base'))?.row ?? 0
+
+    expect(at(layout, 'desk')?.row).toBe(base + 1)
+    expect(at(layout, 'lamp')?.row).toBe(base + 2)
+    expect(at(layout, 'bulb')?.row).toBe(base + 3)
+    expect(layout.rows).toBeGreaterThan(at(layout, 'bulb')?.row ?? 0)
+  })
+
+  /*
+   * **The width is the widest branch, not the sum of them**, which is the
+   * whole reason the bands exist. Two branches of three roots each came
+   * out at seven columns side by side and read as "scroll all the way
+   * over" on a phone; stacked they are three.
+   */
+  it('sizes the canvas to the widest branch rather than to every branch', () => {
+    const layout = layoutTree([
+      node('a', 'base'),
+      node('b', 'base'),
+      node('c', 'base'),
+      node('x', 'tech'),
+      node('y', 'tech'),
+      node('z', 'tech'),
+    ])
+
+    expect(layout.cols).toBe(3)
+  })
+
+  /* And a band cannot overlap the one above it. */
+  it('gives each branch a row band of its own', () => {
+    const layout = layoutTree([
+      node('desk', 'base'),
+      node('lamp', 'base', 'desk'),
+      node('phone', 'tech'),
+    ])
+
+    const deepestBase = at(layout, 'lamp')?.row ?? 0
+    const techBranch = at(layout, branchId('tech'))?.row ?? 0
+
+    expect(techBranch).toBeGreaterThan(deepestBase)
   })
 
   /* A parent centred over its children is what makes it look drawn. */
@@ -68,8 +113,9 @@ describe('layoutTree', () => {
   it('keeps a cross-branch prerequisite on its own branch and draws the link separately', () => {
     const layout = layoutTree([node('desk', 'base'), node('arm', 'tech', 'desk')])
 
+    /* One row under its own branch label, wherever that band starts. */
     expect(at(layout, 'arm')?.shelf).toBe('tech')
-    expect(at(layout, 'arm')?.row).toBe(2)
+    expect(at(layout, 'arm')?.row).toBe((at(layout, branchId('tech'))?.row ?? 0) + 1)
     expect(layout.edges).toContainEqual({ from: branchId('tech'), to: 'arm', crossBranch: false })
     expect(layout.edges).toContainEqual({ from: 'desk', to: 'arm', crossBranch: true })
   })

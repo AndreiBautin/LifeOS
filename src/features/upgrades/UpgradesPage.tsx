@@ -1,9 +1,10 @@
-import { Check, Lock, Plus, Trash2, Wallet } from 'lucide-react'
+import { Check, ListTree, Lock, Network, Plus, Trash2, Wallet } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 
-import { Badge, Button, Card, Empty, Section } from '@/components/shared/primitives'
+import { Badge, Button, Card, CardHeading, Empty } from '@/components/shared/primitives'
+import { EyeIcon } from '@/components/shared/EyeIcon'
 import { wishlistTotal } from '@/domain/upgrades/wishlist'
 import {
   UPGRADE_SHELF_LABELS,
@@ -484,6 +485,9 @@ function ShelfPage() {
    * upgrades cost — derived, synced, and inspectable. See
    * `domain/upgrades/pool.ts`.
    */
+  /* What the eye on "Every node" reveals — see the note beside it. */
+  const [showingSettled, setShowingSettled] = useState(false)
+
   const pool = useSpendingPool()
   const available = pool.data?.availableMinor ?? 0
 
@@ -501,6 +505,14 @@ function ShelfPage() {
   const gone = entries.filter((entry) => entry.upgrade.status === 'cancelled')
   const availableNow = open.filter((entry) => entry.affordable)
 
+  /*
+   * Bought and decided-against together: both are settled, and both had
+   * a section of their own at the foot of the page. Dropped first —
+   * something you may yet change your mind about is worth meeting before
+   * a list of things already in the house.
+   */
+  const settled = [...gone, ...owned]
+
   const total = wishlistTotal(entries.map((entry) => entry.upgrade))
   /*
    * What the list still needs beyond what you have. Two stated numbers
@@ -511,7 +523,7 @@ function ShelfPage() {
   const shortfall = Math.max(0, total.minorUnits - available)
 
   return (
-    <>
+    <div className="space-y-4">
       <PageHeader title="Tech tree" subtitle="What you are saving for, and what unlocks what" />
 
       {/*
@@ -519,7 +531,8 @@ function ShelfPage() {
         for.** The lists below it are how a node is edited; the picture
         is how it is understood.
       */}
-      <Section title="The tree" description="Every branch, and what each node needs first">
+      <div>
+        <CardHeading icon={<Network size={16} aria-hidden />} title="The tree" />
         {entries.length === 0 ? (
           <Empty title="Nothing planned">Add the first thing you are saving up for.</Empty>
         ) : (
@@ -532,16 +545,16 @@ function ShelfPage() {
             }}
           />
         )}
-      </Section>
+      </div>
 
-      <Section
-        title="What you can get today"
-        description={
-          availableNow.length === 0
+      <div>
+        <CardHeading icon={<Wallet size={16} aria-hidden />} title="What you can get today" />
+        <p className="text-ink-500 mb-2 text-sm">
+          {availableNow.length === 0
             ? 'Nothing is within reach at this pool.'
-            : `${availableNow.length.toString()} within reach.`
-        }
-      >
+            : `${availableNow.length.toString()} within reach.`}
+        </p>
+
         <PoolCard />
 
         {availableNow.length > 0 && (
@@ -555,7 +568,7 @@ function ShelfPage() {
             ))}
           </div>
         )}
-      </Section>
+      </div>
 
       {/*
         The same nodes as the diagram, as rows that can be edited — the
@@ -564,10 +577,44 @@ function ShelfPage() {
         is, and one screen calling two things the same name is the
         collision the Gadgets rename was made to fix.
       */}
-      <Section
-        title="Every node"
-        description="Ordered by the priority each node inherits from the most important thing it unblocks."
-      >
+      <div>
+        {/*
+          **Owned and dropped fold behind the eye, and the tail was the
+          complaint.** Reported alongside the width: _"the long list of
+          items isn't the best at the end."_ It was three stacked
+          sections — every open node, then everything decided against,
+          then everything already bought — so a tree you had used for a
+          year ended in two lists of things there is nothing left to do
+          about.
+
+          Folded rather than dropped, the rule the other four screens
+          follow: the only control that can un-cancel a dropped upgrade
+          lives on its own row.
+        */}
+        <CardHeading
+          icon={<ListTree size={16} aria-hidden />}
+          title="Every node"
+          action={
+            settled.length > 0 && (
+              <Button
+                size="sm"
+                variant={showingSettled ? 'primary' : 'ghost'}
+                aria-pressed={showingSettled}
+                aria-label={`${showingSettled ? 'Hide' : 'Show'} ${String(settled.length)} owned and dropped`}
+                onClick={() => {
+                  setShowingSettled(!showingSettled)
+                }}
+              >
+                <EyeIcon open={showingSettled} />
+              </Button>
+            )
+          }
+        />
+
+        <p className="text-ink-500 mb-2 text-sm">
+          Ordered by the priority each node inherits from the most important thing it unblocks.
+        </p>
+
         {total.priced > 0 && (
           <Card className="mb-3">
             <div className="flex items-baseline justify-between gap-3">
@@ -600,12 +647,10 @@ function ShelfPage() {
             ))}
           </div>
         )}
-      </Section>
 
-      {gone.length > 0 && (
-        <Section title="Dropped" description="Decided against, and still here to change your mind">
-          <div className="space-y-2">
-            {gone.map((entry) => (
+        {showingSettled && settled.length > 0 && (
+          <div className="border-ink-800 mt-3 space-y-2 border-t pt-3">
+            {settled.map((entry) => (
               <EntryCard
                 key={entry.upgrade.id}
                 entry={entry}
@@ -613,23 +658,9 @@ function ShelfPage() {
               />
             ))}
           </div>
-        </Section>
-      )}
-
-      {owned.length > 0 && (
-        <Section title="Owned">
-          <div className="space-y-2">
-            {owned.map((entry) => (
-              <EntryCard
-                key={entry.upgrade.id}
-                entry={entry}
-                others={entries.filter((one) => one.upgrade.id !== entry.upgrade.id)}
-              />
-            ))}
-          </div>
-        </Section>
-      )}
-    </>
+        )}
+      </div>
+    </div>
   )
 }
 

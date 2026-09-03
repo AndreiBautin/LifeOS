@@ -1735,10 +1735,50 @@ labels inside the SVG would mean reimplementing text wrapping and losing
 the target the mobile bar requires.
 
 **It scrolls sideways, and that is the one place in this app where that
-is correct.** A tree of any width cannot be squeezed into 375 pixels
-with readable nodes, so the canvas is as wide as it needs and the
-container scrolls — the _page_ must still never scroll sideways, so the
-overflow is on that container alone.
+is correct** — but it was doing far more of it than the tree needed. A
+tree of any width cannot be squeezed into 375 pixels with readable nodes,
+so the canvas is as wide as it needs and the container scrolls; the
+_page_ must still never scroll sideways, so the overflow is on that
+container alone.
+
+**Branches stack down the page rather than side by side.** Reported as
+_"I have to scroll all the way over to see it in mobile which isn't a
+great experience."_ Columns were handed out in one running sequence
+across every branch, so the canvas was as wide as **the sum of all of
+them**: measured at **1320 pixels** on eight upgrades across two shelves,
+on a 375-pixel screen. You could see 28% of your own tech tree, and the
+second branch was entirely off the right edge before you had seen
+anything.
+
+Each branch now starts at column 0 in a row band of its own, so the width
+is **the widest single branch** rather than the sum — the same eight come
+out at **528**. Height grows instead, which is the axis a phone already
+scrolls.
+
+It can still overflow, and that is now the case the horizontal scroll is
+genuinely for: four siblings at 132 pixels is 528 whatever the screen.
+What it no longer does is hide a whole branch before you have seen one.
+
+**The gutter became a gap.** `BRANCH_GUTTER` was empty _columns_ between
+branches, because side by side with one column sequence the last node of
+Base and the first of Gadgets sat adjacent and a Monitor filed under
+Gadgets appeared to hang off Base. Stacking answers that by construction
+— they cannot be adjacent sideways any more — and `BRANCH_GAP` is the
+empty _row_ that keeps the deepest node of one band off the next band's
+label.
+
+**The trunk sits above the first branch, not centred across all of
+them.** Side by side the centre was between the branches and every edge
+ran down and outwards; stacked, they are all below it, so the centre of
+the topmost band is the only position from which the edges do not cross
+the bands underneath.
+
+**Two layout tests moved from absolute rows to relative ones.** They
+asserted rows 2, 3, 4 for a nesting chain, which was the same thing while
+every branch's roots sat on row 2 — and would now be asserting _the order
+of the shelves_ while claiming to assert nesting. Two more were added: the
+canvas is sized to the widest branch rather than the sum, and a band
+cannot overlap the one above it.
 
 **A gutter between branches, found by looking rather than by reasoning.**
 Columns are handed out in one running sequence, so the last node of Base
@@ -3324,6 +3364,18 @@ deliberately not on that of a strength standard.
 registered in all of the places a collection has to register. The
 compiler and the guard tests found most of them, which is that machinery
 working as intended.
+
+**The Tech tree was the fifth, and it came with a complaint of its own:**
+_"the long list of items isn't the best at the end."_ It ended in three
+stacked sections — every open node, then everything decided against, then
+everything already bought — so a tree used for a year finished on two
+lists of things there is nothing left to do about. Owned and dropped fold
+together behind the eye, dropped first, because something you may yet
+change your mind about is worth meeting before a list of what is already
+in the house.
+
+The width half of that report is answered in `tree-layout.ts`; see
+**branches stack down the page** above.
 
 **The Map finished the sweep, and the four screens now read the same.**
 Asked for as _"now the map page."_
