@@ -3310,6 +3310,42 @@ registered in all of the places a collection has to register. The
 compiler and the guard tests found most of them, which is that machinery
 working as intended.
 
+**The Codex got the same treatment, and it is where the pattern paid for
+itself.** Asked for as _"now do the same for the codex page."_
+
+**Finished and dropped entries fold behind the eye.** The list defaulted
+to every status, so a Codex with two hundred finished games opened on two
+hundred rows you were not working through, with the thing you came for
+somewhere below them.
+
+**Only while the status filter says "all"**, which is the part worth
+knowing. Picking _Completed_ from the dropdown is an explicit request for
+exactly those, and folding them away at that point would be the screen
+arguing with its own control. The fold is the default view's opinion, not
+a rule about the data — and the eye disappears when a filter is on,
+because there is then nothing behind it.
+
+**The search box was 26 pixels wide, and this is the second time that
+exact bug has shipped.** It shared a flex row with two selects whose
+intrinsic width comes from their longest option — "Currently Using" and
+"Recently Added" — so `flex-1` on the field got whatever was left. Not
+clipped, not cramped: a box too narrow for one character. The quest add
+form failed the same way and is written up above as _"three controls do
+not fit on one row at 375"_.
+
+**The lesson is that the rule only reached the screen it was found on.**
+It was recorded as a fact about the quests form rather than as a
+constraint about the layout, so nothing stopped it recurring and nothing
+found it — it was found by **measuring**, which is what this file
+already says to do instead of extrapolating. Search now has its own row
+and the selects share the next at `flex-1` each: 343 and 168 · 168.
+
+**The goals block keeps its empty state where Quests' "Suggested" is
+silent**, and the difference is discoverability rather than taste. This
+is the only place in the app that says daily goals exist, so a reader who
+has never set one has no other route to finding out. It is one line
+instead of a dashed panel — the treatment the empty quest slots got.
+
 **Quests got the same treatment, and the differences are where the rule
 had to bend.** Asked for as _"now let's do the same cleanup for the
 quests page."_

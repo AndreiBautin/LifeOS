@@ -1,6 +1,6 @@
 import { Check, Minus, Plus } from 'lucide-react'
 
-import { Badge, Button, Card, Empty } from '@/components/shared/primitives'
+import { Badge, Button, Card } from '@/components/shared/primitives'
 import { formatDailyGoal } from '@/domain/backlog/daily-goal'
 import type { DailyGoalStatus } from '@/domain/backlog/daily-goals'
 
@@ -79,11 +79,23 @@ export function GoalRow({ status }: { readonly status: DailyGoalStatus }) {
 }
 
 export function GoalsToday({ statuses }: { readonly statuses: readonly DailyGoalStatus[] }) {
+  /*
+   * **One line rather than a dashed box**, the treatment the empty quest
+   * slots got. It drew a full `Empty` — a bordered panel with a title and
+   * a sentence — which on a screen whose job is the list below it made
+   * the largest thing on the page the part with nothing in it.
+   *
+   * Kept rather than made silent, unlike Quests' "Suggested". This is the
+   * only place in the app that says daily goals exist; a reader who has
+   * never set one has no other route to finding out, and the sentence is
+   * what tells them where to.
+   */
   if (statuses.length === 0) {
     return (
-      <Empty title="Nothing due today">
-        Set a daily goal on something you are working through and it will appear here.
-      </Empty>
+      <p className="text-ink-600 text-sm">
+        Nothing due today. Set a daily goal on something you are working through and it appears
+        here.
+      </p>
     )
   }
 

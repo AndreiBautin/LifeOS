@@ -1,8 +1,9 @@
-import { Plus, Trash2 } from 'lucide-react'
+import { Library, Plus, Target, Trash2 } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { useState } from 'react'
 
-import { Badge, Button, Card, Empty, Section } from '@/components/shared/primitives'
+import { Badge, Button, Card, CardHeading, Empty } from '@/components/shared/primitives'
+import { EyeIcon } from '@/components/shared/EyeIcon'
 import { getCategoryDefinition } from '@/domain/backlog/category-registry'
 import type { CreateItemInput, Item } from '@/domain/backlog/item'
 import { PRIORITY_LABELS } from '@/domain/backlog/priority'
@@ -102,6 +103,8 @@ export function BacklogPage() {
   const [confirming, setConfirming] = useState<BacklogItemId | undefined>(undefined)
 
   const [status, setStatus] = useState<Status | 'all'>('all')
+  /* What the eye on Entries reveals — see the note beside it. */
+  const [showingDone, setShowingDone] = useState(false)
   const { settings } = useBacklogSettings()
   const [sortKey, setSortKey] = useState<SortKey | undefined>(undefined)
   const [search, setSearch] = useState('')
@@ -154,43 +157,80 @@ export function BacklogPage() {
     )
   }
 
+  /*
+   * **Finished and dropped entries fold away, the way done chores and
+   * finished quests do.** The list defaulted to every status, so a Codex
+   * with two hundred finished games opened on two hundred rows you were
+   * not working through — and the thing you came for was somewhere below
+   * them.
+   *
+   * **Only while the status filter says "all".** Picking *Completed* from
+   * the dropdown is an explicit request for exactly those, and hiding
+   * them behind an eye at that point would be the screen arguing with its
+   * own control. The fold is the default view's opinion, not a rule about
+   * the data.
+   */
+  const all = items.data ?? []
+  const isDone = (item: Item): boolean => item.status === 'completed' || item.status === 'dropped'
+  const filtering = status !== 'all'
+  const shown = filtering ? all : all.filter((item) => !isDone(item))
+  const restingItems = filtering ? [] : all.filter(isDone)
+
   const formError = (editing === undefined ? add.error : update.error)?.message
 
   return (
-    <>
+    <div className="space-y-4">
       <PageHeader title="Codex" subtitle="Games, books, shows and films you are working through." />
 
-      <Section
-        title="Today"
-        description={
-          goals.data === undefined
-            ? undefined
-            : `${goals.data.metCount.toString()} of ${goals.data.totalCount.toString()} met`
-        }
-      >
+      <div>
+        <CardHeading icon={<Target size={16} aria-hidden />} title="Today" />
+        {goals.data !== undefined && goals.data.totalCount > 0 && (
+          <p className="text-ink-500 mb-2 text-sm">
+            {goals.data.metCount.toString()} of {goals.data.totalCount.toString()} met
+          </p>
+        )}
         <GoalsToday statuses={goals.data?.statuses ?? []} />
-      </Section>
+      </div>
 
-      <Section
-        title="Entries"
-        description={
-          overview.data === undefined
-            ? undefined
-            : `${overview.data.stats.totalBacklog.toString()} waiting · ${overview.data.stats.completionPercentage.toString()}% finished`
-        }
-        action={
-          adding || editing !== undefined ? undefined : (
-            <Button
-              size="sm"
-              onClick={() => {
-                setAdding(true)
-              }}
-            >
-              <Plus size={16} aria-hidden /> Add
-            </Button>
-          )
-        }
-      >
+      <div>
+        <CardHeading
+          icon={<Library size={16} aria-hidden />}
+          title="Entries"
+          action={
+            <>
+              {restingItems.length > 0 && (
+                <Button
+                  size="sm"
+                  variant={showingDone ? 'primary' : 'ghost'}
+                  aria-pressed={showingDone}
+                  aria-label={`${showingDone ? 'Hide' : 'Show'} ${String(restingItems.length)} finished and dropped`}
+                  onClick={() => {
+                    setShowingDone(!showingDone)
+                  }}
+                >
+                  <EyeIcon open={showingDone} />
+                </Button>
+              )}
+              {adding || editing !== undefined ? undefined : (
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    setAdding(true)
+                  }}
+                >
+                  <Plus size={16} aria-hidden /> Add
+                </Button>
+              )}
+            </>
+          }
+        />
+
+        {overview.data !== undefined && (
+          <p className="text-ink-500 mb-2 text-sm">
+            {overview.data.stats.totalBacklog.toString()} waiting ·{' '}
+            {overview.data.stats.completionPercentage.toString()}% finished
+          </p>
+        )}
         {(adding || editing !== undefined) && (
           <div className="mb-4">
             <ItemForm
@@ -206,9 +246,24 @@ export function BacklogPage() {
           </div>
         )}
 
-        <div className="mb-3 flex gap-2">
+        {/*
+          **The search box gets its own row, and this is the second time
+          this exact bug has shipped.**
+
+          It shared a flex row with two selects whose intrinsic width
+          comes from their longest option — "Currently Using" and
+          "Recently Added" — so `flex-1` on the field got whatever was
+          left. Measured at 375: **26 pixels.** Not clipped, not cramped;
+          a box too narrow to hold one character of what you typed.
+
+          The quest add form failed the same way and is written up in
+          `CLAUDE.md` as "three controls do not fit on one row at 375". A
+          rule that only reaches the screen it was found on is a rule that
+          gets rediscovered by measuring, which is what happened here.
+        */}
+        <div className="mb-2">
           <input
-            className={`${CONTROL} flex-1`}
+            className={`${CONTROL} w-full`}
             value={search}
             aria-label="Search the backlog"
             placeholder="Search"
@@ -216,8 +271,11 @@ export function BacklogPage() {
               setSearch(event.target.value)
             }}
           />
+        </div>
+
+        <div className="mb-3 flex gap-2">
           <select
-            className={CONTROL}
+            className={`${CONTROL} min-w-0 flex-1`}
             value={status}
             aria-label="Filter by status"
             onChange={(event) => {
@@ -232,7 +290,7 @@ export function BacklogPage() {
             ))}
           </select>
           <select
-            className={CONTROL}
+            className={`${CONTROL} min-w-0 flex-1`}
             value={sortKey ?? settings.defaultSort}
             aria-label="Sort by"
             onChange={(event) => {
@@ -247,15 +305,17 @@ export function BacklogPage() {
           </select>
         </div>
 
-        {items.data?.length === 0 ? (
+        {shown.length === 0 ? (
           <Empty title="Nothing here">
             {search.trim() === '' && status === 'all'
-              ? 'Add the first thing you are meaning to get to.'
+              ? all.length === 0
+                ? 'Add the first thing you are meaning to get to.'
+                : 'Nothing on the go. What is finished is behind the eye above.'
               : 'Nothing matches that filter.'}
           </Empty>
         ) : (
           <Card className="divide-ink-800 divide-y py-0">
-            {(items.data ?? []).map((item) => (
+            {shown.map((item) => (
               <ItemRow
                 key={item.id}
                 item={item}
@@ -276,7 +336,31 @@ export function BacklogPage() {
             ))}
           </Card>
         )}
-      </Section>
-    </>
+
+        {showingDone && restingItems.length > 0 && (
+          <Card className="divide-ink-800 divide-y mt-2 py-0">
+            {restingItems.map((item) => (
+              <ItemRow
+                key={item.id}
+                item={item}
+                confirming={confirming === item.id}
+                onEdit={() => {
+                  setAdding(false)
+                  setEditing(item)
+                }}
+                onDelete={() => {
+                  if (confirming === item.id) {
+                    remove.mutate(item.id)
+                    setConfirming(undefined)
+                  } else {
+                    setConfirming(item.id)
+                  }
+                }}
+              />
+            ))}
+          </Card>
+        )}
+      </div>
+    </div>
   )
 }
