@@ -598,7 +598,7 @@ function PoolShapeFields({ state }: { readonly state: ReturnType<typeof usePoolS
               state.setDirection(one)
             }}
           >
-            {one === 'limit' ? 'Potion' : 'Ration'}
+            {one === 'limit' ? 'Potion' : 'Restorative'}
           </Button>
         ))}
       </div>
@@ -853,7 +853,7 @@ function AddVice({ of }: { readonly of: ChargeDirection }) {
         }}
       >
         <Plus size={14} aria-hidden />
-        {of === 'limit' ? 'New potion' : 'New ration'}
+        {of === 'limit' ? 'New potion' : 'New restorative'}
       </Button>
     )
   }
@@ -986,7 +986,7 @@ export function LimitsPage() {
     <div>
       <PageHeader
         title="Buffs"
-        subtitle="Charges that come back on their own, and the rations that keep you standing"
+        subtitle="Charges that come back on their own, and what puts your health back"
       />
 
       {/*
@@ -1044,14 +1044,19 @@ export function LimitsPage() {
       </Section>
 
       {/*
-        **"Rations" — the things that put health back.** These feed the
+        **"Restoratives" — the things that put health back.** Reported
+        against the previous word: _"I don't like rations as a name,
+        makes it seem like something I have limited of."_ Exactly right,
+        and it is the same trap "Limits" had one rename earlier — a
+        ration is by definition an amount you are issued, which is the
+        opposite signal for water and vegetables. These feed the
         bar on the portrait, which is what makes them a section rather
         than a curiosity: a target met is a day the bar counts.
       */}
-      <Section title="Rations">
+      <Section title="Restoratives">
         <Card>
           {vices.data === undefined ? null : targets.length === 0 ? (
-            <Empty title="No rations yet">
+            <Empty title="No restoratives yet">
               The other half of the flask: what you top up rather than spend. Hitting these is what
               keeps the health bar on your portrait up.
             </Empty>

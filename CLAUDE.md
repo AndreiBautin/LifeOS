@@ -4933,6 +4933,19 @@ corrected comment had already pointed at. **`ATTRIBUTION` widened from
 convenient: same two artists, same licence, and it would have been an
 under-credit the day these landed.
 
+**"Rations" became "Restoratives", and the reason is the one that
+started this whole rename.** Reported: _"I don't like rations as a name,
+makes it seem like something I have limited of."_ Exactly right — a
+ration is by definition an amount you are _issued_, which is the
+scarcity signal water and vegetables must not carry. It is the same trap
+"Limits" had one rename earlier, walked into while fixing it.
+
+**The pair now reads Potions / Restoratives**: one you spend and one
+that puts health back, and neither word implies a rule you are keeping.
+The section name, the direction toggle, the add button, the empty state
+and the health bar's own link all say it — the lesson from the previous
+pass, where only the headings changed.
+
 **"Limits" survived the first rename in every place that was not a
 heading.** Reported as _"it's still framed as limits when I want it
 framed like rechargeable buffs."_ The page title and the two section

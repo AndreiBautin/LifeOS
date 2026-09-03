@@ -19,7 +19,7 @@ import { useVices } from '@/features/vitals/hooks'
  * this app keeps refusing.
  *
  * **Unmeasured is drawn, not hidden — and that is a correction.** It
- * returned `null` with no rations set, on the reasoning that a bar
+ * returned `null` with no restoratives set, on the reasoning that a bar
  * pinned at nought reads as dying where an absent one reads as not
  * measured. True of the bar, and it made the whole feature invisible:
  * reported as _"not seeing … the vitality/health bar which I would
@@ -45,7 +45,7 @@ export function HealthBar() {
         <div className="flex items-baseline justify-between gap-2">
           <span className="text-ink-700 text-xs">Health</span>
           <Link to="/limits" className="text-accent-400 text-xs underline">
-            Set rations
+            Set restoratives
           </Link>
         </div>
         {/*
