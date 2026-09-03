@@ -4933,6 +4933,40 @@ corrected comment had already pointed at. **`ATTRIBUTION` widened from
 convenient: same two artists, same licence, and it would have been an
 under-credit the day these landed.
 
+**The section headers came off the home screen entirely.** Reported:
+_"can we remove the headers on the home page like today what the day
+asks of you? It makes the app feel less gamified and breaks up the
+flow."_
+
+They were a label over an accent rule over a description, four times
+down one screen, and **each named something the card beneath it already
+said**: a list of checkboxes is the day, two slots reading "no main
+quest active" are the quests, and the Buffs card carries its own name
+and its own link. The rules were doing separating that `space-y-8` was
+already doing.
+
+This is the argument the page header lost to a portrait — _a screen that
+opens on a face does not need to be told it is about you_ — carried one
+level down. What is left is cards, which is what a game screen is.
+
+**The season label moved inside its card rather than going with the
+rest.** What that line says — which chapter of the year this is — is not
+recoverable from a list of challenges, and the rule this file already
+holds is that the name travels with the measurement. So it is the
+`ChallengePass` card's first line now, above a rule, with the days left
+beside it.
+
+**Two spans became `h2`s, and they look identical.** Dropping the
+sections took every landmark off the screen bar the level, so somebody
+navigating by heading had one stop for the whole page. The cards already
+name themselves; making those names headings gives the structure back
+without putting a rule and a caption back on screen. Verified: H1 Level,
+H2 Buffs, H2 Autumn 2026.
+
+**A JSX comment cannot be a bare sibling inside a `&&` expression**
+either — the same trap this file records for attribute expressions, one
+shape along. It has to sit above the conditional.
+
 **The two fold lids became one control in the header.** Reported:
 _"get rid of the done today and habits on other days lines, it breaks up
 the flow of the cards."_ They did — two summary rows sitting between

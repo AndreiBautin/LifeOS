@@ -64,10 +64,11 @@ export function LimitsCard() {
   return (
     <Card>
       <div className="mb-2 flex items-center justify-between gap-2">
-        <span className="text-ink-500 flex items-center gap-2 text-sm">
+        {/* A heading rather than a span — see the note in ChallengePass. */}
+        <h2 className="text-ink-500 flex items-center gap-2 text-sm">
           <Gauge size={16} aria-hidden />
           Buffs
-        </span>
+        </h2>
         <Link to="/limits" className={buttonStyles({ variant: 'ghost', size: 'sm' })}>
           {pools.length === 0 ? 'Set up' : 'Open'}
         </Link>

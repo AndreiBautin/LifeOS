@@ -2,7 +2,7 @@ import { Settings } from 'lucide-react'
 import { useCampaigns } from '@/features/campaign/hooks'
 import { Link } from 'react-router-dom'
 
-import { Card, Section } from '@/components/shared/primitives'
+import { Card } from '@/components/shared/primitives'
 import { buttonStyles } from '@/components/shared/styles'
 import { ActiveQuests } from '@/features/projects/ActiveQuests'
 import { useActiveQuests } from '@/features/projects/hooks'
@@ -160,29 +160,39 @@ export function HomePage() {
         name — this is a screen word, the same split Quests keeps over
         `Project`.
       */}
-      <Section title="Today" description="Everything the day is asking for.">
-        <Dailies />
-      </Section>
+      {/*
+        **No section headers on this screen any more.** Reported: _"can
+        we remove the headers on the home page like today what the day
+        asks of you? It makes the app feel less gamified and breaks up
+        the flow."_
 
-      <Section title="Active quests" description="One main, one side.">
-        <ActiveQuests
-          main={active.data?.main}
-          side={active.data?.side}
-          {...(leadingArc === undefined ? {} : { arc: leadingArc })}
-          showLink
-        />
-      </Section>
+        They were a label over a rule over a description, four times
+        down one screen, and each one named something the card beneath it
+        already said: a list of checkboxes is the day, two quest slots
+        saying "no main quest active" are the quests, and the Buffs card
+        carries its own name and its own link. The rules were doing the
+        separating that `space-y-8` was already doing.
+
+        This is the same argument the page header lost to a portrait —
+        *a screen that opens on a face does not need to be told it is
+        about you* — carried one level down. What is left is cards, which
+        is what a game screen is.
+      */}
+      <Dailies />
+
+      <ActiveQuests
+        main={active.data?.main}
+        side={active.data?.side}
+        {...(leadingArc === undefined ? {} : { arc: leadingArc })}
+        showLink
+      />
 
       {/*
-        **"Buffs", because the screen this links to is called Buffs.**
-        Reported as still seeing Limits: the page had been renamed and
-        this card had not, so the word survived on the screen it is read
-        from most. A rename has to reach the place the thing is used, not
-        only the place it is managed.
+        The card names itself and links to the screen, which is why
+        losing the heading above it cost nothing here — it had been
+        saying "Buffs" directly over a card whose first line says Buffs.
       */}
-      <Section title="Buffs" description="What you have left today.">
-        <LimitsCard />
-      </Section>
+      <LimitsCard />
 
       {/* Both silent unless this morning's read found something. */}
       <LeadsToday />
@@ -202,34 +212,23 @@ export function HomePage() {
         **navigation and reference** rather than readings. This is still
         something to look at; they are ways to leave.
       */}
+      {/*
+        **The season names itself inside the card now.** Its heading went
+        with the others, and the label could not go with it: what the
+        season line says — which chapter of the year this is — is not
+        recoverable from a list of challenges. So it moved in as the
+        card's first line, keeping the name beside the measurement the
+        way this file already insists.
+
+        The comment sits *above* the conditional rather than inside it,
+        because a JSX comment cannot be a bare sibling in a `&&`
+        expression — the same trap this file records for attribute
+        expressions, one shape along.
+      */}
       {season.data !== undefined && (
-        <Section
-          title={season.data.label}
-          description={
-            season.data.daysLeft > 0
-              ? `${String(season.data.daysLeft)} days left`
-              : 'The last day of it'
-          }
-        >
-          {/*
-            **The season is the challenges now, and nothing else.** The
-            "Earned this season" band went — the XP against last season
-            and the three monthly bars — leaving one reading under this
-            heading rather than two.
-
-            The rule between them went with it, which is the point: a
-            rule says "these are two different readings", and there is
-            one. What the heading names is a chapter of the year, and
-            what is under it is what you have taken that chapter up on.
-
-            The XP itself is not lost — it is the ring and the level at
-            the top of this screen, over all of your time rather than
-            this quarter of it.
-          */}
-          <Card>
-            <ChallengePass />
-          </Card>
-        </Section>
+        <Card>
+          <ChallengePass season={{ label: season.data.label, daysLeft: season.data.daysLeft }} />
+        </Card>
       )}
 
       {/*

@@ -120,7 +120,21 @@ function grouped(challenges: readonly Challenge[]): readonly [string, readonly C
   return order.map((key) => [key, byEvent.get(key) ?? []])
 }
 
-export function ChallengePass() {
+export function ChallengePass({
+  season,
+}: {
+  /**
+   * The chapter these challenges belong to, drawn as the card's own
+   * first line.
+   *
+   * **It moved in here when the section headers came off the home
+   * screen.** The name has to travel with the measurement — a label in
+   * one place and its bar in another is one quantity drawn twice, which
+   * is the split this card was assembled to close — so losing the
+   * heading meant the season came inside rather than being lost.
+   */
+  readonly season?: { readonly label: string; readonly daysLeft: number } | undefined
+}) {
   const pass = useChallenges()
   const add = useAddChallenge()
   const [title, setTitle] = useState('')
@@ -142,6 +156,23 @@ export function ChallengePass() {
    */
   return (
     <div>
+      {season !== undefined && (
+        <div className="border-ink-850 mb-3 flex items-baseline justify-between gap-3 border-b pb-3">
+          {/*
+            An `h2` rather than a span, and it looks identical. Dropping
+            the section headers took every landmark off this screen bar
+            the level, so somebody navigating by heading had one stop for
+            the whole page. The cards already name themselves; making
+            those names headings gives the structure back without putting
+            a rule and a caption back on the screen.
+          */}
+          <h2 className="text-ink-50 font-medium">{season.label}</h2>
+          <span className="text-ink-700 numeric shrink-0 text-xs">
+            {season.daysLeft > 0 ? `${String(season.daysLeft)} days left` : 'Last day'}
+          </span>
+        </div>
+      )}
+
       <div className="flex items-baseline justify-between gap-3">
         <span className="text-ink-500 text-sm">Challenges done</span>
         <span className="numeric text-ink-50 text-sm font-semibold">
