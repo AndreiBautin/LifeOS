@@ -66,7 +66,7 @@ export function LimitsCard() {
       <div className="mb-2 flex items-center justify-between gap-2">
         <span className="text-ink-500 flex items-center gap-2 text-sm">
           <Gauge size={16} aria-hidden />
-          Limits
+          Buffs
         </span>
         <Link to="/limits" className={buttonStyles({ variant: 'ghost', size: 'sm' })}>
           {pools.length === 0 ? 'Set up' : 'Open'}
@@ -75,7 +75,7 @@ export function LimitsCard() {
 
       {pools.length === 0 ? (
         <p className="text-ink-500 text-sm">
-          Charges for what you mean to keep under, and targets for what you mean to reach.
+          Charges that come back on their own, and what puts your health back.
         </p>
       ) : (
         /*
@@ -88,8 +88,8 @@ export function LimitsCard() {
         */
         <>
           {[
-            { of: 'limit' as const, label: 'Limits' },
-            { of: 'target' as const, label: 'Targets' },
+            { of: 'limit' as const, label: 'Potions' },
+            { of: 'target' as const, label: 'Restoratives' },
           ]
             .map((group) => ({
               ...group,
@@ -125,7 +125,7 @@ export function LimitsCard() {
             already make.
           */}
           {notToday.length > 0 && (
-            <Fold summary={`${counted(notToday.length, 'limit', 'limits')} not for today`}>
+            <Fold summary={`${counted(notToday.length, 'buff', 'buffs')} not for today`}>
               <div className="divide-ink-800 divide-y">
                 {notToday.map((pool) => (
                   <PoolRow key={pool.vice.id} pool={pool} now={now} />

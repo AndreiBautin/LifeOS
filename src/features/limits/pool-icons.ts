@@ -111,6 +111,48 @@ export const POOL_ICONS: readonly PoolIcon[] = [
  */
 const FALLBACK: PoolIcon = POOL_ICONS[0] ?? { id: DEFAULT_POOL_ICON, label: 'Flask', path: '' }
 
-export function poolIcon(id: string | undefined): PoolIcon {
-  return POOL_ICONS.find((one) => one.id === id) ?? FALLBACK
+/**
+ * What a pool's name suggests, when nothing was chosen.
+ *
+ * **Every pool written before the icon field existed had none**, so they
+ * all drew the same flask — reported as _"a repeated icon next to each
+ * thing"_, which is exactly what it looked like: two different
+ * substances wearing one picture, which is worse than no picture at all.
+ *
+ * A guess is only ever the *fallback*. An explicitly chosen icon wins,
+ * so this can never overrule a decision somebody made — it only fills
+ * the gap for records that predate the choice, and for anyone who never
+ * opens the picker.
+ *
+ * Matched on a substring of the lower-cased name, longest-intent first:
+ * "decaf coffee" should read as coffee rather than falling through.
+ */
+const GUESSES: readonly (readonly [readonly string[], string])[] = [
+  [['caffeine', 'coffee', 'espresso', 'tea', 'latte'], 'coffee'],
+  [['alcohol', 'beer', 'wine', 'booze', 'drink', 'whisky', 'whiskey'], 'beer'],
+  [['thc', 'weed', 'kush', 'cannabis', 'herb', 'pot', 'edible'], 'leaf'],
+  [['nicotine', 'cig', 'vape', 'smoke', 'tobacco'], 'smoke'],
+  [['water', 'hydrate', 'hydration'], 'droplet'],
+  [['fruit', 'apple', 'berry', 'berries'], 'apple'],
+  [['veg', 'greens', 'salad', 'carrot'], 'carrot'],
+  [['energy', 'pre-workout', 'preworkout', 'creatine'], 'bolt'],
+]
+
+function guessFrom(name: string): PoolIcon | undefined {
+  const lower = name.toLowerCase()
+  const hit = GUESSES.find(([words]) => words.some((word) => lower.includes(word)))
+  if (hit === undefined) return undefined
+
+  return POOL_ICONS.find((one) => one.id === hit[1])
+}
+
+/**
+ * The icon a pool draws with: the one it chose, else one its name
+ * suggests, else the flask.
+ */
+export function poolIcon(id: string | undefined, name = ''): PoolIcon {
+  const chosen = POOL_ICONS.find((one) => one.id === id)
+  if (chosen !== undefined) return chosen
+
+  return guessFrom(name) ?? FALLBACK
 }

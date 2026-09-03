@@ -361,7 +361,12 @@ export function PoolRow({
       <div className="flex items-center gap-2 py-1.5">
         <div className="min-w-0 flex-1">
           <p className="text-ink-50 flex items-center gap-1.5 truncate text-sm font-medium">
-            <PoolIconMark icon={vice.icon} size={16} className="text-ink-500 shrink-0" />
+            <PoolIconMark
+              icon={vice.icon}
+              name={vice.name}
+              size={16}
+              className="text-ink-500 shrink-0"
+            />
             <span className="truncate">{vice.name}</span>
             <StandingBadge pool={pool} />
           </p>
@@ -392,7 +397,12 @@ export function PoolRow({
     <div className="py-3">
       <div className="flex items-baseline justify-between gap-2">
         <span className="text-ink-50 flex min-w-0 items-center gap-1.5 text-sm font-medium">
-          <PoolIconMark icon={vice.icon} size={16} className="text-ink-500 shrink-0" />
+          <PoolIconMark
+            icon={vice.icon}
+            name={vice.name}
+            size={16}
+            className="text-ink-500 shrink-0"
+          />
           <span className="truncate">{vice.name}</span>
           <StandingBadge pool={pool} />
         </span>

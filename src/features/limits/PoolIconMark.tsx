@@ -12,10 +12,19 @@ import { poolIcon } from './pool-icons'
  */
 export function PoolIconMark({
   icon,
+  name,
   size = 20,
   className,
 }: {
   readonly icon: string | undefined
+  /**
+   * The pool's name, used only when no icon was chosen.
+   *
+   * Every pool written before the icon field existed drew the same
+   * flask; guessing from the name is what stops two substances sharing
+   * one picture. A chosen icon always wins — see `poolIcon`.
+   */
+  readonly name?: string
   readonly size?: number
   readonly className?: string
 }) {
@@ -28,7 +37,7 @@ export function PoolIconMark({
       className={className}
       fill="currentColor"
     >
-      <path d={poolIcon(icon).path} />
+      <path d={poolIcon(icon, name).path} />
     </svg>
   )
 }

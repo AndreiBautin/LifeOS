@@ -44,8 +44,14 @@ export function HealthBar() {
       <div className="mt-2">
         <div className="flex items-baseline justify-between gap-2">
           <span className="text-ink-700 text-xs">Health</span>
-          <Link to="/limits" className="text-accent-400 text-xs underline">
-            Set restoratives
+          {/*
+            "Set up" rather than "Set restoratives": the column beside a
+            120-pixel portrait is about 200 wide and loses more to the
+            settings link, so the longer phrase wrapped onto two lines —
+            the mid-phrase break this card has now hit three times.
+          */}
+          <Link to="/limits" className="text-accent-400 shrink-0 text-xs underline">
+            Set up
           </Link>
         </div>
         {/*

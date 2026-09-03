@@ -174,7 +174,14 @@ export function HomePage() {
         />
       </Section>
 
-      <Section title="Limits" description="What you have left today.">
+      {/*
+        **"Buffs", because the screen this links to is called Buffs.**
+        Reported as still seeing Limits: the page had been renamed and
+        this card had not, so the word survived on the screen it is read
+        from most. A rename has to reach the place the thing is used, not
+        only the place it is managed.
+      */}
+      <Section title="Buffs" description="What you have left today.">
         <LimitsCard />
       </Section>
 

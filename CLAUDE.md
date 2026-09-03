@@ -4933,6 +4933,28 @@ corrected comment had already pointed at. **`ATTRIBUTION` widened from
 convenient: same two artists, same licence, and it would have been an
 under-credit the day these landed.
 
+**The rename missed the card on Today, which is where it is read
+most.** Reported with a screenshot: _"why do I still see limits."_ The
+`/limits` page had been renamed twice by then and `LimitsCard` had not —
+its section heading, its own header, its two group labels and its fold
+all still said Limits and Targets. **A screen is renamed where the thing
+is used, not only where it is managed**, and this app puts those in two
+places on purpose.
+
+**Every existing pool drew the same icon, which is worse than none.**
+Also reported from that screenshot: _"a repeated icon next to each
+thing."_ Exactly so — no pool written before the `icon` field has one,
+so `poolIcon` handed them all the fallback flask and two different
+substances wore one picture.
+
+`poolIcon` takes the **name** now and guesses from it when nothing was
+chosen: caffeine reads as a mug, THC as a leaf, water as a droplet. **A
+guess is only ever the fallback** — an explicitly chosen icon always
+wins, so this can never overrule a decision somebody made. It is a
+derivation rather than a migration, the rule `shelfOf` already follows:
+nothing is written, and a pool that never opens the picker still looks
+like itself.
+
 **"Rations" became "Restoratives", and the reason is the one that
 started this whole rename.** Reported: _"I don't like rations as a name,
 makes it seem like something I have limited of."_ Exactly right — a
