@@ -59,6 +59,49 @@ Stop and ask when:
    of the running build, so those two numbers are how the user tells "it
    did not update" from "the deploy never happened".
 
+7. **Leave the worktree clean**, and check rather than assume:
+
+   ```bash
+   git status --porcelain
+   ```
+
+   Empty output is the finished state. Anything printed is dealt with
+   before the run is reported as done — see below.
+
+## A clean worktree at the end of every round
+
+Asked for directly: _"after every round, I'd like a clean worktree to
+avoid spillover between runs."_ The cost of skipping it is not
+theoretical — a stray file from one round is picked up by `git add -A` in
+the next and lands in a commit whose message is about something else,
+which is the hardest kind of change to find later.
+
+**Check, then classify. Never blanket-delete.** `git add -A` and
+`git checkout -- .` are both ways to lose work that was not yours to
+throw away. Every line `git status --porcelain` prints is one of four
+things, and each has a different answer:
+
+| What it is                                                   | What to do                                                                |
+| ------------------------------------------------------------ | ------------------------------------------------------------------------- |
+| Part of the change just made                                 | Stage it by name and include it in the commit                             |
+| A scratch or temp file you created                           | Delete it — you made it, you know it is disposable                        |
+| A generated agent-harness artifact (`AGENTS.md`, `.agents/`) | Already gitignored; if a new one appears, ignore it rather than commit it |
+| Anything else, or anything you are unsure about              | **Leave it and say so.** It is the user's file until they say otherwise   |
+
+**Stage by name, not with `-A`.** The whole point is that an unexpected
+file is a question rather than a silent passenger, and `git add -A`
+answers the question by committing it.
+
+**Scratch files go in the scratchpad directory**, not in the repository.
+A temp script written to the repo root is a file somebody has to
+classify later; the same script in the session scratchpad never appears
+in `git status` at all.
+
+If something is left uncommitted deliberately, **name it in the report**
+along with why. A worktree that is not clean is a fine outcome as long
+as it is a stated one — what must not happen is the next round
+discovering it.
+
 ## What the user does next, and what to say about it
 
 Open the app, and the update banner appears — `UpdatePrompt` calls

@@ -19,3 +19,19 @@ coverage
 
 # Vite / PWA build artefacts
 dev-dist
+
+# Agent-harness mirrors of files this repo already tracks.
+#
+# Some harnesses generate their own copy of the project instructions and
+# skills next to ours: AGENTS.md is CLAUDE.md, and .agents/skills mirrors
+# .claude/skills. Both are committed here under their real names, so the
+# copies add nothing — and they are generated with their internal
+# pointers rewritten (AGENTS.md sends you to a .Codex/skills that does
+# not exist), so tracking them would put two subtly disagreeing versions
+# of one instruction file in the repository.
+#
+# .claude/ itself stays tracked on purpose. launch.json is how the app is
+# started and the ship skill is the deploy procedure; both are project
+# content that anybody working here needs.
+AGENTS.md
+.agents/
