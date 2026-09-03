@@ -3365,6 +3365,36 @@ registered in all of the places a collection has to register. The
 compiler and the guard tests found most of them, which is that machinery
 working as intended.
 
+**Finance and Train finished it, and the fold meant something different
+on each.** Every tab now reads the same way: a page header, then cards
+that name themselves, with what is settled behind an eye.
+
+**Finance has no outstanding-versus-done split** — every row is a reading
+rather than a task — so the pattern went to the two things that actually
+accumulate. **History shows twelve months and folds the rest.** A finance
+record only grows, so the screen's longest part is the bit you scroll
+past, and a year is the window that makes a trend readable without the
+page becoming the archive. Nothing is taken away by hiding an old row,
+because there is no control on one.
+
+**`AboutYou` folds because it is a field you fill in once.** A birth year
+does not change, and a permanently open form for it sat between the
+month's entry and the history — the largest thing on the screen that
+nothing ever asks you to do. **Open by default when there is no year
+yet**, which is the one moment it is worth seeing: without it two of the
+three ladders report nothing at all.
+
+**Train lost a section rather than restyling it.** "Or train without a
+program" was a heading over a single button, and the button already says
+what it does — so the heading went entirely instead of becoming a
+`CardHeading`. **Not every section becomes a card; some were only ever a
+label on a control.**
+
+**Settings keeps `Section`, deliberately.** The note on `CardHeading`
+says a heading over a lit rule reads as a settings pane, which is why it
+replaced `Section` on six screens — and is exactly right on the screen
+that _is_ one.
+
 **The Tech tree was the fifth, and it came with a complaint of its own:**
 _"the long list of items isn't the best at the end."_ It ended in three
 stacked sections — every open node, then everything decided against, then

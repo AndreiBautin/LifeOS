@@ -1,4 +1,4 @@
-import { Plus } from 'lucide-react'
+import { CalendarPlus, History, Landmark, PiggyBank, Plus, UserRound } from 'lucide-react'
 import { useState } from 'react'
 
 import { Link } from 'react-router-dom'
@@ -8,7 +8,8 @@ import { useSpendingPool, useWholeTree } from '@/features/upgrades/hooks'
 import { isOpen } from '@/domain/upgrades/upgrade'
 import { wishlistTotal } from '@/domain/upgrades/wishlist'
 import { PageHeader } from '@/components/shared/PageHeader'
-import { Button, Card, Empty, Section } from '@/components/shared/primitives'
+import { Button, Card, CardHeading, Empty } from '@/components/shared/primitives'
+import { EyeIcon } from '@/components/shared/EyeIcon'
 import { CREDIT_RANGE, toMonthKey, type FinanceReading } from '@/domain/finance/reading'
 import { formatMinorUnits, toMinorUnits } from '@/domain/upgrades/upgrade'
 
@@ -104,8 +105,9 @@ function PoolSection() {
   const shown = [...open].sort((a, b) => b.priority - a.priority).slice(0, WANTED_SHOWN)
 
   return (
-    <Section title="The pool" description="Surplus banked, and what it is going towards">
-      <Card>
+    <Card>
+      <CardHeading icon={<PiggyBank size={16} aria-hidden />} title="The pool" />
+      <div>
         <div className="flex items-baseline justify-between gap-3">
           <span className="text-ink-500 text-sm">To spend</span>
           <span className={`numeric font-semibold ${over ? 'text-bad-500' : 'text-ink-50'}`}>
@@ -150,8 +152,8 @@ function PoolSection() {
             </p>
           </div>
         )}
-      </Card>
-    </Section>
+      </div>
+    </Card>
   )
 }
 
@@ -239,42 +241,85 @@ function AboutYou() {
       ? undefined
       : ageFromBirthYear(settings.birthYear, services.clock.now())
 
-  return (
-    <Section title="About you" description="What the published standards are measured against">
-      <Card className="space-y-3">
-        <label className="block space-y-1">
-          <span className="text-ink-500 text-xs">Birth year</span>
-          <input
-            className={FIELD}
-            inputMode="decimal"
-            placeholder="1994"
-            value={birthYear}
-            onChange={(event) => {
-              setBirthYear(event.target.value)
-            }}
-            onBlur={() => {
-              const year = Number(birthYear)
-              if (birthYear.trim() === '' || !Number.isFinite(year) || year <= 0) return
-              update({ birthYear: Math.round(year) })
-            }}
-          />
-        </label>
+  const [open, setOpen] = useState(settings.birthYear === undefined)
 
-        {/*
+  return (
+    /*
+      **Folded, because it is a field you fill in once.** A birth year does
+      not change, and a permanently open form for it sat between the
+      month's entry and the history — the largest thing on the screen that
+      nothing ever asks you to do.
+
+      Open by default when there is no year yet, which is the one moment
+      it is worth seeing: without it two of the three ladders report
+      nothing at all.
+    */
+    <Card>
+      <CardHeading
+        icon={<UserRound size={16} aria-hidden />}
+        title="About you"
+        action={
+          <Button
+            size="sm"
+            variant={open ? 'primary' : 'ghost'}
+            aria-pressed={open}
+            aria-label={`${open ? 'Hide' : 'Show'} what the standards are measured against`}
+            onClick={() => {
+              setOpen(!open)
+            }}
+          >
+            <EyeIcon open={open} />
+          </Button>
+        }
+      />
+
+      {!open && (
+        <p className="text-ink-600 text-sm">
+          {age === undefined
+            ? 'No birth year set, so net worth and retirement report nothing.'
+            : `Read against people aged ${String(age)}.`}
+        </p>
+      )}
+
+      {open && (
+        <div className="space-y-3">
+          <label className="block space-y-1">
+            <span className="text-ink-500 text-xs">Birth year</span>
+            <input
+              className={FIELD}
+              inputMode="decimal"
+              placeholder="1994"
+              value={birthYear}
+              onChange={(event) => {
+                setBirthYear(event.target.value)
+              }}
+              onBlur={() => {
+                const year = Number(birthYear)
+                if (birthYear.trim() === '' || !Number.isFinite(year) || year <= 0) return
+                update({ birthYear: Math.round(year) })
+              }}
+            />
+          </label>
+
+          {/*
           Says what the standard *is* for this age, so the level on the
           hub is checkable rather than a badge to be trusted. Absent
           until there is an age, because there is no benchmark without
           one — and never a guessed year.
         */}
-        <p className="text-ink-700 text-xs">
-          {age === undefined
-            ? 'Without a birth year, net worth and retirement report nothing rather than guessing an age.'
-            : `At ${String(age)}, the retirement benchmark is ${retirementMultipleFor(age).toFixed(1)}× the salary below, and net worth is read against households your age in the 2022 Federal Reserve survey. That survey counts households, so one person living alone reads low against it.`}
-        </p>
-      </Card>
-    </Section>
+          <p className="text-ink-700 text-xs">
+            {age === undefined
+              ? 'Without a birth year, net worth and retirement report nothing rather than guessing an age.'
+              : `At ${String(age)}, the retirement benchmark is ${retirementMultipleFor(age).toFixed(1)}× the salary above, and net worth is read against households your age in the 2022 Federal Reserve survey. That survey counts households, so one person living alone reads low against it.`}
+          </p>
+        </div>
+      )}
+    </Card>
   )
 }
+
+/** Months of history shown before the rest folds away. */
+const HISTORY_SHOWN = 12
 
 export function FinancePage() {
   const readings = useFinance()
@@ -285,6 +330,11 @@ export function FinancePage() {
 
   const rows = readings.data ?? []
   const thisMonth = rows.find((one) => one.month === month)
+
+  /* Newest first, so the recent window is the head of the list. */
+  const recent = rows.slice(0, HISTORY_SHOWN)
+  const older = rows.slice(HISTORY_SHOWN)
+  const [showingOlder, setShowingOlder] = useState(false)
 
   /*
    * **Opened on what is already recorded, which is what makes this an
@@ -325,7 +375,7 @@ export function FinancePage() {
     (!Number.isFinite(score) || score < CREDIT_RANGE.min || score > CREDIT_RANGE.max)
 
   return (
-    <div>
+    <div className="space-y-4">
       <PageHeader title="Finance" subtitle="Five numbers, once a month" />
 
       {/*
@@ -340,11 +390,10 @@ export function FinancePage() {
         opened the app this month, so it takes the most recent figure
         whenever that was.
       */}
-      <Section title="Standards" description="Where these numbers sit against published tables">
-        <Card>
-          <AreaLadders area="finance" />
-        </Card>
-      </Section>
+      <Card>
+        <CardHeading icon={<Landmark size={16} aria-hidden />} title="Standards" />
+        <AreaLadders area="finance" />
+      </Card>
 
       {/*
         **The pool and what it is for, on the money screen.** Asked for
@@ -355,11 +404,15 @@ export function FinancePage() {
       */}
       <PoolSection />
 
-      <Section
-        title={`This month · ${month}`}
-        description="Opens on what is recorded. An empty box keeps what it had rather than clearing it"
-      >
-        <Card>
+      <Card>
+        <CardHeading
+          icon={<CalendarPlus size={16} aria-hidden />}
+          title={`This month · ${month}`}
+        />
+        <p className="text-ink-500 mb-2 text-sm">
+          Opens on what is recorded. An empty box keeps what it had rather than clearing it.
+        </p>
+        <div>
           <form
             className="space-y-3"
             onSubmit={(event) => {
@@ -491,28 +544,57 @@ export function FinancePage() {
               Record this month
             </Button>
           </form>
-        </Card>
-      </Section>
+        </div>
+      </Card>
 
       <AboutYou />
 
-      <Section title="History" description="One row a month, newest first">
-        <Card>
-          {readings.data === undefined ? null : rows.length === 0 ? (
-            <Empty title="Nothing recorded yet">
-              All three read as a level from the first entry, each against a published standard —
-              the FICO bands, the Federal Reserve&rsquo;s survey of households your age, and
-              Fidelity&rsquo;s savings benchmark.
-            </Empty>
-          ) : (
-            <ul>
-              {rows.map((reading) => (
-                <Row key={reading.month} reading={reading} />
-              ))}
-            </ul>
-          )}
-        </Card>
-      </Section>
+      <Card>
+        {/*
+          **The last year, with anything older behind the eye.** A finance
+          record only grows — one row a month, kept forever — so the
+          screen's longest thing is the part you scroll past. A year is
+          the window that makes a trend readable without the page becoming
+          the archive.
+
+          Folded rather than paged: there is no control on an old row, so
+          nothing is taken away by hiding it, and a person who wants the
+          whole run wants it in one list rather than in tens.
+        */}
+        <CardHeading
+          icon={<History size={16} aria-hidden />}
+          title="History"
+          action={
+            older.length > 0 && (
+              <Button
+                size="sm"
+                variant={showingOlder ? 'primary' : 'ghost'}
+                aria-pressed={showingOlder}
+                aria-label={`${showingOlder ? 'Hide' : 'Show'} ${String(older.length)} older ${older.length === 1 ? 'month' : 'months'}`}
+                onClick={() => {
+                  setShowingOlder(!showingOlder)
+                }}
+              >
+                <EyeIcon open={showingOlder} />
+              </Button>
+            )
+          }
+        />
+
+        {readings.data === undefined ? null : rows.length === 0 ? (
+          <Empty title="Nothing recorded yet">
+            All three read as a level from the first entry, each against a published standard — the
+            FICO bands, the Federal Reserve&rsquo;s survey of households your age, and
+            Fidelity&rsquo;s savings benchmark.
+          </Empty>
+        ) : (
+          <ul>
+            {(showingOlder ? rows : recent).map((reading) => (
+              <Row key={reading.month} reading={reading} />
+            ))}
+          </ul>
+        )}
+      </Card>
     </div>
   )
 }

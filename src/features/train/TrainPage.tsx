@@ -5,13 +5,16 @@ import { TRAINING } from '@/domain/base/base'
 import { AddDaily, DailyRow } from '@/features/today/Dailies'
 import { useTrainingHabits } from '@/features/today/dailies-hooks'
 import {
+  Apple,
   ChevronDown,
   ChevronRight,
+  Dumbbell,
   History,
   ListChecks,
   Play,
   Plus,
   SkipForward,
+  Trophy,
 } from 'lucide-react'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
@@ -31,7 +34,7 @@ import type { SetPrescription } from '@/domain/programs/prescription'
 import { describeReps } from '@/domain/programs/prescription'
 import { clampPosition, dayAt, weekAt } from '@/application/use-cases/programs/current-program'
 import { STARTING_POSITION } from '@/domain/programs/position'
-import { Badge, Button, Card, Empty, Section } from '@/components/shared/primitives'
+import { Badge, Button, Card, CardHeading, Empty } from '@/components/shared/primitives'
 import { buttonStyles } from '@/components/shared/styles'
 
 import {
@@ -109,16 +112,15 @@ function StrengthStandards() {
   })
 
   return (
-    <Section title="Standards" description="Your lifts against the published bodyweight multiples">
-      <Card>
-        <div className="space-y-3">
-          <AttributeRow attribute={character.totalAttribute} emphasis />
-          {character.lifts.map((lift) => (
-            <AttributeRow key={lift.name} attribute={lift} />
-          ))}
-        </div>
-      </Card>
-    </Section>
+    <Card>
+      <CardHeading icon={<Trophy size={16} aria-hidden />} title="Standards" />
+      <div className="space-y-3">
+        <AttributeRow attribute={character.totalAttribute} emphasis />
+        {character.lifts.map((lift) => (
+          <AttributeRow key={lift.name} attribute={lift} />
+        ))}
+      </div>
+    </Card>
   )
 }
 
@@ -129,21 +131,22 @@ function TrainingHabits() {
   const views = habits.data ?? []
 
   return (
-    <Section
-      title="Habits"
-      description="Carbs before, protein after — the things tied to lifting"
-      action={
-        <Button
-          variant={adding ? 'ghost' : 'outline'}
-          size="sm"
-          onClick={() => {
-            setAdding(!adding)
-          }}
-        >
-          {adding ? 'Close' : 'Add'}
-        </Button>
-      }
-    >
+    <Card>
+      <CardHeading
+        icon={<Apple size={16} aria-hidden />}
+        title="Habits"
+        action={
+          <Button
+            size="sm"
+            onClick={() => {
+              setAdding(!adding)
+            }}
+          >
+            {adding ? 'Close' : 'Add'}
+          </Button>
+        }
+      />
+
       {adding && (
         <AddDaily
           home={TRAINING}
@@ -154,7 +157,7 @@ function TrainingHabits() {
         />
       )}
 
-      <Card>
+      <div>
         {habits.data === undefined ? null : views.length === 0 ? (
           <Empty title="Nothing yet">
             {/*
@@ -174,8 +177,8 @@ function TrainingHabits() {
             render={(view, part) => <DailyRow view={view} part={part} />}
           />
         )}
-      </Card>
-    </Section>
+      </div>
+    </Card>
   )
 }
 
@@ -240,7 +243,7 @@ export function TrainPage() {
     program.data === undefined || here === undefined ? undefined : weekAt(program.data, here)
 
   return (
-    <div>
+    <div className="space-y-4">
       {/*
         Plan and History live here rather than in the navigation. The bottom
         bar holds six destinations on a phone and the hub needs a slot for
@@ -265,7 +268,9 @@ export function TrainPage() {
       />
 
       {nextDay !== undefined ? (
-        <Section title="Next session" description={week?.label}>
+        <div>
+          <CardHeading icon={<Dumbbell size={16} aria-hidden />} title="Next session" />
+          {week?.label !== undefined && <p className="text-ink-500 mb-2 text-sm">{week.label}</p>}
           <Card>
             <div className="mb-3 flex items-start justify-between gap-2">
               <div className="min-w-0">
@@ -316,7 +321,7 @@ export function TrainPage() {
               {skipSession.isPending ? 'Skipping…' : 'Skip this one'}
             </Button>
           </Card>
-        </Section>
+        </div>
       ) : (
         <Empty title="Building your session">
           <p>One moment — the block is put together from your priorities each time.</p>
@@ -327,19 +332,24 @@ export function TrainPage() {
 
       <TrainingHabits />
 
-      <Section title="Or train without a program">
-        <Button
-          variant="outline"
-          full
-          disabled={startWorkout.isPending}
-          onClick={() => {
-            startWorkout.mutate({ freestyleTitle: 'Open session' })
-          }}
-        >
-          <Plus size={18} aria-hidden />
-          Log a session from scratch
-        </Button>
-      </Section>
+      {/*
+        **A button, not a section.** It was a heading over a single
+        control, which is the shape `CardHeading` replaced everywhere else
+        — and here even that is more than it needs: the button says what
+        it does, so a title above saying the same thing twice is the
+        thing being removed rather than restyled.
+      */}
+      <Button
+        variant="outline"
+        full
+        disabled={startWorkout.isPending}
+        onClick={() => {
+          startWorkout.mutate({ freestyleTitle: 'Open session' })
+        }}
+      >
+        <Plus size={18} aria-hidden />
+        Log a session from scratch
+      </Button>
     </div>
   )
 }
