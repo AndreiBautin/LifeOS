@@ -15,7 +15,6 @@ import { buttonStyles } from '@/components/shared/styles'
 import { cn } from '@/lib/cn'
 
 import { useExercises, useProgram } from '@/features/train/hooks'
-import { RtsExplainer } from './RtsExplainer'
 
 /**
  * What the block is doing to you, and why.
@@ -152,7 +151,7 @@ export function PlanPage() {
       */}
       <Section
         title="The three lifts"
-        description="Every session is the same shape — a top set, then back-offs until the lighter bar feels like it did. Priority buys how many, not how long."
+        description="Every session is the same shape — three straight sets in a rep range. Top the range on all three and the weight goes up next time."
       >
         <Card>
           <ul className="space-y-3">
@@ -182,8 +181,6 @@ export function PlanPage() {
           </Section>
         ),
       )}
-
-      <RtsExplainer />
 
       <Section title="Change any of it">
         <Card className="space-y-3">

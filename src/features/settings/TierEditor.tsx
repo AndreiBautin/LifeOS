@@ -1,5 +1,4 @@
 import { MUSCLE_GROUPS, MUSCLE_GROUP_LABELS, type MuscleGroup } from '@/domain/exercises/taxonomy'
-import { FATIGUE_CHOICES } from '@/domain/framework/rts'
 import { STRENGTH_LIFT_LABELS, STRENGTH_LIFTS, type LiftSessions } from '@/domain/priority/tiers'
 import type { MuscleVolumes, SetsPerSession, VolumeLevel } from '@/domain/volume/levels'
 import {
@@ -35,11 +34,9 @@ interface Props {
   readonly muscleVolumes: MuscleVolumes
   readonly liftSessions: LiftSessions
   readonly setsPerSession: SetsPerSession
-  readonly fatiguePercent: number
   readonly onMuscleVolumes: (volumes: MuscleVolumes) => void
   readonly onLiftSessions: (sessions: LiftSessions) => void
   readonly onSetsPerSession: (sets: SetsPerSession) => void
-  readonly onFatiguePercent: (percent: number) => void
 }
 
 const SESSION_CHOICES = Array.from({ length: MAX_SESSIONS_PER_WEEK + 1 }, (_u, i) => i)
@@ -48,11 +45,9 @@ export function TierEditor({
   muscleVolumes,
   liftSessions,
   setsPerSession,
-  fatiguePercent,
   onMuscleVolumes,
   onLiftSessions,
   onSetsPerSession,
-  onFatiguePercent,
 }: Props) {
   const setSessions = (muscle: MuscleGroup, sessionsPerWeek: number): void => {
     onMuscleVolumes({ ...muscleVolumes, [muscle]: { ...muscleVolumes[muscle], sessionsPerWeek } })
@@ -87,57 +82,6 @@ export function TierEditor({
           Sessions a week. The split decides where they land — the bench goes on upper days, the
           squat and deadlift on lower ones — so asking for more sessions than there are eligible
           days gets you the days that exist, and the Plan screen says so.
-        </p>
-      </Card>
-
-      <Card>
-        <h3 className="text-ink-50 mb-1 text-sm font-semibold">How far back-offs go</h3>
-
-        {/*
-          The published scale, named. It was a row of numbers from 5 to
-          10, which made the setting a slider over values that mean
-          nothing individually — these are four named amounts of work,
-          not samples from a continuum, and "moderate" is a decision a
-          lifter can make where 5 is a number they can only accept.
-        */}
-        <ul className="space-y-1.5">
-          {FATIGUE_CHOICES.map((choice) => (
-            <li key={choice.level}>
-              <button
-                type="button"
-                onClick={() => {
-                  onFatiguePercent(choice.percent)
-                }}
-                aria-pressed={fatiguePercent === choice.percent}
-                className={cn(
-                  'tap-target flex w-full items-baseline justify-between gap-3 rounded-lg border px-3 text-left transition-colors',
-                  fatiguePercent === choice.percent
-                    ? 'border-accent-500 bg-accent-500/10'
-                    : 'border-ink-800 bg-ink-850 hover:border-ink-700',
-                )}
-              >
-                <span
-                  className={cn(
-                    'text-sm font-medium',
-                    fatiguePercent === choice.percent ? 'text-accent-500' : 'text-ink-300',
-                  )}
-                >
-                  {choice.label}
-                </span>
-                <span className="text-ink-500 text-xs">
-                  {choice.detail}
-                  <span className="numeric text-ink-300"> · {choice.percent}%</span>
-                </span>
-              </button>
-            </li>
-          ))}
-        </ul>
-
-        <p className="text-ink-500 mt-3 text-xs">
-          RTS's own scale, and the whole of it. One number doing two jobs, which is what makes the
-          rule sayable: the back-off bar is this much lighter, and you stop when your implied max
-          has dropped this much. At matched reps and RPE those are the same moment — you stop when
-          the lighter bar feels like the top set did.
         </p>
       </Card>
 

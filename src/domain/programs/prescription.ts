@@ -1,6 +1,18 @@
 import { invariant } from '@/domain/errors/domain-error'
 
 /**
+ * The low and high of a working range.
+ *
+ * Named because double progression is stated in one — "three sets of
+ * 3–5" — and both the prescription and the progression rule have to say
+ * the same thing about it.
+ */
+export interface RepRange {
+  readonly low: number
+  readonly high: number
+}
+
+/**
  * How the load for one set is decided.
  *
  * This union is the reason a single program builder can express both
@@ -34,9 +46,31 @@ export type LoadSource =
   /** A fixed number, unit-of-the-program. */
   | { readonly kind: 'absolute'; readonly load: number }
   /**
-   * Autoregulated: work up to a target RPE. This is how LiftTracker
-   * prescribed everything, and it stays the right choice for accessories
-   * where a percentage of anything is meaningless.
+   * **Whatever you last worked at, plus the step once you topped the
+   * range.** Double progression, and the only load kind the redesigned
+   * programme prescribes.
+   *
+   * It carries no number of its own, deliberately. The load is a fact
+   * about your history rather than about the plan, so it is resolved
+   * against the athlete — see `AthleteState.working` — and a slot that
+   * has never been trained resolves to **open**: you type what you did,
+   * and it carries from then on. Baking a number in here would make the
+   * template a record of the past, which is the one thing a
+   * `ProgramTemplate` must never be.
+   */
+  | { readonly kind: 'working' }
+  /**
+   * Autoregulated: work up to a target RPE.
+   *
+   * **Nothing prescribes this any more** — the programme is double
+   * progression and no set is chosen by feel. It stays because **a log
+   * describes itself**: every `WorkoutLog` embeds the prescription it
+   * was performed under, so sessions filed while RTS ran still hold
+   * `rpe` sets, and a history screen has to be able to read them.
+   *
+   * Removing the variant would not delete those records, it would make
+   * them unreadable — the same reason the retired IndexedDB stores are
+   * still declared. Do not "tidy" it away.
    */
   | { readonly kind: 'rpe'; readonly target: number }
   /**
@@ -89,7 +123,7 @@ export type LoadSource =
  */
 export type RepTarget =
   | { readonly kind: 'fixed'; readonly reps: number }
-  | { readonly kind: 'range'; readonly low: number; readonly high: number }
+  | ({ readonly kind: 'range' } & RepRange)
   /**
    * As many reps as possible, with a stated minimum — Wendler's "5+".
    * Neither old app could express this, which is the single clearest
@@ -168,6 +202,13 @@ export function validateLoadSource(load: LoadSource): void {
         'RPE_OUT_OF_RANGE',
         `A top-set RPE must be between ${String(MIN_RPE)} and ${String(MAX_RPE)}, received ${String(load.topSetRpe)}.`,
       )
+      return
+    /*
+     * Nothing to validate: `working` carries no number of its own. What
+     * it resolves to is checked where it is read, against a history that
+     * cannot be invalid — a load that was lifted is a load that exists.
+     */
+    case 'working':
       return
     case 'open':
       return
@@ -260,6 +301,15 @@ export function describePrescription(
         : `${reps} at ${String(set.load.dropPercent)}% off the top set, until RPE ${String(set.load.stopRpe)}`
     case 'open':
       return reps
+    /*
+     * **The reps alone, because the load is a fact about your history
+     * rather than about the plan.** A template row cannot say what will
+     * be on the bar — that is resolved per session — and printing
+     * "working weight" here would be a phrase where a number belongs.
+     * The session screen fills it in or leaves it open.
+     */
+    case 'working':
+      return reps
     // Enumerated rather than defaulted, so adding a load kind fails the
     // build here and someone decides how it should read.
     case 'percent-e1rm':
@@ -284,6 +334,9 @@ export function describeLoad(load: LoadSource): string {
     case 'rts-backoff':
       return `${String(load.dropPercent)}% off the top set`
     case 'open':
+      return '—'
+    /* Nothing to show until a session resolves it against your history. */
+    case 'working':
       return '—'
   }
 }

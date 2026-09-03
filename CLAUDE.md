@@ -5992,6 +5992,61 @@ sort and both rank the same. **`previousSetFor` must take the variant**:
 matching on the exercise alone hands the first back-off the previous
 session's _top set_ as its "last time".
 
+**Strength is double progression now, and RTS is gone.** _"Just do a
+double progression for everything. No RPE or anything… Straight 3 sets
+on anything."_ `domain/programs/progression.ts`.
+
+**The whole method is two sentences.** Work in a rep range for three
+sets; when every set reaches the top of it, put the next increment on
+the bar. Strength runs 3–5, hypertrophy compounds 10–15, isolations
+15–30, and every slot is three straight sets at one load.
+
+**Nothing stores a working weight.** The load is derived from the last
+session that trained the exercise, the way the programme itself is
+derived from settings — so there is no "current weight" record to drift,
+to lose, or to reconcile between two devices. `startWorkout` reads it,
+because `resolve` is pure and reads no repository, and hands it to
+resolution through `AthleteState.working` beside the estimated maxes.
+
+**A slot with no history resolves to open**, which is the design rather
+than a gap: the app does not know what you lift until you have lifted
+it, and a number guessed from an estimate is a prescription nobody
+chose. You type it once and it carries.
+
+**Increments are 5 upper and 10 lower, derived rather than written on
+every exercise.** Fifty entries would each need a number and forty-eight
+would say five; `loadStep` overrides it where a movement differs. Lower
+means **compound and lower** — a calf raise is a lower-body isolation
+and ten pounds a session on one is a jump nobody makes.
+
+**What the trade costs, recorded because it is real.** RTS moved the
+load _within_ the session from a reading taken on the day, so a bad
+night lightened the bar without anybody deciding to. Double progression
+cannot: the bar is what it was until the reps say otherwise, and a bad
+day is a day you miss the top of the range. In exchange the method is
+sayable in two sentences and nothing is self-reported.
+
+**The competition lift is one slot, not two.** The top-set/back-off pair
+existed because they were different kinds of set — a measurement and the
+work derived from it. Three straight sets at one load are one kind of
+thing, and splitting them would put a lift on the session screen twice
+for one trip to the rack.
+
+**`rpe` and `rts-backoff` stay in the prescription union and must not be
+tidied away.** Nothing prescribes them any more, but **a log describes
+itself**: every `WorkoutLog` embeds the prescription it was performed
+under, so sessions filed while RTS ran still hold `rpe` sets. Removing
+the variants would not delete those records, it would make them
+unreadable — the same reason the retired IndexedDB stores are still
+declared.
+
+**Gone with it**: `framework/rts.ts`, `backoff-stop.ts`,
+`replan-backoffs.ts`, `RtsExplainer`, the back-off re-plan in
+`log-set`, the live stopping-rule card in `SessionPlayer`,
+`settings.fatiguePercent` and its editor, and `recipe.rts`. Eight tests
+went with their subject; two were kept and re-pointed at what survives —
+the frequency rule and the resolution shape.
+
 **The training redesign is under way, and this is the first stage of
 it.** Asked for as _"let's begin redesigning the training… just do a
 double progression for everything. No RPE. Strength 3-5, hypertrophy

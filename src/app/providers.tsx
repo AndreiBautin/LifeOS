@@ -56,6 +56,15 @@ export function AppProviders({ services, children }: Props) {
       // competition lift, so its first session has a suggested load
       // instead of a dash. Anything measured wins; see withDerivedMaxes.
       estimatedMaxes: withDerivedMaxes(settings.estimatedMaxes),
+      /*
+       * **Empty here, and filled in at the one place it matters.** The
+       * working loads come from logged history, which this provider has
+       * no way to read — so `startWorkout` computes them and hands them
+       * to resolution. A template preview therefore shows the
+       * prescription (three sets of 3–5) and no number, which is what a
+       * template honestly knows.
+       */
+      working: {},
       ...(settings.bodyweight !== undefined ? { bodyweight: settings.bodyweight } : {}),
       units: settings.units,
     }

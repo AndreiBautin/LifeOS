@@ -31,7 +31,6 @@ export const SYNCED_SETTING_KEYS = [
   'excludedExercises',
   'muscleVolumes',
   'liftSessions',
-  'fatiguePercent',
   'daysPerWeek',
   'weeksBeforeDeload',
   'e1rmFormula',

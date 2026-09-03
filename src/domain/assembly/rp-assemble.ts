@@ -4,10 +4,8 @@ import type { Exercise } from '@/domain/exercises/exercise'
 import { HYPERTROPHY_RPE } from '@/domain/exercises/loading'
 import type { MuscleGroup } from '@/domain/exercises/taxonomy'
 import { MUSCLE_GROUP_LABELS } from '@/domain/exercises/taxonomy'
-import type { RtsPrescription } from '@/domain/framework/rts'
-import { BACKOFF_VARIANT, TOP_SET_VARIANT } from '@/domain/framework/replan-backoffs'
-import { backoffStopRpe, DEFAULT_RTS, plannedBackoffSets } from '@/domain/framework/rts'
 import type { ExerciseId, IdGenerator, ProgramId } from '@/domain/ids/ids'
+import { STRAIGHT_SETS, STRENGTH_RANGE } from '@/domain/programs/progression'
 import { asExerciseId, asSlotId } from '@/domain/ids/ids'
 import type { SetPrescription } from '@/domain/programs/prescription'
 import type {
@@ -80,7 +78,6 @@ export interface RpRecipe {
   readonly setsPerSession: SetsPerSession
   readonly daysPerWeek: number
   readonly weeksBeforeDeload: number
-  readonly rts: RtsPrescription
   readonly includeWarmUps: boolean
   /**
    * Roughly how long a session should run.
@@ -154,7 +151,6 @@ export function defaultRpRecipe(overrides: Partial<RpRecipe> = {}): RpRecipe {
     // it so finely that several sessions are not worth the trip.
     daysPerWeek: DEFAULT_DAYS_PER_WEEK,
     weeksBeforeDeload: DEFAULT_WEEKS_BEFORE_DELOAD,
-    rts: DEFAULT_RTS,
     includeWarmUps: true,
     minSetsPerSlot: 3,
     /*
@@ -321,7 +317,7 @@ function buildWeek(
        */
       const variation = paired ? position : session
 
-      return buildStrengthSlots(recipe, deps, lift, variation, isDeload)
+      return buildStrengthSlots(deps, lift, variation, isDeload)
     })
     return {
       slots: built.flatMap((one) => one.slots),
@@ -631,8 +627,42 @@ function assignStrengthLifts(
  * what lets the rest of the app treat this like any other slot; the
  * player marks the unused ones as skipped when the stopping rule fires.
  */
+/**
+ * The competition lift, as three straight sets in a rep range.
+ *
+ * **This replaced RTS wholesale.** What was here was a top set taken to
+ * a target RPE and a cap of back-offs at a fixed drop, stopping when the
+ * implied max had fallen by the day's fatigue target. All of it —
+ * `rts.ts`, the stopping rule, the fatigue setting, the two variants —
+ * is gone, asked for as _"just do a double progression for everything.
+ * No RPE or anything."_
+ *
+ * **What the trade actually costs, stated once.** RTS moved the load
+ * within the session from a reading taken on the day, so a bad night
+ * lightened the bar without anybody deciding to. Double progression
+ * cannot do that: the bar is what it was last time until the reps say
+ * otherwise, and a bad day is a day you miss the top of the range. In
+ * exchange the whole method is two sentences and nothing has to be
+ * self-reported.
+ *
+ * **One slot, not two.** The top-set and back-off pair existed because
+ * they were different kinds of set — a measurement and the work derived
+ * from it. Three straight sets at one load are one kind of thing, and
+ * splitting them would put a lift on the session screen twice for one
+ * trip to the rack.
+ */
+/**
+ * The sub-category a competition-lift slot carries.
+ *
+ * It was `'Top set'`, from `replan-backoffs`, back when a lift was two
+ * slots. There is one now and the word is written into every log ever
+ * filed, so it stays as a stored value while the constant moves here —
+ * renaming an id to match a change of meaning is how history stops
+ * resolving.
+ */
+const STRENGTH_VARIANT = 'Top set'
+
 function buildStrengthSlots(
-  recipe: RpRecipe,
   deps: RpAssembleDeps,
   lift: StrengthLift,
   session: number,
@@ -643,166 +673,30 @@ function buildStrengthSlots(
   if (exercise === undefined) return { slots: [], spent: emptyVolumeMap() }
 
   /*
-   * The allowance equals the load drop, for every lift, every session.
-   *
-   * That equality is the whole point. Stop when the implied max has
-   * fallen by the drop you took, and — because at matched reps and RPE
-   * an implied max is proportional to bar weight — that is exactly the
-   * moment the lighter bar feels like the top set did. One sentence, no
-   * arithmetic, true on every lift: *drop five per cent and keep going
-   * until it feels like your opener again.*
-   *
-   * It used to vary by tier, 2% up to 7%, which is a coherent way to
-   * spend a prioritisation and made that sentence false for every tier
-   * but one. Priority now buys **frequency** instead, which is visible on
-   * the calendar rather than buried in a stopping rule.
+   * A deload is the same movement for two sets rather than three. The
+   * range does not move: dropping to a lighter range would change what
+   * the week means, where dropping a set just does less of it.
    */
-  const fatigueTarget = isDeload ? 0 : (recipe.rts.loadDropPercent ?? 5)
+  const count = isDeload ? STRAIGHT_SETS - 1 : STRAIGHT_SETS
 
-  const topSetRpe = isDeload ? 6 : recipe.rts.topSetRpe
-
-  const topSet: SetPrescription = {
-    load: { kind: 'rpe', target: topSetRpe },
-    reps: { kind: 'fixed', reps: recipe.rts.topSetReps },
-    label: 'Top set',
-    notes: `Work up until this feels like RPE ${String(topSetRpe)}.`,
-  }
-
-  /*
-   * As many back-offs as the day's fatigue target is expected to need.
-   *
-   * It was a flat three for every non-zero target, so Minimal and High
-   * built identical sessions and the setting decided only when to stop.
-   * The paragraph this replaces already stated the right rule — the cap
-   * "should sit near where the rule usually fires" — and then ignored it
-   * for every target but one.
-   *
-   * The stopping rule still ends the work; this decides what goes in the
-   * plan, and the plan is materialised as slots and counted as volume.
-   */
-  const backoffCap =
-    fatigueTarget <= 0
-      ? /*
-         * None means none. The stopping rule fires on the first back-off
-         * when the target is zero, so prescribing three of them would put
-         * work in the plan that the rule immediately cancels — and the
-         * cap is materialised as slots and counted as volume, so a plan
-         * only correct if you skip most of it is not correct.
-         *
-         * Reachable from the settings screen: "None — top set only" is one
-         * of the four published fatigue percents.
-         */
-        0
-      : isDeload
-        ? 1
-        : Math.min(recipe.rts.maxBackoffSets, plannedBackoffSets(fatigueTarget))
-
-  /*
-   * A fixed drop from today's top set, with no prescribed RPE.
-   *
-   * The RPE of a back-off is the *reading*, not the instruction: same
-   * weight, same reps, and the effort climbs set over set as fatigue
-   * accumulates until the implied max has fallen by the day's target.
-   * Prescribing "RPE 7.5" said the opposite — lighten it until it feels
-   * easy — and the number gave it away, suggesting a weight about 2%
-   * below the top set on a slot labelled "Load drop 5%", because the
-   * suggestion came from the RPE chart rather than from the drop.
-   */
-  const dropPercent = recipe.rts.method === 'load-drop' ? (recipe.rts.loadDropPercent ?? 5) : 0
-
-  /*
-   * The same stopping rule, in a unit you can act on.
-   *
-   * The rule is a fatigue percentage, and asking a lifter to compare two
-   * implied maxes between sets is asking them to run the RPE chart twice
-   * with chalk on their hands. Stated as "stop when a set hits RPE 8.5"
-   * it is the same rule and needs no arithmetic — and it is knowable now
-   * rather than in the gym, because the top set's weight cancels out.
-   */
-  const stopRpe = backoffStopRpe(recipe.rts.topSetReps, topSetRpe, dropPercent, fatigueTarget)
-
-  const backoffs: SetPrescription[] = Array.from({ length: backoffCap }, (_unused, index) => ({
-    load: {
-      kind: 'rts-backoff' as const,
-      dropPercent,
-      topSetReps: recipe.rts.topSetReps,
-      topSetRpe,
-      ...(stopRpe !== undefined ? { stopRpe } : {}),
-    },
-    reps: { kind: 'fixed' as const, reps: recipe.rts.topSetReps },
-    label: 'Back-off',
-    ...(index === 0
-      ? {
-          notes:
-            stopRpe === undefined
-              ? `Log the RPE of each one. Stop when a set implies a max ${String(fatigueTarget)}% below the top set.`
-              : `Same weight every set. Log the RPE — when one comes in at ${String(stopRpe)}, that is the ${String(fatigueTarget)}% drop and you are done.`,
-        }
-      : {}),
+  const sets: SetPrescription[] = Array.from({ length: count }, () => ({
+    load: { kind: 'working' as const },
+    reps: { kind: 'range' as const, low: STRENGTH_RANGE.low, high: STRENGTH_RANGE.high },
   }))
 
-  /*
-   * Two slots, not one, and they do different jobs.
-   *
-   * They were merged for a while on the reasoning that the top set and
-   * its back-offs are the same exercise in the same trip to the rack.
-   * True, and it hid the thing that makes RTS RTS: the top set is a
-   * *measurement* the rest of the session is derived from, and the
-   * back-offs are work whose number is not known in advance. One row
-   * labelled "Strength" said neither, and the pair of them read as one
-   * six-set prescription — which is exactly what a percentage program
-   * would give you and exactly what this is not.
-   *
-   * They stay adjacent because the ordering pass is a stable sort and
-   * both rank the same, so the top set is always the row above.
-   */
-  const top: Slot = {
+  const slot: Slot = {
     id: asSlotId(deps.ids.next()),
     role: 'strength',
-    variant: TOP_SET_VARIANT,
+    variant: STRENGTH_VARIANT,
     exercise: { kind: 'specific', exerciseId },
-    sets: [topSet],
+    sets,
     restSeconds: exercise.defaultRestSeconds ?? 180,
     notes: isDeload
-      ? 'Deload — work up to something easy and stop.'
-      : 'One set. What it weighs and how it felt is where every number below comes from.',
+      ? 'Deload — same weight, two sets, stop early.'
+      : `${String(count)} sets of ${String(STRENGTH_RANGE.low)}–${String(STRENGTH_RANGE.high)}. Hit the top of the range on every set and add weight next time.`,
   }
 
-  const backoff: Slot = {
-    id: asSlotId(deps.ids.next()),
-    role: 'strength',
-    variant: BACKOFF_VARIANT,
-    exercise: { kind: 'specific', exerciseId },
-    sets: backoffs,
-    restSeconds: exercise.defaultRestSeconds ?? 180,
-    notes: isDeload
-      ? 'Deload — one back-off, easy.'
-      : `${describeMethod(recipe.rts)} · ${String(fatigueTarget)}% fatigue target. The set count is a cap, not a plan.`,
-  }
-
-  /*
-   * No back-off slot at all when there are no back-offs, rather than an
-   * empty one. A slot with no sets is a row on the session screen with
-   * nothing to tick, and `describeDay` would name a lift twice for one
-   * trip to the rack.
-   */
-  const slots = backoffs.length > 0 ? [top, backoff] : [top]
-
-  return {
-    slots,
-    spent: addInto(slotVolume(exercise, top.sets), slotVolume(exercise, backoff.sets)),
-  }
-}
-
-function describeMethod(rts: RtsPrescription): string {
-  switch (rts.method) {
-    case 'load-drop':
-      return `Load drop ${String(rts.loadDropPercent ?? 5)}%`
-    case 'repeats':
-      return 'Repeats at the same weight'
-    case 'rep-drop':
-      return 'Rep drops at the same weight'
-  }
+  return { slots: [slot], spent: slotVolume(exercise, slot.sets) }
 }
 
 /* -------------------------------------------------------------------- */
@@ -1411,18 +1305,27 @@ function daysAvailableFor(muscle: MuscleGroup, split: RpSplit): number {
  * and the flag is gone rather than quietly retained, because a field
  * nothing reads is a field somebody will assume still does something.
  */
+/**
+ * **Straight sets at one load, and no RPE anywhere.** Asked for as
+ * _"just do a double progression for everything. No RPE or anything…
+ * Straight 3 sets on anything."_
+ *
+ * What went: the RPE target, the last-set-to-failure instruction, and
+ * the varying set count. What replaced all three is one sentence — work
+ * in the range for three sets, and when every set reaches the top of it,
+ * put the next increment on the bar.
+ *
+ * The load is `working`, which carries no number: it is resolved per
+ * session from what was actually logged, so the template says what to do
+ * and the session says what to lift. See `domain/programs/progression.ts`.
+ */
 function hypertrophySets(exercise: Exercise, count: number): readonly SetPrescription[] {
   const range = exercise.repRange ?? (exercise.isCompound ? COMPOUND_REPS : ISOLATION_REPS)
 
-  return Array.from({ length: count }, (_unused, index) => {
-    const isLast = index === count - 1
-
-    return {
-      load: { kind: 'rpe' as const, target: isLast ? 10 : HYPERTROPHY_RPE },
-      reps: { kind: 'range' as const, low: range.low, high: range.high },
-      ...(isLast ? { notes: 'Take this one to failure.' } : {}),
-    }
-  })
+  return Array.from({ length: count }, () => ({
+    load: { kind: 'working' as const },
+    reps: { kind: 'range' as const, low: range.low, high: range.high },
+  }))
 }
 
 /**

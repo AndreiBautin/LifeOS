@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
 import { builtInExercises, STRENGTH_VARIATIONS } from '@/domain/exercises/catalogue'
-import { DEFAULT_RTS } from '@/domain/framework/rts'
 import type { StrengthLift } from '@/domain/priority/tiers'
 import { MAX_DIRECT_SETS_PER_SESSION } from '@/domain/volume/frequency'
 import { MUSCLE_GROUPS, type MuscleGroup } from '@/domain/exercises/taxonomy'
@@ -128,29 +127,6 @@ describe('the assembled block', () => {
     expect(block?.weeks).toHaveLength(7)
     expect(block?.weeks[6]?.isDeload).toBe(true)
     expect(block?.weeks.filter((week) => week.isDeload)).toHaveLength(1)
-  })
-
-  it('prescribes every working set by feel rather than by a percentage', () => {
-    // RTS asks for reps at an RPE and reads the load back off what was
-    // done. A percentage-of-something set anywhere in the block would
-    // mean a number the lifter has to maintain by hand.
-    //
-    // `rts-backoff` is a percentage of *today's top set*, which is the
-    // opposite case: it descends from a measurement taken minutes
-    // earlier rather than from a figure carried between sessions.
-    const kinds = new Set(
-      (block?.weeks ?? []).flatMap((week) =>
-        week.days.flatMap((day) =>
-          day.slots
-            .filter((slot) => slot.role !== 'conditioning')
-            .flatMap((slot) =>
-              slot.sets.filter((set) => set.isWarmup !== true).map((set) => set.load.kind),
-            ),
-        ),
-      ),
-    )
-
-    expect([...kinds].sort()).toEqual(['rpe', 'rts-backoff'])
   })
 
   it('presses once on each upper day and shares the lower days', () => {
@@ -309,31 +285,6 @@ describe('the assembled block', () => {
   })
 
   /*
-   * Two slots, adjacent, and they are not the same kind of thing.
-   *
-   * They were merged for a while on the reasoning that it is one exercise
-   * in one trip to the rack. True, and it hid what makes this RTS: the
-   * top set is a measurement everything below is derived from, and the
-   * back-offs are work whose count is discovered rather than planned. As
-   * one six-set row it read exactly like a percentage prescription.
-   */
-  it('splits the competition lift into a top set and its back-offs', () => {
-    const bench = block?.weeks[0]?.days[2]?.slots.filter((slot) => slot.role === 'strength') ?? []
-
-    expect(bench).toHaveLength(2)
-    expect(bench.map((slot) => slot.variant)).toEqual(['Top set', 'Back-off'])
-
-    // The top set first, always: the ordering pass is a stable sort and
-    // both slots rank the same, so build order is what survives.
-    expect(bench[0]?.sets).toHaveLength(1)
-    expect(bench[0]?.sets[0]?.label).toBe('Top set')
-    expect(bench[0]?.sets[0]?.notes).toMatch(/work up until this feels like/i)
-
-    expect(bench[1]?.sets.every((set) => set.label === 'Back-off')).toBe(true)
-    expect(bench[1]?.notes).toMatch(/fatigue target/)
-  })
-
-  /*
    * Priority buys sessions, not longer ones.
    *
    * It used to buy a bigger fatigue allowance — tier 1 stopped at 7%,
@@ -346,11 +297,18 @@ describe('the assembled block', () => {
   it('spends priority on frequency, leaving every session the same shape', () => {
     const week = block?.weeks[0]
 
-    const backoffSets = (week?.days ?? []).flatMap((day) =>
-      day.slots.filter((slot) => slot.variant === 'Back-off').map((slot) => slot.sets.length),
+    /*
+     * The back-off half of this went with RTS — it asserted that every
+     * back-off slot held the same number of sets, and there are no
+     * back-off slots. The rule it shared a test with is untouched and is
+     * the half worth keeping: priority buys *sessions*, and every one of
+     * them is the same three straight sets.
+     */
+    const strengthSets = (week?.days ?? []).flatMap((day) =>
+      day.slots.filter((slot) => slot.role === 'strength').map((slot) => slot.sets.length),
     )
 
-    expect(new Set(backoffSets).size).toBe(1)
+    expect(new Set(strengthSets).size).toBe(1)
 
     // Counted across a lift's variations, not by slug: the bench trains
     // two different versions of itself across the week and both are bench
@@ -370,112 +328,6 @@ describe('the assembled block', () => {
     expect(sessions('press')).toBe(1)
     expect(sessions('squat')).toBe(2)
     expect(sessions('deadlift')).toBe(2)
-  })
-
-  /*
-   * The equality that makes the stopping rule sayable: drop five per
-   * cent, keep going until the lighter bar feels like the opener.
-   */
-  /*
-   * The setting reaches the plan, which it did not for two commits.
-   *
-   * `settings.fatiguePercent` existed, the editor changed it, and
-   * `recipeFromSettings` went on passing `DEFAULT_RTS` — so the control
-   * decided nothing while looking like it worked. A rule nothing can
-   * reach is a rule nobody can trust, and a *control* nothing can reach is
-   * worse, because the lifter believes they changed something.
-   */
-  it('takes the fatigue percent from settings', () => {
-    for (const percent of [2, 7]) {
-      const week = weekAt(
-        assembleRpProgram(
-          defaultRpRecipe({
-            rts: { ...DEFAULT_RTS, fatigueTargetPercent: percent, loadDropPercent: percent },
-          }),
-          asProgramId('rp'),
-          { exercises, ids: counterIds(), now: new Date('2026-08-24T00:00:00Z') },
-        ),
-        0,
-      )
-
-      const backoff = week.days
-        .flatMap((day) => day.slots)
-        .find((slot) => slot.variant === 'Back-off')
-
-      expect(backoff?.notes, String(percent)).toContain(`${String(percent)}% fatigue target`)
-      expect(backoff?.notes, String(percent)).toContain(`Load drop ${String(percent)}%`)
-    }
-  })
-
-  /*
-   * Reported from real use: the back-offs read the same however the
-   * fatigue setting moved. The count was a flat three for every non-zero
-   * target, so Minimal and High built identical sessions — the setting
-   * changed the *notes* on the slots, which is why the test above passed
-   * while the plan did not move.
-   *
-   * The slots are materialised and counted as volume, so this is a real
-   * difference in the week's work rather than a label.
-   */
-  it('plans more back-off sets for a higher fatigue target', () => {
-    const backoffsAt = (percent: number): number =>
-      weekAt(
-        assembleRpProgram(
-          defaultRpRecipe({
-            rts: { ...DEFAULT_RTS, fatigueTargetPercent: percent, loadDropPercent: percent },
-          }),
-          asProgramId('rp'),
-          { exercises, ids: counterIds(), now: new Date('2026-08-24T00:00:00Z') },
-        ),
-        0,
-      )
-        .days.flatMap((day) => day.slots)
-        // The sets, not the slots: a back-off block is one slot holding
-        // however many sets the target plans for, so counting slots
-        // counts strength *sessions* and comes out the same either way.
-        .filter((slot) => slot.variant === 'Back-off')
-        .reduce((sum, slot) => sum + slot.sets.length, 0)
-
-    const minimal = backoffsAt(2)
-    const moderate = backoffsAt(5)
-    const high = backoffsAt(7)
-
-    expect(minimal).toBeGreaterThan(0)
-    expect(minimal).toBeLessThan(moderate)
-    expect(moderate).toBeLessThan(high)
-  })
-
-  /*
-   * And "none" means none: the stopping rule fires on the first back-off
-   * at a zero target, so prescribing any would put work in the plan the
-   * rule immediately cancels. The cap is materialised as slots and counted
-   * as volume, so a plan only correct if you skip most of it is not
-   * correct.
-   */
-  it('prescribes no back-off slot at all when the target is none', () => {
-    const week = weekAt(
-      assembleRpProgram(
-        defaultRpRecipe({ rts: { ...DEFAULT_RTS, fatigueTargetPercent: 0, loadDropPercent: 0 } }),
-        asProgramId('rp'),
-        { exercises, ids: counterIds(), now: new Date('2026-08-24T00:00:00Z') },
-      ),
-      0,
-    )
-
-    const strength = week.days
-      .flatMap((day) => day.slots)
-      .filter((slot) => slot.role === 'strength')
-
-    expect(strength.length).toBeGreaterThan(0)
-    expect(strength.every((slot) => slot.variant === 'Top set')).toBe(true)
-  })
-
-  it('sets the fatigue allowance equal to the load drop', () => {
-    const backoff = (block?.weeks[0]?.days ?? [])
-      .flatMap((day) => day.slots)
-      .find((slot) => slot.variant === 'Back-off')
-
-    expect(backoff?.notes).toMatch(/Load drop 5% · 5% fatigue target/)
   })
 
   it('gives every slot a sub-category, so the badge pair is one shape', () => {
@@ -1352,56 +1204,13 @@ describe('conditioning', () => {
   })
 })
 
-describe('constant proximity to failure', () => {
-  const program = build()
-
-  it('holds every hypertrophy work set at one rep in reserve', () => {
-    const sets = (program.blocks[0]?.weeks[0]?.days ?? [])
-      .flatMap((day) => day.slots)
-      .filter((slot) => slot.role === 'hypertrophy' || slot.role === 'assistance')
-      .flatMap((slot) => slot.sets.slice(0, -1))
-
-    expect(sets.length).toBeGreaterThan(0)
-    // RPE 9 is one rep in reserve. No ramp across the block.
-    expect(sets.every((set) => set.load.kind === 'rpe' && set.load.target === 9)).toBe(true)
-  })
-
-  it('does not ramp RPE across the weeks', () => {
-    const rpeInWeek = (weekIndex: number): number[] =>
-      (program.blocks[0]?.weeks[weekIndex]?.days ?? [])
-        .flatMap((day) => day.slots)
-        .filter((slot) => slot.role === 'hypertrophy' || slot.role === 'assistance')
-        .flatMap((slot) => slot.sets.slice(0, -1))
-        .flatMap((set) => (set.load.kind === 'rpe' ? [set.load.target] : []))
-
-    expect(new Set([...rpeInWeek(0), ...rpeInWeek(3), ...rpeInWeek(5)])).toEqual(new Set([9]))
-  })
-
-  it('takes the last set to failure only where failing is safe', () => {
-    const slots = (program.blocks[0]?.weeks[2]?.days ?? [])
-      .flatMap((day) => day.slots)
-      .filter((slot) => slot.role === 'hypertrophy' || slot.role === 'assistance')
-
-    for (const slot of slots) {
-      if (slot.exercise.kind !== 'specific') continue
-      const exercise = lookup(slot.exercise.exerciseId)
-      const last = slot.sets[slot.sets.length - 1]
-
-      /*
-       * Every hypertrophy slot ends in a set to failure now, with no
-       * exceptions. It used to carve out two groups — lifts that are
-       * dangerous to fail and lifts whose failure point is ambiguous —
-       * and that carve-out is gone rather than narrowed, so the test says
-       * so plainly rather than encoding a rule that is no longer there.
-       */
-      expect(last?.load, exercise?.name).toEqual({ kind: 'rpe', target: 10 })
-
-      for (const set of slot.sets.slice(0, -1)) {
-        expect(set.load, exercise?.name).toEqual({ kind: 'rpe', target: 9 })
-      }
-    }
-  })
-})
+/*
+ * **"Constant proximity to failure" is gone entirely.** Every test in it
+ * described RPE targets and the last-set-to-failure rule, and the method
+ * is double progression now: a set is defined by its rep range and the
+ * load carried forward, and how close to failure it lands is the
+ * lifter's business rather than a prescription.
+ */
 
 describe('rep ranges', () => {
   const week = weekAt(build(), 3)
@@ -1446,23 +1255,6 @@ describe('rep ranges', () => {
     // Both branches were actually exercised, so a week that happened to
     // contain only isolations could not pass this by default.
     expect([...seen.keys()].sort()).toEqual(['compound', 'isolation'])
-  })
-
-  /*
-   * The competition lifts are triples. The top set is a measurement
-   * before it is training, and a triple sits closer to the single the
-   * total is scored on.
-   */
-  it('runs the competition lifts as triples', () => {
-    const topSets = week.days.flatMap((day) =>
-      day.slots.filter((slot) => slot.variant === 'Top set').flatMap((slot) => slot.sets),
-    )
-
-    expect(topSets.length).toBeGreaterThan(0)
-
-    for (const set of topSets) {
-      expect(set.reps).toEqual({ kind: 'fixed', reps: 3 })
-    }
   })
 })
 

@@ -50,6 +50,7 @@ function counterIds(): IdGenerator {
 }
 
 const athlete: AthleteState = {
+  working: {},
   estimatedMaxes: {
     [asExerciseId(STRENGTH_LIFT_SLUGS.squat)]: 350,
     [asExerciseId(STRENGTH_LIFT_SLUGS.bench)]: 250,
@@ -154,37 +155,24 @@ describe('starting a session from a program', () => {
     expect(curl).toBeDefined()
 
     /*
-     * Every set at 1 RIR except the last, which goes to failure.
-     *
-     * The curl is safe to fail on and runs 5–30 like every other
-     * hypertrophy movement, so the heavy-set exemption does not apply.
-     * Asserted as a shape rather than a fixed count, because how many
-     * sets it gets is a volume decision that moves with the tiers and the
-     * day count.
+     * **Straight sets at a working load, and no RPE anywhere.** This
+     * asserted 1 RIR on every set and failure on the last, which is what
+     * RTS-era hypertrophy prescribed; the method is double progression
+     * now and every set is identical.
      */
     const loads = curl?.sets.map((set) => set.prescription.load) ?? []
 
     expect(loads.length).toBeGreaterThan(1)
-    expect(loads.slice(0, -1)).toEqual(loads.slice(0, -1).map(() => ({ kind: 'rpe', target: 9 })))
-    expect(loads.at(-1)).toEqual({ kind: 'rpe', target: 10 })
+    expect(loads).toEqual(loads.map(() => ({ kind: 'working' })))
 
-    // A 60 lb estimate resolves to a suggested weight through the chart.
-    expect(curl?.sets[0]?.plannedLoad).toBeGreaterThan(0)
-  })
-
-  it('leaves an RPE set performable when no estimate exists', async () => {
-    // An RPE prescription is satisfied by feel, so a missing estimate
-    // costs the lifter a suggested number and nothing else. Under 5/3/1
-    // the same gap left the set with no load at all.
-    const deps = beginProgram()
-    const bare: AthleteState = { ...athlete, estimatedMaxes: {} }
-
-    const result = await startWorkout({ athlete: bare, program, roundingIncrement: 5 }, deps)
-    if (result.kind !== 'started') throw new Error('expected a started workout')
-
-    const curl = result.workout.entries.find((entry) => isCurl(entry.exerciseId))
-    expect(curl?.sets.every((set) => set.plannedLoad === undefined)).toBe(true)
-    expect(curl?.sets[0]?.prescription.load).toEqual({ kind: 'rpe', target: 9 })
+    /*
+     * **And it resolves to nothing, which is the point of `working`.**
+     * This device has never logged a curl, so there is no load to carry
+     * forward and the set is open — the lifter types what they did and
+     * it carries from then on. It used to resolve through the RPE chart
+     * off an estimate, which is precisely the guess that was removed.
+     */
+    expect(curl?.sets[0]?.plannedLoad).toBeUndefined()
   })
 
   it('resumes an unfinished session rather than starting a second', async () => {

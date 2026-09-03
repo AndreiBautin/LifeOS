@@ -10,6 +10,7 @@ const CURL = asExerciseId('curl')
 
 const athlete: AthleteState = {
   estimatedMaxes: { [SQUAT]: 350, [CURL]: 100 },
+  working: {},
   bodyweight: 180,
   units: 'lb',
 }
@@ -152,7 +153,7 @@ describe('non-percentage prescriptions', () => {
     const set = resolveSet(
       { load: { kind: 'absolute', load: 137.4 }, reps: { kind: 'fixed', reps: 12 } },
       {
-        athlete: { estimatedMaxes: {}, units: 'lb' },
+        athlete: { estimatedMaxes: {}, working: {}, units: 'lb' },
         exerciseId: CURL,
         roundingIncrement: 5,
       },

@@ -24,7 +24,9 @@ describe('what travels', () => {
       'muscleVolumes',
       'liftSessions',
       'setsPerSession',
-      'fatiguePercent',
+      // 'fatiguePercent' was here and went with RTS: the programme is no
+      // longer derived from it, so sending it would be syncing a setting
+      // nothing reads.
       'daysPerWeek',
     ] as const) {
       expect(projected, key).toHaveProperty(key)

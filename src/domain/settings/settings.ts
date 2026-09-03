@@ -1,7 +1,6 @@
 import { DEFAULT_WANTS, type HomeWants } from '@/domain/homes/candidate'
 import { DEFAULT_DIGEST, type DigestPreferences } from '@/domain/news/digest'
 import { EMPTY_JOB_SEARCH, type JobSearch } from '@/domain/jobs/search'
-import { DEFAULT_RTS } from '@/domain/framework/rts'
 import { asExerciseId, type ExerciseId } from '@/domain/ids/ids'
 import type { E1rmFormula } from '@/domain/strength/one-rep-max'
 import type { WeightUnit } from '@/domain/units/weight'
@@ -83,18 +82,6 @@ export interface AppSettings {
 
   /** Sessions a week for each competition lift. */
   readonly liftSessions: LiftSessions
-
-  /**
-   * Where the back-off work stops, as a drop in implied max — and, being
-   * the same number, how much lighter the back-off bar is.
-   *
-   * One value doing both jobs is what makes the stopping rule sayable in
-   * a sentence: at matched reps and RPE an implied max is proportional to
-   * bar weight, so stopping at an N% drop *is* the moment the N%-lighter
-   * bar feels like the top set did. Splitting them into two settings
-   * would make that sentence false for every pair but one.
-   */
-  readonly fatiguePercent: number
 
   /**
    * Days per week and weeks per block.
@@ -245,7 +232,6 @@ export const DEFAULT_SETTINGS: AppSettings = {
   excludedExercises: [],
   muscleVolumes: DEFAULT_MUSCLE_VOLUMES,
   liftSessions: DEFAULT_LIFT_SESSIONS,
-  fatiguePercent: DEFAULT_RTS.loadDropPercent ?? 5,
   daysPerWeek: DEFAULT_DAYS_PER_WEEK,
   weeksBeforeDeload: DEFAULT_WEEKS_BEFORE_DELOAD,
   // Deliberately unset: a default calorie target would be a guess

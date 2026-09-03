@@ -14,6 +14,8 @@ import { clampPosition, dayAt } from '@/application/use-cases/programs/current-p
 import { STARTING_POSITION } from '@/domain/programs/position'
 import type { AthleteState } from '@/domain/resolution/resolve'
 import { resolveSets } from '@/domain/resolution/resolve'
+import { lastPerformance, nextLoad, stepFor } from '@/domain/programs/progression'
+import type { RepRange } from '@/domain/programs/prescription'
 import { matchesQuery } from '@/domain/exercises/exercise'
 
 /**
@@ -79,7 +81,24 @@ export async function startWorkout(
   if (stored === undefined) await deps.position.save(safe)
 
   const library = await deps.exercises.all()
-  const workout = buildFromDay(day, safe, request, library, deps)
+
+  /*
+   * **The working loads are read here, at the one moment they matter.**
+   * Double progression needs what you last lifted, which is history —
+   * and `resolve` is pure and reads no repository. So the map is built
+   * before resolution and handed to it through the athlete, the same way
+   * the estimated maxes are.
+   *
+   * Only the exercises this session actually contains are looked up:
+   * the whole catalogue would be fifty queries for a six-exercise day.
+   */
+  const working = await workingLoads(day, library, deps)
+  const withHistory: StartWorkoutRequest = {
+    ...request,
+    athlete: { ...request.athlete, working },
+  }
+
+  const workout = buildFromDay(day, safe, withHistory, library, deps)
   await deps.workouts.save(workout)
 
   return { kind: 'started', workout }
@@ -95,6 +114,65 @@ function emptyWorkout(title: string, deps: StartWorkoutDeps): WorkoutLog {
     title,
     entries: [],
   }
+}
+
+/**
+ * What each exercise in the day is currently working at.
+ *
+ * **Read per exercise from its own last completed session**, not from a
+ * stored number: there is no "current weight" record to drift or to
+ * reconcile between two devices, and the log is already the truth about
+ * what was lifted.
+ *
+ * An exercise with no history is simply absent, which resolves to an
+ * open set — the lifter types what they did and it carries from then on.
+ */
+async function workingLoads(
+  day: ProgramDay,
+  library: readonly Exercise[],
+  deps: StartWorkoutDeps,
+): Promise<Readonly<Partial<Record<ExerciseId, number>>>> {
+  const ids = [...new Set(day.slots.flatMap((slot) => resolveExercise(slot, library) ?? []))]
+
+  const entries = await Promise.all(
+    ids.map(async (id): Promise<readonly [ExerciseId, number][]> => {
+      const exercise = library.find((one) => one.id === id)
+      const history = await deps.workouts.forExercise(id, 1)
+      const previous = history[0]?.entries.find((entry) => entry.exerciseId === id)
+      if (previous === undefined || exercise === undefined) return []
+
+      const last = lastPerformance(
+        previous.sets
+          .filter((set) => !set.isWarmup && set.outcome === 'completed')
+          .map((set) => ({
+            ...(set.actualLoad === undefined ? {} : { load: set.actualLoad }),
+            ...(set.actualReps === undefined ? {} : { reps: set.actualReps }),
+          })),
+      )
+
+      const range = rangeOf(previous.sets)
+      const next = range === undefined ? last?.load : nextLoad(last, range, stepFor(exercise))
+
+      return next === undefined ? [] : [[id, next]]
+    }),
+  )
+
+  return Object.fromEntries(entries.flat())
+}
+
+/**
+ * The range the previous session actually worked in.
+ *
+ * Read off the logged prescription rather than recomputed, because a
+ * `WorkoutLog` describes itself — the rule that made the frozen program
+ * snapshot unnecessary. A session logged before ranges existed simply
+ * holds the load rather than progressing it.
+ */
+function rangeOf(sets: readonly LoggedSet[]): RepRange | undefined {
+  const working = sets.find((set) => !set.isWarmup && set.prescription.reps.kind === 'range')
+  const reps = working?.prescription.reps
+
+  return reps?.kind === 'range' ? { low: reps.low, high: reps.high } : undefined
 }
 
 function buildFromDay(

@@ -33,6 +33,17 @@ export interface AthleteState {
    * and an estimate is exactly the right basis for it.
    */
   readonly estimatedMaxes: Readonly<Partial<Record<ExerciseId, number>>>
+  /**
+   * The load each exercise is currently working at, from its own logged
+   * history.
+   *
+   * **Computed by the caller rather than derived here**, because
+   * `resolve` is pure and reads no repository — the same reason the
+   * estimates sit beside it rather than being recalculated per set. An
+   * exercise with no entry has never been trained, and its sets resolve
+   * to open.
+   */
+  readonly working: Readonly<Partial<Record<ExerciseId, number>>>
   readonly bodyweight?: number
   readonly units: WeightUnit
 }
@@ -136,6 +147,27 @@ function resolveLoad(
     case 'absolute': {
       const load = round(source.load)
       return { load, display: formatLoad(load, athlete.units) }
+    }
+
+    /**
+     * **Double progression: whatever the history says you are working
+     * at.** The number is computed from logged sets before resolution —
+     * see `AthleteState.working` — so this reads it rather than deriving
+     * it, which keeps `resolve` the pure function of its inputs that the
+     * whole session player depends on.
+     *
+     * **No history resolves to open, and that is the design.** The app
+     * does not know what you lift until you have lifted it, and a
+     * number guessed from an estimate would be a prescription nobody
+     * chose. `open-prescription` is the existing reason for exactly
+     * this: a set the lifter fills in.
+     */
+    case 'working': {
+      const load = athlete.working[exerciseId]
+      if (load === undefined) return { display: '—', unresolved: 'open-prescription' }
+
+      const rounded = round(load)
+      return { load: rounded, display: formatLoad(rounded, athlete.units) }
     }
 
     case 'rpe': {

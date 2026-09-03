@@ -2,7 +2,6 @@ import type { Exercise } from '@/domain/exercises/exercise'
 import type { ExerciseId, WorkoutId } from '@/domain/ids/ids'
 import type { LoggedSet, SetOutcome, WorkoutLog } from '@/domain/logging/workout-log'
 import { comparePerformance } from '@/domain/logging/workout-log'
-import { replanBackoffs } from '@/domain/framework/replan-backoffs'
 import { replanAccessoryVolume } from '@/domain/volume/replan-accessories'
 import type { Clock, WorkoutRepository } from '@/domain/repositories/ports'
 
@@ -53,30 +52,23 @@ export async function logSet(request: LogSetRequest, deps: LogSetDeps): Promise<
   if (workout === undefined) {
     throw new Error(`No workout found with id ${request.workoutId}.`)
   }
-
   /*
-   * Logged first, then re-planned from what was logged.
-   *
-   * The order is the whole point: a top set is a measurement, and the
-   * back-offs below it are derived from the measurement rather than from
-   * the estimate that suggested it. Running the re-plan on every set
-   * rather than only on top sets keeps this free of a rule about which
-   * set index matters — `replanBackoffs` reads the log and is a no-op
-   * when there is no completed top set to read.
+   * **The back-off re-plan is gone with RTS.** It rewrote the sets below
+   * a top set once the top set was measured, which only meant anything
+   * while a lift was a measurement plus derived work. Three straight
+   * sets at a carried-forward load have nothing to re-plan: what the
+   * next session lifts is decided by what this one logged, and that is
+   * read when the session starts rather than rewritten as it runs.
    */
   const logged = updateSet(workout, request, deps.clock.now())
 
   /*
-   * Two re-plans, and the order between them does not matter — one
-   * rewrites the load on pending back-offs, the other the *number* of
-   * pending accessory sets, and neither reads what the other writes.
-   *
-   * Both exist for the same reason: RTS discovers what the session is
-   * rather than declaring it, so anything derived from the top set has to
-   * be derived again once the top set is a fact.
+   * One re-plan left, where there were two. The other rewrote the load on
+   * pending back-offs and went with them; this one rewrites the *number*
+   * of pending accessory sets, which is a volume decision and has
+   * nothing to do with how the load is chosen.
    */
-  const replanned = replanBackoffs(logged, { roundingIncrement: deps.roundingIncrement })
-  const updated = replanAccessoryVolume(replanned, (id) => deps.exerciseFor(id))
+  const updated = replanAccessoryVolume(logged, (id) => deps.exerciseFor(id))
 
   await deps.workouts.save(updated)
   return updated

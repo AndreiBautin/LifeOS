@@ -113,7 +113,6 @@ export function SettingsPage() {
           muscleVolumes={settings.muscleVolumes}
           liftSessions={settings.liftSessions}
           setsPerSession={settings.setsPerSession}
-          fatiguePercent={settings.fatiguePercent}
           onMuscleVolumes={(muscleVolumes) => {
             update({ muscleVolumes })
           }}
@@ -122,9 +121,6 @@ export function SettingsPage() {
           }}
           onSetsPerSession={(setsPerSession) => {
             update({ setsPerSession })
-          }}
-          onFatiguePercent={(fatiguePercent) => {
-            update({ fatiguePercent })
           }}
         />
 

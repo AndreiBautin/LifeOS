@@ -4,7 +4,6 @@ import { parseJobSearch } from '@/domain/jobs/search'
 import type { AppSettings } from '@/domain/settings/settings'
 import { DEFAULT_SETTINGS, SETTINGS_SCHEMA_VERSION } from '@/domain/settings/settings'
 import { completeLiftSessions } from '@/domain/priority/tiers'
-import { nearestFatigueChoice } from '@/domain/framework/rts'
 import { completeMuscleVolumes } from '@/domain/volume/levels'
 import type { SettingsRepository } from '@/domain/repositories/ports'
 import { migrateBenchEstimate } from '@/domain/exercises/derived-maxes'
@@ -32,26 +31,6 @@ export interface SettingsReadResult {
   readonly settings: AppSettings
   readonly recovered: boolean
   readonly warning?: string
-}
-
-/**
- * A stored fatigue percent, snapped to the nearest published point.
- *
- * Parsed rather than trusted, like every other field here: this one
- * decides both where the back-off work stops and how much lighter the bar
- * is, so a value off the scale would not fail — it would quietly
- * prescribe a session nobody chose.
- *
- * Snapped rather than clamped, because the setting used to allow anything
- * from 5 to 10 and a device may hold an 8 or a 9. Clamping would drag a 9
- * to the top of a range it was never on; snapping reads it as the "high"
- * it was closest to all along.
- */
-function clampFatiguePercent(value: unknown): number {
-  if (typeof value !== 'number' || !Number.isFinite(value)) {
-    return DEFAULT_SETTINGS.fatiguePercent
-  }
-  return nearestFatigueChoice(value)
 }
 
 export function readSettings(storage: Storage = localStorage): SettingsReadResult {
@@ -218,7 +197,6 @@ function mergeWithDefaults(parsed: unknown): AppSettings {
       ? completeMuscleVolumes(stored.muscleVolumes)
       : DEFAULT_SETTINGS.muscleVolumes,
     liftSessions: liftSessionsOf(stored),
-    fatiguePercent: clampFatiguePercent(stored.fatiguePercent),
     daysPerWeek: asBoundedNumber(stored.daysPerWeek, 2, 6, DEFAULT_SETTINGS.daysPerWeek),
     weeksBeforeDeload: asBoundedNumber(
       stored.weeksBeforeDeload,
