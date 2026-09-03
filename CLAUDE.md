@@ -731,6 +731,47 @@ The lesson is narrow and worth keeping: **a Tailwind colour class is not
 evidence that a colour was applied.** If a shade matters, read it back
 off the element.
 
+**The buttons are made of what the cards are made of.** Reported against
+the old primary: _"I don't like the style of this button. Let's make all
+of these similar to the glassmorphism cards."_ It was a solid saturated
+fill with black text — a paint swatch on a page made of panels, and the
+one element that looked like it came from a different app.
+
+**`.control-surface` is `.card`'s recipe with the tint left to the
+caller**: a vertical gradient, an inset hairline along the top, a shadow
+underneath, and a border at the same hue. One class serves every variant
+through `--control-tint`, and `--control-fill` is how loud the fill is.
+
+**It is not `backdrop-filter`, and that is the point rather than a
+shortcut.** Real glass re-samples what is behind it every frame, which
+this file already forbids on anything that scrolls — and these buttons
+sit in lists. What makes a surface read as _lit_ is the gradient and the
+top edge, not the blur.
+
+**The primary keeps a glow, and it is the only variant that does.** That
+is what stops "made of the same stuff as the cards" collapsing into
+"indistinguishable from the cards": a card does not glow, and on most
+screens this is still the one thing you came to press. `ghost` stays flat
+for the opposite reason — giving it a surface would make every icon on a
+row read as something to press.
+
+**`text-accent-300` does not exist, and the first version of this shipped
+it.** An undefined Tailwind colour compiles to no declaration at all, so
+the label inherited `--text-primary` and came out near-white: legible,
+plausible, and not the colour anybody chose. **This is the
+`--color-ink-600` bug in this same file, reproduced within a day of
+reading the note about it** — the scale is 400 / 500 / 600. It was caught
+the only way it can be, by reading the _computed_ colour off the element,
+which is exactly what that note says to do.
+
+**A long-lived dev tab is not evidence about CSS.** Debugging the above,
+a pressed toggle measured as `ink-300` with **no rule setting `color` on
+it at all** — which is not a state the code can produce. A hard reload
+gave `oklch(0.79 0.11 200)`, the right answer. After enough HMR passes
+the stylesheet in the tab had drifted from the one on disk; a surprising
+computed value is worth re-checking on a clean load before it is worth
+explaining.
+
 **A card reads as a panel through three cheap things**: a vertical
 gradient so the surface is not uniform, an inset hairline along the top
 so it catches light, and a shadow so it sits above the page. None of them

@@ -243,6 +243,58 @@
       var(--card-shadow);
   }
 
+  /*
+   * A control built out of the same three things a card is.
+   *
+   * Reported against the old primary button: *"I don't like the style of
+   * this button. Let's make all of these similar to the glassmorphism
+   * cards."* It was a solid saturated fill with black text — a paint
+   * swatch sitting on a page made of panels, and the one element that
+   * looked like it came from a different app.
+   *
+   * **It is not `backdrop-filter`, and that is deliberate rather than a
+   * shortcut.** Real glass re-samples what is behind it on every frame,
+   * which is the single most expensive thing a mobile browser can be
+   * asked for on a surface that scrolls — and these buttons sit in lists.
+   * `.card` gets its material from a vertical gradient, an inset hairline
+   * along the top and a shadow underneath; that is what makes a surface
+   * read as lit rather than as filled, and it costs nothing to composite.
+   * This is the same recipe with the tint left to the caller.
+   *
+   * The tint arrives as `--control-tint` so one class serves every
+   * variant: the fill is that colour over the raised surface, the top
+   * edge catches the same light a card's does, and the border is the
+   * tint again at low alpha.
+   */
+  .control-surface {
+    /* Overridden by `.control-surface-lit`; a quiet control sits here. */
+    --control-fill: 16%;
+    background-color: var(--surface-raised);
+    background-image: linear-gradient(
+      180deg,
+      color-mix(in oklab, var(--control-tint) var(--control-fill), transparent),
+      color-mix(in oklab, var(--control-tint) calc(var(--control-fill) / 2), transparent) 65%
+    );
+    border: 1px solid color-mix(in oklab, var(--control-tint) 40%, transparent);
+    box-shadow:
+      inset 0 1px 0 0 var(--card-sheen),
+      var(--card-shadow);
+  }
+
+  /*
+   * The one control on a screen you actually came to press keeps a glow,
+   * which is what stops "made of the same stuff as the cards" turning
+   * into "indistinguishable from the cards". A card does not glow.
+   */
+  .control-surface-lit {
+    --control-fill: 40%;
+    border-color: color-mix(in oklab, var(--control-tint) 70%, transparent);
+    box-shadow:
+      inset 0 1px 0 0 var(--card-sheen),
+      0 0 20px -6px color-mix(in oklab, var(--control-tint) 70%, transparent),
+      var(--card-shadow);
+  }
+
   /* Every interactive control clears the 44px minimum touch target. This
      is a gym app: it is used with chalky hands, in a hurry, one-handed. */
   .tap-target {
