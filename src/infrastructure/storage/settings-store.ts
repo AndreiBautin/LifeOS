@@ -3,8 +3,6 @@ import { parseDigestPreferences } from '@/domain/news/digest'
 import { parseJobSearch } from '@/domain/jobs/search'
 import type { AppSettings } from '@/domain/settings/settings'
 import { DEFAULT_SETTINGS, SETTINGS_SCHEMA_VERSION } from '@/domain/settings/settings'
-import { completeLiftSessions } from '@/domain/priority/tiers'
-import { completeMuscleVolumes } from '@/domain/volume/levels'
 import type { SettingsRepository } from '@/domain/repositories/ports'
 import { migrateBenchEstimate } from '@/domain/exercises/derived-maxes'
 import { syncedPartChanged } from '@/domain/settings/synced'
@@ -154,14 +152,6 @@ function mergeWithDefaults(parsed: unknown): AppSettings {
      * this is stated.
      */
     ...positiveOf('birthYear', stored.birthYear),
-    // Spread over the defaults so a muscle group added since this blob was
-    // written gets the shipped numbers rather than being absent.
-    setsPerSession: isRecord(stored.setsPerSession)
-      ? {
-          ...DEFAULT_SETTINGS.setsPerSession,
-          ...(stored.setsPerSession as unknown as AppSettings['setsPerSession']),
-        }
-      : DEFAULT_SETTINGS.setsPerSession,
     // Every value is checked rather than the record being trusted whole: a
     // junk entry here becomes a suggested load on a bar.
     //
@@ -189,21 +179,17 @@ function mergeWithDefaults(parsed: unknown): AppSettings {
       ? (stored.excludedExercises as AppSettings['excludedExercises'])
       : DEFAULT_SETTINGS.excludedExercises,
     /*
-     * Completed on read, because a stored tier list is a snapshot of the
-     * muscle groups that existed when it was saved. Splitting traps out of
-     * the upper back gave every existing install a muscle in no tier.
+     * **Four fields are simply not read any more**, and a stored blob
+     * still holding them is left alone rather than cleaned: the volumes,
+     * the per-lift session counts, the sets-per-level table and the
+     * deload interval are constants now, and the parse builds field by
+     * field, so an unknown key falls out on its own.
+     *
+     * That also means the way back is open. A device that has run this
+     * build still holds the old values under their old names, so
+     * reinstating any of them is a line here rather than a migration.
      */
-    muscleVolumes: isRecord(stored.muscleVolumes)
-      ? completeMuscleVolumes(stored.muscleVolumes)
-      : DEFAULT_SETTINGS.muscleVolumes,
-    liftSessions: liftSessionsOf(stored),
     daysPerWeek: asBoundedNumber(stored.daysPerWeek, 2, 6, DEFAULT_SETTINGS.daysPerWeek),
-    weeksBeforeDeload: asBoundedNumber(
-      stored.weeksBeforeDeload,
-      4,
-      8,
-      DEFAULT_SETTINGS.weeksBeforeDeload,
-    ),
     e1rmFormula:
       stored.e1rmFormula === 'epley' ||
       stored.e1rmFormula === 'brzycki' ||
@@ -256,31 +242,6 @@ function mergeWithDefaults(parsed: unknown): AppSettings {
     ...(typeof stored.lastExportAt === 'string' ? { lastExportAt: stored.lastExportAt } : {}),
     schemaVersion: SETTINGS_SCHEMA_VERSION,
   }
-}
-
-/**
- * The stored lift sessions, re-seeded when they predate the fourth lift.
- *
- * A map written before the overhead press joined `STRENGTH_LIFTS` cannot
- * express the arrangement the app now ships: it has no `press` key, and
- * its `bench` of 2 was the shipped default at the time rather than a
- * choice anybody made. `completeLiftSessions` would fill the press in and
- * keep the bench at 2, which is neither the old programme nor the new one
- * — the bench takes both upper days and the press has nowhere to go.
- *
- * So a stored copy older than schema 2 is replaced wholesale rather than
- * completed. That does overwrite a genuine choice, once, for anyone who
- * had deliberately set the bench to twice a week — which is the cost of
- * not being able to tell that apart from a default, and is why the
- * version is bumped for a *change of meaning* rather than for every
- * change of value.
- */
-function liftSessionsOf(stored: Record<string, unknown>): AppSettings['liftSessions'] {
-  const version = typeof stored.schemaVersion === 'number' ? stored.schemaVersion : 0
-
-  if (version < 2 || !isRecord(stored.liftSessions)) return DEFAULT_SETTINGS.liftSessions
-
-  return completeLiftSessions(stored.liftSessions)
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

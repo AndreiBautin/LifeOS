@@ -1,7 +1,6 @@
 import { invariant } from '@/domain/errors/domain-error'
 import { STRENGTH_VARIATIONS, WARM_UPS } from '@/domain/exercises/catalogue'
 import type { Exercise } from '@/domain/exercises/exercise'
-import { HYPERTROPHY_RPE } from '@/domain/exercises/loading'
 import type { MuscleGroup } from '@/domain/exercises/taxonomy'
 import { MUSCLE_GROUP_LABELS } from '@/domain/exercises/taxonomy'
 import type { ExerciseId, IdGenerator, ProgramId } from '@/domain/ids/ids'
@@ -854,6 +853,7 @@ function fillHypertrophy(args: FillArgs): BuiltSlots {
       if (setCount < floorFor(muscle)) continue
 
       const sets = hypertrophySets(exercise, setCount)
+      const range = exercise.repRange ?? (exercise.isCompound ? COMPOUND_REPS : ISOLATION_REPS)
 
       const slot: Slot = {
         id: asSlotId(deps.ids.next()),
@@ -862,7 +862,15 @@ function fillHypertrophy(args: FillArgs): BuiltSlots {
         exercise: { kind: 'specific', exerciseId: exercise.id },
         sets,
         restSeconds: exercise.defaultRestSeconds ?? 120,
-        notes: 'Last set to failure; the rest at one rep in reserve.',
+        /*
+         * **The note is the method, and it said the old one.** "Last set
+         * to failure; the rest at one rep in reserve" was the RTS-era
+         * instruction and survived the change intact — printed on every
+         * accessory slot in the app, describing a rule nothing applied.
+         * A note is not decoration: it is the only place the session
+         * screen says what to actually do with the set.
+         */
+        notes: `${String(setCount)} sets of ${String(range.low)}–${String(range.high)}. Hit the top of the range on every set and add weight next time.`,
       }
 
       used.add(exercise.id)
@@ -1446,9 +1454,19 @@ function pickHypertrophyExercise(
   return pool[args.directDays[muscle] % pool.length] ?? pool[0]
 }
 
-const STUB: SetPrescription = {
-  load: { kind: 'rpe', target: HYPERTROPHY_RPE },
-  reps: { kind: 'range', low: 8, high: 12 },
+/**
+ * A set-shaped nothing, for counting sets against a target.
+ *
+ * `slotVolume` counts *sets*, so what is written here reaches no screen
+ * and no log — it exists because the function takes prescriptions rather
+ * than a number. It is a working set at the compound range so that
+ * reading it never suggests the assembler still prescribes an RPE
+ * somewhere; it used to say `{ kind: 'rpe' }`, which was inert and read
+ * like a survivor of the framework that went.
+ */
+const COUNTING_SET: SetPrescription = {
+  load: { kind: 'working' },
+  reps: { kind: 'range', ...COMPOUND_REPS },
 }
 
 /**
@@ -1464,7 +1482,7 @@ function fittableSets(
   for (let count = desired; count >= 1; count -= 1) {
     const contribution = slotVolume(
       exercise,
-      Array.from({ length: count }, () => STUB),
+      Array.from({ length: count }, () => COUNTING_SET),
     )
 
     /*

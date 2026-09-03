@@ -6,7 +6,11 @@ import { useNavigate } from 'react-router-dom'
 
 import { useServices, useSettings } from '@/app/context'
 import type { Exercise } from '@/domain/exercises/exercise'
-import { weeklySetsFor } from '@/domain/volume/levels'
+import {
+  DEFAULT_MUSCLE_VOLUMES,
+  DEFAULT_SETS_PER_SESSION,
+  weeklySetsFor,
+} from '@/domain/volume/levels'
 import { MUSCLE_GROUP_LABELS, type MuscleGroup } from '@/domain/exercises/taxonomy'
 import type { ExerciseId, WorkoutId } from '@/domain/ids/ids'
 import type { WorkoutLog } from '@/domain/logging/workout-log'
@@ -118,9 +122,15 @@ export function HistoryPage() {
                 .filter((muscle) => weekVolume[muscle] > 0)
                 .sort((a, b) => weekVolume[b] - weekVolume[a])
                 .map((muscle) => {
+                  /*
+                    The targets are constants now rather than settings —
+                    the volume customisation was gutted — so this reads
+                    the same table the assembler builds from instead of a
+                    copy the lifter could edit.
+                  */
                   const target = weeklySetsFor(
-                    settings.muscleVolumes[muscle],
-                    settings.setsPerSession,
+                    DEFAULT_MUSCLE_VOLUMES[muscle],
+                    DEFAULT_SETS_PER_SESSION,
                     false,
                   )
                   const done = weekVolume[muscle]

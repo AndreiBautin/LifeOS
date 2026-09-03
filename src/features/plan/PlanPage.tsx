@@ -1,7 +1,6 @@
 import { Link } from 'react-router-dom'
 import { PageHeader } from '@/components/shared/PageHeader'
 
-import { useSettings } from '@/app/context'
 import { shortfalls, type Shortfall } from '@/domain/priority/capacity'
 import { MUSCLE_GROUP_LABELS, type MuscleGroup } from '@/domain/exercises/taxonomy'
 import type { Exercise } from '@/domain/exercises/exercise'
@@ -31,11 +30,10 @@ import { useExercises, useProgram } from '@/features/train/hooks'
  */
 
 export function PlanPage() {
-  const { settings } = useSettings()
   const program = useProgram()
   const exercises = useExercises()
 
-  const plan = explainVolume(settings.muscleVolumes, settings.setsPerSession, settings.liftSessions)
+  const plan = explainVolume()
 
   /*
    * Grouped by level, with everything untrained in one group at the end.
@@ -182,15 +180,31 @@ export function PlanPage() {
         ),
       )}
 
-      <Section title="Change any of it">
+      {/*
+        **This card used to be an editor's front door and is a statement
+        now.** It said which tier a muscle was in and which landmark that
+        bought, over a link to the priorities screen — copy that had been
+        wrong since the landmarks went and became unreachable when the
+        volume settings did.
+
+        It is kept rather than deleted because the page is called Plan and
+        a plan you cannot change raises the question. Answering it once,
+        here, is better than leaving somebody to search Settings for a
+        section that is not there.
+      */}
+      <Section title="Why there is nothing to change">
         <Card className="space-y-3">
           <p className="text-ink-300 text-sm">
-            Two inputs and no arithmetic between them: which tier a muscle is in, and the three
-            landmarks every muscle shares. Tier 1 gets MRV, tier 2 gets MEV, tier 3 gets nothing,
-            and a deload drops all of them to MV. Both inputs are in Settings.
+            The volumes above are fixed. Which muscles are trained, how often and how hard used to
+            be settings, and every one of them was a decision made once and then carried for months
+            — so they are the programme now rather than a screen.
+          </p>
+          <p className="text-ink-500 text-sm">
+            What is still yours: how many days a week you train, and which exercises you cannot do.
+            Both are in Settings.
           </p>
           <Link to="/settings" className={cn(buttonStyles({ variant: 'outline' }), 'w-full')}>
-            Edit priorities and landmarks
+            Settings
           </Link>
         </Card>
       </Section>

@@ -1,7 +1,6 @@
 import { Check, Minus, SkipForward } from 'lucide-react'
 import { useState } from 'react'
 
-import { coachRpe, describeRpe } from '@/domain/framework/rpe'
 import type { ExerciseId, WorkoutId } from '@/domain/ids/ids'
 import type { LoggedSet } from '@/domain/logging/workout-log'
 import { describePrescription } from '@/domain/programs/prescription'
@@ -39,11 +38,7 @@ interface Props {
   readonly units: WeightUnit
   readonly isOpen: boolean
   readonly onOpen: () => void
-  readonly onLog: (result: {
-    load?: number | undefined
-    reps?: number | undefined
-    rpe?: number | undefined
-  }) => void
+  readonly onLog: (result: { load?: number | undefined; reps?: number | undefined }) => void
   readonly onSkip: () => void
   readonly onClear: () => void
 }
@@ -171,7 +166,6 @@ function SetEditorPanel({
     String(set.actualLoad ?? set.plannedLoad ?? previousLoad ?? ''),
   )
   const [reps, setReps] = useState(() => String(set.actualReps ?? set.plannedReps ?? ''))
-  const [rpe, setRpe] = useState(() => String(set.actualRpe ?? ''))
 
   const done = set.outcome === 'completed' && set.completedAt !== undefined
 
@@ -181,20 +175,19 @@ function SetEditorPanel({
   }
 
   /*
-   * Two different pieces of coaching, and they are not interchangeable.
+   * **There is no RPE field any more, and it is a removal rather than a
+   * tidy-up.** It was the third number on the row and the whole of the
+   * coaching under it: an instruction before the set, a reading after it,
+   * and a warning that "every load in an RTS program descends from a
+   * number the lifter typed". All of that was true of RTS and none of it
+   * is true of double progression, where the load descends from the
+   * *reps* — so a logged RPE reached no rule, no suggestion and no
+   * screen. A number nobody reads is worse than a missing one, because it
+   * looks like it is doing something.
    *
-   * The target is an instruction read *before* the set — what to aim for.
-   * The entered value is a check read *after* it — what you just claimed,
-   * spelled out, so a mis-tapped 9 is caught while the set is still fresh
-   * enough to remember. Showing only the target would leave the reading
-   * uncalibrated, which is the whole failure mode: every load in an RTS
-   * program descends from a number the lifter typed, and nothing
-   * downstream can tell a wrong one from a right one.
+   * `actualRpe` stays on the record. Old logs carry real readings and
+   * history displays them; what is gone is asking for a new one.
    */
-  const targetRpe = set.prescription.load.kind === 'rpe' ? set.prescription.load.target : undefined
-  const coaching = targetRpe === undefined || set.isWarmup ? undefined : coachRpe(targetRpe)
-
-  const entered = describeRpe(asNumber(rpe) ?? Number.NaN)
 
   return (
     <div className="border-accent-500/40 bg-ink-850 rounded-xl border p-3">
@@ -210,7 +203,7 @@ function SetEditorPanel({
         )}
       </div>
 
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-2 gap-2">
         <NumberField
           label={units}
           id={`load-${String(entryIndex)}-${String(index)}`}
@@ -229,36 +222,7 @@ function SetEditorPanel({
           }}
           hint={previousReps === undefined ? undefined : String(previousReps)}
         />
-        <NumberField
-          label="RPE"
-          id={`rpe-${String(entryIndex)}-${String(index)}`}
-          value={rpe}
-          onChange={(event) => {
-            setRpe(event.target.value)
-          }}
-          hint={targetRpe === undefined ? '—' : String(targetRpe)}
-        />
       </div>
-
-      {/*
-        One line, under the field, replaced by the reading once there is
-        one. Stacking both would push the Log button off a phone screen,
-        and the target has done its job by the time a number is entered.
-      */}
-      {entered !== undefined ? (
-        <p className="text-ink-300 mt-2 text-xs">
-          <span className="text-ink-100 font-medium">
-            RPE {entered.rpe} · {entered.rir} in reserve
-          </span>{' '}
-          — {entered.cue}
-        </p>
-      ) : (
-        coaching !== undefined && (
-          <p className="text-ink-500 mt-2 text-xs">
-            <span className="text-ink-300 font-medium">Aim for RPE {targetRpe}.</span> {coaching}
-          </p>
-        )
-      )}
 
       <div className="mt-3 flex gap-2">
         <Button
@@ -267,12 +231,9 @@ function SetEditorPanel({
           onClick={() => {
             const loadValue = asNumber(load)
             const repsValue = asNumber(reps)
-            const rpeValue = asNumber(rpe)
-
             onLog({
               ...(loadValue !== undefined ? { load: loadValue } : {}),
               ...(repsValue !== undefined ? { reps: repsValue } : {}),
-              ...(rpeValue !== undefined ? { rpe: rpeValue } : {}),
             })
           }}
         >

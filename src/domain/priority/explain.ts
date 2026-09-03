@@ -1,9 +1,20 @@
 import type { MuscleGroup } from '@/domain/exercises/taxonomy'
 import { MUSCLE_GROUP_LABELS, MUSCLE_GROUPS } from '@/domain/exercises/taxonomy'
 import type { LiftSessions, StrengthLift } from '@/domain/priority/tiers'
-import { STRENGTH_LIFT_LABELS, STRENGTH_LIFTS, strengthSessionsFor } from '@/domain/priority/tiers'
+import {
+  DEFAULT_LIFT_SESSIONS,
+  STRENGTH_LIFT_LABELS,
+  STRENGTH_LIFTS,
+  strengthSessionsFor,
+} from '@/domain/priority/tiers'
 import type { MuscleVolumes, SetsPerSession, VolumeLevel } from '@/domain/volume/levels'
-import { setsPerSessionFor, VOLUME_LEVEL_LABELS, weeklySetsFor } from '@/domain/volume/levels'
+import {
+  DEFAULT_MUSCLE_VOLUMES,
+  DEFAULT_SETS_PER_SESSION,
+  setsPerSessionFor,
+  VOLUME_LEVEL_LABELS,
+  weeklySetsFor,
+} from '@/domain/volume/levels'
 
 /**
  * Why each muscle is getting the volume it is getting.
@@ -202,10 +213,20 @@ export function describeBlock(
   }
 }
 
+/**
+ * What the week asks of each muscle, and where each number came from.
+ *
+ * **The three inputs are constants now rather than settings**, so they
+ * default to what the assembler actually builds from — the volume
+ * customisation was gutted, and a screen reading a copy the lifter could
+ * no longer edit would be reporting on nothing. They stay as parameters
+ * because the tests vary them, which is the whole reason this is a pure
+ * function.
+ */
 export function explainVolume(
-  volumes: MuscleVolumes,
-  sets: SetsPerSession,
-  liftSessions: LiftSessions,
+  volumes: MuscleVolumes = DEFAULT_MUSCLE_VOLUMES,
+  sets: SetsPerSession = DEFAULT_SETS_PER_SESSION,
+  liftSessions: LiftSessions = DEFAULT_LIFT_SESSIONS,
 ): VolumePlan {
   const muscles = MUSCLE_GROUPS.map((muscle): MuscleAllocation => {
     const volume = volumes[muscle]

@@ -6078,6 +6078,120 @@ volumes, per-lift sessions, the fatigue setting, weeks-before-deload and
 the priority tiers, leaving days-a-week, rounding, estimated maxes and
 exclusions.
 
+**The customisation is gone, which was the third and last stage.** Four
+fields left `AppSettings` — `muscleVolumes`, `liftSessions`,
+`setsPerSession` and `weeksBeforeDeload` — with the tier editor, the
+Priorities section of Settings, the divergence card and
+`liftSessionsOf`. What is left of the programme's inputs is **days a
+week, rounding, the estimated maxes and the exclusions**: the things
+that are about the person rather than about the programme.
+
+**`defaultRpRecipe` already held every one of them as a default**, so
+this was mostly a matter of no longer overriding them.
+`recipeFromSettings` passes three fields where it passed seven, and the
+constants it falls through to are the same numbers the app had been
+shipping. **The programme did not change shape** — verified by driving
+it, which still builds the same four days.
+
+**The screens that read those settings now read the constants.**
+`explainVolume` takes its three inputs with defaults rather than
+arguments, because the tests still vary them and that is the whole
+reason it is pure; the Plan and Program pages call it with none. The
+history page's weekly target reads `DEFAULT_MUSCLE_VOLUMES` directly.
+
+**A stored blob keeps the four fields and nothing reads them**, which is
+deliberate rather than an omission. The parse builds field by field, so
+an unknown key falls out on its own — no migration, no rewrite, and a
+device that has run this build still holds the old values under their
+old names. Reinstating any of them is a line in the parse rather than a
+recovery.
+
+**`SETTINGS_SCHEMA_VERSION` is now written and read by nothing**, and is
+kept anyway. `liftSessions` was its only reader. The gap it exists for
+has not closed — settings are persisted on first run, so the store still
+cannot tell a value the lifter chose from a default it saved on their
+behalf — and the next setting whose meaning changes needs a version
+already sitting in every stored blob to compare against. Deleting it
+would mean the devices that matter had no version on the day one was
+wanted. The tests for the re-seeding it used to do went with the field;
+the mechanism did not.
+
+**The list of settings that travel is down to two.**
+`SYNCED_SETTING_KEYS` lost four members, and `synced.test.ts` → "sends
+the settings the program is derived from" checks `daysPerWeek` and
+`excludedExercises` rather than a list of five. That list shrinking _is_
+the change: the programme is not derived from the others any more, so
+sending one would be syncing a setting nothing reads.
+
+**A first strength session opens at 85% of the estimated max, and this
+reverses the note above it.** That note said a slot with no history
+resolves to open, full stop, because "a number guessed from an estimate
+is a prescription nobody chose". Driving it showed what that costs: a
+fresh install has four estimated maxes on the Standards card and offered
+a blank bar for the bench, on a figure the lifter had typed themselves.
+
+`firstSessionLoad` in `start-workout.ts`. **Strength slots only**, and
+that restriction is the load-bearing half rather than a matter of which
+lifts happen to carry an estimate: a share of a one-rep max only means
+anything against a rep count. 85% is about a five-rep load, which is the
+strength range and is nowhere near a set of twenty. Turning an estimate
+into a load for an arbitrary range needs the RPE chart, which is exactly
+what went with RTS — so an accessory stays open and says, honestly, that
+the app does not know what you curl.
+
+It holds for **one session**. The moment something is logged the log is
+the source, which is what stops an estimate edited months later silently
+rewriting a load somebody has been progressing by hand. There is a test
+in each direction.
+
+**The RPE field is gone from the logging form**, which is a removal
+rather than a tidy-up. It was the third number on the row, plus a line
+of coaching before the set and a reading after it — all of which was
+true of RTS and none of which is true of double progression, where the
+load descends from the _reps_. A logged RPE reached no rule, no
+suggestion and no screen. `SetResult.rpe` went with the form that fed
+it; `LoggedSet.actualRpe` stays, because sessions filed under RTS carry
+real readings and history still shows them.
+
+**The badge on a strength set reads "Working" and the record still says
+`'Top set'`.** That string is written into every log ever filed and is
+how `previousSetFor` tells a heavy set from a lighter one when comparing
+against an RTS-era session, so changing it would make a new set read
+against the wrong old one. The label is a different question: with no
+back-offs, "Top set" names a position in a pair that does not exist.
+`VARIANT_LABELS` in `program.ts` is that one mapping — **the value is
+an address and the label says what the set is.**
+
+**Four pieces of copy described the framework that went, and finding
+them took driving rather than grepping.** Each read as an ordinary
+sentence and each was false:
+
+- The accessory slot's own note said _"Last set to failure; the rest at
+  one rep in reserve"_ — printed on every accessory in the app,
+  describing a rule nothing applied. **A note is not decoration**: it is
+  the only place the session screen says what to do with the set. It
+  states the range and the increment now, from the same numbers that
+  built the slot.
+- Settings' maxes editor said _"RTS decides the real weight by feel"_.
+- The Train card said _"cut the back-offs short and the accessories grow
+  to cover it"_.
+- The session report said volume counted _"secondary work at half"_,
+  which stopped being true when fractional credit was removed long
+  before any of this.
+
+**Plan's "Change any of it" card is "Why there is nothing to change".**
+It described tiers and landmarks — wrong since the landmarks went — over
+a link to a Settings section that no longer exists. It is kept rather
+than deleted because the page is called Plan and a plan you cannot
+change raises the question; answering it once is better than leaving
+somebody to search Settings for something that is not there.
+
+**Verified by driving the whole loop, which is the only thing that could
+have.** A bench opened at 200 from a 238 estimate, three sets of five
+were logged, the session filed, and the same lift **opened at 205 the
+next week** — the +5 upper step, read out of the log. That round trip is
+the entire redesign and no single test exercises it end to end.
+
 **Dropping the forearms made the repeat penalty's pattern key inert**,
 which is measured rather than assumed: after the cut **no muscle has
 more than one hypertrophy pattern**, so `primaryMuscle|pattern` keys the
@@ -6090,17 +6204,17 @@ and are in the git history.
 its only one. The field stays as the escape hatch it was written to be.
 
 **Two rep ranges, chosen by the movement, and one exception.** Compounds
-run 5–8 and isolations 15–30 — `COMPOUND_REPS` and `ISOLATION_REPS` in
+run 10–15 and isolations 15–30 — `COMPOUND_REPS` and `ISOLATION_REPS` in
 `domain/assembly/rp-assemble.ts`. Every exercise used to hold a
 `defaultRepRange`: fifteen or so hand-set pairs whose differences nobody
 could account for and which drifted as the catalogue grew.
 
 `repRange` is that field back with a much narrower remit — **an exception
 for a movement the rule gets wrong, not a place to tune every exercise.**
-There is one entry, the feet-elevated push-up: a compound with no load to
-vary, where 5–8 means stopping a set with twenty reps left in it. Note
-that this is _not_ a rule about bodyweight work — dips and pull-ups are
-bodyweight and are genuinely 5–8 movements. **If a third or fourth entry
+There are no entries left: the feet-elevated push-up was the only one and
+it went with the catalogue cuts. The field stays as the escape hatch it
+was written to be — **an exception for a movement the rule gets wrong,
+not a place to tune every exercise.** **If a third or fourth entry
 appears, the rule is what needs changing.**
 
 Worth being concrete about what it did, because "adjusted the rep ranges"
@@ -6108,7 +6222,12 @@ undersells it: this is roughly two and a half times the reps and
 substantially less load on **every isolation slot in the program**. A
 12–20 lateral raise is now 15–30 with the dumbbell that implies.
 
-**Every hypertrophy slot ends in a set to failure.** No exceptions, and
+**Every hypertrophy slot used to end in a set to failure, and none does
+now.** Three straight sets in a range, and the range is what says when to
+stop — double progression has no proximity-to-failure term at all. What
+follows is why `safeToFail` went before that, kept because the reasoning
+outlived its subject.
+
 `safeToFail` is gone with the exceptions it encoded. It marked twelve
 exercises for three different reasons and the third was the strongest:
 **failure is not a clean event on every movement.** On a lateral raise, a

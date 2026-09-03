@@ -32,10 +32,16 @@ export interface LogSetDeps {
   readonly exerciseFor: (id: ExerciseId) => Exercise | undefined
 }
 
+/**
+ * **No RPE.** Nothing prescribes one and nothing reads a new one — double
+ * progression moves the load from the reps — so the field went with the
+ * form that collected it rather than being left as an input no call site
+ * fills. `LoggedSet.actualRpe` stays: sessions logged under RTS carry
+ * real readings and history still shows them.
+ */
 export interface SetResult {
   readonly load?: number
   readonly reps?: number
-  readonly rpe?: number
   readonly outcome: SetOutcome
   readonly notes?: string
 }
@@ -110,7 +116,6 @@ function applyResult(set: LoggedSet, result: SetResult, now: Date): LoggedSet {
     ...set,
     ...(result.load !== undefined ? { actualLoad: result.load } : {}),
     ...(result.reps !== undefined ? { actualReps: result.reps } : {}),
-    ...(result.rpe !== undefined ? { actualRpe: result.rpe } : {}),
     outcome: result.outcome,
     completedAt: now.toISOString(),
     ...(result.notes !== undefined ? { notes: result.notes } : {}),

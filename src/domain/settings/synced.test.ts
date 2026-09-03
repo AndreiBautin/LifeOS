@@ -20,15 +20,15 @@ describe('what travels', () => {
   it('sends the settings the program is derived from', () => {
     const projected = projectForSync(at('2026-08-25T09:00:00.000Z'))
 
-    for (const key of [
-      'muscleVolumes',
-      'liftSessions',
-      'setsPerSession',
-      // 'fatiguePercent' was here and went with RTS: the programme is no
-      // longer derived from it, so sending it would be syncing a setting
-      // nothing reads.
-      'daysPerWeek',
-    ] as const) {
+    /*
+     * This list has shrunk to one, which is the point rather than a gap.
+     * 'fatiguePercent' went with RTS, and 'muscleVolumes', 'liftSessions'
+     * and 'setsPerSession' went with the volume customisation — the
+     * programme is not derived from any of them any more, so sending one
+     * would be syncing a setting nothing reads. What is left is what
+     * genuinely still shapes a block.
+     */
+    for (const key of ['daysPerWeek', 'excludedExercises'] as const) {
       expect(projected, key).toHaveProperty(key)
     }
   })

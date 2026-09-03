@@ -54,12 +54,23 @@ export function recipeFromSettings(
   settings: AppSettings,
   overrides: Partial<RpRecipe> = {},
 ): RpRecipe {
+  /*
+   * **Four of these used to come from settings and are constants now.**
+   * The muscle volumes, the per-lift session counts, the sets-per-level
+   * table and the deload interval were all editable; asked for as _"I
+   * don't really care about the customization stuff so let's gut that."_
+   *
+   * `defaultRpRecipe` already held every one of them as its default, so
+   * gutting the settings was mostly a matter of no longer overriding
+   * them — the programme is the same shape every week and there is
+   * nothing to configure.
+   *
+   * **What is left is what genuinely varies between people rather than
+   * between programmes**: how many days you can train, what you cannot
+   * do, and the numbers your own bar is loaded in.
+   */
   return defaultRpRecipe({
-    muscleVolumes: settings.muscleVolumes,
-    liftSessions: settings.liftSessions,
-    setsPerSession: settings.setsPerSession,
     daysPerWeek: settings.daysPerWeek,
-    weeksBeforeDeload: settings.weeksBeforeDeload,
     excludedExercises: settings.excludedExercises,
     settings: {
       units: settings.units,

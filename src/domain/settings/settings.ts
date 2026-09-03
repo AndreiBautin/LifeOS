@@ -4,14 +4,7 @@ import { EMPTY_JOB_SEARCH, type JobSearch } from '@/domain/jobs/search'
 import { asExerciseId, type ExerciseId } from '@/domain/ids/ids'
 import type { E1rmFormula } from '@/domain/strength/one-rep-max'
 import type { WeightUnit } from '@/domain/units/weight'
-import type { LiftSessions } from '@/domain/priority/tiers'
-import { DEFAULT_LIFT_SESSIONS } from '@/domain/priority/tiers'
-import type { MuscleVolumes, SetsPerSession } from '@/domain/volume/levels'
-import { DEFAULT_MUSCLE_VOLUMES, DEFAULT_SETS_PER_SESSION } from '@/domain/volume/levels'
-import {
-  DEFAULT_DAYS_PER_WEEK,
-  DEFAULT_WEEKS_BEFORE_DELOAD,
-} from '@/domain/autoregulation/schedule'
+import { DEFAULT_DAYS_PER_WEEK } from '@/domain/autoregulation/schedule'
 
 /**
  * Everything about the lifter that is not a program or a workout.
@@ -41,16 +34,6 @@ export interface AppSettings {
    */
   readonly birthYear?: number
   /**
-   * Sets in one session, by level, and what a deload uses instead.
-   *
-   * Shared by every muscle. Per-muscle numbers were four landmarks each
-   * across fifteen muscles; these are four numbers total, and a muscle
-   * expresses a difference by being assigned a different level rather
-   * than by carrying its own table.
-   */
-  readonly setsPerSession: SetsPerSession
-
-  /**
    * What the lifter can do for one rep, per exercise.
    *
    * The basis for every suggested load. RTS prescribes reps at an RPE
@@ -72,18 +55,6 @@ export interface AppSettings {
   readonly excludedExercises: readonly ExerciseId[]
 
   /**
-   * How often each muscle is trained and how hard, which between them are
-   * the entire volume model — weekly sets are the product of the two.
-   *
-   * Zero sessions is a real answer and the one most muscles are on: the
-   * muscle is maintained by whatever the competition lifts pay it.
-   */
-  readonly muscleVolumes: MuscleVolumes
-
-  /** Sessions a week for each competition lift. */
-  readonly liftSessions: LiftSessions
-
-  /**
    * Days per week and weeks per block.
    *
    * Set by the lifter and left alone. Both used to be described as
@@ -92,7 +63,6 @@ export interface AppSettings {
    * since.
    */
   readonly daysPerWeek: number
-  readonly weeksBeforeDeload: number
   readonly e1rmFormula: E1rmFormula
   readonly restTimerEnabled: boolean
   readonly keepScreenAwake: boolean
@@ -176,23 +146,21 @@ export interface AppSettings {
  * answer to a question that has changed.
  *
  * **2** — the overhead press became a fourth strength lift and the bench
- * dropped to one session a week. A `liftSessions` map written before that
- * has no `press` key and a `bench` of 2.
+ * dropped to one session a week, so a `liftSessions` map written before
+ * that had to be replaced wholesale rather than completed.
  *
- * This exists because of a gap worth naming: settings are persisted on
- * first run, so **the store cannot tell a value the lifter chose from a
- * default it saved on their behalf.** `completeLiftSessions` correctly
- * refuses to overwrite either, which meant a shipped change to the
- * defaults reached nobody who had ever opened the app — the programme on
- * the device went on using numbers from the version it was installed
- * under, and the only way out was a button on the Settings screen that
- * nobody knew to press.
+ * **It is written and, right now, read by nothing.** `liftSessions` was
+ * its only reader and the field is gone with the rest of the volume
+ * customisation. That is the shape this codebase keeps warning about, and
+ * it is kept deliberately anyway: the gap it exists for has not closed.
+ * Settings are persisted on first run, so **the store still cannot tell a
+ * value the lifter chose from a default it saved on their behalf**, and
+ * the next setting whose meaning changes needs a version already sitting
+ * in every stored blob to compare against. Deleting it would mean the
+ * devices that matter had no version on the day one was wanted.
  *
- * The version is the narrow fix: it re-seeds one named field, once, when
- * the meaning of that field has actually changed. It is not a licence to
- * reset settings whenever the defaults move — a lifter who has chosen
- * something keeps it, and the divergence card on the Settings screen is
- * still how *that* is surfaced.
+ * It is not a licence to reset settings whenever the defaults move — a
+ * lifter who has chosen something keeps it.
  */
 export const SETTINGS_SCHEMA_VERSION = 2
 
@@ -203,7 +171,6 @@ export const DEFAULT_SETTINGS: AppSettings = {
   // strength standard is a multiple of bodyweight, so without it the
   // character sheet can only say "set your bodyweight".
   bodyweight: 200,
-  setsPerSession: DEFAULT_SETS_PER_SESSION,
   // Read out of the 5/3/1 export, each from the best completed work set
   // in it: 260x5, 195x5, 315x5 and 130x5. A starting point for the RTS
   // suggestions, not a claim — the top set corrects them the first time
@@ -230,10 +197,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
     [asExerciseId('overhead-press')]: 152,
   },
   excludedExercises: [],
-  muscleVolumes: DEFAULT_MUSCLE_VOLUMES,
-  liftSessions: DEFAULT_LIFT_SESSIONS,
   daysPerWeek: DEFAULT_DAYS_PER_WEEK,
-  weeksBeforeDeload: DEFAULT_WEEKS_BEFORE_DELOAD,
   // Deliberately unset: a default calorie target would be a guess
   // presented as a decision the lifter had made.
   e1rmFormula: 'epley',

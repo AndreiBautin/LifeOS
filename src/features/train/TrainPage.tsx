@@ -377,7 +377,7 @@ function VolumeTargets({ day }: { day: ProgramDay }) {
         </span>
       </p>
       <p className="text-ink-600 mt-1 text-xs">
-        Set counts move with the bar — cut the back-offs short and the accessories grow to cover it.
+        Set counts move with the session — skip a set and the accessories grow to cover it.
       </p>
     </div>
   )

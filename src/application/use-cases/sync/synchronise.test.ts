@@ -747,7 +747,7 @@ describe('settings bugs an eval agent found', () => {
     const deskBase = await desk.settings.get()
     await desk.settings.save({
       ...deskBase,
-      weeksBeforeDeload: 8,
+      daysPerWeek: 3,
       updatedAt: clock.now().toISOString(),
     })
     await synchronise(createMemorySyncTarget(server, 'desk'), desk)
@@ -760,7 +760,7 @@ describe('settings bugs an eval agent found', () => {
 
     const after = await phone.settings.get()
     expect(after.theme).toBe('dark')
-    expect(after.weeksBeforeDeload).toBe(8)
+    expect(after.daysPerWeek).toBe(3)
   })
 
   it('stops re-sending settings on a device whose clock runs slow', async () => {

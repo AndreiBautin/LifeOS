@@ -84,7 +84,27 @@ export const SLOT_ROLE_LABELS: Record<SlotRole, string> = {
  * or a back-off according to which of the pair it is.
  */
 export function slotVariant(slot: { readonly role: string; readonly variant?: string }): string {
-  return slot.variant ?? (SLOT_ROLE_VARIANTS as Partial<Record<string, string>>)[slot.role] ?? ''
+  const stored = slot.variant ?? (SLOT_ROLE_VARIANTS as Partial<Record<string, string>>)[slot.role]
+  if (stored === undefined) return ''
+  return (VARIANT_LABELS as Partial<Record<string, string>>)[stored] ?? stored
+}
+
+/**
+ * Where the stored sub-category and the word on screen disagree.
+ *
+ * One entry, and it is a rename that could not be a rename. A competition
+ * lift stores `'Top set'` because it did once sit above a run of
+ * back-offs, and that string is written into every log ever filed — it is
+ * how `previousSetFor` tells a heavy set from a lighter one when
+ * comparing against a session logged under RTS, so changing it would make
+ * a new set read against the wrong old one.
+ *
+ * The badge is a different question. There are no back-offs any more, so
+ * "Top set" on screen names a position in a pair that does not exist. The
+ * value stays an address and the label says what the set is.
+ */
+const VARIANT_LABELS: Record<string, string> = {
+  'Top set': 'Working',
 }
 
 /**

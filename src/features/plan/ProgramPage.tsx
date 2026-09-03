@@ -78,11 +78,7 @@ export function ProgramPage() {
   const lookup = (id: ExerciseId): Exercise | undefined =>
     library.find((exercise) => exercise.id === id)
 
-  const targets = explainVolume(
-    settings.muscleVolumes,
-    settings.setsPerSession,
-    settings.liftSessions,
-  )
+  const targets = explainVolume()
   const attribution = week === undefined ? [] : attributeWeek(week, lookup)
 
   if (program.data === undefined || week === undefined) {

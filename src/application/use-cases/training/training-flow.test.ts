@@ -175,6 +175,90 @@ describe('starting a session from a program', () => {
     expect(curl?.sets[0]?.plannedLoad).toBeUndefined()
   })
 
+  /*
+   * The other side of that rule, and the reason it is a rule rather than
+   * an oversight. A strength slot with no history opens at a share of the
+   * estimated max — a first bench session with a blank bar, on a device
+   * holding a bench figure the lifter typed themselves, is a worse answer
+   * than a conservative suggestion they overwrite.
+   *
+   * The curl above has an estimate too and is still open, because the
+   * share is only meaningful against the strength range: 85% is about a
+   * five-rep load and the curl is asking for fifteen to thirty.
+   */
+  it('opens a strength lift at a share of its estimated max the first time', async () => {
+    const deps = beginProgram()
+    const result = await startWorkout({ athlete, program, roundingIncrement: 5 }, deps)
+    if (result.kind !== 'started') throw new Error('expected a started workout')
+
+    const strength = result.workout.entries.find((entry) => entry.role === 'strength')
+    expect(strength).toBeDefined()
+
+    const basis = athlete.estimatedMaxes[strength?.exerciseId ?? asExerciseId('none')]
+    expect(basis).toBeDefined()
+
+    const planned = strength?.sets.find((set) => !set.isWarmup)?.plannedLoad
+    expect(planned).toBeDefined()
+    expect(planned).toBeLessThan(basis ?? 0)
+    expect(planned).toBeGreaterThan((basis ?? 0) * 0.7)
+  })
+
+  /*
+   * And it is the *first* time only. Once a session is filed the log is
+   * the source, which is what stops an estimate edited months later from
+   * silently rewriting a load the lifter has been progressing by hand.
+   */
+  it('carries the logged load forward rather than re-seeding from the estimate', async () => {
+    const deps = beginProgram()
+    const first = await startWorkout({ athlete, program, roundingIncrement: 5 }, deps)
+    if (first.kind !== 'started') throw new Error('expected a started workout')
+
+    const index = first.workout.entries.findIndex((entry) => entry.role === 'strength')
+    const entry = first.workout.entries[index]
+    if (entry === undefined) throw new Error('expected a strength entry')
+
+    for (const [setIndex, set] of entry.sets.entries()) {
+      if (set.isWarmup) continue
+      await logSet(
+        {
+          workoutId: first.workout.id,
+          entryIndex: index,
+          setIndex,
+          result: { load: 100, reps: 5, outcome: 'completed' },
+        },
+        deps,
+      )
+    }
+
+    await finishWorkout(first.workout.id, deps)
+
+    /*
+     * Skipped forward until the same lift comes round again rather than a
+     * fixed number of days: which day carries which lift is the split's
+     * business and this test has no opinion on it.
+     */
+    let again
+    for (let day = 0; day < 10 && again === undefined; day += 1) {
+      await skipSession(deps)
+      const next = await startWorkout({ athlete, program, roundingIncrement: 5 }, deps)
+      if (next.kind !== 'started') throw new Error('expected a started workout')
+
+      again = next.workout.entries.find((candidate) => candidate.exerciseId === entry.exerciseId)
+      if (again === undefined) await abandonWorkout(next.workout.id, deps)
+    }
+
+    /*
+     * 100 topped at five reps, so the next session is one step heavier —
+     * nowhere near the 85% of an estimated max it opened at. The step is
+     * whichever `stepFor` gives this lift, so it is read rather than
+     * written in: what is being asserted is that the load came from the
+     * log, not from the estimate.
+     */
+    const planned = again?.sets.find((set) => !set.isWarmup)?.plannedLoad
+    expect(planned).toBeGreaterThan(100)
+    expect(planned).toBeLessThanOrEqual(110)
+  })
+
   it('resumes an unfinished session rather than starting a second', async () => {
     // The most common way a training app loses real data: a half-logged
     // session orphaned by a fresh start.
@@ -228,7 +312,7 @@ describe('logging', () => {
         workoutId: started.workout.id,
         entryIndex: curlIndex,
         setIndex: 0,
-        result: { load: 135, reps: 5, rpe: 9, outcome: 'completed' },
+        result: { load: 135, reps: 5, outcome: 'completed' },
       },
       deps,
     )

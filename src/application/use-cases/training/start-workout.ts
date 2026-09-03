@@ -92,7 +92,7 @@ export async function startWorkout(
    * Only the exercises this session actually contains are looked up:
    * the whole catalogue would be fifty queries for a six-exercise day.
    */
-  const working = await workingLoads(day, library, deps)
+  const working = await workingLoads(day, library, request, deps)
   const withHistory: StartWorkoutRequest = {
     ...request,
     athlete: { ...request.athlete, working },
@@ -124,22 +124,42 @@ function emptyWorkout(title: string, deps: StartWorkoutDeps): WorkoutLog {
  * reconcile between two devices, and the log is already the truth about
  * what was lifted.
  *
- * An exercise with no history is simply absent, which resolves to an
- * open set — the lifter types what they did and it carries from then on.
+ * **With no history, a strength slot is seeded from its estimated max
+ * and everything else is left open.** A first bench session can open at
+ * a weight the lifter themselves stated, where a first curl would have to
+ * open at a number the app invented. It holds for exactly one session
+ * either way: the moment something is logged, the log is the source.
+ *
+ * The restriction to strength slots is the load-bearing half, and it is
+ * not about which lifts happen to carry an estimate. A share of a one-rep
+ * max is only meaningful against a rep count — 85% is about a five-rep
+ * load, which is the strength range and is nowhere near a set of twenty.
+ * Turning an estimate into a load for an arbitrary range needs the RPE
+ * chart, which is exactly what went with RTS.
  */
 async function workingLoads(
   day: ProgramDay,
   library: readonly Exercise[],
+  request: StartWorkoutRequest,
   deps: StartWorkoutDeps,
 ): Promise<Readonly<Partial<Record<ExerciseId, number>>>> {
   const ids = [...new Set(day.slots.flatMap((slot) => resolveExercise(slot, library) ?? []))]
+  const strengthIds = new Set(
+    day.slots
+      .filter((slot) => slot.role === 'strength')
+      .flatMap((slot) => resolveExercise(slot, library) ?? []),
+  )
 
   const entries = await Promise.all(
     ids.map(async (id): Promise<readonly [ExerciseId, number][]> => {
       const exercise = library.find((one) => one.id === id)
       const history = await deps.workouts.forExercise(id, 1)
       const previous = history[0]?.entries.find((entry) => entry.exerciseId === id)
-      if (previous === undefined || exercise === undefined) return []
+      if (exercise === undefined) return []
+      if (previous === undefined) {
+        const seeded = strengthIds.has(id) ? firstSessionLoad(id, request) : undefined
+        return seeded === undefined ? [] : [[id, seeded]]
+      }
 
       const last = lastPerformance(
         previous.sets
@@ -282,4 +302,25 @@ export function isoDate(date: Date): string {
 
 export function workoutIdOf(log: WorkoutLog): WorkoutId {
   return log.id
+}
+
+/**
+ * Where a lift opens when it has never been logged here.
+ *
+ * A percentage of the estimated max at the top of the strength range —
+ * conservative on purpose, because the first set of a first session is
+ * the worst moment to be handed an optimistic number. It is a suggestion
+ * like any other and the lifter overwrites it by loading the bar they
+ * were going to load anyway.
+ *
+ * Only ever asked about a strength slot — see `workingLoads` — so the
+ * share is always read against the strength range. Absent for anything
+ * with no estimate.
+ */
+const FIRST_SESSION_SHARE = 0.85
+
+function firstSessionLoad(id: ExerciseId, request: StartWorkoutRequest): number | undefined {
+  const basis = request.athlete.estimatedMaxes[id]
+  if (basis === undefined) return undefined
+  return basis * FIRST_SESSION_SHARE
 }

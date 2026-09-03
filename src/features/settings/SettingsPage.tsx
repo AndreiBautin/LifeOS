@@ -7,16 +7,12 @@ import { AlertTriangle, Download, HardDrive, Upload } from 'lucide-react'
 import { useId, useRef, useState } from 'react'
 
 import { useServices, useSettings } from '@/app/context'
-import { liftsDivergeFrom, musclesDivergeFrom } from '@/domain/priority/divergence'
-import { DEFAULT_LIFT_SESSIONS } from '@/domain/priority/tiers'
-import { DEFAULT_MUSCLE_VOLUMES } from '@/domain/volume/levels'
 import { DEFAULT_INCREMENT } from '@/domain/units/weight'
 import { Badge, Button, Card, Section } from '@/components/shared/primitives'
 import {
+  DEFAULT_WEEKS_BEFORE_DELOAD,
   MAX_DAYS_PER_WEEK,
-  MAX_WEEKS_BEFORE_DELOAD,
   MIN_DAYS_PER_WEEK,
-  MIN_WEEKS_BEFORE_DELOAD,
 } from '@/domain/autoregulation/schedule'
 import { BacklogSettingsSection } from '@/features/backlog/BacklogSettingsSection'
 import { JobSearchSection } from './JobSearchSection'
@@ -26,7 +22,6 @@ import { useBackup } from '@/features/backup/useBackup'
 import { SyncSection } from '@/features/sync/SyncSection'
 import { useSyncConfig } from '@/features/sync/useSync'
 import { MaxesEditor } from './MaxesEditor'
-import { TierEditor } from './TierEditor'
 import {
   describePersistence,
   formatBytes,
@@ -44,12 +39,6 @@ import {
 export function SettingsPage() {
   const { settings, update } = useSettings()
 
-  const diverged = [
-    musclesDivergeFrom(settings.muscleVolumes, DEFAULT_MUSCLE_VOLUMES).length > 0
-      ? 'muscle'
-      : undefined,
-    liftsDivergeFrom(settings.liftSessions, DEFAULT_LIFT_SESSIONS) ? 'lift' : undefined,
-  ].filter((one): one is string => one !== undefined)
   const services = useServices()
   const backup = useBackup()
   const fileInput = useRef<HTMLInputElement>(null)
@@ -104,70 +93,6 @@ export function SettingsPage() {
           />
         </Card>
       </Section>
-
-      <Section
-        title="Priorities"
-        description="How often each thing is trained, and how hard. Weekly sets are those two multiplied — there is nothing else in the calculation."
-      >
-        <TierEditor
-          muscleVolumes={settings.muscleVolumes}
-          liftSessions={settings.liftSessions}
-          setsPerSession={settings.setsPerSession}
-          onMuscleVolumes={(muscleVolumes) => {
-            update({ muscleVolumes })
-          }}
-          onLiftSessions={(liftSessions) => {
-            update({ liftSessions })
-          }}
-          onSetsPerSession={(setsPerSession) => {
-            update({ setsPerSession })
-          }}
-        />
-
-        <Card className="mt-4">
-          <p className="text-ink-300 text-sm">
-            Nothing to press. The block is built from these settings every time it is read, so a
-            number changed here is in tomorrow's session — and a session already open keeps the
-            prescription it started with.
-          </p>
-        </Card>
-
-        {/*
-          Shown only when the two disagree, because that is the whole of
-          the missing information.
-
-          Priorities are the lifter's own and nothing overwrites them —
-          which quietly means settings saved months ago go on being used
-          after the shipped defaults have moved underneath them. The screen
-          then reports "Squat, twice a week" perfectly truthfully about a
-          choice nobody remembers making. Naming the divergence is the fix;
-          resolving it stays a decision.
-        */}
-        {diverged.length > 0 && (
-          <Card className="border-warn-500/30 mt-4">
-            <p className="text-ink-300 text-sm">
-              Your {diverged.join(' and ')}{' '}
-              {diverged.length === 1 ? 'tiers differ' : 'tiers differ'} from the ones the app ships
-              with. That is not a problem — these are your priorities — but it does mean changes to
-              the defaults do not reach you.
-            </p>
-            <Button
-              variant="outline"
-              full
-              className="mt-3"
-              onClick={() => {
-                update({
-                  muscleVolumes: DEFAULT_MUSCLE_VOLUMES,
-                  liftSessions: DEFAULT_LIFT_SESSIONS,
-                })
-              }}
-            >
-              Use the shipped priorities instead
-            </Button>
-          </Card>
-        )}
-      </Section>
-
       {/*
         Nothing here autoregulates, whatever this used to say.
 
@@ -179,7 +104,7 @@ export function SettingsPage() {
         is checkable against a session, and a claim about behaviour that
         does not happen cannot be checked at all.
       */}
-      <Section title="Block" description="Two numbers you set. Nothing moves them for you.">
+      <Section title="Block" description="The one number you set. Nothing moves it for you.">
         <Card className="space-y-3">
           <NumberSetting
             label="Days per week"
@@ -190,22 +115,10 @@ export function SettingsPage() {
               }
             }}
           />
-          <NumberSetting
-            label="Weeks before a deload"
-            value={settings.weeksBeforeDeload}
-            onChange={(weeksBeforeDeload) => {
-              if (
-                weeksBeforeDeload >= MIN_WEEKS_BEFORE_DELOAD &&
-                weeksBeforeDeload <= MAX_WEEKS_BEFORE_DELOAD
-              ) {
-                update({ weeksBeforeDeload })
-              }
-            }}
-          />
           <p className="text-ink-500 text-xs">
-            Days per week stays between {MIN_DAYS_PER_WEEK} and {MAX_DAYS_PER_WEEK}, and the block
-            between {MIN_WEEKS_BEFORE_DELOAD} and {MAX_WEEKS_BEFORE_DELOAD} weeks. Wanting to go
-            outside either range is a sign the volume is wrong rather than the schedule.
+            Between {MIN_DAYS_PER_WEEK} and {MAX_DAYS_PER_WEEK}. The block runs{' '}
+            {DEFAULT_WEEKS_BEFORE_DELOAD} weeks and then deloads, which is no longer something to
+            set — wanting to change it is a sign the volume is wrong rather than the schedule.
           </p>
         </Card>
       </Section>

@@ -134,7 +134,6 @@ export function SessionPlayer({
                   result: {
                     ...(result.load !== undefined ? { load: result.load } : {}),
                     ...(result.reps !== undefined ? { reps: result.reps } : {}),
-                    ...(result.rpe !== undefined ? { rpe: result.rpe } : {}),
                     outcome: 'completed',
                   },
                 },

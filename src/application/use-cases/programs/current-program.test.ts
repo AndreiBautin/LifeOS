@@ -35,21 +35,16 @@ describe('deriving the program', () => {
     // stored block went on prescribing the old shape until something
     // refreshed it — which, four separate mechanisms later, it still did
     // not.
+    /*
+     * The volumes and the per-lift session counts used to be the setting
+     * varied here and are constants now. Days a week is what is left that
+     * changes the shape of a block, which is the property this is about:
+     * a setting moves and the next read is a different programme.
+     */
     const before = deriveProgram(DEFAULT_SETTINGS, library)
-    const after = deriveProgram(
-      {
-        ...DEFAULT_SETTINGS,
-        muscleVolumes: {
-          ...DEFAULT_SETTINGS.muscleVolumes,
-          chest: { sessionsPerWeek: 2, level: 'high' },
-        },
-        liftSessions: { squat: 1, bench: 2, deadlift: 1, press: 1 },
-      },
-      library,
-    )
+    const after = deriveProgram({ ...DEFAULT_SETTINGS, daysPerWeek: 3 }, library)
 
     expect(after).not.toEqual(before)
-    expect(after.name).toBe('Chest · Bench press strength')
   })
 
   it('honours an exclusion made in settings', () => {
@@ -80,8 +75,8 @@ describe('a position inside a program that changed shape', () => {
   it('clamps rather than resetting to week one', () => {
     // Being moved from Friday to Wednesday is a small surprise. Being
     // sent back to the start of the block is a lost month.
-    const shorter = deriveProgram({ ...DEFAULT_SETTINGS, weeksBeforeDeload: 4 }, library)
-    const deepIn = { ...start, weekIndex: 7, dayIndex: 0 }
+    const shorter = deriveProgram(DEFAULT_SETTINGS, library)
+    const deepIn = { ...start, weekIndex: (shorter.blocks[0]?.weeks.length ?? 0) + 3, dayIndex: 0 }
 
     const clamped = clampPosition(shorter, deepIn)
 

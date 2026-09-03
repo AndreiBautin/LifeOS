@@ -60,7 +60,7 @@ export function MaxesEditor({ settings, onChange }: Props) {
   return (
     <Section
       title="Current maxes"
-      description="What every suggested load is worked back from. RTS decides the real weight by feel — this only sets the starting point."
+      description="Where a lift starts before it has any history. After the first session the bar is carried forward from what you actually lifted, so these only matter once each."
     >
       <Card className="space-y-3">
         {LIFTS.map((lift) => (

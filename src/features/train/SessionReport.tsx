@@ -130,7 +130,10 @@ export function SessionReport({ report, units, onDismiss }: Props) {
       </div>
 
       {report.volumeByMuscle.length > 0 && (
-        <Section title="Volume" description="Hard sets, counting secondary work at half">
+        <Section
+          title="Volume"
+          description="Working sets, counted whole and only for the muscle each was programmed for"
+        >
           <Card>
             <ul className="space-y-1.5">
               {report.volumeByMuscle.map(({ muscle, sets }) => (
