@@ -393,6 +393,8 @@ function buildWeek(
    * the same on both.
    */
   const regionSessions = new Map<string, number>()
+  /** The muscle list of each region's first session, for the reversal below. */
+  const regionMuscles = new Map<string, string>()
 
   for (const [dayIndex, splitDay] of split.days.entries()) {
     const strength = strengthByDay[dayIndex]
@@ -473,11 +475,34 @@ function buildWeek(
     const regionOrdinal = regionSessions.get(region) ?? 0
     regionSessions.set(region, regionOrdinal + 1)
 
+    /*
+     * **The accessory reversal only fires where there is something to
+     * alternate**, which is the second session of a region accountable
+     * for the *same* muscles as the first.
+     *
+     * It exists so that a fixed order does not spend the fresh part of
+     * every session on the same muscle for a whole block. That argument
+     * needs two sessions holding the same work: reversing the second of
+     * two sessions that hold *different* work rotates nothing at all,
+     * because each day's order is then fixed for the whole block anyway
+     * — and it still pays the cost, which is that one day permanently
+     * runs its compounds lightest-first and its isolation in reverse
+     * priority order.
+     *
+     * That became live the day the upper body was divided between the
+     * two upper days: Thursday started running rear delt raises ahead of
+     * the arms, every week, for nothing. The lower days still share a
+     * muscle list, so the mechanism is not inert — it is conditional.
+     */
+    const musclesKey = [...splitDay.muscles].sort().join(',')
+    const firstOfRegion = regionMuscles.get(region)
+    if (firstOfRegion === undefined) regionMuscles.set(region, musclesKey)
+
     const ordered = inSessionOrder(
       slots,
       deps.exercises,
       recipe.muscleVolumes,
-      regionOrdinal % 2 === 1,
+      regionOrdinal % 2 === 1 && firstOfRegion === musclesKey,
     )
 
     days.push({

@@ -143,33 +143,58 @@ export function validateMuscleVolumes(volumes: MuscleVolumes): void {
 /**
  * Every muscle trained, or explicitly not, with nothing left undecided.
  *
- * Twice a week at the low level for the eight the shipped week trains
- * directly, and zero for the seven it does not — the legs and glutes
- * because the squat and the deadlift already pay them, the trunk and the
- * grip because a four-day powerlifting week is not short of either.
+ * Zero for the seven the shipped week does not train directly — the legs
+ * and glutes because the squat and the deadlift already pay them, the
+ * trunk and the grip because a four-day powerlifting week is not short of
+ * either.
  *
  * The hamstrings are the one to know about: no competition lift has them
  * as its primary muscle, so at zero sessions they receive nothing at all
- * rather than a little. That is a deliberate default and an easy one to
- * change — it is one number on the Priorities screen.
+ * rather than a little.
+ *
+ * **The eight it does train split into two shapes, and the split is the
+ * arithmetic behind one exercise a week.** With one exercise per muscle
+ * per session, a muscle on two upper days gets two slots — and a muscle
+ * whose pool holds one movement fills both with the same one. That is
+ * how dips, pull-ups, rows, rear delt raises and lateral raises all came
+ * to appear on both upper days, reported as `"I'm noticing redundancy in
+ * the exercises"`.
  */
-const TRAINED: readonly MuscleGroup[] = [
-  'chest',
-  'side-delts',
-  'rear-delts',
-  'triceps',
-  'lats',
-  'upper-back',
-  'biceps',
-  'calves',
-]
+
+/**
+ * One session a week, and the whole of the muscle's volume in it.
+ *
+ * `high` rather than `low` on purpose: a level is choosing how long that
+ * single exercise runs, so halving the sessions and leaving the level
+ * alone would have halved the week. Five sets in one session against six
+ * across two is the trade — very nearly the same volume, in one movement
+ * instead of the same movement twice.
+ *
+ * Which day each of these lands on is the split's business, not this
+ * file's: they are paired against the competition lift that already
+ * trains them. See `rp-splits.ts`.
+ */
+const ONCE: readonly MuscleGroup[] = ['chest', 'side-delts', 'rear-delts', 'lats', 'upper-back']
+
+/**
+ * Twice a week, because twice is not a repeat for these.
+ *
+ * The arms have four and two hypertrophy options respectively, so the
+ * rotation gives them a different movement each session — a dumbbell curl
+ * and then an EZ bar curl is two exercises, not one done twice. The
+ * calves have exactly one, so `barbell-calf-raise` is the single exercise
+ * in the week that genuinely repeats, and it is the one that was asked to.
+ */
+const TWICE: readonly MuscleGroup[] = ['biceps', 'triceps', 'calves']
 
 export const DEFAULT_MUSCLE_VOLUMES: MuscleVolumes = Object.fromEntries(
   MUSCLE_GROUPS.map((muscle) => [
     muscle,
-    TRAINED.includes(muscle)
-      ? { sessionsPerWeek: 2, level: 'low' }
-      : { sessionsPerWeek: 0, level: 'low' },
+    ONCE.includes(muscle)
+      ? { sessionsPerWeek: 1, level: 'high' }
+      : TWICE.includes(muscle)
+        ? { sessionsPerWeek: 2, level: 'low' }
+        : { sessionsPerWeek: 0, level: 'low' },
   ]),
 ) as MuscleVolumes
 

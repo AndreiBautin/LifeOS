@@ -180,7 +180,7 @@ describe('explaining the volume', () => {
 
   it('gives every muscle a reason naming its inputs', () => {
     for (const muscle of plan.muscles) {
-      expect(muscle.reason, muscle.label).toMatch(/sessions a week|Not trained directly/)
+      expect(muscle.reason, muscle.label).toMatch(/sessions? a week|Not trained directly/)
     }
   })
 

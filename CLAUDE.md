@@ -6192,6 +6192,102 @@ were logged, the session filed, and the same lift **opened at 205 the
 next week** — the +5 upper step, read out of the log. That round trip is
 the entire redesign and no single test exercises it end to end.
 
+**One exercise a week, and the two upper days stopped being the same
+day.** Reported as _"I'm noticing redundancy in the exercises — don't
+repeat dips or lateral raises on both upper days… barbell calf raise is
+the only exercise we should repeat twice in the week."_ Dips, lateral
+raises, rows, pull-ups and rear delt raises were all appearing twice.
+
+**The cause is one line of arithmetic, not a bug in the picker.** One
+exercise per muscle per session, times a muscle listed on both upper
+days, is two slots — and the chest's hypertrophy pool holds exactly one
+movement. So it filled both with dips. The rotation the picker does have
+was working the whole time: the arms have four and two options and were
+correctly getting a different movement each session.
+
+**Two changes that have to move together.** `DEFAULT_MUSCLE_VOLUMES`
+splits into `ONCE` (chest, side delts, rear delts, lats, upper back) at
+one session at the **high** level and `TWICE` (biceps, triceps, calves)
+at two at low. The level moving is the load-bearing half: a level is
+choosing how long that single exercise runs, so halving the sessions and
+leaving it alone would have halved the week. **Five sets in one session
+against six across two** — very nearly the same volume, in one movement
+instead of the same movement twice.
+
+**And `UPPER` divides into `UPPER_1` and `UPPER_2` in `rp-splits.ts`**,
+because setting a muscle to one session decides _how often_ and not
+_which day_. The fill places the neediest muscle first, so left to
+itself it would have put all five on Monday and left Thursday with the
+arms.
+
+**A muscle's accessory work sits opposite the lift that already trains
+it**, which is the reason given with the report — _"since there's
+overlap"_ — and is what makes this a pairing rather than two arbitrary
+piles. The chest is benched on Monday so dips are on Thursday; the side
+delts are pressed on Thursday so lateral raises are on Monday. The row
+goes against the horizontal press and the pull-up against the vertical
+one, which settles a question the report left open. Rear delt work goes
+on the day without the row, asked for directly, because a row pays them
+on the way past.
+
+**Which day carries which lift is derived, and that is the seam.**
+`assignStrengthLifts` places the bench and the press; these lists assume
+the bench lands on `UPPER_1`, which it does because lifts are placed in
+`STRENGTH_LIFTS` order onto the emptiest eligible day and the session
+counts are now constants. If that ever inverts, the week still holds one
+of each exercise and every one of them is on the wrong day —
+**a no-repeats assertion passes just as happily either way**, which is
+why there are two tests: "uses each exercise once in a week, apart from
+the calf raise" and "pairs each muscle against the lift that does not
+already train it". Both were checked against the reported bug by
+reproducing it, and the first names the offender —
+`dips on Monday — Upper 1 and Thursday — Upper 2`.
+
+**The accessory reversal is conditional now, and this is a regression it
+would otherwise have shipped.** `reverseAccessoryBlocks` exists so a
+fixed order does not spend the fresh part of every session on the same
+muscle for a whole block. That argument needs two sessions holding the
+**same** work: reversing the second of two sessions holding _different_
+work rotates nothing, because each day's order is then fixed for the
+whole block anyway — while still paying the cost, which is that one day
+permanently runs its compounds lightest-first and its isolation in
+reverse priority order. Thursday started running rear delt raises ahead
+of the arms, every week. It now fires only when the region's second
+session is accountable for the same muscle list as its first, which
+keeps it live for the lower days.
+
+**A frequency setting can now ask for more sessions than the split has
+days to give.** Side delts at two get one, because only `UPPER_1` lists
+them. That is the deliberate cost of the pairing and it is why
+`rp-assemble.test.ts` → "trains a muscle as often as its own setting
+asks" runs on the **biceps** rather than the side delts — the arms are on
+both upper days precisely because their pools hold several movements, so
+twice is two exercises rather than one done twice.
+
+**The block renamed itself and that was a third-time correction to one
+sentence.** `describeBlock`'s focus was "the muscles in tier 1", then
+"the muscles getting the most weekly sets" — better, and still wrong by
+one set: the arms and calves came out at six against everything else's
+five, so the Train header read **"Triceps, biceps and calves · Squat and
+deadlift strength"**. Nobody had emphasised anything. `FOCUS_MARGIN` is
+3 — one slot's work, the smallest amount of "more" this model can
+express. **One set of daylight is arithmetic; three is a decision.**
+
+**`domain/priority/divergence.ts` is deleted, and it is my own dead code
+from the commit before.** It powered the Settings card naming settings
+that had drifted from the shipped defaults, and that card went with the
+volume customisation — so `musclesDivergeFrom` and `liftsDivergeFrom`
+had no caller anywhere. The problem it solved no longer exists either:
+the values are constants in the bundle now, identical on every device by
+construction, so there is nothing left to diverge.
+
+Driven end to end. Monday: bench, barbell row ×5, dumbbell curl,
+French press, lateral raise ×5. Thursday: overhead press, pull-up ×5,
+dips ×5, EZ bar curl, skullcrusher, rear delt raise ×5. Tuesday and
+Friday: barbell calf raise. **Every target met exactly** — 6/6 for the
+three at twice a week, 5/5 for the five at once — and no exercise twice
+in the week but the calf raise.
+
 **Dropping the forearms made the repeat penalty's pattern key inert**,
 which is measured rather than assumed: after the cut **no muscle has
 more than one hypertrophy pattern**, so `primaryMuscle|pattern` keys the

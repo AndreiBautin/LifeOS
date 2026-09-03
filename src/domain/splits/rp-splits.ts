@@ -106,6 +106,69 @@ const UPPER: readonly MuscleGroup[] = [
 ]
 
 /**
+ * The upper body divided between the two upper days, rather than both
+ * days being accountable for all of it.
+ *
+ * Reported as *"I'm noticing redundancy in the exercises — don't repeat
+ * dips or lateral raises on both upper days."* They were repeated, and
+ * the cause is one line further in: with one exercise per muscle per
+ * session, a muscle listed on both upper days gets two slots, and the
+ * chest's hypertrophy pool holds exactly one movement. So it filled both
+ * with dips. The same for the lateral raise, the row, the pull-up and the
+ * rear delt raise.
+ *
+ * **A muscle's accessory work sits on the day whose competition lift does
+ * not already train it**, which is the reason given with the report —
+ * *"since there's overlap"* — and is what makes this a pairing rather
+ * than an arbitrary dealing-out of muscles into two piles:
+ *
+ * - **The chest is benched on `UPPER_1`, so dips are on `UPPER_2`.** Three
+ *   heavy sets of bench and then dips is the same muscle twice in one
+ *   session; on the press day the chest gets nothing else.
+ * - **The side delts are pressed on `UPPER_2`, so lateral raises are on
+ *   `UPPER_1`.** The mirror of the above, and the two together are why
+ *   the pairing is stated as overlap rather than as balance.
+ * - **A horizontal pull against the horizontal press, a vertical pull
+ *   against the vertical press.** The row is on the bench day and the
+ *   pull-up on the press day, which is the ordinary antagonist pairing
+ *   and settles a question the report left open.
+ * - **Rear delt work goes on the day without the row**, asked for
+ *   directly: a barbell row pays the rear delts on the way past, so
+ *   isolating them in the same session is the third instance of the same
+ *   overlap.
+ * - **The traps go with the row and the forearms with the pulling**, for
+ *   the same reason, though both are at zero sessions and neither is
+ *   scheduled. The forearms have nothing left in the catalogue at all.
+ *
+ * **Which day carries which lift is derived, not written here**, and that
+ * is the seam to know about. `assignStrengthLifts` places the bench and
+ * the press onto the eligible days; these lists assume the bench lands on
+ * `UPPER_1`, which it does because the lifts are placed in
+ * `STRENGTH_LIFTS` order onto the emptiest eligible day and the session
+ * counts are constants. If either of those changes the pairing inverts
+ * silently — the week would still hold one of each exercise, and each
+ * would be on the wrong day. `rp-assemble.test.ts` → "pairs each muscle
+ * against the lift that does not already train it" is what watches it.
+ */
+const UPPER_1: readonly MuscleGroup[] = [
+  'side-delts',
+  'upper-back',
+  'traps',
+  'forearms',
+  'biceps',
+  'triceps',
+]
+
+const UPPER_2: readonly MuscleGroup[] = [
+  'chest',
+  'lats',
+  'rear-delts',
+  'front-delts',
+  'biceps',
+  'triceps',
+]
+
+/**
  * Core lives here rather than on upper days.
  *
  * It is trained by the squat and the deadlift whether or not anything
@@ -199,7 +262,12 @@ const WEEK_5: RpSplit = {
       index: 0,
       label: 'Monday',
       focusName: 'Upper 1',
-      muscles: UPPER,
+      /*
+       * The same pairing the four-day week makes, for the same reason.
+       * Friday below keeps the whole upper body, so a muscle these two
+       * days do not reach still has somewhere to land.
+       */
+      muscles: UPPER_1,
       carries: ['upper'],
       conditioning: ['incline-walk'],
       warmUp: 'upper',
@@ -234,7 +302,7 @@ const WEEK_5: RpSplit = {
       index: 2,
       label: 'Wednesday',
       focusName: 'Upper 2',
-      muscles: UPPER,
+      muscles: UPPER_2,
       carries: ['upper'],
       conditioning: ['incline-walk'],
       warmUp: 'upper',
@@ -295,7 +363,7 @@ const WEEK_4: RpSplit = {
       index: 0,
       label: 'Monday',
       focusName: 'Upper 1',
-      muscles: UPPER,
+      muscles: UPPER_1,
       carries: ['upper'],
       conditioning: ['incline-walk'],
       warmUp: 'upper',
@@ -313,7 +381,7 @@ const WEEK_4: RpSplit = {
       index: 2,
       label: 'Thursday',
       focusName: 'Upper 2',
-      muscles: UPPER,
+      muscles: UPPER_2,
       carries: ['upper'],
       conditioning: ['incline-walk'],
       warmUp: 'upper',

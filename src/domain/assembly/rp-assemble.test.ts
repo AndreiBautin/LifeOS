@@ -516,9 +516,24 @@ describe('how often a muscle is trained', () => {
      * because a full upper day flattens every frequency to what fitted —
      * a capacity fact, asserted separately and on purpose.
      */
+    /*
+     * **Biceps rather than side delts, and the swap is the finding.** The
+     * two upper days used to be accountable for the whole upper body, so
+     * any upper muscle could take two sessions. They are divided now — a
+     * muscle's accessory work sits opposite the lift that already trains
+     * it — so **a setting can ask for more sessions than the split has
+     * days to give**, and the side delts are one of the muscles that
+     * happens to. Asking for two gets one.
+     *
+     * That ceiling is deliberate and this test is not the place to assert
+     * it; what it is here for is that a setting the split *can* satisfy
+     * arrives intact. The arms are on both upper days precisely because
+     * their pools hold several movements, so twice is two exercises
+     * rather than one done twice.
+     */
     const sparse = weekAt(
       build({
-        muscleVolumes: trainingOnly(['side-delts'], 2),
+        muscleVolumes: trainingOnly(['biceps'], 2),
       }),
       3,
     )
@@ -532,7 +547,7 @@ describe('how often a muscle is trained', () => {
         ),
       ).length
 
-    expect(daysWith('side-delts')).toBe(2)
+    expect(daysWith('biceps')).toBe(2)
     expect(daysWith('core')).toBe(0)
   })
 
@@ -879,10 +894,28 @@ describe('the order a session is performed in', () => {
    * session on the same muscle for the whole block.
    */
   it('runs the two sessions of a region in opposite orders', () => {
-    const upper = week.days.filter((day) => day.label.includes('Upper'))
-    expect(upper).toHaveLength(2)
+    /*
+     * **Read off the lower days, because the upper days no longer share a
+     * muscle list.** This used to assert that the two upper sessions held
+     * the same muscles in a different sequence, which was true while both
+     * were accountable for the whole upper body.
+     *
+     * The rule the reversal exists for has not changed — a fixed order
+     * spends the fresh part of every session on the same muscle for a
+     * whole block — but it only *does* anything where the two sessions
+     * hold the same work. Reversing two days that hold different work
+     * rotates nothing and still costs the priority ordering, so it is
+     * conditional now. The lower days are where it stays live.
+     */
+    const lowerWeek = weekAt(
+      build({ muscleVolumes: trainingOnly(['quads', 'hamstrings', 'glutes', 'calves'], 2) }),
+      3,
+    )
 
-    const musclesOf = (day: (typeof upper)[number]): string[] =>
+    const lower = lowerWeek.days.filter((day) => day.label.includes('Lower'))
+    expect(lower).toHaveLength(2)
+
+    const musclesOf = (day: (typeof lower)[number]): string[] =>
       day.slots
         .filter((slot) => slot.role === 'hypertrophy' || slot.role === 'assistance')
         .flatMap((slot) =>
@@ -891,8 +924,8 @@ describe('the order a session is performed in', () => {
             : [],
         )
 
-    const [firstDay, secondDay] = upper
-    if (firstDay === undefined || secondDay === undefined) throw new Error('missing upper day')
+    const [firstDay, secondDay] = lower
+    if (firstDay === undefined || secondDay === undefined) throw new Error('missing lower day')
 
     const first = musclesOf(firstDay)
     const second = musclesOf(secondDay)
@@ -901,6 +934,127 @@ describe('the order a session is performed in', () => {
     expect(second).not.toEqual(first)
     // The same muscles, in a different sequence — not a different session.
     expect([...second].sort()).toEqual([...first].sort())
+  })
+
+  /*
+   * And the other half of that condition, which is the regression it was
+   * written for: reversing a session that holds different work rotates
+   * nothing, so the shipped upper days each keep their own priority
+   * order. Without this, Thursday ran rear delt raises ahead of the arms
+   * every week for the whole block.
+   */
+  it('does not reverse a session that holds different muscles from the first', () => {
+    const upper = week.days.filter((day) => day.label.includes('Upper'))
+    expect(upper).toHaveLength(2)
+
+    for (const day of upper) {
+      const ranks = day.slots
+        .filter((slot) => slot.role === 'assistance')
+        .flatMap((slot) => (slot.exercise.kind === 'specific' ? [slot.exercise.exerciseId] : []))
+        .flatMap((id) => {
+          const muscle = lookup(id)?.primaryMuscle
+          return muscle === undefined ? [] : [-DEFAULT_MUSCLE_VOLUMES[muscle].sessionsPerWeek]
+        })
+
+      expect(
+        [...ranks].sort((a, b) => a - b),
+        day.label,
+      ).toEqual(ranks)
+    }
+  })
+
+  /*
+   * **One exercise, one session a week — and the calf raise.** Reported
+   * as *"I'm noticing redundancy in the exercises… barbell calf raise is
+   * the only exercise we should repeat twice in the week."*
+   *
+   * Asserted over the whole week rather than per day, because the failure
+   * it guards is not a day repeating itself: it is two *different* days
+   * reaching for the same movement, which is invisible from either one.
+   * With one exercise per muscle per session, a muscle listed on two days
+   * whose pool holds a single movement fills both with it — the chest,
+   * the side delts, the lats, the upper back and the rear delts were all
+   * in that position.
+   *
+   * The calves are the exception because they are the one muscle trained
+   * twice whose pool has exactly one entry. Named here rather than
+   * derived, so that a second exercise quietly repeating fails the build
+   * instead of widening a rule.
+   */
+  it('uses each exercise once in a week, apart from the calf raise', () => {
+    const REPEATABLE = new Set(['barbell-calf-raise'])
+
+    const seen = new Map<string, string[]>()
+
+    for (const day of week.days) {
+      for (const slot of day.slots) {
+        if (slot.role === 'warmup' || slot.role === 'conditioning') continue
+        if (slot.exercise.kind !== 'specific') continue
+
+        const id = String(slot.exercise.exerciseId)
+        seen.set(id, [...(seen.get(id) ?? []), day.label])
+      }
+    }
+
+    const repeated = [...seen.entries()]
+      .filter(([id, days]) => days.length > 1 && !REPEATABLE.has(id))
+      .map(([id, days]) => `${id} on ${days.join(' and ')}`)
+
+    expect(repeated).toEqual([])
+  })
+
+  /*
+   * Why each of those sits where it does, which is the half a
+   * no-repeats assertion cannot see: it would pass just as happily with
+   * the pairing inverted, and the inversion is what puts dips after a
+   * bench press and lateral raises after an overhead press.
+   *
+   * Stated against the *lift the day carries* rather than against a day
+   * index, because which day carries which lift is derived. If
+   * `assignStrengthLifts` ever places them the other way round this fails
+   * rather than silently swapping the two sessions.
+   */
+  it('pairs each muscle against the lift that does not already train it', () => {
+    const dayCarrying = (slug: string) =>
+      week.days.find((day) =>
+        day.slots.some(
+          (slot) =>
+            slot.role === 'strength' &&
+            slot.exercise.kind === 'specific' &&
+            String(slot.exercise.exerciseId) === slug,
+        ),
+      )
+
+    const benchDay = dayCarrying('bench-press')
+    const pressDay = dayCarrying('overhead-press')
+
+    expect(benchDay).toBeDefined()
+    expect(pressDay).toBeDefined()
+    expect(benchDay?.label).not.toBe(pressDay?.label)
+
+    const accessories = (day: typeof benchDay): string[] =>
+      (day?.slots ?? [])
+        .filter((slot) => slot.role === 'hypertrophy' || slot.role === 'assistance')
+        .flatMap((slot) =>
+          slot.exercise.kind === 'specific' ? [String(slot.exercise.exerciseId)] : [],
+        )
+
+    const onBenchDay = accessories(benchDay)
+    const onPressDay = accessories(pressDay)
+
+    // The bench already trains the chest, so the dips go opposite it.
+    expect(onPressDay).toContain('dips')
+    expect(onBenchDay).not.toContain('dips')
+
+    // The overhead press already trains the side delts.
+    expect(onBenchDay.some((id) => id.includes('lateral-raise'))).toBe(true)
+    expect(onPressDay.some((id) => id.includes('lateral-raise'))).toBe(false)
+
+    // A horizontal pull against the horizontal press, vertical against
+    // vertical — and the rear delts opposite the row that pays them.
+    expect(onBenchDay).toContain('barbell-row')
+    expect(onPressDay).toContain('pull-up')
+    expect(onPressDay.some((id) => id.includes('rear-delt'))).toBe(true)
   })
 
   it('keeps the warm-ups in the order they were prescribed', () => {

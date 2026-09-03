@@ -131,6 +131,13 @@ function name(muscles: readonly MuscleGroup[]): string[] {
  * delts three times a week has emphasised them whether or not they ever
  * opened a tier list, and the old version could not see it.
  */
+/**
+ * How far above the rest a muscle has to sit before the block is named
+ * after it — one slot's work, the smallest amount of "more" this model
+ * can express. Kept in step with `minSetsPerSlot` in `rp-assemble`.
+ */
+const FOCUS_MARGIN = 3
+
 export function describeBlock(
   volumes: MuscleVolumes,
   sets: SetsPerSession,
@@ -148,10 +155,27 @@ export function describeBlock(
   /*
    * The focus is what stands out, and nothing stands out when everything
    * is level. Naming all eight trained muscles is a list, not a name.
+   *
+   * **A margin, not a tie-break**, and this is the second correction to
+   * the same sentence. It was "the muscles in tier 1", then "the muscles
+   * getting the most weekly sets" — better, and still wrong by one set:
+   * the moment the upper body was divided between the two upper days,
+   * the arms and calves came out at six weekly sets against everything
+   * else's five, and the block renamed itself **"Triceps, biceps and
+   * calves"**. Nobody had emphasised anything; three muscles were on two
+   * days and five were on one.
+   *
+   * So the peak has to clear the floor by a whole slot's work before it
+   * counts as a focus. That is the unit "more" comes in here — a muscle
+   * is trained more by being given another session, and the smallest
+   * session is `FOCUS_MARGIN` sets. One set of daylight is arithmetic;
+   * three is a decision.
    */
   const peak = Math.max(0, ...trained.map(weekly))
+  const floor = Math.min(...trained.map(weekly), peak)
   const emphasised = trained.filter((muscle) => weekly(muscle) === peak)
-  const standsOut = emphasised.length > 0 && emphasised.length < trained.length
+  const standsOut =
+    emphasised.length > 0 && emphasised.length < trained.length && peak - floor >= FOCUS_MARGIN
 
   const mostSessions = Math.max(0, ...STRENGTH_LIFTS.map((lift) => liftSessions[lift]))
   const leadLifts = STRENGTH_LIFTS.filter((lift) => liftSessions[lift] === mostSessions)
@@ -249,7 +273,7 @@ export function explainVolume(
        */
       reason:
         volume.sessionsPerWeek > 0
-          ? `${String(volume.sessionsPerWeek)} sessions a week at ${VOLUME_LEVEL_LABELS[volume.level].toLowerCase()} volume — ${String(perSession)} sets each, ${String(weeklySets)} a week.`
+          ? `${String(volume.sessionsPerWeek)} session${volume.sessionsPerWeek === 1 ? '' : 's'} a week at ${VOLUME_LEVEL_LABELS[volume.level].toLowerCase()} volume — ${String(perSession)} sets each, ${String(weeklySets)} a week.`
           : 'Not trained directly. What the competition lifts pay it is what it gets.',
     }
   })
