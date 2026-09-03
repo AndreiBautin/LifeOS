@@ -131,13 +131,6 @@ function name(muscles: readonly MuscleGroup[]): string[] {
  * delts three times a week has emphasised them whether or not they ever
  * opened a tier list, and the old version could not see it.
  */
-/**
- * How far above the rest a muscle has to sit before the block is named
- * after it — one slot's work, the smallest amount of "more" this model
- * can express. Kept in step with `minSetsPerSlot` in `rp-assemble`.
- */
-const FOCUS_MARGIN = 3
-
 export function describeBlock(
   volumes: MuscleVolumes,
   sets: SetsPerSession,
@@ -154,28 +147,37 @@ export function describeBlock(
 
   /*
    * The focus is what stands out, and nothing stands out when everything
-   * is level. Naming all eight trained muscles is a list, not a name.
+   * is level. Naming all the trained muscles is a list, not a name.
    *
-   * **A margin, not a tie-break**, and this is the second correction to
-   * the same sentence. It was "the muscles in tier 1", then "the muscles
-   * getting the most weekly sets" — better, and still wrong by one set:
-   * the moment the upper body was divided between the two upper days,
-   * the arms and calves came out at six weekly sets against everything
-   * else's five, and the block renamed itself **"Triceps, biceps and
-   * calves"**. Nobody had emphasised anything; three muscles were on two
-   * days and five were on one.
+   * **How hard a session is, not how many of them the week holds** — and
+   * this is the third correction to one sentence, so the previous two are
+   * worth stating. It was "the muscles in tier 1". Then it became "the
+   * muscles getting the most weekly sets", on the reasoning that somebody
+   * training their side delts three times a week has emphasised them
+   * whether or not they ever opened a tier list. That was a real
+   * improvement and it has stopped being true, because **frequency is no
+   * longer something a person chooses.**
    *
-   * So the peak has to clear the floor by a whole slot's work before it
-   * counts as a focus. That is the unit "more" comes in here — a muscle
-   * is trained more by being given another session, and the smallest
-   * session is `FOCUS_MARGIN` sets. One set of daylight is arithmetic;
-   * three is a decision.
+   * The split decides it now: the upper body is divided between the two
+   * upper days, so a muscle is on one day or two according to where its
+   * accessory work is paired against the competition lifting. Four of
+   * nine muscles landed at six weekly sets and five at three, and the
+   * block called itself **"Triceps, biceps, calves and core"** — a true
+   * statement about set counts and a useless name, because nobody had
+   * emphasised anything.
+   *
+   * A *level* is still a decision, and it is the one that says "train
+   * this harder": it is how long the single exercise for a muscle runs.
+   * So the block is named after the muscles trained hardest per session,
+   * and a week where every muscle shares a level — which the shipped week
+   * does — is General, correctly.
    */
-  const peak = Math.max(0, ...trained.map(weekly))
-  const floor = Math.min(...trained.map(weekly), peak)
-  const emphasised = trained.filter((muscle) => weekly(muscle) === peak)
-  const standsOut =
-    emphasised.length > 0 && emphasised.length < trained.length && peak - floor >= FOCUS_MARGIN
+  const perSession = (muscle: MuscleGroup): number =>
+    setsPerSessionFor(volumes[muscle].level, sets, false)
+
+  const peak = Math.max(0, ...trained.map(perSession))
+  const emphasised = trained.filter((muscle) => perSession(muscle) === peak)
+  const standsOut = emphasised.length > 0 && emphasised.length < trained.length
 
   const mostSessions = Math.max(0, ...STRENGTH_LIFTS.map((lift) => liftSessions[lift]))
   const leadLifts = STRENGTH_LIFTS.filter((lift) => liftSessions[lift] === mostSessions)

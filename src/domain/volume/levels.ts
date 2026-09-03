@@ -143,10 +143,14 @@ export function validateMuscleVolumes(volumes: MuscleVolumes): void {
 /**
  * Every muscle trained, or explicitly not, with nothing left undecided.
  *
- * Zero for the seven the shipped week does not train directly — the legs
+ * Zero for the six the shipped week does not train directly — the legs
  * and glutes because the squat and the deadlift already pay them, the
- * trunk and the grip because a four-day powerlifting week is not short of
- * either.
+ * grip because there is nothing left in the catalogue that trains it.
+ *
+ * The trunk used to be on that list, on the reasoning that a powerlifting
+ * week braces plenty. It is trained directly now, asked for by name, and
+ * the lower days had the room the moment they stopped carrying two
+ * competition lifts each.
  *
  * The hamstrings are the one to know about: no competition lift has them
  * as its primary muscle, so at zero sessions they receive nothing at all
@@ -162,13 +166,19 @@ export function validateMuscleVolumes(volumes: MuscleVolumes): void {
  */
 
 /**
- * One session a week, and the whole of the muscle's volume in it.
+ * One session a week, three sets in it.
  *
- * `high` rather than `low` on purpose: a level is choosing how long that
- * single exercise runs, so halving the sessions and leaving the level
- * alone would have halved the week. Five sets in one session against six
- * across two is the trade — very nearly the same volume, in one movement
- * instead of the same movement twice.
+ * **`low` rather than `high`, which reverses the note that used to be
+ * here.** When these dropped to one session the level was raised to five
+ * sets to keep the weekly volume where it was — reported back as _"I'm
+ * seeing some exercises still run as 5 sets"_, which is fair: the whole
+ * method is *straight 3 sets on anything*, and preserving a number by
+ * breaking the one rule the programme is built on was the wrong trade.
+ *
+ * The volume it costs is real and is the point rather than a side
+ * effect: three sets a week of direct work for the chest, on top of
+ * being benched heavily. The reps moved to pay for it — compounds run
+ * 5–10 now, so the sets are heavier than the ones they replace.
  *
  * Which day each of these lands on is the split's business, not this
  * file's: they are paired against the competition lift that already
@@ -181,17 +191,21 @@ const ONCE: readonly MuscleGroup[] = ['chest', 'side-delts', 'rear-delts', 'lats
  *
  * The arms have four and two hypertrophy options respectively, so the
  * rotation gives them a different movement each session — a dumbbell curl
- * and then an EZ bar curl is two exercises, not one done twice. The
- * calves have exactly one, so `barbell-calf-raise` is the single exercise
- * in the week that genuinely repeats, and it is the one that was asked to.
+ * and then an EZ bar curl is two exercises, not one done twice. The core
+ * has exactly two and uses both: an ab wheel on one lower day and a
+ * hanging leg raise on the other, asked for by name.
+ *
+ * The calves have exactly one, so `barbell-calf-raise` is the single
+ * exercise in the week that genuinely repeats, and it is the one that was
+ * asked to.
  */
-const TWICE: readonly MuscleGroup[] = ['biceps', 'triceps', 'calves']
+const TWICE: readonly MuscleGroup[] = ['biceps', 'triceps', 'calves', 'core']
 
 export const DEFAULT_MUSCLE_VOLUMES: MuscleVolumes = Object.fromEntries(
   MUSCLE_GROUPS.map((muscle) => [
     muscle,
     ONCE.includes(muscle)
-      ? { sessionsPerWeek: 1, level: 'high' }
+      ? { sessionsPerWeek: 1, level: 'low' }
       : TWICE.includes(muscle)
         ? { sessionsPerWeek: 2, level: 'low' }
         : { sessionsPerWeek: 0, level: 'low' },

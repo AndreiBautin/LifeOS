@@ -70,6 +70,20 @@ function build(overrides: Partial<RpRecipe> = {}): ProgramTemplate {
   })
 }
 
+/**
+ * A block where a lower day carries two competition lifts.
+ *
+ * The shipped week no longer does — the squat and the deadlift dropped to
+ * one session each when the second strength movement came off the lower
+ * days — but `buildStrengthSlots` still handles a paired day, and every
+ * rule about how it pairs them is live code any recipe can reach. The
+ * tests that cover it build their own week rather than being deleted with
+ * the default that used to exercise them.
+ */
+function pairedBlock(): ProgramTemplate {
+  return build({ liftSessions: { squat: 2, bench: 1, deadlift: 2, press: 1 } })
+}
+
 function weekAt(program: ProgramTemplate, index: number): ProgramWeek {
   const week = program.blocks[0]?.weeks[index]
   if (week === undefined) throw new Error('missing week ' + String(index))
@@ -129,7 +143,7 @@ describe('the assembled block', () => {
     expect(block?.weeks.filter((week) => week.isDeload)).toHaveLength(1)
   })
 
-  it('presses once on each upper day and shares the lower days', () => {
+  it('gives every day exactly one competition lift', () => {
     const week = block?.weeks[0]
     const mains = (week?.days ?? []).map((day) => [
       ...new Set(
@@ -140,27 +154,23 @@ describe('the assembled block', () => {
     ])
 
     /*
-     * Six sessions across four days. The bench and the overhead press take
-     * one upper day each; the squat and the deadlift want two each and
-     * share both lower days.
+     * Four sessions across four days, one lift each. The squat and the
+     * deadlift used to take two apiece and share both lower days, which
+     * meant a squat opening every lower session and a deadlift following
+     * it — dropped on request.
      *
-     * The order is the interesting part. Tuesday opens with the squat and
-     * Thursday with the deadlift, because a lift that is always second is
-     * a lift that is never trained fresh. See `assignStrengthLifts`.
-     *
-     * A day with two competition lifts runs one at its competition
-     * version and the other at its variation, and the competing lift goes
-     * first. Two maximal efforts in one session is the thing avoided; a
-     * top set taken after another lift's is the other.
-     *
-     * So Tuesday is low bar then conventional, Friday is sumo then high
-     * bar. The bench, alone on its days, walks its rotation in order.
+     * **Every lift is its competition version now**, and that is the
+     * cost rather than a coincidence: `strengthSlugFor` walks the
+     * rotation by the lift's session ordinal and index 0 is always the
+     * competition variant, so a lift trained once a week never reaches
+     * index 1. The high bar squat and the conventional deadlift are no
+     * longer scheduled at all.
      */
     expect(mains).toEqual([
       ['bench-press'],
-      ['low-bar-squat', 'conventional-deadlift'],
+      ['low-bar-squat'],
       ['overhead-press'],
-      ['sumo-deadlift', 'high-bar-squat'],
+      ['sumo-deadlift'],
     ])
   })
 
@@ -175,7 +185,7 @@ describe('the assembled block', () => {
    * and neither is always the one being varied.
    */
   it('pairs a competition lift with a variation on a day that holds two', () => {
-    const week = block?.weeks[0]
+    const week = pairedBlock().blocks[0]?.weeks[0]
     let paired = 0
 
     for (const day of week?.days ?? []) {
@@ -261,7 +271,7 @@ describe('the assembled block', () => {
    * note recorded is answered rather than accepted.
    */
   it('opens a paired day with the lift that is competing', () => {
-    const week = block?.weeks[0]
+    const week = pairedBlock().blocks[0]?.weeks[0]
     let paired = 0
 
     for (const day of week?.days ?? []) {
@@ -322,12 +332,12 @@ describe('the assembled block', () => {
         ),
       ).length
 
-    // The bench and the press take one upper day each; the squat and the
-    // deadlift take two, sharing both lower days.
+    // One lift a day, four days. The squat and the deadlift used to take
+    // two each and share the lower days; the second movement came off.
     expect(sessions('bench')).toBe(1)
     expect(sessions('press')).toBe(1)
-    expect(sessions('squat')).toBe(2)
-    expect(sessions('deadlift')).toBe(2)
+    expect(sessions('squat')).toBe(1)
+    expect(sessions('deadlift')).toBe(1)
   })
 
   it('gives every slot a sub-category, so the badge pair is one shape', () => {
@@ -397,13 +407,13 @@ describe('naming a day after what is in it', () => {
     const tuesday = week.days[1]
     const friday = week.days[3]
 
-    expect(tuesday?.focus).toMatch(/^Low Bar Squat and Conventional Deadlift, then /)
+    expect(tuesday?.focus).toMatch(/^Low Bar Squat, then /)
     // Friday names the sumo first and then the high bar, because that is
     // the order it holds them in — a description saying "Low Bar Squat" on
     // the day the bar sits high would be the hardcoded-label failure in a
     // new place, and one naming them out of order would be a smaller
     // version of it.
-    expect(friday?.focus).toMatch(/^Sumo Deadlift and High Bar Squat, then /)
+    expect(friday?.focus).toMatch(/^Sumo Deadlift, then /)
 
     // Without the parenthetical variant, which is catalogue bookkeeping.
     expect(tuesday?.focus).not.toContain('(')
@@ -1211,7 +1221,8 @@ describe('the order a session is performed in', () => {
       const conditioning = roles.indexOf('conditioning')
       if (conditioning === -1) continue
 
-      expect(conditioning, day.label).toBe(roles.length - 1)
+      const tail = roles.slice(conditioning)
+      expect(new Set(tail), day.label).toEqual(new Set(['conditioning']))
     }
   })
 
@@ -1221,7 +1232,14 @@ describe('the order a session is performed in', () => {
       const conditioning = roles.indexOf('conditioning')
       if (conditioning === -1) continue
 
-      expect(conditioning, day.label).toBe(roles.length - 1)
+      /*
+       * Everything from the first conditioning slot on, rather than "the
+       * first one is the last slot". A lower day carries two — the
+       * treadmill and the swings — so the old form was asserting how many
+       * there are while claiming to assert where they sit.
+       */
+      const tail = roles.slice(conditioning)
+      expect(new Set(tail), day.label).toEqual(new Set(['conditioning']))
     }
   })
 })
@@ -1240,7 +1258,19 @@ describe('conditioning', () => {
         .flatMap((slot) => (slot.exercise.kind === 'specific' ? [slot.exercise.exerciseId] : [])),
     )
 
-    expect(all).toEqual(['incline-walk', 'kb-swing', 'incline-walk', 'kb-swing'])
+    /*
+     * The treadmill on every day, asked for directly, and the swings
+     * still after the lower ones. Two conditioning slots on a lower day
+     * and one on an upper day.
+     */
+    expect(all).toEqual([
+      'incline-walk',
+      'incline-walk',
+      'kb-swing',
+      'incline-walk',
+      'incline-walk',
+      'kb-swing',
+    ])
   })
 
   it('runs every day, split by domain rather than by spare time', () => {
@@ -1259,65 +1289,61 @@ describe('conditioning', () => {
       conditioningIn(dayIndex).map((slot) => slot.variant ?? '')
 
     expect(domainOn(0)).toEqual(['Zone 2'])
-    expect(domainOn(1)).toEqual(['HIIT'])
+    expect(domainOn(1)).toEqual(['Zone 2', 'HIIT'])
     expect(domainOn(2)).toEqual(['Zone 2'])
-    expect(domainOn(3)).toEqual(['HIIT'])
+    expect(domainOn(3)).toEqual(['Zone 2', 'HIIT'])
   })
 
   /*
-   * Conditioning is prescribed the way it is actually performed, which is
-   * a clock for some of it and sets for the rest.
+   * **Every conditioning slot is one block of time**, which reverses the
+   * two tests that stood here.
    *
-   * This asserted "time, always". True while every modality was a block
-   * of continuous work, and false for a protocol that is sets: thirty
-   * minutes of swings is not one thirty-minute effort, it is sets of ten
-   * on the minute, and the session screen logs *sets*. A single timed row
-   * gives one thing to tick at the end of half an hour.
+   * They guarded a plan that could prescribe *sets* — thirty minutes of
+   * swings as thirty rows of ten on the minute — and that the set count
+   * was derived from the duration so the two could not disagree. Both
+   * were true of `asSets`, and `asSets` is gone: _"no need to track that
+   * specific part, just a checkbox like we have now, I have a separate
+   * EMOM app."_
    *
-   * What is still guarded is that a rep-prescribed modality carries the
-   * load to use — a set of ten with no bell named is not a prescription.
+   * The rule that replaced it is worth a test of its own, because the
+   * failure it guards is silent — a plan gaining rows again would show up
+   * as a session screen asking somebody to tick fifteen boxes for
+   * something their phone is already counting.
    */
-  it('prescribes a clock or sets, and names the load when it is sets', () => {
-    for (const day of week.days) {
-      for (const slot of day.slots.filter((candidate) => candidate.role === 'conditioning')) {
-        const first = slot.sets[0]
-        if (first === undefined) continue
+  it('prescribes one block of time, never rows to tick', () => {
+    const slots = week.days.flatMap((day) =>
+      day.slots.filter((candidate) => candidate.role === 'conditioning'),
+    )
 
-        if (first.reps.kind === 'time') continue
+    expect(slots.length).toBeGreaterThan(0)
 
-        expect(
-          first.reps.kind,
-          slot.exercise.kind === 'specific' ? slot.exercise.exerciseId : '',
-        ).toBe('fixed')
-        expect(first.load.kind).toBe('absolute')
-      }
+    for (const slot of slots) {
+      const named = slot.exercise.kind === 'specific' ? slot.exercise.exerciseId : ''
+      expect(slot.sets, named).toHaveLength(1)
+      expect(slot.sets[0]?.reps.kind, named).toBe('time')
     }
   })
 
-  /*
-   * And the set count matches the clock. The two are derived from one
-   * interval rather than written down separately, so a plan cannot say
-   * "thirty minutes" and hand out a number of sets that takes longer.
-   */
-  it('fills its stated duration when prescribed as sets', () => {
-    const swings = week.days
-      .flatMap((day) => day.slots)
-      .filter(
-        (slot) =>
-          slot.role === 'conditioning' &&
-          slot.exercise.kind === 'specific' &&
-          slot.exercise.exerciseId === 'kb-swing',
-      )
+  /* And the block is as long as the plan says it is. */
+  it('runs for the duration its plan states', () => {
+    const minutesOf = (slug: string): number[] =>
+      week.days
+        .flatMap((day) => day.slots)
+        .filter(
+          (slot) =>
+            slot.role === 'conditioning' &&
+            slot.exercise.kind === 'specific' &&
+            slot.exercise.exerciseId === slug,
+        )
+        .map((slot) =>
+          Math.round(
+            slot.sets.reduce((total, set) => total + setSeconds(set, slot.restSeconds ?? 0), 0) /
+              60,
+          ),
+        )
 
-    expect(swings.length).toBeGreaterThan(0)
-
-    for (const slot of swings) {
-      const seconds = slot.sets.reduce(
-        (total, set) => total + setSeconds(set, slot.restSeconds ?? 0),
-        0,
-      )
-      expect(Math.round(seconds / 60)).toBe(30)
-    }
+    expect(minutesOf('incline-walk')).toEqual([30, 30, 30, 30])
+    expect(minutesOf('kb-swing')).toEqual([15, 15])
   })
 
   it('counts toward the session budget rather than riding along free', () => {
@@ -1399,7 +1425,7 @@ describe('rep ranges', () => {
            */
           const expected =
             exercise.repRange ??
-            (exercise.isCompound ? { low: 10, high: 15 } : { low: 15, high: 30 })
+            (exercise.isCompound ? { low: 5, high: 10 } : { low: 10, high: 30 })
           expect({ low: set.reps.low, high: set.reps.high }, exercise.name).toEqual(expected)
           seen.set(exercise.isCompound ? 'compound' : 'isolation', exercise.name)
         }

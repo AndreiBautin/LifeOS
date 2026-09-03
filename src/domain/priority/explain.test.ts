@@ -62,14 +62,26 @@ describe('naming a block from its settings', () => {
   })
 
   /*
-   * The shipped sessions are not uniform any more — the squat and the
-   * deadlift take two each while the bench and the press take one — so the
-   * default block does name its lead lifts.
+   * **The shipped week names neither a focus nor a lead lift**, and both
+   * halves of that are deliberate rather than a gap in the description.
+   *
+   * Every muscle is on the same level — the difference between them is
+   * how many days the split gives them, which is not emphasis — and
+   * every competition lift is trained once, since the second strength
+   * movement came off the lower days. There is nothing standing out to
+   * name.
+   *
+   * This asserted `'General · Squat and deadlift strength'` when the
+   * squat and the deadlift took two sessions each. Kept rather than
+   * merged into the fixture-driven test above it, because what it is for
+   * is the *shipped* constants: a change to either that starts making a
+   * claim about the block fails here.
    */
-  it('names the lifts the shipped week leads with', () => {
+  it('names neither a focus nor a lead lift for the shipped week', () => {
     const described = describeBlock(DEFAULT_MUSCLE_VOLUMES, sets, DEFAULT_LIFT_SESSIONS)
 
-    expect(described.name).toBe('General · Squat and deadlift strength')
+    expect(described.name).toBe('General')
+    expect(described.focus.lifts).toBeUndefined()
   })
 
   /*

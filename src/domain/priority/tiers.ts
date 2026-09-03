@@ -66,10 +66,28 @@ export type LiftSessions = Readonly<Record<StrengthLift, number>>
  * A third session for any of these would need a day that does not exist,
  * and `assignStrengthLifts` quietly drops it.
  */
+/**
+ * One competition lift a day, on every day of the week.
+ *
+ * The squat and the deadlift were twice each, which put both of them on
+ * both lower days — a squat opening every lower session and a deadlift
+ * following it. Asked to drop the second: _"let's drop the second
+ * strength movement on lower days."_ With two lower days and one lift
+ * each, that is one session apiece.
+ *
+ * **The cost lands on the variations rather than on the lift**, which is
+ * how the rotation was designed to fail: `strengthSlugFor` takes the
+ * lift's session ordinal modulo the rotation, and index 0 is always the
+ * competition version. So a lift at one session a week is the
+ * competition version every week — a low bar squat and a sumo deadlift,
+ * with the high bar and conventional variants no longer scheduled at
+ * all. That is deliberate. The number the total is scored on keeps
+ * getting trained; what goes is the variety around it.
+ */
 export const DEFAULT_LIFT_SESSIONS: LiftSessions = {
-  squat: 2,
+  squat: 1,
   bench: 1,
-  deadlift: 2,
+  deadlift: 1,
   press: 1,
 }
 

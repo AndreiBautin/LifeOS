@@ -6288,6 +6288,101 @@ Friday: barbell calf raise. **Every target met exactly** — 6/6 for the
 three at twice a week, 5/5 for the five at once — and no exercise twice
 in the week but the calf raise.
 
+**Three sets everywhere, one lift a day, abs on the lower days, and the
+treadmill on all four.** A single round of reports, each of which moved
+something the round before had just settled.
+
+**`ONCE` went back to `low`, reversing the note above it.** Those five
+muscles were raised to the `high` level when they dropped to one session
+a week, to keep the weekly volume where it had been. Reported back as
+_"I'm seeing some exercises still run as 5 sets"_ — fair, because the
+whole method is _straight 3 sets on anything_, and preserving a number by
+breaking the one rule the programme is built on was the wrong trade. The
+chest now gets three direct sets a week on top of being benched heavily.
+
+**One competition lift a day.** _"Let's drop the second strength movement
+on lower days."_ `DEFAULT_LIFT_SESSIONS` is 1 across the board, so the
+squat opens Tuesday and the deadlift opens Friday with nothing following
+either. **The cost lands on the variations, which is how the rotation was
+designed to fail**: `strengthSlugFor` indexes by the lift's session
+ordinal and index 0 is always the competition version, so a lift trained
+once a week never reaches index 1. The high bar squat and the
+conventional deadlift are no longer scheduled at all. The number the
+total is scored on keeps getting trained; the variety around it goes.
+
+**The trunk is trained directly**, ab wheel on one lower day and hanging
+leg raise on the other — it has exactly two movements and uses both, so
+it joins `TWICE` without repeating an exercise. The lower days had the
+room the moment they stopped carrying two competition lifts each.
+
+**Conditioning is a treadmill block on every day and swings after the
+lower ones**, and the swings are **one checkbox** rather than fifteen
+rows. `asSets` is deleted: it materialised a thirty-minute EMOM as thirty
+sets of ten so the session screen could log each one, and the reply was
+_"no need to track that specific part, just a checkbox like we have now,
+I have a separate EMOM app."_ An app that already runs the minute is a
+better clock than a list of tick-boxes, and mirroring its output here is
+a second copy of a count kept properly somewhere else — the argument that
+removed the macros and the sleep row. The protocol is in the note, where
+it is read before starting.
+
+**Adding the walk to the lower days exposed two bugs, both found by
+looking at the week rather than by a test.**
+
+**The fill's "already paid today" seed counted conditioning.** It asked
+`role !== 'strength'`, which is the same answer as `countsAsHypertrophy`
+for everything except a conditioning slot — and `incline-walk` is
+`primaryMuscle: 'calves'`. So a thirty-minute walk paid the calves a set
+they had not done: Friday saw two owed where three is the floor, refused
+the slot, and the week delivered **3 of 6 calf sets** with nothing on
+screen saying why. This file already records that exact bug — swings
+arriving as glute sets, a walk adding two calf sets — and already names
+`countsAsHypertrophy` as the one predicate that settles it. The tracking
+was fixed to use it and **this seed was left phrased its own way**. A
+rule with two implementations is a bug with a delay on it.
+
+**And `trailingLast` put the trunk work at the top of the day.** It
+reinserted trailing muscles at "the last accessory position", found by
+scanning for the last hypertrophy slot — which answers 0 when there are
+none. Friday's only accessory was the leg raise, so the day opened on it
+with the deadlift underneath: the one thing `inSessionOrder` exists to
+prevent. It is found from the first _conditioning_ slot now, which gives
+the same answer whenever another accessory is present and the right one
+when it is not. It could not have shown up before, because the trunk and
+the grip were at zero sessions and a day with trailing work and nothing
+else could not be built.
+
+**`describeBlock`'s focus is the level now, and that is a third
+correction to one sentence.** It was "the muscles in tier 1", then "the
+muscles getting the most weekly sets" — a real improvement at the time,
+argued as _a lifter who trains their side delts three times a week has
+emphasised them whether or not they ever opened a tier list_. **That
+argument died when frequency stopped being a choice.** The split decides
+it: four of nine muscles landed at six weekly sets against five at three,
+and the block named itself **"Triceps, biceps, calves and core"** — true
+about set counts, useless as a name. A level is still a decision, and it
+is the one that says "train this harder", so the focus reads
+`setsPerSessionFor` and a week where every muscle shares a level is
+General. **A margin and then a share were both tried first and neither
+separated the cases** — 1 of 2 muscles is a focus and 4 of 9 is not, so
+no count ratio works; the discriminator was never the count.
+
+**Four tests moved to their own recipe rather than being deleted.** The
+paired-day rules — one competition version and one variation, the
+competing lift first — are still live code any recipe with two sessions
+for a lift reaches, so `pairedBlock()` builds a week that has one. The
+shipped default no longer does, which is not the same as the rule being
+gone.
+
+Driven end to end. Monday: bench, row, curl, French press, lateral
+raise, 30 min walk. Tuesday: low bar squat, calf raise, ab wheel, 30 min
+walk, 15 min swings. Thursday: press, pull-up, dips, EZ curl,
+skullcrusher, rear delt raise, 30 min walk. Friday: sumo deadlift, calf
+raise, hanging leg raise, 30 min walk, 15 min swings. **Every target met
+exactly** — 6/6 for the four at twice a week, 3/3 for the five at once —
+every slot three sets, and no exercise twice in the week but the calf
+raise.
+
 **Dropping the forearms made the repeat penalty's pattern key inert**,
 which is measured rather than assumed: after the cut **no muscle has
 more than one hypertrophy pattern**, so `primaryMuscle|pattern` keys the
@@ -6300,7 +6395,7 @@ and are in the git history.
 its only one. The field stays as the escape hatch it was written to be.
 
 **Two rep ranges, chosen by the movement, and one exception.** Compounds
-run 10–15 and isolations 15–30 — `COMPOUND_REPS` and `ISOLATION_REPS` in
+run 5–10 and isolations 10–30 — `COMPOUND_REPS` and `ISOLATION_REPS` in
 `domain/assembly/rp-assemble.ts`. Every exercise used to hold a
 `defaultRepRange`: fifteen or so hand-set pairs whose differences nobody
 could account for and which drifted as the catalogue grew.
@@ -6313,10 +6408,12 @@ was written to be — **an exception for a movement the rule gets wrong,
 not a place to tune every exercise.** **If a third or fourth entry
 appears, the rule is what needs changing.**
 
-Worth being concrete about what it did, because "adjusted the rep ranges"
-undersells it: this is roughly two and a half times the reps and
-substantially less load on **every isolation slot in the program**. A
-12–20 lateral raise is now 15–30 with the dumbbell that implies.
+Both have moved twice. The compounds were 5–8, then 10–15, and are 5–10
+now; the isolations were 12–20, then 15–30, and are 10–30. What the
+current pair says is that a compound is a strength-adjacent movement
+done for reps and an isolation is a long set — and that the bottom of
+each range is where the load lives, which is why the compounds came back
+down after the accessory volume was cut to three sets a week.
 
 **Every hypertrophy slot used to end in a set to failure, and none does
 now.** Three straight sets in a range, and the range is what says when to

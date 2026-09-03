@@ -15,7 +15,7 @@ import type {
   Slot,
   SlotRole,
 } from '@/domain/programs/program'
-import { DEFAULT_PROGRAM_SETTINGS, SECONDS_PER_REP } from '@/domain/programs/program'
+import { DEFAULT_PROGRAM_SETTINGS } from '@/domain/programs/program'
 import type { LiftSessions, StrengthLift } from '@/domain/priority/tiers'
 import {
   DEFAULT_LIFT_SESSIONS,
@@ -27,7 +27,12 @@ import { describeBlock } from '@/domain/priority/explain'
 import type { RpDay, RpSplit } from '@/domain/splits/rp-splits'
 import { rpFrequency, rpSplitForDays } from '@/domain/splits/rp-splits'
 import { MUSCLE_GROUPS } from '@/domain/exercises/taxonomy'
-import { countsAsWorking, slotVolume, type VolumeMap } from '@/domain/volume/accounting'
+import {
+  countsAsHypertrophy,
+  countsAsWorking,
+  slotVolume,
+  type VolumeMap,
+} from '@/domain/volume/accounting'
 import {
   MAX_DIRECT_SETS_PER_SESSION,
   requiredFrequency,
@@ -780,9 +785,25 @@ function fillHypertrophy(args: FillArgs): BuiltSlots {
    * Today's spend has to come off today.
    */
   let added = args.existingSlots.reduce((total, slot) => {
-    // Strength slots excluded: they are not hypertrophy volume and do not
-    // reduce what a muscle is owed. See `committed` in `buildWeek`.
-    if (slot.role === 'strength') return total
+    /*
+     * **`countsAsHypertrophy`, not "anything but strength".**
+     *
+     * This asked `role !== 'strength'`, which is the same answer for
+     * every slot except a conditioning one — and conditioning is exactly
+     * where the difference bites. `incline-walk` is `primaryMuscle:
+     * 'calves'`, so putting a thirty-minute walk on the lower days paid
+     * the calves a set they had not done: Friday's fill saw two owed
+     * where three is the floor, refused the slot, and the week delivered
+     * **3 of 6 calf sets** with nothing on screen saying why.
+     *
+     * This file already records that bug — thirty sets of swings
+     * arriving as sixty glute sets, a walk quietly adding two calf sets
+     * — and records `countsAsHypertrophy` as the one predicate that
+     * settles it. The volume *tracking* was fixed to use it; this seed
+     * was left phrased its own way and went on disagreeing. A rule with
+     * two implementations is a bug with a delay on it.
+     */
+    if (!countsAsHypertrophy(slot.role)) return total
     const ref = slot.exercise
     if (ref.kind !== 'specific') return total
     const exercise = deps.exercises.find((candidate) => candidate.id === ref.exerciseId)
@@ -1273,8 +1294,8 @@ function trainedDirectly(
  * accessory work is now unambiguously hypertrophy at every slot, and the
  * only place low reps appear is the lifts that are scored on them.
  */
-const COMPOUND_REPS = { low: 10, high: 15 } as const
-const ISOLATION_REPS = { low: 15, high: 30 } as const
+const COMPOUND_REPS = { low: 5, high: 10 } as const
+const ISOLATION_REPS = { low: 10, high: 30 } as const
 
 /**
  * Gone: the back-off count is derived from the fatigue target now.
@@ -1614,36 +1635,19 @@ function conditioningSlots(
     const minutes = isDeload ? Math.max(10, Math.round(plan.minutes / 2)) : plan.minutes
 
     /*
-     * Sets of reps at a load, when the plan says so, and one block of time
-     * otherwise.
+     * One block of time, whatever the conditioning is.
      *
-     * The set count is the minutes divided by the rest interval rather
-     * than a number written down beside them — a plan carrying both "30
-     * minutes" and "30 sets" has two places to change and one of them
-     * will be missed. It also means the deload halving the clock halves
-     * the swings for free.
+     * Swings were the exception and are not any more — see
+     * `ConditioningPlan`. What that buys, beyond the checkbox that was
+     * asked for, is that the minutes are the only number: a plan used to
+     * carry a duration *and* an interval that the set count was derived
+     * from, and `estimateDayMinutes` had to agree with both.
      */
-    const sets: readonly SetPrescription[] =
-      plan.asSets === undefined
-        ? [{ load: { kind: 'open' }, reps: { kind: 'time', seconds: minutes * 60 } }]
-        : Array.from(
-            { length: Math.max(1, Math.round((minutes * 60) / plan.asSets.intervalSeconds)) },
-            () => ({
-              load: { kind: 'absolute' as const, load: plan.asSets?.load ?? 0 },
-              reps: { kind: 'fixed' as const, reps: plan.asSets?.reps ?? 10 },
-            }),
-          )
+    const sets: readonly SetPrescription[] = [
+      { load: { kind: 'open' }, reps: { kind: 'time', seconds: minutes * 60 } },
+    ]
 
-    /*
-     * Rest is what is left of the interval once the work is done, so the
-     * slot costs the half hour it says. Derived rather than written down
-     * beside the interval: two numbers for one protocol is two places to
-     * change and one of them gets missed.
-     */
-    const restSeconds =
-      plan.asSets === undefined
-        ? 0
-        : Math.max(0, plan.asSets.intervalSeconds - plan.asSets.reps * SECONDS_PER_REP)
+    const restSeconds = 0
 
     return [
       {
@@ -1678,39 +1682,28 @@ function conditioningSlots(
  * is steady aerobic work, and an incline walk is deliberately low enough
  * to cost nothing at all.
  */
+/**
+ * A block of conditioning: how long, in which intensity domain, and what
+ * to actually do for it.
+ *
+ * **There is no `asSets` any more, and losing it is the point.** Swings
+ * used to be materialised as fifteen or thirty rows of ten so that the
+ * session screen could log each one, on the reasoning that a single timed
+ * row gives a lifter one thing to tick at the end of half an hour.
+ *
+ * That was right about what the rows were for and wrong about who should
+ * be counting: _"no need to track that specific part, just a checkbox
+ * like we have now, I have a separate EMOM app."_ An app that already
+ * runs the minute is a better clock than a list of checkboxes, and
+ * mirroring its output here is a second copy of a count kept properly
+ * somewhere else — the argument that removed the macros and the sleep
+ * row. The protocol is in the note where a person reads it before
+ * starting, and the slot is one box.
+ */
 interface ConditioningPlan {
   readonly minutes: number
   readonly note: string
   readonly style: string
-  /**
-   * Prescribed as sets of reps at a load rather than as one block of
-   * time.
-   *
-   * Some conditioning is a clock — you walk on an incline for twenty
-   * minutes and there is nothing to count. Some of it is sets, and the
-   * clock is only how long you keep taking them: thirty minutes of swings
-   * is not one thirty-minute effort, it is sets of ten with a bell,
-   * repeated until the half hour is up.
-   *
-   * The distinction is worth carrying because the session screen logs
-   * *sets*. A single timed row gives a lifter one thing to tick at the end
-   * of half an hour; rows of ten give them the thing they are actually
-   * counting, and a load to load.
-   */
-  readonly asSets?: {
-    readonly reps: number
-    readonly load: number
-    /**
-     * How often a set starts, not how long you rest between them.
-     *
-     * "On the minute" is an interval: the work and the rest together fill
-     * it. Storing the rest instead makes the same protocol cost more the
-     * heavier the set gets — thirty sets of ten with a minute's rest is
-     * forty-five minutes, not thirty — so the duration and the set count
-     * would quietly disagree with each other.
-     */
-    readonly intervalSeconds: number
-  }
 }
 
 const CONDITIONING_PLANS: Readonly<Record<string, ConditioningPlan>> = {
@@ -1720,12 +1713,9 @@ const CONDITIONING_PLANS: Readonly<Record<string, ConditioningPlan>> = {
     note: 'Steep incline, easy pace. You should be able to hold a conversation.',
   },
   'kb-swing': {
-    minutes: 30,
+    minutes: 15,
     style: 'HIIT',
-    // A minute a set: ten swings, then rest what is left of the minute.
-    // Thirty of those is the session.
-    asSets: { reps: 10, load: 60, intervalSeconds: 60 },
-    note: 'Sets of ten on the minute with the 60 lb bell. Hips, not arms.',
+    note: 'Ten swings on the minute with the 60 lb bell, for fifteen minutes. Hips, not arms.',
   },
 }
 
@@ -2059,17 +2049,27 @@ function trailingLast(slots: readonly Slot[], library: readonly Exercise[]): rea
   if (trailing.length === 0) return slots
 
   /*
-   * Reinserted at the last accessory position rather than appended, so
-   * the conditioning stays where `rank` put it. Appending would move a
+   * Reinserted before the conditioning rather than appended, so the
+   * conditioning stays where `rank` put it. Appending would move a
    * kettlebell swing ahead of a wrist curl and quietly undo "finishes
    * with conditioning".
+   *
+   * **Found by the position of the first conditioning slot, not by the
+   * last accessory one**, and the difference is a bug this shipped with
+   * for a day. Scanning for the last hypertrophy slot answers 0 when
+   * there are none — so a day whose *only* accessory is trailing work
+   * put it at index 0, **above the warm-ups and above the competition
+   * lift**. Friday opened on a hanging leg raise with the deadlift under
+   * it, which is the one thing `inSessionOrder` exists to prevent.
+   *
+   * It had no way to show up before: the trunk and the grip were at zero
+   * sessions, so a day with trailing work and nothing else could not be
+   * built. The two answers agree whenever any other accessory is
+   * present, because `rank` already sorts conditioning last.
    */
   const rest = slots.filter((slot) => !isTrailing(slot))
-  const lastAccessory = rest.reduce(
-    (at, slot, index) =>
-      slot.role === 'hypertrophy' || slot.role === 'assistance' ? index + 1 : at,
-    0,
-  )
+  const firstConditioning = rest.findIndex((slot) => slot.role === 'conditioning')
+  const lastAccessory = firstConditioning === -1 ? rest.length : firstConditioning
 
   return [...rest.slice(0, lastAccessory), ...trailing, ...rest.slice(lastAccessory)]
 }
