@@ -820,15 +820,6 @@ describe('how a muscle is spread across its sessions', () => {
     expect(swing.every((slot) => slot.variant === 'HIIT')).toBe(true)
   })
 
-  const wristDirections = (built: ProgramTemplate): string[] =>
-    weekAt(built, 3).days.flatMap((day) =>
-      day.slots.flatMap((slot) => {
-        if (slot.exercise.kind !== 'specific') return []
-        const pattern = lookup(slot.exercise.exerciseId)?.pattern
-        return pattern === 'wrist-flexion' || pattern === 'wrist-extension' ? [pattern] : []
-      }),
-    )
-
   /*
    * A muscle with more than one option does not get the same exercise on
    * both of its sessions.
@@ -885,43 +876,25 @@ describe('how a muscle is spread across its sessions', () => {
     }
   })
 
-  it('trains the forearms both ways rather than twice the same way', () => {
-    /*
-     * Four wrist exercises are two movements, and an id-level repeat
-     * penalty happily scheduled a barbell wrist curl and then a dumbbell
-     * wrist curl — twice into flexion, with the extensors untouched.
-     * Keying the penalty on muscle-and-pattern is what makes "once each
-     * way" fall out of a rule that was already there.
-     *
-     * Built with the forearms tiered up rather than read off the shipped
-     * week, because the shipped week maintains them and a maintained
-     * muscle gets one session — see below. The rule is reachable from the
-     * tier editor, so it is tested through the tier editor's input rather
-     * than deleted for not firing on the default.
-     */
-    const directions = wristDirections(build({ muscleVolumes: trainingOnly(['forearms'], 2) }))
-
-    expect(directions).toHaveLength(2)
-    expect(new Set(directions).size).toBe(2)
-  })
-
   /*
-   * And at tier 3 it gets one direction, which is the model behaving
-   * correctly rather than the rule above being violated.
+   * **The two forearm tests are gone with the forearm exercises**, and
+   * what went with them is worth writing down rather than losing
+   * quietly.
    *
-   * A maintained muscle is trained once a week and one session cannot be
-   * both flexion and extension. Recorded rather than fixed because the
-   * alternative — a floor forcing a second session for a muscle the
-   * lifter has explicitly deprioritised — would make the bottom tier mean
-   * something different for the forearms than for everything else.
+   * They were the only coverage of the *pattern* half of the repeat
+   * penalty's key — `primaryMuscle|pattern` — because the forearms were
+   * the only muscle with two hypertrophy patterns to tell apart:
+   * wrist-flexion and wrist-extension. All forearm work was dropped on
+   * request, so there is no longer a pair to distinguish.
    *
-   * It is worth knowing that the shipped default lands here, and that the
-   * flexors therefore get nothing: the pulls are strapped, so no
-   * competition lift pays them either.
+   * **Measured after the cut: no muscle has more than one hypertrophy
+   * pattern.** The pattern half of the key is therefore inert — it keys
+   * the same as `primaryMuscle` alone for every muscle in the
+   * catalogue. It stays because it costs nothing and becomes live again
+   * the moment two patterns share a muscle, which is exactly what
+   * adding forearm work back would do. If that happens, these tests are
+   * in the git history.
    */
-  it('trains a maintained forearm once, in one direction', () => {
-    expect(new Set(wristDirections(build())).size).toBeLessThanOrEqual(1)
-  })
 
   it('does not credit the forearms for a strapped pull', () => {
     /*
@@ -930,7 +903,9 @@ describe('how a muscle is spread across its sessions', () => {
      * that still paid the forearms for a deadlift would report a muscle
      * covered by work nobody did, and schedule nothing direct for it.
      */
-    for (const slug of ['sumo-deadlift', 'barbell-row', 'pull-up', 'chin-up', 'barbell-shrug']) {
+    // The chin-up was on this list and has been dropped from the
+    // catalogue; the rule is unchanged and the remaining four show it.
+    for (const slug of ['sumo-deadlift', 'barbell-row', 'pull-up', 'barbell-shrug']) {
       expect(lookup(slug)?.secondaryMuscles, slug).not.toContain('forearms')
     }
 
@@ -1453,12 +1428,15 @@ describe('rep ranges', () => {
           if (set.reps.kind !== 'range') continue
 
           /*
-           * The override wins where one exists. A feet-elevated push-up is
-           * a compound with no load to vary, so 5–8 would mean stopping a
-           * set with twenty reps left in it.
+           * The override still wins where one exists, though nothing
+           * declares one now: the feet-elevated push-up was the only
+           * entry and has been dropped. `repRange` stays as the escape
+           * hatch for a movement the rule gets wrong — see the note on
+           * the field.
            */
           const expected =
-            exercise.repRange ?? (exercise.isCompound ? { low: 5, high: 8 } : { low: 15, high: 30 })
+            exercise.repRange ??
+            (exercise.isCompound ? { low: 10, high: 15 } : { low: 15, high: 30 })
           expect({ low: set.reps.low, high: set.reps.high }, exercise.name).toEqual(expected)
           seen.set(exercise.isCompound ? 'compound' : 'isolation', exercise.name)
         }

@@ -196,7 +196,6 @@ const STRAPPED: readonly string[] = [
   'romanian-deadlift',
   'barbell-row',
   'pull-up',
-  'chin-up',
   'barbell-shrug',
   'hanging-leg-raise',
 ]
@@ -316,34 +315,6 @@ const ENTRIES: readonly CatalogueEntry[] = [
     defaultRestSeconds: REST_HEAVY,
   },
 
-  /* ---- Chest -------------------------------------------------------- */
-  {
-    slug: 'feet-elevated-push-up',
-    name: 'Feet-Elevated Push-Up',
-    primaryMuscle: 'chest',
-    secondaryMuscles: ['triceps', 'front-delts'],
-    equipment: 'bodyweight',
-    // Shares the dip's pattern, so the two alternate rather than both
-    // being scheduled and counting the chest trained twice.
-    pattern: 'horizontal-push',
-    isCompound: true,
-    intent: 'hypertrophy',
-    sfr: 4,
-    systemicCost: 0.25,
-    /*
-     * The one exercise the compound rep range gets wrong.
-     *
-     * Compounds run 5–8 because load is the variable that matters on
-     * them. This one has no load to vary — the bar is your body and the
-     * only adjustment is how high the feet go — so 5–8 would mean stopping
-     * a set with twenty reps left in it. See `repRange` on
-     * `CatalogueEntry` for why this is an override rather than a general
-     * rule about bodyweight work: dips and pull-ups are bodyweight too and
-     * are genuinely 5–8 movements for most people.
-     */
-    repRange: { low: 15, high: 30 },
-    defaultRestSeconds: REST,
-  },
   {
     slug: 'dips',
     name: 'Dips',
@@ -374,47 +345,6 @@ const ENTRIES: readonly CatalogueEntry[] = [
     loadBasis: 'bodyweight',
     defaultRestSeconds: REST,
     notes: 'The width builder. Tier 2 priority — worth the systemic cost.',
-  },
-  {
-    slug: 'chin-up',
-    name: 'Chin-Up',
-    primaryMuscle: 'lats',
-    secondaryMuscles: ['biceps', 'upper-back'],
-    equipment: 'bodyweight',
-    pattern: 'vertical-pull',
-    isCompound: true,
-    intent: 'hypertrophy',
-    sfr: 4,
-    systemicCost: 0.28,
-    loadBasis: 'bodyweight',
-    defaultRestSeconds: REST,
-    notes: 'Doubles as biceps volume, which matters when arms are tier 1.',
-  },
-  {
-    slug: 'underhand-barbell-row',
-    name: 'Underhand Barbell Row',
-    primaryMuscle: 'upper-back',
-    secondaryMuscles: ['lats', 'biceps', 'rear-delts'],
-    equipment: 'barbell',
-    /*
-     * The same pattern as the overhand row on purpose.
-     *
-     * The weekly repeat penalty keys on `primaryMuscle|pattern`, so
-     * calling this something else would let the week schedule both rows
-     * and count the upper back trained twice by two names — which is the
-     * bug the pattern key exists to stop. Sharing the pattern makes them
-     * one movement that the rotation alternates between, exactly as the
-     * chin-up and the pull-up do for the lats.
-     */
-    pattern: 'horizontal-pull',
-    isCompound: true,
-    intent: 'hypertrophy',
-    // A supinated grip puts the biceps in a stronger position and the lats
-    // in a longer one, so the row is marginally cheaper for the same bar.
-    sfr: 3,
-    systemicCost: 0.45,
-    defaultRestSeconds: REST_HEAVY,
-    notes: 'Underhand grip. Elbows tight to the ribs, bar to the navel.',
   },
   {
     slug: 'barbell-row',
@@ -457,26 +387,6 @@ const ENTRIES: readonly CatalogueEntry[] = [
     defaultRestSeconds: REST_HEAVY,
   },
   {
-    slug: 'upright-row',
-    name: 'Upright Row',
-    primaryMuscle: 'side-delts',
-    secondaryMuscles: ['traps', 'biceps'],
-    equipment: 'barbell',
-    /*
-     * The same pattern as the lateral raise, so the weekly repeat penalty
-     * treats them as one movement and the rotation alternates between
-     * them rather than scheduling both and calling the side delts trained
-     * twice.
-     */
-    pattern: 'isolation',
-    isCompound: false,
-    intent: 'hypertrophy',
-    sfr: 4,
-    systemicCost: 0.2,
-    defaultRestSeconds: REST,
-    notes: 'Elbows lead, bar close to the body. Stop at chest height if the shoulder complains.',
-  },
-  {
     slug: 'db-lateral-raise',
     name: 'Dumbbell Lateral Raise',
     primaryMuscle: 'side-delts',
@@ -510,20 +420,6 @@ const ENTRIES: readonly CatalogueEntry[] = [
     systemicCost: 0.05,
     defaultRestSeconds: REST,
     notes: 'Largely redundant with pressing. Rarely needed unless front delts are prioritised.',
-  },
-  {
-    slug: 'ez-bar-rear-delt-raise',
-    name: 'EZ Bar Rear Delt Raise',
-    primaryMuscle: 'rear-delts',
-    secondaryMuscles: ['upper-back'],
-    equipment: 'ez-bar',
-    pattern: 'isolation',
-    isCompound: false,
-    intent: 'hypertrophy',
-    sfr: 4,
-    systemicCost: 0.15,
-    defaultRestSeconds: REST,
-    notes: 'Bent over, bar raised behind you toward the ceiling. Arms straight, no shrug.',
   },
   {
     slug: 'rear-delt-raise',
@@ -609,34 +505,6 @@ const ENTRIES: readonly CatalogueEntry[] = [
     defaultRestSeconds: REST,
     notes: 'Neutral grip throughout — brachialis and brachioradialis, not just biceps.',
   },
-  {
-    slug: 'reverse-curl',
-    name: 'Reverse Curl',
-    primaryMuscle: 'forearms',
-    secondaryMuscles: ['biceps'],
-    equipment: 'ez-bar',
-    /*
-     * Extension, not generic isolation.
-     *
-     * A reverse curl is a pronated-grip elbow flexion: the wrist
-     * extensors hold the bar against gravity for every rep, which is the
-     * same side of the forearm a reverse wrist curl trains. Under
-     * `isolation` it collided with nothing, so the repeat penalty — keyed
-     * on `primaryMuscle|pattern` — could not see that it and a reverse
-     * wrist curl are one movement, and the week scheduled both. Two
-     * extensor slots, the flexors untrained, and a forearm target
-     * reported as met.
-     *
-     * The same bug the wrist patterns were introduced to fix; this
-     * exercise was simply not named when they were.
-     */
-    pattern: 'wrist-extension',
-    isCompound: false,
-    intent: 'hypertrophy',
-    sfr: 5,
-    systemicCost: 0.07,
-    defaultRestSeconds: REST,
-  },
 
   /* ---- Triceps ------------------------------------------------------ */
   {
@@ -665,58 +533,6 @@ const ENTRIES: readonly CatalogueEntry[] = [
     defaultRestSeconds: REST,
     notes:
       'Overhead, so the long head gets a real stretch. Failure just means lowering behind the head.',
-  },
-
-  /* ---- Forearms ----------------------------------------------------- */
-  {
-    slug: 'bb-wrist-curl',
-    name: 'Barbell Wrist Curl',
-    primaryMuscle: 'forearms',
-    equipment: 'barbell',
-    pattern: 'wrist-flexion',
-    isCompound: false,
-    intent: 'hypertrophy',
-    sfr: 5,
-    systemicCost: 0.04,
-    defaultRestSeconds: REST,
-  },
-  {
-    slug: 'bb-reverse-wrist-curl',
-    name: 'Barbell Reverse Wrist Curl',
-    primaryMuscle: 'forearms',
-    equipment: 'barbell',
-    pattern: 'wrist-extension',
-    isCompound: false,
-    intent: 'hypertrophy',
-    sfr: 5,
-    systemicCost: 0.04,
-    defaultRestSeconds: REST,
-  },
-  {
-    slug: 'db-wrist-curl',
-    name: 'Dumbbell Wrist Curl',
-    primaryMuscle: 'forearms',
-    equipment: 'dumbbell',
-    pattern: 'wrist-flexion',
-    isCompound: false,
-    intent: 'hypertrophy',
-    sfr: 5,
-    systemicCost: 0.04,
-    isUnilateral: true,
-    defaultRestSeconds: REST,
-  },
-  {
-    slug: 'db-reverse-wrist-curl',
-    name: 'Dumbbell Reverse Wrist Curl',
-    primaryMuscle: 'forearms',
-    equipment: 'dumbbell',
-    pattern: 'wrist-extension',
-    isCompound: false,
-    intent: 'hypertrophy',
-    sfr: 5,
-    systemicCost: 0.04,
-    isUnilateral: true,
-    defaultRestSeconds: REST,
   },
 
   /* ---- Traps -------------------------------------------------------- */

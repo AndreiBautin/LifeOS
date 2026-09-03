@@ -1335,7 +1335,18 @@ function trainedDirectly(
  * isolation slot in the program. A 12–20 lateral raise becomes 15–30 with
  * the dumbbell that implies.
  */
-const COMPOUND_REPS = { low: 5, high: 8 } as const
+/**
+ * **Compounds are 10–15 now, not 5–8.** Asked for as part of the
+ * training redesign: _"hypertrophy compounds work in the 10-15 and
+ * isolations in 15-30."_
+ *
+ * The old pair split hypertrophy work into a heavy compound range and a
+ * long isolation one. What that bought was a strength-ish dose on the
+ * compounds, which the competition lifting already provides — so the
+ * accessory work is now unambiguously hypertrophy at every slot, and the
+ * only place low reps appear is the lifts that are scored on them.
+ */
+const COMPOUND_REPS = { low: 10, high: 15 } as const
 const ISOLATION_REPS = { low: 15, high: 30 } as const
 
 /**

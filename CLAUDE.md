@@ -5992,6 +5992,48 @@ sort and both rank the same. **`previousSetFor` must take the variant**:
 matching on the exercise alone hands the first back-off the previous
 session's _top set_ as its "last time".
 
+**The training redesign is under way, and this is the first stage of
+it.** Asked for as _"let's begin redesigning the training… just do a
+double progression for everything. No RPE. Strength 3-5, hypertrophy
+compounds 10-15, isolations 15-30. Straight 3 sets on anything"_, plus a
+list of exercises to drop.
+
+**What has landed: the catalogue cuts and the compound range.** Ten
+entries are gone — the underhand barbell row, the chin-up, the upright
+row, the EZ bar rear delt raise, the feet-elevated push-up, and all five
+forearm movements — and compounds run 10–15 rather than 5–8.
+
+**What has not, and why it is one piece rather than three.** Double
+progression, three straight sets and the removal of RPE cannot land
+separately: without RTS a strength slot has no load, and a percentage
+would be the "the percentage _is_ the prescription" trap this file
+records 5/3/1 being removed for. The load has to come from what you
+lifted last time, which means the working load reaches `resolve` through
+the athlete rather than being assembled — a change spanning
+`prescription.ts`, `resolve.ts`, `AthleteState`, the assembler and two
+large test files that encode RTS throughout. Shipping half of it would
+leave a programme that prescribes nothing.
+
+**The decisions are made and recorded here so the next pass does not
+re-litigate them**: increments are per lift (5 lb upper, 10 lb lower,
+5 lb isolation, a field on the exercise); the first session of an
+exercise is **open** — you type what you did, and history carries it
+from then on; and the customisation goes almost entirely — muscle
+volumes, per-lift sessions, the fatigue setting, weeks-before-deload and
+the priority tiers, leaving days-a-week, rounding, estimated maxes and
+exclusions.
+
+**Dropping the forearms made the repeat penalty's pattern key inert**,
+which is measured rather than assumed: after the cut **no muscle has
+more than one hypertrophy pattern**, so `primaryMuscle|pattern` keys the
+same as `primaryMuscle` alone everywhere. It stays because it costs
+nothing and goes live again the moment two patterns share a muscle. The
+two forearm tests that were its only coverage went with the exercises,
+and are in the git history.
+
+**`repRange` now has no entries**, the feet-elevated push-up having been
+its only one. The field stays as the escape hatch it was written to be.
+
 **Two rep ranges, chosen by the movement, and one exception.** Compounds
 run 5–8 and isolations 15–30 — `COMPOUND_REPS` and `ISOLATION_REPS` in
 `domain/assembly/rp-assemble.ts`. Every exercise used to hold a
