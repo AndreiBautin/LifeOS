@@ -81,7 +81,7 @@ function build(overrides: Partial<RpRecipe> = {}): ProgramTemplate {
  * the default that used to exercise them.
  */
 function pairedBlock(): ProgramTemplate {
-  return build({ liftSessions: { squat: 2, bench: 1, deadlift: 2, press: 1 } })
+  return build({ liftSessions: { squat: 2, bench: 1, deadlift: 2 } })
 }
 
 function weekAt(program: ProgramTemplate, index: number): ProgramWeek {
@@ -143,7 +143,7 @@ describe('the assembled block', () => {
     expect(block?.weeks.filter((week) => week.isDeload)).toHaveLength(1)
   })
 
-  it('gives every day exactly one competition lift', () => {
+  it('opens three of the four days with a competition lift', () => {
     const week = block?.weeks[0]
     const mains = (week?.days ?? []).map((day) => [
       ...new Set(
@@ -154,24 +154,18 @@ describe('the assembled block', () => {
     ])
 
     /*
-     * Four sessions across four days, one lift each. The squat and the
-     * deadlift used to take two apiece and share both lower days, which
-     * meant a squat opening every lower session and a deadlift following
-     * it — dropped on request.
+     * Three lifts, one session each, across four days — so **the second
+     * upper day carries no competition lift at all.** The overhead press
+     * was the fourth and came off: _"there's more compounds on that day
+     * already"_, which is true — it opens with dips and pull-ups.
      *
-     * **Every lift is its competition version now**, and that is the
-     * cost rather than a coincidence: `strengthSlugFor` walks the
-     * rotation by the lift's session ordinal and index 0 is always the
-     * competition variant, so a lift trained once a week never reaches
-     * index 1. The high bar squat and the conventional deadlift are no
-     * longer scheduled at all.
+     * **Every lift is its competition version**, and that is a cost
+     * rather than a coincidence: `strengthSlugFor` walks the rotation by
+     * the lift's session ordinal and index 0 is always the competition
+     * variant, so a lift trained once a week never reaches index 1. The
+     * high bar squat and the conventional deadlift are not scheduled.
      */
-    expect(mains).toEqual([
-      ['bench-press'],
-      ['low-bar-squat'],
-      ['overhead-press'],
-      ['sumo-deadlift'],
-    ])
+    expect(mains).toEqual([['bench-press'], ['low-bar-squat'], [], ['sumo-deadlift']])
   })
 
   /*
@@ -238,7 +232,7 @@ describe('the assembled block', () => {
     // get the thing being measured; a rotation that started anywhere else
     // would silently stop tracking the competition lift.
     const once = build({
-      liftSessions: { squat: 1, bench: 1, deadlift: 1, press: 1 },
+      liftSessions: { squat: 1, bench: 1, deadlift: 1 },
     })
 
     const benches = weekAt(once, 0).days.flatMap((day) =>
@@ -332,10 +326,13 @@ describe('the assembled block', () => {
         ),
       ).length
 
-    // One lift a day, four days. The squat and the deadlift used to take
-    // two each and share the lower days; the second movement came off.
+    /*
+     * Three lifts, one session each, on four days — so one upper day
+     * carries no competition lift at all. The overhead press was the
+     * fourth and came off: the press day already opens with dips and
+     * pull-ups.
+     */
     expect(sessions('bench')).toBe(1)
-    expect(sessions('press')).toBe(1)
     expect(sessions('squat')).toBe(1)
     expect(sessions('deadlift')).toBe(1)
   })
@@ -1035,8 +1032,17 @@ describe('the order a session is performed in', () => {
         ),
       )
 
+    /*
+     * **The other upper day, not "the press day".** It was found by the
+     * overhead press it carried, and the press is not a competition lift
+     * any more — so the day is identified by being the upper day that is
+     * *not* the bench day. The pairing rule is unchanged: a muscle's
+     * accessory work sits opposite the lift that already trains it, and
+     * with only one lift on the upper days that is still exactly one day.
+     */
     const benchDay = dayCarrying('bench-press')
-    const pressDay = dayCarrying('overhead-press')
+    const upperDays = week.days.filter((day) => day.label.includes('Upper'))
+    const pressDay = upperDays.find((day) => day.label !== benchDay?.label)
 
     expect(benchDay).toBeDefined()
     expect(pressDay).toBeDefined()
@@ -1431,7 +1437,7 @@ describe('rep ranges', () => {
            */
           const expected =
             exercise.repRange ??
-            (exercise.isCompound ? { low: 5, high: 10 } : { low: 10, high: 30 })
+            (exercise.isCompound ? { low: 5, high: 10 } : { low: 15, high: 30 })
           expect({ low: set.reps.low, high: set.reps.high }, exercise.name).toEqual(expected)
           seen.set(exercise.isCompound ? 'compound' : 'isolation', exercise.name)
         }

@@ -573,7 +573,6 @@ const STRENGTH_REGION: Record<StrengthLift, 'upper' | 'lower'> = {
   squat: 'lower',
   bench: 'upper',
   deadlift: 'lower',
-  press: 'upper',
 }
 
 /**
@@ -1295,7 +1294,7 @@ function trainedDirectly(
  * only place low reps appear is the lifts that are scored on them.
  */
 const COMPOUND_REPS = { low: 5, high: 10 } as const
-const ISOLATION_REPS = { low: 10, high: 30 } as const
+const ISOLATION_REPS = { low: 15, high: 30 } as const
 
 /**
  * Gone: the back-off count is derived from the fatigue target now.

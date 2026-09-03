@@ -3365,6 +3365,40 @@ registered in all of the places a collection has to register. The
 compiler and the guard tests found most of them, which is that machinery
 working as intended.
 
+**The overhead press is out of training, and `STRENGTH_LIFTS` is three
+again.** Asked for as _"let's drop overhead press from training since
+there's more compounds on that day already"_ — true, the second upper day
+opens with dips and pull-ups.
+
+**The second upper day now carries no competition lift at all**, which is
+the visible consequence and is fine: three lifts at one session each
+across four days leaves one day to the accessory work. `describeDay`
+reads the day off its finished slots, so Thursday simply stops naming a
+lift.
+
+**The exercise was converted back to `intent: 'hypertrophy'`, not left
+behind.** This file already names that trap in so many words — _a
+strength-intent exercise no rotation names is scheduled by nothing at
+all_, so leaving it would have retired the overhead press from the
+catalogue without saying so. It is pickable front-delt work again, which
+is where it started. It is not scheduled today because the front delts
+are at zero sessions, and that is a setting rather than silent
+unreachability.
+
+**Two costs worth stating, because nothing on a screen says them.** The
+side delts lose their only heavy work — the press was what paid them
+besides three sets of lateral raises — and the front delts now receive
+nothing at all from anywhere. Both are one setting away if they start
+looking thin.
+
+**Every call site was found by the compiler**, which is the
+`Record<StrengthLift, …>` mechanism doing its job: the labels, the
+default sessions, the slug map, the variations, the region map and six
+test fixtures all failed the build until they were dealt with. The one
+test whose _subject_ had gone — a block led by the overhead press —
+was deleted rather than repointed, because the rule it covered is still
+held by the bench-led case.
+
 **Finance and Train finished it, and the fold meant something different
 on each.** Every tab now reads the same way: a page header, then cards
 that name themselves, with what is settled behind an eye.
@@ -6650,7 +6684,7 @@ and are in the git history.
 its only one. The field stays as the escape hatch it was written to be.
 
 **Two rep ranges, chosen by the movement, and one exception.** Compounds
-run 5–10 and isolations 10–30 — `COMPOUND_REPS` and `ISOLATION_REPS` in
+run 5–10 and isolations 15–30 — `COMPOUND_REPS` and `ISOLATION_REPS` in
 `domain/assembly/rp-assemble.ts`. Every exercise used to hold a
 `defaultRepRange`: fifteen or so hand-set pairs whose differences nobody
 could account for and which drifted as the catalogue grew.
@@ -6663,12 +6697,14 @@ was written to be — **an exception for a movement the rule gets wrong,
 not a place to tune every exercise.** **If a third or fourth entry
 appears, the rule is what needs changing.**
 
-Both have moved twice. The compounds were 5–8, then 10–15, and are 5–10
-now; the isolations were 12–20, then 15–30, and are 10–30. What the
-current pair says is that a compound is a strength-adjacent movement
-done for reps and an isolation is a long set — and that the bottom of
-each range is where the load lives, which is why the compounds came back
-down after the accessory volume was cut to three sets a week.
+Both have moved more than once. The compounds were 5–8, then 10–15, and
+are 5–10; the isolations were 12–20, then 15–30, briefly 10–30, and are
+15–30 again. What the current pair says is that a compound is a
+strength-adjacent movement done for reps and an isolation is a long set —
+and that the bottom of each range is where the load lives, which is why
+the compounds came back down after the accessory volume was cut to three
+sets a week. The isolation floor went back up because ten reps of a
+lateral raise is a compound's rep count on an isolation's implement.
 
 **Every hypertrophy slot used to end in a set to failure, and none does
 now.** Three straight sets in a range, and the range is what says when to

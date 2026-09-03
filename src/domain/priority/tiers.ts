@@ -41,14 +41,13 @@ import { MAX_SESSIONS_PER_WEEK } from '@/domain/volume/levels'
  * the two while they were the same three lifts, and it is exactly the
  * kind of thing that looks like a tidy-up later.
  */
-export const STRENGTH_LIFTS = ['squat', 'bench', 'deadlift', 'press'] as const
+export const STRENGTH_LIFTS = ['squat', 'bench', 'deadlift'] as const
 export type StrengthLift = (typeof STRENGTH_LIFTS)[number]
 
 export const STRENGTH_LIFT_LABELS: Record<StrengthLift, string> = {
   squat: 'Squat',
   bench: 'Bench press',
   deadlift: 'Deadlift',
-  press: 'Overhead press',
 }
 
 /** Sessions a week for each competition lift. */
@@ -88,7 +87,6 @@ export const DEFAULT_LIFT_SESSIONS: LiftSessions = {
   squat: 1,
   bench: 1,
   deadlift: 1,
-  press: 1,
 }
 
 /** How many sessions a week this lift should be trained. */

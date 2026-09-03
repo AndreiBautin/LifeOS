@@ -89,7 +89,6 @@ export const STRENGTH_LIFT_SLUGS = {
    * heavy. `measure.ts` names the three total lifts explicitly, so the
    * score does not move.
    */
-  press: 'overhead-press',
 } as const
 
 /**
@@ -113,7 +112,6 @@ export const STRENGTH_VARIATIONS: Record<keyof typeof STRENGTH_LIFT_SLUGS, reado
   // the second and third bench days — a rotation longer than the frequency
   // never reaches its own end.
   bench: ['bench-press'],
-  press: ['overhead-press'],
   // Sumo is the competition pull and conventional is the variation, so
   // lower day 1 pulls sumo and lower day 2 pulls conventional.
   deadlift: ['sumo-deadlift', 'conventional-deadlift'],
@@ -370,17 +368,24 @@ const ENTRIES: readonly CatalogueEntry[] = [
     pattern: 'vertical-push',
     isCompound: true,
     /*
-     * A strength lift, run RTS-style on the second upper day.
+     * **Back in the hypertrophy pool, which is the second half of a round
+     * trip.** It was hypertrophy work, became a fourth strength lift when
+     * the upper days each wanted a heavy press, and is accessory work
+     * again: _"let's drop overhead press from training since there's more
+     * compounds on that day already."_ True — the press day already opens
+     * with dips and pull-ups.
      *
-     * It was hypertrophy work on the reasoning that it contributes nothing
-     * to a powerlifting total — still true, and never an argument against
-     * training it heavy. `measure.ts` names squat, bench and deadlift
-     * explicitly, so the total does not move.
+     * **Converted rather than left as `intent: 'strength'`**, which is the
+     * trap this file names in so many words: a strength-intent exercise no
+     * rotation names is scheduled by *nothing at all*, so leaving it would
+     * have retired it from the catalogue without saying so. It is pickable
+     * front-delt work again, which is where it started.
      *
-     * `isCompetition` stays false, which is what keeps it out of the
-     * total while still giving it a top set and back-offs.
+     * It is not scheduled today, because the front delts are at zero
+     * sessions — that is a setting, and an honest one, rather than the
+     * silent unreachability above.
      */
-    intent: 'strength',
+    intent: 'hypertrophy',
     sfr: 3,
     systemicCost: 0.5,
     loadBasis: 'estimated-1rm',

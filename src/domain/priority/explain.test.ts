@@ -33,8 +33,8 @@ const only = (
     ]),
   ) as MuscleVolumes
 
-const evenLifts: LiftSessions = { squat: 2, bench: 2, deadlift: 2, press: 2 }
-const benchLed: LiftSessions = { squat: 1, bench: 3, deadlift: 1, press: 1 }
+const evenLifts: LiftSessions = { squat: 2, bench: 2, deadlift: 2 }
+const benchLed: LiftSessions = { squat: 1, bench: 3, deadlift: 1 }
 
 describe('naming a block from its settings', () => {
   /*
@@ -149,7 +149,7 @@ describe('naming a block from its settings', () => {
     }
 
     const bench = describeBlock(volumes, sets, benchLed)
-    const deadlift = describeBlock(volumes, sets, { squat: 1, bench: 1, deadlift: 3, press: 1 })
+    const deadlift = describeBlock(volumes, sets, { squat: 1, bench: 1, deadlift: 3 })
 
     expect(bench.name).toBe('Chest · Bench press strength')
     expect(deadlift.name).toBe('Chest · Deadlift strength')
@@ -160,23 +160,18 @@ describe('naming a block from its settings', () => {
       squat: 3,
       bench: 1,
       deadlift: 3,
-      press: 1,
     })
 
     expect(twoLifts.name).toContain('Squat and deadlift strength')
   })
 
-  it('names the overhead press when it leads', () => {
-    const pressLed = describeBlock(DEFAULT_MUSCLE_VOLUMES, sets, {
-      squat: 1,
-      bench: 1,
-      deadlift: 1,
-      press: 3,
-    })
-
-    expect(pressLed.name).toContain('Overhead press strength')
-  })
-
+  /*
+   * **The press-led case was deleted with its subject.** It asserted that
+   * a block led by the overhead press named it, which cannot happen now
+   * the press is not a competition lift. The rule it covered — a lead
+   * lift is named in the title — is still held by "carries the strength
+   * focus in the title" on the bench, so nothing went unguarded.
+   */
   it('falls back to the volume focus alone when no lift leads', () => {
     const volumes: MuscleVolumes = {
       ...only(['chest', 'lats']),
@@ -228,7 +223,6 @@ describe('explaining the volume', () => {
       squat: 0,
       bench: 2,
       deadlift: 2,
-      press: 1,
     })
     const squat = none.lifts.find((lift) => lift.lift === 'squat')
 
