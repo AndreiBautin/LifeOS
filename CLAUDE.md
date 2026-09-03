@@ -4927,6 +4927,14 @@ drain a bar that was not being kept. The two halves ask the same
 question of the same days, or neither does. An overrun on a day that
 _was_ being kept still costs — there is a test for each direction.
 
+**Today does not drain it until the day is over.** Reported as _"health seems to drain awfully quickly — hasn't been a day yet and already down to 33. I should at least be able to go through today at 100, and if I don't hit my goals by end of day, then it starts draining the next day."_ Exactly right, and the arithmetic was doing it deliberately: today sat in the window like any other day, so at nine in the morning three untouched targets read as three misses. On a first day — when the pools were created today and today is therefore the only day in the window — one target of three is 33%, a bar that opens two-thirds empty because the day has not happened yet.
+
+It is the humane rule streaks already follow, applied to the other place it belongs: a run is not broken by a day you have yet to live. An unmet target today is **not yet missed**, so the bar starts full and falls tomorrow for whatever today did not do. Nothing is forgiven, only deferred.
+
+**An overrun is judged today, and the asymmetry is the point.** Missing a target is a thing that has not happened yet and may still; going over a limit has already happened and cannot be taken back. A bar that deferred both would let a heavy night read as a perfect day right up to midnight. Driven: untouched reads 100%, and five energy drinks against a 400 mg ceiling take it to 67% on the spot.
+
+**Today counts toward `met` rather than being left out of the denominator.** Dropping it instead makes a fresh morning `possible: 0` — an absent reading, which draws the "set up your restoratives" empty state at somebody who just did.
+
 **A day before the pool existed is not a day you missed**, and this was
 found by looking rather than by reasoning. Three rations set up and all
 three hit on the first afternoon read **14% in red**: six of the seven

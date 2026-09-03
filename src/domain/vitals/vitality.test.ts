@@ -47,8 +47,15 @@ describe('vitality', () => {
     expect(vitality([pool({ spent })], NOW).value).toBe(1)
   })
 
-  it('is empty when nothing was hit at all', () => {
-    expect(vitality([pool()], NOW).value).toBe(0)
+  /*
+   * Every completed day is a miss and today is not judged, so the bar
+   * holds exactly the one day it has not had the chance to lose.
+   */
+  it('is empty but for today when nothing was hit at all', () => {
+    const reading = vitality([pool()], NOW)
+
+    expect(reading.met).toBe(1)
+    expect(reading.value).toBeCloseTo(1 / 7)
   })
 
   /*
@@ -65,8 +72,13 @@ describe('vitality', () => {
   })
 
   it('does not count a day that fell short of the target', () => {
-    // Capacity is 2 and only one was logged.
-    expect(vitality([pool({ spent: [on(0)] })], NOW).met).toBe(0)
+    /*
+     * Capacity is 2 and only one was logged — on *yesterday*, because a
+     * shortfall today is not a shortfall yet. Written against today
+     * before the bar learned to leave the current day alone, which made
+     * this pass for a reason it was not testing.
+     */
+    expect(vitality([pool({ spent: [on(1)] })], NOW).met).toBe(1)
   })
 
   /*
@@ -220,13 +232,35 @@ describe('a limit older than the restoratives', () => {
   })
 
   /*
-   * Starts full: nothing recorded either way on the day a restorative
-   * was created is still a day you have not missed anything on... but a
-   * day you did nothing on is a day missed, which is the drain.
+   * **A restorative set up this morning reads full, not empty.**
+   *
+   * Reported as _"health seems to drain awfully quickly — hasn't been a
+   * day yet and already down to 33. I should at least be able to go
+   * through today at 100."_ This is that case at its sharpest: the pool
+   * was created today, so today is the only day in the window, and
+   * judging it made the bar open two-thirds empty on a day nobody had
+   * lived yet.
+   *
+   * It falls tomorrow for whatever today did not do, which is the half
+   * that keeps it honest — nothing is forgiven, only deferred.
    */
-  it('is empty when the only day being kept was missed entirely', () => {
-    const missed = pool({ id: 'w' as ViceId, capacity: 1, createdAt: madeToday, spent: [] })
+  it('is full on the first day of a restorative, whatever has been logged', () => {
+    const untouched = pool({ id: 'w' as ViceId, capacity: 1, createdAt: madeToday, spent: [] })
 
-    expect(vitality([missed], NOW).value).toBe(0)
+    expect(vitality([untouched], NOW).value).toBe(1)
+  })
+
+  /* And the deferral is a deferral: the same day, judged once it is over. */
+  it('drains the next day for a target missed today', () => {
+    const untouched = pool({ id: 'w' as ViceId, capacity: 1, createdAt: madeToday, spent: [] })
+
+    const tomorrow = new Date(NOW.getTime() + 24 * 60 * 60 * 1000)
+
+    /*
+     * Half, not nought: the window now holds two days the pool existed
+     * for — yesterday, missed and counted, and the new today, spared. The
+     * fall from a full bar to half of one is the deferral arriving.
+     */
+    expect(vitality([untouched], tomorrow).value).toBe(0.5)
   })
 })

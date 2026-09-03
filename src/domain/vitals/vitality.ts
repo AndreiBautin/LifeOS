@@ -38,6 +38,27 @@ import { amountSpentOn, cycleOf, directionOf, isActive, readCharges, type Vice }
  * could only ever be nought, and a health bar pinned at empty reads as
  * dying rather than as unmeasured — the absent-never-zero rule at its
  * sharpest.
+ *
+ * **Today does not drain it until the day is over.** Reported as _"health
+ * seems to drain awfully quickly — hasn't been a day yet and already down
+ * to 33."_ Exactly right, and the arithmetic was doing it on purpose:
+ * today sat in the window like any other day, so at nine in the morning
+ * three untouched targets read as three misses. On a first day, when the
+ * pools were created today and today is therefore the *only* day in the
+ * window, one target hit out of three is 33% — a bar that opens
+ * two-thirds empty because the day has not happened yet.
+ *
+ * This is the same humane rule streaks already follow, and it is worth
+ * naming as such: a run is not broken by a day you have yet to live. An
+ * unmet target today is **not yet missed** rather than missed, so the bar
+ * starts the day full and falls tomorrow for whatever today did not do.
+ *
+ * **An overrun is judged today, and the asymmetry is the point.** Missing
+ * a target is a thing that has not happened yet and may still; going over
+ * a limit is a thing that has already happened and cannot be taken back.
+ * Treating the two the same in either direction would be wrong — a bar
+ * that ignored today's overruns would let a heavy night read as a perfect
+ * day right up until midnight.
  */
 
 /** How far back it looks. */
@@ -76,6 +97,17 @@ function existedOn(pool: Vice, day: string): boolean {
 /** Whether a target was reached on a given day. */
 function metOn(pool: Vice, day: string): boolean {
   return amountSpentOn(pool, day) >= pool.capacity
+}
+
+/**
+ * Whether a target counts against you on a given day *yet*.
+ *
+ * Met, or still today. See the note above: an unmet target on a day that
+ * has not finished is not a miss, and counting it as one drains the bar
+ * for a day nobody has had the chance to live.
+ */
+function missedOn(pool: Vice, day: string, today: string): boolean {
+  return day !== today && !metOn(pool, day)
 }
 
 /**
@@ -130,7 +162,14 @@ export function vitality(
     if (live.length === 0) continue
 
     possible += live.length
-    for (const pool of live) if (metOn(pool, day)) met += 1
+    /*
+     * `met` is what the bar is full of, so today's outstanding targets
+     * count here rather than being left out of the denominator. Dropping
+     * them instead would make a fresh morning `possible: 0` — an absent
+     * reading and the "set up your restoratives" empty state, shown to
+     * somebody who just did.
+     */
+    for (const pool of live) if (!missedOn(pool, day, today)) met += 1
     for (const pool of limits) if (existedOn(pool, day) && overOn(pool, day)) over += 1
   }
 

@@ -90,7 +90,14 @@ export function HealthBar() {
           rather than a warning.
         */
         tone={percent >= 67 ? 'good' : percent >= 34 ? 'accent' : 'bad'}
-        label={`Health, ${String(percent)} per cent — ${String(reading.met)} target days hit and ${String(reading.over)} over the limit in ${String(reading.days)} days`}
+        /*
+         * "Standing", not "hit". Today is counted in `met` because it
+         * has not been missed yet rather than because anything was
+         * logged, so a label saying "3 target days hit" on an untouched
+         * morning would be the one wrong thing on the card — and the
+         * only version of this a screen reader gets.
+         */
+        label={`Health, ${String(percent)} per cent — ${String(reading.met)} of ${String(reading.possible)} target days standing and ${String(reading.over)} over the limit in ${String(reading.days)} days`}
       />
     </div>
   )
