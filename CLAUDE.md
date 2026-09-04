@@ -6648,12 +6648,32 @@ merely hidden — the page has no view state left, so there is nothing to
 be out of step with the position. Verified by picking the deload and
 watching the bench go from **3 sets to 2** with the header following.
 
-**The week picker stays, and it is now the only thing that says where
-you are.** It was reported as overkill in the same sentence and is the
-half that survives, because the position only moves by finishing or
-skipping a session: a lifter arriving mid-block has no other way to say
-so, and `jumpToWeek` would be left with no caller — the rule-nothing-
-can-reach pattern this file keeps recording.
+**The week you are on is the control**, and the section that asked the
+same question is gone. Asked for as _"we already have the 'on week 5'
+under program, let's just make that editable and drop the section
+underneath it with the blocks."_ The page stated a fact in the header and
+then offered a way to change it a screen below, so one question had two
+answers on one screen — the shape this file keeps recording as a
+quantity drawn twice.
+
+Saying the week in words is what made the picker removable. A tinted tab
+could never be read without being decoded, so the sentence had to exist
+first; once it did, the picker was a second copy of it. **The two only
+ever needed to be the same object.**
+
+**It is a `select` in the subtitle, wrapping rather than sharing a fixed
+row.** A select takes its intrinsic width from its longest option, which
+is what this file's four recorded instances of a 26- to 177-pixel field
+all cost. Measured after: the control is **44px** tall and the page
+overflows by **0**.
+
+The picker could not simply be deleted, which is why this is a move. The
+position only advances by finishing or skipping a session, so a lifter
+arriving mid-block has no other way to say where they are — and
+`jumpToWeek` would have been left with no caller, the
+rule-nothing-can-reach pattern this file keeps recording. Verified end to
+end: choosing the deload takes the bench from **3 sets to 2**, choosing
+week 5 puts it back, and the choice survives a reload.
 
 **The Plan screen is gone, and its own last section had already said
 why.** Asked for as _"remove the plan page of train completely — it's no

@@ -11,7 +11,6 @@ import { resolveSets } from '@/domain/resolution/resolve'
 import { attributeWeek, type MuscleAttribution } from '@/domain/volume/attribution'
 import { explainVolume } from '@/domain/priority/explain'
 import { Badge, Button, Card, Section } from '@/components/shared/primitives'
-import { cn } from '@/lib/cn'
 
 import { useExercises, useJumpToWeek, usePosition, useProgram } from '@/features/train/hooks'
 
@@ -104,68 +103,51 @@ export function ProgramPage() {
   return (
     <div>
       {/*
-        The week you are on, spelled out.
+        **The week you are on is the control, rather than a sentence with
+        a picker underneath it.** Asked for as _"we already have the 'on
+        week 5' under program, let's just make that editable and drop the
+        section underneath it."_ Right: the line already named the week
+        and a section below then asked the same question again, so the
+        page stated a fact and offered a way to change it in two places a
+        screen apart.
 
-        It was inferable only from which tab was tinted, which is a lot of
-        weight for a border colour to carry — and useless for answering
-        the question people actually ask, which is "does this app know
-        where I am". Saying it in words also makes it obvious when the
-        answer is wrong, and therefore that there is something to change.
+        Saying it in words is what made the picker removable — the answer
+        is legible whether or not anybody touches it, which is the reading
+        a tinted tab could never give. It only ever needed to be the same
+        object.
+
+        It wraps rather than sharing a fixed row: a select takes its
+        intrinsic width from its longest option, and this file's own
+        record of three controls on one row at 375 is what that costs.
       */}
       <PageHeader
         title="Program"
         subtitle={
-          <>
-            {weeks.length} weeks · {week.days.length} days a week · on{' '}
-            <span className="text-ink-300">
-              {weeks[currentWeek]?.isDeload === true
-                ? 'the deload'
-                : `week ${String(currentWeek + 1)}`}
+          <span className="flex flex-wrap items-center gap-x-1.5 gap-y-1">
+            <span>
+              {weeks.length} weeks · {week.days.length} days a week · on
             </span>
-          </>
+            <select
+              aria-label="Which week are you on"
+              className="border-ink-800 bg-ink-850 text-ink-300 tap-target focus-visible:border-accent-500 rounded-lg border px-2 text-sm font-medium"
+              value={currentWeek}
+              disabled={jumpToWeek.isPending}
+              onChange={(event) => {
+                jumpToWeek.mutate({
+                  program: program.data,
+                  weekIndex: Number(event.target.value),
+                })
+              }}
+            >
+              {weeks.map((candidate, index) => (
+                <option key={candidate.index} value={index}>
+                  {candidate.isDeload ? 'the deload' : `week ${String(index + 1)}`}
+                </option>
+              ))}
+            </select>
+          </span>
         }
       />
-
-      {/*
-        The way to say "I am already three weeks into this".
-
-        The position otherwise only moves by finishing or skipping a
-        session, which is right — it records what happened rather than
-        what a calendar says. But a lifter arriving mid-block would have
-        to skip their way to the right week, and until they did the app
-        would be counting the block from the wrong place.
-
-        This used to hang off the week tabs: browse to week three, press
-        "start from here". The tabs are gone entirely now, so this is the
-        only control that says which week you are on — and the only
-        reason the week number is still a number the lifter touches.
-      */}
-      <Section
-        title="Which week are you on?"
-        description="Every working week is the same; the deload keeps the sessions and drops the sets and the load. This is what the app counts down from."
-      >
-        <div className="flex flex-wrap gap-1.5">
-          {weeks.map((candidate, index) => (
-            <button
-              key={candidate.index}
-              type="button"
-              aria-pressed={index === currentWeek}
-              onClick={() => {
-                jumpToWeek.mutate({ program: program.data, weekIndex: index })
-              }}
-              disabled={jumpToWeek.isPending}
-              className={cn(
-                'tap-target numeric min-w-11 rounded-lg border px-3 text-xs font-semibold transition-colors',
-                index === currentWeek
-                  ? 'border-accent-500 text-accent-400 bg-accent-500/10'
-                  : 'border-ink-800 bg-ink-850 text-ink-500 hover:border-ink-700',
-              )}
-            >
-              {candidate.isDeload ? 'Deload' : index + 1}
-            </button>
-          ))}
-        </div>
-      </Section>
 
       {week.days.map((day) => (
         <Section
