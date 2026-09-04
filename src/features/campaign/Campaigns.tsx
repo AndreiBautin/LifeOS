@@ -51,7 +51,19 @@ const LABEL = 'text-ink-500 mb-1 block text-xs tracking-wide uppercase'
  */
 const MOVE_STAGES: readonly { readonly name: string; readonly requirement: Requirement }[] = [
   { name: 'Fix up the house', requirement: { kind: 'house-jobs', count: 5 } },
-  { name: 'Improve my income', requirement: { kind: 'offers', count: 1 } },
+  /*
+   * **Income is measured by the salary, not by applications sent.**
+   * Asked for as _"for main quest just make the income quest tied to
+   * current income."_ It counted offers, which measures the *looking*
+   * rather than the result — and the looking left the app with the
+   * automated job search.
+   *
+   * The figure is a placeholder to replace rather than a guess the app
+   * stands behind: the stage editor offers the Census breakpoints for
+   * your age, one tap each, which is the only income number here that
+   * anybody published.
+   */
+  { name: 'Improve my income', requirement: { kind: 'salary', minorUnits: 10_000_000 } },
   { name: 'Find a new house', requirement: { kind: 'declared' } },
   { name: 'Save the deposit', requirement: { kind: 'net-worth', minorUnits: 4_000_000 } },
   { name: 'Sell this house', requirement: { kind: 'declared' } },
@@ -227,20 +239,26 @@ function StageRow({
       </div>
 
       {/*
-        A bar only where there is a quantity and a reading. An unproven
-        stage draws nothing rather than a bar at zero — absent, never
-        zero, and a bar at nought against a target somebody set reads as
-        failing when nothing has been measured.
+        **Every stage draws a bar**, asked for as _"it would make sense
+        for all of them to be progress bars."_ A declared stage carries a
+        progress of one step, so it reads empty or full; a measured one
+        reads its own fraction.
+
+        **An unproven stage draws the track and claims nothing**, which is
+        how the two rules meet. `Meter` renders `of` of nought as the
+        track alone — nothing over nothing is not complete — so the row
+        has the same shape as its neighbours without a bar at zero
+        against a target nobody has measured yet. That was the reason it
+        used to draw nothing at all, and the reason is satisfied rather
+        than overruled.
       */}
-      {progress !== undefined && !unproven && (
-        <Meter
-          className="mt-1.5"
-          value={Math.min(progress.value, progress.of)}
-          of={progress.of}
-          height={5}
-          label={stage.name}
-        />
-      )}
+      <Meter
+        className="mt-1.5"
+        value={unproven || progress === undefined ? 0 : Math.min(progress.value, progress.of)}
+        of={unproven || progress === undefined ? 0 : progress.of}
+        height={5}
+        label={stage.name}
+      />
 
       {/*
         Every lap, with what each one was. The observation this exists

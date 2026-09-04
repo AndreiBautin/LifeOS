@@ -222,7 +222,19 @@ function standingForStage(stage: Stage, evidence: Evidence): StageStanding {
    * disagree with.
    */
   if (stage.requirement.kind === 'declared') {
-    return { stage, met: stage.reached.length > 0, unproven: false }
+    /*
+     * **A declared stage carries a progress of one, and that is not a
+     * fudge.** Asked for as _"it would make sense for all of them to be
+     * progress bars."_ It is a binary — you have said so or you have not
+     * — and a binary is a bar with one step in it, which draws empty or
+     * full and never anything in between.
+     *
+     * Expressed as a real fraction rather than by having the screen
+     * special-case the kind: the row draws whatever `progress` says, so
+     * a stage that is met looks met wherever it appears.
+     */
+    const said = stage.reached.length > 0
+    return { stage, met: said, progress: { value: said ? 1 : 0, of: 1 }, unproven: false }
   }
 
   const reading = readingFor(stage.requirement, evidence)

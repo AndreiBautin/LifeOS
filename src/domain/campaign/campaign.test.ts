@@ -44,6 +44,23 @@ function campaign(...stages: readonly Stage[]): Campaign {
 
 describe('a declared stage', () => {
   /*
+   * **A binary is a bar with one step in it.** Asked for as "it would
+   * make sense for all of them to be progress bars" — so a declared
+   * stage reports a progress rather than none, and the row draws it like
+   * any other instead of special-casing the kind.
+   */
+  it('reports a progress of one step, empty or full', () => {
+    const notYet = standingFor(campaign(stage('Find a house', { kind: 'declared' })), {})
+    const said = standingFor(
+      campaign(stage('Find a house', { kind: 'declared' }, ['2026-09-01'])),
+      {},
+    )
+
+    expect(notYet.stages[0]?.progress).toEqual({ value: 0, of: 1 })
+    expect(said.stages[0]?.progress).toEqual({ value: 1, of: 1 })
+  })
+
+  /*
    * Nothing in a habit tracker knows that you found a house you liked.
    * A stage says which kind it is rather than pretending everything is
    * measurable, and a declared stage is not a lesser one.

@@ -3406,6 +3406,18 @@ registered in all of the places a collection has to register. The
 compiler and the guard tests found most of them, which is that machinery
 working as intended.
 
+**Every stage is a progress bar, and the income one reads the salary.** Asked for as _"for main quest just make the income quest tied to current income, and it would make sense for all of them to be progress bars — we can figure out specifics for all of them later."_
+
+**A declared stage carries a progress of one step**, so it draws empty or full and never anything between. Expressed as a real fraction in `standingForStage` rather than special-cased on the screen: the row draws whatever `progress` says, so a met stage looks met wherever it appears.
+
+**An unproven stage draws the track and claims nothing**, which is how this meets the rule it looks like it breaks. `Meter` renders an `of` of nought as the track alone — nothing over nothing is not complete — so the row has the shape of its neighbours without putting a bar at zero against a target nobody has measured. That was the reason it used to draw nothing at all, and it is satisfied rather than overruled.
+
+**Income is measured by salary rather than by applications sent.** The suggested arc counted `offers`, which measures the _looking_ — and the looking left the app with the automated job search. The `salary` requirement already existed for exactly this, so the change was one line and a link that now points at Finance instead of Jobs.
+
+**The seeded figure is a placeholder, not a guess the app stands behind.** A stage editor already offers the Census breakpoints for your age, one tap each, which is the only income number anybody published — so the template carries a round number to replace rather than the app deciding what you ought to earn.
+
+**A stale dev server is not a broken app, and this cost a diagnosis.** After the teardown the page went blank at `/` and the console was full of 404s for `LeadsToday.tsx` — a file deleted twenty minutes earlier. Vite was still trying to hot-reload modules that no longer existed. `pnpm verify` had been green throughout; restarting the server fixed it. **A build that passes and a page that does not is a reason to restart the dev server before reading the code.**
+
 **Three features left the app, and the test is where the work happens rather than what it is about.** Asked for as _"get rid of stuff that would be better suited for custom agents rather than living inside the app: automated job search, newsletter, house search."_
 
 What they had in common is that each was **the app going and fetching something from the internet on a schedule** — three job boards, Hacker News and DEV, and Overpass — and then keeping a copy of what it found. That is an agent errand: it runs without you, it is a copy of somebody else s data, and the app was the wrong place to hold it.
