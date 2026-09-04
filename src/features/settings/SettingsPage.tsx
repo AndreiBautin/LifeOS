@@ -8,11 +8,12 @@ import { useId, useRef, useState } from 'react'
 
 import { useServices, useSettings } from '@/app/context'
 import { DEFAULT_INCREMENT } from '@/domain/units/weight'
+import { backupAge } from '@/domain/settings/settings'
 import { Badge, Button, Card, Section } from '@/components/shared/primitives'
 import { BacklogSettingsSection } from '@/features/backlog/BacklogSettingsSection'
 import { useBackup } from '@/features/backup/useBackup'
 import { SyncSection } from '@/features/sync/SyncSection'
-import { useSyncConfig } from '@/features/sync/useSync'
+import { useAccount, useSyncConfig } from '@/features/sync/useSync'
 import { MaxesEditor } from './MaxesEditor'
 import {
   describePersistence,
@@ -40,6 +41,15 @@ export function SettingsPage() {
   const exercises = useQuery({ queryKey: ['exercises'], queryFn: () => services.exercises.all() })
 
   const syncConfig = useSyncConfig()
+  const { account } = useAccount()
+
+  /*
+   * Signed in *and* configured, because either alone is not a second
+   * copy: a configured build nobody has signed into syncs nothing, and
+   * an account on a build with no Firebase project has nowhere to put it.
+   */
+  const syncing = syncConfig.kind === 'configured' && account !== undefined
+  const age = backupAge(settings, services.clock.now())
   const dataLocation =
     syncConfig.kind === 'configured'
       ? 'On this device, and in your project if you have signed in'
@@ -242,9 +252,19 @@ export function SettingsPage() {
                 labelled &ldquo;cookies and other site data&rdquo; and it takes this database with
                 it.
               </p>
+              {/*
+                **The same stale claim the reminder card was removed
+                for.** "There is no account and no server to sync from"
+                was written before sync existed and is false whenever
+                Firebase is configured and signed in. A warning that
+                cannot check its own premise is worse than none, so this
+                sentence now reads the state rather than asserting it.
+              */}
               <p>
-                Uninstalling the app, switching browser, or moving to a new phone. None of it
-                transfers; there is no account and no server to sync from.
+                Uninstalling the app, switching browser, or moving to a new phone.{' '}
+                {syncing
+                  ? 'None of it transfers on its own — sync restores it once you sign in again.'
+                  : 'None of it transfers; there is no account and no server to sync from.'}
               </p>
               <p className="text-ink-100 font-medium">
                 Export is the only thing that survives all of it.
@@ -291,11 +311,29 @@ export function SettingsPage() {
             }}
           />
 
-          {settings.lastExportAt !== undefined && (
-            <p className="text-ink-500 text-xs">
-              Last export {new Date(settings.lastExportAt).toLocaleString()}
-            </p>
-          )}
+          {/*
+            **The status line, beside the button that answers it.**
+            This is what replaced the reminder card in `AppShell`, which
+            sat above every screen and came back at every launch because
+            its dismissal was session state.
+
+            It states the two facts and draws no conclusion: how old the
+            backup is, and whether sync means this device is the only
+            copy. The card asserted the second one without being able to
+            check it.
+          */}
+          <p className="text-ink-500 text-xs">
+            {age.days === undefined
+              ? 'No backup taken yet.'
+              : `Last export ${new Date(settings.lastExportAt ?? '').toLocaleDateString()} — ${
+                  age.days === 0 ? 'today' : `${String(age.days)} days ago`
+                }.`}{' '}
+            <span className={age.stale && !syncing ? 'text-warn-500' : undefined}>
+              {syncing
+                ? 'Sync is on, so this device is not the only copy.'
+                : 'Sync is off, so an export is the only copy.'}
+            </span>
+          </p>
 
           {backup.preview !== undefined && (
             <ImportPanel

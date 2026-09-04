@@ -165,3 +165,41 @@ export const DEFAULT_SETTINGS: AppSettings = {
   theme: 'system',
   schemaVersion: SETTINGS_SCHEMA_VERSION,
 }
+
+/** Days since the last export before the line starts saying so. */
+export const BACKUP_STALE_DAYS = 14
+
+export interface BackupAge {
+  /** Whole days since the last export, absent if there has never been one. */
+  readonly days?: number
+  /** True once an export is old enough — or missing — to be worth saying. */
+  readonly stale: boolean
+}
+
+/**
+ * How long ago the last backup was, as a reading rather than a warning.
+ *
+ * **This replaced a card that nagged on every screen**, and the shape of
+ * the replacement is the whole point: it reports, it does not interrupt,
+ * and it sits beside the button that acts on it. The card was dismissed
+ * per session, so it came back at every launch — which teaches somebody
+ * to look past that part of the screen rather than to take a backup.
+ *
+ * It deliberately says nothing about **what is at risk**. That depends on
+ * whether sync is configured, which this function cannot see and which
+ * the old card asserted regardless — it said "everything lives on this
+ * device only" whether or not that was true. The screen pairs this with
+ * the sync state it already holds.
+ *
+ * Never having exported is `stale` with no `days`: absent rather than
+ * zero, because "no export" is not "an export nought days ago".
+ */
+export function backupAge(settings: AppSettings, now: Date): BackupAge {
+  if (settings.lastExportAt === undefined) return { stale: true }
+
+  const days = Math.floor(
+    (now.getTime() - new Date(settings.lastExportAt).getTime()) / (1000 * 60 * 60 * 24),
+  )
+
+  return { days, stale: days >= BACKUP_STALE_DAYS }
+}

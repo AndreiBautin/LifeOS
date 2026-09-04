@@ -6669,13 +6669,33 @@ no way to know which. So it nagged about a risk that may already be
 covered, in words asserting it is not. **A warning that cannot check its
 own premise is worse than no warning.**
 
-What is genuinely lost: with sync off, an export is still the only thing
-between a lifter and a cleared browser, and now nothing ever mentions
-it. The honest replacement is a line of status **in Settings beside the
-export button** — where somebody who went looking would act on it —
-rather than a card on every screen. That has not been built, and this
-paragraph is the record that it is the missing half rather than an
-oversight.
+**The replacement is a status line in Settings**, beside the button that
+answers it. `backupAge` in `domain/settings/settings.ts`: how many whole
+days since the last export, and whether that is past
+`BACKUP_STALE_DAYS`. Never having exported is `stale` with **no
+`days`** — absent rather than zero, because "no export" is not "an
+export nought days ago".
+
+**It reports two facts and draws no conclusion**, which is the whole
+difference from the card. How old the backup is, and whether sync means
+this device is the only copy. `backupAge` deliberately cannot see the
+second: the screen pairs it with `syncConfig` and `useAccount`, and
+**both are required** — a configured build nobody has signed into syncs
+nothing, and an account on a build with no Firebase project has nowhere
+to put it. Only the stale-_and_-unsynced case is tinted; the reading is
+otherwise muted text.
+
+**The same stale sentence was sitting in the panel above it.** _"There
+is no account and no server to sync from"_, written before sync existed
+and false in exactly the case the card was wrong about. It reads the
+state now instead of asserting it. **One removal is not the fix when the
+claim was copied** — worth grepping for a sentence, not just deleting
+the component that said it loudest.
+
+Verified by reading the _computed_ colour rather than the class, which is
+what this file says to do: 20 days unsynced resolves amber
+(`oklch(0.78 0.15 85)`), 3 days resolves the muted ink, and a fresh
+database reads "No backup taken yet."
 
 **The week you are on is the control**, and the section that asked the
 same question is gone. Asked for as _"we already have the 'on week 5'
