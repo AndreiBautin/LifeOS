@@ -191,6 +191,35 @@ const SUGGESTIONS: readonly NewVice[] = [
     direction: 'target',
     cycle: { kind: 'calendar', period: 'day' },
   },
+  /*
+   * **Supplements are a restorative now, which reverses a note in
+   * CLAUDE.md.** That note said creatine is a thing you take once a day
+   * and either did or did not — a daily with a streak — and that a pool
+   * of capacity one with no unit is a habit wearing a pool's clothes.
+   *
+   * Both halves were right and one of them stopped mattering: **the
+   * health bar did not exist when it was written.** A restorative now
+   * *does* something a habit cannot, which is put health back, and
+   * supplements are the clearest case of a thing taken to that end.
+   * Asked for as _"supplements: add these to the restoratives section
+   * instead."_
+   *
+   * **One pool of three rather than three pools of one**, and the
+   * reason is the bar rather than tidiness. The bar reads targets met
+   * over targets possible, so three supplement rows beside water and
+   * two servings would make supplements **three fifths of a day's
+   * health** — a morning of pills outweighing everything else that is
+   * actually being kept. As one row it is one target among four, and
+   * three taps either way. Anybody wanting them apart can add them
+   * separately; the form takes any name.
+   */
+  {
+    name: 'Supplements',
+    capacity: 3,
+    icon: 'potion',
+    direction: 'target',
+    cycle: { kind: 'calendar', period: 'day' },
+  },
 ]
 
 /** The four shapes offered, in the order people reach for them. */

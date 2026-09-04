@@ -2,7 +2,32 @@ import { groupOnly } from '@/domain/dailies/groups'
 import { GroupedDailies } from '@/features/today/DailyGroups'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { TRAINING } from '@/domain/base/base'
-import { AddDaily, DailyRow } from '@/features/today/Dailies'
+import { AddDaily, DailyRow, type Suggested } from '@/features/today/Dailies'
+
+/**
+ * The three things done *around* a session rather than in it.
+ *
+ * **Deliberately habits and not slots**, asked for as _"it shouldn't be
+ * within the workout since the exact timing can vary and be a bit out
+ * from the workout time — it doesn't make sense to keep the lift open if
+ * walking the dog happens three hours later."_ Exactly so: a slot is
+ * ticked inside an open session, so anything logged hours later either
+ * holds the session open or is lost. A habit is answered whenever it
+ * happens and still lands on the right day.
+ *
+ * **The cardio is the reason the conditioning block left the upper
+ * days.** A thirty-minute walk that doubles as walking the dog is a real
+ * dose and is not a thing the session should be waiting on.
+ *
+ * The days are the lifter's to pick, for the reason the empty state
+ * already gives: the app knows how many days a week you train, not
+ * which ones.
+ */
+const TRAINING_SUGGESTIONS: readonly Suggested[] = [
+  { title: 'Pre-workout carbs' },
+  { title: 'Post-workout protein' },
+  { title: '30 minutes of cardio' },
+]
 import { useTrainingHabits } from '@/features/today/dailies-hooks'
 import {
   Apple,
@@ -129,6 +154,7 @@ function TrainingHabits() {
   const [adding, setAdding] = useState(false)
 
   const views = habits.data ?? []
+  const taken = new Set(views.map((one) => one.daily.title.trim().toLowerCase()))
 
   return (
     <Card>
@@ -150,6 +176,14 @@ function TrainingHabits() {
       {adding && (
         <AddDaily
           home={TRAINING}
+          /*
+           * **Offered by name not already used**, the rule every other
+           * suggestion list here follows: adding the first must not take
+           * the other two away.
+           */
+          suggestions={TRAINING_SUGGESTIONS.filter(
+            (one) => !taken.has(one.title.trim().toLowerCase()),
+          )}
           placeholder="Something you do around a session"
           onDone={() => {
             setAdding(false)

@@ -6648,6 +6648,57 @@ merely hidden — the page has no view state left, so there is nothing to
 be out of step with the position. Verified by picking the deload and
 watching the bench go from **3 sets to 2** with the header following.
 
+**Supplements are a restorative, which reverses a rule written here.**
+That rule said creatine is a thing you take once a day and either did or
+did not — a daily with a streak — and that a pool of capacity one with
+no unit is a habit wearing a pool's clothes. Both halves were right and
+one of them stopped mattering: **the health bar did not exist when it
+was written.** A restorative now does something a habit cannot, which is
+put health back, and a supplement is the clearest case of a thing taken
+to that end. Asked for as _"supplements: add these to the restoratives
+section instead."_
+
+**One pool of three rather than three pools of one, and the reason is
+the bar rather than tidiness.** Vitality reads targets met over targets
+possible, so three supplement rows beside water and two servings would
+make supplements **three fifths of a day's health** — a morning of pills
+outweighing everything else being kept. As one row it is one target
+among four, and three taps either way.
+
+**The three things done around a session are habits, not slots.** Asked
+for as _"it shouldn't be within the workout since the exact timing can
+vary… it doesn't make sense to keep the lift open if walking the dog
+happens three hours later."_ Exactly the distinction `RecordHome`
+`training` exists for: a slot is ticked inside an open session, so
+anything answered hours later either holds the session open or is lost,
+where a habit is answered whenever it happens and still lands on the
+right day.
+
+`TRAINING_SUGGESTIONS` on the Train screen offers pre-workout carbs,
+post-workout protein and thirty minutes of cardio, filtered by **name
+not already used** — the rule every other suggestion list here follows,
+so adding the first does not take the other two away. The days stay the
+lifter's to pick, for the reason that screen's empty state already
+gives: the app knows how many days a week you train, not which ones.
+
+**The cardio one is why the conditioning block left the upper days.** A
+thirty-minute walk that doubles as walking the dog is a real dose and is
+not something the session should be waiting on. It pays
+`training.habit-kept` and therefore **Strength rather than Stamina** —
+Stamina is fed by `cardio.session-logged`, which fires on a completed
+session containing a completed conditioning set, and a habit is not a
+session. Moving it would mean a new `RecordHome`, which is a registry
+area, an act, a branch in `tallyActs` and a line in the "exactly one
+side" test. Worth knowing the bar reads lower until somebody takes that
+decision deliberately.
+
+**A suggestion reaches nobody who already has the habit under another
+name.** The three existed on the reporting device as _Preworkout Carbs_
+and _Postworkout Protien_, so the filter does not match them and both
+chips are still offered — two records of one intention. Renaming the
+stored ones is the way across; nothing migrates, the rule
+`SETTINGS_SCHEMA_VERSION` exists for.
+
 **The backup nag is gone, and what it was protecting has to be said
 out loud.** Reported as _"that pop message to export the training is
 annoying can we get rid of that?"_ It was a warning-toned card in
