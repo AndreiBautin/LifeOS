@@ -6648,6 +6648,60 @@ merely hidden — the page has no view state left, so there is nothing to
 be out of step with the position. Verified by picking the deload and
 watching the bench go from **3 sets to 2** with the header following.
 
+**The shell widens at `lg` and `xl`, and mobile is untouched by
+construction.** Reported as _"on desktop it's a single column down the
+middle with tons of padding on each side."_ The cap goes
+`max-w-2xl lg:max-w-4xl xl:max-w-5xl` — 672 on a phone, 896 from 1024px,
+1024 from 1280px.
+
+**The breakpoint prefixes are the guarantee, not a promise to be
+careful.** `lg:` and `xl:` are min-width rules, so nothing below 1024px
+can be reached by them; the phone layout cannot change because no rule
+applies to it. Measured either way: 375 viewport gives main 375 and nav
+375 with **0** overflow, unchanged; 1400 gives both 1024.
+
+**Three files carry that cap and all three must agree** — `main`, the
+nav's `ul`, and `RestTimer`, which is `fixed` and lines up with the
+content it belongs to. A width that lived in one of them would drift the
+first time somebody changed another.
+
+**The tech tree shrinks to fit before it scrolls.** Reported in the same
+breath: _"the tech tree still needs to scroll which probably shouldn't
+happen on mobile either but definitely not on desktop."_ The canvas is
+measured against its container and scaled **down only** — blowing a small
+tree up to fill a desktop would make three upgrades look like a skill
+web.
+
+**`MIN_SCALE` is what keeps the old argument alive rather than
+overruling it.** That note said a tree of any width cannot be squeezed
+into 375 pixels with readable nodes, which is still true: below 0.7 it
+stops shrinking and scrolls exactly as it did. Measured on seven
+siblings — a 924px canvas — 375 clamps to 0.7 and still scrolls, 1024
+draws it whole.
+
+**`ResizeObserver` was the first build and was replaced, which is worth
+recording because it is the better tool.** It **never fired** in the
+agent's browser pane, so the scale stayed 1 and the feature silently did
+nothing — and a probe written by hand against the same element timed out
+too, which is what identified the pane rather than the code. The cause is
+that the pane was hidden, and a hidden document is not laid out.
+
+The lesson is not "avoid `ResizeObserver`". It is that **the difference
+between "fits" and "scrolls" must not depend on something that can
+silently not happen.** The only thing that changes this container's width
+is the window — the shell's cap moves at `lg` and `xl` and nothing else
+on the page resizes it — so a mount measurement plus a `resize` listener
+answers the actual question and can be verified by resizing. The known
+gap is a scrollbar appearing without a window resize, which is worth
+about fifteen pixels and only at the boundary.
+
+**Emulated viewport changes do not fire `resize`.** Switching the pane
+to 1400 left the tree at the 0.7 it had computed at 375, and dispatching
+the event by hand corrected it to full size. A real browser fires it on
+every window change and on rotation, so this is a fact about the test
+harness — but it is the reason a measurement taken straight after
+`resize_window` reads stale.
+
 **Sync runs itself now, and that reverses the rule that made it a
 button.** `useSync` said so in as many words: _"a sync that runs on a
 timer is a sync that runs while a set is being logged, and the one thing

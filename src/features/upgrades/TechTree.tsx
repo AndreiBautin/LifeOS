@@ -1,4 +1,5 @@
 import { Lock } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
 
 import type { TreeEntry } from '@/domain/upgrades/recommendation'
 import { shelfOf, UPGRADE_SHELF_LABELS } from '@/domain/upgrades/shelf'
@@ -21,12 +22,24 @@ import { layoutTree, type LaidOutNode } from './tree-layout'
  * reimplementing text wrapping and losing the 44-pixel target the mobile
  * bar requires.
  *
- * **It scrolls horizontally and that is by design.** A tree of any width
- * cannot be squeezed into 375 pixels without the nodes becoming
- * unreadable, so the canvas is as wide as it needs to be and the
- * container scrolls — the one place in this app where sideways scrolling
- * is correct rather than a layout fault. The page itself must never
- * scroll sideways, so the overflow is on this container alone.
+ * **It shrinks to fit before it scrolls, and scrolling is now the last
+ * resort rather than the design.** Reported as _"the tech tree still
+ * needs to scroll which probably shouldn't happen on mobile either but
+ * definitely not on desktop."_ Both halves are right: on a wide window
+ * there is room for the whole tree and no reason to hide half of it
+ * behind a gesture, and on a phone a tree one column too wide was
+ * scrolling for the sake of a few pixels.
+ *
+ * So the canvas is measured against its container and scaled down to
+ * fit. **Down only** — a small tree is never blown up to fill a desktop,
+ * which would make three upgrades look like a skill web.
+ *
+ * **`MIN_SCALE` is what keeps the old argument alive.** A tree of any
+ * width genuinely cannot be squeezed into 375 pixels with readable
+ * nodes, so below that floor it stops shrinking and scrolls as it always
+ * did — the one place in this app where sideways scrolling is correct.
+ * The page itself must never scroll sideways, so the overflow stays on
+ * this container alone.
  *
  * **Locked nodes are drawn, never hidden.** Seeing *why* the thing you
  * want is out of reach is the entire point of a tech tree; a view that
@@ -38,6 +51,15 @@ const COL_WIDTH = 132
 const ROW_HEIGHT = 96
 const NODE_WIDTH = 116
 const NODE_HEIGHT = 64
+
+/**
+ * How small a node may get before scrolling is the better answer.
+ *
+ * At 0.7 a 116-pixel node is 81 and its label is around 8.5px — small,
+ * still readable at arm's length, and the point past which shrinking
+ * stops being a kindness. A tree that cannot fit at this scale scrolls.
+ */
+const MIN_SCALE = 0.7
 
 const x = (col: number): number => col * COL_WIDTH + COL_WIDTH / 2
 const y = (row: number): number => row * ROW_HEIGHT + ROW_HEIGHT / 2
@@ -67,54 +89,110 @@ export function TechTree({
   const width = layout.cols * COL_WIDTH
   const height = layout.rows * ROW_HEIGHT
 
+  /*
+   * Measured on mount and on resize, from the element's own
+   * `clientWidth` minus its padding.
+   *
+   * **`ResizeObserver` was the first build and is deliberately not used**
+   * — it is the more precise tool and it does not fire in every context
+   * an element can be laid out in, which makes the difference between
+   * "fits" and "scrolls" depend on something invisible. The only thing
+   * that changes this container's width is the window: the shell's cap
+   * moves at `lg` and `xl`, and nothing else on the page resizes it. A
+   * resize listener answers exactly that and can be tested by resizing.
+   */
+  const box = useRef<HTMLDivElement>(null)
+  const [available, setAvailable] = useState<number | undefined>(undefined)
+
+  useEffect(() => {
+    const measure = () => {
+      const node = box.current
+      if (node === null) return
+
+      const padding = parseFloat(getComputedStyle(node).paddingInlineStart) * 2
+      setAvailable(node.clientWidth - (Number.isFinite(padding) ? padding : 0))
+    }
+
+    measure()
+    window.addEventListener('resize', measure)
+    return () => {
+      window.removeEventListener('resize', measure)
+    }
+  }, [])
+
+  /*
+   * Scale down to fit and never up. Before the first measurement this is
+   * 1, which draws the tree at full size for one frame — the honest
+   * starting point, since guessing a scale would make a narrow tree jump
+   * on load.
+   */
+  const scale =
+    available === undefined || width <= available ? 1 : Math.max(MIN_SCALE, available / width)
+
   return (
-    <div className="-mx-4 overflow-x-auto px-4 pb-2">
-      <div className="relative" style={{ width, height }}>
-        {/*
+    <div ref={box} className="-mx-4 overflow-x-auto px-4 pb-2">
+      {/*
+        The scaled canvas keeps its own layout size, so the wrapper has to
+        carry the *drawn* height or the page reserves room for a tree
+        taller than the one on screen — a transform does not change what
+        the box model thinks it occupies.
+      */}
+      <div style={{ height: height * scale, width: width * scale }}>
+        <div
+          className="relative"
+          style={{
+            width,
+            height,
+            transform: scale === 1 ? undefined : `scale(${String(scale)})`,
+            transformOrigin: 'top left',
+          }}
+        >
+          {/*
           `aria-hidden` because the lines carry no information a reader
           could act on — every node states its own lock and its own
           prerequisite in text, so the picture is the redundant half.
         */}
-        <svg
-          aria-hidden
-          className="absolute inset-0"
-          width={width}
-          height={height}
-          viewBox={`0 0 ${String(width)} ${String(height)}`}
-        >
-          {layout.edges.map((edge) => {
-            const from = positions.get(edge.from)
-            const to = positions.get(edge.to)
-            if (from === undefined || to === undefined) return null
+          <svg
+            aria-hidden
+            className="absolute inset-0"
+            width={width}
+            height={height}
+            viewBox={`0 0 ${String(width)} ${String(height)}`}
+          >
+            {layout.edges.map((edge) => {
+              const from = positions.get(edge.from)
+              const to = positions.get(edge.to)
+              if (from === undefined || to === undefined) return null
 
-            const x1 = x(from.col)
-            const y1 = y(from.row) + NODE_HEIGHT / 2
-            const x2 = x(to.col)
-            const y2 = y(to.row) - NODE_HEIGHT / 2
-            const mid = (y1 + y2) / 2
+              const x1 = x(from.col)
+              const y1 = y(from.row) + NODE_HEIGHT / 2
+              const x2 = x(to.col)
+              const y2 = y(to.row) - NODE_HEIGHT / 2
+              const mid = (y1 + y2) / 2
 
-            return (
-              <path
-                key={`${edge.from}->${edge.to}`}
-                d={`M ${String(x1)} ${String(y1)} C ${String(x1)} ${String(mid)}, ${String(x2)} ${String(mid)}, ${String(x2)} ${String(y2)}`}
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={edge.crossBranch ? 1 : 1.5}
-                strokeDasharray={edge.crossBranch ? '3 3' : undefined}
-                className={edge.crossBranch ? 'text-ink-700' : 'text-ink-800'}
-              />
-            )
-          })}
-        </svg>
+              return (
+                <path
+                  key={`${edge.from}->${edge.to}`}
+                  d={`M ${String(x1)} ${String(y1)} C ${String(x1)} ${String(mid)}, ${String(x2)} ${String(mid)}, ${String(x2)} ${String(y2)}`}
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={edge.crossBranch ? 1 : 1.5}
+                  strokeDasharray={edge.crossBranch ? '3 3' : undefined}
+                  className={edge.crossBranch ? 'text-ink-700' : 'text-ink-800'}
+                />
+              )
+            })}
+          </svg>
 
-        {layout.nodes.map((node) => (
-          <TreeNodeBox
-            key={node.id}
-            node={node}
-            entry={node.upgradeId === undefined ? undefined : byId.get(node.upgradeId)}
-            onPick={onPick}
-          />
-        ))}
+          {layout.nodes.map((node) => (
+            <TreeNodeBox
+              key={node.id}
+              node={node}
+              entry={node.upgradeId === undefined ? undefined : byId.get(node.upgradeId)}
+              onPick={onPick}
+            />
+          ))}
+        </div>
       </div>
     </div>
   )

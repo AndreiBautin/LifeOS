@@ -68,7 +68,7 @@ export function RestTimer({ startedAt, seconds, onDismiss }: Props) {
 
   return (
     <div
-      className="border-ink-800 bg-ink-900 fixed inset-x-0 z-30 mx-auto max-w-2xl rounded-t-2xl border-t px-4 py-3"
+      className="border-ink-800 bg-ink-900 fixed inset-x-0 z-30 mx-auto max-w-2xl lg:max-w-4xl xl:max-w-5xl rounded-t-2xl border-t px-4 py-3"
       /*
        * Sits on top of the navigation, and the navigation is taller than
        * it looks.

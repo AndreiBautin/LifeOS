@@ -107,7 +107,7 @@ export function AppShell() {
       */}
       <main
         id="main"
-        className="mx-auto w-full max-w-2xl flex-1 pb-28"
+        className="mx-auto w-full max-w-2xl lg:max-w-4xl xl:max-w-5xl flex-1 pb-28"
         style={{
           paddingTop: 'calc(1rem + var(--safe-top))',
           paddingLeft: 'calc(1rem + var(--safe-left))',
@@ -128,7 +128,7 @@ export function AppShell() {
           paddingBottom: 'var(--safe-bottom)',
         }}
       >
-        <ul className="mx-auto flex max-w-2xl">
+        <ul className="mx-auto flex max-w-2xl lg:max-w-4xl xl:max-w-5xl">
           {NAV.map(({ to, label, Icon }) => (
             <li key={to} className="flex-1">
               {/*
