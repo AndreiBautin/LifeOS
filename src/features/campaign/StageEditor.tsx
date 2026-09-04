@@ -7,6 +7,7 @@ import { buttonStyles } from '@/components/shared/styles'
 import {
   isMoney,
   REQUIREMENT_KINDS,
+  unitOf,
   REQUIREMENT_LABELS,
   requirementOf,
   targetOf,
@@ -117,7 +118,24 @@ export function StageEditor({
           className={FIELD}
           value={kind}
           onChange={(event) => {
-            setKind(event.target.value as Requirement['kind'])
+            const next = event.target.value as Requirement['kind']
+            /*
+             * **A target that has changed unit is cleared, not carried.**
+             * The box is seeded once from the stored requirement, so
+             * retargeting a stage from applications to a salary left the
+             * count sitting in it — and `offers: 1` saved as one pound,
+             * a target nobody chose which the screen then reports as
+             * comfortably met. Found by driving the repair somebody has
+             * to make after the arc template changed under them.
+             *
+             * A count carried into another count is kept, because five
+             * house jobs and five applications mean the same five. It is
+             * the unit that decides, which is why `unitOf` is in the
+             * domain beside the union rather than being a list of kinds
+             * written out here.
+             */
+            if (unitOf(next) !== unitOf(kind)) setTarget('')
+            setKind(next)
           }}
         >
           {REQUIREMENT_KINDS.map((one) => (

@@ -3418,6 +3418,12 @@ Both `Record<keyof …>` guards fired on the way in — the merge in `recordFina
 
 That made `gatherEvidence` read the rooms, so `CampaignDeps` gained `rooms` — the campaign use case now touches Base's clutter as well as its jobs.
 
+**A target that changes unit is cleared, and that was found by driving the repair rather than the feature.** The template change above leaves an existing arc holding the old stages, so the way across is the stage editor — and walking it turned up a trap sitting in the editor since it was written. The target box is seeded once from the stored requirement and did not reset when the kind changed, so retargeting a stage from applications to a salary left the count in it: `offers: 1` saved as **one pound**, a figure nobody chose, which the screen then reported as comfortably met.
+
+`unitOf` is the rule, in the domain beside the union rather than as a list of kinds written out in the editor. **Three units, not eight kinds**, because the question is whether the number still means the same thing: a five carries from house jobs to applications and is helpful, and a one carried into a salary is a different quantity wearing the same digit. Money to money keeps its number — verified both ways.
+
+Nothing else about the edit changed: the laps survive a retarget, which is the rule this file already states and which the repair confirmed on a stage carrying one.
+
 **Changing the template reaches nobody who already started an arc.** `MOVE_STAGES` is the offer made when an arc is created; a stage already stored as `offers` or `net-worth` stays exactly that. The stage editor is the way across, and it takes a kind and a target without touching the laps.
 
 **Every stage is a progress bar, and the income one reads the salary.** Asked for as _"for main quest just make the income quest tied to current income, and it would make sense for all of them to be progress bars — we can figure out specifics for all of them later."_

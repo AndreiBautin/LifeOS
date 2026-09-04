@@ -22,6 +22,7 @@ import {
   type Campaign,
   type Requirement,
   type Stage,
+  unitOf,
 } from './campaign'
 
 function stage(name: string, requirement: Requirement, reached: readonly string[] = []): Stage {
@@ -495,5 +496,37 @@ describe('renaming and retargeting together', () => {
     const next = reshapeStage(before, asStageId('Move'), '  ', { kind: 'house-jobs', count: 2 })
 
     expect(next).toBe(before)
+  })
+})
+
+describe('what a target is counted in', () => {
+  /*
+   * The bug this is the record of: a stage retargeted from applications
+   * to a salary kept the count sitting in the editor's box, so
+   * `offers: 1` saved as one pound — a target nobody chose, which the
+   * screen then reported as comfortably met. The editor clears the box
+   * when the unit changes, and this is the rule it asks.
+   */
+  it('separates money from a count, so a 1 cannot become a pound', () => {
+    expect(unitOf('offers')).toBe('count')
+    expect(unitOf('salary')).toBe('money')
+    expect(unitOf('savings')).toBe('money')
+  })
+
+  it('calls two counts the same unit, so a five carries across', () => {
+    expect(unitOf('house-jobs')).toBe(unitOf('offers'))
+  })
+
+  /*
+   * A score is its own unit rather than a count: 700 is a reading on a
+   * published scale, and carrying it into "how many house jobs" would be
+   * a target no arc could reach.
+   */
+  it('keeps a credit score apart from both', () => {
+    expect(unitOf('credit-score')).toBe('score')
+  })
+
+  it('says a declared stage has no target at all', () => {
+    expect(unitOf('declared')).toBe('none')
   })
 })

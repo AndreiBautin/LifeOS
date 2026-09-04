@@ -355,6 +355,25 @@ export function isMoney(kind: Requirement['kind']): boolean {
   return kind === 'net-worth' || kind === 'retirement' || kind === 'salary' || kind === 'savings'
 }
 
+/**
+ * What a kind's target is counted in.
+ *
+ * **Three units, not eight kinds**, because what an editor needs to know
+ * is whether a number still means the same thing after the kind changes.
+ * Applications and house jobs are both counts, so a 5 carries across and
+ * is helpful; a count of 1 carried into a salary is one pound, which is
+ * a target nobody set and which the screen will happily report as met.
+ *
+ * `declared` has no target at all, which is a fourth answer rather than
+ * a missing one — it is why the box is not drawn for it.
+ */
+export function unitOf(kind: Requirement['kind']): 'money' | 'score' | 'count' | 'none' {
+  if (kind === 'declared') return 'none'
+  if (isMoney(kind)) return 'money'
+  if (kind === 'credit-score') return 'score'
+  return 'count'
+}
+
 /** The target a requirement carries, for an editor to open on. */
 export function targetOf(requirement: Requirement): number | undefined {
   switch (requirement.kind) {
