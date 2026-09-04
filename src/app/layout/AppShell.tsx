@@ -1,7 +1,6 @@
 import { BookMarked, Dumbbell, Home, Map, Network, Target, User, Wallet } from 'lucide-react'
 import { NavLink, Outlet } from 'react-router-dom'
 
-import { BackupReminder } from '@/features/backup/BackupReminder'
 import { UpdatePrompt } from '@/features/pwa/UpdatePrompt'
 
 /**
@@ -113,7 +112,6 @@ export function AppShell() {
           paddingRight: 'calc(1rem + var(--safe-right))',
         }}
       >
-        <BackupReminder />
         <Outlet />
       </main>
 

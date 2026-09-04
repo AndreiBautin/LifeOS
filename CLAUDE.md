@@ -6648,6 +6648,35 @@ merely hidden — the page has no view state left, so there is nothing to
 be out of step with the position. Verified by picking the deload and
 watching the bench go from **3 sets to 2** with the header following.
 
+**The backup nag is gone, and what it was protecting has to be said
+out loud.** Reported as _"that pop message to export the training is
+annoying can we get rid of that?"_ It was a warning-toned card in
+`AppShell`, so it sat above **every screen in the app**, and it was
+dismissed with `useState` — session-only, so it came back on the next
+launch. A reminder that returns however many times you answer it is
+training somebody to look past that part of the screen.
+
+Gone with it: `BackupReminder.tsx`, `backupStatus`, `BackupStatus`,
+`BACKUP_REMINDER_DAYS`, `BACKUP_REMINDER_WORKOUTS`, the `status` field on
+`useBackup` and the workout-count query that fed it. Settings never read
+`status` — only export and import — so nothing else changed, and no test
+covered the rule, because the rule was only ever about when to nag.
+
+**Its argument was sound and it had gone stale.** The card said
+_"Everything lives on this device only"_, which was true when it was
+written and is false whenever Firebase sync is configured — and it had
+no way to know which. So it nagged about a risk that may already be
+covered, in words asserting it is not. **A warning that cannot check its
+own premise is worse than no warning.**
+
+What is genuinely lost: with sync off, an export is still the only thing
+between a lifter and a cleared browser, and now nothing ever mentions
+it. The honest replacement is a line of status **in Settings beside the
+export button** — where somebody who went looking would act on it —
+rather than a card on every screen. That has not been built, and this
+paragraph is the record that it is the missing half rather than an
+oversight.
+
 **The week you are on is the control**, and the section that asked the
 same question is gone. Asked for as _"we already have the 'on week 5'
 under program, let's just make that editable and drop the section

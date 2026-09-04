@@ -141,7 +141,15 @@ export function ProgramPage() {
             >
               {weeks.map((candidate, index) => (
                 <option key={candidate.index} value={index}>
-                  {candidate.isDeload ? 'the deload' : `week ${String(index + 1)}`}
+                  {/*
+                    **The option is a name, not the tail of the
+                    sentence.** It read "the deload" so that "on the
+                    deload" scanned — and a menu is a list of things
+                    rather than a sentence, so the article read as a typo
+                    once the list was open. The sentence loses a word;
+                    the list stops looking wrong.
+                  */}
+                  {candidate.isDeload ? 'Deload' : `Week ${String(index + 1)}`}
                 </option>
               ))}
             </select>

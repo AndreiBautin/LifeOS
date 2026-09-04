@@ -1,9 +1,8 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 
 import { useServices, useSettings } from '@/app/context'
 import type { BackupEnvelope, ImportMode, ImportPreview } from '@/domain/backup/envelope'
-import { backupStatus } from '@/domain/settings/settings'
 import {
   applyBackup,
   backupFilename,
@@ -31,11 +30,6 @@ export function useBackup() {
 
   const [preview, setPreview] = useState<ImportPreview | undefined>(undefined)
   const [pending, setPending] = useState<BackupEnvelope | undefined>(undefined)
-
-  const workoutCount = useQuery({
-    queryKey: ['workouts', 'count'],
-    queryFn: () => services.workouts.count(),
-  })
 
   const exportBackup = useMutation({
     mutationFn: async () => {
@@ -96,10 +90,7 @@ export function useBackup() {
     },
   })
 
-  const status = backupStatus(settings, workoutCount.data ?? 0, services.clock.now())
-
   return {
-    status,
     preview,
     canImport: pending !== undefined,
     exportBackup,
