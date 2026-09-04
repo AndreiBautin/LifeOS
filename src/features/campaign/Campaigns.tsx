@@ -43,14 +43,26 @@ const LABEL = 'text-ink-500 mb-1 block text-xs tracking-wide uppercase'
 /**
  * The default arc, offered rather than assumed.
  *
- * These six are the ones described, in the order they were described in,
- * with the two the app can actually witness wired to real readings. It
- * is a starting point that can be edited away from, the same stance the
- * house-job steps take — not a claim that everybody moves house this
- * way.
+ * **Three stages, and every one of them is measured.** It was six, of
+ * which three were declared — find a house, sell this one, move — and
+ * those went on request: _"let's just track three progress bar things."_
+ * What is left is the part of a move the app can actually witness, which
+ * is also the part that takes the years. Finding a house and selling one
+ * are events rather than campaigns; they happen over a fortnight at the
+ * end and there is nothing to watch fill up in the meantime.
+ *
+ * A starting point that can be edited away from, the same stance the
+ * house-job steps take — not a claim that everybody moves house this way.
  */
 const MOVE_STAGES: readonly { readonly name: string; readonly requirement: Requirement }[] = [
-  { name: 'Fix up the house', requirement: { kind: 'house-jobs', count: 5 } },
+  /*
+   * **House work counts the decluttering as well as the jobs**, asked
+   * for as _"fix up the house should include all the diy as well as
+   * getting everything decluttered."_ Both halves answer the same
+   * question — what about this house is done — so the count is jobs
+   * finished plus rooms read as Clear, and `readingFor` sums them.
+   */
+  { name: 'Fix up the house', requirement: { kind: 'house-jobs', count: 8 } },
   /*
    * **Income is measured by the salary, not by applications sent.**
    * Asked for as _"for main quest just make the income quest tied to
@@ -58,16 +70,20 @@ const MOVE_STAGES: readonly { readonly name: string; readonly requirement: Requi
    * rather than the result — and the looking left the app with the
    * automated job search.
    *
-   * The figure is a placeholder to replace rather than a guess the app
-   * stands behind: the stage editor offers the Census breakpoints for
-   * your age, one tap each, which is the only income number here that
-   * anybody published.
+   * The target is the one asked for, and it is still a figure to edit
+   * rather than one the app stands behind: the stage editor offers the
+   * Census breakpoints for your age, one tap each, which is the only
+   * income number here that anybody published.
    */
-  { name: 'Improve my income', requirement: { kind: 'salary', minorUnits: 10_000_000 } },
-  { name: 'Find a new house', requirement: { kind: 'declared' } },
-  { name: 'Save the deposit', requirement: { kind: 'net-worth', minorUnits: 4_000_000 } },
-  { name: 'Sell this house', requirement: { kind: 'declared' } },
-  { name: 'Move', requirement: { kind: 'declared' } },
+  { name: 'Improve my income', requirement: { kind: 'salary', minorUnits: 15_000_000 } },
+  /*
+   * **The deposit reads the saving fund, not net worth.** It read net
+   * worth, which is everything you own — most of it not available to put
+   * down on a house, so the stage would have completed itself on the day
+   * a pension went up. `savingsMinor` is a balance somebody sets aside
+   * and types in monthly on the Finance screen.
+   */
+  { name: 'Save the deposit', requirement: { kind: 'savings', minorUnits: 1_000_000 } },
 ]
 
 /**
@@ -84,7 +100,7 @@ function describe(requirement: Requirement, standing: StageStanding): string {
     case 'declared':
       return standing.stage.reached.length > 0 ? '' : 'When you say so'
     case 'house-jobs':
-      return `${String(progress?.value ?? 0)} of ${String(requirement.count)} house jobs finished`
+      return `${String(progress?.value ?? 0)} of ${String(requirement.count)} jobs done and rooms cleared`
     case 'offers':
       return `${String(progress?.value ?? 0)} of ${String(requirement.count)} applications through every stage`
     case 'net-worth':
@@ -95,6 +111,10 @@ function describe(requirement: Requirement, standing: StageStanding): string {
       return standing.unproven
         ? `Retirement of ${formatMinorUnits(requirement.minorUnits)} — nothing recorded yet`
         : `${formatMinorUnits(progress?.value ?? 0)} of ${formatMinorUnits(requirement.minorUnits)}`
+    case 'savings':
+      return standing.unproven
+        ? `${formatMinorUnits(requirement.minorUnits)} saved — nothing recorded yet`
+        : `${formatMinorUnits(progress?.value ?? 0)} of ${formatMinorUnits(requirement.minorUnits)} saved`
     case 'salary':
       return standing.unproven
         ? `Salary of ${formatMinorUnits(requirement.minorUnits)} — nothing recorded yet`
@@ -137,6 +157,7 @@ const EVIDENCE_SCREENS: Partial<Record<Requirement['kind'], { to: string; label:
   offers: { to: '/jobs', label: 'Job search' },
   'net-worth': { to: '/finance', label: 'Finance' },
   salary: { to: '/finance', label: 'Finance' },
+  savings: { to: '/finance', label: 'Finance' },
   retirement: { to: '/finance', label: 'Finance' },
   'credit-score': { to: '/finance', label: 'Finance' },
 }
@@ -757,9 +778,8 @@ export function Campaigns() {
             <CardHeading icon={<Flag size={16} aria-hidden />} title="The arc" />
             <Empty title="No arc yet">
               <span className="block">
-                The long one — fix the house, improve the income, find somewhere, save the deposit,
-                sell, move. Its stages read from Base, Jobs and Finance, so the parts the app
-                already records tick themselves.
+                The long one — fix the house, improve the income, save the deposit. All three read
+                from Base and Finance, so they fill themselves as you get on with it.
               </span>
               <Button
                 variant="outline"

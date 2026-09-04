@@ -3406,6 +3406,20 @@ registered in all of the places a collection has to register. The
 compiler and the guard tests found most of them, which is that machinery
 working as intended.
 
+**The arc is three measured stages, and a deposit reads a fund rather than a net worth.** Asked for as _"let's remove the find a new house stage. The house deposit thing should come from a separate saving fund that we should start tracking too… let's also drop sell this house and move stages. So just tracking three progress bar things. But fix up the house should include all the diy as well as getting everything decluttered."_
+
+**The three that went were the three that were declared.** Find a house, sell this one, move — nothing in the app records any of them, so each was a tick somebody would make on the day. What is left is the part the app can witness, which is also the part that takes the years: finding a house and selling one are events rather than campaigns, and there is nothing to watch fill up in the meantime.
+
+**`savingsMinor` is a new figure on the monthly reading, and it is a balance rather than a flow.** The surplus beside it says what was spare _this month_; this says what is in the pot. **Deliberately not net worth**, which is what the deposit stage used to read: most of what you own is not available to put down on a house, so that stage would have completed itself on the day a pension went up.
+
+Both `Record<keyof …>` guards fired on the way in — the merge in `recordFinance` and the history row's field map — which is the mechanism this file already records `salaryMinor` being lost for want of.
+
+**House work sums jobs finished and rooms read as Clear.** Both halves answer one question — what about this house is done — and neither was worth a stage of its own on a three-stage arc. They stay **two fields on the evidence** rather than one pre-summed number, so the sum is visibly a sum and a screen can still say which half moved. A room nobody has read counts for nothing, which is the absent-never-zero rule and the honest reading of "we have not looked in there".
+
+That made `gatherEvidence` read the rooms, so `CampaignDeps` gained `rooms` — the campaign use case now touches Base's clutter as well as its jobs.
+
+**Changing the template reaches nobody who already started an arc.** `MOVE_STAGES` is the offer made when an arc is created; a stage already stored as `offers` or `net-worth` stays exactly that. The stage editor is the way across, and it takes a kind and a target without touching the laps.
+
 **Every stage is a progress bar, and the income one reads the salary.** Asked for as _"for main quest just make the income quest tied to current income, and it would make sense for all of them to be progress bars — we can figure out specifics for all of them later."_
 
 **A declared stage carries a progress of one step**, so it draws empty or full and never anything between. Expressed as a real fraction in `standingForStage` rather than special-cased on the screen: the row draws whatever `progress` says, so a met stage looks met wherever it appears.

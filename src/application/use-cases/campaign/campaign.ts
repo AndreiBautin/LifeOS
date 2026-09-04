@@ -1,4 +1,10 @@
 import { BASE, JOBS, keepFor } from '@/domain/base/base'
+import { houseStanding } from '@/domain/base/declutter'
+
+/** The bottom of `describeClear`'s top band. A room is done at Clear. */
+const CLEAR_ENOUGH = 90
+/** Far enough back that every stored reading counts as current. */
+const EPOCH = '1970-01-01'
 import {
   addStage,
   markReached,
@@ -22,6 +28,7 @@ import type {
   CampaignRepository,
   Clock,
   FinanceRepository,
+  RoomRepository,
   ProjectRepository,
 } from '@/domain/repositories/ports'
 import { toDayKey } from '@/domain/time/day'
@@ -40,6 +47,7 @@ export interface CampaignDeps {
   readonly campaigns: CampaignRepository
   readonly projects: ProjectRepository
   readonly finance: FinanceRepository
+  readonly rooms: RoomRepository
   readonly clock: Clock
   readonly ids: IdGenerator
 }
@@ -59,7 +67,11 @@ export interface CampaignDeps {
  * their score quarterly still gets a net worth from last month.
  */
 export async function gatherEvidence(deps: CampaignDeps): Promise<Evidence> {
-  const [projects, finance] = await Promise.all([deps.projects.all(), deps.finance.all()])
+  const [projects, finance, rooms] = await Promise.all([
+    deps.projects.all(),
+    deps.finance.all(),
+    deps.rooms.all(),
+  ])
 
   const houseJobsDone = keepFor(projects, BASE).filter(
     (project) =>
@@ -87,6 +99,17 @@ export async function gatherEvidence(deps: CampaignDeps): Promise<Evidence> {
   const retirementMinor = latest(finance, 'retirementMinor')
   const salaryMinor = latest(finance, 'salaryMinor')
   const creditScore = latest(finance, 'creditScore')
+  const savingsMinor = latest(finance, 'savingsMinor')
+
+  /*
+   * A room counts once it reads **Clear**, which is the top band
+   * `describeClear` names rather than a threshold invented here. A room
+   * nobody has read yet counts for nothing — the absent-never-zero rule,
+   * and the honest reading of "we have not looked in there".
+   */
+  const roomsCleared = houseStanding(rooms, EPOCH).rooms.filter(
+    (one) => one.clear !== undefined && one.clear >= CLEAR_ENOUGH,
+  ).length
 
   /*
    * Offered and ruled out both count as seen. You do not offer on a
@@ -102,6 +125,8 @@ export async function gatherEvidence(deps: CampaignDeps): Promise<Evidence> {
     ...(retirementMinor === undefined ? {} : { retirementMinor }),
     ...(salaryMinor === undefined ? {} : { salaryMinor }),
     ...(creditScore === undefined ? {} : { creditScore }),
+    ...(savingsMinor === undefined ? {} : { savingsMinor }),
+    roomsCleared,
   }
 }
 

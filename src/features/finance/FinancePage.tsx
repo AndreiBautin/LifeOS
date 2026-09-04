@@ -179,6 +179,7 @@ const SHOWN: Readonly<Record<keyof NewFinanceReading, { label: string; money: bo
   retirementMinor: { label: 'Retirement', money: true },
   salaryMinor: { label: 'Salary', money: true },
   surplusMinor: { label: 'Surplus', money: true },
+  savingsMinor: { label: 'Saved', money: true },
   creditScore: { label: 'Credit', money: false },
 }
 
@@ -352,6 +353,7 @@ export function FinancePage() {
   const [salary, setSalary] = useState('')
   const [credit, setCredit] = useState('')
   const [surplus, setSurplus] = useState('')
+  const [savings, setSavings] = useState('')
   const [openedOn, setOpenedOn] = useState<string | undefined>(undefined)
 
   if (readings.data !== undefined && openedOn !== month) {
@@ -366,6 +368,9 @@ export function FinancePage() {
     setCredit(thisMonth?.creditScore === undefined ? '' : String(thisMonth.creditScore))
     setSurplus(
       thisMonth?.surplusMinor === undefined ? '' : formatMinorUnits(thisMonth.surplusMinor),
+    )
+    setSavings(
+      thisMonth?.savingsMinor === undefined ? '' : formatMinorUnits(thisMonth.savingsMinor),
     )
   }
 
@@ -431,6 +436,7 @@ export function FinancePage() {
               const saved = toMinorUnits(retirement)
               const earned = toMinorUnits(salary)
               const spare = toMinorUnits(surplus)
+              const pot = toMinorUnits(savings)
 
               const input = {
                 ...(worth === undefined ? {} : { netWorthMinor: worth }),
@@ -438,6 +444,7 @@ export function FinancePage() {
                 ...(earned === undefined ? {} : { salaryMinor: earned }),
                 ...(credit.trim() === '' ? {} : { creditScore: Math.round(score) }),
                 ...(spare === undefined ? {} : { surplusMinor: spare }),
+                ...(pot === undefined ? {} : { savingsMinor: pot }),
               }
 
               if (Object.keys(input).length === 0) return
@@ -509,6 +516,29 @@ export function FinancePage() {
                 value={surplus}
                 onChange={(event) => {
                   setSurplus(event.target.value)
+                }}
+              />
+            </label>
+
+            {/*
+              **The saving fund, and it is a balance rather than a flow.**
+              The surplus above says what was spare *this month*; this
+              says what is in the pot, which is what a deposit is measured
+              against. Kept apart from net worth for the same reason —
+              most of what you own is not available to put down on a
+              house, so a deposit read off net worth would complete itself
+              on the day a pension went up.
+            */}
+            <label className="block space-y-1">
+              <span className="text-ink-500 text-xs">Saved so far</span>
+              <input
+                className={FIELD}
+                inputMode="decimal"
+                aria-label="Saved so far"
+                placeholder="What is in the saving fund"
+                value={savings}
+                onChange={(event) => {
+                  setSavings(event.target.value)
                 }}
               />
             </label>

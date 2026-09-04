@@ -74,6 +74,23 @@ export interface FinanceReading {
    * this file follows.
    */
   readonly surplusMinor?: number
+  /**
+   * The saving fund, integer minor units.
+   *
+   * **Separate from net worth on purpose**, asked for as _"the house
+   * deposit thing should come from a separate saving fund that we should
+   * start tracking too."_ A deposit is money set aside for one thing; net
+   * worth is everything you own, most of which is not available to put
+   * down on a house. Reading a deposit stage off net worth would call the
+   * fund complete on the day a pension went up.
+   *
+   * It is a **balance**, like net worth and retirement, rather than a
+   * flow like the surplus: what is asked is how much is in the pot, not
+   * how much went in this month. Absent means the month was not tallied,
+   * which the absent-never-zero rule keeps distinct from a pot of
+   * nothing.
+   */
+  readonly savingsMinor?: number
   readonly updatedAt?: string
 }
 

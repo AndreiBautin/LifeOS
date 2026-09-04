@@ -66,6 +66,15 @@ export type Requirement =
    * of 90,000 is a thing you are either being paid or not.
    */
   | { readonly kind: 'salary'; readonly minorUnits: number }
+  /**
+   * The saving fund, in minor units, from the latest finance reading.
+   *
+   * **Not net worth**, which is what a deposit stage used to be read
+   * against. Most of what you own is not available to put down on a
+   * house, so that stage completed itself on the day a pension went up.
+   * A fund is money set aside for the thing.
+   */
+  | { readonly kind: 'savings'; readonly minorUnits: number }
   | { readonly kind: 'credit-score'; readonly score: number }
 
 export const REQUIREMENT_KINDS = [
@@ -75,6 +84,7 @@ export const REQUIREMENT_KINDS = [
   'net-worth',
   'retirement',
   'salary',
+  'savings',
   'credit-score',
 ] as const
 
@@ -132,11 +142,14 @@ export interface Campaign {
  */
 export interface Evidence {
   readonly houseJobsDone?: number
+  /** Rooms read as Clear — the decluttering half of the house work. */
+  readonly roomsCleared?: number
   readonly offers?: number
   /** Houses seen -- viewed, offered on, or ruled out. */
   readonly netWorthMinor?: number
   readonly retirementMinor?: number
   readonly salaryMinor?: number
+  readonly savingsMinor?: number
   readonly creditScore?: number
 }
 
@@ -201,7 +214,18 @@ function readingFor(requirement: Requirement, evidence: Evidence): number | unde
     case 'declared':
       return undefined
     case 'house-jobs':
-      return evidence.houseJobsDone ?? 0
+      /*
+       * **Jobs finished and rooms cleared, added together.** Asked for
+       * as _"fix up the house should include all the diy as well as
+       * getting everything decluttered."_ Both halves are the same
+       * question — what about this house is done — and neither is worth
+       * a stage of its own on a six-line arc.
+       *
+       * Kept as two fields on the evidence rather than one pre-summed
+       * number, so a screen can still say which half moved and the sum
+       * is visibly a sum.
+       */
+      return (evidence.houseJobsDone ?? 0) + (evidence.roomsCleared ?? 0)
     case 'offers':
       return evidence.offers ?? 0
     case 'net-worth':
@@ -210,6 +234,8 @@ function readingFor(requirement: Requirement, evidence: Evidence): number | unde
       return evidence.retirementMinor
     case 'salary':
       return evidence.salaryMinor
+    case 'savings':
+      return evidence.savingsMinor
     case 'credit-score':
       return evidence.creditScore
   }
@@ -315,17 +341,18 @@ export function undoReached(stage: Stage): Stage {
  */
 export const REQUIREMENT_LABELS: Record<Requirement['kind'], string> = {
   declared: 'When you say so',
-  'house-jobs': 'House jobs finished',
+  'house-jobs': 'House jobs and rooms cleared',
   offers: 'Applications through every stage',
   'net-worth': 'Net worth reaches',
   retirement: 'Retirement reaches',
   salary: 'Salary reaches',
+  savings: 'Saved towards it',
   'credit-score': 'Credit score reaches',
 }
 
 /** Whether a kind's target is money, so a screen knows to convert. */
 export function isMoney(kind: Requirement['kind']): boolean {
-  return kind === 'net-worth' || kind === 'retirement' || kind === 'salary'
+  return kind === 'net-worth' || kind === 'retirement' || kind === 'salary' || kind === 'savings'
 }
 
 /** The target a requirement carries, for an editor to open on. */
@@ -339,6 +366,7 @@ export function targetOf(requirement: Requirement): number | undefined {
     case 'net-worth':
     case 'retirement':
     case 'salary':
+    case 'savings':
       return requirement.minorUnits
     case 'credit-score':
       return requirement.score
@@ -369,6 +397,8 @@ export function requirementOf(kind: Requirement['kind'], target: number): Requir
       return { kind: 'retirement', minorUnits: value }
     case 'salary':
       return { kind: 'salary', minorUnits: value }
+    case 'savings':
+      return { kind: 'savings', minorUnits: value }
     case 'credit-score':
       return { kind: 'credit-score', score: value }
   }

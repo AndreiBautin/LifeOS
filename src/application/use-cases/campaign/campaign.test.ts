@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { BASE, JOBS } from '@/domain/base/base'
 import type { Campaign } from '@/domain/campaign/campaign'
 import type { FinanceReading } from '@/domain/finance/reading'
+import type { Room } from '@/domain/base/declutter'
 import { asProjectId, type CampaignId, type StageId } from '@/domain/ids/ids'
 import type { Project } from '@/domain/projects/project'
 
@@ -40,6 +41,7 @@ function project(
 function deps(options: {
   projects?: readonly Project[]
   finance?: readonly FinanceReading[]
+  rooms?: readonly Room[]
   campaigns?: Campaign[]
 }): CampaignDeps & { stored: Campaign[] } {
   const stored = options.campaigns ?? []
@@ -66,6 +68,9 @@ function deps(options: {
     finance: {
       all: () => Promise.resolve(options.finance ?? []),
     } as unknown as CampaignDeps['finance'],
+    rooms: {
+      all: () => Promise.resolve(options.rooms ?? []),
+    } as unknown as CampaignDeps['rooms'],
     clock: { now: () => new Date('2026-08-31T10:00:00') },
     ids: {
       next: () => {
