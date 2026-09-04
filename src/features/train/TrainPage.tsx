@@ -245,7 +245,7 @@ export function TrainPage() {
   return (
     <div className="space-y-4">
       {/*
-        Plan and History live here rather than in the navigation. The bottom
+        Program and History live here rather than in the navigation. The bottom
         bar holds six destinations on a phone and the hub needs a slot for
         every absorbed app — so the tabs are for what is opened daily, and
         training's two review screens are reached from the training screen.
@@ -255,9 +255,16 @@ export function TrainPage() {
         subtitle={program.data?.name ?? 'Loading…'}
         action={
           <>
-            <Link to="/plan" className={buttonStyles({ variant: 'ghost', size: 'sm' })}>
+            {/*
+              **Program is reached from here because Plan used to be, and
+              Plan was its only route in.** Deleting a screen that holds
+              the only link to another one orphans the second — the trap
+              this file records for `/mind` and `/resume`. The header is
+              the established home for a screen related to this one.
+            */}
+            <Link to="/program" className={buttonStyles({ variant: 'ghost', size: 'sm' })}>
               <ListChecks size={16} aria-hidden />
-              Plan
+              Program
             </Link>
             <Link to="/history" className={buttonStyles({ variant: 'ghost', size: 'sm' })}>
               <History size={16} aria-hidden />

@@ -6623,12 +6623,33 @@ sentence and each was false:
   which stopped being true when fractional credit was removed long
   before any of this.
 
-**Plan's "Change any of it" card is "Why there is nothing to change".**
-It described tiers and landmarks — wrong since the landmarks went — over
-a link to a Settings section that no longer exists. It is kept rather
-than deleted because the page is called Plan and a plan you cannot
-change raises the question; answering it once is better than leaving
-somebody to search Settings for something that is not there.
+**The Plan screen is gone, and its own last section had already said
+why.** Asked for as _"remove the plan page of train completely — it's no
+longer necessary since we have a simple plan hardcoded in."_ It existed
+to answer "what did my settings cost me": which muscles were trained,
+how often, how hard, and where the budget went. That was a real question
+while those were settings. It stopped being one when the customisation
+went, and the page's own final card had already been rewritten to
+**"Why there is nothing to change"** — a screen explaining that it no
+longer has a subject.
+
+**Deleting it orphaned the Program page, which is the trap to check for
+every time a screen goes.** `/program` was reached from exactly one
+place: a link on Plan. The same shape as `/mind` and `/resume`, which
+this file already records being rescued by finding the screen each
+belonged to. Program belongs to Train, so it took Plan's seat in that
+header — the established home for a screen related to this one — and
+Train's two header links now read Program and History.
+
+**`/plan` redirects to `/program` rather than 404ing.** It is not a PWA
+shortcut, so nothing registered it with the operating system, but the
+question the page ended on — fine, so what does the week look like — is
+answered by the screen it now lands on.
+
+**`domain/priority/capacity.ts` went with it.** `shortfalls` had one
+caller and it was Plan's capacity report, so leaving it would have been
+a rule nothing can reach with a test attached — the pattern this file
+keeps recording. `explainVolume` stays, because Program still reads it.
 
 **Verified by driving the whole loop, which is the only thing that could
 have.** A bench opened at 200 from a 238 estimate, three sets of five

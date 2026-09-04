@@ -15,8 +15,7 @@ import { FinancePage } from '@/features/finance/FinancePage'
 import { ResumePage } from '@/features/resume/ResumePage'
 import { UpgradesPage } from '@/features/upgrades/UpgradesPage'
 import { HistoryPage } from '@/features/history/HistoryPage'
-import { PlanPage } from '@/features/plan/PlanPage'
-import { ProgramPage } from '@/features/plan/ProgramPage'
+import { ProgramPage } from '@/features/program/ProgramPage'
 import { NotFoundPage } from '@/features/not-found/NotFoundPage'
 import { SettingsPage } from '@/features/settings/SettingsPage'
 import { TrainPage } from '@/features/train/TrainPage'
@@ -51,7 +50,16 @@ export const router = createBrowserRouter(
          */
         { path: 'next', element: <Navigate to="/quests" replace /> },
         { path: 'train', element: <TrainPage /> },
-        { path: 'plan', element: <PlanPage /> },
+        /*
+         * The Plan screen is gone and `/plan` lands on the Program page.
+         * It explained how each muscle's weekly volume was arrived at,
+         * which was worth a screen while those were settings — its own
+         * last section had already become "Why there is nothing to
+         * change". With one hardcoded split there is nothing to explain
+         * and nothing to change, so what is left of the question is what
+         * the week actually looks like, which is Program.
+         */
+        { path: 'plan', element: <Navigate to="/program" replace /> },
         { path: 'program', element: <ProgramPage /> },
         { path: 'backlog', element: <BacklogPage /> },
         { path: 'upgrades', element: <UpgradesPage /> },
