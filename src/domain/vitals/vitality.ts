@@ -10,20 +10,31 @@ import { amountSpentOn, cycleOf, directionOf, isActive, readCharges, type Vice }
  * Going over on limits drains the health bar faster, which drains
  * overtime by itself and gets replaced with obviously hitting those."_
  *
- * **It starts full and depletes**, asked for as _"it should really start
- * full, and deplete with the things replacing them."_ That is what the
- * arithmetic says read forwards: every target-day you were keeping is
- * worth a share of the bar, and what takes a share away is **missing one
- * or going over a limit**. With nothing missed and nothing over — a
- * fresh set of restoratives, or a good week — it is full.
+ * **It starts full, takes damage and heals**, which is the third shape
+ * this has had and the first that behaves the way it was described.
  *
- * **A rolling window rather than a stored level, and that is what makes
- * it honest.** A bar that decays on a timer needs somewhere to keep how
- * full it was, which is device state with no correct merge — the trap
- * `readCharges` was written to avoid, arriving again. Reading the last
- * seven days instead means it drains *by itself* for free: a day you hit
- * nothing ages into the window and a day you did ages out, so stopping
- * makes it fall without anything having to tick.
+ * It was a flat average over the window: every target-day counted the
+ * same, so one perfect day could contribute at most a seventh of the bar
+ * and **hitting everything today could never get you near full.**
+ * Reported as _"I hit both my goals for the day but am not at full
+ * health"_, and reproduced exactly — two restoratives set up four days
+ * earlier, both hit today, reading **20%** with the label honestly saying
+ * "2 of 10 target days standing".
+ *
+ * That contradicted what the bar had already been asked for: _"I should
+ * at least be able to go through today at 100, and if I don't hit my
+ * goals by end of day, then it starts draining the next day."_ A drain is
+ * not an average. So the window is walked oldest to newest from full: a
+ * day carrying misses or overruns takes a bite, a day you hit everything
+ * heals one back, and the result is clamped at both ends.
+ *
+ * **Still derived rather than stored, which is what the walk preserves.**
+ * A bar that decayed on a timer would need somewhere to keep how full it
+ * was, and device state with no correct merge is the trap `readCharges`
+ * was written to avoid. Walking the window from a known full start is a
+ * pure function of the spend log: two devices that have seen the same
+ * spends agree, and it still drains by itself if you stop, because
+ * missed days age *into* the window and take their bite as they arrive.
  *
  * **The numbers here are the app's own, and that is worth saying out
  * loud** because this model refuses invented scales nearly everywhere.
@@ -31,8 +42,10 @@ import { amountSpentOn, cycleOf, directionOf, isActive, readCharges, type Vice }
  * allowed for the same reason the avatar's build bands are — it
  * *measures nothing about the world*. It re-reads pools you set
  * yourself, against targets you chose, over a window. Two constants and
- * one sentence: seven days, and a day over a limit cancels a day of
- * hitting a target.
+ * three numbers: seven days, a quarter of the bar for a day fully
+ * missed, and half of it back for a day fully hit. Recovery is faster
+ * than decay on purpose — the break-even is hitting about a third of
+ * your restoratives, so drifting downwards takes real neglect.
  *
  * **Absent when there is nothing to judge.** With no targets the value
  * could only ever be nought, and a health bar pinned at empty reads as
@@ -64,6 +77,21 @@ import { amountSpentOn, cycleOf, directionOf, isActive, readCharges, type Vice }
 /** How far back it looks. */
 export const VITALITY_DAYS = 7
 
+/**
+ * What a day does to the bar, as a share of the whole.
+ *
+ * A day where every restorative was missed costs a quarter, so four
+ * neglected days empty it. A day where every one was hit returns half, so
+ * one good day after a bad week is visibly a recovery rather than a
+ * rounding error — which is the complaint that produced this shape.
+ *
+ * **They are deliberately not equal.** Recovery outrunning decay is what
+ * makes the bar worth looking at: a number that punishes harder than it
+ * rewards is one you learn to ignore.
+ */
+export const DAMAGE_PER_DAY = 0.25
+export const HEAL_PER_DAY = 0.5
+
 export interface VitalityReading {
   /** 0–1, or absent when nothing could be judged. */
   readonly value?: number
@@ -71,9 +99,12 @@ export interface VitalityReading {
   readonly met: number
   /** Days a limit was over. Each one cancels a hit. */
   readonly over: number
-  /** Target-days there were to hit — the denominator. */
+  /** Target-days there were to hit, across the window. */
   readonly possible: number
   readonly days: number
+  /** Restoratives hit today, and how many there were. What the label says. */
+  readonly todayMet: number
+  readonly todayTargets: number
 }
 
 /**
@@ -140,54 +171,65 @@ export function vitality(
   let met = 0
   let over = 0
   let possible = 0
+  let todayMet = 0
+  let todayTargets = 0
 
-  for (const day of window) {
+  /*
+   * Full until something takes it down. Walked oldest first, because a
+   * day's damage has to land before the next day can heal it back — the
+   * order is the whole difference between a drain and an average.
+   */
+  let health = 1
+
+  for (const day of [...window].reverse()) {
     /*
-     * **A day with nothing to measure is skipped whole, and that is the
-     * bug this shape exists to fix.** Targets only counted days since
-     * they were created — correctly — while limits were judged across
-     * the entire window, so a caffeine pool that predated the
-     * restoratives could spend seven days' worth of overruns against a
-     * single day of hitting everything.
-     *
-     * Reported as _"hit my water and veggie/fruit goals and my health
-     * bar is empty still."_ Reproduced exactly: met 3, over 7, possible
-     * 3 — an empty bar on a perfect day.
-     *
-     * A day before you were keeping any restorative is not a day you
-     * failed, and it cannot drain a bar that was not being kept. So the
-     * two halves share one window now: the day counts, or it does not.
+     * **A day with nothing to measure is skipped whole.** Targets only
+     * counted days since they were created — correctly — while limits
+     * were judged across the entire window, so a caffeine pool that
+     * predated the restoratives could spend seven days of overruns
+     * against a single day of hitting everything. A day before you were
+     * keeping any restorative is not a day you failed, and it cannot
+     * drain a bar that was not being kept.
      */
     const live = targets.filter((pool) => existedOn(pool, day))
     if (live.length === 0) continue
 
+    const hit = live.filter((pool) => metOn(pool, day)).length
+    const missed = live.filter((pool) => missedOn(pool, day, today)).length
+    const overToday = limits.filter((pool) => existedOn(pool, day) && overOn(pool, day)).length
+
     possible += live.length
+    met += live.length - missed
+    over += overToday
+
+    if (day === today) {
+      todayMet = hit
+      todayTargets = live.length
+    }
+
     /*
-     * `met` is what the bar is full of, so today's outstanding targets
-     * count here rather than being left out of the denominator. Dropping
-     * them instead would make a fresh morning `possible: 0` — an absent
-     * reading and the "set up your restoratives" empty state, shown to
-     * somebody who just did.
+     * **Damage is capped at a full day's worth**, which the flat average
+     * never was: `over` was added per limit per day with no ceiling, so
+     * one limit run over every day could empty the bar however well the
+     * restoratives went. A day can only ever be one bad day.
      */
-    for (const pool of live) if (!missedOn(pool, day, today)) met += 1
-    for (const pool of limits) if (existedOn(pool, day) && overOn(pool, day)) over += 1
+    const harm = Math.min(1, (missed + overToday) / live.length)
+
+    /*
+     * **Heal first, then take the damage, and the order is the rule.**
+     * Doing it in one expression let the heal swamp the harm: a day where
+     * every restorative was hit *and* a limit was blown came out at a
+     * full bar, because +0.5 against -0.08 clamps to one. The limits
+     * stopped mattering on exactly the days somebody was doing well.
+     *
+     * Clamping the heal before subtracting means a day carrying an
+     * overrun can never end full, however good the rest of it was.
+     */
+    const healed = Math.min(1, health + (hit / live.length) * HEAL_PER_DAY)
+    health = Math.max(0, healed - harm * DAMAGE_PER_DAY)
   }
 
-  if (possible === 0) return { met, over, possible, days }
+  if (possible === 0) return { met, over, possible, days, todayMet, todayTargets }
 
-  /*
-   * **Full, less what was missed and what went over.** Written as the
-   * depletion it is rather than as a score climbing from nothing: the
-   * two are the same number — `1 - (missed + over)/possible` is
-   * `(met - over)/possible` — and only one of them reads the way the
-   * bar behaves.
-   *
-   * Clamped at both ends. A terrible week cannot take it below empty:
-   * there is no debt to carry, and a bar that had to be climbed out of
-   * would punish one bad week into the next.
-   */
-  const missed = possible - met
-  const value = Math.min(1, Math.max(0, 1 - (missed + over) / possible))
-
-  return { value, met, over, possible, days }
+  return { value: health, met, over, possible, days, todayMet, todayTargets }
 }

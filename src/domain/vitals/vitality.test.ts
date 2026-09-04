@@ -28,6 +28,8 @@ function pool(overrides: Partial<Vice> = {}): Vice {
   }
 }
 
+const DAY = 24 * 60 * 60 * 1000
+
 describe('vitality', () => {
   /*
    * Absent, never zero. With nothing to hit, the value could only ever
@@ -48,27 +50,44 @@ describe('vitality', () => {
   })
 
   /*
-   * Every completed day is a miss and today is not judged, so the bar
-   * holds exactly the one day it has not had the chance to lose.
+   * Four fully-missed days empty it, and the window holds six completed
+   * ones — so a pool that has never been hit is at nought however long
+   * it has been sitting there. It used to read a seventh, because the bar
+   * was an average and today counted for one day of seven.
    */
-  it('is empty but for today when nothing was hit at all', () => {
+  it('is empty when nothing was ever hit', () => {
     const reading = vitality([pool()], NOW)
 
-    expect(reading.met).toBe(1)
-    expect(reading.value).toBeCloseTo(1 / 7)
+    expect(reading.value).toBe(0)
   })
 
   /*
-   * The drain that needs no timer: a day that was hit ages out of the
-   * window, so stopping makes the bar fall without anything ticking.
+   * **The drain that needs no timer**, which is the property the walk had
+   * to keep: stopping makes the bar fall without anything ticking,
+   * because the missed days age *into* the window and take their bite as
+   * they arrive.
+   *
+   * Read twice from one set of spends rather than by asserting a figure.
+   * Two good days put it at full; three days later, with nothing further
+   * logged, those days have been outrun by the misses behind them.
    */
-  it('falls as a good day ages out of the window', () => {
+  it('falls as the good days are left behind', () => {
     const spent = [on(0), on(0), on(1), on(1)]
-    const reading = vitality([pool({ spent })], NOW)
 
-    // Two of seven days hit.
-    expect(reading.met).toBe(2)
-    expect(reading.value).toBeCloseTo(2 / 7)
+    const now = vitality([pool({ spent })], NOW).value ?? 0
+    const later = vitality([pool({ spent })], new Date(NOW.getTime() + 3 * DAY)).value ?? 0
+
+    expect(now).toBe(1)
+    expect(later).toBeLessThan(now)
+  })
+
+  /* And one good day from empty is a visible recovery, not a rounding. */
+  it('heals faster than it drains', () => {
+    const neglected = vitality([pool()], NOW).value ?? 0
+    const oneGoodDay = vitality([pool({ spent: [on(0), on(0)] })], NOW).value ?? 0
+
+    expect(neglected).toBe(0)
+    expect(oneGoodDay).toBeGreaterThanOrEqual(0.5)
   })
 
   it('does not count a day that fell short of the target', () => {
@@ -227,8 +246,16 @@ describe('a limit older than the restoratives', () => {
 
     const reading = vitality([...threeHitToday, overToday], NOW)
 
+    /*
+     * The figure moved with the model — it was `2 / 3` of a flat average
+     * — and what is being tested is that an overrun costs something at
+     * all. Asserted as "less than a day with no overrun would give",
+     * because the exact fraction is the damage rate rather than the rule.
+     */
+    const clean = vitality(threeHitToday, NOW).value ?? 0
+
     expect(reading.over).toBe(1)
-    expect(reading.value).toBeCloseTo(2 / 3)
+    expect(reading.value ?? 0).toBeLessThan(clean)
   })
 
   /*
@@ -257,10 +284,10 @@ describe('a limit older than the restoratives', () => {
     const tomorrow = new Date(NOW.getTime() + 24 * 60 * 60 * 1000)
 
     /*
-     * Half, not nought: the window now holds two days the pool existed
-     * for — yesterday, missed and counted, and the new today, spared. The
-     * fall from a full bar to half of one is the deferral arriving.
+     * A quarter down, not nought: yesterday is now a completed day that
+     * was missed, and a fully-missed day costs `DAMAGE_PER_DAY`. The fall
+     * from a full bar is the deferral arriving — four such days empty it.
      */
-    expect(vitality([untouched], tomorrow).value).toBe(0.5)
+    expect(vitality([untouched], tomorrow).value).toBe(0.75)
   })
 })

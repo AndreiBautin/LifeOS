@@ -73,15 +73,20 @@ export function HealthBar() {
       </div>
 
       {/*
-        A real denominator: target-days hit over target-days there were,
-        the overruns already subtracted. `Meter` requires both numbers so
-        a call site cannot hide what it divides by, and this one divides
-        by a week of your own targets.
+        **The fill and the percentage come from one number, and for a
+        commit they did not.** The meter drew `met - over` over
+        `possible` — the old flat average — while the figure above it came
+        from the walk that replaced it, so a bar reading 50% could be
+        drawn a fifth full. Two renderings of one quantity, disagreeing.
+
+        `Meter` requires a denominator so a call site cannot hide what it
+        divides by. This one divides by a full bar, which is what health
+        is a share of.
       */}
       <Meter
         className="mt-1"
-        value={Math.max(0, reading.met - reading.over)}
-        of={reading.possible}
+        value={percent}
+        of={100}
         height={6}
         /*
           Green when it is mostly full, amber in the middle, red low —
@@ -91,13 +96,18 @@ export function HealthBar() {
         */
         tone={percent >= 67 ? 'good' : percent >= 34 ? 'accent' : 'bad'}
         /*
-         * "Standing", not "hit". Today is counted in `met` because it
-         * has not been missed yet rather than because anything was
-         * logged, so a label saying "3 target days hit" on an untouched
-         * morning would be the one wrong thing on the card — and the
-         * only version of this a screen reader gets.
+         * **Today's own figures, because the bar is no longer an
+         * average.** It read "2 of 10 target days standing" — an honest
+         * description of the old arithmetic that told a reader nothing
+         * about what to do next. What moves the bar now is today.
+         *
+         * `todayMet` counts restoratives genuinely hit, not the
+         * not-yet-missed ones `met` carries. That distinction is why the
+         * label cannot be built from `met`: on an untouched morning it
+         * would claim a full day's work had been done, and this is the
+         * only version of the bar a screen reader gets.
          */
-        label={`Health, ${String(percent)} per cent — ${String(reading.met)} of ${String(reading.possible)} target days standing and ${String(reading.over)} over the limit in ${String(reading.days)} days`}
+        label={`Health, ${String(percent)} per cent — ${String(reading.todayMet)} of ${String(reading.todayTargets)} restoratives hit today, over the last ${String(reading.days)} days`}
       />
     </div>
   )

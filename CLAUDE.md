@@ -5299,6 +5299,20 @@ drain a bar that was not being kept. The two halves ask the same
 question of the same days, or neither does. An overrun on a day that
 _was_ being kept still costs — there is a test for each direction.
 
+**The bar takes damage and heals; it is not an average.** Reported as _"for the restoratives, I hit both my goals for the day but am not at full health"_ and reproduced exactly: two restoratives set up four days earlier, both hit today, reading **20%** — with the label honestly saying "2 of 10 target days standing".
+
+**The cause was the shape rather than a slip.** A flat average over seven days times the pools means one perfect day contributes at most a seventh, so **hitting everything today could never get you near full**, and 100% required having hit every target on all seven days. That contradicted what the bar had already been asked for — _"go through today at 100, and if I do not hit my goals by end of day, then it starts draining the next day"_ — which describes a drain, not a mean.
+
+The window is walked oldest to newest from full: a day carrying misses or overruns takes a bite, a day you hit everything heals one back, clamped at both ends. **Still derived rather than stored**, which is what the walk preserves — a pure function of the spend log, so two devices that have seen the same spends agree, and it still drains by itself because missed days age _into_ the window.
+
+**Recovery outruns decay on purpose.** A quarter off for a day fully missed, half back for a day fully hit — four neglected days empty it, two clean days fill it, and the break-even is hitting about a third of your restoratives. A bar that punishes harder than it rewards is one you learn to ignore.
+
+**Heal first, then take the damage, and the order is the rule.** Done in one expression the heal swamped the harm: a day where every restorative was hit _and_ a limit was blown came out full, because +0.5 against −0.08 clamps to one — so **the limits stopped mattering on exactly the days somebody was doing well.** Clamping the heal before subtracting means a day carrying an overrun can never end full.
+
+**Damage is capped at one day per day**, which the average never was: over was added per limit with no ceiling, so one limit run over every day could empty the bar however well the restoratives went.
+
+**The meter and its percentage came from two different numbers for a commit.** The fill still drew the old `met - over` over `possible` while the figure above it came from the walk, so a bar reading 50% could be drawn a fifth full. One quantity, drawn twice, disagreeing — caught before shipping by reading the screen rather than the tests.
+
 **Today does not drain it until the day is over.** Reported as _"health seems to drain awfully quickly — hasn't been a day yet and already down to 33. I should at least be able to go through today at 100, and if I don't hit my goals by end of day, then it starts draining the next day."_ Exactly right, and the arithmetic was doing it deliberately: today sat in the window like any other day, so at nine in the morning three untouched targets read as three misses. On a first day — when the pools were created today and today is therefore the only day in the window — one target of three is 33%, a bar that opens two-thirds empty because the day has not happened yet.
 
 It is the humane rule streaks already follow, applied to the other place it belongs: a run is not broken by a day you have yet to live. An unmet target today is **not yet missed**, so the bar starts full and falls tomorrow for whatever today did not do. Nothing is forgiven, only deferred.
