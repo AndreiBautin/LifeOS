@@ -1,3 +1,4 @@
+import { asExerciseId } from '@/domain/ids/ids'
 import { describe, expect, it } from 'vitest'
 
 import type { Campaign } from '@/domain/campaign/campaign'
@@ -673,7 +674,7 @@ describe('syncing the settings the program is derived from', () => {
       const changed = await phone.settings.get()
       await phone.settings.save({
         ...changed,
-        daysPerWeek: 3,
+        excludedExercises: [asExerciseId('dips')],
         updatedAt: clock.now().toISOString(),
       })
 
@@ -681,7 +682,7 @@ describe('syncing the settings the program is derived from', () => {
       const report = await synchronise(createMemorySyncTarget(server, 'desk'), desk)
 
       expect(report.received).toBe(1)
-      expect((await desk.settings.get()).daysPerWeek).toBe(3)
+      expect((await desk.settings.get()).excludedExercises).toEqual([asExerciseId('dips')])
     })()
   })
 
@@ -692,7 +693,11 @@ describe('syncing the settings the program is derived from', () => {
     const target = createMemorySyncTarget(server, 'phone')
 
     const changed = await phone.settings.get()
-    await phone.settings.save({ ...changed, daysPerWeek: 3, updatedAt: clock.now().toISOString() })
+    await phone.settings.save({
+      ...changed,
+      excludedExercises: [asExerciseId('dips')],
+      updatedAt: clock.now().toISOString(),
+    })
 
     expect((await synchronise(target, phone)).pushed).toBe(1)
 
@@ -714,7 +719,7 @@ describe('syncing the settings the program is derived from', () => {
     const phoneLocal = await phone.settings.get()
     await phone.settings.save({
       ...phoneLocal,
-      daysPerWeek: 3,
+      excludedExercises: [asExerciseId('dips')],
       theme: 'light',
       updatedAt: clock.now().toISOString(),
     })
@@ -724,7 +729,7 @@ describe('syncing the settings the program is derived from', () => {
 
     const after = await desk.settings.get()
 
-    expect(after.daysPerWeek).toBe(3)
+    expect(after.excludedExercises).toEqual([asExerciseId('dips')])
     // The phone's theme never left it, so the desktop keeps its own.
     expect(after.theme).toBe('dark')
   })
@@ -747,7 +752,7 @@ describe('settings bugs an eval agent found', () => {
     const deskBase = await desk.settings.get()
     await desk.settings.save({
       ...deskBase,
-      daysPerWeek: 3,
+      excludedExercises: [asExerciseId('dips')],
       updatedAt: clock.now().toISOString(),
     })
     await synchronise(createMemorySyncTarget(server, 'desk'), desk)
@@ -760,7 +765,7 @@ describe('settings bugs an eval agent found', () => {
 
     const after = await phone.settings.get()
     expect(after.theme).toBe('dark')
-    expect(after.daysPerWeek).toBe(3)
+    expect(after.excludedExercises).toEqual([asExerciseId('dips')])
   })
 
   it('stops re-sending settings on a device whose clock runs slow', async () => {
@@ -778,7 +783,11 @@ describe('settings bugs an eval agent found', () => {
     const desk = device(slow)
 
     const base = await phone.settings.get()
-    await phone.settings.save({ ...base, daysPerWeek: 3, updatedAt: fast.now().toISOString() })
+    await phone.settings.save({
+      ...base,
+      excludedExercises: [asExerciseId('dips')],
+      updatedAt: fast.now().toISOString(),
+    })
 
     await synchronise(createMemorySyncTarget(server, 'phone'), phone)
 

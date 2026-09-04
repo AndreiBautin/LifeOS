@@ -9,11 +9,6 @@ import { useId, useRef, useState } from 'react'
 import { useServices, useSettings } from '@/app/context'
 import { DEFAULT_INCREMENT } from '@/domain/units/weight'
 import { Badge, Button, Card, Section } from '@/components/shared/primitives'
-import {
-  DEFAULT_WEEKS_BEFORE_DELOAD,
-  MAX_DAYS_PER_WEEK,
-  MIN_DAYS_PER_WEEK,
-} from '@/domain/autoregulation/schedule'
 import { BacklogSettingsSection } from '@/features/backlog/BacklogSettingsSection'
 import { JobSearchSection } from './JobSearchSection'
 import { DigestSection } from './DigestSection'
@@ -104,25 +99,14 @@ export function SettingsPage() {
         is checkable against a session, and a claim about behaviour that
         does not happen cannot be checked at all.
       */}
-      <Section title="Block" description="The one number you set. Nothing moves it for you.">
-        <Card className="space-y-3">
-          <NumberSetting
-            label="Days per week"
-            value={settings.daysPerWeek}
-            onChange={(daysPerWeek) => {
-              if (daysPerWeek >= MIN_DAYS_PER_WEEK && daysPerWeek <= MAX_DAYS_PER_WEEK) {
-                update({ daysPerWeek })
-              }
-            }}
-          />
-          <p className="text-ink-500 text-xs">
-            Between {MIN_DAYS_PER_WEEK} and {MAX_DAYS_PER_WEEK}. The block runs{' '}
-            {DEFAULT_WEEKS_BEFORE_DELOAD} weeks and then deloads, which is no longer something to
-            set — wanting to change it is a sign the volume is wrong rather than the schedule.
-          </p>
-        </Card>
-      </Section>
-
+      {/*
+        **There is no Block section any more.** It held one control —
+        days per week — which chose between four splits. Asked for as
+        _"we probably don't need any of the customize workout stuff,
+        let's gut it."_ There is one split now and nothing to choose;
+        see `rp-splits.ts` for why the other three were already worse
+        than the one that shipped.
+      */}
       <Section title="During a session">
         <Card className="space-y-3">
           <Toggle

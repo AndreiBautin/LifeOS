@@ -189,7 +189,6 @@ function mergeWithDefaults(parsed: unknown): AppSettings {
      * build still holds the old values under their old names, so
      * reinstating any of them is a line here rather than a migration.
      */
-    daysPerWeek: asBoundedNumber(stored.daysPerWeek, 2, 6, DEFAULT_SETTINGS.daysPerWeek),
     e1rmFormula:
       stored.e1rmFormula === 'epley' ||
       stored.e1rmFormula === 'brzycki' ||
@@ -281,12 +280,6 @@ function hasEntries(value: unknown): value is Record<string, unknown> {
  * stored value as a boundary one — a days-per-week of 40 becoming 6 looks
  * like a preference rather than the corruption it is.
  */
-function asBoundedNumber(value: unknown, min: number, max: number, fallback: number): number {
-  return typeof value === 'number' && Number.isFinite(value) && value >= min && value <= max
-    ? value
-    : fallback
-}
-
 function asBoolean(value: unknown, fallback: boolean): boolean {
   return typeof value === 'boolean' ? value : fallback
 }

@@ -1,3 +1,4 @@
+import { asExerciseId } from '@/domain/ids/ids'
 import { describe, expect, it } from 'vitest'
 
 import { DEFAULT_SETTINGS, type AppSettings } from './settings'
@@ -22,13 +23,14 @@ describe('what travels', () => {
 
     /*
      * This list has shrunk to one, which is the point rather than a gap.
-     * 'fatiguePercent' went with RTS, and 'muscleVolumes', 'liftSessions'
+     * Down to one. 'fatiguePercent' went with RTS, 'muscleVolumes',
+     * 'liftSessions'
      * and 'setsPerSession' went with the volume customisation — the
      * programme is not derived from any of them any more, so sending one
      * would be syncing a setting nothing reads. What is left is what
      * genuinely still shapes a block.
      */
-    for (const key of ['daysPerWeek', 'excludedExercises'] as const) {
+    for (const key of ['excludedExercises'] as const) {
       expect(projected, key).toHaveProperty(key)
     }
   })
@@ -58,15 +60,17 @@ describe('what travels', () => {
 })
 
 describe('merging two copies', () => {
-  const local = at('2026-08-25T09:00:00.000Z', { daysPerWeek: 5 })
+  const local = at('2026-08-25T09:00:00.000Z', { excludedExercises: [asExerciseId('dips')] })
 
   it('takes the newer copy', () => {
     const merged = mergeSettings(
       local,
-      projectForSync(at('2026-08-25T11:00:00.000Z', { daysPerWeek: 4 })),
+      projectForSync(
+        at('2026-08-25T11:00:00.000Z', { excludedExercises: [asExerciseId('pull-up')] }),
+      ),
     )
 
-    expect(merged.daysPerWeek).toBe(4)
+    expect(merged.excludedExercises).toEqual([asExerciseId('pull-up')])
     expect(merged.updatedAt).toBe('2026-08-25T11:00:00.000Z')
   })
 
@@ -99,11 +103,13 @@ describe('merging two copies', () => {
 
   it('leaves device preferences untouched when it accepts', () => {
     const localWithPrefs = at('2026-08-25T09:00:00.000Z', { theme: 'dark', keepScreenAwake: true })
-    const incoming = projectForSync(at('2026-08-25T11:00:00.000Z', { daysPerWeek: 3 }))
+    const incoming = projectForSync(
+      at('2026-08-25T11:00:00.000Z', { excludedExercises: [asExerciseId('dips')] }),
+    )
 
     const merged = mergeSettings(localWithPrefs, incoming)
 
-    expect(merged.daysPerWeek).toBe(3)
+    expect(merged.excludedExercises).toEqual([asExerciseId('dips')])
     expect(merged.theme).toBe('dark')
     expect(merged.keepScreenAwake).toBe(true)
   })
@@ -111,7 +117,9 @@ describe('merging two copies', () => {
   it('carries every synced key it was given', () => {
     // Guards the loop against a key being added to the list and silently
     // never applied.
-    const incoming = projectForSync(at('2026-08-25T11:00:00.000Z', { daysPerWeek: 3, units: 'kg' }))
+    const incoming = projectForSync(
+      at('2026-08-25T11:00:00.000Z', { excludedExercises: [asExerciseId('dips')], units: 'kg' }),
+    )
     const merged = mergeSettings(local, incoming) as unknown as Record<string, unknown>
 
     for (const key of SYNCED_SETTING_KEYS) {

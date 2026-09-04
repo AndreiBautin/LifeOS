@@ -3406,6 +3406,18 @@ registered in all of the places a collection has to register. The
 compiler and the guard tests found most of them, which is that machinery
 working as intended.
 
+**The lower days divided, and the customisation is gone.** Asked for as _"only do calf raises on deadlift day and only do kettlebell swings on squat day"_ and _"we probably do not need any of the customize workout stuff, lets gut it — I am trying to make this app and codebase cleaner and more focused."_
+
+**`LOWER` split into `LOWER_SQUAT` and `LOWER_DEADLIFT`**, the way the upper body already had. The calves move to `ONCE` and sit on the deadlift day; the swings sit on the squat day. **Nothing in the week repeats now** — the note calling the calf raise the deliberate exception went with it.
+
+**There is one split, and `daysPerWeek` is gone with the other three.** They were already inconsistent with the design: the two full-body splits put every muscle on every day, which reproduces exactly the repetition the pairing was built to remove, and the five-day week had a third upper day with no pairing of its own. Keeping them meant shipping three arrangements known to be worse than the default.
+
+**`SYNCED_SETTING_KEYS` is down to one member.** Only `excludedExercises` still shapes a programme, which is why three test files had to stop using days-a-week as their vehicle for "a shared setting that travels".
+
+**`reverseAccessoryBlocks` is deleted, and the reason is worth more than the code.** It alternated the accessory order between a region s two sessions so a fixed order did not spend the fresh part of every session on the same muscle — and it only ever did anything where the two days held the _same_ muscles. No region does any more. The guard could never be true again, which made it a live-looking condition over dead code. What replaced it is better: a muscle appears once a week on the day chosen for it, so "which session meets a fresh lifter" is answered by the pairing rather than by flipping a list every other week.
+
+**A test learned that trailing muscles outrank priority order.** "Runs the isolation work in tier order" started failing on Friday because the trunk is trained directly now and `trailingLast` deliberately moves it past everything else. That rule always outranked the ordering; it only became visible once the trunk had work to move.
+
 **The Zone 2 block left the programme, and the swings stayed.** Asked for
 as _"let's drop the post workout cardio — I'd like to just merge that
 with my dog walks and make em daily. A 30 minute dog walk covers my

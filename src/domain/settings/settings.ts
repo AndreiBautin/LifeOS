@@ -4,7 +4,6 @@ import { EMPTY_JOB_SEARCH, type JobSearch } from '@/domain/jobs/search'
 import { asExerciseId, type ExerciseId } from '@/domain/ids/ids'
 import type { E1rmFormula } from '@/domain/strength/one-rep-max'
 import type { WeightUnit } from '@/domain/units/weight'
-import { DEFAULT_DAYS_PER_WEEK } from '@/domain/autoregulation/schedule'
 
 /**
  * Everything about the lifter that is not a program or a workout.
@@ -54,15 +53,6 @@ export interface AppSettings {
    */
   readonly excludedExercises: readonly ExerciseId[]
 
-  /**
-   * Days per week and weeks per block.
-   *
-   * Set by the lifter and left alone. Both used to be described as
-   * autoregulated, which stopped being true when the schedule
-   * autoregulation was removed — nothing has written back to either
-   * since.
-   */
-  readonly daysPerWeek: number
   readonly e1rmFormula: E1rmFormula
   readonly restTimerEnabled: boolean
   readonly keepScreenAwake: boolean
@@ -197,7 +187,6 @@ export const DEFAULT_SETTINGS: AppSettings = {
     [asExerciseId('overhead-press')]: 152,
   },
   excludedExercises: [],
-  daysPerWeek: DEFAULT_DAYS_PER_WEEK,
   // Deliberately unset: a default calorie target would be a guess
   // presented as a decision the lifter had made.
   e1rmFormula: 'epley',

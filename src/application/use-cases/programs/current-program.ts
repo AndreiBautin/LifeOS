@@ -70,7 +70,6 @@ export function recipeFromSettings(
    * do, and the numbers your own bar is loaded in.
    */
   return defaultRpRecipe({
-    daysPerWeek: settings.daysPerWeek,
     excludedExercises: settings.excludedExercises,
     settings: {
       units: settings.units,

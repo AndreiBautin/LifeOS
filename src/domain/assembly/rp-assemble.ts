@@ -13,7 +13,6 @@ import type {
   ProgramTemplate,
   ProgramWeek,
   Slot,
-  SlotRole,
 } from '@/domain/programs/program'
 import { DEFAULT_PROGRAM_SETTINGS } from '@/domain/programs/program'
 import type { LiftSessions, StrengthLift } from '@/domain/priority/tiers'
@@ -25,7 +24,7 @@ import {
 } from '@/domain/priority/tiers'
 import { describeBlock } from '@/domain/priority/explain'
 import type { RpDay, RpSplit } from '@/domain/splits/rp-splits'
-import { rpFrequency, rpSplitForDays } from '@/domain/splits/rp-splits'
+import { rpFrequency, rpSplit } from '@/domain/splits/rp-splits'
 import { MUSCLE_GROUPS } from '@/domain/exercises/taxonomy'
 import {
   countsAsHypertrophy,
@@ -49,10 +48,7 @@ import {
   weeklySetsFor,
 } from '@/domain/volume/levels'
 
-import {
-  DEFAULT_DAYS_PER_WEEK,
-  DEFAULT_WEEKS_BEFORE_DELOAD,
-} from '@/domain/autoregulation/schedule'
+import { DEFAULT_WEEKS_BEFORE_DELOAD } from '@/domain/autoregulation/schedule'
 
 /**
  * Assembling an RP block with RTS strength work.
@@ -80,7 +76,6 @@ export interface RpRecipe {
   readonly liftSessions: LiftSessions
   readonly muscleVolumes: MuscleVolumes
   readonly setsPerSession: SetsPerSession
-  readonly daysPerWeek: number
   readonly weeksBeforeDeload: number
   readonly includeWarmUps: boolean
   /**
@@ -153,7 +148,6 @@ export function defaultRpRecipe(overrides: Partial<RpRecipe> = {}): RpRecipe {
     // Five, matching `DEFAULT_SETTINGS`. Four has to carry the week's
     // volume in four sittings and runs the upper days long; six divides
     // it so finely that several sessions are not worth the trip.
-    daysPerWeek: DEFAULT_DAYS_PER_WEEK,
     weeksBeforeDeload: DEFAULT_WEEKS_BEFORE_DELOAD,
     includeWarmUps: true,
     minSetsPerSlot: 3,
@@ -207,7 +201,7 @@ export function assembleRpProgram(
     'A block needs at least one working week.',
   )
 
-  const split = rpSplitForDays(recipe.daysPerWeek)
+  const split = rpSplit()
   const timestamp = deps.now.toISOString()
   const workingWeeks = recipe.weeksBeforeDeload
 
@@ -398,8 +392,6 @@ function buildWeek(
    * the same on both.
    */
   const regionSessions = new Map<string, number>()
-  /** The muscle list of each region's first session, for the reversal below. */
-  const regionMuscles = new Map<string, string>()
 
   for (const [dayIndex, splitDay] of split.days.entries()) {
     const strength = strengthByDay[dayIndex]
@@ -480,35 +472,7 @@ function buildWeek(
     const regionOrdinal = regionSessions.get(region) ?? 0
     regionSessions.set(region, regionOrdinal + 1)
 
-    /*
-     * **The accessory reversal only fires where there is something to
-     * alternate**, which is the second session of a region accountable
-     * for the *same* muscles as the first.
-     *
-     * It exists so that a fixed order does not spend the fresh part of
-     * every session on the same muscle for a whole block. That argument
-     * needs two sessions holding the same work: reversing the second of
-     * two sessions that hold *different* work rotates nothing at all,
-     * because each day's order is then fixed for the whole block anyway
-     * — and it still pays the cost, which is that one day permanently
-     * runs its compounds lightest-first and its isolation in reverse
-     * priority order.
-     *
-     * That became live the day the upper body was divided between the
-     * two upper days: Thursday started running rear delt raises ahead of
-     * the arms, every week, for nothing. The lower days still share a
-     * muscle list, so the mechanism is not inert — it is conditional.
-     */
-    const musclesKey = [...splitDay.muscles].sort().join(',')
-    const firstOfRegion = regionMuscles.get(region)
-    if (firstOfRegion === undefined) regionMuscles.set(region, musclesKey)
-
-    const ordered = inSessionOrder(
-      slots,
-      deps.exercises,
-      recipe.muscleVolumes,
-      regionOrdinal % 2 === 1 && firstOfRegion === musclesKey,
-    )
+    const ordered = inSessionOrder(slots, deps.exercises, recipe.muscleVolumes)
 
     days.push({
       index: dayIndex,
@@ -1909,7 +1873,6 @@ function inSessionOrder(
   slots: readonly Slot[],
   library: readonly Exercise[],
   volumes: MuscleVolumes,
-  reverseAccessories = false,
 ): readonly Slot[] {
   const rank = (slot: Slot): number => {
     switch (slot.role) {
@@ -2006,9 +1969,24 @@ function inSessionOrder(
     })
     .map((entry) => entry.slot)
 
-  const ordered = reverseAccessories ? reverseAccessoryBlocks(sorted) : sorted
-
-  return trailingLast(ordered, library)
+  /*
+   * **The accessory reversal is gone, and it is gone because the split
+   * made it impossible rather than merely unnecessary.**
+   *
+   * It existed so a fixed order did not spend the fresh part of every
+   * session on the same muscle for a whole block, and it only ever did
+   * anything where a region's two days held the *same* muscles. The
+   * upper body was divided between the two upper days when the repeated
+   * exercises were reported; the lower body divided the day the calves
+   * moved to the deadlift day. With every region's two days now holding
+   * different work there is no pair left to alternate, so the guard
+   * could never be true again — a live-looking condition over dead code.
+   *
+   * What replaced it is better: a muscle appears once a week, on the day
+   * chosen for it, so "which session meets a fresh lifter" is answered
+   * by the pairing rather than by flipping a list every other week.
+   */
+  return trailingLast(sorted, library)
 }
 
 /**
@@ -2030,7 +2008,7 @@ function inSessionOrder(
  * Conditioning is untouched and stays at the end: it is the one thing
  * after these, and a Zone 2 walk asks nothing of a grip.
  */
-const TRAILING_MUSCLES: readonly MuscleGroup[] = ['forearms', 'core']
+export const TRAILING_MUSCLES: readonly MuscleGroup[] = ['forearms', 'core']
 
 function trailingLast(slots: readonly Slot[], library: readonly Exercise[]): readonly Slot[] {
   const isTrailing = (slot: Slot): boolean => {
@@ -2071,50 +2049,6 @@ function trailingLast(slots: readonly Slot[], library: readonly Exercise[]): rea
   const lastAccessory = firstConditioning === -1 ? rest.length : firstConditioning
 
   return [...rest.slice(0, lastAccessory), ...trailing, ...rest.slice(lastAccessory)]
-}
-
-function reverseAccessoryBlocks(sorted: readonly Slot[]): readonly Slot[] {
-  /*
-   * On alternate sessions of a region, the accessories run backwards.
-   *
-   * Compounds still come before isolation — each block is reversed within
-   * itself, never across the boundary — so what changes is which muscle
-   * meets a fresh lifter and which one is last.
-   *
-   * That matters for the same reason the competition lifts used to
-   * alternate: every slot after the first is performed more tired than the
-   * one before it, and a fixed order spends that freshness on the same
-   * muscle every session for the whole block. With two upper days the row
-   * opened both of them and the lateral raise closed both of them, every
-   * week.
-   *
-   * The cost is the mirror of the rule it bends. Compounds are ordered
-   * heaviest-first so the work that most needs a fresh lifter gets one, and
-   * on the reversed day the heaviest compound goes last. That is a real
-   * trade and the reason the reversal alternates rather than being applied
-   * to every day: each arrangement is had half the time.
-   */
-  const flip = (role: SlotRole): readonly Slot[] =>
-    sorted.filter((slot) => slot.role === role).reverse()
-
-  const compounds = flip('hypertrophy')
-  const isolation = flip('assistance')
-  let nextCompound = 0
-  let nextIsolation = 0
-
-  return sorted.map((slot) => {
-    if (slot.role === 'hypertrophy') {
-      const replacement = compounds[nextCompound]
-      nextCompound += 1
-      return replacement ?? slot
-    }
-    if (slot.role === 'assistance') {
-      const replacement = isolation[nextIsolation]
-      nextIsolation += 1
-      return replacement ?? slot
-    }
-    return slot
-  })
 }
 
 function addInto(target: VolumeMap, addition: VolumeMap): VolumeMap {

@@ -28,7 +28,6 @@ export const SYNCED_SETTING_KEYS = [
   'bodyweight',
   'estimatedMaxes',
   'excludedExercises',
-  'daysPerWeek',
   'e1rmFormula',
   'jobSearch',
   'digest',

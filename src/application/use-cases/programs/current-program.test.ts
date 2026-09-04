@@ -36,13 +36,18 @@ describe('deriving the program', () => {
     // refreshed it — which, four separate mechanisms later, it still did
     // not.
     /*
-     * The volumes and the per-lift session counts used to be the setting
-     * varied here and are constants now. Days a week is what is left that
-     * changes the shape of a block, which is the property this is about:
-     * a setting moves and the next read is a different programme.
+     * **Exclusions, because they are the last setting the programme is
+     * derived from.** This has now been three things: muscle volumes and
+     * lift sessions, then days a week, and now the one input left. Each
+     * became a constant in turn, and the property being tested never
+     * changed — a setting moves and the next read is a different
+     * programme, with nothing to press.
      */
     const before = deriveProgram(DEFAULT_SETTINGS, library)
-    const after = deriveProgram({ ...DEFAULT_SETTINGS, daysPerWeek: 3 }, library)
+    const after = deriveProgram(
+      { ...DEFAULT_SETTINGS, excludedExercises: [asExerciseId('dips')] },
+      library,
+    )
 
     expect(after).not.toEqual(before)
   })
@@ -60,15 +65,19 @@ describe('deriving the program', () => {
 
 describe('a position inside a program that changed shape', () => {
   it('is pulled back inside rather than left pointing past the end', () => {
-    // Dropping from five days a week to three leaves a Friday position
-    // pointing at nothing, and the Train screen would show an empty
-    // session rather than a day.
-    const threeDay = deriveProgram({ ...DEFAULT_SETTINGS, daysPerWeek: 3 }, library)
-    const onFriday = { ...start, weekIndex: 0, dayIndex: 4 }
+    /*
+     * A position past the end of the week, which the split can no longer
+     * produce by shrinking — there is one split now. It is still reachable
+     * from a stored position written by an older build, which is what
+     * `clampPosition` exists for: a Friday index on a four-day week would
+     * otherwise show an empty session rather than a day.
+     */
+    const threeDay = deriveProgram(DEFAULT_SETTINGS, library)
+    const onFriday = { ...start, weekIndex: 0, dayIndex: 9 }
 
     const clamped = clampPosition(threeDay, onFriday)
 
-    expect(clamped.dayIndex).toBe(2)
+    expect(clamped.dayIndex).toBe(3)
     expect(dayAt(threeDay, clamped)).toBeDefined()
   })
 

@@ -1,3 +1,4 @@
+import { asExerciseId } from '@/domain/ids/ids'
 import { beforeEach, describe, expect, it } from 'vitest'
 
 import { STORAGE_KEYS } from '@/config/storage-keys'
@@ -45,7 +46,11 @@ beforeEach(() => {
 describe('stamping settings on write', () => {
   it('stamps when something that travels changes', () => {
     writeSettings(DEFAULT_SETTINGS, storage, at('2026-08-26T09:00:00.000Z'))
-    writeSettings({ ...DEFAULT_SETTINGS, daysPerWeek: 3 }, storage, at('2026-08-26T10:00:00.000Z'))
+    writeSettings(
+      { ...DEFAULT_SETTINGS, excludedExercises: [asExerciseId('dips')] },
+      storage,
+      at('2026-08-26T10:00:00.000Z'),
+    )
 
     expect(readSettings(storage).settings.updatedAt).toBe('2026-08-26T10:00:00.000Z')
   })

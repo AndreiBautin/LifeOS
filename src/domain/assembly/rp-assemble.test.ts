@@ -19,10 +19,9 @@ import {
   weeklySetsFor,
 } from '@/domain/volume/levels'
 
-import { DEFAULT_DAYS_PER_WEEK } from '@/domain/autoregulation/schedule'
-import { rpSplitForDays } from '@/domain/splits/rp-splits'
+import { rpSplit } from '@/domain/splits/rp-splits'
 
-import { assembleRpProgram, defaultRpRecipe, type RpRecipe } from './rp-assemble'
+import { assembleRpProgram, defaultRpRecipe, TRAILING_MUSCLES, type RpRecipe } from './rp-assemble'
 
 const exercises = builtInExercises()
 const lookup = (id: string) => exercises.find((exercise) => exercise.id === id)
@@ -426,7 +425,8 @@ describe('naming a day after what is in it', () => {
     // Sentence-cased, so the leading muscle carries the capital.
     expect(week.days[0]?.focus).toMatch(/^Bench Press, then /)
     expect(week.days[0]?.focus).toContain('side delts')
-    expect(week.days[1]?.focus).toContain('calves')
+    /* The calves moved to the deadlift day; Tuesday squats. */
+    expect(week.days[3]?.focus).toContain('calves')
     expect(week.days[1]?.focus).toContain('hamstrings')
   })
 
@@ -900,53 +900,26 @@ describe('the order a session is performed in', () => {
   })
 
   /*
-   * And the two upper days are not in the same order, which is the point
-   * of the alternation: a fixed order spends the fresh part of every
-   * session on the same muscle for the whole block.
+   * **The accessory reversal is gone, and both of its tests with it.**
+   *
+   * It alternated the accessory order between a region's two sessions so
+   * a fixed order did not spend the fresh part of every session on the
+   * same muscle. That only ever did anything where the two days held the
+   * *same* muscles — and no region does any more: the upper body divided
+   * when the repeated exercises were reported, and the lower body divided
+   * when the calves moved to the deadlift day.
+   *
+   * So the guard could never be true again, which made it a live-looking
+   * condition over dead code. What replaced it is better: a muscle
+   * appears once a week on the day chosen for it, so "which session meets
+   * a fresh lifter" is answered by the pairing rather than by flipping a
+   * list every other week.
+   *
+   * The rule the second test protected — that a day holding different
+   * work keeps its own priority order — is now structural rather than
+   * conditional, and is covered by "runs the isolation work in tier
+   * order" below.
    */
-  it('runs the two sessions of a region in opposite orders', () => {
-    /*
-     * **Read off the lower days, because the upper days no longer share a
-     * muscle list.** This used to assert that the two upper sessions held
-     * the same muscles in a different sequence, which was true while both
-     * were accountable for the whole upper body.
-     *
-     * The rule the reversal exists for has not changed — a fixed order
-     * spends the fresh part of every session on the same muscle for a
-     * whole block — but it only *does* anything where the two sessions
-     * hold the same work. Reversing two days that hold different work
-     * rotates nothing and still costs the priority ordering, so it is
-     * conditional now. The lower days are where it stays live.
-     */
-    const lowerWeek = weekAt(
-      build({ muscleVolumes: trainingOnly(['quads', 'hamstrings', 'glutes', 'calves'], 2) }),
-      3,
-    )
-
-    const lower = lowerWeek.days.filter((day) => day.label.includes('Lower'))
-    expect(lower).toHaveLength(2)
-
-    const musclesOf = (day: (typeof lower)[number]): string[] =>
-      day.slots
-        .filter((slot) => slot.role === 'hypertrophy' || slot.role === 'assistance')
-        .flatMap((slot) =>
-          slot.exercise.kind === 'specific'
-            ? [lookup(slot.exercise.exerciseId)?.primaryMuscle ?? '?']
-            : [],
-        )
-
-    const [firstDay, secondDay] = lower
-    if (firstDay === undefined || secondDay === undefined) throw new Error('missing lower day')
-
-    const first = musclesOf(firstDay)
-    const second = musclesOf(secondDay)
-
-    expect(first.length).toBeGreaterThan(2)
-    expect(second).not.toEqual(first)
-    // The same muscles, in a different sequence — not a different session.
-    expect([...second].sort()).toEqual([...first].sort())
-  })
-
   /*
    * And the other half of that condition, which is the regression it was
    * written for: reversing a session that holds different work rotates
@@ -1111,6 +1084,16 @@ describe('the order a session is performed in', () => {
         .flatMap((id) => {
           const muscle = lookup(id)?.primaryMuscle
           if (muscle === undefined) return []
+          /*
+           * **The grip and the trunk are exempt**, because `trailingLast`
+           * deliberately moves them past everything else — they are prime
+           * movers in work they are not the point of, so a session that
+           * curls the wrists first arrives at its pulling with a grip
+           * that gives out before the lats do. That rule outranks
+           * priority order and always has; it only became visible here
+           * when the trunk started being trained directly.
+           */
+          if (TRAILING_MUSCLES.includes(muscle)) return []
           // Negated so that "more sessions a week" sorts first, which is
           // what the assembler does — a tier rank sorted ascending for
           // free and sessions a week point the other way.
@@ -1279,7 +1262,7 @@ describe('conditioning', () => {
      * with a 60 lb bell is a dose somebody decided on, where a dog walk
      * is a fact about owning a dog.
      */
-    expect(all).toEqual(['kb-swing', 'kb-swing'])
+    expect(all).toEqual(['kb-swing'])
   })
 
   it('runs every day, split by domain rather than by spare time', () => {
@@ -1297,10 +1280,11 @@ describe('conditioning', () => {
     const domainOn = (dayIndex: number) =>
       conditioningIn(dayIndex).map((slot) => slot.variant ?? '')
 
+    /* Swings on the squat day and nowhere else, asked for by name. */
     expect(domainOn(0)).toEqual([])
     expect(domainOn(1)).toEqual(['HIIT'])
     expect(domainOn(2)).toEqual([])
-    expect(domainOn(3)).toEqual(['HIIT'])
+    expect(domainOn(3)).toEqual([])
   })
 
   /*
@@ -1351,7 +1335,7 @@ describe('conditioning', () => {
           ),
         )
 
-    expect(minutesOf('kb-swing')).toEqual([15, 15])
+    expect(minutesOf('kb-swing')).toEqual([15])
   })
 
   it('counts toward the session budget rather than riding along free', () => {
@@ -1636,7 +1620,7 @@ describe('the split', () => {
    */
   it('trains every muscle as often as its tier asks', () => {
     const week = weekAt(build(), 3)
-    const split = rpSplitForDays(DEFAULT_DAYS_PER_WEEK)
+    const split = rpSplit()
 
     const volume = weeklyVolume(week)
 
@@ -1677,9 +1661,16 @@ describe('the split', () => {
     }
   })
 
-  it.each([2, 3, 5])('supports a %i-day week', (days) => {
-    const program = build({ daysPerWeek: days })
-    expect(program.blocks[0]?.weeks[0]?.days).toHaveLength(days)
+  /*
+   * **There is one week, and it is four days.** This ran over 2, 3 and 5
+   * and each of those splits is gone: the full-body ones put every muscle
+   * on every day, which reproduces exactly the repetition the upper/lower
+   * pairing was built to remove, and the five-day week had a third upper
+   * day with no pairing of its own.
+   */
+  it('builds one four-day week', () => {
+    const program = build()
+    expect(program.blocks[0]?.weeks[0]?.days).toHaveLength(4)
   })
 
   it('puts a warm-up at the top of every day', () => {

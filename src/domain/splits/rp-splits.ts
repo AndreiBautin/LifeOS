@@ -92,19 +92,6 @@ export interface RpSplit {
  * has to say which two — the fill orders by how far behind each muscle
  * is against its own required frequency, and the answer falls out.
  */
-const UPPER: readonly MuscleGroup[] = [
-  'chest',
-  'front-delts',
-  'rear-delts',
-  'lats',
-  'upper-back',
-  'traps',
-  'biceps',
-  'triceps',
-  'forearms',
-  'side-delts',
-]
-
 /**
  * The upper body divided between the two upper days, rather than both
  * days being accountable for all of it.
@@ -176,186 +163,51 @@ const UPPER_2: readonly MuscleGroup[] = [
  * direct work belongs on — and putting it upstairs would mean bracing
  * hard on Tuesday and then again on Wednesday for no reason.
  */
-const LOWER: readonly MuscleGroup[] = ['quads', 'hamstrings', 'glutes', 'calves', 'core']
+/**
+ * The lower body divided between the two lower days, the way the upper
+ * body already is.
+ *
+ * Asked for as _"only do calf raises on deadlift day and only do
+ * kettlebell swings on squat day."_ Both were on both days — the calves
+ * because they were the one muscle set to two sessions with a single
+ * movement in its pool, so `barbell-calf-raise` was the one exercise in
+ * the week that repeated.
+ *
+ * Nothing repeats now. The line in `levels.ts` about the calf raise being
+ * the deliberate exception is gone with it.
+ *
+ * **The trunk stays on both**, because it has two movements and uses
+ * both: an ab wheel on the squat day and a hanging leg raise on the
+ * deadlift day. Twice is two exercises there, not one done twice.
+ */
+const LOWER_SQUAT: readonly MuscleGroup[] = ['quads', 'hamstrings', 'glutes', 'core']
 
-const FULL_BODY_2: RpSplit = {
-  id: 'rp-full-body-2',
-  name: '2-day full body',
-  description: 'Two sessions, everything twice. The minimum that still hits every muscle twice.',
-  daysPerWeek: 2,
-  days: [
-    {
-      index: 0,
-      label: 'Full body — squat',
-      focusName: 'Full body 1',
-      muscles: [...UPPER, ...LOWER],
-      carries: ['upper', 'lower'],
-      warmUp: 'lower',
-    },
-    {
-      index: 1,
-      label: 'Full body — bench and deadlift',
-      focusName: 'Full body 2',
-      muscles: [...UPPER, ...LOWER],
-      carries: ['upper', 'lower'],
-      warmUp: 'lower',
-    },
-  ],
-}
-
-const FULL_BODY_3: RpSplit = {
-  id: 'rp-full-body-3',
-  name: '3-day full body',
-  description: 'Three full-body sessions, one competition lift each.',
-  daysPerWeek: 3,
-  days: [
-    {
-      index: 0,
-      label: 'Full body — squat',
-      focusName: 'Full body 1',
-      muscles: [...UPPER, ...LOWER],
-      carries: ['upper', 'lower'],
-      warmUp: 'lower',
-    },
-    {
-      index: 1,
-      label: 'Full body — bench',
-      focusName: 'Full body 2',
-      muscles: [...UPPER, ...LOWER],
-      carries: ['upper', 'lower'],
-      warmUp: 'upper',
-    },
-    {
-      index: 2,
-      label: 'Full body — deadlift',
-      focusName: 'Full body 3',
-      muscles: [...UPPER, ...LOWER],
-      carries: ['upper', 'lower'],
-      warmUp: 'lower',
-    },
-  ],
-}
+const LOWER_DEADLIFT: readonly MuscleGroup[] = ['quads', 'hamstrings', 'glutes', 'calves', 'core']
 
 /**
- * The default: five days, Monday to Friday, weekends off.
+ * **The week, and there is only one.**
  *
- * Five rather than four or six because of what the session lengths do at
- * either end. Four days has to carry the whole week's volume in four
- * sittings, and with arms specialised the upper days ran past seventy-five
- * minutes while the lower days finished in thirty. Six days divides the
- * same volume so finely that several sessions are barely worth the trip.
- * Five splits the difference and lands every day near the target.
+ * Asked for as _"we probably don't need any of the customize workout
+ * stuff, let's gut it — I'm trying to make this app and codebase cleaner
+ * and more focused."_ There were four splits and a `daysPerWeek` setting
+ * choosing between them; there is one, and nothing chooses.
  *
- * The weekday labels are deliberate. The program is still a queue rather
- * than a calendar — nothing advances until a session is finished or
- * skipped — but naming the days is what makes a five-day week legible as
- * a working week, and it is how the schedule is actually lived.
+ * **The others were already inconsistent with the design.** The upper and
+ * lower days are paired — a muscle's accessory work sits opposite the
+ * lift that already trains it, which is what stopped dips and lateral
+ * raises appearing twice a week. The two full-body splits put every
+ * muscle on every day, so they reproduced exactly the repetition that
+ * pairing was built to remove, and the five-day week had a third upper
+ * day with no pairing of its own. Keeping them meant shipping three
+ * arrangements that were known to be worse.
+ *
+ * Upper, lower, rest, upper, lower. Wednesday and the weekend off.
+ *
+ * Two of each region is what makes the pairing expressible: each upper
+ * muscle has one day that trains it and one that does not, and the same
+ * now holds below the waist.
  */
-const WEEK_5: RpSplit = {
-  id: 'rp-week-5',
-  name: '5-day Monday to Friday',
-  description:
-    'Upper, lower, upper, lower, upper. Every day opens with competition lifting; how much of it depends on what is prioritised. Weekends off.',
-  daysPerWeek: 5,
-  days: [
-    {
-      index: 0,
-      label: 'Monday',
-      focusName: 'Upper 1',
-      /*
-       * The same pairing the four-day week makes, for the same reason.
-       * Friday below keeps the whole upper body, so a muscle these two
-       * days do not reach still has somewhere to land.
-       */
-      muscles: UPPER_1,
-      carries: ['upper'],
-      warmUp: 'upper',
-    },
-    {
-      index: 1,
-      label: 'Tuesday',
-      focusName: 'Lower 1',
-      muscles: LOWER,
-      carries: ['lower'],
-      /*
-       * **Intervals on the lower days, and nothing on the upper ones.**
-       *
-       * The Zone 2 block left the programme entirely: _"let's drop the
-       * post workout cardio — I'd like to just merge that with my dog
-       * walks and make em daily. A 30 minute dog walk covers my cardio
-       * and doesn't need tracked in the train app."_ Which is the same
-       * argument that removed the macros and the sleep row: a walk that
-       * happens anyway, every day, is not a thing the training screen
-       * needs to schedule, and a slot for it is a checkbox you tick for
-       * something you were doing regardless.
-       *
-       * The swings stay, and the reason they are different is that they
-       * are *programmed*. Ten on the minute with a 60 lb bell is a dose
-       * somebody decided on; a dog walk is a fact about owning a dog.
-       *
-       * What survives of the old note is why they sit here: swings are a
-       * hinge with a real systemic cost, so they belong beside the
-       * lifting that already loads the hips rather than on a bench day
-       * where they would be the only lower-body stress of the session.
-       * That concentrates lower-body fatigue on lower-body days, which is
-       * chosen over spreading it thin across the week.
-       */
-      conditioning: ['kb-swing'],
-      warmUp: 'lower',
-    },
-    {
-      index: 2,
-      label: 'Wednesday',
-      focusName: 'Upper 2',
-      muscles: UPPER_2,
-      carries: ['upper'],
-      warmUp: 'upper',
-    },
-    {
-      index: 3,
-      label: 'Thursday',
-      focusName: 'Lower 2',
-      muscles: LOWER,
-      carries: ['lower'],
-      conditioning: ['kb-swing'],
-      warmUp: 'lower',
-    },
-    {
-      index: 4,
-      label: 'Friday',
-      focusName: 'Lower 3',
-      /*
-       * Accountable for the whole upper body, not only for arms.
-       *
-       * A dedicated arms day sounds right for an arm specialisation and
-       * is the reason this day once came out at twenty-four minutes: the
-       * arms are trained across the week, so by Friday their target is
-       * nearly spent and a day that can *only* draw on them has nothing
-       * left to do. Opening it to the upper body gives it somewhere to
-       * put the time.
-       */
-      muscles: UPPER,
-      carries: ['upper'],
-      warmUp: 'upper',
-    },
-  ],
-}
-
-/**
- * Four days, upper and lower twice each, with Wednesday off.
- *
- * The default. Five was chosen when the arms were specialised and the
- * upper days were long; with nothing above tier 2 the week's volume fits
- * in four sittings, and a mid-week rest day is worth more than a fifth
- * session that exists to hold work the other four could carry.
- *
- * Two of each region is also what makes the tiers say something: a tier-2
- * muscle wants two sessions and gets exactly two, so priority maps onto
- * frequency with nothing left over. There is no room for a tier-1 muscle
- * here at all — three sessions of an upper muscle need three upper days —
- * which is why the shipped tiers top out at 2.
- */
-const WEEK_4: RpSplit = {
+export const RP_SPLIT: RpSplit = {
   id: 'rp-week-4',
   name: '4-day upper/lower',
   description: 'Upper, lower, rest, upper, lower. Wednesday and the weekend off.',
@@ -373,8 +225,14 @@ const WEEK_4: RpSplit = {
       index: 1,
       label: 'Tuesday',
       focusName: 'Lower 1',
-      muscles: LOWER,
+      muscles: LOWER_SQUAT,
       carries: ['lower'],
+      /*
+       * **Swings on the squat day only**, asked for by name. They are a
+       * hinge with a real systemic cost, so they belong beside the
+       * lifting that already loads the hips — and one dose of that a week
+       * is a dose rather than a habit.
+       */
       conditioning: ['kb-swing'],
       warmUp: 'lower',
     },
@@ -390,21 +248,25 @@ const WEEK_4: RpSplit = {
       index: 3,
       label: 'Friday',
       focusName: 'Lower 2',
-      muscles: LOWER,
+      /* The calves are here and nowhere else — the deadlift day. */
+      muscles: LOWER_DEADLIFT,
       carries: ['lower'],
-      conditioning: ['kb-swing'],
       warmUp: 'lower',
     },
   ],
 }
 
-export const RP_SPLITS: readonly RpSplit[] = [FULL_BODY_2, FULL_BODY_3, WEEK_4, WEEK_5]
+export const RP_SPLITS: readonly RpSplit[] = [RP_SPLIT]
 
-export function rpSplitForDays(daysPerWeek: number): RpSplit {
-  const found = RP_SPLITS.find((split) => split.daysPerWeek === daysPerWeek)
-  // The five-day week is the fallback because it is the shape whose
-  // sessions come out closest to the target length at both ends.
-  return found ?? WEEK_5
+/**
+ * The split, which no longer depends on anything.
+ *
+ * Kept as a function rather than inlined at its two call sites: it is the
+ * seam a second split would come back through, and a caller asking for
+ * "the split" reads better than one reaching for a constant.
+ */
+export function rpSplit(): RpSplit {
+  return RP_SPLIT
 }
 
 /** How many of a week's sessions train a given muscle. */

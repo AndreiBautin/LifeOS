@@ -184,7 +184,14 @@ export function validateMuscleVolumes(volumes: MuscleVolumes): void {
  * file's: they are paired against the competition lift that already
  * trains them. See `rp-splits.ts`.
  */
-const ONCE: readonly MuscleGroup[] = ['chest', 'side-delts', 'rear-delts', 'lats', 'upper-back']
+const ONCE: readonly MuscleGroup[] = [
+  'chest',
+  'side-delts',
+  'rear-delts',
+  'lats',
+  'upper-back',
+  'calves',
+]
 
 /**
  * Twice a week, because twice is not a repeat for these.
@@ -195,11 +202,11 @@ const ONCE: readonly MuscleGroup[] = ['chest', 'side-delts', 'rear-delts', 'lats
  * has exactly two and uses both: an ab wheel on one lower day and a
  * hanging leg raise on the other, asked for by name.
  *
- * The calves have exactly one, so `barbell-calf-raise` is the single
- * exercise in the week that genuinely repeats, and it is the one that was
- * asked to.
+ * **The calves left this list**, and with them the one exercise in the
+ * week that repeated. They are trained on the deadlift day only now —
+ * asked for by name — so nothing at all is scheduled twice.
  */
-const TWICE: readonly MuscleGroup[] = ['biceps', 'triceps', 'calves', 'core']
+const TWICE: readonly MuscleGroup[] = ['biceps', 'triceps', 'core']
 
 export const DEFAULT_MUSCLE_VOLUMES: MuscleVolumes = Object.fromEntries(
   MUSCLE_GROUPS.map((muscle) => [
