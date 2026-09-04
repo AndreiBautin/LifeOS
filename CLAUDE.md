@@ -6623,6 +6623,38 @@ sentence and each was false:
   which stopped being true when fractional credit was removed long
   before any of this.
 
+**The Program page draws the week you are on, and the deload tab is
+gone.** Reported in the same breath as the Plan screen: _"the whole what
+week are you on and working week/Deload button feels overkill
+considering it's just identical working weeks and a slight drop of load
+and volume on deloads."_
+
+This screen has now been a tab strip of six, then two, and is none. Each
+cut had the same cause arriving further along: **every working week is
+identical by construction**, so a control offering a choice between them
+was offering one thing under several names. The last pair looked like a
+real choice and was not — a deload is the same session list at a lower
+level, so drawing it is drawing this page again with smaller numbers.
+What a deload _is_ is worth a sentence, which the week picker now
+carries; it was never worth a tab, and a tab is what made it read as a
+second programme to study rather than a lighter week of this one.
+
+**Defaulting to the working week instead is the version to avoid, and it
+shipped for one commit.** It is wrong for the one week in seven that
+differs: somebody whose actual week is the light one would be shown a
+full session list, which is worse than the tab was. Drawing
+`weeks[currentWeek]` is what makes the control removable rather than
+merely hidden — the page has no view state left, so there is nothing to
+be out of step with the position. Verified by picking the deload and
+watching the bench go from **3 sets to 2** with the header following.
+
+**The week picker stays, and it is now the only thing that says where
+you are.** It was reported as overkill in the same sentence and is the
+half that survives, because the position only moves by finishing or
+skipping a session: a lifter arriving mid-block has no other way to say
+so, and `jumpToWeek` would be left with no caller — the rule-nothing-
+can-reach pattern this file keeps recording.
+
 **The Plan screen is gone, and its own last section had already said
 why.** Asked for as _"remove the plan page of train completely — it's no
 longer necessary since we have a simple plan hardcoded in."_ It existed

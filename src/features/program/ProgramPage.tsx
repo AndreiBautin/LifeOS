@@ -35,7 +35,6 @@ export function ProgramPage() {
   const exercises = useExercises()
   const jumpToWeek = useJumpToWeek()
 
-  const [deloadView, setDeloadView] = useState<boolean | undefined>(undefined)
   const [openMuscle, setOpenMuscle] = useState<string | undefined>(undefined)
 
   const block = program.data?.blocks[0]
@@ -56,23 +55,33 @@ export function ProgramPage() {
   const currentWeek = position.data?.weekIndex ?? 0
 
   /*
-   * Two views, not one per week.
+   * **One week is drawn, and it is the working one.**
    *
-   * Volume is flat across the working weeks now, so they are byte
-   * identical — a tab strip of six was six ways to look at the same
-   * screen, and the one difference that matters, the deload, was the
-   * seventh tab where nobody looked for it.
+   * This screen has been a tab strip of six, then two, and is now none.
+   * Each cut had the same cause arriving further along: every working
+   * week is identical by construction — `weeklyTargetForWeek` returns
+   * the same target for all of them — so a control offering a choice
+   * between them was offering one thing under several names.
    *
-   * The week you are *on* still matters and has not moved: it is on the
-   * header, because counting down to the deload is the reason to know
-   * it.
+   * The last pair looked like a real choice and was not, reported as
+   * _"the whole what week are you on and working week/Deload button
+   * feels overkill considering it's just identical working weeks and a
+   * slight drop of load and volume on deloads."_ Right: a deload is the
+   * same session list at a lower level, so drawing it is drawing this
+   * page again with smaller numbers. **What it is, is worth a sentence;
+   * it was never worth a tab**, and a tab is what made it look like a
+   * second programme to study rather than a lighter week of this one.
+   *
+   * **What is drawn is the week you are on**, which is what makes the
+   * control removable rather than merely hidden. Defaulting to the
+   * working week instead was tried and is wrong for the one week in
+   * seven that differs: it would show a full session list to somebody
+   * whose actual week is the light one, which is worse than the tab was.
+   *
+   * The header still says which week that is, because counting down to
+   * the deload is the whole reason to know it.
    */
-  const deloadIndex = weeks.findIndex((candidate) => candidate.isDeload)
-  const workingIndex = weeks.findIndex((candidate) => !candidate.isDeload)
-
-  const showingDeload = deloadView ?? weeks[currentWeek]?.isDeload ?? false
-  const current = showingDeload ? deloadIndex : workingIndex
-  const week = weeks[Math.max(0, current)]
+  const week = weeks[currentWeek] ?? weeks[0]
 
   const library = exercises.data ?? []
   const lookup = (id: ExerciseId): Exercise | undefined =>
@@ -117,31 +126,6 @@ export function ProgramPage() {
         }
       />
 
-      <div className="mb-5 flex gap-1.5" role="tablist" aria-label="Week">
-        {[
-          { label: 'Working week', deload: false },
-          { label: 'Deload', deload: true },
-        ].map((tab) => (
-          <button
-            key={tab.label}
-            type="button"
-            role="tab"
-            aria-selected={tab.deload === showingDeload}
-            onClick={() => {
-              setDeloadView(tab.deload)
-            }}
-            className={cn(
-              'tap-target flex-1 rounded-lg border px-3 text-xs font-semibold transition-colors',
-              tab.deload === showingDeload
-                ? 'border-accent-500 bg-accent-500 text-black'
-                : 'border-ink-800 bg-ink-850 text-ink-500 hover:border-ink-700',
-            )}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
       {/*
         The way to say "I am already three weeks into this".
 
@@ -152,14 +136,13 @@ export function ProgramPage() {
         would be counting the block from the wrong place.
 
         This used to hang off the week tabs: browse to week three, press
-        "start from here". With the tabs down to two that reading is
-        gone — a tab now says *what kind of week*, not which one — so the
-        week has to be pickable in its own right. It is the only reason
-        the week number is still a number the lifter touches.
+        "start from here". The tabs are gone entirely now, so this is the
+        only control that says which week you are on — and the only
+        reason the week number is still a number the lifter touches.
       */}
       <Section
         title="Which week are you on?"
-        description="Only the deload differs; this is what the app counts down from."
+        description="Every working week is the same; the deload keeps the sessions and drops the sets and the load. This is what the app counts down from."
       >
         <div className="flex flex-wrap gap-1.5">
           {weeks.map((candidate, index) => (
