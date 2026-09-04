@@ -1,9 +1,8 @@
+import type { AttemptId, CampaignId, RoomId } from '@/domain/ids/ids'
 import type { Room } from '@/domain/base/declutter'
-import type { HomeCandidate } from '@/domain/homes/candidate'
 import type { Attempt } from '@/domain/mind/practice'
 import type { ChallengeMark } from '@/domain/challenges/challenge'
 import type { Campaign } from '@/domain/campaign/campaign'
-import type { AttemptId, CampaignId, HomeCandidateId, RoomId } from '@/domain/ids/ids'
 import type { CheckIn } from '@/domain/autoregulation/check-in'
 import type { FinanceReading } from '@/domain/finance/reading'
 import type { Resume } from '@/domain/resume/resume'
@@ -43,7 +42,6 @@ import type {
   FinanceRepository,
   AttemptRepository,
   ChallengeRepository,
-  HomeRepository,
   RoomRepository,
   CampaignRepository,
   ResumeRepository,
@@ -470,7 +468,6 @@ export function createPlaceRepository(db: AppDatabase, clock: Clock): PlaceRepos
 }
 
 /**
- * A stored habit, read as this build understands homes and group names.
  *
  * Two derivations, one shape, and the second is why they had to be
  * separated. Upkeep was `belongsTo: 'vitals'` and became a **group**; a
@@ -778,32 +775,6 @@ export function createChallengeRepository(db: AppDatabase, clock: Clock): Challe
     },
     async purge(id: string) {
       await db.delete('challenges', id)
-    },
-  }
-}
-
-/** Houses being considered. */
-export function createHomeRepository(db: AppDatabase, clock: Clock): HomeRepository {
-  return {
-    async all() {
-      return db.getAll('homes')
-    },
-    async byId(id: HomeCandidateId) {
-      return db.get('homes', id)
-    },
-    async save(candidate: HomeCandidate) {
-      await db.put('homes', stamp(candidate, clock))
-    },
-    async restoreMany(candidates: readonly HomeCandidate[]) {
-      const tx = db.transaction('homes', 'readwrite')
-      await Promise.all([...candidates.map((one) => tx.store.put(one)), tx.done])
-    },
-    async remove(id: HomeCandidateId) {
-      await db.delete('homes', id)
-      await bury(db, clock, 'homes', id)
-    },
-    async purge(id: HomeCandidateId) {
-      await db.delete('homes', id)
     },
   }
 }

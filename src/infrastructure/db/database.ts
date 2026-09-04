@@ -1,5 +1,4 @@
 import type { Room } from '@/domain/base/declutter'
-import type { HomeCandidate } from '@/domain/homes/candidate'
 import type { Attempt } from '@/domain/mind/practice'
 import type { ChallengeMark } from '@/domain/challenges/challenge'
 import type { Campaign } from '@/domain/campaign/campaign'
@@ -66,7 +65,7 @@ export const DB_NAME = 'lifeos'
  * a device that already ran it will not run it again, so changing one
  * leaves two devices with different schemas and no way to tell.
  */
-export const DB_VERSION = 19
+export const DB_VERSION = 20
 
 /**
  * A workout as it is stored, which is not quite a workout as the domain
@@ -364,10 +363,19 @@ export interface LiftDB extends DBSchema {
     key: string
     value: Room
   }
-  /** Houses being considered, with the last read of what is near them. */
+  /**
+   * Retired: houses being considered.
+   *
+   * The fifth store kept declared but written by nothing. House search
+   * was one of three features moved out of the app — _"stuff that would
+   * be better suited for custom agents rather than living inside the
+   * app"_ — and the records were deleted rather than left behind. The
+   * store stays because removing it means editing the step that creates
+   * it, which is the one thing this file must never do.
+   */
   homes: {
     key: string
-    value: HomeCandidate
+    value: RetiredRow
   }
   /** Problems practised, one row each. */
   attempts: {
@@ -620,6 +628,16 @@ export function openDatabase(name = DB_NAME): Promise<AppDatabase> {
         db.createObjectStore('homes', { keyPath: 'id' })
       }
 
+      if (oldVersion < 20) {
+        /*
+         * The house candidates go the way the friends did. Their feature
+         * left the app, so the rows would otherwise sit in storage and
+         * come straight back from another device on the next exchange —
+         * a deletion that does not stick is not a deletion.
+         */
+        void transaction.objectStore('homes').clear()
+      }
+
       if (oldVersion < 19) {
         // Social is not tracked any more and the people were deleted
         // rather than left behind. The store itself stays — removing it
@@ -714,7 +732,6 @@ export async function clearAllStores(db: AppDatabase): Promise<void> {
       'campaigns',
       'attempts',
       'challenges',
-      'homes',
       'dayReadings',
       'rooms',
     ],
@@ -744,7 +761,6 @@ export async function clearAllStores(db: AppDatabase): Promise<void> {
     tx.objectStore('campaigns').clear(),
     tx.objectStore('attempts').clear(),
     tx.objectStore('challenges').clear(),
-    tx.objectStore('homes').clear(),
     tx.objectStore('dayReadings').clear(),
     tx.objectStore('rooms').clear(),
     tx.done,

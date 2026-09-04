@@ -10,7 +10,6 @@ import { ChallengePass } from '@/features/challenges/ChallengePass'
 import { SheetCard } from '@/features/character/SheetCard'
 import { useCharacterSheet, useSeasonProgress } from '@/features/character/hooks'
 import { LimitsCard } from '@/features/vitals/LimitsCard'
-import { LeadsToday } from '@/features/jobs/LeadsToday'
 
 import { Dailies } from './Dailies'
 
@@ -195,7 +194,6 @@ export function HomePage() {
       <LimitsCard />
 
       {/* Both silent unless this morning's read found something. */}
-      <LeadsToday />
 
       {/*
         **The season sits below the day now**, asked for as _"I'd move

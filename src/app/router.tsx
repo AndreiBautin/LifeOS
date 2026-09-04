@@ -10,7 +10,6 @@ import { ProjectsPage } from '@/features/projects/ProjectsPage'
 import { BasePage } from '@/features/base/BasePage'
 import { LimitsPage } from '@/features/limits/LimitsPage'
 import { MindPage } from '@/features/mind/MindPage'
-import { HomesPage } from '@/features/homes/HomesPage'
 import { JobsPage } from '@/features/jobs/JobsPage'
 import { FinancePage } from '@/features/finance/FinancePage'
 import { ResumePage } from '@/features/resume/ResumePage'
@@ -79,7 +78,6 @@ export const router = createBrowserRouter(
         { path: 'vitals', element: <Navigate to="/today" replace /> },
         { path: 'limits', element: <LimitsPage /> },
         { path: 'mind', element: <MindPage /> },
-        { path: 'houses', element: <HomesPage /> },
         { path: 'jobs', element: <JobsPage /> },
         { path: 'finance', element: <FinancePage /> },
         { path: 'resume', element: <ResumePage /> },

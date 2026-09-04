@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
 import { BASE, JOBS } from '@/domain/base/base'
-import type { HomeCandidate } from '@/domain/homes/candidate'
 import type { Campaign } from '@/domain/campaign/campaign'
 import type { FinanceReading } from '@/domain/finance/reading'
 import { asProjectId, type CampaignId, type StageId } from '@/domain/ids/ids'
@@ -41,7 +40,6 @@ function project(
 function deps(options: {
   projects?: readonly Project[]
   finance?: readonly FinanceReading[]
-  homes?: readonly HomeCandidate[]
   campaigns?: Campaign[]
 }): CampaignDeps & { stored: Campaign[] } {
   const stored = options.campaigns ?? []
@@ -68,9 +66,6 @@ function deps(options: {
     finance: {
       all: () => Promise.resolve(options.finance ?? []),
     } as unknown as CampaignDeps['finance'],
-    homes: {
-      all: () => Promise.resolve(options.homes ?? []),
-    } as unknown as CampaignDeps['homes'],
     clock: { now: () => new Date('2026-08-31T10:00:00') },
     ids: {
       next: () => {

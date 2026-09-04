@@ -1,5 +1,4 @@
 import type { Room } from '@/domain/base/declutter'
-import type { HomeCandidate } from '@/domain/homes/candidate'
 import type { Attempt } from '@/domain/mind/practice'
 import type { ChallengeMark } from '@/domain/challenges/challenge'
 import type { Campaign } from '@/domain/campaign/campaign'
@@ -54,7 +53,6 @@ export interface SyncPayload {
   readonly campaigns: readonly Campaign[]
   readonly attempts: readonly Attempt[]
   readonly challenges: readonly ChallengeMark[]
-  readonly homes: readonly HomeCandidate[]
   readonly rooms: readonly Room[]
   /**
    * Ground you have walked, as geohash cells.
@@ -116,7 +114,6 @@ export const EMPTY_PAYLOAD: SyncPayload = {
   campaigns: [],
   attempts: [],
   challenges: [],
-  homes: [],
   rooms: [],
   tombstones: [],
 }
@@ -139,7 +136,6 @@ export function isEmpty(payload: SyncPayload): boolean {
     payload.campaigns.length === 0 &&
     payload.attempts.length === 0 &&
     payload.challenges.length === 0 &&
-    payload.homes.length === 0 &&
     payload.rooms.length === 0 &&
     payload.exploredCells.length === 0 &&
     payload.tombstones.length === 0 &&
@@ -166,7 +162,6 @@ export function payloadSize(payload: SyncPayload): number {
     payload.campaigns.length +
     payload.attempts.length +
     payload.challenges.length +
-    payload.homes.length +
     payload.rooms.length +
     // Counted as one, because that is what it is to a reader: the fog
     // moved, once, however many cells were in the batch.
@@ -361,7 +356,6 @@ export function acceptableFrom(
     challenges: incoming.challenges.filter((item) =>
       shouldAccept(item, 'challenges', item.id, index),
     ),
-    homes: incoming.homes.filter((item) => shouldAccept(item, 'homes', item.id, index)),
     rooms: incoming.rooms.filter((item) => shouldAccept(item, 'rooms', item.id, index)),
     // Exempt on purpose. There is no tombstone that could apply to ground
     // somebody walked, so there is nothing here to filter against.

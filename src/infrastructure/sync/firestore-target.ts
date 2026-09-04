@@ -14,7 +14,6 @@ import {
 } from 'firebase/firestore'
 
 import type { Room } from '@/domain/base/declutter'
-import type { HomeCandidate } from '@/domain/homes/candidate'
 import type { Attempt } from '@/domain/mind/practice'
 import type { ChallengeMark } from '@/domain/challenges/challenge'
 import type { Campaign } from '@/domain/campaign/campaign'
@@ -77,7 +76,6 @@ const COLLECTIONS = {
   campaigns: 'campaigns',
   attempts: 'attempts',
   challenges: 'challenges',
-  homes: 'homes',
   rooms: 'rooms',
   /*
    * One document holding the whole set, not a document per cell. A
@@ -130,7 +128,6 @@ type KeyedField = Exclude<ListField, 'exploredCells'>
  *
  * What its absence cost: `push` was a hand-written list of ten beside a
  * hand-written `pull` of twenty-four, and twelve collections — places,
- * trips, dailies, vices, weighIns, finance, campaigns, attempts, homes,
  * rooms, exploredCells and `dayReadings` (since scrapped) — were read
  * from the server and written to it by nothing. Not a lost record but a lost *direction*: a
  * device whose changes that day were a habit tick, a weigh-in or a
@@ -164,7 +161,6 @@ const KEYED_BY: {
   campaigns: (record) => record.id,
   attempts: (record) => record.id,
   challenges: (record) => record.id,
-  homes: (record) => record.id,
   rooms: (record) => record.id,
   tombstones: (record) => tombstoneKey(record.collection, record.id),
 }
@@ -296,7 +292,6 @@ export function createFirestoreSyncTarget(options: FirestoreTargetOptions): Sync
         readSince(root(COLLECTIONS.campaigns), after),
         readSince(root(COLLECTIONS.attempts), after),
         readSince(root(COLLECTIONS.challenges), after),
-        readSince(root(COLLECTIONS.homes), after),
         readSince(root(COLLECTIONS.rooms), after),
         readSince(root(COLLECTIONS.exploredCells), after),
         readSince(root(COLLECTIONS.tombstones), after),
@@ -343,7 +338,6 @@ export function createFirestoreSyncTarget(options: FirestoreTargetOptions): Sync
         campaigns,
         attempts,
         challenges,
-        homes,
         rooms,
         cells,
         tombstones,
@@ -391,7 +385,6 @@ export function createFirestoreSyncTarget(options: FirestoreTargetOptions): Sync
           campaigns: campaigns.records as readonly Campaign[],
           attempts: attempts.records as readonly Attempt[],
           challenges: challenges.records as readonly ChallengeMark[],
-          homes: homes.records as readonly HomeCandidate[],
           rooms: rooms.records as readonly Room[],
           exploredCells: cells.records.flatMap(
             (record) => (record as { cells?: readonly string[] }).cells ?? [],

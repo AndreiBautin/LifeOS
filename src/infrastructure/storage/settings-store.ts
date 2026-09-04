@@ -1,6 +1,3 @@
-import { parseWants } from '@/domain/homes/candidate'
-import { parseDigestPreferences } from '@/domain/news/digest'
-import { parseJobSearch } from '@/domain/jobs/search'
 import type { AppSettings } from '@/domain/settings/settings'
 import { DEFAULT_SETTINGS, SETTINGS_SCHEMA_VERSION } from '@/domain/settings/settings'
 import type { SettingsRepository } from '@/domain/repositories/ports'
@@ -208,9 +205,6 @@ function mergeWithDefaults(parsed: unknown): AppSettings {
      * board kind it does not recognise instead of returning a source the
      * gateway cannot read.
      */
-    jobSearch: parseJobSearch(stored.jobSearch),
-    digest: parseDigestPreferences(stored.digest),
-    homeWants: parseWants(stored.homeWants),
     /*
      * Carried through, or the stamp is written and never read.
      *

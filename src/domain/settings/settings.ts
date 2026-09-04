@@ -1,6 +1,3 @@
-import { DEFAULT_WANTS, type HomeWants } from '@/domain/homes/candidate'
-import { DEFAULT_DIGEST, type DigestPreferences } from '@/domain/news/digest'
-import { EMPTY_JOB_SEARCH, type JobSearch } from '@/domain/jobs/search'
 import { asExerciseId, type ExerciseId } from '@/domain/ids/ids'
 import type { E1rmFormula } from '@/domain/strength/one-rep-max'
 import type { WeightUnit } from '@/domain/units/weight'
@@ -80,34 +77,6 @@ export interface AppSettings {
   readonly exploredRegionKm2?: number | undefined
 
   readonly theme: 'system' | 'light' | 'dark'
-  /**
-   * The standing job search — which boards to read, and what counts as
-   * a lead on them.
-   *
-   * Here rather than in component state, which is where it was: every
-   * board slug and filter was wiped by any navigation, so the search had
-   * to be retyped each time the screen was opened. It travels between
-   * devices because a board slug is a fact about the search rather than
-   * about the phone.
-   */
-  readonly jobSearch: JobSearch
-  /**
-   * The morning digest -- which sources, and what floats to the top.
-   *
-   * Travels between devices for the reason the job search does: the
-   * subjects you care about are a fact about you rather than about the
-   * phone, and a list that existed only on whichever device you typed it
-   * into is the defect one layer up.
-   */
-  readonly digest: DigestPreferences
-  /**
-   * What you are looking for in a house.
-   *
-   * Travels between devices for the reason the job search does: a
-   * budget and the things you want within walking distance are facts
-   * about you rather than about the phone.
-   */
-  readonly homeWants: HomeWants
   /**
    * ISO timestamp of the last successful export. Drives the backup
    * reminder — a backup feature nobody is prompted to use is worth
@@ -194,9 +163,6 @@ export const DEFAULT_SETTINGS: AppSettings = {
   keepScreenAwake: true,
   checkInsEnabled: true,
   theme: 'system',
-  jobSearch: EMPTY_JOB_SEARCH,
-  digest: DEFAULT_DIGEST,
-  homeWants: DEFAULT_WANTS,
   schemaVersion: SETTINGS_SCHEMA_VERSION,
 }
 

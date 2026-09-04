@@ -51,7 +51,6 @@ export type Requirement =
   /** Applications that reached the Offer stage, from Jobs. */
   | { readonly kind: 'offers'; readonly count: number }
   /** Houses actually seen — viewed, offered on, or ruled out. */
-  | { readonly kind: 'homes-viewed'; readonly count: number }
   /** Net worth, in minor units, from the monthly finance reading. */
   | { readonly kind: 'net-worth'; readonly minorUnits: number }
   /** Retirement savings, in minor units. */
@@ -73,7 +72,6 @@ export const REQUIREMENT_KINDS = [
   'declared',
   'house-jobs',
   'offers',
-  'homes-viewed',
   'net-worth',
   'retirement',
   'salary',
@@ -136,7 +134,6 @@ export interface Evidence {
   readonly houseJobsDone?: number
   readonly offers?: number
   /** Houses seen -- viewed, offered on, or ruled out. */
-  readonly homesViewed?: number
   readonly netWorthMinor?: number
   readonly retirementMinor?: number
   readonly salaryMinor?: number
@@ -207,8 +204,6 @@ function readingFor(requirement: Requirement, evidence: Evidence): number | unde
       return evidence.houseJobsDone ?? 0
     case 'offers':
       return evidence.offers ?? 0
-    case 'homes-viewed':
-      return evidence.homesViewed ?? 0
     case 'net-worth':
       return evidence.netWorthMinor
     case 'retirement':
@@ -310,7 +305,6 @@ export const REQUIREMENT_LABELS: Record<Requirement['kind'], string> = {
   declared: 'When you say so',
   'house-jobs': 'House jobs finished',
   offers: 'Applications through every stage',
-  'homes-viewed': 'Houses seen',
   'net-worth': 'Net worth reaches',
   retirement: 'Retirement reaches',
   salary: 'Salary reaches',
@@ -329,7 +323,6 @@ export function targetOf(requirement: Requirement): number | undefined {
       return undefined
     case 'house-jobs':
     case 'offers':
-    case 'homes-viewed':
       return requirement.count
     case 'net-worth':
     case 'retirement':
@@ -358,8 +351,6 @@ export function requirementOf(kind: Requirement['kind'], target: number): Requir
       return { kind: 'house-jobs', count: Math.max(1, value) }
     case 'offers':
       return { kind: 'offers', count: Math.max(1, value) }
-    case 'homes-viewed':
-      return { kind: 'homes-viewed', count: Math.max(1, value) }
     case 'net-worth':
       return { kind: 'net-worth', minorUnits: value }
     case 'retirement':

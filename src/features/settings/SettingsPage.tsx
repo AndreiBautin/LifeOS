@@ -10,9 +10,6 @@ import { useServices, useSettings } from '@/app/context'
 import { DEFAULT_INCREMENT } from '@/domain/units/weight'
 import { Badge, Button, Card, Section } from '@/components/shared/primitives'
 import { BacklogSettingsSection } from '@/features/backlog/BacklogSettingsSection'
-import { JobSearchSection } from './JobSearchSection'
-import { DigestSection } from './DigestSection'
-import { ConfigTransfer } from './ConfigTransfer'
 import { useBackup } from '@/features/backup/useBackup'
 import { SyncSection } from '@/features/sync/SyncSection'
 import { useSyncConfig } from '@/features/sync/useSync'
@@ -185,11 +182,6 @@ export function SettingsPage() {
         configured, and a reassurance that is quietly false is worse than
         none. It reports where the data is, not where it used to be.
       */}
-      <JobSearchSection />
-
-      <DigestSection />
-
-      <ConfigTransfer />
 
       <BacklogSettingsSection />
 

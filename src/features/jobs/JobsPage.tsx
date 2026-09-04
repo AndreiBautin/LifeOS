@@ -10,7 +10,6 @@ import { APPLICATION_STAGES } from '@/domain/jobs/application'
 import type { Project } from '@/domain/projects/project'
 
 import { matchResume } from '@/domain/jobs/match'
-import { LeadsSection } from './LeadsSection'
 import { useResume } from '../resume/hooks'
 import {
   useAddProject,
@@ -387,8 +386,6 @@ export function JobsPage() {
           )}
         </Card>
       </Section>
-
-      <LeadsSection />
 
       {landed.length > 0 && (
         <Section title="Through every stage" description="Nothing left to wait on">

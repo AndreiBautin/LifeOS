@@ -25,7 +25,6 @@ import type {
   ProjectRepository,
   AttemptRepository,
   ChallengeRepository,
-  HomeRepository,
   RoomRepository,
   CampaignRepository,
   ResumeRepository,
@@ -319,15 +318,6 @@ function device(clock: Clock): Device {
     purge: () => Promise.resolve(),
   }
 
-  const homes: HomeRepository = {
-    all: () => Promise.resolve([]),
-    byId: () => Promise.resolve(undefined),
-    save: () => Promise.resolve(),
-    restoreMany: () => Promise.resolve(),
-    remove: () => Promise.resolve(),
-    purge: () => Promise.resolve(),
-  }
-
   const attempts: AttemptRepository = {
     all: () => Promise.resolve([]),
     byId: () => Promise.resolve(undefined),
@@ -486,7 +476,6 @@ function device(clock: Clock): Device {
   return {
     rooms,
 
-    homes,
     attempts,
     challenges,
     campaigns,

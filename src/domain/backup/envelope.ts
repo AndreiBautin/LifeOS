@@ -1,7 +1,6 @@
 import type { Place } from '@/domain/atlas/place/Place'
 import type { Trip } from '@/domain/atlas/trip/Trip'
 import type { Room } from '@/domain/base/declutter'
-import type { HomeCandidate } from '@/domain/homes/candidate'
 import type { Attempt } from '@/domain/mind/practice'
 import type { ChallengeMark } from '@/domain/challenges/challenge'
 import type { Campaign } from '@/domain/campaign/campaign'
@@ -102,7 +101,6 @@ export interface BackupCounts {
   readonly campaigns: number
   readonly attempts: number
   readonly challenges: number
-  readonly homes: number
   readonly rooms: number
   readonly resume: number
   /** Geohash cells of walked ground. Counted, though it is a set of ids. */
@@ -157,7 +155,6 @@ export interface BackupData {
   readonly campaigns?: readonly Campaign[]
   readonly attempts?: readonly Attempt[]
   readonly challenges?: readonly ChallengeMark[]
-  readonly homes?: readonly HomeCandidate[]
   readonly rooms?: readonly Room[]
   /**
    * Walked ground, as bare cell ids.
@@ -187,7 +184,6 @@ export function countsFor(data: BackupData): BackupCounts {
     campaigns: data.campaigns?.length ?? 0,
     attempts: data.attempts?.length ?? 0,
     challenges: data.challenges?.length ?? 0,
-    homes: data.homes?.length ?? 0,
     rooms: data.rooms?.length ?? 0,
     resume: data.resume?.length ?? 0,
     exploredCells: data.exploredCells?.length ?? 0,
@@ -212,7 +208,6 @@ export const BACKUP_COUNT_KEYS = [
   'campaigns',
   'attempts',
   'challenges',
-  'homes',
   'rooms',
   'resume',
   'exploredCells',

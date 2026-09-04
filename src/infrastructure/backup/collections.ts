@@ -14,7 +14,6 @@ import type {
   ViceRepository,
   AttemptRepository,
   ChallengeRepository,
-  HomeRepository,
   RoomRepository,
   CampaignRepository,
   FinanceRepository,
@@ -57,7 +56,6 @@ export interface BackupRepositories {
   readonly campaigns: CampaignRepository
   readonly attempts: AttemptRepository
   readonly challenges: ChallengeRepository
-  readonly homes: HomeRepository
   readonly rooms: RoomRepository
   readonly resume: ResumeRepository
   readonly explored: ExploredAreaRepository
@@ -235,13 +233,6 @@ export const COLLECTIONS: Readonly<Record<CollectionKey, Collection>> = {
     idOf: (row) => row.id,
     restore: (r, rows) => r.rooms.restoreMany(rows),
     tombstoneCollection: 'rooms',
-  }),
-  homes: define({
-    local: (r) => r.homes.all(),
-    fromFile: (data) => data.homes ?? [],
-    idOf: (row) => row.id,
-    restore: (r, rows) => r.homes.restoreMany(rows),
-    tombstoneCollection: 'homes',
   }),
   attempts: define({
     local: (r) => r.attempts.all(),

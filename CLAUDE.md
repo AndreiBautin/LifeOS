@@ -3406,6 +3406,24 @@ registered in all of the places a collection has to register. The
 compiler and the guard tests found most of them, which is that machinery
 working as intended.
 
+**Three features left the app, and the test is where the work happens rather than what it is about.** Asked for as _"get rid of stuff that would be better suited for custom agents rather than living inside the app: automated job search, newsletter, house search."_
+
+What they had in common is that each was **the app going and fetching something from the internet on a schedule** — three job boards, Hacker News and DEV, and Overpass — and then keeping a copy of what it found. That is an agent errand: it runs without you, it is a copy of somebody else s data, and the app was the wrong place to hold it.
+
+**Gone:** `domain/news`, `domain/homes`, `domain/jobs/boards`, `domain/jobs/score`, `domain/jobs/search`, the ATS, Overpass and news gateways, the daily sweep and the digest gate, the leads sections on Jobs and Today, and the `homeWants`/`jobSearch`/`digest` settings.
+
+**`domain/config/document.ts` went with them**, because it carried exactly those three settings and nothing else. A paste-a-config feature whose every section had been deleted is a mechanism with nothing to move.
+
+**Kept: the resume and Mind, deliberately.** Neither is automated — a resume is typed in by hand and a practice log is a record of what you did — and the resume is the one record in the app that **nothing regenerates**, which was confirmed the same afternoon by its owner having lost the PDF it came from.
+
+**Kept: job applications.** Sending one is an act you perform, so `jobs.application-sent` still pays; what left is the machine that found the postings.
+
+**`homes` is the fifth retired store**, cleared by a new guarded block at `DB_VERSION` 20 and out of the payload, both sync targets, the backup collection and the tombstone list. The rows had to be deleted rather than left: a feature that leaves without its records has them pushed straight back by the next device to sync.
+
+**`homes-viewed` left `Requirement` with the house search**, which the compiler turned into a fallthrough bug worth naming: removing its `case` left `case offers` falling into `return requirement.minorUnits`, so an offers stage would have read a count as money. Found by the typechecker rather than by a test.
+
+**The exhaustiveness rule caught the tombstone list**, exactly as it is supposed to: `homes` came out of the payload and `switch-exhaustiveness-check` failed the build until it came out of `TOMBSTONED_COLLECTIONS` too.
+
 **The lower days divided, and the customisation is gone.** Asked for as _"only do calf raises on deadlift day and only do kettlebell swings on squat day"_ and _"we probably do not need any of the customize workout stuff, lets gut it — I am trying to make this app and codebase cleaner and more focused."_
 
 **`LOWER` split into `LOWER_SQUAT` and `LOWER_DEADLIFT`**, the way the upper body already had. The calves move to `ONCE` and sit on the deadlift day; the swings sit on the squat day. **Nothing in the week repeats now** — the note calling the calf raise the deliberate exception went with it.

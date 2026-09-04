@@ -1,5 +1,4 @@
 import type { Geolocation } from '@/domain/atlas/Geolocation'
-import { createAtsGateway } from '@/infrastructure/jobs/ats-gateway'
 import type { PlaceSearchProvider } from '@/domain/atlas/PlaceSearch'
 import type { IdGenerator } from '@/domain/ids/ids'
 import type {
@@ -20,14 +19,10 @@ import type {
   TombstoneRepository,
   AttemptRepository,
   ChallengeRepository,
-  HomeRepository,
   RoomRepository,
-  NeighbourhoodGateway,
   TrackGateway,
   CampaignRepository,
   FinanceRepository,
-  JobBoardGateway,
-  NewsGateway,
   ResumeRepository,
   TripRepository,
   ViceRepository,
@@ -49,7 +44,6 @@ import {
   createTombstoneRepository,
   createAttemptRepository,
   createChallengeRepository,
-  createHomeRepository,
   createRoomRepository,
   createCampaignRepository,
   createFinanceRepository,
@@ -66,14 +60,7 @@ import { NominatimSearchProvider } from '@/infrastructure/map/nominatim-search'
 import { createSyncStateStore } from '@/infrastructure/storage/sync-state-store'
 import { createNullSyncTarget } from '@/infrastructure/sync/targets'
 import { requestPersistence } from '@/infrastructure/storage/durability'
-import { createDailyRunStore } from '@/infrastructure/storage/daily-run-store'
-import { createNewsGateway } from '@/infrastructure/news/news-gateway'
 import { createTrackGateway } from '@/infrastructure/mind/track-gateway'
-import { createNeighbourhoodGateway } from '@/infrastructure/homes/overpass-gateway'
-import type { DailyRunStore } from '@/application/use-cases/daily/once-a-day'
-import type { LeadSweep } from '@/application/use-cases/jobs/leads'
-import type { Digest } from '@/application/use-cases/news/digest'
-import { STORAGE_KEYS } from '@/config/storage-keys'
 import { logger } from '@/shared/logging/logger'
 
 /**
@@ -109,15 +96,9 @@ export interface AppServices {
   readonly campaigns: CampaignRepository
   readonly attempts: AttemptRepository
   readonly challenges: ChallengeRepository
-  readonly homes: HomeRepository
   readonly rooms: RoomRepository
-  readonly neighbourhoods: NeighbourhoodGateway
   readonly tracks: TrackGateway
-  readonly boards: JobBoardGateway
   /** Which local day the boards were last read on their own. */
-  readonly sweepStore: DailyRunStore<LeadSweep>
-  readonly digestStore: DailyRunStore<Digest>
-  readonly news: NewsGateway
   readonly resume: ResumeRepository
   readonly trips: TripRepository
   readonly dailies: DailyRepository
@@ -184,14 +165,8 @@ export async function bootstrap(): Promise<BootstrapResult> {
     campaigns: createCampaignRepository(db, systemClock),
     attempts: createAttemptRepository(db, systemClock),
     challenges: createChallengeRepository(db, systemClock),
-    homes: createHomeRepository(db, systemClock),
     rooms: createRoomRepository(db, systemClock),
-    neighbourhoods: createNeighbourhoodGateway(systemClock),
     tracks: createTrackGateway(),
-    boards: createAtsGateway(),
-    sweepStore: createDailyRunStore(STORAGE_KEYS.jobSweptOn),
-    digestStore: createDailyRunStore(STORAGE_KEYS.digestReadOn),
-    news: createNewsGateway(),
     resume: createResumeRepository(db, systemClock),
     trips: createTripRepository(db, systemClock),
     dailies: createDailyRepository(db, systemClock),

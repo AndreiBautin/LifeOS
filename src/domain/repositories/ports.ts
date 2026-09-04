@@ -1,14 +1,10 @@
 import type { Room } from '@/domain/base/declutter'
-import type { HomeCandidate } from '@/domain/homes/candidate'
-import type { NearbyKind, Neighbourhood } from '@/domain/homes/neighbourhood'
 import type { TrackExercise, TrackId } from '@/domain/mind/tracks'
 import type { Attempt } from '@/domain/mind/practice'
 import type { ChallengeMark } from '@/domain/challenges/challenge'
 import type { Campaign } from '@/domain/campaign/campaign'
-import type { NewsSource, Story } from '@/domain/news/story'
 import type { CheckIn } from '@/domain/autoregulation/check-in'
 import type { FinanceReading } from '@/domain/finance/reading'
-import type { AtsProvider, FetchedPosting } from '@/domain/jobs/boards'
 import type { Resume } from '@/domain/resume/resume'
 import type { Item } from '@/domain/backlog/item'
 import type { Project } from '@/domain/projects/project'
@@ -34,7 +30,6 @@ import type {
   ViceId,
   CampaignId,
   AttemptId,
-  HomeCandidateId,
   RoomId,
 } from '@/domain/ids/ids'
 import type { WorkoutLog } from '@/domain/logging/workout-log'
@@ -396,33 +391,6 @@ export interface RoomRepository {
   purge(id: RoomId): Promise<void>
 }
 
-/**
- * One row per day, keyed by the day itself.
- *
- * No `byId` taking a branded id: the day key *is* the key, the way a
- * weigh-in's is, so the reads a screen wants are "this day" and "the
- * last N days" rather than a lookup by something opaque.
- */
-export interface HomeRepository {
-  all(): Promise<readonly HomeCandidate[]>
-  byId(id: HomeCandidateId): Promise<HomeCandidate | undefined>
-  save(candidate: HomeCandidate): Promise<void>
-  /** Writes exactly as given, without stamping. See `ExerciseRepository`. */
-  restoreMany(candidates: readonly HomeCandidate[]): Promise<void>
-  remove(id: HomeCandidateId): Promise<void>
-  /** Deletes without a tombstone -- the receiving half of a sync. */
-  purge(id: HomeCandidateId): Promise<void>
-}
-
-export interface NeighbourhoodGateway {
-  read(
-    latitude: number,
-    longitude: number,
-    radiusMetres: number,
-    kinds: readonly NearbyKind[],
-  ): Promise<Neighbourhood>
-}
-
 export interface TrackGateway {
   read(track: TrackId): Promise<readonly TrackExercise[]>
 }
@@ -464,14 +432,6 @@ export interface CampaignRepository {
   remove(id: CampaignId): Promise<void>
   /** Deletes without a tombstone -- the receiving half of a sync. */
   purge(id: CampaignId): Promise<void>
-}
-
-export interface NewsGateway {
-  read(source: NewsSource): Promise<readonly Story[]>
-}
-
-export interface JobBoardGateway {
-  fetch(provider: AtsProvider, token: string): Promise<readonly FetchedPosting[]>
 }
 
 export interface TripRepository {

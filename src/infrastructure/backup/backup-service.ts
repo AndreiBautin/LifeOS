@@ -201,7 +201,6 @@ function emptyCounts(): Record<keyof BackupCounts, number> {
     campaigns: 0,
     attempts: 0,
     challenges: 0,
-    homes: 0,
     rooms: 0,
     finance: 0,
     places: 0,

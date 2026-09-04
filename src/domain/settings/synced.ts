@@ -29,9 +29,6 @@ export const SYNCED_SETTING_KEYS = [
   'estimatedMaxes',
   'excludedExercises',
   'e1rmFormula',
-  'jobSearch',
-  'digest',
-  'homeWants',
 ] as const
 
 export type SyncedSettingKey = (typeof SYNCED_SETTING_KEYS)[number]
