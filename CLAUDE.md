@@ -6648,6 +6648,65 @@ merely hidden — the page has no view state left, so there is nothing to
 be out of step with the position. Verified by picking the deload and
 watching the bench go from **3 sets to 2** with the header following.
 
+**Sync runs itself now, and that reverses the rule that made it a
+button.** `useSync` said so in as many words: _"a sync that runs on a
+timer is a sync that runs while a set is being logged, and the one thing
+this app must never do is surprise someone mid-session."_ Asked for as
+_"synced live both ways instead of relying on a manual push"_, once the
+app went onto a desktop as well as a phone.
+
+**The objection is answered rather than overruled.** `mayExchange`
+refuses while a workout is open, so the timer cannot fire during the one
+activity it would interrupt. **Not knowing counts as open** — the query
+resolves a tick after mount, and guessing "no" for that tick guesses
+wrong in the only direction that costs anything. The manual button stays,
+because an update path with no override cannot be debugged from the far
+end of a phone.
+
+**Three triggers, each answering a different question.** Becoming visible
+is "I have just walked up to this device" and is the one that matters
+most; a settled local mutation schedules a debounced push at
+`PUSH_DEBOUNCE_MS`; an interval at `PULL_INTERVAL_MS` runs **only while
+visible**, which is what keeps it from being a background poller. `online`
+is not a trigger of its own — it almost always coincides with becoming
+visible, and the exchange is a no-op offline.
+
+**It reuses `synchronise` rather than listening to Firestore.** A live
+listener per collection would be twenty-four subscriptions and a second
+merge path, where the existing exchange is tested, handles tombstones and
+the grow-only fog, and carries a cursor. What makes it feel live is
+_when_ it runs, not how it reads.
+
+**An exchange must not count as a local change, and this would have been
+a silent money leak.** The exchange is itself a mutation, so a debounce
+firing on any settled mutation schedules the next sync from the last
+one's completion — every four seconds, for as long as the app is open,
+burning Firestore reads and **looking exactly like sync working
+properly**. `SYNC_MUTATION_KEY` is what tells them apart. Caught by
+reasoning about the subscription before shipping, not by a test.
+
+**Both rules are pure functions in `auto-sync-rules.ts` with tests
+beside them**, split out of the component for one reason: each fails
+**silently**. A guard that fails open syncs mid-session; a trigger that
+fails open syncs forever. Neither throws, neither logs, and a component
+cannot be tested for either without a browser.
+
+**A desktop install needed no code.** The manifest already declares
+`display: standalone`, so Edge or Chrome's **Install** turns the deployed
+site into an application window with a Start-menu entry that pins to the
+taskbar. **Do not add an Electron or Tauri wrapper** — it would be a
+second thing to build, sign and update in exchange for nothing the
+install does not already do, and it would fork the update path this file
+has spent so long getting right.
+
+**The desktop layout was checked and needed nothing**, which is worth
+recording because the first measurement said otherwise. The `nav`
+element is full-width at 1400px — correctly, it is the bar's background —
+and measuring it nearly bought a fix for a bug that does not exist. The
+cells inside it are `mx-auto max-w-2xl`, the same 672px cap as `main`,
+and both sit at x=357 on a 1400px window. **Measure the element the
+question is about.**
+
 **Supplements are a restorative, which reverses a rule written here.**
 That rule said creatine is a thing you take once a day and either did or
 did not — a daily with a streak — and that a pool of capacity one with

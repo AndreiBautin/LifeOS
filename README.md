@@ -156,6 +156,27 @@ hook runs it and refuses the push if it fails; the same command gates the
 deploy. If it is green the change is shippable, and if it is not it is
 not — there is no third state.
 
+## On a desktop
+
+It is the same app, installed rather than wrapped. Open the deployed site
+in Edge or Chrome, then **Install LifeOS** — the icon in the address bar,
+or the browser menu. It opens in its own window with no browser chrome,
+gets a Start-menu entry, and can be pinned to the taskbar from there.
+
+There is no Electron build and there should not be. The manifest already
+declares `display: standalone`, so an install is a real application
+window; a wrapper would add a second thing to build, sign and update in
+exchange for nothing this does not already do.
+
+**The two copies share data through Firestore, not through a filesystem.**
+Each device keeps its own IndexedDB and they exchange in the background —
+see [docs/PERSISTENCE.md](docs/PERSISTENCE.md). Sign in with the same
+account on both, or they will not find each other. Nothing is served from
+one machine to the other, so there is no port to open and no VPN.
+
+The layout is capped at 672px and centred, so a wide window is the phone
+layout in the middle of the screen rather than a stretched one.
+
 ## Architecture
 
 Four layers, dependencies pointing inward only, enforced by ESLint rather

@@ -12,6 +12,8 @@ import { STORAGE_KEYS } from '@/config/storage-keys'
 import type { SyncTarget } from '@/domain/repositories/ports'
 import { logger } from '@/shared/logging/logger'
 
+import { SYNC_MUTATION_KEY } from './auto-sync-rules'
+
 /**
  * Sync, from the screen's point of view.
  *
@@ -182,6 +184,13 @@ export function useSyncNow(account: Account | undefined) {
   }, [account, services.syncTarget])
 
   return useMutation<SyncReport>({
+    /*
+     * Keyed so `AutoSync` can tell an exchange apart from a local write.
+     * Its debounce fires on any settled mutation, and an exchange is one
+     * — so without a key the sync's own success schedules the next sync,
+     * four seconds later, forever.
+     */
+    mutationKey: SYNC_MUTATION_KEY,
     mutationFn: async () => synchronise(await resolveTarget(), services),
     onSuccess: (report) => {
       logger.info('sync.completed', {
