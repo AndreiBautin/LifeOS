@@ -69,7 +69,7 @@ describe('a position inside a program that changed shape', () => {
      * A position past the end of the week, which the split can no longer
      * produce by shrinking — there is one split now. It is still reachable
      * from a stored position written by an older build, which is what
-     * `clampPosition` exists for: a Friday index on a four-day week would
+     * `clampPosition` exists for: a stale index on a three-day week would
      * otherwise show an empty session rather than a day.
      */
     const threeDay = deriveProgram(DEFAULT_SETTINGS, library)
@@ -77,7 +77,7 @@ describe('a position inside a program that changed shape', () => {
 
     const clamped = clampPosition(threeDay, onFriday)
 
-    expect(clamped.dayIndex).toBe(3)
+    expect(clamped.dayIndex).toBe(2)
     expect(dayAt(threeDay, clamped)).toBeDefined()
   })
 

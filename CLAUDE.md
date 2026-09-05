@@ -6792,6 +6792,48 @@ app and started nothing — **and an open session still blocks it**, with
 The banner is what is left for that case, and says why it is waiting
 rather than announcing news the app could have acted on itself.
 
+**The week is Monday, Wednesday, Friday full body — squat, bench,
+deadlift.** Asked for as _"rearrange the lifts in a sensible way for a
+Monday Wednesday Friday full body split, ordered squat bench deadlift
+with those being the main lift for each respectively"_.
+
+**`RpDay.carries` names lifts again, and the reason it stopped naming
+them is gone.** It held a _region_ — upper or lower — so that the split
+did not decide how often anybody benched; that was a priority question
+and priority lived in the tiers. The tiers went with the customisation
+and every lift has one session, so there is nothing left to derive. What
+a region cannot express is which of two lower-body lifts opens which
+day: with both the squat and the deadlift eligible everywhere, the
+emptiest-day rule picked, and it had no way to know Monday was the
+squat. `STRENGTH_REGION` is deleted.
+
+**The accessory pairing survives the move to full body**, because its
+reason does: a muscle sits on a day whose main lift does not already
+train it. Chest on Monday (benched Wednesday), upper back on Wednesday
+(deadlifted Friday, and a row against the bench besides), lats on Monday,
+rear delts on Friday away from the row, triceps Monday and Friday away
+from the bench, biceps Monday and Wednesday away from the pull.
+
+**The core is the one collision and it is deliberate.** It wants two
+sessions and all three days brace — the squat and the deadlift heavily,
+the bench barely. Wednesday is free and the second has to land on a
+braced day, so it is Friday, where `trailingLast` already puts it at
+the end of the session rather than before the pull.
+
+**A paired day is now unreachable from the shipped split**, so
+`RpAssembleDeps` gained an optional `split`. Every rule about how two
+competition lifts share a day is still live code, and the alternative
+was leaving it as a live-looking condition nothing could reach — the
+thing `reverseAccessoryBlocks` was deleted for. A test injects a split
+that pairs.
+
+**A test learned the trailing-muscle lesson for the third time.** The
+assistance work is asserted to run in priority order, and
+`trailingLast` moves the grip and the trunk past everything else on purpose. It only
+became visible again when the full-body week put the core on a day
+beside other accessory work; the check now excludes the trailing
+muscles rather than encoding the ordering they are exempt from.
+
 **Firestore is the source of truth now, and the whole exchange is
 gone.** Asked for as _"let's just set up where we read from firestore …
 and then we get rid of all this sync crap"_, after a seeding mishap made

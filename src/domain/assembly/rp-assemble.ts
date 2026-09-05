@@ -185,6 +185,16 @@ export interface RpAssembleDeps {
   readonly exercises: readonly Exercise[]
   readonly ids: IdGenerator
   readonly now: Date
+  /**
+   * The week's shape, defaulting to the one the app ships.
+   *
+   * **Injectable so the paired-day rules stay reachable.** With one lift
+   * named per day and one session each, the shipped split can no longer
+   * produce a day holding two — and the rules for what happens when it
+   * does are still live code. Rather than leave them as a live-looking
+   * condition nothing can reach, a test supplies a split that pairs.
+   */
+  readonly split?: RpSplit
 }
 
 export function assembleRpProgram(
@@ -201,7 +211,7 @@ export function assembleRpProgram(
     'A block needs at least one working week.',
   )
 
-  const split = rpSplit()
+  const split = deps.split ?? rpSplit()
   const timestamp = deps.now.toISOString()
   const workingWeeks = recipe.weeksBeforeDeload
 
@@ -533,12 +543,6 @@ function strengthSlugFor(lift: StrengthLift, session: number): string {
 }
 
 /** Which half of the body a competition lift belongs to. */
-const STRENGTH_REGION: Record<StrengthLift, 'upper' | 'lower'> = {
-  squat: 'lower',
-  bench: 'upper',
-  deadlift: 'lower',
-}
-
 /**
  * Which competition lifts open each day of the week.
  *
@@ -558,9 +562,19 @@ function assignStrengthLifts(
   const perDay: StrengthLift[][] = split.days.map(() => [])
 
   for (const lift of STRENGTH_LIFTS) {
-    const region = STRENGTH_REGION[lift]
+    /*
+     * **The day names the lift, so there is nothing to derive.** This
+     * matched a *region* — upper or lower — which could not tell the
+     * squat from the deadlift when both were eligible for the same day:
+     * the emptiest-day rule below picked, and it had no way to know
+     * which day was meant to be which.
+     *
+     * The tiers that made a region worth deriving are gone, and every
+     * lift has one session, so naming it is both simpler and the only
+     * thing that can express "squat Monday, deadlift Friday".
+     */
     const eligible = split.days.flatMap((day, index) =>
-      (day.carries ?? []).includes(region) ? [index] : [],
+      (day.carries ?? []).includes(lift) ? [index] : [],
     )
     if (eligible.length === 0) continue
 

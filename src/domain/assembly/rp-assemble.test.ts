@@ -79,8 +79,52 @@ function build(overrides: Partial<RpRecipe> = {}): ProgramTemplate {
  * tests that cover it build their own week rather than being deleted with
  * the default that used to exercise them.
  */
+/**
+ * A split whose one day carries two competition lifts.
+ *
+ * The shipped week cannot produce this any more — each day names a
+ * single lift and each lift has one session — but every rule about how a
+ * paired day behaves is still live code. Injecting a split keeps them
+ * reachable rather than leaving them as a live-looking condition.
+ */
 function pairedBlock(): ProgramTemplate {
-  return build({ liftSessions: { squat: 2, bench: 1, deadlift: 2 } })
+  return assembleRpProgram(
+    defaultRpRecipe({ liftSessions: { squat: 2, bench: 1, deadlift: 2 } }),
+    asProgramId('rp'),
+    {
+      exercises,
+      ids: counterIds(),
+      now: new Date('2026-08-24T00:00:00Z'),
+      split: {
+        id: 'paired',
+        name: 'Paired',
+        description: 'One day carrying two competition lifts.',
+        daysPerWeek: 2,
+        /*
+         * Two paired days, because which of the two lifts is the competing
+         * one alternates between them — a single day could not show that.
+         */
+        days: [
+          {
+            index: 0,
+            label: 'Monday',
+            focusName: 'Lower 1',
+            muscles: ['quads', 'hamstrings', 'glutes', 'core'],
+            carries: ['squat', 'deadlift'],
+            warmUp: 'lower',
+          },
+          {
+            index: 1,
+            label: 'Thursday',
+            focusName: 'Lower 2',
+            muscles: ['quads', 'hamstrings', 'glutes', 'core'],
+            carries: ['squat', 'deadlift'],
+            warmUp: 'lower',
+          },
+        ],
+      },
+    },
+  )
 }
 
 function weekAt(program: ProgramTemplate, index: number): ProgramWeek {
@@ -142,7 +186,7 @@ describe('the assembled block', () => {
     expect(block?.weeks.filter((week) => week.isDeload)).toHaveLength(1)
   })
 
-  it('opens three of the four days with a competition lift', () => {
+  it('opens every day with its own competition lift', () => {
     const week = block?.weeks[0]
     const mains = (week?.days ?? []).map((day) => [
       ...new Set(
@@ -153,18 +197,19 @@ describe('the assembled block', () => {
     ])
 
     /*
-     * Three lifts, one session each, across four days — so **the second
-     * upper day carries no competition lift at all.** The overhead press
-     * was the fourth and came off: _"there's more compounds on that day
-     * already"_, which is true — it opens with dips and pull-ups.
+     * **Squat, bench, deadlift — one a day, in that order.** Asked for
+     * by name, and it is the reason `RpDay.carries` names lifts rather
+     * than a region: with both the squat and the deadlift eligible for
+     * every day of a full-body week, nothing could say which was meant
+     * to open Monday.
      *
-     * **Every lift is its competition version**, and that is a cost
-     * rather than a coincidence: `strengthSlugFor` walks the rotation by
-     * the lift's session ordinal and index 0 is always the competition
+     * **Every lift is its competition version**, which is a cost rather
+     * than a coincidence: `strengthSlugFor` walks the rotation by the
+     * lift's session ordinal and index 0 is always the competition
      * variant, so a lift trained once a week never reaches index 1. The
      * high bar squat and the conventional deadlift are not scheduled.
      */
-    expect(mains).toEqual([['bench-press'], ['low-bar-squat'], [], ['sumo-deadlift']])
+    expect(mains).toEqual([['low-bar-squat'], ['bench-press'], ['sumo-deadlift']])
   })
 
   /*
@@ -382,19 +427,17 @@ describe('naming a day after what is in it', () => {
   const week = weekAt(build(), 5)
 
   /*
-   * Which half of the body, and which time through.
+   * Which lift the day is built around.
    *
    * The heading named the kinds of work present — "Strength, Hypertrophy
-   * and Conditioning" — which was informative while the days differed and
-   * said nothing once every day carried all three. Four identical
-   * headings distinguish nothing; what a reader wants on a Thursday
-   * morning is which session this is.
+   * and Conditioning" — which said nothing once every day carried all
+   * three. On a full-body week the useful distinction is the main lift,
+   * which is also how anybody refers to the session out loud.
    */
-  it('says in the heading which region the day trains, and which time through', () => {
-    expect(week.days[0]?.label).toBe('Monday — Upper 1')
-    expect(week.days[1]?.label).toBe('Tuesday — Lower 1')
-    expect(week.days[2]?.label).toBe('Thursday — Upper 2')
-    expect(week.days[3]?.label).toBe('Friday — Lower 2')
+  it('names each day after the lift it opens with', () => {
+    expect(week.days[0]?.label).toBe('Monday — Squat')
+    expect(week.days[1]?.label).toBe('Wednesday — Bench')
+    expect(week.days[2]?.label).toBe('Friday — Deadlift')
   })
 
   it('names every competition lift, in the order they are performed', () => {
@@ -404,30 +447,26 @@ describe('naming a day after what is in it', () => {
      * The order is not cosmetic: it is the order the lifter will do them
      * in.
      */
-    const tuesday = week.days[1]
-    const friday = week.days[3]
+    const monday = week.days[0]
+    const friday = week.days[2]
 
-    expect(tuesday?.focus).toMatch(/^Low Bar Squat, then /)
-    // Friday names the sumo first and then the high bar, because that is
-    // the order it holds them in — a description saying "Low Bar Squat" on
-    // the day the bar sits high would be the hardcoded-label failure in a
-    // new place, and one naming them out of order would be a smaller
-    // version of it.
+    expect(monday?.focus).toMatch(/^Low Bar Squat, then /)
     expect(friday?.focus).toMatch(/^Sumo Deadlift, then /)
 
     // Without the parenthetical variant, which is catalogue bookkeeping.
-    expect(tuesday?.focus).not.toContain('(')
+    expect(monday?.focus).not.toContain('(')
   })
 
   it('names the muscles the day is actually for', () => {
     // The hardcoded "Monday — press and pull" was a claim, not a
     // description: move a tier and the fill changes underneath it.
     // Sentence-cased, so the leading muscle carries the capital.
-    expect(week.days[0]?.focus).toMatch(/^Bench Press, then /)
-    expect(week.days[0]?.focus).toContain('side delts')
-    /* The calves moved to the deadlift day; Tuesday squats. */
-    expect(week.days[3]?.focus).toContain('calves')
-    expect(week.days[1]?.focus).toContain('hamstrings')
+    expect(week.days[1]?.focus).toMatch(/^Bench Press, then /)
+    expect(week.days[1]?.focus).toContain('side delts')
+    /* The calves are on the deadlift day and nowhere else. */
+    expect(week.days[2]?.focus).toContain('calves')
+    /* The squat pays the quads directly, so the squat day names them. */
+    expect(week.days[0]?.focus).toContain('quads')
   })
 
   it('separates the direct work from what the day only pays incidentally', () => {
@@ -859,11 +898,16 @@ describe('the order a session is performed in', () => {
     }
   })
 
-  it('opens a strength day with the competition lift, not with an accessory', () => {
-    const thursday = week.days[3]
-    const firstWorking = thursday?.slots.find((slot) => slot.role !== 'warmup')
-
-    expect(firstWorking?.role).toBe('strength')
+  it('opens every day with the competition lift, not with an accessory', () => {
+    /*
+     * All three now, where it used to be the one day picked out by index.
+     * Every day of a full-body week carries a main lift, so there is no
+     * day this does not apply to.
+     */
+    for (const day of week.days) {
+      const firstWorking = day.slots.find((slot) => slot.role !== 'warmup')
+      expect(firstWorking?.role, day.label).toBe('strength')
+    }
   })
 
   /*
@@ -928,16 +972,31 @@ describe('the order a session is performed in', () => {
    * every week for the whole block.
    */
   it('does not reverse a session that holds different muscles from the first', () => {
-    const upper = week.days.filter((day) => day.label.includes('Upper'))
-    expect(upper).toHaveLength(2)
+    /*
+     * Every day now, rather than the two upper ones: a full-body week has
+     * no region whose two sessions could hold the same muscles, which is
+     * the only case the reversal ever applied to.
+     */
+    const days = week.days
+    expect(days).toHaveLength(3)
 
-    for (const day of upper) {
+    for (const day of days) {
+      /*
+       * **The trailing muscles are excluded, and that is the same lesson
+       * a third time.** `trailingLast` moves the grip and the trunk past
+       * everything else on purpose — they are prime movers in work they
+       * are not the point of — so a core slot sitting last is that rule
+       * working, not the priority order failing. It became visible again
+       * when the full-body week put the core on a day beside other
+       * accessory work.
+       */
       const ranks = day.slots
         .filter((slot) => slot.role === 'assistance')
         .flatMap((slot) => (slot.exercise.kind === 'specific' ? [slot.exercise.exerciseId] : []))
         .flatMap((id) => {
           const muscle = lookup(id)?.primaryMuscle
-          return muscle === undefined ? [] : [-DEFAULT_MUSCLE_VOLUMES[muscle].sessionsPerWeek]
+          if (muscle === undefined || muscle === 'core' || muscle === 'forearms') return []
+          return [-DEFAULT_MUSCLE_VOLUMES[muscle].sessionsPerWeek]
         })
 
       expect(
@@ -1010,20 +1069,18 @@ describe('the order a session is performed in', () => {
       )
 
     /*
-     * **The other upper day, not "the press day".** It was found by the
-     * overhead press it carried, and the press is not a competition lift
-     * any more — so the day is identified by being the upper day that is
-     * *not* the bench day. The pairing rule is unchanged: a muscle's
-     * accessory work sits opposite the lift that already trains it, and
-     * with only one lift on the upper days that is still exactly one day.
+     * **The squat day is where the chest work goes**, because the bench
+     * day already trains it. The rule is unchanged from the upper/lower
+     * week — a muscle's accessory work sits opposite the lift that
+     * already trains it — and on a full-body week the opposite day is
+     * simply one of the other two.
      */
     const benchDay = dayCarrying('bench-press')
-    const upperDays = week.days.filter((day) => day.label.includes('Upper'))
-    const pressDay = upperDays.find((day) => day.label !== benchDay?.label)
+    const squatDay = dayCarrying('low-bar-squat')
 
     expect(benchDay).toBeDefined()
-    expect(pressDay).toBeDefined()
-    expect(benchDay?.label).not.toBe(pressDay?.label)
+    expect(squatDay).toBeDefined()
+    expect(benchDay?.label).not.toBe(squatDay?.label)
 
     const accessories = (day: typeof benchDay): string[] =>
       (day?.slots ?? [])
@@ -1033,31 +1090,47 @@ describe('the order a session is performed in', () => {
         )
 
     const onBenchDay = accessories(benchDay)
-    const onPressDay = accessories(pressDay)
+    const onSquatDay = accessories(squatDay)
 
     // The bench already trains the chest, so the dips go opposite it.
-    expect(onPressDay).toContain('dips')
+    expect(onSquatDay).toContain('dips')
     expect(onBenchDay).not.toContain('dips')
 
-    // The overhead press already trains the side delts.
-    expect(onBenchDay.some((id) => id.includes('lateral-raise'))).toBe(true)
-    expect(onPressDay.some((id) => id.includes('lateral-raise'))).toBe(false)
+    const onDeadliftDay = accessories(dayCarrying('sumo-deadlift'))
 
-    // A horizontal pull against the horizontal press, vertical against
-    // vertical — and the rear delts opposite the row that pays them.
+    /*
+     * A horizontal pull against the horizontal press, and the vertical
+     * pull away from the deadlift that already pays the lats.
+     */
     expect(onBenchDay).toContain('barbell-row')
-    expect(onPressDay).toContain('pull-up')
-    expect(onPressDay.some((id) => id.includes('rear-delt'))).toBe(true)
+    expect(onSquatDay).toContain('pull-up')
+
+    /* The rear delts sit away from the row that pays them. */
+    expect(onDeadliftDay.some((id) => id.includes('rear-delt'))).toBe(true)
+    expect(onBenchDay.some((id) => id.includes('rear-delt'))).toBe(false)
+
+    /*
+     * Nothing trains the side delts, so they go where the day is
+     * lightest rather than opposite anything — asserted only as being
+     * somewhere, since which day is a scheduling answer rather than a
+     * pairing one.
+     */
+    expect(
+      [onBenchDay, onSquatDay, onDeadliftDay].some((day) =>
+        day.some((id) => id.includes('lateral-raise')),
+      ),
+    ).toBe(true)
   })
 
   it('keeps the warm-ups in the order they were prescribed', () => {
     // A sequence somebody chose, not a load to be spent while fresh.
     // Sorting these by cost put the rotator-cuff work first.
-    const monday = (week.days[0]?.slots ?? [])
+    /* The bench day, which is the one running the upper routine. */
+    const benchDay = (week.days[1]?.slots ?? [])
       .filter((slot) => slot.role === 'warmup')
       .flatMap((slot) => (slot.exercise.kind === 'specific' ? [slot.exercise.exerciseId] : []))
 
-    expect(monday).toEqual([
+    expect(benchDay).toEqual([
       'roll-upper-back',
       'roll-lats',
       'shoulder-dislocation',
@@ -1281,10 +1354,9 @@ describe('conditioning', () => {
       conditioningIn(dayIndex).map((slot) => slot.variant ?? '')
 
     /* Swings on the squat day and nowhere else, asked for by name. */
-    expect(domainOn(0)).toEqual([])
-    expect(domainOn(1)).toEqual(['HIIT'])
+    expect(domainOn(0)).toEqual(['HIIT'])
+    expect(domainOn(1)).toEqual([])
     expect(domainOn(2)).toEqual([])
-    expect(domainOn(3)).toEqual([])
   })
 
   /*
@@ -1349,8 +1421,8 @@ describe('conditioning', () => {
      * thirty-second set let the planner stack conditioning onto the
      * longest day and still believe it fitted inside the target.
      */
-    const withWalk = estimateDayMinutes(week.days[1] as never)
-    const conditioningMinutes = conditioningIn(1).reduce(
+    const withWalk = estimateDayMinutes(week.days[0] as never)
+    const conditioningMinutes = conditioningIn(0).reduce(
       (total, slot) =>
         total +
         slot.sets.reduce((sum, set) => sum + (set.reps.kind === 'time' ? set.reps.seconds : 0), 0) /
@@ -1668,9 +1740,9 @@ describe('the split', () => {
    * pairing was built to remove, and the five-day week had a third upper
    * day with no pairing of its own.
    */
-  it('builds one four-day week', () => {
+  it('builds one three-day week', () => {
     const program = build()
-    expect(program.blocks[0]?.weeks[0]?.days).toHaveLength(4)
+    expect(program.blocks[0]?.weeks[0]?.days).toHaveLength(3)
   })
 
   it('puts a warm-up at the top of every day', () => {
@@ -1806,10 +1878,16 @@ describe('session length', () => {
      * makes room for — an upper day with none of them would mean the
      * ordering had stopped preferring cheap work when it ran out of time.
      */
+    /*
+     * Every day now, rather than the two upper ones. A full-body week has
+     * no upper day to name — what survives of the rule is that a day
+     * which ran out of room would drop the cheap work first, so finding
+     * some on each is the same evidence under a different shape.
+     */
     const peak = weekAt(program, 5)
-    const upper = peak.days.filter((day) => day.label.includes('Upper'))
+    const upper = peak.days
 
-    expect(upper).toHaveLength(2)
+    expect(upper).toHaveLength(3)
 
     for (const day of upper) {
       const small = new Set(
