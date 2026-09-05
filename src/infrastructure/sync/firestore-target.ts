@@ -2,6 +2,8 @@ import {
   collection,
   doc,
   getDocs,
+  onSnapshot,
+  setDoc,
   limit as limitTo,
   orderBy,
   query,
@@ -13,6 +15,7 @@ import {
   type QueryDocumentSnapshot,
 } from 'firebase/firestore'
 
+import { isRemoteBeacon } from '@/domain/sync/beacon'
 import type { Room } from '@/domain/base/declutter'
 import type { Attempt } from '@/domain/mind/practice'
 import type { ChallengeMark } from '@/domain/challenges/challenge'
@@ -264,9 +267,26 @@ export interface FirestoreTargetOptions {
   readonly clientId: string
 }
 
+/**
+ * The one document a device watches to learn that another device wrote.
+ *
+ * **One listener, not one per collection.** Twenty-one subscriptions
+ * would each cost reads on every change and would still only be
+ * answering "should I sync now" — a question one document answers for
+ * about one read per remote push. It also keeps the merge in one place:
+ * the beacon says *when*, and `synchronise` still decides *what*.
+ *
+ * It lives under `users/{uid}/meta`, which the existing rules already
+ * cover — `match /users/{userId}/{collection}/{document}` — so nothing
+ * about access control changes.
+ */
+const BEACON_PATH = 'meta'
+const BEACON_ID = 'pulse'
+
 export function createFirestoreSyncTarget(options: FirestoreTargetOptions): SyncTarget {
   const { db, uid, clientId } = options
   const root = (name: string) => collection(db, 'users', uid, name)
+  const beacon = doc(db, 'users', uid, BEACON_PATH, BEACON_ID)
 
   return {
     name: 'Firestore',
@@ -424,6 +444,48 @@ export function createFirestoreSyncTarget(options: FirestoreTargetOptions): Sync
 
         await batch.commit()
       }
+
+      /*
+       * **The beacon is written only when something actually went up.**
+       * A pull-only exchange writes nothing, which is what stops two
+       * devices pinging each other forever: A pushes and B wakes, B has
+       * nothing of its own to send, so B writes no beacon and A stays
+       * quiet.
+       *
+       * Last, and deliberately not part of the batch. It is a
+       * notification about writes that have landed, so a beacon that
+       * arrived before them would wake the other device to read a state
+       * that does not exist yet.
+       */
+      if (operations.length > 0) {
+        await setDoc(beacon, { at: serverTimestamp(), by: clientId })
+      }
+    },
+
+    watch(onRemoteChange: () => void): () => void {
+      return onSnapshot(beacon, (snapshot) => {
+        /*
+         * The decision is `isRemoteBeacon` in the domain rather than
+         * three checks here, because it fails silently in both
+         * directions — too strict and the feature quietly does nothing,
+         * too loose and every push wakes the device that made it. This
+         * half is the part only Firestore can answer: what the snapshot
+         * says.
+         */
+        const by: unknown = snapshot.data()?.by
+
+        if (
+          isRemoteBeacon(
+            {
+              hasPendingWrites: snapshot.metadata.hasPendingWrites,
+              ...(typeof by === 'string' ? { by } : {}),
+            },
+            clientId,
+          )
+        ) {
+          onRemoteChange()
+        }
+      })
     },
   }
 

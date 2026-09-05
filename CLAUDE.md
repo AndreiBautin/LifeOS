@@ -6702,6 +6702,66 @@ every window change and on rotation, so this is a fact about the test
 harness — but it is the reason a measurement taken straight after
 `resize_window` reads stale.
 
+**A beacon makes it live, and Firestore is still not the source of
+truth.** Asked for as _"I want firestore to be the source of truth and
+both apps can just read from it live."_ The second half is built; the
+first was **deliberately not**, and the reason was put to the person
+asking rather than decided quietly: this file opens with _"no server of
+ours, and no database of ours… that constraint is the product"_, and
+making Firestore authoritative would mean the app could not run without
+it, local development included.
+
+**What was built instead: one listener that says _when_, and the
+exchange that still decides _what_.** `domain/sync/beacon.ts`, and
+`watch` on `SyncTarget`. A pushing device stamps a single document at
+`users/{uid}/meta/pulse`; the other device's `onSnapshot` fires and runs
+the exchange it already had. **One subscription, not twenty-one** — a
+listener per collection would cost reads on every change and would still
+only be answering "should I sync now", which one document answers for
+about one read per remote push.
+
+**The merge stays where it is**, which is the point. Tombstones, the
+grow-only fog and the three day-unioned records are the reason a
+record-level winner is wrong here, and Firestore documents are
+last-write-wins. Going Firestore-first means moving those onto
+`arrayUnion` and rewriting twenty-three repositories; that is a real
+option and it is a different week's work.
+
+**The beacon is written only when something actually went up**, guarded
+on `operations.length > 0`. That is what stops two devices pinging each
+other forever: A pushes and B wakes, B has nothing of its own to send,
+so B writes no beacon and A stays quiet.
+
+**It is written after the batches commit and outside them.** It is a
+notification about writes that have landed, so a beacon arriving first
+would wake the other device to read a state that does not exist yet.
+
+**`isRemoteBeacon` is a pure function with a test because it fails
+silently both ways.** Too strict and the feature quietly does nothing
+and the app is back to polling with nobody able to tell; too loose and
+every push wakes the device that made it, which syncs, which pushes —
+the same loop `SYNC_MUTATION_KEY` exists to prevent, arriving by another
+route. It skips a pending write (our own echo), our own confirmed write,
+and a missing document.
+
+**No change to `firestore.rules` was needed**, which was checked rather
+than assumed: `match /users/{userId}/{collection}/{document}` already
+covers `meta/pulse`. A rules change is one of the things that stops and
+asks.
+
+**`PULL_INTERVAL_MS` went from 90 seconds to five minutes.** It stopped
+being the mechanism and became the safety net — a target that cannot
+watch, a dropped listener, a build with no project. Attaching the
+listener also delivers the current beacon, so a device coming back
+catches up without waiting for either.
+
+**The listener cannot be exercised without signing in, so it ships on
+reasoning and a green build** — the same honest caveat the service
+worker carries. What was verified locally: the app renders and the
+console is clean with the code in place, the null target's missing
+`watch` is handled, and the Settings copy no longer says _"Nothing syncs
+on its own"_, which had been false since the previous commit.
+
 **Sync runs itself now, and that reverses the rule that made it a
 button.** `useSync` said so in as many words: _"a sync that runs on a
 timer is a sync that runs while a set is being logged, and the one thing

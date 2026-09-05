@@ -153,9 +153,10 @@ export function SyncSection() {
         )}
 
         <p className="text-ink-500 text-xs">
-          Nothing syncs on its own — this runs when you press it, never mid-session. Your position
-          in the block stays on each device deliberately: it is the one thing two devices cannot
-          agree on by comparing timestamps.
+          This syncs on its own — when the other device writes, when you come back to this one, and
+          after anything you change here. Never mid-session: an open workout stops it, which is what
+          this button is still for. Your position in the block stays on each device deliberately: it
+          is the one thing two devices cannot agree on by comparing timestamps.
         </p>
       </Card>
     </Section>

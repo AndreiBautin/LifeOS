@@ -47,6 +47,36 @@ async function firebase() {
   return import('@/infrastructure/sync/firebase-app')
 }
 
+/**
+ * The target this device should talk to, or the one that does nothing.
+ *
+ * **Exported because the watcher needs the same instance the button
+ * pushes to.** A second copy of this would be a second answer to "which
+ * Firestore am I talking to", and a live listener attached to a
+ * different target waits for a beacon nobody writes.
+ *
+ * With no project or nobody signed in it returns the null target, which
+ * accepts everything and returns nothing — so the exchange still runs,
+ * still reports, and changes nothing.
+ */
+export async function resolveSyncTarget(
+  nullTarget: SyncTarget,
+  account: Account | undefined,
+): Promise<SyncTarget> {
+  if (config.kind !== 'configured' || account === undefined) return nullTarget
+
+  const [{ firebaseClient, deviceId }, { createFirestoreSyncTarget }] = await Promise.all([
+    firebase(),
+    import('@/infrastructure/sync/firestore-target'),
+  ])
+
+  return createFirestoreSyncTarget({
+    db: firebaseClient(configuredOrThrow()).db,
+    uid: account.uid,
+    clientId: deviceId(localStorage, STORAGE_KEYS.deviceId, () => crypto.randomUUID()),
+  })
+}
+
 export interface Account {
   readonly uid: string
   readonly email?: string
@@ -165,23 +195,10 @@ export function useSyncNow(account: Account | undefined) {
   const services = useServices()
   const client = useQueryClient()
 
-  const resolveTarget = useCallback(async (): Promise<SyncTarget> => {
-    // No project or nobody signed in: the null target, which accepts
-    // everything and returns nothing. The exchange still runs, still
-    // reports, and changes nothing.
-    if (config.kind !== 'configured' || account === undefined) return services.syncTarget
-
-    const [{ firebaseClient, deviceId }, { createFirestoreSyncTarget }] = await Promise.all([
-      firebase(),
-      import('@/infrastructure/sync/firestore-target'),
-    ])
-
-    return createFirestoreSyncTarget({
-      db: firebaseClient(configuredOrThrow()).db,
-      uid: account.uid,
-      clientId: deviceId(localStorage, STORAGE_KEYS.deviceId, () => crypto.randomUUID()),
-    })
-  }, [account, services.syncTarget])
+  const resolveTarget = useCallback(
+    async (): Promise<SyncTarget> => resolveSyncTarget(services.syncTarget, account),
+    [account, services.syncTarget],
+  )
 
   return useMutation<SyncReport>({
     /*

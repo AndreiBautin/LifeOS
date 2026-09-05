@@ -554,6 +554,21 @@ export interface SyncTarget {
   /** Everything the target has taken since `cursor`, and the next cursor. */
   pull(cursor: string | undefined): Promise<{ payload: SyncPayload; cursor: string }>
   push(payload: SyncPayload): Promise<void>
+  /**
+   * Calls back when **another device** has written, and returns the
+   * unsubscribe.
+   *
+   * Optional, because a target need not be able to say so: the null
+   * target has nobody to hear from, and a test double has no reason to
+   * pretend. A caller that gets `undefined` falls back to asking on its
+   * own schedule, which is what every caller did before this existed.
+   *
+   * It carries no payload on purpose. "Something changed" is the only
+   * fact a watcher can report cheaply, and the exchange already knows
+   * how to work out *what* — so this decides **when** to sync and never
+   * what syncing means.
+   */
+  watch?(onRemoteChange: () => void): () => void
 }
 
 /**

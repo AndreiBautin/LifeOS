@@ -1,10 +1,11 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef } from 'react'
 
+import { useServices } from '@/app/context'
 import { useActiveWorkout } from '@/features/train/hooks'
 
 import { isLocalChange, mayExchange } from './auto-sync-rules'
-import { useAccount, useSyncConfig, useSyncNow } from './useSync'
+import { resolveSyncTarget, useAccount, useSyncConfig, useSyncNow } from './useSync'
 
 /**
  * How long the app waits after a local change before pushing it.
@@ -16,13 +17,19 @@ import { useAccount, useSyncConfig, useSyncNow } from './useSync'
 export const PUSH_DEBOUNCE_MS = 4000
 
 /**
- * How often a visible app checks for what the other device did.
+ * The fallback tick, for when the live listener is not there.
  *
- * **Only while visible**, which is what keeps this from being a
- * background poller: a phone in a pocket costs nothing, and the desktop
- * left open on another monitor is the case worth paying for.
+ * **It stopped being the mechanism when the beacon arrived** and became
+ * the safety net: a target that cannot watch, a listener dropped on a
+ * flaky network, a build with no Firebase project. Five minutes rather
+ * than ninety seconds because the listener now covers being live, and a
+ * poll that exists only to catch what the listener missed should be
+ * cheap.
+ *
+ * **Only while visible**, which is what keeps it from being a background
+ * poller: a phone in a pocket costs nothing.
  */
-export const PULL_INTERVAL_MS = 90_000
+export const PULL_INTERVAL_MS = 300_000
 
 /**
  * Exchanges without being asked, and this reverses a rule in `useSync`.
@@ -39,21 +46,27 @@ export const PULL_INTERVAL_MS = 90_000
  * Asked for as _"synced live both ways instead of relying on a manual
  * push"_, once the app went onto a desktop as well as a phone.
  *
- * **It reuses `synchronise` rather than listening to Firestore.** A live
- * listener per collection would be twenty-four subscriptions and a
- * second merge path, where the exchange this app already has is tested,
- * handles tombstones and the grow-only fog, and carries a cursor. What
- * makes it feel live is *when* it runs, not how it reads.
+ * **It listens for *when*, and still exchanges for *what*.** One
+ * Firestore listener, on a single beacon document the pushing device
+ * stamps, says "somebody else wrote". Everything after that is the
+ * exchange this app already had — tested, and the only thing that knows
+ * how tombstones, the grow-only fog and the day-unioned records merge.
+ * A listener per collection would be twenty-one subscriptions and a
+ * second merge path for no gain.
  *
- * Three triggers, each answering a different question:
+ * Four triggers, each answering a different question:
  *
+ * - **The beacon** is "the other device just wrote", and it is what
+ *   makes this live: a habit ticked on the phone lands on the desktop in
+ *   about a second. Attaching the listener also delivers the current
+ *   beacon, so a device coming back catches up without waiting.
  * - **Becoming visible** is "I have just walked up to this device", and
- *   it is the one that matters most — switching from phone to desktop
- *   pulls before the screen has finished painting.
+ *   it covers the case where the listener was never attached because the
+ *   app was closed.
  * - **A local change** schedules a push, debounced, so what you just did
- *   is on the other device before you get there.
- * - **An interval while visible** covers two devices open at once, which
- *   is the only case the first two miss.
+ *   is on its way before you get up.
+ * - **An interval while visible** is the fallback for a target that
+ *   cannot watch or a listener that dropped.
  *
  * `online` is deliberately not a trigger of its own: coming back onto a
  * network almost always coincides with the tab becoming visible, and the
@@ -68,6 +81,7 @@ export function AutoSync() {
   const syncNow = useSyncNow(account)
   const active = useActiveWorkout()
   const client = useQueryClient()
+  const services = useServices()
 
   /*
    * The mutation object is new on every render, so a trigger closing
@@ -135,6 +149,41 @@ export function AutoSync() {
       unsubscribe()
     }
   }, [wired, client])
+
+  /* --- the other device wrote ---------------------------------------- */
+  useEffect(() => {
+    if (!wired) return undefined
+
+    let stop: (() => void) | undefined
+    /*
+     * An object rather than a `let`, because the flag is set from the
+     * cleanup after this closure was written: control-flow analysis
+     * still has it as `false` here and the lint rule calls the check
+     * dead. A property is not narrowed that way, which is the honest
+     * shape anyway — this is state shared between the effect and its
+     * cleanup, not a local.
+     */
+    const live = { current: true }
+
+    void (async () => {
+      const target = await resolveSyncTarget(services.syncTarget, account)
+      if (!live.current) return
+
+      /*
+       * A target that cannot watch is not an error — the null target has
+       * nobody to hear from. The interval below is the fallback, and it
+       * is what every caller had before this existed.
+       */
+      stop = target.watch?.(() => {
+        run.current()
+      })
+    })()
+
+    return () => {
+      live.current = false
+      stop?.()
+    }
+  }, [wired, account, services.syncTarget])
 
   /* --- the slow tick, only while the app is on screen ---------------- */
   useEffect(() => {
