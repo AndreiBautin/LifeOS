@@ -6756,6 +6756,42 @@ one of two records of the `unionDone` rule. It went, and the rule did not:
 the vices' `spent` union test directly below it covers the same function,
 which was checked before deleting rather than assumed.
 
+**Both reloads are gone: the data is live, and a new build applies
+itself.** Asked as _"could we make that live instead of a manual
+reload"_ — two different reloads, and both were manual.
+
+**`watchRecords` is one `onSnapshot` per collection**, not the single
+beacon that used to exist. That beacon was telling the app _when to run
+an exchange_; there is none now, so what a listener is for is knowing
+which data went stale. Firestore bills the documents that changed rather
+than the subscription, so for one person this is about a read per edit —
+and a shared beacon would mean every write stamping it, which is
+coupling bought for nothing.
+
+**A local write is skipped, and that is the loop guard.** Saving raises
+a snapshot on the writing device too; treating it as news would
+invalidate the query that just wrote it, refetch, and do it again.
+`hasPendingWrites` is Firestore’s own word for an unconfirmed local
+write, and `fromCache` covers the first snapshot each listener delivers
+from its own cache — the state the screen already has.
+
+**It invalidates rather than writing snapshots into the cache.** Pushing
+documents straight in would be a second road by which data reaches a
+screen, one that knows nothing about the shaping every use case does on
+the way out. Marking queries stale keeps one road in — and everything is
+invalidated rather than a key per collection, because the Firestore
+names and the query keys are different vocabularies and a map between
+them is a third list to keep in step.
+
+**A waiting build now applies itself when the app becomes visible.** The
+banner had to be pressed, so a green deploy could sit undelivered for as
+long as somebody kept answering later. Becoming visible is exactly the
+moment the old objection does not apply — you have just walked up to the
+app and started nothing — **and an open session still blocks it**, with
+`undefined` counting as open so a race at startup errs towards asking.
+The banner is what is left for that case, and says why it is waiting
+rather than announcing news the app could have acted on itself.
+
 **Firestore is the source of truth now, and the whole exchange is
 gone.** Asked for as _"let's just set up where we read from firestore …
 and then we get rid of all this sync crap"_, after a seeding mishap made

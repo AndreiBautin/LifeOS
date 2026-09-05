@@ -2,6 +2,7 @@ import { BookMarked, Dumbbell, Home, Map, Network, Target, User, Wallet } from '
 import { NavLink, Outlet } from 'react-router-dom'
 
 import { UpdatePrompt } from '@/features/pwa/UpdatePrompt'
+import { LiveRecords } from '@/features/sync/LiveRecords'
 
 /**
  * The shell every screen sits inside.
@@ -94,6 +95,7 @@ export function AppShell() {
       </a>
 
       <UpdatePrompt />
+      <LiveRecords />
 
       {/*
         The safe area is the shell's job, not each page's — every screen

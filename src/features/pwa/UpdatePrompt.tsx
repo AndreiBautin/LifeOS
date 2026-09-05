@@ -1,8 +1,9 @@
 import { RefreshCw } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRegisterSW } from 'virtual:pwa-register/react'
 
 import { Button } from '@/components/shared/primitives'
+import { useActiveWorkout } from '@/features/train/hooks'
 import { logger } from '@/shared/logging/logger'
 
 /**
@@ -41,6 +42,43 @@ export function UpdatePrompt() {
    * no-op, so there is nothing for that state to mean here.
    */
   const [ready, setReady] = useState(false)
+  const active = useActiveWorkout()
+
+  /*
+   * **A waiting version applies itself when you come back to the app.**
+   * Asked for as _"could we make that live instead of a manual reload"_.
+   * The banner had to be pressed, so a green deploy could sit
+   * undelivered for as long as somebody kept answering later — and the
+   * reason it asked at all was to avoid reloading the page underneath
+   * somebody mid-task.
+   *
+   * Becoming visible is the moment that objection does not apply: you
+   * have just walked up to the app and have not started anything yet. So
+   * the reload happens then, and the banner is what is left for the case
+   * below.
+   *
+   * **An open session still blocks it**, which is the half worth
+   * keeping. A workout is the one thing here that spans minutes of
+   * attention, and `undefined` — not loaded yet — counts as open, so a
+   * race at startup errs towards asking rather than reloading.
+   */
+  useEffect(() => {
+    if (!ready) return undefined
+
+    const applyWhenSafe = () => {
+      if (document.visibilityState !== 'visible') return
+      if (active.data !== null) return
+
+      logger.info('sw.update-applied', {})
+      window.location.reload()
+    }
+
+    applyWhenSafe()
+    document.addEventListener('visibilitychange', applyWhenSafe)
+    return () => {
+      document.removeEventListener('visibilitychange', applyWhenSafe)
+    }
+  }, [ready, active.data])
 
   useRegisterSW({
     /*
@@ -99,7 +137,7 @@ export function UpdatePrompt() {
     >
       <RefreshCw size={18} className="text-accent-400 shrink-0" aria-hidden />
       <p className="text-ink-100 flex-1 text-sm">
-        A new version is ready. Your data is unaffected.
+        A new version is ready, and will apply when this session is over.
       </p>
       <Button
         size="sm"
