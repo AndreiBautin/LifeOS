@@ -35,15 +35,29 @@ import { requireAccount, type AccountHolder } from './account-holder'
  * newest thing in the database — the same rule the IndexedDB
  * repositories hold, for the same reason.
  */
-export interface StoredRecord {
-  readonly id: string
-}
+/**
+ * Anything with a stable key. Most records carry `id`; a finance reading
+ * and a monthly snapshot are keyed by their `month`, which is why the
+ * key is chosen by the caller rather than assumed here.
+ */
+export type StoredRecord = object
 
 export interface FirestoreCollectionDeps {
   readonly firestore: Firestore
   readonly account: AccountHolder
   readonly clock: Clock
 }
+
+/**
+ * Which field is the document id.
+ *
+ * **Wrong here is silent and total**: keying a collection by a field the
+ * records do not carry files every row under `undefined` and leaves one
+ * document where there should be hundreds. That is the shape of bug the
+ * sync's own `KEYED_BY` map was introduced to make impossible, arriving
+ * one layer down.
+ */
+export type IdOf<T> = (record: T) => string
 
 /** The shape every record repository shares. Query helpers compose on top. */
 export interface FirestoreCollection<T extends StoredRecord> {
@@ -78,6 +92,7 @@ const BATCH_LIMIT = 500
 export function createFirestoreCollection<T extends StoredRecord>(
   deps: FirestoreCollectionDeps,
   name: string,
+  idOf: IdOf<T> = (record) => String((record as { id?: unknown }).id),
 ): FirestoreCollection<T> {
   const { firestore, account, clock } = deps
   const root = () => collection(firestore, 'users', requireAccount(account), name)
@@ -90,7 +105,7 @@ export function createFirestoreCollection<T extends StoredRecord>(
       for (const record of records.slice(index, index + BATCH_LIMIT)) {
         const value = stamp ? { ...record, updatedAt: clock.now().toISOString() } : record
 
-        batch.set(one(record.id), withoutUndefined(value))
+        batch.set(one(idOf(record)), withoutUndefined(value))
       }
 
       await batch.commit()
@@ -110,7 +125,7 @@ export function createFirestoreCollection<T extends StoredRecord>(
 
     async save(record: T) {
       await setDoc(
-        one(record.id),
+        one(idOf(record)),
         withoutUndefined({ ...record, updatedAt: clock.now().toISOString() }),
       )
     },
