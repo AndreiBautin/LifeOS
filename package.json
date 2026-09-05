@@ -21,7 +21,8 @@
     "test:coverage": "vitest run --coverage",
     "audit": "pnpm audit --audit-level high",
     "verify": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm test:run && pnpm build",
-    "emulator": "firebase emulators:start --only firestore"
+    "emulator": "firebase emulators:start --only firestore",
+    "test:emulator": "vitest run --config vitest.emulator.config.ts"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.101.4",

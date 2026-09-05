@@ -28,6 +28,19 @@ export default defineConfig({
     globals: true,
     setupFiles: ['./src/test/setup.ts'],
     include: ['src/**/*.test.{ts,tsx}'],
+    /*
+     * **Emulator tests are excluded from the default run**, and that is
+     * about CI rather than speed: `pnpm verify` gates every push and the
+     * runner has no Firestore emulator and no JDK to start one. A suite
+     * that fails there for want of a server would make the gate lie
+     * about the change.
+     *
+     * `pnpm test:emulator` runs them, against `pnpm emulator`. They are
+     * the only place Firestore behaviour is genuinely exercised, so a
+     * change to a Firestore repository is not verified until that has
+     * been run by hand.
+     */
+    exclude: ['**/node_modules/**', '**/dist/**', 'src/**/*.emulator.test.ts'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html'],

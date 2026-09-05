@@ -34,5 +34,6 @@
     "paths": { "@/*": ["./src/*"] },
     "types": ["vite/client", "vite-plugin-pwa/client"]
   },
-  "include": ["src"]
+  "include": ["src"],
+  "exclude": ["src/**/*.emulator.test.ts"]
 }
