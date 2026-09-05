@@ -48,14 +48,29 @@ export interface AccessInput {
    * rather than leaving it to be guessed.
    */
   readonly gated: boolean
+  /**
+   * Whether the **store** needs an account, as opposed to the gate
+   * wanting one.
+   *
+   * True once the records live in Firestore, and it is a different
+   * question from `gated`: that one asks "may this person in", this one
+   * asks "is there anything to show". With Firestore as the store there
+   * is no local database to read, so rendering the app signed-out would
+   * put every screen in front of repositories that can only throw —
+   * which is why this cannot fail open the way `gated` deliberately
+   * does. There is no data to expose by refusing, and an empty app that
+   * looks like an account with no records is the failure this project
+   * has already spent an afternoon on.
+   */
+  readonly requiresAccount: boolean
   /** Whether the account state has been read yet. */
   readonly ready: boolean
   readonly uid: string | undefined
   readonly allowed: readonly string[]
 }
 
-export function decideAccess({ gated, ready, uid, allowed }: AccessInput): Access {
-  if (!gated) return { kind: 'open' }
+export function decideAccess({ gated, requiresAccount, ready, uid, allowed }: AccessInput): Access {
+  if (!gated && !requiresAccount) return { kind: 'open' }
 
   /*
    * Checking, not signed out. A persisted session takes a moment to
@@ -65,6 +80,12 @@ export function decideAccess({ gated, ready, uid, allowed }: AccessInput): Acces
    */
   if (!ready) return { kind: 'checking' }
   if (uid === undefined) return { kind: 'signed-out' }
+
+  /*
+   * Signed in, and this build has no list to check against. The store
+   * has what it needs, so there is nothing left to refuse on.
+   */
+  if (!gated) return { kind: 'allowed' }
 
   /*
    * Refused is its own state rather than a return to signed-out. Sending

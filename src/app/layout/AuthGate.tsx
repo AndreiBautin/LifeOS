@@ -1,6 +1,7 @@
 import { LogIn, ShieldX } from 'lucide-react'
-import type { ReactNode } from 'react'
+import { useEffect, type ReactNode } from 'react'
 
+import { useServices } from '@/app/context'
 import { Button, Card } from '@/components/shared/primitives'
 import { readAccessConfig } from '@/config/access'
 import { decideAccess } from '@/domain/access/gate'
@@ -41,8 +42,25 @@ function Curtain({ children }: { readonly children: ReactNode }) {
 export function AuthGate({ children }: { readonly children: ReactNode }) {
   const config = useSyncConfig()
   const { account, ready } = useAccount()
+  const services = useServices()
   const signIn = useSignIn()
   const signOut = useSignOut()
+
+  /*
+   * **The one place the account reaches the repositories.**
+   *
+   * They were built at startup, before sign-in could possibly have
+   * resolved, and read this holder per call rather than taking a uid —
+   * so this is where the answer arrives. It runs in an effect because it
+   * is a write to something outside React, and until it has run
+   * `decideAccess` is still holding every screen back.
+   *
+   * Signing out clears it, which matters: left set, the next reader
+   * would go on writing to the account that just left.
+   */
+  useEffect(() => {
+    services.account?.set(account?.uid)
+  }, [services.account, account?.uid])
 
   const decision = decideAccess({
     /*
@@ -52,6 +70,13 @@ export function AuthGate({ children }: { readonly children: ReactNode }) {
      * build, and the one that must keep working.
      */
     gated: access.kind === 'restricted' && config.kind === 'configured',
+    /*
+     * **The store decides this, not the gate.** Once the records live in
+     * Firestore there is no local database behind this screen, so
+     * rendering the app signed-out would put every repository in front
+     * of a call that can only throw.
+     */
+    requiresAccount: services.account !== undefined,
     ready,
     uid: account?.uid,
     allowed: access.kind === 'restricted' ? access.allowed : [],

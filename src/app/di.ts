@@ -29,6 +29,27 @@ import type {
   WorkoutRepository,
 } from '@/domain/repositories/ports'
 import { DATABASE_NAME } from '@/config/storage-keys'
+import { readFirebaseConfig } from '@/config/firebase'
+import { createAccountHolder, type AccountHolder } from '@/infrastructure/firestore/account-holder'
+import type { FirestoreCollectionDeps } from '@/infrastructure/firestore/collection'
+import {
+  createFirestoreAttempts,
+  createFirestoreCampaigns,
+  createFirestoreChallenges,
+  createFirestoreCheckIns,
+  createFirestoreExercises,
+  createFirestoreFinance,
+  createFirestoreItems,
+  createFirestorePlaces,
+  createFirestoreProjects,
+  createFirestoreResume,
+  createFirestoreReview,
+  createFirestoreRooms,
+  createFirestoreTrips,
+  createFirestoreUpgrades,
+  createFirestoreVices,
+  createFirestoreWorkouts,
+} from '@/infrastructure/firestore/repositories'
 import { openDatabase, type AppDatabase } from '@/infrastructure/db/database'
 import {
   createBacklogItemRepository,
@@ -121,6 +142,16 @@ export interface AppServices {
    * rather than sitting behind a branch nobody has run.
    */
   readonly syncTarget: SyncTarget
+  /**
+   * Which account the record repositories read and write under, absent
+   * on a build with no Firebase project.
+   *
+   * **Its presence is what says where the records live.** Set, they are
+   * Firestore-backed and `AuthGate` must have a uid before any screen
+   * renders; absent, they are the local IndexedDB ones and there is
+   * nobody to sign in as.
+   */
+  readonly account?: AccountHolder
   readonly ids: IdGenerator
   readonly clock: Clock
 }
@@ -147,26 +178,100 @@ export interface BootstrapResult {
 export async function bootstrap(): Promise<BootstrapResult> {
   const db = await openDatabase(DATABASE_NAME)
 
+  /*
+   * **Where the records live is decided once, by whether there is a
+   * Firebase project.**
+   *
+   * With one, Firestore is the store: no exchange, no merge, no
+   * tombstone, because there is only one copy. The account is not known
+   * yet — sign-in resolves a moment after this runs — which is why the
+   * repositories read a holder per call rather than taking a uid.
+   *
+   * With none, the local IndexedDB repositories, which is what a
+   * development build without `.env.local` gets. That path is kept
+   * deliberately: the app has to be runnable with no Google account and
+   * no network, and `pnpm emulator` covers the rest.
+   *
+   * **Device state is local either way.** The program position is the
+   * one record with no correct last-write-wins answer, and the settings
+   * hold preferences two machines legitimately disagree about — neither
+   * belongs in a shared store.
+   *
+   * The SDK is imported dynamically so it stays out of the entry chunk,
+   * the same reason `useSync` does it. `bootstrap` is already async and
+   * already awaited before the first render, so this costs nothing that
+   * opening the database did not already cost.
+   */
+  const firebase = readFirebaseConfig()
+  let remote: FirestoreCollectionDeps | undefined
+  let account: AccountHolder | undefined
+
+  if (firebase.kind === 'configured') {
+    account = createAccountHolder()
+    const { firebaseClient } = await import('@/infrastructure/sync/firebase-app')
+    remote = { firestore: firebaseClient(firebase.config).db, account, clock: systemClock }
+  }
+
   const services: AppServices = {
     db,
-    exercises: createExerciseRepository(db, systemClock),
+    exercises:
+      remote === undefined
+        ? createExerciseRepository(db, systemClock)
+        : createFirestoreExercises(remote),
     position: createPositionRepository(db),
-    workouts: createWorkoutRepository(db, systemClock),
-    checkIns: createCheckInRepository(db, systemClock),
-    items: createBacklogItemRepository(db, systemClock),
-    projects: createProjectRepository(db, systemClock),
-    upgrades: createUpgradeRepository(db, systemClock),
-    review: createReviewRepository(db, systemClock),
-    places: createPlaceRepository(db, systemClock),
-    finance: createFinanceRepository(db, systemClock),
-    campaigns: createCampaignRepository(db, systemClock),
-    attempts: createAttemptRepository(db, systemClock),
-    challenges: createChallengeRepository(db, systemClock),
-    rooms: createRoomRepository(db, systemClock),
+    workouts:
+      remote === undefined
+        ? createWorkoutRepository(db, systemClock)
+        : createFirestoreWorkouts(remote),
+    checkIns:
+      remote === undefined
+        ? createCheckInRepository(db, systemClock)
+        : createFirestoreCheckIns(remote),
+    items:
+      remote === undefined
+        ? createBacklogItemRepository(db, systemClock)
+        : createFirestoreItems(remote),
+    projects:
+      remote === undefined
+        ? createProjectRepository(db, systemClock)
+        : createFirestoreProjects(remote),
+    upgrades:
+      remote === undefined
+        ? createUpgradeRepository(db, systemClock)
+        : createFirestoreUpgrades(remote),
+    review:
+      remote === undefined
+        ? createReviewRepository(db, systemClock)
+        : createFirestoreReview(remote),
+    places:
+      remote === undefined ? createPlaceRepository(db, systemClock) : createFirestorePlaces(remote),
+    finance:
+      remote === undefined
+        ? createFinanceRepository(db, systemClock)
+        : createFirestoreFinance(remote),
+    campaigns:
+      remote === undefined
+        ? createCampaignRepository(db, systemClock)
+        : createFirestoreCampaigns(remote),
+    attempts:
+      remote === undefined
+        ? createAttemptRepository(db, systemClock)
+        : createFirestoreAttempts(remote),
+    challenges:
+      remote === undefined
+        ? createChallengeRepository(db, systemClock)
+        : createFirestoreChallenges(remote),
+    rooms:
+      remote === undefined ? createRoomRepository(db, systemClock) : createFirestoreRooms(remote),
     tracks: createTrackGateway(),
-    resume: createResumeRepository(db, systemClock),
-    trips: createTripRepository(db, systemClock),
-    vices: createViceRepository(db, systemClock),
+    resume:
+      remote === undefined
+        ? createResumeRepository(db, systemClock)
+        : createFirestoreResume(remote),
+    trips:
+      remote === undefined ? createTripRepository(db, systemClock) : createFirestoreTrips(remote),
+    vices:
+      remote === undefined ? createViceRepository(db, systemClock) : createFirestoreVices(remote),
     explored: createExploredAreaRepository(db),
     geolocation: createBrowserGeolocation(),
     placeSearch: new NominatimSearchProvider(),
@@ -175,6 +280,7 @@ export async function bootstrap(): Promise<BootstrapResult> {
     settings: createSettingsStore(),
     syncState: createSyncStateStore(),
     syncTarget: createNullSyncTarget(),
+    ...(account === undefined ? {} : { account }),
     ids: cryptoIds,
     clock: systemClock,
   }
@@ -193,7 +299,20 @@ export async function bootstrap(): Promise<BootstrapResult> {
    * The catalogue is now read at every use, so a change to it is
    * delivered by being made. See `domain/exercises/library.ts`.
    */
-  const exerciseCount = await services.exercises.count()
+  /*
+   * **Skipped when the store is remote, and that is a correctness fix
+   * rather than an optimisation.**
+   *
+   * This is a *read*, and with Firestore behind the repositories there
+   * is no account yet — sign-in resolves after `bootstrap` returns. It
+   * threw, and because the failure happens before the first render the
+   * whole app fell back to the "storage is unavailable" screen: an
+   * accurate message about the wrong thing, on a device where storage
+   * was perfectly fine.
+   *
+   * Found by driving it. Nothing depends on the number but a log line.
+   */
+  const exerciseCount = remote === undefined ? await services.exercises.count() : undefined
 
   // Asks the browser to exempt this origin from eviction under disk
   // pressure. Best-effort by design: it cannot fail in a way that should
@@ -203,7 +322,10 @@ export async function bootstrap(): Promise<BootstrapResult> {
     logger.info('storage.persistence', { state })
   })
 
-  logger.info('app.bootstrap', { exerciseCount })
+  logger.info('app.bootstrap', {
+    store: remote === undefined ? 'local' : 'firestore',
+    exerciseCount,
+  })
 
-  return { services, exerciseCount }
+  return { services, exerciseCount: exerciseCount ?? 0 }
 }
