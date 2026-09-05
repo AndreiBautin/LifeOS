@@ -13,8 +13,6 @@ import type {
   ProjectRepository,
   ReviewRepository,
   SettingsRepository,
-  SyncStateRepository,
-  SyncTarget,
   TombstoneRepository,
   AttemptRepository,
   ChallengeRepository,
@@ -76,8 +74,6 @@ import { createBacklogSettingsStore } from '@/infrastructure/storage/backlog-set
 import { createSettingsStore } from '@/infrastructure/storage/settings-store'
 import { createBrowserGeolocation } from '@/infrastructure/map/browser-geolocation'
 import { NominatimSearchProvider } from '@/infrastructure/map/nominatim-search'
-import { createSyncStateStore } from '@/infrastructure/storage/sync-state-store'
-import { createNullSyncTarget } from '@/infrastructure/sync/targets'
 import { requestPersistence } from '@/infrastructure/storage/durability'
 import { createTrackGateway } from '@/infrastructure/mind/track-gateway'
 import { logger } from '@/shared/logging/logger'
@@ -133,15 +129,6 @@ export interface AppServices {
   readonly backlogSettings: BacklogSettingsRepository
   readonly tombstones: TombstoneRepository
   readonly settings: SettingsRepository
-  readonly syncState: SyncStateRepository
-  /**
-   * Where changes go, if anywhere.
-   *
-   * The null target until a backend is chosen — syncing against it is a
-   * no-op, so the path is wired end to end and demonstrably does nothing
-   * rather than sitting behind a branch nobody has run.
-   */
-  readonly syncTarget: SyncTarget
   /**
    * Which account the record repositories read and write under, absent
    * on a build with no Firebase project.
@@ -278,8 +265,6 @@ export async function bootstrap(): Promise<BootstrapResult> {
     backlogSettings: createBacklogSettingsStore(),
     tombstones: createTombstoneRepository(db),
     settings: createSettingsStore(),
-    syncState: createSyncStateStore(),
-    syncTarget: createNullSyncTarget(),
     ...(account === undefined ? {} : { account }),
     ids: cryptoIds,
     clock: systemClock,

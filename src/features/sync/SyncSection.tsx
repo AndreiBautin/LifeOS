@@ -1,18 +1,9 @@
-import { RefreshCw } from 'lucide-react'
-
 import { Badge, Button, Card, Section } from '@/components/shared/primitives'
 
 import { describeSyncError } from './describe-error'
 
 import { readAccessConfig } from '@/config/access'
-import {
-  useAccount,
-  useSignIn,
-  useSignOut,
-  useSyncConfig,
-  useSyncNow,
-  useSyncState,
-} from './useSync'
+import { useAccount, useSignIn, useSignOut, useSyncConfig } from './useSync'
 
 /**
  * Sync, said plainly enough to be trusted.
@@ -29,20 +20,16 @@ const access = readAccessConfig()
 export function SyncSection() {
   const config = useSyncConfig()
   const { account, ready } = useAccount()
-  const state = useSyncState()
-
   const signIn = useSignIn()
   const signOut = useSignOut()
-  const syncNow = useSyncNow(account)
 
   if (config.kind === 'absent') {
     return (
       <Section title="Sync">
         <Card>
           <p className="text-ink-300 text-sm">
-            This build has no sync configured. Everything stays on this device, which is how the app
-            has always worked — the backup file in the section above is how your training moves
-            between devices.
+            This build has no account configured, so everything is stored on this device alone. The
+            backup file in the section above is the only way anything moves off it.
           </p>
         </Card>
       </Section>
@@ -63,20 +50,22 @@ export function SyncSection() {
     )
   }
 
-  const lastSynced = state.data?.lastSyncedAt
-
   return (
-    <Section title="Sync" description="Between this device and your other one.">
+    <Section title="Account" description="Where your records live.">
       <Card className="space-y-3">
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
             <p className="text-ink-50 text-sm font-medium">
               {account === undefined ? 'Not signed in' : (account.email ?? 'Signed in')}
             </p>
-            <p className="text-ink-500 numeric mt-0.5 text-xs">
-              {lastSynced === undefined
-                ? 'Never synced'
-                : `Last synced ${new Date(lastSynced).toLocaleString()}`}
+            {/*
+              **No "last synced" any more, because there is no moment
+              to name.** Records are read from and written to the
+              account directly, so the only question is whether you
+              are signed in — which the line above answers.
+            */}
+            <p className="text-ink-500 mt-0.5 text-xs">
+              {account === undefined ? 'Sign in to reach your records' : 'Records live here'}
             </p>
           </div>
 
@@ -117,46 +106,25 @@ export function SyncSection() {
             : 'This build has no account list, so anyone signed in can use it. Your synced data is still locked to your account by the database rules.'}
         </p>
 
-        {account !== undefined && (
-          <Button
-            variant="primary"
-            full
-            disabled={syncNow.isPending}
-            onClick={() => {
-              syncNow.mutate()
-            }}
-          >
-            <RefreshCw size={16} aria-hidden />
-            {syncNow.isPending ? 'Syncing…' : 'Sync now'}
-          </Button>
-        )}
-
-        {/*
-          The result is reported in records rather than as "done".
-          "Sent 0, received 12" is checkable against what you expected;
-          a tick is not, and a tick over a sync that silently did nothing
-          is exactly the failure worth catching early.
-        */}
-        {syncNow.data !== undefined && (
-          <p className="text-ink-300 numeric text-xs">
-            Sent {syncNow.data.pushed} · received {syncNow.data.received}
-            {syncNow.data.rejected > 0 && ` · ${String(syncNow.data.rejected)} already deleted`}
-          </p>
-        )}
-
-        {syncNow.error !== null && (
-          <p className="text-bad-500 text-xs">{describeSyncError(syncNow.error)}</p>
-        )}
-
         {signIn.error !== null && (
           <p className="text-bad-500 text-xs">{describeSyncError(signIn.error)}</p>
         )}
 
+        {/*
+          **There is nothing to press any more.** Every record is read
+          from and written to Firestore directly, so both devices are
+          looking at the same thing rather than at two copies being
+          reconciled — the exchange, the cursor and the tombstones are
+          all gone with it.
+
+          What stays on each device is what genuinely differs: where you
+          are in the block, and the preferences a phone and a desktop
+          should disagree about.
+        */}
         <p className="text-ink-500 text-xs">
-          This syncs on its own — when the other device writes, when you come back to this one, and
-          after anything you change here. Never mid-session: an open workout stops it, which is what
-          this button is still for. Your position in the block stays on each device deliberately: it
-          is the one thing two devices cannot agree on by comparing timestamps.
+          Your records live in the account above, so every device signed in to it sees the same
+          thing. Where you are in the training block stays on each device deliberately — it is the
+          one thing two devices cannot agree on by comparing timestamps.
         </p>
       </Card>
     </Section>

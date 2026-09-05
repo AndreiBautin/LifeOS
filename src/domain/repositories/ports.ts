@@ -33,7 +33,6 @@ import type {
 import type { WorkoutLog } from '@/domain/logging/workout-log'
 import type { ProgramPosition } from '@/domain/programs/position'
 import type { AppSettings } from '@/domain/settings/settings'
-import type { SyncPayload } from '@/domain/sync/payload'
 import type { Tombstone } from '@/domain/sync/tombstone'
 import type { Vice } from '@/domain/vitals/charges'
 
@@ -474,83 +473,6 @@ export interface TombstoneRepository {
    * repository's `remove`, which writes its own.
    */
   record(tombstones: readonly Tombstone[]): Promise<void>
-}
-
-/**
- * Where this device is in its conversation with a sync target.
- *
- * Device-local and never synced — it describes the relationship, not the
- * training, and two devices necessarily hold different values.
- */
-export interface SyncState {
-  /**
-   * Opaque, issued by the target, handed back on the next pull.
-   *
-   * Deliberately not a timestamp this app can read or construct. Only the
-   * target knows what its own ordering means, and inventing one from the
-   * local clock is how a device whose clock runs fast silently skips the
-   * other device's most recent work.
-   */
-  readonly cursor?: string
-  /**
-   * Local watermark for what has already been sent. Compared against
-   * `updatedAt` values this device wrote, so the local clock is the right
-   * one to use here and the wrong one to use for `cursor`.
-   */
-  readonly pushedThrough?: string
-  /**
-   * The exact settings stamp last sent or received.
-   *
-   * Compared for equality, not against the watermark, because settings
-   * accepted from another device keep *its* stamp — and on a device whose
-   * clock runs slow that stamp sits permanently ahead of the local
-   * watermark, so an ordering comparison re-pushes the same settings on
-   * every sync forever. Equality against the value actually exchanged is
-   * clock-independent.
-   */
-  readonly settingsSynced?: string
-  /** The same, for the other singleton. See `settingsSynced`. */
-  readonly resumeSynced?: string
-  readonly lastSyncedAt?: string
-}
-
-export interface SyncStateRepository {
-  get(): Promise<SyncState | undefined>
-  save(state: SyncState): Promise<void>
-}
-
-/**
- * Somewhere changes can be sent and collected — a hosted database, an
- * endpoint, a file on a drive.
- *
- * As thin as it can be on purpose. Everything that makes syncing
- * difficult — what to send, what to accept, how deletions beat edits —
- * is decided in `application/use-cases/sync` against ordinary data, so
- * choosing a backend later cannot drag that logic with it. An
- * implementation of this interface moves bytes and issues cursors, and
- * has no opinions.
- */
-export interface SyncTarget {
-  /** A name for logs and for the settings screen. */
-  readonly name: string
-  /** Everything the target has taken since `cursor`, and the next cursor. */
-  pull(cursor: string | undefined): Promise<{ payload: SyncPayload; cursor: string }>
-  push(payload: SyncPayload): Promise<void>
-  /**
-   * Calls back when **another device** has written, and returns the
-   * unsubscribe.
-   *
-   * Optional, because a target need not be able to say so: the null
-   * target has nobody to hear from, and a test double has no reason to
-   * pretend. A caller that gets `undefined` falls back to asking on its
-   * own schedule, which is what every caller did before this existed.
-   *
-   * It carries no payload on purpose. "Something changed" is the only
-   * fact a watcher can report cheaply, and the exchange already knows
-   * how to work out *what* — so this decides **when** to sync and never
-   * what syncing means.
-   */
-  watch?(onRemoteChange: () => void): () => void
 }
 
 /**

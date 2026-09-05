@@ -6756,6 +6756,76 @@ one of two records of the `unionDone` rule. It went, and the rule did not:
 the vices' `spent` union test directly below it covers the same function,
 which was checked before deleting rather than assumed.
 
+**Firestore is the source of truth now, and the whole exchange is
+gone.** Asked for as _"let's just set up where we read from firestore …
+and then we get rid of all this sync crap"_, after a seeding mishap made
+the two-copy model cost more than it paid. The paragraphs below this one
+describe the arrangement it replaced; they are kept because the reasoning
+in them is still what makes the _merge_ rules right, and anybody
+reintroducing two copies has to answer them again.
+
+**`bootstrap` picks the store once**, on whether a Firebase project is
+configured. With one, the record repositories are Firestore-backed; with
+none they are the local IndexedDB ones, which is what a development build
+without `.env.local` gets. That second path is kept on purpose — the app
+has to be runnable with no account and no network — and `pnpm emulator`
+covers the rest.
+
+**Device state stays local either way.** The program position is the one
+record with no correct last-write-wins answer, and the settings hold
+preferences two machines legitimately disagree about. Neither belongs in
+a shared store.
+
+**The account arrives after the repositories exist**, which is why they
+read an `AccountHolder` per call rather than taking a uid: `bootstrap`
+runs before sign-in resolves. `AuthGate` sets it, and `decideAccess`
+gained `requiresAccount` to hold every screen back until it has —
+**unlike `gated`, which fails open deliberately, this one cannot**, because
+signed out against Firestore there is no local database and every screen
+would sit in front of repositories that can only throw.
+
+**Driving it caught the sharpest version of that**: `bootstrap` read the
+exercise count before sign-in, threw, and the app fell back to the
+"storage is unavailable" screen — an accurate message about entirely the
+wrong thing, on a device whose storage was fine. The read is skipped when
+the store is remote; nothing but a log line used it.
+
+**Gone:** `synchronise`, the payload and its unions, the cursor, the
+beacon, `AutoSync`, `auto-sync-rules`, the Firestore sync target and the
+null target, `SyncTarget`, `SyncState`, `SyncStateRepository` and the
+store behind it. The Settings panel is **Account** now and has no button:
+there is no exchange to trigger.
+
+**`remove` and `purge` collapsed into one operation.** `purge` existed
+only to delete without writing the tombstone that `remove` wrote, and
+with one authoritative copy there are no tombstones — a delete is a
+delete, and every device sees it on the next read.
+
+**Tombstones themselves are still declared and still written by the
+IndexedDB repositories.** They are vestigial rather than removed: the
+backup envelope and the backlog transfer both still carry them, and on a
+Firestore-backed device nothing writes one. Removing the concept touches
+the backup, the transfer and four repositories, and is a separate job.
+
+**Three things stopped travelling and are named here rather than
+discovered.** The shared half of the settings — bodyweight, estimated
+maxes, units, rounding — was the one part of `AppSettings` that used to
+sync, and is now device-local like the rest. The fog is still IndexedDB,
+so walked ground does not follow you between devices. And nothing pushes
+a change to a screen that is already open: both devices read the same
+collections, so a reload or any query refetch is current, but a live
+`onSnapshot` is not wired yet.
+
+**The seed was going to be a script and is not.** Writing to
+`users/{uid}/…` needs `request.auth.uid` to be the owner, which means
+either a Google sign-in or a service-account key that bypasses the rules
+— neither of which an agent should be holding. The app's own **Import**
+already writes through the repositories, so once they were
+Firestore-backed it did the job with no new tooling. Verified by running
+a real backup through `parseBackup` and `applyBackup` against the
+emulator: preview valid with no problems, and every collection's count
+round-tripped, including the two keyed by month.
+
 **A beacon makes it live, and Firestore is still not the source of
 truth.** Asked for as _"I want firestore to be the source of truth and
 both apps can just read from it live."_ The second half is built; the

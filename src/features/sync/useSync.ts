@@ -1,18 +1,12 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useCallback, useEffect, useState } from 'react'
+import { useMutation } from '@tanstack/react-query'
+import { useEffect, useState } from 'react'
 
-import { useServices } from '@/app/context'
-import { synchronise, type SyncReport } from '@/application/use-cases/sync/synchronise'
 import {
   readFirebaseConfig,
   type FirebaseConfig,
   type FirebaseConfigState,
 } from '@/config/firebase'
-import { STORAGE_KEYS } from '@/config/storage-keys'
-import type { SyncTarget } from '@/domain/repositories/ports'
 import { logger } from '@/shared/logging/logger'
-
-import { SYNC_MUTATION_KEY } from './auto-sync-rules'
 
 /**
  * Sync, from the screen's point of view.
@@ -45,36 +39,6 @@ function configuredOrThrow(): FirebaseConfig {
 
 async function firebase() {
   return import('@/infrastructure/sync/firebase-app')
-}
-
-/**
- * The target this device should talk to, or the one that does nothing.
- *
- * **Exported because the watcher needs the same instance the button
- * pushes to.** A second copy of this would be a second answer to "which
- * Firestore am I talking to", and a live listener attached to a
- * different target waits for a beacon nobody writes.
- *
- * With no project or nobody signed in it returns the null target, which
- * accepts everything and returns nothing — so the exchange still runs,
- * still reports, and changes nothing.
- */
-export async function resolveSyncTarget(
-  nullTarget: SyncTarget,
-  account: Account | undefined,
-): Promise<SyncTarget> {
-  if (config.kind !== 'configured' || account === undefined) return nullTarget
-
-  const [{ firebaseClient, deviceId }, { createFirestoreSyncTarget }] = await Promise.all([
-    firebase(),
-    import('@/infrastructure/sync/firestore-target'),
-  ])
-
-  return createFirestoreSyncTarget({
-    db: firebaseClient(configuredOrThrow()).db,
-    uid: account.uid,
-    clientId: deviceId(localStorage, STORAGE_KEYS.deviceId, () => crypto.randomUUID()),
-  })
 }
 
 export interface Account {
@@ -168,61 +132,6 @@ export function useSignOut() {
     },
     onSuccess: () => {
       logger.info('sync.signed-out', {})
-    },
-  })
-}
-
-/** When this device last completed an exchange. */
-export function useSyncState() {
-  const services = useServices()
-
-  return useQuery({
-    queryKey: ['sync', 'state'],
-    queryFn: () => services.syncState.get().then((state) => state ?? null),
-  })
-}
-
-/**
- * One exchange, on demand.
- *
- * Deliberately a button rather than a background loop. A sync that runs
- * on a timer is a sync that runs while a set is being logged, and the one
- * thing this app must never do is surprise someone mid-session. Pressing
- * it is also how a lifter learns what it does, which matters for a
- * feature whose failure mode is silent.
- */
-export function useSyncNow(account: Account | undefined) {
-  const services = useServices()
-  const client = useQueryClient()
-
-  const resolveTarget = useCallback(
-    async (): Promise<SyncTarget> => resolveSyncTarget(services.syncTarget, account),
-    [account, services.syncTarget],
-  )
-
-  return useMutation<SyncReport>({
-    /*
-     * Keyed so `AutoSync` can tell an exchange apart from a local write.
-     * Its debounce fires on any settled mutation, and an exchange is one
-     * — so without a key the sync's own success schedules the next sync,
-     * four seconds later, forever.
-     */
-    mutationKey: SYNC_MUTATION_KEY,
-    mutationFn: async () => synchronise(await resolveTarget(), services),
-    onSuccess: (report) => {
-      logger.info('sync.completed', {
-        pushed: report.pushed,
-        received: report.received,
-        rejected: report.rejected,
-      })
-
-      // Everything the exchange could have touched.
-      void client.invalidateQueries({ queryKey: ['workouts'] })
-      void client.invalidateQueries({ queryKey: ['exercises'] })
-      void client.invalidateQueries({ queryKey: ['sync'] })
-    },
-    onError: (error: unknown) => {
-      logger.error('sync.failed', { message: error instanceof Error ? error.message : 'unknown' })
     },
   })
 }

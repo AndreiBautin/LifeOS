@@ -2,7 +2,6 @@ import { BookMarked, Dumbbell, Home, Map, Network, Target, User, Wallet } from '
 import { NavLink, Outlet } from 'react-router-dom'
 
 import { UpdatePrompt } from '@/features/pwa/UpdatePrompt'
-import { AutoSync } from '@/features/sync/AutoSync'
 
 /**
  * The shell every screen sits inside.
@@ -95,7 +94,6 @@ export function AppShell() {
       </a>
 
       <UpdatePrompt />
-      <AutoSync />
 
       {/*
         The safe area is the shell's job, not each page's — every screen
