@@ -35,3 +35,7 @@ dev-dist
 # content that anybody working here needs.
 AGENTS.md
 .agents/
+
+# Emulator run logs.
+firestore-debug.log
+firebase-debug.log

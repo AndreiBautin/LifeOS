@@ -156,6 +156,24 @@ hook runs it and refuses the push if it fails; the same command gates the
 deploy. If it is green the change is shippable, and if it is not it is
 not — there is no third state.
 
+## Running the Firestore emulator
+
+Anything Firestore-backed can be exercised locally without touching the
+real project:
+
+```bash
+pnpm emulator
+```
+
+It needs a **JDK 21 or newer** on `PATH` — `firebase-tools` refuses
+anything older, and the error names the version rather than the cause.
+On Windows: `winget install EclipseAdoptium.Temurin.21.JDK`.
+
+The emulator loads [firestore.rules](firestore.rules), so a test runs
+against the same access rules the deployed app does: an unauthenticated
+write is denied there exactly as it would be in production, and
+`@firebase/rules-unit-testing` is how a test signs in as the owner.
+
 ## On a desktop
 
 It is the same app, installed rather than wrapped. Open the deployed site

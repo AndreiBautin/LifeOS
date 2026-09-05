@@ -1,9 +1,14 @@
 # Dependency install scripts, answered explicitly.
 #
-# Both build artefacts for server runtimes that nothing in a browser
+# All three build artefacts for server runtimes that nothing in a browser
 # bundle reaches. Declining is the right default — the less third-party
 # code that executes on this machine at install time the better — and an
 # unanswered entry here fails `pnpm install`, which no CI can resolve.
 allowBuilds:
   '@firebase/util': false
   protobufjs: false
+  # A native regex engine firebase-tools pulls in as an optional speed-up.
+  # Only the Firestore emulator would reach it, and never the bundle — so
+  # the JavaScript fallback is the right trade for not compiling C++ on
+  # every install.
+  re2: false
