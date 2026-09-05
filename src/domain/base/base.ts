@@ -1,4 +1,3 @@
-import type { Daily } from '@/domain/dailies/daily'
 import type { Project } from '@/domain/projects/project'
 import type { Upgrade } from '@/domain/upgrades/upgrade'
 
@@ -246,20 +245,23 @@ export function keepFor<T extends Homed>(records: readonly T[], home: HomeFilter
 export interface BaseContents {
   /** House projects — the thing that broke and who is coming to fix it. */
   readonly projects: readonly Project[]
-  /** Chores, on whatever cadence. */
-  readonly chores: readonly Daily[]
   /** Upgrades to the place rather than to the person. */
   readonly upgrades: readonly Upgrade[]
 }
 
+/*
+ * **Chores were the third thing here and are gone with the habits.**
+ * A chore was a `Daily` filed to Base, so removing the recurring-task
+ * tracking removed them too — the recurring half of the house moved to a
+ * calendar, and what is left on this screen is the work that has an end:
+ * jobs with steps, and upgrades to save for.
+ */
 export function baseContents(
   projects: readonly Project[],
-  dailies: readonly Daily[],
   upgrades: readonly Upgrade[],
 ): BaseContents {
   return {
     projects: projects.filter(isBase),
-    chores: dailies.filter(isBase),
     upgrades: upgrades.filter(isBase),
   }
 }

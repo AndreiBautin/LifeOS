@@ -14,7 +14,6 @@ import type { Upgrade } from '@/domain/upgrades/upgrade'
 import type { MetricDefinition, MonthlySnapshot } from '@/domain/review/metric'
 import type { Place } from '@/domain/atlas/place/Place'
 import type { Trip } from '@/domain/atlas/trip/Trip'
-import type { Daily } from '@/domain/dailies/daily'
 import type { Vice } from '@/domain/vitals/charges'
 import type { Tombstone } from '@/domain/sync/tombstone'
 import type { Exercise } from '@/domain/exercises/exercise'
@@ -92,15 +91,25 @@ export function fromStored(stored: StoredWorkout): WorkoutLog {
 }
 
 /**
- * A habit as it may sit on disk, which is not quite `Daily` any more.
+ * A habit as it sits on disk, and nothing reads it any more.
  *
- * The one difference is `belongsTo`, which older builds could set to
- * 'vitals' — a home that no longer exists. Widened to `string` rather
- * than a union of old and new, because the point is to accept whatever
- * is there and let one function decide what it means; a union would
- * have to grow every time a home is retired.
+ * **The store stays and is typed locally**, the rule three retired
+ * stores already follow: removing it means editing the migration step
+ * that creates it, which is the one thing this file must never do — a
+ * device that ran that step keeps the store and one that has not would
+ * never create it, and the two schemas diverge with nothing able to tell
+ * them apart.
+ *
+ * The rows are also a true record of days somebody kept a habit. The
+ * recurring tracking moved to a calendar; that does not make the history
+ * untrue, and a backup taken before the move still holds it.
  */
-export type StoredDaily = Omit<Daily, 'belongsTo'> & { readonly belongsTo?: string }
+export interface RetiredDaily {
+  readonly id: string
+  readonly updatedAt?: string
+}
+
+export type StoredDaily = RetiredDaily
 
 /**
  * The shape rows in the two retired day-keyed stores were written in.

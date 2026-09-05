@@ -4,7 +4,7 @@ import { deleteDB } from 'idb'
 import { createItem } from '@/domain/backlog/item'
 import { builtInExercises } from '@/domain/exercises/catalogue'
 import type { Exercise } from '@/domain/exercises/exercise'
-import { asDailyId, asExerciseId } from '@/domain/ids/ids'
+import { asExerciseId } from '@/domain/ids/ids'
 import { anEntry, aWorkout, BENCH, SQUAT } from '@/test/builders/workout'
 
 import { closeAppDatabase, openDatabase, type AppDatabase } from './database'
@@ -14,7 +14,6 @@ import {
   createPositionRepository,
   createTombstoneRepository,
   createWorkoutRepository,
-  fromStoredDaily,
 } from './repositories'
 
 /** Fixed, so a stamped updatedAt is reproducible. */
@@ -336,69 +335,5 @@ describe('the backlog store', () => {
 
     await items.clear()
     expect(await items.count()).toBe(0)
-  })
-})
-
-/**
- * Upkeep was a home and is a group label, and the rows written under the
- * old shape are still on disk.
- *
- * This is the one place that matters: `belongsTo: 'vitals'` matches no
- * `RecordHome` this build knows and is not own-area either, so a record
- * read back unchanged would be filtered off every screen while sitting
- * in the database — nothing errors, nothing is deleted, and the habit is
- * simply gone from the app.
- */
-describe('reading a habit filed under a home that no longer exists', () => {
-  const daily = (over: Record<string, unknown>) =>
-    ({
-      id: asDailyId('d1'),
-      title: 'Brush teeth',
-      cadence: { kind: 'every-day' },
-      done: [],
-      createdAt: '2026-08-01T00:00:00.000Z',
-      ...over,
-    }) as Parameters<typeof fromStoredDaily>[0]
-
-  it('reads a legacy upkeep habit as an own habit in the Hygiene group', () => {
-    const read = fromStoredDaily(daily({ belongsTo: 'vitals' }))
-
-    expect(read.belongsTo).toBeUndefined()
-    expect(read.group).toBe('Hygiene')
-  })
-
-  /*
-   * The group was renamed after it stopped being a home, so rows exist
-   * under both names. Reading only the legacy *home* would leave a
-   * device holding Upkeep and Hygiene at once, drawn as two categories —
-   * which is the split the rename exists to avoid.
-   */
-  it('reads a stored Upkeep group as Hygiene whatever its home', () => {
-    expect(fromStoredDaily(daily({ group: 'Upkeep' })).group).toBe('Hygiene')
-    expect(fromStoredDaily(daily({ belongsTo: 'base', group: 'Upkeep' })).group).toBe('Hygiene')
-  })
-
-  it('leaves every other group alone', () => {
-    expect(fromStoredDaily(daily({ group: 'Tidying' })).group).toBe('Tidying')
-  })
-
-  it('drops the retired home rather than leaving it on the record', () => {
-    // Left in place it would travel over sync and come back, and
-    // `isOwnArea` reads the key rather than its value.
-    expect('belongsTo' in fromStoredDaily(daily({ belongsTo: 'vitals' }))).toBe(false)
-  })
-
-  it('keeps a group somebody had already chosen', () => {
-    // Overwriting it would be this function having an opinion about
-    // their filing.
-    expect(fromStoredDaily(daily({ belongsTo: 'vitals', group: 'Teeth' })).group).toBe('Teeth')
-  })
-
-  it('leaves every other habit exactly as stored', () => {
-    const chore = daily({ belongsTo: 'base' })
-    expect(fromStoredDaily(chore)).toBe(chore)
-
-    const own = daily({})
-    expect(fromStoredDaily(own)).toBe(own)
   })
 })

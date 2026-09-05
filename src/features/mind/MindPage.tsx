@@ -1,9 +1,8 @@
-import { BookOpen, Plus, Search, Trash2 } from 'lucide-react'
+import { Plus, Search, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 
 import { PageHeader } from '@/components/shared/PageHeader'
 import { Badge, Button, Card, Empty, Section } from '@/components/shared/primitives'
-import { MIND } from '@/domain/base/base'
 import {
   DIFFICULTIES,
   DIFFICULTY_LABELS,
@@ -16,10 +15,6 @@ import {
 import { matching, TRACKS, type TrackId } from '@/domain/mind/tracks'
 import { toMonthKey } from '@/domain/finance/reading'
 import { useServices } from '@/app/context'
-import { AddDaily, DailyRow } from '@/features/today/Dailies'
-import { groupOnly } from '@/domain/dailies/groups'
-import { GroupedDailies } from '@/features/today/DailyGroups'
-import { useDailies } from '@/features/today/dailies-hooks'
 
 import { useLogAttempt, usePracticeLog, useTrack, useUnlogAttempt } from './hooks'
 
@@ -332,10 +327,8 @@ function LogProblem({ onDone }: { readonly onDone: () => void }) {
 export function MindPage() {
   const attempts = usePracticeLog()
   const unlog = useUnlogAttempt()
-  const study = useDailies(MIND)
   const services = useServices()
   const [logging, setLogging] = useState(false)
-  const [adding, setAdding] = useState(false)
 
   const log = attempts.data ?? []
   const month = toMonthKey(services.clock.now())
@@ -363,50 +356,6 @@ export function MindPage() {
           </span>
         </Card>
       )}
-
-      <Section
-        title="Study"
-        description="The daily kind — patterns, a chapter, a language."
-        action={
-          <Button
-            variant={adding ? 'ghost' : 'outline'}
-            size="sm"
-            onClick={() => {
-              setAdding(!adding)
-            }}
-          >
-            {adding ? 'Close' : 'Add'}
-          </Button>
-        }
-      >
-        {adding && (
-          <AddDaily
-            home={MIND}
-            placeholder="Read one design pattern"
-            onDone={() => {
-              setAdding(false)
-            }}
-          />
-        )}
-
-        <Card>
-          {study.data === undefined ? null : study.data.length === 0 ? (
-            <Empty title="Nothing yet">
-              <span className="inline-flex items-center gap-2">
-                <BookOpen size={16} aria-hidden />A study habit here is a checkbox and a streak, and
-                it pays the same fifteen points every kept habit is worth.
-              </span>
-            </Empty>
-          ) : (
-            <GroupedDailies
-              bare
-              categoryOf={groupOnly}
-              views={study.data}
-              render={(view, part) => <DailyRow view={view} part={part} />}
-            />
-          )}
-        </Card>
-      </Section>
 
       <Section
         title="Problems"

@@ -1,8 +1,7 @@
 import { houseStanding, record, type HouseStanding, type Room } from '@/domain/base/declutter'
 import type { IdGenerator, RoomId } from '@/domain/ids/ids'
 import type { Clock, RoomRepository } from '@/domain/repositories/ports'
-import { shiftDay } from '@/domain/dailies/daily'
-import { toDayKey } from '@/domain/time/day'
+import { shiftDay, toDayKey } from '@/domain/time/day'
 
 /**
  * Decluttering, from the application's side.

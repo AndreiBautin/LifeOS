@@ -27,7 +27,6 @@ import type { Upgrade } from '@/domain/upgrades/upgrade'
 import type { MetricDefinition, MonthlySnapshot } from '@/domain/review/metric'
 import type { Place } from '@/domain/atlas/place/Place'
 import type { Trip } from '@/domain/atlas/trip/Trip'
-import type { Daily } from '@/domain/dailies/daily'
 import type { Vice } from '@/domain/vitals/charges'
 import type { FinanceReading } from '@/domain/finance/reading'
 import type { Exercise } from '@/domain/exercises/exercise'
@@ -73,7 +72,6 @@ const COLLECTIONS = {
   reviews: 'reviews',
   places: 'places',
   trips: 'trips',
-  dailies: 'dailies',
   vices: 'vices',
   finance: 'finance',
   campaigns: 'campaigns',
@@ -158,7 +156,6 @@ const KEYED_BY: {
   reviews: (record) => record.month,
   places: (record) => record.id,
   trips: (record) => record.id,
-  dailies: (record) => record.id,
   vices: (record) => record.id,
   finance: (record) => record.month,
   campaigns: (record) => record.id,
@@ -306,7 +303,6 @@ export function createFirestoreSyncTarget(options: FirestoreTargetOptions): Sync
         readSince(root(COLLECTIONS.reviews), after),
         readSince(root(COLLECTIONS.places), after),
         readSince(root(COLLECTIONS.trips), after),
-        readSince(root(COLLECTIONS.dailies), after),
         readSince(root(COLLECTIONS.vices), after),
         readSince(root(COLLECTIONS.finance), after),
         readSince(root(COLLECTIONS.campaigns), after),
@@ -352,7 +348,6 @@ export function createFirestoreSyncTarget(options: FirestoreTargetOptions): Sync
         reviews,
         places,
         trips,
-        dailies,
         vices,
         finance,
         campaigns,
@@ -399,7 +394,6 @@ export function createFirestoreSyncTarget(options: FirestoreTargetOptions): Sync
           reviews: reviews.records as readonly MonthlySnapshot[],
           places: places.records as readonly Place[],
           trips: trips.records as readonly Trip[],
-          dailies: dailies.records as readonly Daily[],
           vices: vices.records as readonly Vice[],
           finance: finance.records as readonly FinanceReading[],
           campaigns: campaigns.records as readonly Campaign[],

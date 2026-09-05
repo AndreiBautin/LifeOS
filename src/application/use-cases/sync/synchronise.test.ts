@@ -3,10 +3,9 @@ import { describe, expect, it } from 'vitest'
 
 import type { Campaign } from '@/domain/campaign/campaign'
 import type { ChallengeMark } from '@/domain/challenges/challenge'
-import type { Daily } from '@/domain/dailies/daily'
 import { readCharges, type Vice } from '@/domain/vitals/charges'
 import type { FinanceReading } from '@/domain/finance/reading'
-import { asDailyId, asViceId } from '@/domain/ids/ids'
+import { asViceId } from '@/domain/ids/ids'
 
 import type { CheckIn } from '@/domain/autoregulation/check-in'
 import type { Item } from '@/domain/backlog/item'
@@ -18,7 +17,6 @@ import type {
   BacklogItemRepository,
   CheckInRepository,
   Clock,
-  DailyRepository,
   ExerciseRepository,
   ExploredAreaRepository,
   PlaceRepository,
@@ -84,7 +82,6 @@ function advancingClock(): Clock {
 }
 
 interface Device extends SynchroniseDeps {
-  readonly dailyStore: Map<string, Daily>
   readonly backlog: Map<string, Item>
   readonly walked: Set<CellId>
   readonly log: Map<string, WorkoutLog>
@@ -240,30 +237,6 @@ function device(clock: Clock): Device {
    * completions merge by union, and a stub that answers with an empty
    * list would let that pass against an implementation that replaced.
    */
-  const dailyStore = new Map<string, Daily>()
-  const dailies: DailyRepository = {
-    all: () => Promise.resolve([...dailyStore.values()]),
-    byId: (id) => Promise.resolve(dailyStore.get(id)),
-    save: (daily) => {
-      // Stamped like the real repository. Without this `changedSince`
-      // drops the record and the device pushes nothing at all.
-      dailyStore.set(daily.id, { ...daily, updatedAt: clock.now().toISOString() })
-      return Promise.resolve()
-    },
-    restoreMany: (rows) => {
-      for (const row of rows) dailyStore.set(row.id, row)
-      return Promise.resolve()
-    },
-    remove: (id) => {
-      dailyStore.delete(id)
-      return Promise.resolve()
-    },
-    purge: (id) => {
-      dailyStore.delete(id)
-      return Promise.resolve()
-    },
-  }
-
   /*
    * A real double for the same reason as the dailies above: a pool's
    * spends merge by union, and a stub answering with an empty list would
@@ -480,10 +453,8 @@ function device(clock: Clock): Device {
     challenges,
     campaigns,
     resume,
-    dailies,
     vices,
     finance,
-    dailyStore,
     exercises,
     workouts,
     checkIns,
@@ -836,35 +807,6 @@ describe('a backlog item’s progress log', () => {
       { date: '2026-08-24', amount: 1 },
       { date: '2026-08-25', amount: 1 },
     ])
-  })
-
-  /*
-   * The same failure a habit makes visible faster than a backlog does.
-   * Tick Tuesday on the phone and Wednesday on the desktop, and a
-   * record-level winner keeps one of them — which on a streak reads as a
-   * day missed and a run broken that never was.
-   */
-  it('keeps both devices’ ticks on the same habit', async () => {
-    const clock = advancingClock()
-    const server = createMemorySyncServer()
-    const phone = device(clock)
-    const desk = device(clock)
-
-    const habit: Daily = {
-      id: asDailyId('d1'),
-      title: 'Stretch',
-      cadence: { kind: 'every-day' },
-      done: [],
-      createdAt: '2026-08-01T00:00:00.000Z',
-    }
-
-    await phone.dailies.save({ ...habit, done: ['2026-08-25'] })
-    await desk.dailies.save({ ...habit, done: ['2026-08-26'] })
-
-    await synchronise(createMemorySyncTarget(server, 'phone'), phone)
-    await synchronise(createMemorySyncTarget(server, 'desk'), desk)
-
-    expect((await desk.dailies.byId(habit.id))?.done).toEqual(['2026-08-25', '2026-08-26'])
   })
 
   /*

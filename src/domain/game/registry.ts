@@ -1,4 +1,3 @@
-import { BASE, TRAINING, type RecordHome } from '@/domain/base/base'
 import { STRENGTH_LIFT_SLUGS } from '@/domain/exercises/catalogue'
 
 import { STRENGTH_STANDARDS, TOTAL_STANDARDS } from './character'
@@ -31,7 +30,6 @@ export const LIFE_AREAS = [
   'projects',
   'upgrades',
   'places',
-  'dailies',
   'jobs',
   'base',
   'vitals',
@@ -302,38 +300,6 @@ export const SCORING: readonly AreaScoring[] = [
     hasTree: true,
   },
   {
-    area: 'dailies',
-    name: 'Dailies',
-    phase: 9,
-    /*
-     * No ladder, and no external anchor to hang one on. Nobody publishes
-     * what share of your habits a person ought to keep, and a threshold
-     * invented here would be the "scale the app can move" this model
-     * refuses everywhere else. What a habit has instead is a streak, which
-     * is not a level: it says how long, not how far.
-     */
-    ladders: [],
-    ratings: [
-      {
-        id: 'dailies.kept',
-        source: 'dailies.kept-share-in-month',
-        name: 'Kept',
-        unit: '% of days expected',
-        direction: 'stay-above',
-        cadence: 'monthly',
-        threshold: 80,
-      },
-    ],
-    /*
-     * Paid per completion, not per streak. A streak is an *outcome* — it
-     * is what happened to have worked — and paying XP for it would be the
-     * rule against feeding a currency from an outcome, broken in the one
-     * area where the temptation is strongest.
-     */
-    acts: [{ id: 'dailies.completed', area: 'dailies', label: 'Kept a daily', points: 15 }],
-    hasTree: false,
-  },
-  {
     area: 'base',
     name: 'Base',
     phase: 10,
@@ -411,10 +377,7 @@ export const SCORING: readonly AreaScoring[] = [
      * differently would be an opinion about house work smuggled into the
      * currency.
      */
-    acts: [
-      { id: 'base.action-closed', area: 'base', label: 'Step on a house job', points: 20 },
-      { id: 'base.chore-kept', area: 'base', label: 'Kept a chore', points: 15 },
-    ],
+    acts: [{ id: 'base.action-closed', area: 'base', label: 'Step on a house job', points: 20 }],
     /*
      * False, and this is the interesting one.
      *
@@ -723,7 +686,6 @@ export const SCORING: readonly AreaScoring[] = [
        * name. `tallyActs` splits by `belongsTo`, so a study habit filed
        * here pays this and never `dailies.completed`.
        */
-      { id: 'mind.habit-kept', area: 'mind', label: 'Studied', points: 15 },
     ],
     hasTree: false,
   },
@@ -743,26 +705,6 @@ export const ALL_ACTS: readonly ActDefinition[] = SCORING.flatMap((area) => area
  * `tallyActs`, and it would disagree silently — the sheet would say one
  * thing and the acknowledgement another, both looking authoritative.
  */
-/**
- * Which act keeping a daily performs, from where the daily is filed.
- *
- * **Derived from the record, not from the screen.** It used to be the
- * caller's answer, on the reasoning that the screen doing the calling
- * *was* the area — true while Today showed only its own habits, Base
- * only chores and Vitals only upkeep. The moment Today began reporting
- * everything due, the screen stopped being the area and a chore ticked
- * there announced "Kept a daily".
- *
- * The XP was never wrong — `tallyActs` splits by `belongsTo` and always
- * did — but the badge is supposed to say what the registry says, and it
- * was saying something else. Reading the same field both places is what
- * makes them agree by construction.
- */
-export function dailyActFor(home: RecordHome | undefined): string {
-  if (home === BASE) return 'base.chore-kept'
-  if (home === TRAINING) return 'training.habit-kept'
-  return 'dailies.completed'
-}
 
 export function actById(id: string): ActDefinition | undefined {
   return ALL_ACTS.find((act) => act.id === id)

@@ -1,7 +1,6 @@
 import {
   asBacklogItemId,
   asCheckInId,
-  asDailyId,
   asExerciseId,
   asProjectId,
   asUpgradeId,
@@ -15,7 +14,6 @@ import type {
   BacklogItemRepository,
   CheckInRepository,
   Clock,
-  DailyRepository,
   ExerciseRepository,
   ExploredAreaRepository,
   PlaceRepository,
@@ -85,7 +83,6 @@ export interface SynchroniseDeps {
   readonly review: ReviewRepository
   readonly places: PlaceRepository
   readonly trips: TripRepository
-  readonly dailies: DailyRepository
   readonly vices: ViceRepository
   readonly finance: FinanceRepository
   readonly campaigns: CampaignRepository
@@ -144,7 +141,6 @@ export async function synchronise(target: SyncTarget, deps: SynchroniseDeps): Pr
     incoming,
     localTombstones,
     await deps.items.all(),
-    await deps.dailies.all(),
     await deps.vices.all(),
   )
 
@@ -171,7 +167,6 @@ export async function synchronise(target: SyncTarget, deps: SynchroniseDeps): Pr
   await deps.review.restoreSnapshots(accepted.reviews)
   await deps.places.restoreMany(accepted.places)
   await deps.trips.restoreMany(accepted.trips)
-  await deps.dailies.restoreMany(accepted.dailies)
   await deps.vices.restoreMany(accepted.vices)
   await deps.finance.restoreMany(accepted.finance)
   await deps.campaigns.restoreMany(accepted.campaigns)
@@ -252,7 +247,6 @@ export async function synchronise(target: SyncTarget, deps: SynchroniseDeps): Pr
     accepted.reviews.length +
     accepted.places.length +
     accepted.trips.length +
-    accepted.dailies.length +
     accepted.vices.length +
     accepted.finance.length +
     accepted.campaigns.length +
@@ -273,7 +267,6 @@ export async function synchronise(target: SyncTarget, deps: SynchroniseDeps): Pr
     incoming.reviews.length +
     incoming.places.length +
     incoming.trips.length +
-    incoming.dailies.length +
     incoming.vices.length +
     incoming.finance.length +
     incoming.campaigns.length +
@@ -308,7 +301,6 @@ async function collectLocal(
     reviews,
     places,
     trips,
-    dailies,
     vices,
     finance,
     campaigns,
@@ -330,7 +322,6 @@ async function collectLocal(
     deps.review.snapshots(),
     deps.places.all(),
     deps.trips.all(),
-    deps.dailies.all(),
     deps.vices.all(),
     deps.finance.all(),
     deps.campaigns.all(),
@@ -383,7 +374,6 @@ async function collectLocal(
     reviews: changedSince(reviews, watermark),
     places: changedSince(places, watermark),
     trips: changedSince(trips, watermark),
-    dailies: changedSince(dailies, watermark),
     vices: changedSince(vices, watermark),
     finance: changedSince(finance, watermark),
     campaigns: changedSince(campaigns, watermark),
@@ -476,13 +466,6 @@ async function applyDeletions(
         const local = await deps.places.byId(id.value)
         if (local !== undefined && !survives(local, tombstone)) {
           await deps.places.purge(id.value)
-        }
-        break
-      }
-      case 'dailies': {
-        const local = await deps.dailies.byId(asDailyId(tombstone.id))
-        if (local !== undefined && !survives(local, tombstone)) {
-          await deps.dailies.purge(asDailyId(tombstone.id))
         }
         break
       }

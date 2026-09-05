@@ -12,7 +12,6 @@ import type { Upgrade } from '@/domain/upgrades/upgrade'
 import type { MetricDefinition, MonthlySnapshot } from '@/domain/review/metric'
 import type { Place } from '@/domain/atlas/place/Place'
 import type { Trip } from '@/domain/atlas/trip/Trip'
-import type { Daily } from '@/domain/dailies/daily'
 import type { Vice } from '@/domain/vitals/charges'
 import type { WorkoutLog } from '@/domain/logging/workout-log'
 
@@ -47,7 +46,6 @@ export interface SyncPayload {
   readonly reviews: readonly MonthlySnapshot[]
   readonly places: readonly Place[]
   readonly trips: readonly Trip[]
-  readonly dailies: readonly Daily[]
   readonly vices: readonly Vice[]
   readonly finance: readonly FinanceReading[]
   readonly campaigns: readonly Campaign[]
@@ -107,7 +105,6 @@ export const EMPTY_PAYLOAD: SyncPayload = {
   reviews: [],
   places: [],
   trips: [],
-  dailies: [],
   exploredCells: [],
   vices: [],
   finance: [],
@@ -130,7 +127,6 @@ export function isEmpty(payload: SyncPayload): boolean {
     payload.reviews.length === 0 &&
     payload.places.length === 0 &&
     payload.trips.length === 0 &&
-    payload.dailies.length === 0 &&
     payload.vices.length === 0 &&
     payload.finance.length === 0 &&
     payload.campaigns.length === 0 &&
@@ -156,7 +152,6 @@ export function payloadSize(payload: SyncPayload): number {
     payload.reviews.length +
     payload.places.length +
     payload.trips.length +
-    payload.dailies.length +
     payload.vices.length +
     payload.finance.length +
     payload.campaigns.length +
@@ -284,9 +279,8 @@ export function acceptableFrom(
    * already gone.
    */
   localItems: readonly Item[] = [],
-  localDailies: readonly Daily[] = [],
   /**
-   * The local pools, for the same reason as the dailies above: the
+   * The local pools: the
    * spends have to be unioned *before* a record-level winner is picked,
    * or the losing copy's charges are gone by the time the merge runs.
    */
@@ -316,14 +310,6 @@ export function acceptableFrom(
     reviews: incoming.reviews.filter((item) => shouldAccept(item, 'reviews', item.month, index)),
     places: incoming.places.filter((item) => shouldAccept(item, 'places', item.id, index)),
     trips: incoming.trips.filter((item) => shouldAccept(item, 'trips', item.id, index)),
-    dailies: incoming.dailies
-      .filter((item) => shouldAccept(item, 'dailies', item.id, index))
-      .map((daily) => {
-        const local = localDailies.find((one) => one.id === daily.id)
-        if (local === undefined) return daily
-
-        return { ...daily, done: unionDone(local.done, daily.done) }
-      }),
     /*
      * The spends union, and the record-level winner decides everything
      * else about the pool — its name, its capacity, its cooldown.

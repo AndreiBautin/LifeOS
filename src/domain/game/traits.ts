@@ -117,7 +117,6 @@ export const UNCLAIMED_AREAS: readonly LifeArea[] = [
   'projects',
   'upgrades',
   'base',
-  'dailies',
   'jobs',
   'vitals',
   'finance',

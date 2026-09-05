@@ -1,4 +1,4 @@
-import { cadenceCovers, isPlausibleCadence, type Cadence } from '@/domain/dailies/daily'
+import { cadenceCovers, isPlausibleCadence, type Cadence } from '@/domain/schedule/cadence'
 
 import { BacklogValidationError } from './errors'
 

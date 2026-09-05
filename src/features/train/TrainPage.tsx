@@ -1,36 +1,6 @@
-import { groupOnly } from '@/domain/dailies/groups'
-import { GroupedDailies } from '@/features/today/DailyGroups'
 import { PageHeader } from '@/components/shared/PageHeader'
-import { TRAINING } from '@/domain/base/base'
-import { AddDaily, DailyRow, type Suggested } from '@/features/today/Dailies'
 
-/**
- * The three things done *around* a session rather than in it.
- *
- * **Deliberately habits and not slots**, asked for as _"it shouldn't be
- * within the workout since the exact timing can vary and be a bit out
- * from the workout time — it doesn't make sense to keep the lift open if
- * walking the dog happens three hours later."_ Exactly so: a slot is
- * ticked inside an open session, so anything logged hours later either
- * holds the session open or is lost. A habit is answered whenever it
- * happens and still lands on the right day.
- *
- * **The cardio is the reason the conditioning block left the upper
- * days.** A thirty-minute walk that doubles as walking the dog is a real
- * dose and is not a thing the session should be waiting on.
- *
- * The days are the lifter's to pick, for the reason the empty state
- * already gives: the app knows how many days a week you train, not
- * which ones.
- */
-const TRAINING_SUGGESTIONS: readonly Suggested[] = [
-  { title: 'Pre-workout carbs' },
-  { title: 'Post-workout protein' },
-  { title: '30 minutes of cardio' },
-]
-import { useTrainingHabits } from '@/features/today/dailies-hooks'
 import {
-  Apple,
   ChevronDown,
   ChevronRight,
   Dumbbell,
@@ -144,73 +114,6 @@ function StrengthStandards() {
         {character.lifts.map((lift) => (
           <AttributeRow key={lift.name} attribute={lift} />
         ))}
-      </div>
-    </Card>
-  )
-}
-
-function TrainingHabits() {
-  const habits = useTrainingHabits()
-  const [adding, setAdding] = useState(false)
-
-  const views = habits.data ?? []
-  const taken = new Set(views.map((one) => one.daily.title.trim().toLowerCase()))
-
-  return (
-    <Card>
-      <CardHeading
-        icon={<Apple size={16} aria-hidden />}
-        title="Habits"
-        action={
-          <Button
-            size="sm"
-            onClick={() => {
-              setAdding(!adding)
-            }}
-          >
-            {adding ? 'Close' : 'Add'}
-          </Button>
-        }
-      />
-
-      {adding && (
-        <AddDaily
-          home={TRAINING}
-          /*
-           * **Offered by name not already used**, the rule every other
-           * suggestion list here follows: adding the first must not take
-           * the other two away.
-           */
-          suggestions={TRAINING_SUGGESTIONS.filter(
-            (one) => !taken.has(one.title.trim().toLowerCase()),
-          )}
-          placeholder="Something you do around a session"
-          onDone={() => {
-            setAdding(false)
-          }}
-        />
-      )}
-
-      <div>
-        {habits.data === undefined ? null : views.length === 0 ? (
-          <Empty title="Nothing yet">
-            {/*
-              The days matter here in a way they do not elsewhere, and the
-              reason is worth saying on the screen: the app cannot work
-              them out. It knows how many days a week you train, not
-              which ones.
-            */}
-            Pick the days you lift when you add one — the app counts your sessions, not your
-            calendar, so it cannot work them out for you.
-          </Empty>
-        ) : (
-          <GroupedDailies
-            bare
-            categoryOf={groupOnly}
-            views={views}
-            render={(view, part) => <DailyRow view={view} part={part} />}
-          />
-        )}
       </div>
     </Card>
   )
@@ -370,8 +273,6 @@ export function TrainPage() {
       )}
 
       <StrengthStandards />
-
-      <TrainingHabits />
 
       {/*
         **A button, not a section.** It was a heading over a single

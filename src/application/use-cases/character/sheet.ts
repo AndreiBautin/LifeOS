@@ -1,7 +1,6 @@
 import { traitStandings, type TraitStanding } from '@/domain/game/traits'
 import { isResolved } from '@/domain/atlas/place/Place'
-import { isBase, isJobs, isMind, isOwnArea, isTraining } from '@/domain/base/base'
-import type { Daily } from '@/domain/dailies/daily'
+import { isBase, isJobs, isOwnArea } from '@/domain/base/base'
 import type { Item } from '@/domain/backlog/item'
 import type { Project, QuestKind } from '@/domain/projects/project'
 import { readLadder, type LadderReading } from '@/domain/game/ladder'
@@ -143,12 +142,11 @@ export async function tallyActs(
   deps: SheetDeps,
   within: Within = ALWAYS,
 ): Promise<Readonly<Record<string, number>>> {
-  const [workouts, items, projects, places, dailies, attempts, challenges] = await Promise.all([
+  const [workouts, items, projects, places, attempts, challenges] = await Promise.all([
     deps.workouts.recent(500),
     deps.items.all(),
     deps.projects.all(),
     deps.places.all(),
-    deps.dailies.all(),
     deps.attempts.all(),
     deps.challenges.all(),
   ])
@@ -159,10 +157,9 @@ export async function tallyActs(
   /*
    * Every record pays exactly one area, and `belongsTo` decides which.
    *
-   * A house job is stored as a project and a chore as a daily, so without
-   * this split a Base chore would pay `dailies.completed` *and*
-   * `base.chore-kept` — rule three, nothing counted twice, broken in the
-   * most direct way available.
+   * A house job is stored as a project, so without this split a Base
+   * job's steps would pay the quest log *and* Base — rule three,
+   * nothing counted twice, broken in the most direct way available.
    *
    * Split here rather than at the repository, because the stores are
    * genuinely one store each: a project is a project, and which screen it
@@ -191,14 +188,7 @@ export async function tallyActs(
    */
   const builds = items.filter((item) => item.category === 'lego')
   const readItems = items.filter((item) => item.category !== 'lego')
-  const ownDailies = dailies.filter(isOwnArea)
-  const baseDailies = dailies.filter(isBase)
-  const trainingDailies = dailies.filter(isTraining)
   const applications = projects.filter(isJobs)
-  const studyDailies = dailies.filter(isMind)
-
-  const daysKept = (records: readonly Daily[]): number =>
-    records.reduce((total, daily) => total + daily.done.filter((day) => within(day)).length, 0)
 
   const completed = workouts.filter((log) => log.status === 'completed' && within(log.date))
 
@@ -267,15 +257,6 @@ export async function tallyActs(
      * to the social domain and a migration. Until then this costs 0 XP
      * rather than a wrong amount of it.
      */
-    /*
-     * One act per day kept, and every completion is a day key — so a
-     * habit's XP lands in the season it was kept in rather than all of it
-     * in whichever season you happen to be reading.
-     */
-    'dailies.completed': daysKept(ownDailies),
-    'base.chore-kept': daysKept(baseDailies),
-    'training.habit-kept': daysKept(trainingDailies),
-    'mind.habit-kept': daysKept(studyDailies),
     /*
      * Paid for *sending*, which is the thing you decide to do. The
      * stages after it — screen, interview, offer — are outcomes, so

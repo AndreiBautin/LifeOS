@@ -1,5 +1,4 @@
-import { shiftDay } from '@/domain/dailies/daily'
-import { toDayKey } from '@/domain/time/day'
+import { shiftDay, toDayKey } from '@/domain/time/day'
 
 import { amountSpentOn, cycleOf, directionOf, isActive, readCharges, type Vice } from './charges'
 

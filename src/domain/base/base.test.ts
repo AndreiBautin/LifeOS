@@ -12,7 +12,6 @@ import {
   type Homed,
   type RecordHome,
 } from './base'
-import type { Daily } from '@/domain/dailies/daily'
 import type { Project } from '@/domain/projects/project'
 import type { Upgrade } from '@/domain/upgrades/upgrade'
 
@@ -107,26 +106,19 @@ describe('filtering a list by side', () => {
 
 describe('what Base holds', () => {
   const project = (belongsTo?: 'base'): Project => ({ ...homed(belongsTo) }) as Project
-  const daily = (belongsTo?: 'base'): Daily => ({ ...homed(belongsTo) }) as Daily
   const upgrade = (belongsTo?: 'base'): Upgrade => ({ ...homed(belongsTo) }) as Upgrade
 
-  it('gathers the three kinds and leaves the rest', () => {
-    const contents = baseContents(
-      [project('base'), project()],
-      [daily('base'), daily(), daily('base')],
-      [upgrade(), upgrade('base')],
-    )
+  it('gathers both kinds and leaves the rest', () => {
+    const contents = baseContents([project('base'), project()], [upgrade(), upgrade('base')])
 
     expect(contents.projects).toHaveLength(1)
-    expect(contents.chores).toHaveLength(2)
     expect(contents.upgrades).toHaveLength(1)
   })
 
   it('is empty rather than absent when nothing has been filed there', () => {
-    const contents = baseContents([project()], [daily()], [upgrade()])
+    const contents = baseContents([project()], [upgrade()])
 
     expect(contents.projects).toEqual([])
-    expect(contents.chores).toEqual([])
     expect(contents.upgrades).toEqual([])
   })
 })

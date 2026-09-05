@@ -11,8 +11,6 @@ import { SheetCard } from '@/features/character/SheetCard'
 import { useCharacterSheet, useSeasonProgress } from '@/features/character/hooks'
 import { LimitsCard } from '@/features/vitals/LimitsCard'
 
-import { Dailies } from './Dailies'
-
 /**
  * One screen: who you are, what today asks, and where you stand.
  *
@@ -131,53 +129,16 @@ export function HomePage() {
 
       {/*
         ── The day ─────────────────────────────────────────────────────
-        **Dailies lead it, and Limits used to.** The old argument for
-        Limits first was that they are the most present-tense thing here
-        — what you have left right now — and that spending a charge
-        happens at an arbitrary moment rather than once in the morning.
-        Both halves are still true and neither makes it the thing you
-        open the app to do.
+        **The habits used to lead this band and are gone entirely.** The
+        recurring tracking moved to a calendar, so what the day asks of
+        you is now the quests you chose, the buffs you have left, and the
+        season's challenges — the things with a decision in them rather
+        than a checkbox.
 
-        Reported plainly: "can we not have limits at the very top". A
-        limit is a *readout you consult before spending*, and the
-        checkbox is the thing you came for. So the band runs actions
-        first and readouts after, which is the ordering the screen as a
-        whole lost when the progression moved above it — restored here at
-        the level where it still applies.
+        No section headers here, reported as _"it makes the app feel less
+        gamified and breaks up the flow"_: each card names itself, and
+        the rules were doing separating that the spacing already does.
       */}
-      {/*
-        **One section for the whole day.** It began as the habits, took
-        the Codex goals when those turned out to be habits in all but
-        record type, and then took the deadlines, trips and people when a
-        section holding only those was empty most mornings — reported as
-        *"I just see an empty due elsewhere now, that's not really
-        helpful, why not move everything to where you moved the Codex
-        stuff."*
-
-        So the heading is no longer "Dailies": it is the day, and the
-        dailies are the largest thing in it. `domain/dailies` keeps its
-        name — this is a screen word, the same split Quests keeps over
-        `Project`.
-      */}
-      {/*
-        **No section headers on this screen any more.** Reported: _"can
-        we remove the headers on the home page like today what the day
-        asks of you? It makes the app feel less gamified and breaks up
-        the flow."_
-
-        They were a label over a rule over a description, four times
-        down one screen, and each one named something the card beneath it
-        already said: a list of checkboxes is the day, two quest slots
-        saying "no main quest active" are the quests, and the Buffs card
-        carries its own name and its own link. The rules were doing the
-        separating that `space-y-8` was already doing.
-
-        This is the same argument the page header lost to a portrait —
-        *a screen that opens on a face does not need to be told it is
-        about you* — carried one level down. What is left is cards, which
-        is what a game screen is.
-      */}
-      <Dailies />
 
       <ActiveQuests
         main={active.data?.main}

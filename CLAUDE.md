@@ -6702,6 +6702,60 @@ every window change and on rotation, so this is a fact about the test
 harness — but it is the reason a measurement taken straight after
 `resize_window` reads stale.
 
+**The habits are gone, and that includes the house chores.** Asked for
+as _"we don't need dailies anymore. I also don't even care about the ones
+tied to training anymore"_, after the whole recurring routine — house,
+hygiene, pet care, admin — moved to a calendar agent, supplements became
+a restorative, and the session habits stopped being wanted.
+
+**A chore was a `Daily` filed to Base**, so this took them off that
+screen too. That is the part the word "dailies" hides: Base now opens on
+Clutter, then Jobs, then Upgrades, and `baseContents` returns two kinds
+rather than three. Train lost its Habits card and Mind its Study
+section.
+
+**It cost no trait bar**, which was checked before anything was deleted:
+`dailies` and `base` were already in `UNCLAIMED_AREAS`, so nothing on
+the character sheet depended on them. What it does cost is character XP —
+every kept day paid 15 — so the level falls. That is the one place this
+app lets a record of effort shrink, and it is allowed for the same
+reason deleting a habit was: the request _is_ to un-record it.
+
+**Gone:** `domain/dailies`, `application/use-cases/dailies`, the four
+`features/today` habit modules, `DailyRepository`, the `dailies` sync
+collection and its tombstone entry, the backup collection, and the four
+acts — `dailies.completed`, `base.chore-kept`, `training.habit-kept`,
+`mind.habit-kept` — with the `dailies` area and its rating.
+
+**Two things had to survive and were given proper homes.** `Cadence`,
+`cadenceCovers` and `isPlausibleCadence` moved to
+`domain/schedule/cadence.ts`, because the Codex's reading goals carry a
+cadence and `cadenceCovers` is the single place "is this expected today"
+is answered. `shiftDay` and its `parseDay`/`keyOf` helpers moved to
+`domain/time/day.ts`, beside `toDayKey` where they always belonged —
+`vitality.ts` and `declutter.ts` both walk day keys.
+
+**The `dailies` store stays in `database.ts`, typed locally as
+`RetiredDaily`.** Fifth retired store, all for one reason: removing it
+means editing the migration step that creates it, which is the one thing
+that file must never do. The rows are also a true record of days somebody
+kept a habit, and a backup taken before the move still holds them.
+
+**Three guards caught what memory missed**, which is the machinery
+working rather than luck. `switch-exhaustiveness-check` failed until
+`dailies` left `TOMBSTONED_COLLECTIONS`; `repositories.test.ts` → "creates
+every store the app writes to" failed because the retired store is still
+there and the test had been edited as though it were not; and
+`sheet.test.ts` → "has a counted or deliberately absent entry for every
+declared act" caught `training.habit-kept`, which was declared in
+`xp.ts` rather than in the registry and so survived the first two passes.
+
+**A test moved rather than being deleted with its subject.**
+`synchronise.test.ts` → "keeps both devices' ticks on the same habit" was
+one of two records of the `unionDone` rule. It went, and the rule did not:
+the vices' `spent` union test directly below it covers the same function,
+which was checked before deleting rather than assumed.
+
 **A beacon makes it live, and Firestore is still not the source of
 truth.** Asked for as _"I want firestore to be the source of truth and
 both apps can just read from it live."_ The second half is built; the

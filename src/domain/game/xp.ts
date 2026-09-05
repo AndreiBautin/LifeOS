@@ -51,7 +51,6 @@ export const TRAINING_ACTS: readonly ActDefinition[] = [
    * worth, because it is the same kind of thing under a fourth name.
    * `tallyActs` splits by `belongsTo`, so no record can pay two of them.
    */
-  { id: 'training.habit-kept', area: 'training', label: 'Kept a training habit', points: 15 },
 ]
 
 export function pointsFor(actId: string, catalogue: readonly ActDefinition[]): number {

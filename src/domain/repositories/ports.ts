@@ -13,7 +13,6 @@ import type { MetricDefinition, MonthlySnapshot } from '@/domain/review/metric'
 import type { Place } from '@/domain/atlas/place/Place'
 import type { PlaceId } from '@/domain/atlas/place/PlaceId'
 import type { Trip } from '@/domain/atlas/trip/Trip'
-import type { Daily } from '@/domain/dailies/daily'
 import type { TripId } from '@/domain/atlas/trip/TripId'
 import type { CellId } from '@/domain/atlas/exploration/GeoCell'
 import type { BacklogSettings } from '@/domain/backlog/settings'
@@ -21,7 +20,6 @@ import type { Exercise } from '@/domain/exercises/exercise'
 import type {
   BacklogItemId,
   CheckInId,
-  DailyId,
   ExerciseId,
   MetricId,
   ProjectId,
@@ -304,22 +302,6 @@ export interface PlaceRepository {
   remove(id: PlaceId): Promise<void>
   purge(id: PlaceId): Promise<void>
   count(): Promise<number>
-}
-
-/**
- * Habits, with their completions on the record.
- *
- * Ordinary last-write-wins like everything else — the merge subtlety lives
- * in `unionDone`, because two devices ticking different days of the same
- * habit must keep both, the same way a backlog's progress log does.
- */
-export interface DailyRepository {
-  all(): Promise<readonly Daily[]>
-  byId(id: DailyId): Promise<Daily | undefined>
-  save(daily: Daily): Promise<void>
-  restoreMany(dailies: readonly Daily[]): Promise<void>
-  remove(id: DailyId): Promise<void>
-  purge(id: DailyId): Promise<void>
 }
 
 /**

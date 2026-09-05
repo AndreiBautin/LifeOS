@@ -1,17 +1,8 @@
 import { describe, expect, it } from 'vitest'
 
-import { RECORD_HOMES } from '@/domain/base/base'
 import { LEVELS } from './character'
 import { RATING_CADENCES, RATING_DIRECTIONS } from './rating'
-import {
-  actById,
-  ALL_ACTS,
-  dailyActFor,
-  ALL_LADDERS,
-  ALL_RATINGS,
-  LIFE_AREAS,
-  SCORING,
-} from './registry'
+import { actById, ALL_ACTS, ALL_LADDERS, ALL_RATINGS, LIFE_AREAS, SCORING } from './registry'
 
 /*
  * The three rules of docs/GAME_MODEL.md, checked against the table rather
@@ -142,29 +133,15 @@ describe('looking an act up to acknowledge it', () => {
   /*
    * The acknowledgement on screen reads its number from here, so this is
    * the coupling that keeps it from disagreeing with `tallyActs`. A
-   * component with its own copy of "a daily is 15" would drift silently:
-   * the sheet would say one thing and the badge another, both looking
-   * authoritative.
+   * component with its own copy of "a session is 50" would drift
+   * silently: the sheet would say one thing and the badge another, both
+   * looking authoritative.
    */
   it('returns the registry’s own label and points', () => {
-    const daily = actById('dailies.completed')
+    const sent = actById('jobs.application-sent')
 
-    expect(daily?.points).toBe(15)
-    expect(daily?.label).toBe('Kept a daily')
-  })
-
-  /*
-   * The same fifteen points under a different name, because a chore is a
-   * daily filed under Base. `tallyActs` already splits them this way, and
-   * the acknowledgement has to agree or the two halves of one act would
-   * read as different things.
-   */
-  it('distinguishes a chore from a daily while paying the same', () => {
-    const chore = actById('base.chore-kept')
-    const daily = actById('dailies.completed')
-
-    expect(chore?.points).toBe(daily?.points)
-    expect(chore?.label).not.toBe(daily?.label)
+    expect(sent?.points).toBeGreaterThan(0)
+    expect(sent?.label).toBeDefined()
   })
 
   it('says nothing about an act it does not know', () => {
@@ -175,37 +152,5 @@ describe('looking an act up to acknowledge it', () => {
 
   it('can find every act the registry declares', () => {
     for (const act of ALL_ACTS) expect(actById(act.id)).toBe(act)
-  })
-})
-
-describe('which act keeping a daily performs', () => {
-  /*
-   * Derived from the record rather than the screen, and that is the fix
-   * rather than a preference: while each screen showed one home the
-   * caller could name the act, and the moment Today began reporting
-   * everything due, a chore ticked there announced "Kept a daily".
-   */
-  it('reads the act off where the daily is filed', () => {
-    expect(dailyActFor(undefined)).toBe('dailies.completed')
-    expect(dailyActFor('base')).toBe('base.chore-kept')
-    expect(dailyActFor('training')).toBe('training.habit-kept')
-  })
-
-  it('names an act the registry actually declares, for every home', () => {
-    // A typo here would show a blank badge rather than fail anything.
-    for (const home of [undefined, ...RECORD_HOMES]) {
-      expect(actById(dailyActFor(home))).toBeDefined()
-    }
-  })
-
-  /*
-   * The same fifteen points under three names. If they ever diverged,
-   * moving a habit between areas would change what it is worth — and a
-   * record of effort must not shrink because it was refiled.
-   */
-  it('pays the same for all three', () => {
-    const points = [undefined, ...RECORD_HOMES].map((home) => actById(dailyActFor(home))?.points)
-
-    expect(new Set(points).size).toBe(1)
   })
 })

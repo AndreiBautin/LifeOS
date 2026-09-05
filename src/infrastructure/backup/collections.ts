@@ -9,7 +9,6 @@ import type {
   ReviewRepository,
   TombstoneRepository,
   TripRepository,
-  DailyRepository,
   UpgradeRepository,
   ViceRepository,
   AttemptRepository,
@@ -50,7 +49,6 @@ export interface BackupRepositories {
   readonly review: ReviewRepository
   readonly places: PlaceRepository
   readonly trips: TripRepository
-  readonly dailies: DailyRepository
   readonly vices: ViceRepository
   readonly finance: FinanceRepository
   readonly campaigns: CampaignRepository
@@ -175,13 +173,6 @@ export const COLLECTIONS: Readonly<Record<CollectionKey, Collection>> = {
     idOf: (row) => row.id,
     restore: (r, rows) => r.trips.restoreMany(rows),
     tombstoneCollection: 'trips',
-  }),
-  dailies: define({
-    local: (r) => r.dailies.all(),
-    fromFile: (data) => data.dailies ?? [],
-    idOf: (row) => row.id,
-    restore: (r, rows) => r.dailies.restoreMany(rows),
-    tombstoneCollection: 'dailies',
   }),
   vices: define({
     local: (r) => r.vices.all(),

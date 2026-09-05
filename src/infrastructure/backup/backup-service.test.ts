@@ -18,7 +18,6 @@ import {
   createCampaignRepository,
   createResumeRepository,
   createBacklogItemRepository,
-  createDailyRepository,
   createExploredAreaRepository,
   createPlaceRepository,
   createProjectRepository,
@@ -78,7 +77,6 @@ beforeEach(async () => {
     places: createPlaceRepository(db, testClock),
     trips: createTripRepository(db, testClock),
     explored: createExploredAreaRepository(db),
-    dailies: createDailyRepository(db, testClock),
     vices: createViceRepository(db, testClock),
     finance: createFinanceRepository(db, testClock),
   }

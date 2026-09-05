@@ -6,7 +6,6 @@ import type {
   BacklogSettingsRepository,
   CheckInRepository,
   Clock,
-  DailyRepository,
   ExerciseRepository,
   ExploredAreaRepository,
   PlaceRepository,
@@ -34,7 +33,6 @@ import { openDatabase, type AppDatabase } from '@/infrastructure/db/database'
 import {
   createBacklogItemRepository,
   createCheckInRepository,
-  createDailyRepository,
   createExerciseRepository,
   createExploredAreaRepository,
   createPlaceRepository,
@@ -101,7 +99,6 @@ export interface AppServices {
   /** Which local day the boards were last read on their own. */
   readonly resume: ResumeRepository
   readonly trips: TripRepository
-  readonly dailies: DailyRepository
   readonly vices: ViceRepository
   readonly explored: ExploredAreaRepository
   /** The device's own position, behind a port so a test can fake it. */
@@ -169,7 +166,6 @@ export async function bootstrap(): Promise<BootstrapResult> {
     tracks: createTrackGateway(),
     resume: createResumeRepository(db, systemClock),
     trips: createTripRepository(db, systemClock),
-    dailies: createDailyRepository(db, systemClock),
     vices: createViceRepository(db, systemClock),
     explored: createExploredAreaRepository(db),
     geolocation: createBrowserGeolocation(),

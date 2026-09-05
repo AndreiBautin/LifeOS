@@ -1,10 +1,5 @@
 import { Declutter } from './Declutter'
-import { useServices } from '@/app/context'
-import { groupOnly } from '@/domain/dailies/groups'
-import { isPartDoneOn, PART_OF_DAY_LABELS, partsOf, type PartOfDay } from '@/domain/dailies/daily'
-import { toDayKey } from '@/domain/time/day'
-import { GroupedDailies } from '@/features/today/DailyGroups'
-import { Brush, Check, Flame, Hammer, Plus, Undo2, Wrench } from 'lucide-react'
+import { Hammer, Plus, Undo2, Wrench } from 'lucide-react'
 import { useState } from 'react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { Link } from 'react-router-dom'
@@ -12,7 +7,6 @@ import { Link } from 'react-router-dom'
 import { Button, Card, CardHeading, Empty } from '@/components/shared/primitives'
 import { EyeIcon } from '@/components/shared/EyeIcon'
 import { buttonStyles } from '@/components/shared/styles'
-import type { DailyView } from '@/application/use-cases/dailies/dailies'
 import type { Project } from '@/domain/projects/project'
 import type { Upgrade } from '@/domain/upgrades/upgrade'
 import { BASE, JOB_APPROACHES, stepsFor, type JobApproach } from '@/domain/base/base'
@@ -21,9 +15,6 @@ import { dropped, owned, wanted, wishlistTotal } from '@/domain/upgrades/wishlis
 import { formatMinorUnits, isOwned } from '@/domain/upgrades/upgrade'
 import { cn } from '@/lib/cn'
 
-import { useKeepToday, useMoveDailyHome, useUndoToday } from '../today/dailies-hooks'
-import { AddDaily, DailyTitle, RenameDaily } from '../today/Dailies'
-import { useChores } from '../today/dailies-hooks'
 import { useAddProject, useBaseProjects, useMoveProjectHome } from '../projects/hooks'
 import { useAddUpgrade, useMoveUpgradeToShelf, useUpgradeTree } from '../upgrades/hooks'
 
@@ -47,140 +38,6 @@ import { useAddUpgrade, useMoveUpgradeToShelf, useUpgradeTree } from '../upgrade
  * part with a deadline today; jobs next because they are the part that
  * stalls; upgrades last because wanting a dishwasher is not a task.
  */
-
-function ChoreRow({
-  view,
-  part,
-}: {
-  readonly view: DailyView
-  readonly part?: PartOfDay | undefined
-}) {
-  const keep = useKeepToday(view.daily.belongsTo)
-  const undo = useUndoToday()
-  const moveHome = useMoveDailyHome()
-  const clock = useServices().clock
-  const [renaming, setRenaming] = useState(false)
-
-  const { daily, expectedToday } = view
-
-  /*
-   * A chore that names parts is drawn once per part and each row answers
-   * about its own — see `DailyRow`, which makes the same split for the
-   * same reason. Asking the record would have keeping the morning turn
-   * the evening green.
-   */
-  const today = toDayKey(clock.now())
-  const doneToday = part === undefined ? view.doneToday : isPartDoneOn(daily, today, part)
-  const doneCount = part === undefined ? view.doneCount : 0
-  const needed = part === undefined ? view.needed : 1
-  const shownPart = part ?? partsOf(daily)[0]
-
-  if (renaming) {
-    return (
-      <RenameDaily
-        view={view}
-        onDone={() => {
-          setRenaming(false)
-        }}
-      />
-    )
-  }
-
-  return (
-    <div className="flex items-center gap-3 py-2">
-      {/*
-        **The same box `DailyRow` draws, rather than a `Button`.** A
-        chore is a habit filed to the house, and the two were rendering
-        their tick as two different controls: a full-size primary button
-        here against a 36-pixel box on Today, which made the same record
-        read as a heavier commitment on one screen than the other and
-        took a chore row to nearly twice the height.
-
-        The box is also the honest shape. This file already records the
-        rule for `ActionRow` — an icon that changes between two actions
-        cannot also be the record of which state you are in — and a
-        bordered square that fills when ticked reads as state to
-        everybody.
-
-        Counts rather than toggles when the chore asks for more than one:
-        a tap at the second time of day has to record a third rather than
-        undo the first, and it only becomes an untick once the day is
-        full.
-      */}
-      <button
-        type="button"
-        aria-label={
-          doneToday
-            ? `Untick ${daily.title}`
-            : needed > 1
-              ? `Log ${daily.title}, ${String(doneCount)} of ${String(needed)} done`
-              : `Tick ${daily.title}`
-        }
-        aria-pressed={doneToday}
-        disabled={keep.isPending || undo.isPending}
-        className={[
-          'tap-target grid size-9 shrink-0 place-items-center rounded-lg border text-xs font-semibold transition-colors',
-          doneToday
-            ? 'border-good-500 bg-good-500/15 text-good-500'
-            : doneCount > 0
-              ? 'border-good-500/50 text-good-500'
-              : 'border-ink-700 text-ink-700 hover:border-ink-500',
-        ].join(' ')}
-        onClick={() => {
-          if (doneToday) undo.mutate({ id: daily.id, ...(part === undefined ? {} : { part }) })
-          else keep.mutate({ id: daily.id, ...(part === undefined ? {} : { part }) })
-        }}
-      >
-        {doneToday ? (
-          <Check size={18} aria-hidden />
-        ) : (
-          needed > 1 && doneCount > 0 && `${String(doneCount)}/${String(needed)}`
-        )}
-      </button>
-
-      <div className="min-w-0 flex-1">
-        <DailyTitle
-          daily={daily}
-          done={doneToday}
-          onRename={() => {
-            setRenaming(true)
-          }}
-        />
-        {shownPart !== undefined && expectedToday && (
-          <p className="text-ink-700 text-xs">{PART_OF_DAY_LABELS[shownPart]}</p>
-        )}
-        {needed > 1 && expectedToday && (
-          <p className="text-ink-700 text-xs">
-            {doneCount} of {needed} today
-          </p>
-        )}
-        {!expectedToday && <p className="text-ink-700 text-xs">Not due today</p>}
-      </div>
-
-      {view.streak > 0 && (
-        <span className="text-ink-500 numeric flex items-center gap-1 text-xs">
-          <Flame size={12} aria-hidden />
-          {view.streak}
-        </span>
-      )}
-
-      {/* The way back out, so a chore filed here by mistake is one tap
-          from Today rather than a re-create — the days it has been kept
-          on are the whole value of the record. */}
-      <Button
-        variant="ghost"
-        size="sm"
-        aria-label={`Move ${daily.title} back to Today`}
-        disabled={moveHome.isPending}
-        onClick={() => {
-          moveHome.mutate({ id: daily.id, home: undefined })
-        }}
-      >
-        <Undo2 size={14} aria-hidden />
-      </Button>
-    </div>
-  )
-}
 
 /**
  * A house job, shown by what is left rather than by score.
@@ -510,7 +367,6 @@ function AddJob({ onDone }: { readonly onDone: () => void }) {
 }
 
 export function BasePage() {
-  const [addingChore, setAddingChore] = useState(false)
   const [addingUpgrade, setAddingUpgrade] = useState(false)
   const [addingJob, setAddingJob] = useState(false)
   /*
@@ -519,10 +375,8 @@ export function BasePage() {
    * rename or retire them. Folded, never filtered — the rule Today's
    * header already follows.
    */
-  const [showingRestChores, setShowingRestChores] = useState(false)
   const [showingRestUpgrades, setShowingRestUpgrades] = useState(false)
 
-  const chores = useChores()
   const jobs = useBaseProjects()
   /*
    * Ranked against an empty wallet, which shows the tree without claiming
@@ -535,19 +389,6 @@ export function BasePage() {
   const houseOwned = owned(houseUpgrades)
   const houseDropped = dropped(houseUpgrades)
   const total = wishlistTotal(houseUpgrades)
-
-  /*
-   * **Outstanding, done, and not due — three lists where there were
-   * two.** The screen drew everything due *or done* in one block and
-   * everything else under a permanent "Not due today" heading, so a
-   * fifteen-chore house rendered fifteen rows whatever the day asked
-   * for. Reported as _"you're greeted with a long list of every base
-   * related daily task… show only pending items like the home tab
-   * does."_
-   */
-  const views = chores.data ?? []
-  const outstanding = views.filter((view) => view.dueToday && !view.doneToday)
-  const restingChores = views.filter((view) => !view.dueToday || view.doneToday)
 
   const restingUpgrades = [...houseOwned, ...houseDropped]
 
@@ -576,91 +417,13 @@ export function BasePage() {
         between cards was holding apart blocks that had a heading each;
         without them the gap reads as a gulf.
       */}
-      <Card>
-        <CardHeading
-          icon={<Brush size={16} aria-hidden />}
-          title="Chores"
-          action={
-            <>
-              {restingChores.length > 0 && (
-                <Button
-                  size="sm"
-                  variant={showingRestChores ? 'primary' : 'ghost'}
-                  aria-pressed={showingRestChores}
-                  aria-label={`${showingRestChores ? 'Hide' : 'Show'} ${String(restingChores.length)} done and not due today`}
-                  onClick={() => {
-                    setShowingRestChores(!showingRestChores)
-                  }}
-                >
-                  <EyeIcon open={showingRestChores} />
-                </Button>
-              )}
-              <Button
-                size="sm"
-                onClick={() => {
-                  setAddingChore(!addingChore)
-                }}
-              >
-                {addingChore ? 'Close' : 'Add'}
-              </Button>
-            </>
-          }
-        />
-
-        {/*
-          The count and the rows beneath it are one claim — the rule
-          Today's header cost two attempts to get right. This counts what
-          is outstanding, which is exactly what is drawn.
-        */}
-        <p className="text-ink-500 mb-2 text-sm">
-          {views.length === 0
-            ? 'Nothing yet.'
-            : outstanding.length === 0
-              ? 'All done for today.'
-              : `${String(outstanding.length)} left today`}
-        </p>
-
-        {addingChore && (
-          <AddDaily
-            home={BASE}
-            placeholder="Something the house needs doing"
-            onDone={() => {
-              setAddingChore(false)
-            }}
-          />
-        )}
-
-        {views.length === 0 ? (
-          <Empty title="No chores yet">
-            Add one above — the hoovering, the bins, anything on a daily, weekly or monthly cadence.
-          </Empty>
-        ) : (
-          <>
-            <GroupedDailies
-              bare
-              categoryOf={groupOnly}
-              views={outstanding}
-              render={(view, part) => <ChoreRow view={view} part={part} />}
-            />
-
-            {showingRestChores && (
-              <div className="border-ink-800 mt-2 border-t pt-2">
-                <GroupedDailies
-                  bare
-                  categoryOf={groupOnly}
-                  views={restingChores}
-                  render={(view, part) => <ChoreRow view={view} part={part} />}
-                />
-              </div>
-            )}
-          </>
-        )}
-      </Card>
-
       {/*
-        Between the chores and the jobs, because it is between them in
-        kind: a chore recurs and a job finishes, and this is a level that
-        moves both ways over months.
+        **Declutter leads now, because the chores are gone.** A chore
+        was a `Daily` filed to Base, so removing the recurring tracking
+        took them off this screen too — that half of the house moved to
+        a calendar. What is left is the work that has an end: how clear
+        each room is, the jobs with steps, and what there is to save
+        for.
       */}
       <Declutter />
 

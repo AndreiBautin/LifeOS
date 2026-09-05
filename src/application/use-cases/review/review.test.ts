@@ -98,7 +98,6 @@ function harness(
     upgrades: stub(upgradeList),
     workouts: stub(workoutList) as unknown as WorkoutRepository,
     places: stub(placeList),
-    dailies: stub([]),
     rooms: stub([]),
     vices: stub([]),
     explored: {

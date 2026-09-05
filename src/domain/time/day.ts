@@ -74,3 +74,36 @@ export function namedDays(days: readonly number[]): string {
   const sorted = [...days].sort((a, b) => a - b)
   return sorted.map((day) => WEEKDAY_NAMES[day]?.slice(0, 3) ?? '?').join(', ')
 }
+
+const MS_PER_DAY = 86_400_000
+
+/**
+ * Midnight UTC for a day key.
+ *
+ * Exported because `cadenceCovers` needs the same reading: a key is
+ * built from a local date and parsed back as UTC midnight, so the
+ * `getUTC*` getters are what round-trip it.
+ */
+export function parseDay(key: string): Date {
+  return new Date(`${key}T00:00:00Z`)
+}
+
+/**
+ * The UTC date, and here that is correct rather than an oversight.
+ *
+ * This is half of `shiftDay`, which is calendar arithmetic on a key
+ * rather than a reading of a clock: `parseDay` builds midnight *UTC*
+ * from a key and this formats one back. UTC in, UTC out, so a day is
+ * exactly 86,400,000 milliseconds and no offset change can make one
+ * shorter. Reading it locally would be the bug — `getDate()` on a UTC
+ * midnight returns the previous day anywhere west of Greenwich.
+ */
+function keyOf(date: Date): string {
+  // eslint-disable-next-line no-restricted-syntax -- symmetric with parseDay; see above
+  return date.toISOString().slice(0, 10)
+}
+
+/** The day key `days` before `key`. */
+export function shiftDay(key: string, days: number): string {
+  return keyOf(new Date(parseDay(key).getTime() + days * MS_PER_DAY))
+}

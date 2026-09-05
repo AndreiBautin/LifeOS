@@ -4,7 +4,6 @@ import type { Room } from '@/domain/base/declutter'
 import type { Attempt } from '@/domain/mind/practice'
 import type { ChallengeMark } from '@/domain/challenges/challenge'
 import type { Campaign } from '@/domain/campaign/campaign'
-import type { Daily } from '@/domain/dailies/daily'
 import type { Resume } from '@/domain/resume/resume'
 import type { Vice } from '@/domain/vitals/charges'
 import type { CheckIn } from '@/domain/autoregulation/check-in'
@@ -95,7 +94,6 @@ export interface BackupCounts {
   readonly reviews: number
   readonly places: number
   readonly trips: number
-  readonly dailies: number
   readonly vices: number
   readonly finance: number
   readonly campaigns: number
@@ -131,7 +129,6 @@ export interface BackupData {
   readonly reviews?: readonly MonthlySnapshot[]
   readonly places?: readonly Place[]
   readonly trips?: readonly Trip[]
-  readonly dailies?: readonly Daily[]
   /**
    * The resume, of which there is one — so a list of nought or one.
    *
@@ -178,7 +175,6 @@ export function countsFor(data: BackupData): BackupCounts {
     reviews: data.reviews?.length ?? 0,
     places: data.places?.length ?? 0,
     trips: data.trips?.length ?? 0,
-    dailies: data.dailies?.length ?? 0,
     vices: data.vices?.length ?? 0,
     finance: data.finance?.length ?? 0,
     campaigns: data.campaigns?.length ?? 0,
@@ -202,7 +198,6 @@ export const BACKUP_COUNT_KEYS = [
   'reviews',
   'places',
   'trips',
-  'dailies',
   'vices',
   'finance',
   'campaigns',
