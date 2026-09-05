@@ -80,27 +80,54 @@ export function useAccount(): { account: Account | undefined; ready: boolean } {
     const gone = () => mounted.signal.aborted
 
     void (async () => {
-      const { firebaseClient, watchAccount, completeRedirectSignIn } = await firebase()
-      if (gone()) return
+      try {
+        const { firebaseClient, watchAccount, completeRedirectSignIn } = await firebase()
+        if (gone()) return
 
-      const { auth } = firebaseClient(configuredOrThrow())
+        const { auth } = firebaseClient(configuredOrThrow())
 
-      /*
-       * Collected before the listener is attached.
-       *
-       * A sign-in that fell back to a redirect finishes on the way back
-       * into the app, and the result is only available on that one
-       * navigation. Not asking for it means the round trip completes,
-       * the credential is discarded, and the screen shows a Sign in
-       * button to someone who has just signed in.
-       */
-      await completeRedirectSignIn(auth)
-      if (gone()) return
+        /*
+         * Collected before the listener is attached.
+         *
+         * A sign-in that fell back to a redirect finishes on the way back
+         * into the app, and the result is only available on that one
+         * navigation. Not asking for it means the round trip completes,
+         * the credential is discarded, and the screen shows a Sign in
+         * button to someone who has just signed in.
+         */
+        await completeRedirectSignIn(auth)
+        if (gone()) return
 
-      unsubscribe = watchAccount(auth, (next) => {
-        setAccount(next)
+        unsubscribe = watchAccount(auth, (next) => {
+          setAccount(next)
+          setReady(true)
+        })
+      } catch (error: unknown) {
+        /*
+         * **A failure here has to end as "signed out", never as
+         * "checking".**
+         *
+         * `ready` was set only inside the auth callback, so anything
+         * that threw on the way to it — a redirect result that cannot
+         * be completed, the SDK chunk failing to load — left it false
+         * forever. `decideAccess` answers `checking` in that state,
+         * which draws a curtain reading "Checking your account…" with
+         * nothing on it to press: the app hangs, and the rejection is
+         * unhandled so nothing says why.
+         *
+         * It matters more than it used to. While the store was local,
+         * `checking` only delayed a sign-in screen; with the records
+         * in Firestore it holds back every screen there is.
+         *
+         * Marking it ready is the honest answer rather than a retry:
+         * the account is genuinely not known, which is what signed-out
+         * means, and that screen has a button.
+         */
+        if (gone()) return
+
+        logger.error('sync.account-watch-failed', error)
         setReady(true)
-      })
+      }
     })()
 
     return () => {
