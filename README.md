@@ -252,6 +252,7 @@ Roughly **1,400 tests** across 119 files, run on every push.
 | [DEPLOYMENT.md](docs/DEPLOYMENT.md)                                     | Hosting, CI/CD, and the base-path trap                      |
 | [TESTING.md](docs/TESTING.md)                                           | Strategy, and what is deliberately **not** tested           |
 | [PRODUCTIONIZATION_ASSESSMENT.md](docs/PRODUCTIONIZATION_ASSESSMENT.md) | The honest audit this was hardened against                  |
+| [INTERVIEW_GUIDE.md](docs/INTERVIEW_GUIDE.md)                           | What is worth talking about here, and what not to claim     |
 | [REPOSITORY_ARCHAEOLOGY.md](docs/REPOSITORY_ARCHAEOLOGY.md)             | The eight apps this replaces, and what survived             |
 
 ## Origins

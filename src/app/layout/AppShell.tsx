@@ -1,6 +1,7 @@
 import { BookMarked, Dumbbell, Home, Map, Network, Target, User, Wallet } from 'lucide-react'
 import { NavLink, Outlet } from 'react-router-dom'
 
+import { ReadFailure } from '@/features/errors/ReadFailure'
 import { UpdatePrompt } from '@/features/pwa/UpdatePrompt'
 import { LiveRecords } from '@/features/sync/LiveRecords'
 
@@ -95,6 +96,7 @@ export function AppShell() {
       </a>
 
       <UpdatePrompt />
+      <ReadFailure />
       <LiveRecords />
 
       {/*

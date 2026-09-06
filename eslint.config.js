@@ -39,7 +39,7 @@ const layerBoundaries = [
                 'idb',
               ],
               message:
-                'domain/ is the innermost layer: no other layer, no React, no library. Set resolution, progression and volume maths stay pure functions so a 5/3/1 percentage can be tested by calling it — no database, no render, no clock.',
+                'domain/ is the innermost layer: no other layer, no React, no library. Set resolution, progression and volume maths stay pure functions so the load a session prescribes can be tested by calling it — no database, no render, no clock.',
             },
           ],
         },
