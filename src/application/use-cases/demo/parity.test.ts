@@ -70,6 +70,19 @@ function store<T extends { id?: unknown; month?: unknown }>(key: 'id' | 'month' 
 function services() {
   let next = 0
   let settings: Record<string, unknown> = {}
+  let resume: Record<string, unknown> | undefined
+  const resumeRepo = {
+    get: () => Promise.resolve(resume),
+    save: (next: Record<string, unknown>) => {
+      resume = next
+      return Promise.resolve()
+    },
+    clear: () => {
+      resume = undefined
+      return Promise.resolve()
+    },
+  }
+
   const cells = new Set<string>()
 
   const parts = {
@@ -84,6 +97,7 @@ function services() {
     workouts: store(),
     attempts: store(),
     challenges: store(),
+    trips: store(),
   }
 
   /*
@@ -121,6 +135,7 @@ function services() {
       },
       count: () => Promise.resolve(cells.size),
     },
+    resume: resumeRepo,
     settings: {
       get: () => Promise.resolve(settings),
       save: (next_: Record<string, unknown>) => {
@@ -234,6 +249,64 @@ describe('what a reviewer sees on the other screens', () => {
     expect(view.cellCount).toBeGreaterThan(0)
   })
 
+  /*
+   * **The resume is the one record nothing regenerates**, so its empty
+   * screen reads as a broken feature rather than an untouched one. Two
+   * roles at one employer is the case the `Company` type exists for —
+   * a promotion, which a flat list of jobs prints as job-hopping.
+   */
+  it('fills the resume, promotion included', async () => {
+    const deps = await seeded()
+    const cv = (await deps.resume.get()) as
+      { companies: readonly { roles: readonly unknown[] }[] } | undefined
+
+    expect(cv?.companies.length ?? 0).toBeGreaterThan(1)
+    expect(cv?.companies.some((one) => one.roles.length > 1)).toBe(true)
+  })
+
+  /*
+   * A trip is a few saved places and the days you will be near them, so
+   * one filed against no places demonstrates an empty list rather than a
+   * trip.
+   */
+  it('plans trips against places that exist', async () => {
+    const deps = await seeded()
+    const trips = (await deps.trips.all()) as readonly { placeIds: readonly string[] }[]
+    const places = new Set(
+      ((await deps.places.all()) as readonly { id: string }[]).map((p) => p.id),
+    )
+
+    expect(trips.length).toBeGreaterThan(1)
+    expect(trips.every((t) => t.placeIds.length > 0)).toBe(true)
+    expect(trips.every((t) => t.placeIds.every((id) => places.has(id)))).toBe(true)
+  })
+
+  /*
+   * The job screen is about **how far each one has got**, so a fixture
+   * where every application sits at nought demonstrates the list and not
+   * the thing the list is for.
+   */
+  it('has an application that has got somewhere', async () => {
+    const deps = await seeded()
+    const jobs = (await listProjects(deps, 'jobs')) as readonly {
+      actions: readonly { status: string }[]
+    }[]
+
+    expect(jobs.length).toBeGreaterThan(1)
+    expect(jobs.some((j) => j.actions.some((a) => a.status === 'done'))).toBe(true)
+  })
+
+  /*
+   * Without a daily goal the Codex draws its own empty state on a screen
+   * full of books, and the home screen loses the row that ties the two
+   * together.
+   */
+  it('sets a reading goal, so the Codex has a today', async () => {
+    const deps = await seeded()
+    const items = (await deps.items.all()) as readonly { dailyGoal?: unknown }[]
+
+    expect(items.some((one) => one.dailyGoal !== undefined)).toBe(true)
+  })
   it('gives the money screen more than one month to compare', async () => {
     const deps = await seeded()
 

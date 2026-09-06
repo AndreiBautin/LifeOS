@@ -60,6 +60,7 @@ function deps() {
     vices: store(),
     attempts: store(),
     challenges: store(),
+    trips: store(),
     places: store(),
     workouts: store(),
   }
@@ -75,6 +76,20 @@ function deps() {
     get: () => Promise.resolve(settings),
     save: (next: Record<string, unknown>) => {
       settings = next
+      return Promise.resolve()
+    },
+  }
+
+  /** A singleton, like the settings — one document under a fixed id. */
+  let resume: Record<string, unknown> | undefined
+  const resumeRepo = {
+    get: () => Promise.resolve(resume),
+    save: (next: Record<string, unknown>) => {
+      resume = next
+      return Promise.resolve()
+    },
+    clear: () => {
+      resume = undefined
       return Promise.resolve()
     },
   }
@@ -98,6 +113,7 @@ function deps() {
     ...parts,
     explored,
     settings: settingsRepo,
+    resume: resumeRepo,
     read: () => settings,
     /* Deterministic, so a fixture is the same every run. */
     ids: { next: () => `demo-${String((next += 1))}` },

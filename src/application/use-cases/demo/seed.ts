@@ -13,7 +13,9 @@ import { addUpgrade, updateUpgrade } from '@/application/use-cases/upgrades/upgr
 import { APPLICATION_STAGES } from '@/domain/jobs/application'
 import { createItem } from '@/domain/backlog/item'
 import type { CategoryId } from '@/domain/atlas/category/CategoryDefinition'
-import type { ExerciseId, WorkoutId } from '@/domain/ids/ids'
+import type { BulletId, CompanyId, ExerciseId, RoleId, WorkoutId } from '@/domain/ids/ids'
+import type { PlaceId } from '@/domain/atlas/place/PlaceId'
+import type { TripId } from '@/domain/atlas/trip/TripId'
 import type { LogEntry, WorkoutLog } from '@/domain/logging/workout-log'
 import { toMonthKey } from '@/domain/time/day'
 import type { Clock } from '@/domain/repositories/ports'
@@ -112,6 +114,7 @@ export async function seedDemoData(deps: DemoDeps): Promise<SeedResult> {
   await seedTraining(deps)
   await seedMind(deps)
   await seedChallenges(deps)
+  await seedResume(deps)
 
   return { seeded: true }
 }
@@ -159,11 +162,25 @@ async function seedCodex(deps: DemoDeps): Promise<void> {
   })
 
   const rows = [
+    /*
+     * **The one item with a daily goal**, which is what puts a row in the
+     * Codex's Today block and on the home screen. Without one that block
+     * renders its own empty state on a screen full of books, which reads
+     * as a broken feature rather than an unused one.
+     *
+     * Every day rather than a cadence, deliberately: a Tues/Thurs goal is
+     * the more interesting case and is absent from the screen five days
+     * out of seven, so a reviewer opening on the wrong day sees nothing.
+     */
     withProgress(
       make(
         'The Pragmatic Programmer',
         'books',
-        { status: 'currently-using', priority: 'high' },
+        {
+          status: 'currently-using',
+          priority: 'high',
+          dailyGoal: { amount: 20, unit: 'pages' },
+        },
         40,
       ),
       [1, 2, 3, 5, 8],
@@ -245,12 +262,34 @@ async function seedQuests(deps: DemoDeps): Promise<void> {
 
   await addProject(
     {
-      name: 'Senior engineer at a company that does not exist',
+      name: 'Senior engineer at Northwind Systems',
       belongsTo: 'jobs',
       steps: [...APPLICATION_STAGES],
     },
     deps,
   )
+
+  /*
+   * A second one further along, because the screen's whole subject is
+   * **how far each one has got** — one application sitting at 0 of 3
+   * demonstrates the list and not the thing the list is for.
+   *
+   * Its closed stages are what `jobs.stage-advances-in-month` counts:
+   * `ActionItem.completedAt` is the only record of *when* an application
+   * reached a stage, which is why the stages are steps rather than a
+   * "current stage" field.
+   */
+  const further = await addProject(
+    {
+      name: 'Platform engineer at Contoso Labs',
+      belongsTo: 'jobs',
+      steps: [...APPLICATION_STAGES],
+    },
+    deps,
+  )
+  for (const stage of further.actions.slice(0, 2)) {
+    await setActionStatus(further.id, stage.id, true, deps)
+  }
 
   /*
    * **A contract is one step, and that is not tidiness.** Nothing pays
@@ -571,12 +610,140 @@ async function seedMap(deps: DemoDeps): Promise<void> {
     { name: 'That ramen place someone mentioned', categoryId: 'food' as CategoryId },
   ]
 
+  const saved: PlaceId[] = []
   for (const { visited, ...input } of rows) {
     const created = await addPlace(input, atlas)
-    if (visited === true && created.place !== undefined) {
-      await visitPlace(created.place.id, atlas)
-    }
+    if (created.place === undefined) continue
+    saved.push(created.place.id)
+    if (visited === true) await visitPlace(created.place.id, atlas)
   }
+
+  /*
+   * **A trip is a few saved places and the days you will be near them**,
+   * which is why it is seeded here rather than in a function of its own:
+   * it needs the ids the loop above just produced, and inventing them
+   * separately would file a trip against places that do not exist.
+   *
+   * One upcoming and one past, because the screen sorts on that and a
+   * fixture with only future trips leaves half of it undemonstrated.
+   */
+  const dayKey = (offset: number) => dayKeyAgo(deps.clock, -offset)
+
+  await deps.trips.save({
+    id: deps.ids.next() as TripId,
+    name: 'A weekend of walking',
+    location: 'San Francisco',
+    startDate: dayKey(12),
+    endDate: dayKey(14),
+    placeIds: saved.slice(3, 6),
+    notes: 'The coastal trail first, then books and the tower.',
+  })
+
+  await deps.trips.save({
+    id: deps.ids.next() as TripId,
+    name: 'The food one',
+    location: 'San Francisco',
+    startDate: dayKeyAgo(deps.clock, 40),
+    endDate: dayKeyAgo(deps.clock, 38),
+    placeIds: saved.slice(0, 2),
+  })
+}
+
+/**
+ * A resume, for a person who does not exist.
+ *
+ * **The one record in the app that nothing regenerates**, and therefore
+ * the one whose empty screen reads most like a broken feature rather
+ * than an untouched one — there is no "add your first" path that makes
+ * sense to demonstrate with nothing behind it.
+ *
+ * **The contact line carries a city and nothing else.** A real resume
+ * has an email and a phone number on it, and this fixture is scanned for
+ * exactly those: `seed.test.ts` reads its own source and fails on
+ * anything shaped like one. A fictional address would pass the scan and
+ * would still be a made-up email published in a public repository. The
+ * line says what it is instead.
+ *
+ * Northwind is the fixture employer this repository already uses
+ * everywhere else, for the same reason.
+ */
+async function seedResume(deps: DemoDeps): Promise<void> {
+  const bullet = (text: string) => ({ id: deps.ids.next() as BulletId, text })
+
+  await deps.resume.save({
+    name: 'Alex Rivera',
+    contact: 'San Francisco · contact details omitted from the demo fixture',
+    summary:
+      'Software engineer with eight years building web applications, most recently on data-heavy internal tools. Happiest where the domain has real rules in it.',
+    skills: [
+      { label: 'Languages', skills: ['TypeScript', 'Python', 'Go', 'SQL'] },
+      { label: 'Frontend', skills: ['React', 'Vite', 'Tailwind', 'Testing Library'] },
+      { label: 'Platform', skills: ['Postgres', 'Docker', 'Terraform', 'GitHub Actions'] },
+    ],
+    companies: [
+      {
+        id: deps.ids.next() as CompanyId,
+        name: 'Northwind Systems',
+        location: 'San Francisco',
+        /*
+         * Two roles at one employer, newest first — a promotion, which a
+         * flat list of jobs prints as two employers and makes read as
+         * job-hopping. It is the case the `Company` type exists for, so
+         * the fixture has to contain one.
+         */
+        roles: [
+          {
+            id: deps.ids.next() as RoleId,
+            title: 'Senior Software Engineer',
+            from: 'March 2023',
+            bullets: [
+              bullet(
+                'Led the rewrite of the scheduling service, cutting p95 latency from 1.8s to 240ms.',
+              ),
+              bullet(
+                'Introduced typed contracts between four teams, removing a class of integration bug entirely.',
+              ),
+              bullet('Mentored three engineers through their first year.'),
+            ],
+          },
+          {
+            id: deps.ids.next() as RoleId,
+            title: 'Software Engineer',
+            from: 'June 2020',
+            to: 'March 2023',
+            bullets: [
+              bullet('Built the reporting pipeline that replaced a weekly manual export.'),
+              bullet('Moved the test suite off a shared database, taking CI from 22 minutes to 6.'),
+            ],
+          },
+        ],
+      },
+      {
+        id: deps.ids.next() as CompanyId,
+        name: 'Contoso Labs',
+        location: 'Remote',
+        roles: [
+          {
+            id: deps.ids.next() as RoleId,
+            title: 'Software Engineer',
+            from: 'August 2018',
+            to: 'May 2020',
+            bullets: [
+              bullet('Shipped the first version of the customer portal, from an empty repository.'),
+              bullet('Owned the on-call rotation for two services.'),
+            ],
+          },
+        ],
+      },
+    ],
+    education: [
+      {
+        school: 'University of Somewhere',
+        award: 'BSc Computer Science',
+        detail: 'Graduated 2018',
+      },
+    ],
+  })
 }
 
 /**

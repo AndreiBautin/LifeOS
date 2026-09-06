@@ -8,8 +8,10 @@ import type {
   FinanceRepository,
   PlaceRepository,
   ProjectRepository,
+  ResumeRepository,
   RoomRepository,
   SettingsRepository,
+  TripRepository,
   UpgradeRepository,
   ViceRepository,
   WorkoutRepository,
@@ -50,6 +52,8 @@ export interface DemoDeps {
    * behaviour, and a demonstration of nothing.
    */
   readonly settings: SettingsRepository
+  readonly resume: ResumeRepository
+  readonly trips: TripRepository
   readonly clock: Clock
   readonly ids: IdGenerator
 }
