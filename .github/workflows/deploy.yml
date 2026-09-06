@@ -63,25 +63,26 @@ jobs:
           VITE_COMMIT_SHA: ${{ github.sha }}
           VITE_LOG_LEVEL: warn
 
-          # Repository *variables*, not secrets, and deliberately so: a
-          # Firebase web config identifies a project and authorises
-          # nothing. Access is decided entirely by firestore.rules. Hiding
-          # them as secrets would imply a confidentiality they do not
-          # have, and would make a deploy failure harder to diagnose.
+          # **The published build is the demo build, and that is the
+          # whole deployment decision.**
           #
-          # Unset is a supported state, not a broken one. A fork with no
-          # variables configured builds an app whose Settings screen says
-          # sync is not configured, and which behaves exactly as it did
-          # before sync existed. That is why these are not defaulted to
-          # this project's values: someone else's fork must not write into
-          # it.
-          VITE_FIREBASE_API_KEY: ${{ vars.VITE_FIREBASE_API_KEY }}
-          VITE_FIREBASE_AUTH_DOMAIN: ${{ vars.VITE_FIREBASE_AUTH_DOMAIN }}
-          VITE_FIREBASE_PROJECT_ID: ${{ vars.VITE_FIREBASE_PROJECT_ID }}
-          VITE_FIREBASE_APP_ID: ${{ vars.VITE_FIREBASE_APP_ID }}
-          # Who may open the deployed app. Unset means no gate — see
-          # .env.example. A uid is public and authorises nothing.
-          VITE_ALLOWED_UIDS: ${{ vars.VITE_ALLOWED_UIDS }}
+          # It moves the database and every storage key to a
+          # `lifeos.demo` prefix and fills empty storage with a generated
+          # fixture on first open, so a reviewer clicking the link sees a
+          # populated app immediately, signs into nothing, and cannot
+          # reach or overwrite anything real.
+          #
+          # The Firebase variables are deliberately **not** passed here.
+          # Passing them would give the deployed page a sign-in screen
+          # and an account gate, which is a locked door in front of a
+          # portfolio piece — and it is what `VITE_ALLOWED_UIDS` used to
+          # do. With no project configured the app stores locally, which
+          # is exactly what a demo wants.
+          #
+          # This is a deliberate trade and worth stating: **the deployed
+          # site no longer syncs.** Personal use runs from a local build
+          # with `.env.local`, where the Firebase variables live.
+          VITE_DEMO_MODE: 'true'
         run: pnpm build
 
       # Static hosts 404 on a client-side route requested cold. Serving

@@ -58,6 +58,8 @@ function deps() {
     finance: store('month'),
     campaigns: store(),
     vices: store(),
+    attempts: store(),
+    challenges: store(),
     places: store(),
     workouts: store(),
   }

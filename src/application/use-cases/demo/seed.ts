@@ -1,8 +1,16 @@
 import { addCampaign } from '@/application/use-cases/campaign/campaign'
 import { addPlace, visitPlace } from '@/application/use-cases/atlas/atlas'
-import { addProject } from '@/application/use-cases/projects/projects'
+import { completeChallenge, readChallenges } from '@/application/use-cases/challenges/challenges'
+import { logAttempt } from '@/application/use-cases/mind/practice'
+import {
+  addContract,
+  addProject,
+  setActionStatus,
+  updateProject,
+} from '@/application/use-cases/projects/projects'
 import { addRoom, recordClear } from '@/application/use-cases/base/declutter'
-import { addUpgrade } from '@/application/use-cases/upgrades/upgrades'
+import { addUpgrade, updateUpgrade } from '@/application/use-cases/upgrades/upgrades'
+import { APPLICATION_STAGES } from '@/domain/jobs/application'
 import { createItem } from '@/domain/backlog/item'
 import type { CategoryId } from '@/domain/atlas/category/CategoryDefinition'
 import type { ExerciseId, WorkoutId } from '@/domain/ids/ids'
@@ -102,6 +110,8 @@ export async function seedDemoData(deps: DemoDeps): Promise<SeedResult> {
   await seedMap(deps)
   await seedSettings(deps)
   await seedTraining(deps)
+  await seedMind(deps)
+  await seedChallenges(deps)
 
   return { seeded: true }
 }
@@ -203,7 +213,7 @@ async function seedQuests(deps: DemoDeps): Promise<void> {
     deps,
   )
 
-  await addProject(
+  const porch = await addProject(
     {
       name: 'Fix the porch light',
       belongsTo: 'base',
@@ -212,6 +222,72 @@ async function seedQuests(deps: DemoDeps): Promise<void> {
     },
     deps,
   )
+
+  const tap = await addProject(
+    {
+      name: 'Replace the kitchen tap',
+      belongsTo: 'base',
+      approach: 'hired',
+      steps: ['Find the right person', 'Get a quote', 'Book the appointment'],
+    },
+    deps,
+  )
+
+  /*
+   * **A closed step is what pays**, and which area it pays is decided by
+   * the job's approach: hired work pays Base, work you do yourself pays
+   * Crafting. Both are seeded because they are the same record type
+   * scoring two different bars, and a fixture that closed neither leaves
+   * both areas reading silent on a screen full of house jobs.
+   */
+  const quote = tap.actions[0]
+  if (quote !== undefined) await setActionStatus(tap.id, quote.id, true, deps)
+
+  await addProject(
+    {
+      name: 'Senior engineer at a company that does not exist',
+      belongsTo: 'jobs',
+      steps: [...APPLICATION_STAGES],
+    },
+    deps,
+  )
+
+  /*
+   * **A contract is one step, and that is not tidiness.** Nothing pays
+   * for a project existing or being marked done — XP comes from closing
+   * a step — so a one-off created empty would earn nothing, and a
+   * section full of things that pay nothing teaches you not to use it.
+   */
+  await addContract('Return the parcel', deps)
+
+  /*
+   * One quest with a step already closed and one finished outright, so
+   * the board draws a part-done card, the fold has something behind it,
+   * and the XP total is not paid entirely by the Codex.
+   */
+  const main = await addProject(
+    {
+      name: 'Sort the photo archive',
+      kind: 'side',
+      steps: ['Buy the drive', 'Cull the duplicates', 'Back it up twice'],
+    },
+    deps,
+  )
+
+  const first = main.actions[0]
+  if (first !== undefined) await setActionStatus(main.id, first.id, true, deps)
+
+  const survey = porch.actions[0]
+  if (survey !== undefined) await setActionStatus(porch.id, survey.id, true, deps)
+
+  const done = await addProject(
+    { name: 'Renew the passport', kind: 'side', steps: ['Book the photo', 'Send the form'] },
+    deps,
+  )
+  for (const action of done.actions) {
+    await setActionStatus(done.id, action.id, true, deps)
+  }
+  await updateProject(done.id, { status: 'completed' }, deps)
 }
 
 /** Two shelves, a prerequisite chain, and something already owned. */
@@ -238,7 +314,7 @@ async function seedTechTree(deps: DemoDeps): Promise<void> {
     deps,
   )
 
-  await addUpgrade(
+  const keyboard = await addUpgrade(
     {
       title: 'Mechanical keyboard',
       category: 'office',
@@ -247,6 +323,29 @@ async function seedTechTree(deps: DemoDeps): Promise<void> {
     },
     deps,
   )
+
+  /*
+   * **Every status the tree can draw, because two of them have nowhere
+   * else to appear.** Owned and dropped both fold away behind the eye,
+   * so a fixture holding only open upgrades leaves that control with
+   * nothing behind it and the screen looking like it has a dead button.
+   */
+  if (keyboard.upgrade !== undefined) {
+    await updateUpgrade(keyboard.upgrade.id, { status: 'purchased' }, deps)
+  }
+
+  const dropped = await addUpgrade(
+    {
+      title: 'Espresso machine',
+      category: 'lifestyle',
+      shelf: 'base',
+      estimatedCostMinorUnits: 60_000,
+    },
+    deps,
+  )
+  if (dropped.upgrade !== undefined) {
+    await updateUpgrade(dropped.upgrade.id, { status: 'cancelled' }, deps)
+  }
 }
 
 /** Rooms with readings, so the clutter average has something to average. */
@@ -617,4 +716,47 @@ async function seedTraining(deps: DemoDeps): Promise<void> {
     }
     await deps.workouts.save(log)
   }
+}
+
+/**
+ * A practice log, because Mind is otherwise a screen with a heading.
+ *
+ * The clock is shifted per entry rather than passed once: `logAttempt`
+ * stamps `solvedOn` from `deps.clock`, so seeding them all against the
+ * seed moment would file a week of practice on one afternoon — and the
+ * *days practised* rating counts distinct days, which is the whole
+ * reason it exists beside the problem count.
+ */
+async function seedMind(deps: DemoDeps): Promise<void> {
+  const attempts: readonly [string, number, 'easy' | 'medium' | 'hard'][] = [
+    ['Two Sum', 9, 'easy'],
+    ['Valid Parentheses', 7, 'easy'],
+    ['Longest Substring Without Repeating Characters', 4, 'medium'],
+    ['Course Schedule', 2, 'medium'],
+    ['Word Ladder', 1, 'hard'],
+  ]
+
+  for (const [title, daysBack, difficulty] of attempts) {
+    const on = new Date(deps.clock.now().getTime() - daysBack * 86_400_000)
+    await logAttempt(
+      { title, difficulty, source: 'leetcode' },
+      { attempts: deps.attempts, ids: deps.ids, clock: { now: () => on } },
+    )
+  }
+}
+
+/**
+ * One challenge ticked, so the season's pass is not at nought.
+ *
+ * **Read rather than named.** The catalogue is placed against the
+ * season the clock is in, so a hardcoded slug would be a challenge that
+ * only exists for three months of the year — the fixture would tick
+ * nothing for the other nine and nothing would say why.
+ */
+async function seedChallenges(deps: DemoDeps): Promise<void> {
+  const pass = await readChallenges(deps)
+  const first = pass.challenges[0]
+  if (first === undefined) return
+
+  await completeChallenge(first.id, deps)
 }

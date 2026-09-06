@@ -55,6 +55,16 @@ jobs:
       - name: Build
         run: pnpm build
 
+      # **Build every configuration that ships.** The demo build takes a
+      # different branch at startup — a different storage namespace, and
+      # a seeder that runs before the first render — and it is the one
+      # that is actually deployed. A failure that only appears under it
+      # must not first surface at deploy time.
+      - name: Build the demo configuration
+        env:
+          VITE_DEMO_MODE: 'true'
+        run: pnpm build
+
       # The icons are generated from a checked-in script. If someone edits
       # the script and forgets to run it, the repository and the deployed
       # app disagree about what the app looks like.
