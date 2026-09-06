@@ -270,11 +270,12 @@ Or:
 Answer this one plainly — a candidate who names their own open defects
 reads better than one who says nothing is wrong.
 
-> Every card treats `data === undefined` as loading, so a genuinely
-> failed read draws a skeleton forever rather than an error. That was
-> nearly impossible when storage was local and is a real network-shaped
-> failure now. It is written down in `ARCHITECTURE.md` under "Known, and
-> open".
+> Every card treats `data === undefined` as loading, which is also the
+> state an errored query sits in — so a failed read used to draw a
+> skeleton forever. There is a banner over the shell now that says how
+> many reads failed and offers a retry, which is one component rather
+> than eighty-nine changed call sites. Teaching each card to tell an
+> error from loading is still the thorough version.
 >
 > Tombstones are vestigial under Firestore. Settings and the map's fog
 > do not travel between devices. And the service-worker lifecycle is the

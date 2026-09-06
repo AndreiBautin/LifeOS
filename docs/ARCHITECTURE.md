@@ -369,11 +369,14 @@ exception, and it says why in place.
 
 Stated here rather than discovered:
 
-- **A failed read is indistinguishable from a slow one.** Every card
-  treats `data === undefined` as loading, so an errored query — offline,
-  or a rules refusal — draws a skeleton forever. With records in
-  Firestore that is now a network-shaped failure rather than an
-  impossible one.
+- **A failed read still draws a skeleton, and now says so.** Every card
+  treats `data === undefined` as loading, which is also the state an
+  errored query sits in under `retry: false`.
+  `features/errors/ReadFailure` is one banner over the whole shell
+  rather than eighty-nine changed call sites: the cards keep their
+  skeletons, and a skeleton beside a banner saying a read failed is no
+  longer a lie. Teaching each card to tell the two apart is still the
+  thorough fix.
 - **Tombstones are vestigial** under Firestore, and still declared.
 - **Settings and the fog do not travel between devices.**
 - **The service-worker lifecycle cannot be tested from an agent's
