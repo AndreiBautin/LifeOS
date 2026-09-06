@@ -87,6 +87,15 @@ export default defineConfig(({ mode }) => {
            * cache entry would hurt — offline — is a situation where the
            * feature could not run anyway. Everything the app does without
            * a network is still precached in full.
+           *
+           * **That argument only holds while nothing precached depends on
+           * it statically, and for a long time something did.** `di.ts`
+           * imported the Firestore repository factories at the top of the
+           * file, which pulls in `firebase/firestore`, so the precached
+           * entry chunk carried a static import of a chunk deliberately
+           * left out of the cache. It is a dynamic import now. If a
+           * static one ever comes back, this exclusion becomes an offline
+           * failure rather than a saving.
            */
           globIgnores: ['**/firebase-*.js', '**/firebase-*.js.map'],
 

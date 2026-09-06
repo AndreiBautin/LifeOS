@@ -31,24 +31,12 @@ import { seedDemoData } from '@/application/use-cases/demo/seed'
 import { readFirebaseConfig } from '@/config/firebase'
 import { createAccountHolder, type AccountHolder } from '@/infrastructure/firestore/account-holder'
 import type { FirestoreCollectionDeps } from '@/infrastructure/firestore/collection'
-import {
-  createFirestoreAttempts,
-  createFirestoreCampaigns,
-  createFirestoreChallenges,
-  createFirestoreCheckIns,
-  createFirestoreExercises,
-  createFirestoreFinance,
-  createFirestoreItems,
-  createFirestorePlaces,
-  createFirestoreProjects,
-  createFirestoreResume,
-  createFirestoreReview,
-  createFirestoreRooms,
-  createFirestoreTrips,
-  createFirestoreUpgrades,
-  createFirestoreVices,
-  createFirestoreWorkouts,
-} from '@/infrastructure/firestore/repositories'
+/*
+ * **Type-only, deliberately.** Importing the factories here for real is
+ * what put the Firebase SDK in the entry chunk — see `remoteFactories`
+ * below.
+ */
+import type * as FirestoreRepositories from '@/infrastructure/firestore/repositories'
 import { openDatabase, type AppDatabase } from '@/infrastructure/db/database'
 import {
   createBacklogItemRepository,
@@ -193,11 +181,48 @@ export async function bootstrap(): Promise<BootstrapResult> {
   const firebase = readFirebaseConfig()
   let remote: FirestoreCollectionDeps | undefined
   let account: AccountHolder | undefined
+  let firestore: typeof FirestoreRepositories | undefined
 
   if (firebase.kind === 'configured') {
     account = createAccountHolder()
-    const { firebaseClient } = await import('@/infrastructure/sync/firebase-app')
+    /*
+     * **Both of these, and the second one is the whole point.** Importing
+     * `firebase-app` on demand looked like it kept the SDK out of the
+     * entry chunk, and the comment above said so — but the repository
+     * factories were imported statically three lines further up, and they
+     * pull in `firebase/firestore`. One static import defeated every
+     * dynamic one in the app.
+     *
+     * The entry chunk is the same size either way — the SDK was always
+     * its own chunk. What changed is whether that chunk is *fetched*:
+     * a static import made the browser download 535 kB on first paint,
+     * where a dynamic one leaves it listed as a lazy dependency and
+     * never asked for on a build with no project configured.
+     *
+     * It also closes an offline hole. `globIgnores` in `vite.config.ts`
+     * deliberately keeps the SDK out of the precache, on the reasoning
+     * that sync needs a network anyway — which was only safe if nothing
+     * precached depended on it statically. It did.
+     */
+    const [{ firebaseClient }, repositories] = await Promise.all([
+      import('@/infrastructure/sync/firebase-app'),
+      import('@/infrastructure/firestore/repositories'),
+    ])
+    firestore = repositories
     remote = { firestore: firebaseClient(firebase.config).db, account, clock: systemClock }
+  }
+
+  /*
+   * Narrowing `remote` no longer narrows `firestore`, because they are two
+   * variables assigned in one branch. This asserts the pairing once rather
+   * than at twenty call sites — and it cannot lie: both are set together
+   * or neither is.
+   */
+  const firestoreRepos = (): typeof FirestoreRepositories => {
+    if (firestore === undefined) {
+      throw new Error('The Firestore repositories were asked for without a configured project.')
+    }
+    return firestore
   }
 
   const services: AppServices = {
@@ -205,61 +230,69 @@ export async function bootstrap(): Promise<BootstrapResult> {
     exercises:
       remote === undefined
         ? createExerciseRepository(db, systemClock)
-        : createFirestoreExercises(remote),
+        : firestoreRepos().createFirestoreExercises(remote),
     position: createPositionRepository(db),
     workouts:
       remote === undefined
         ? createWorkoutRepository(db, systemClock)
-        : createFirestoreWorkouts(remote),
+        : firestoreRepos().createFirestoreWorkouts(remote),
     checkIns:
       remote === undefined
         ? createCheckInRepository(db, systemClock)
-        : createFirestoreCheckIns(remote),
+        : firestoreRepos().createFirestoreCheckIns(remote),
     items:
       remote === undefined
         ? createBacklogItemRepository(db, systemClock)
-        : createFirestoreItems(remote),
+        : firestoreRepos().createFirestoreItems(remote),
     projects:
       remote === undefined
         ? createProjectRepository(db, systemClock)
-        : createFirestoreProjects(remote),
+        : firestoreRepos().createFirestoreProjects(remote),
     upgrades:
       remote === undefined
         ? createUpgradeRepository(db, systemClock)
-        : createFirestoreUpgrades(remote),
+        : firestoreRepos().createFirestoreUpgrades(remote),
     review:
       remote === undefined
         ? createReviewRepository(db, systemClock)
-        : createFirestoreReview(remote),
+        : firestoreRepos().createFirestoreReview(remote),
     places:
-      remote === undefined ? createPlaceRepository(db, systemClock) : createFirestorePlaces(remote),
+      remote === undefined
+        ? createPlaceRepository(db, systemClock)
+        : firestoreRepos().createFirestorePlaces(remote),
     finance:
       remote === undefined
         ? createFinanceRepository(db, systemClock)
-        : createFirestoreFinance(remote),
+        : firestoreRepos().createFirestoreFinance(remote),
     campaigns:
       remote === undefined
         ? createCampaignRepository(db, systemClock)
-        : createFirestoreCampaigns(remote),
+        : firestoreRepos().createFirestoreCampaigns(remote),
     attempts:
       remote === undefined
         ? createAttemptRepository(db, systemClock)
-        : createFirestoreAttempts(remote),
+        : firestoreRepos().createFirestoreAttempts(remote),
     challenges:
       remote === undefined
         ? createChallengeRepository(db, systemClock)
-        : createFirestoreChallenges(remote),
+        : firestoreRepos().createFirestoreChallenges(remote),
     rooms:
-      remote === undefined ? createRoomRepository(db, systemClock) : createFirestoreRooms(remote),
+      remote === undefined
+        ? createRoomRepository(db, systemClock)
+        : firestoreRepos().createFirestoreRooms(remote),
     tracks: createTrackGateway(),
     resume:
       remote === undefined
         ? createResumeRepository(db, systemClock)
-        : createFirestoreResume(remote),
+        : firestoreRepos().createFirestoreResume(remote),
     trips:
-      remote === undefined ? createTripRepository(db, systemClock) : createFirestoreTrips(remote),
+      remote === undefined
+        ? createTripRepository(db, systemClock)
+        : firestoreRepos().createFirestoreTrips(remote),
     vices:
-      remote === undefined ? createViceRepository(db, systemClock) : createFirestoreVices(remote),
+      remote === undefined
+        ? createViceRepository(db, systemClock)
+        : firestoreRepos().createFirestoreVices(remote),
     explored: createExploredAreaRepository(db),
     geolocation: createBrowserGeolocation(),
     placeSearch: new NominatimSearchProvider(),
