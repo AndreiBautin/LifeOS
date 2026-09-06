@@ -1,5 +1,5 @@
 import { LogIn, ShieldX } from 'lucide-react'
-import { useEffect, type ReactNode } from 'react'
+import type { ReactNode } from 'react'
 
 import { useServices } from '@/app/context'
 import { Button, Card } from '@/components/shared/primitives'
@@ -47,20 +47,26 @@ export function AuthGate({ children }: { readonly children: ReactNode }) {
   const signOut = useSignOut()
 
   /*
-   * **The one place the account reaches the repositories.**
+   * **Set during render, before any child can query.**
    *
-   * They were built at startup, before sign-in could possibly have
-   * resolved, and read this holder per call rather than taking a uid —
-   * so this is where the answer arrives. It runs in an effect because it
-   * is a write to something outside React, and until it has run
-   * `decideAccess` is still holding every screen back.
+   * This was a `useEffect`, and effects run *after* the commit — so on
+   * the first render where access is allowed, every screen below mounted
+   * and fired its queries while the holder was still empty. Each one hit
+   * `requireAccount`, threw, and with `retry: false` sat in error with
+   * `data` undefined — which is the same state a card renders a skeleton
+   * for. The result was the whole app stuck as placeholders, on a device
+   * that had signed in perfectly well.
    *
-   * Signing out clears it, which matters: left set, the next reader
+   * A write during render is normally the wrong shape, and it is right
+   * here for the reason it is normally wrong: it has to happen before
+   * children exist. It is idempotent and to a plain object rather than
+   * to React state, so nothing re-renders and there is no order for two
+   * passes to disagree about.
+   *
+   * Clearing on sign-out is the same call — left set, the next reader
    * would go on writing to the account that just left.
    */
-  useEffect(() => {
-    services.account?.set(account?.uid)
-  }, [services.account, account?.uid])
+  services.account?.set(account?.uid)
 
   const decision = decideAccess({
     /*

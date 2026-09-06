@@ -6834,6 +6834,38 @@ became visible again when the full-body week put the core on a day
 beside other accessory work; the check now excludes the trailing
 muscles rather than encoding the ordering they are exempt from.
 
+**The account is handed over during render, not in an effect, and that
+cost a broken screen.** Reported with a screenshot: signed in, the app
+up, and every data-backed card stuck as a skeleton — the portrait, the
+traits, the buffs — while the quest slots, which need no data, drew
+fine.
+
+`AuthGate` set the holder in a `useEffect`. Effects run **after** the
+commit, so on the first render where access is allowed every screen
+below mounted and fired its queries against an empty holder. Each hit
+`requireAccount`, threw, and with `retry: false` sat in error with
+`data` undefined — which is the same state a card draws a skeleton for.
+**An errored query and a loading one are indistinguishable to every
+component here**, which is why it presented as a hang rather than as a
+failure.
+
+A write during render is normally the wrong shape and is right here for
+the reason it is normally wrong: it has to happen before children
+exist. It is idempotent and lands on a plain object rather than on React
+state, so nothing re-renders and there is no order for two passes to
+disagree about.
+
+**`AuthGate.test.tsx` is the first component test in the app**, and it
+earns its place by failing for the right reason: put the assignment back
+in an effect and it goes red, because the child renders before the
+holder is set. Verified in both directions rather than assumed.
+
+**The wider fault is still open and worth naming.** Every card reads
+`data === undefined` and draws a skeleton, so a genuinely failed
+read — offline, or a rules refusal — is indistinguishable from a slow
+one and waits forever. With the records in Firestore that is now a
+network-shaped failure rather than an impossible one.
+
 **Firestore is the source of truth now, and the whole exchange is
 gone.** Asked for as _"let's just set up where we read from firestore …
 and then we get rid of all this sync crap"_, after a seeding mishap made
