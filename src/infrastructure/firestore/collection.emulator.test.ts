@@ -6,6 +6,8 @@ import type { Firestore } from 'firebase/firestore'
 
 import { createAccountHolder } from './account-holder'
 import { createFirestoreCollection } from './collection'
+import type { TombstoneRepository } from '@/domain/repositories/ports'
+import type { Tombstone } from '@/domain/sync/tombstone'
 
 /**
  * The owner uid the rules name. Anything else is denied by design, which
@@ -42,18 +44,37 @@ beforeEach(async () => {
   await env.clearFirestore()
 })
 
+/** Somewhere for a deletion to be recorded, and something to read back. */
+function tombstoneSink(): TombstoneRepository & { readonly recorded: Tombstone[] } {
+  const recorded: Tombstone[] = []
+  return {
+    recorded,
+    all: () => Promise.resolve(recorded),
+    since: (at: string) => Promise.resolve(recorded.filter((one) => one.deletedAt > at)),
+    record: (many: readonly Tombstone[]) => {
+      recorded.push(...many)
+      return Promise.resolve()
+    },
+  }
+}
+
 function repository(uid: string = OWNER) {
   const account = createAccountHolder()
   account.set(uid)
+  const tombstones = tombstoneSink()
 
   return {
     account,
+    tombstones,
     rooms: createFirestoreCollection<Room>(
       {
         firestore: env.authenticatedContext(uid).firestore() as unknown as Firestore,
         account,
         clock: { now: () => new Date('2026-09-05T12:00:00Z') },
+        tombstones,
       },
+      'rooms',
+      undefined,
       'rooms',
     ),
   }
@@ -119,18 +140,54 @@ describe('a collection of records under an account', () => {
   })
 
   /*
-   * **A delete is a delete, and that is the point of the migration.**
-   * With one authoritative copy there is nothing to tell "removed" from
-   * "never seen", so the tombstone the IndexedDB repositories write has
-   * nothing left to do.
+   * **Inverted rather than deleted**, because it is the record of a
+   * belief that was wrong and may be argued for again.
+   *
+   * It used to assert that `remove` left no tombstone, on the reasoning
+   * that one authoritative copy has nothing to tell "removed" from
+   * "never seen". That is true of *sync* and false of *import*: a backup
+   * file is a second copy of the database travelling through time, and
+   * restoring one taken before a deletion brings the record back —
+   * counted as an addition, because that is what it looks like. Firestore
+   * being authoritative does not help, because the import writes into
+   * Firestore.
    */
-  it('removes a record with no tombstone left behind', async () => {
-    const { rooms } = repository()
+  it('records a deletion so a later import cannot undo it', async () => {
+    const { rooms, tombstones } = repository()
     await rooms.save({ id: 'garage', name: 'Garage' })
     await rooms.remove('garage')
 
     expect(await rooms.byId('garage')).toBeUndefined()
     expect(await rooms.count()).toBe(0)
+    expect(tombstones.recorded).toEqual([
+      { id: 'garage', collection: 'rooms', deletedAt: '2026-09-05T12:00:00.000Z' },
+    ])
+  })
+
+  /*
+   * The other half, and the reason `buriedAs` is stated rather than
+   * inferred from the collection's name: a collection that is not merged
+   * has nothing to resurrect, and burying it would put rows in a store
+   * nothing reads.
+   */
+  it('leaves no tombstone for a collection that is not merged', async () => {
+    const account = createAccountHolder()
+    account.set(OWNER)
+    const tombstones = tombstoneSink()
+    const notes = createFirestoreCollection<Room>(
+      {
+        firestore: env.authenticatedContext(OWNER).firestore() as unknown as Firestore,
+        account,
+        clock: { now: () => new Date('2026-09-05T12:00:00Z') },
+        tombstones,
+      },
+      'rooms',
+    )
+
+    await notes.save({ id: 'shed', name: 'Shed' })
+    await notes.remove('shed')
+
+    expect(tombstones.recorded).toEqual([])
   })
 
   it('clears the whole collection', async () => {
@@ -157,6 +214,7 @@ describe('a collection of records under an account', () => {
         firestore: env.authenticatedContext(OWNER).firestore() as unknown as Firestore,
         account,
         clock: { now: () => new Date('2026-09-05T12:00:00Z') },
+        tombstones: tombstoneSink(),
       },
       'rooms',
     )

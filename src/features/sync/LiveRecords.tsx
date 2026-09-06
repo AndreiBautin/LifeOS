@@ -56,7 +56,6 @@ export function LiveRecords() {
         {
           firestore: firebaseClient(config.config).db,
           account: holder,
-          clock: services.clock,
         },
         () => {
           /*

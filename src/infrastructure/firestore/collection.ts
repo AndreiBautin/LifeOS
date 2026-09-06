@@ -10,7 +10,8 @@ import {
   type Firestore,
 } from 'firebase/firestore'
 
-import type { Clock } from '@/domain/repositories/ports'
+import type { Clock, TombstoneRepository } from '@/domain/repositories/ports'
+import type { TombstonedCollection } from '@/domain/sync/tombstone'
 
 import { requireAccount, type AccountHolder } from './account-holder'
 
@@ -46,6 +47,23 @@ export interface FirestoreCollectionDeps {
   readonly firestore: Firestore
   readonly account: AccountHolder
   readonly clock: Clock
+  /**
+   * Where a deletion is recorded, and it is **not** optional.
+   *
+   * The comment above says one authoritative copy makes tombstones
+   * unnecessary, and that is true of *sync* and false of *import*. A
+   * backup file is a second copy of the database travelling through
+   * time: delete a session, import a backup taken before it, and the
+   * session comes back — counted as an addition, because from the
+   * merge's point of view that is exactly what it is. Firestore being
+   * authoritative does not help, because the import writes into
+   * Firestore.
+   *
+   * Required rather than optional so a new collection cannot quietly
+   * skip it. Local repositories have written one from `remove` since
+   * before sync existed; this is the Firestore half catching up.
+   */
+  readonly tombstones: TombstoneRepository
 }
 
 /**
@@ -93,6 +111,18 @@ export function createFirestoreCollection<T extends StoredRecord>(
   deps: FirestoreCollectionDeps,
   name: string,
   idOf: IdOf<T> = (record) => String((record as { id?: unknown }).id),
+  /**
+   * Which tombstone collection a deletion here belongs to, or `null` for
+   * one that is not merged and therefore cannot be resurrected.
+   *
+   * **Stated rather than inferred from `name`**, because the two
+   * vocabularies genuinely differ — the review's snapshots live under
+   * `metrics` and `snapshots` here and are buried as `reviews` — and a
+   * name-matching rule would silently bury nothing for exactly the
+   * collections whose names disagree. That is the shape of mistake
+   * `KEYED_BY` was introduced to make impossible.
+   */
+  buriedAs: TombstonedCollection | null = null,
 ): FirestoreCollection<T> {
   const { firestore, account, clock } = deps
   const root = () => collection(firestore, 'users', requireAccount(account), name)
@@ -140,6 +170,15 @@ export function createFirestoreCollection<T extends StoredRecord>(
 
     async remove(id: string) {
       await deleteDoc(one(id))
+      if (buriedAs === null) return
+
+      /*
+       * After the delete rather than before it. A tombstone for a record
+       * that is still there would hide a live row from the next import.
+       */
+      await deps.tombstones.record([
+        { id, collection: buriedAs, deletedAt: clock.now().toISOString() },
+      ])
     },
 
     async clear() {

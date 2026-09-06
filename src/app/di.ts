@@ -209,7 +209,21 @@ export async function bootstrap(): Promise<BootstrapResult> {
       import('@/infrastructure/firestore/repositories'),
     ])
     firestore = repositories
-    remote = { firestore: firebaseClient(firebase.config).db, account, clock: systemClock }
+    remote = {
+      firestore: firebaseClient(firebase.config).db,
+      account,
+      clock: systemClock,
+      /*
+       * **The local store, not a Firestore one**, and the asymmetry is
+       * the point. A tombstone exists to answer "was this deleted, or
+       * have I simply never seen it" for a backup file being imported
+       * *on this device*. The file is local, the import is local, and the
+       * question is local. Putting them in Firestore would make deletions
+       * travel — which sync already does, immediately, by deleting the
+       * document.
+       */
+      tombstones: createTombstoneRepository(db),
+    }
   }
 
   /*

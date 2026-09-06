@@ -50,10 +50,17 @@ export const LIVE_COLLECTIONS = [
  * detaching matters: a listener left running after sign-out goes on
  * reading an account that is no longer yours.
  */
-export function watchRecords(
-  deps: FirestoreCollectionDeps,
-  onChanged: (name: string) => void,
-): () => void {
+/**
+ * What a listener needs, which is less than a repository does.
+ *
+ * Deliberately not `FirestoreCollectionDeps`: watching never deletes, so
+ * asking for a tombstone sink here would make a caller supply one to
+ * satisfy a type rather than because anything uses it — and a dependency
+ * nothing reads is the first thing to be wired wrongly.
+ */
+export type WatchDeps = Pick<FirestoreCollectionDeps, 'firestore' | 'account'>
+
+export function watchRecords(deps: WatchDeps, onChanged: (name: string) => void): () => void {
   const uid = requireAccount(deps.account)
 
   const stops = LIVE_COLLECTIONS.map((name) =>

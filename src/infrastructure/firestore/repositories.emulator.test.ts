@@ -13,6 +13,8 @@ import {
   createFirestoreWorkouts,
   RESUME_ID,
 } from './repositories'
+import type { TombstoneRepository } from '@/domain/repositories/ports'
+import type { Tombstone } from '@/domain/sync/tombstone'
 
 const OWNER = 'QmXEMrBsHSY286MCOn5YHDa4axm1'
 
@@ -37,6 +39,20 @@ beforeEach(async () => {
   await env.clearFirestore()
 })
 
+/** Somewhere for a deletion to be recorded, and something to read back. */
+function tombstoneSink(): TombstoneRepository & { readonly recorded: Tombstone[] } {
+  const recorded: Tombstone[] = []
+  return {
+    recorded,
+    all: () => Promise.resolve(recorded),
+    since: (at: string) => Promise.resolve(recorded.filter((one) => one.deletedAt > at)),
+    record: (many: readonly Tombstone[]) => {
+      recorded.push(...many)
+      return Promise.resolve()
+    },
+  }
+}
+
 function deps(): FirestoreCollectionDeps {
   const account = createAccountHolder()
   account.set(OWNER)
@@ -45,6 +61,7 @@ function deps(): FirestoreCollectionDeps {
     firestore: env.authenticatedContext(OWNER).firestore() as unknown as Firestore,
     account,
     clock: { now: () => new Date('2026-09-05T12:00:00Z') },
+    tombstones: tombstoneSink(),
   }
 }
 

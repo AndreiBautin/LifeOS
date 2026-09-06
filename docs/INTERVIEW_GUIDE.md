@@ -277,7 +277,7 @@ reads better than one who says nothing is wrong.
 > than eighty-nine changed call sites. Teaching each card to tell an
 > error from loading is still the thorough version.
 >
-> Tombstones are vestigial under Firestore. Settings and the map's fog
+> Settings and the map's fog
 > do not travel between devices. And the service-worker lifecycle is the
 > one thing here that ships on reasoning rather than on having been
 > driven, because registration is refused in the automation environment.

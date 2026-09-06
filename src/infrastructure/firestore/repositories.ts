@@ -55,7 +55,7 @@ const byNewest = <T extends { readonly updatedAt?: string }>(records: readonly T
   [...records].sort((a, b) => (b.updatedAt ?? '').localeCompare(a.updatedAt ?? ''))
 
 export function createFirestoreExercises(deps: FirestoreCollectionDeps): ExerciseRepository {
-  const store = createFirestoreCollection<Exercise>(deps, 'exercises')
+  const store = createFirestoreCollection<Exercise>(deps, 'exercises', undefined, 'exercises')
 
   return {
     all: () => store.all(),
@@ -69,7 +69,7 @@ export function createFirestoreExercises(deps: FirestoreCollectionDeps): Exercis
 }
 
 export function createFirestoreWorkouts(deps: FirestoreCollectionDeps): WorkoutRepository {
-  const store = createFirestoreCollection<WorkoutLog>(deps, 'workouts')
+  const store = createFirestoreCollection<WorkoutLog>(deps, 'workouts', undefined, 'workouts')
 
   /** Newest first, which is what every caller here wants. */
   const byDate = async (): Promise<readonly WorkoutLog[]> =>
@@ -118,7 +118,7 @@ export function createFirestoreWorkouts(deps: FirestoreCollectionDeps): WorkoutR
 }
 
 export function createFirestoreCheckIns(deps: FirestoreCollectionDeps): CheckInRepository {
-  const store = createFirestoreCollection<CheckIn>(deps, 'checkIns')
+  const store = createFirestoreCollection<CheckIn>(deps, 'checkIns', undefined, 'checkIns')
 
   return {
     all: () => store.all(),
@@ -134,7 +134,7 @@ export function createFirestoreCheckIns(deps: FirestoreCollectionDeps): CheckInR
 }
 
 export function createFirestoreItems(deps: FirestoreCollectionDeps): BacklogItemRepository {
-  const store = createFirestoreCollection<Item>(deps, 'items')
+  const store = createFirestoreCollection<Item>(deps, 'items', undefined, 'items')
 
   return {
     all: () => store.all(),
@@ -149,7 +149,7 @@ export function createFirestoreItems(deps: FirestoreCollectionDeps): BacklogItem
 }
 
 export function createFirestoreProjects(deps: FirestoreCollectionDeps): ProjectRepository {
-  const store = createFirestoreCollection<Project>(deps, 'projects')
+  const store = createFirestoreCollection<Project>(deps, 'projects', undefined, 'projects')
 
   return {
     all: () => store.all(),
@@ -165,7 +165,7 @@ export function createFirestoreProjects(deps: FirestoreCollectionDeps): ProjectR
 }
 
 export function createFirestoreUpgrades(deps: FirestoreCollectionDeps): UpgradeRepository {
-  const store = createFirestoreCollection<Upgrade>(deps, 'upgrades')
+  const store = createFirestoreCollection<Upgrade>(deps, 'upgrades', undefined, 'upgrades')
 
   return {
     all: () => store.all(),
@@ -214,7 +214,7 @@ export function createFirestoreReview(deps: FirestoreCollectionDeps): ReviewRepo
 }
 
 export function createFirestorePlaces(deps: FirestoreCollectionDeps): PlaceRepository {
-  const store = createFirestoreCollection<Place>(deps, 'places')
+  const store = createFirestoreCollection<Place>(deps, 'places', undefined, 'places')
 
   return {
     all: () => store.all(),
@@ -228,7 +228,7 @@ export function createFirestorePlaces(deps: FirestoreCollectionDeps): PlaceRepos
 }
 
 export function createFirestoreTrips(deps: FirestoreCollectionDeps): TripRepository {
-  const store = createFirestoreCollection<Trip>(deps, 'trips')
+  const store = createFirestoreCollection<Trip>(deps, 'trips', undefined, 'trips')
 
   return {
     all: () => store.all(),
@@ -241,7 +241,7 @@ export function createFirestoreTrips(deps: FirestoreCollectionDeps): TripReposit
 }
 
 export function createFirestoreVices(deps: FirestoreCollectionDeps): ViceRepository {
-  const store = createFirestoreCollection<Vice>(deps, 'vices')
+  const store = createFirestoreCollection<Vice>(deps, 'vices', undefined, 'vices')
 
   return {
     all: () => store.all(),
@@ -255,7 +255,12 @@ export function createFirestoreVices(deps: FirestoreCollectionDeps): ViceReposit
 
 /** Keyed by month, like the review snapshots and for the same reason. */
 export function createFirestoreFinance(deps: FirestoreCollectionDeps): FinanceRepository {
-  const store = createFirestoreCollection<FinanceReading>(deps, 'finance', (row) => row.month)
+  const store = createFirestoreCollection<FinanceReading>(
+    deps,
+    'finance',
+    (row) => row.month,
+    'finance',
+  )
 
   return {
     all: () => store.all(),
@@ -267,7 +272,7 @@ export function createFirestoreFinance(deps: FirestoreCollectionDeps): FinanceRe
 }
 
 export function createFirestoreRooms(deps: FirestoreCollectionDeps): RoomRepository {
-  const store = createFirestoreCollection<Room>(deps, 'rooms')
+  const store = createFirestoreCollection<Room>(deps, 'rooms', undefined, 'rooms')
 
   return {
     all: () => store.all(),
@@ -280,7 +285,7 @@ export function createFirestoreRooms(deps: FirestoreCollectionDeps): RoomReposit
 }
 
 export function createFirestoreAttempts(deps: FirestoreCollectionDeps): AttemptRepository {
-  const store = createFirestoreCollection<Attempt>(deps, 'attempts')
+  const store = createFirestoreCollection<Attempt>(deps, 'attempts', undefined, 'attempts')
 
   return {
     all: () => store.all(),
@@ -293,7 +298,12 @@ export function createFirestoreAttempts(deps: FirestoreCollectionDeps): AttemptR
 }
 
 export function createFirestoreChallenges(deps: FirestoreCollectionDeps): ChallengeRepository {
-  const store = createFirestoreCollection<ChallengeMark>(deps, 'challenges')
+  const store = createFirestoreCollection<ChallengeMark>(
+    deps,
+    'challenges',
+    undefined,
+    'challenges',
+  )
 
   return {
     all: () => store.all(),
@@ -305,7 +315,7 @@ export function createFirestoreChallenges(deps: FirestoreCollectionDeps): Challe
 }
 
 export function createFirestoreCampaigns(deps: FirestoreCollectionDeps): CampaignRepository {
-  const store = createFirestoreCollection<Campaign>(deps, 'campaigns')
+  const store = createFirestoreCollection<Campaign>(deps, 'campaigns', undefined, 'campaigns')
 
   return {
     all: () => store.all(),

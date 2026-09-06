@@ -377,7 +377,11 @@ Stated here rather than discovered:
   skeletons, and a skeleton beside a banner saying a read failed is no
   longer a lie. Teaching each card to tell the two apart is still the
   thorough fix.
-- **Tombstones are vestigial** under Firestore, and still declared.
+- **Tombstones are written on both paths now**, and the label they
+  carried here for several rounds — "vestigial under Firestore" — was
+  wrong. They are read by the backup import, which is the case they were
+  built for and which Firestore does nothing about: a backup file is a
+  second copy of the database travelling through time.
 - **Settings and the fog do not travel between devices.**
 - **The service-worker lifecycle cannot be tested from an agent's
   browser** — registration is refused there — so the install → wait →

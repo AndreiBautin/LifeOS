@@ -6911,11 +6911,59 @@ only to delete without writing the tombstone that `remove` wrote, and
 with one authoritative copy there are no tombstones — a delete is a
 delete, and every device sees it on the next read.
 
-**Tombstones themselves are still declared and still written by the
-IndexedDB repositories.** They are vestigial rather than removed: the
-backup envelope and the backlog transfer both still carry them, and on a
-Firestore-backed device nothing writes one. Removing the concept touches
-the backup, the transfer and four repositories, and is a separate job.
+**Tombstones are live on both paths, and the paragraph that used to sit
+here said the opposite for several months.** It called them "vestigial
+rather than removed" and noted, as though it were a tidy-up waiting to
+happen, that on a Firestore-backed device nothing writes one. That
+sentence described a **bug** and filed it as dead weight.
+
+**The claim above — "with one authoritative copy there are no
+tombstones" — is true of _sync_ and false of _import_.** A backup file is
+a second copy of the database travelling through time. Delete a session,
+import a backup taken before it, and the session comes back, counted as
+an _addition_, because from the merge's point of view that is exactly
+what it is. Firestore being authoritative does not help, because the
+import writes **into** Firestore. That is the original bug this whole
+concept exists for, reachable on the Firestore path the entire time it
+was labelled vestigial.
+
+`FirestoreCollectionDeps` carries a `TombstoneRepository` now, and it is
+**required rather than optional** so a new collection cannot quietly skip
+it — the compiler found all six construction sites the moment it changed.
+
+**`buriedAs` is stated per collection, never inferred from the name.**
+The two vocabularies genuinely differ — the review's snapshots live under
+`metrics` and `snapshots` in Firestore and are buried as `reviews` — so a
+name-matching rule would silently bury nothing for exactly the
+collections whose names disagree. Same shape as the `KEYED_BY` map, and
+`null` means "not merged, nothing to resurrect" explicitly rather than by
+omission.
+
+**The sink is the local store, not a Firestore one.** A tombstone answers
+"was this deleted, or have I simply never seen it" for a backup being
+imported _on this device_. The file is local, the import is local, the
+question is local. Putting them in Firestore would make deletions travel,
+which sync already does immediately by deleting the document.
+
+**`watchRecords` takes `WatchDeps` instead**, being `firestore` and
+`account` only. Watching never deletes, so asking it for a tombstone sink
+would make a caller supply one to satisfy a type rather than because
+anything reads it — and a dependency nothing reads is the first one to be
+wired wrongly.
+
+**The test that encoded the wrong belief was inverted, not deleted.**
+`collection.emulator.test.ts` → "removes a record with no tombstone left
+behind" is now "records a deletion so a later import cannot undo it", so
+quietly restoring the old behaviour has to be said out loud. There is a
+second one for the `null` case. Both run against a real Firestore.
+
+**The lesson is about the label rather than the code.** "Vestigial" was
+written once, from reasoning that sounded complete, and then repeated in
+four documents and several status reports without anybody opening the
+file. Nothing in the suite could contradict it, because the missing
+behaviour had no test — an absence cannot fail. **A claim that something
+is dead is a claim worth checking before it is repeated**, and the check
+is one grep: who writes it, who reads it.
 
 **Three things stopped travelling and are named here rather than
 discovered.** The shared half of the settings — bodyweight, estimated
