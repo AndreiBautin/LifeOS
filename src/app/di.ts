@@ -26,7 +26,8 @@ import type {
   UpgradeRepository,
   WorkoutRepository,
 } from '@/domain/repositories/ports'
-import { DATABASE_NAME } from '@/config/storage-keys'
+import { DATABASE_NAME, IS_DEMO } from '@/config/storage-keys'
+import { seedDemoData } from '@/application/use-cases/demo/seed'
 import { readFirebaseConfig } from '@/config/firebase'
 import { createAccountHolder, type AccountHolder } from '@/infrastructure/firestore/account-holder'
 import type { FirestoreCollectionDeps } from '@/infrastructure/firestore/collection'
@@ -297,6 +298,19 @@ export async function bootstrap(): Promise<BootstrapResult> {
    *
    * Found by driving it. Nothing depends on the number but a log line.
    */
+  /*
+   * **A demo build fills itself the first time it is opened.**
+   *
+   * Only when empty — `seedDemoData` refuses otherwise — so a visitor
+   * who has since added something of their own keeps it. It runs before
+   * the first render for the same reason the database is opened here:
+   * no screen should have to handle "the app is not ready yet".
+   */
+  if (IS_DEMO) {
+    const seeded = await seedDemoData(services)
+    logger.info('demo.seed', { seeded: seeded.seeded, reason: seeded.reason ?? 'none' })
+  }
+
   const exerciseCount = remote === undefined ? await services.exercises.count() : undefined
 
   // Asks the browser to exempt this origin from eviction under disk

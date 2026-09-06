@@ -84,7 +84,33 @@ function backIn(at: Date, now: Date): string {
   return rest === 0 ? `${String(hours)}h` : `${String(hours)}h ${String(rest)}m`
 }
 
-function Pips({ reading }: { readonly reading: Pool['reading'] }) {
+/**
+ * How many marks are lit, which is not the same question in both
+ * directions.
+ *
+ * **A limit draws what is left; a target draws what is done.** Both are
+ * `capacity` marks and only the filling differs: three drinks remaining
+ * answers "can I have one", and two servings eaten answers "have I had
+ * enough". Drawing remaining for a target inverts it exactly — a fully
+ * met target came out as an empty row of pips reading `0 of 2` beside a
+ * **Reached** badge, which is good news rendered as a failure.
+ *
+ * The measured branch has always shown `onCooldown`, so this is the
+ * counted half catching up rather than a new rule.
+ */
+function litPips(reading: Pool['reading'], isTarget: boolean): number {
+  return isTarget ? reading.onCooldown : reading.available
+}
+
+function Pips({
+  reading,
+  isTarget,
+}: {
+  readonly reading: Pool['reading']
+  readonly isTarget: boolean
+}) {
+  const lit = litPips(reading, isTarget)
+
   /*
    * Pips rather than a continuous bar, because the quantity is discrete.
    * A half-full bar invites the question of whether that is one and a
@@ -99,8 +125,8 @@ function Pips({ reading }: { readonly reading: Pool['reading'] }) {
         value={reading.onCooldown}
         of={reading.capacity}
         height={6}
-        tone={reading.available > 0 ? 'accent' : 'warn'}
-        label={`${String(reading.available)} of ${String(reading.capacity)} left`}
+        tone={isTarget ? 'good' : reading.available > 0 ? 'accent' : 'warn'}
+        label={`${String(lit)} of ${String(reading.capacity)}`}
       />
     )
   }
@@ -110,10 +136,7 @@ function Pips({ reading }: { readonly reading: Pool['reading'] }) {
       {Array.from({ length: reading.capacity }, (_, index) => (
         <span
           key={index}
-          className={cn(
-            'h-2.5 w-2.5 rounded-full',
-            index < reading.available ? 'bg-accent-500' : 'bg-ink-700',
-          )}
+          className={cn('h-2.5 w-2.5 rounded-full', index < lit ? 'bg-accent-500' : 'bg-ink-700')}
         />
       ))}
       {/* Anything past the allowance gets its own mark rather than being
@@ -374,7 +397,7 @@ export function PoolRow({
             <span className="numeric">
               {reading.over > 0
                 ? `${String(reading.over)} over`
-                : `${String(reading.available)} of ${String(reading.capacity)}`}
+                : `${String(litPips(reading, isTarget))} of ${String(reading.capacity)}`}
               {detail.length > 0 && ` · ${detail.join(' · ')}`}
             </span>
             {reading.days !== undefined && (
@@ -386,7 +409,7 @@ export function PoolRow({
           </p>
         </div>
 
-        <Pips reading={reading} />
+        <Pips reading={reading} isTarget={isTarget} />
         <CountedLog vice={vice} />
         {action}
       </div>
@@ -422,7 +445,7 @@ export function PoolRow({
             <span className="text-bad-500">{reading.over} over</span>
           ) : (
             <span className="text-ink-500">
-              {reading.available} of {reading.capacity}
+              {litPips(reading, isTarget)} of {reading.capacity}
             </span>
           )}
           {measured && reading.over > 0 && (
@@ -447,7 +470,7 @@ export function PoolRow({
             label={`${vice.name}: ${String(reading.onCooldown)} of ${String(vice.capacity)} ${vice.unit ?? ''}`}
           />
         ) : (
-          <Pips reading={reading} />
+          <Pips reading={reading} isTarget={isTarget} />
         )}
       </div>
 

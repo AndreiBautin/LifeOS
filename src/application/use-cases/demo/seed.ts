@@ -1,0 +1,620 @@
+import { addCampaign } from '@/application/use-cases/campaign/campaign'
+import { addPlace, visitPlace } from '@/application/use-cases/atlas/atlas'
+import { addProject } from '@/application/use-cases/projects/projects'
+import { addRoom, recordClear } from '@/application/use-cases/base/declutter'
+import { addUpgrade } from '@/application/use-cases/upgrades/upgrades'
+import { createItem } from '@/domain/backlog/item'
+import type { CategoryId } from '@/domain/atlas/category/CategoryDefinition'
+import type { ExerciseId, WorkoutId } from '@/domain/ids/ids'
+import type { LogEntry, WorkoutLog } from '@/domain/logging/workout-log'
+import { toMonthKey } from '@/domain/time/day'
+import type { Clock } from '@/domain/repositories/ports'
+
+import type { DemoDeps } from './deps'
+
+/**
+ * The data the deployed app shows a first-time visitor.
+ *
+ * Three things make this safe to publish, and they are structural rather
+ * than careful:
+ *
+ * 1. **Generated, never captured.** Every record below is written here,
+ *    in a file anybody can read. There is no export step from a personal
+ *    device anywhere in the pipeline, so there is no path by which real
+ *    data could arrive.
+ * 2. **A separate namespace.** A demo build sets `VITE_DEMO_MODE`, which
+ *    moves the IndexedDB name and every storage key to a `lifeos.demo`
+ *    prefix. The demo and any personal data on the same browser cannot
+ *    collide.
+ * 3. **Seeded only into empty storage.** `seedDemoData` refuses when
+ *    anything is already there. That is a tested property rather than a
+ *    convention — see `seed.test.ts`.
+ *
+ * **It drives the app's own use cases rather than writing records.**
+ * Hand-built fixtures drift from the types they imitate and can encode
+ * states the app cannot actually produce; going through `addProject` and
+ * the rest means a fixture that compiles is a fixture the app could have
+ * created, and every invariant those functions enforce holds here too.
+ *
+ * **Every date is an offset from the seed moment.** A fixture pinned to
+ * absolute dates rots: opened a year later it shows dead streaks and an
+ * empty "this month". Offsets keep it alive while staying deterministic
+ * for a given clock.
+ */
+
+export interface SeedResult {
+  readonly seeded: boolean
+  /** Why not, when it declined. */
+  readonly reason?: 'already-has-data'
+}
+
+/**
+ * Days before the seed moment, as a **local** day key.
+ *
+ * Deliberately not `daysAgo(...).slice(0, 10)`, which is the UTC date —
+ * west of Greenwich the two disagree for the last hours of every evening,
+ * and a workout filed under tomorrow's key is a workout the history
+ * screen shows on the wrong day. There is a lint rule about this.
+ */
+function dayKeyAgo(clock: Clock, days: number): string {
+  const day = new Date(clock.now().getTime() - days * 86_400_000)
+  const month = String(day.getMonth() + 1).padStart(2, '0')
+  const date = String(day.getDate()).padStart(2, '0')
+  return `${String(day.getFullYear())}-${month}-${date}`
+}
+
+/** Days before the seed moment, as an ISO timestamp. */
+function daysAgo(clock: Clock, days: number): string {
+  return new Date(clock.now().getTime() - days * 86_400_000).toISOString()
+}
+
+/** The month `back` months before the seed moment, as `YYYY-MM`. */
+function monthsAgo(clock: Clock, back: number): string {
+  const now = clock.now()
+  return toMonthKey(new Date(now.getFullYear(), now.getMonth() - back, 1))
+}
+
+/**
+ * Fills empty storage with a demonstration dataset.
+ *
+ * **Named for filling rather than for resetting**, and there is
+ * deliberately no flag to make it overwrite. A call site must not be
+ * able to ask for "fill if empty" and receive "wipe and replace" — the
+ * rule this codebase already holds for destructive operations
+ * everywhere else.
+ */
+export async function seedDemoData(deps: DemoDeps): Promise<SeedResult> {
+  const [items, projects, upgrades] = await Promise.all([
+    deps.items.count(),
+    deps.projects.count(),
+    deps.upgrades.count(),
+  ])
+
+  if (items + projects + upgrades > 0) return { seeded: false, reason: 'already-has-data' }
+
+  await seedCodex(deps)
+  await seedQuests(deps)
+  await seedTechTree(deps)
+  await seedBase(deps)
+  await seedFinance(deps)
+  await seedArc(deps)
+  await seedBuffs(deps)
+  await seedMap(deps)
+  await seedSettings(deps)
+  await seedTraining(deps)
+
+  return { seeded: true }
+}
+
+/**
+ * A reading and playing list that covers every status the screen can
+ * draw, plus the two edge cases worth having on screen: one entry with
+ * only the required fields, and one with a title long enough to wrap.
+ */
+async function seedCodex(deps: DemoDeps): Promise<void> {
+  const make = (
+    title: string,
+    category: string,
+    over: Partial<Parameters<typeof createItem>[0]> = {},
+    daysBack = 30,
+  ) =>
+    createItem(
+      { title, category, ...over },
+      {
+        clock: { now: () => new Date(daysAgo(deps.clock, daysBack)) },
+        ids: deps.ids,
+      },
+    )
+
+  /*
+   * **Finishing is a stamp, not a status.** `tallyActs` counts
+   * `dateCompleted`, deliberately — an item reopened and finished again
+   * is one finish, not two. A fixture that only set `status: 'completed'`
+   * therefore paid no XP at all, and the landing page read Level 1 with
+   * every trait empty. Found by opening the demo build rather than by a
+   * test, which is why the parity test below now exists.
+   */
+  const finished = (item: ReturnType<typeof createItem>, daysBack: number) => ({
+    ...item,
+    dateCompleted: daysAgo(deps.clock, daysBack),
+  })
+
+  /** A run of days with something logged against them. */
+  const withProgress = (item: ReturnType<typeof createItem>, days: readonly number[]) => ({
+    ...item,
+    dailyProgress: days.map((back) => ({
+      date: daysAgo(deps.clock, back).slice(0, 10),
+      amount: 1,
+    })),
+  })
+
+  const rows = [
+    withProgress(
+      make(
+        'The Pragmatic Programmer',
+        'books',
+        { status: 'currently-using', priority: 'high' },
+        40,
+      ),
+      [1, 2, 3, 5, 8],
+    ),
+    make('Designing Data-Intensive Applications', 'books', { status: 'backlog' }, 25),
+    finished(make('Project Hail Mary', 'books', { status: 'completed', favorite: true }, 90), 12),
+    withProgress(
+      make('Outer Wilds', 'games', { status: 'currently-using', priority: 'high' }, 20),
+      [1, 4, 6],
+    ),
+    finished(make('Return of the Obra Dinn', 'games', { status: 'completed' }, 120), 30),
+    make('Slay the Spire', 'games', { status: 'paused' }, 60),
+    make('Frieren: Beyond Journey’s End', 'anime', { status: 'currently-using' }, 15),
+    make('The Bear', 'tv-shows', { status: 'backlog', priority: 'low' }, 10),
+    finished(make('Everything Everywhere All At Once', 'movies', { status: 'completed' }, 200), 45),
+    /* Only the required fields — the minimal record a screen must survive. */
+    make('Dune', 'movies'),
+    /* Long enough to wrap on a phone, which is the layout edge case. */
+    make(
+      'A Very Long Title That Exists Precisely To Prove The Row Wraps Rather Than Clipping',
+      'articles',
+      { status: 'backlog' },
+      5,
+    ),
+  ]
+
+  await Promise.all(rows.map((item) => deps.items.save(item)))
+}
+
+/** One main quest, one side quest, a contract, and something finished. */
+async function seedQuests(deps: DemoDeps): Promise<void> {
+  await addProject(
+    {
+      name: 'Ship the portfolio site',
+      kind: 'main',
+      steps: ['Pick the three projects', 'Write the case studies', 'Buy the domain'],
+    },
+    deps,
+  )
+
+  await addProject(
+    {
+      name: 'Learn enough Rust to be dangerous',
+      kind: 'side',
+      steps: ['Read the book to chapter 10', 'Port one small tool'],
+    },
+    deps,
+  )
+
+  await addProject(
+    {
+      name: 'Fix the porch light',
+      belongsTo: 'base',
+      approach: 'diy',
+      steps: ['Work out what it needs', 'Get the materials', 'Do the work'],
+    },
+    deps,
+  )
+}
+
+/** Two shelves, a prerequisite chain, and something already owned. */
+async function seedTechTree(deps: DemoDeps): Promise<void> {
+  const desk = await addUpgrade(
+    {
+      title: 'Standing desk',
+      category: 'home',
+      shelf: 'base',
+      estimatedCostMinorUnits: 45_000,
+    },
+    deps,
+  )
+
+  await addUpgrade(
+    {
+      title: 'Monitor arm',
+      category: 'office',
+      shelf: 'tech',
+      estimatedCostMinorUnits: 12_000,
+      /* Gated on the desk, so the tree has an edge to draw and a lock. */
+      ...(desk.upgrade === undefined ? {} : { prerequisiteId: desk.upgrade.id }),
+    },
+    deps,
+  )
+
+  await addUpgrade(
+    {
+      title: 'Mechanical keyboard',
+      category: 'office',
+      shelf: 'tech',
+      estimatedCostMinorUnits: 9_000,
+    },
+    deps,
+  )
+}
+
+/** Rooms with readings, so the clutter average has something to average. */
+async function seedBase(deps: DemoDeps): Promise<void> {
+  const rooms: readonly [string, number][] = [
+    ['Kitchen', 95],
+    ['Living room', 70],
+    ['Office', 45],
+    ['Garage', 20],
+  ]
+
+  /*
+   * `addRoom` reports a refusal rather than handing the room back, so the
+   * reading is applied by finding it afterwards — the same two steps the
+   * screen takes.
+   */
+  for (const [name, clear] of rooms) {
+    await addRoom(name, deps)
+    const saved = (await deps.rooms.all()).find((one) => one.name === name)
+    if (saved !== undefined) await recordClear(saved.id, clear, deps)
+  }
+
+  /* One room nobody has looked at — the absent-never-zero case. */
+  await addRoom('Loft', deps)
+}
+
+/** Three months, so every trend on the screen has two points to compare. */
+async function seedFinance(deps: DemoDeps): Promise<void> {
+  const months: readonly { back: number; net: number; credit: number; saved: number }[] = [
+    { back: 2, net: 4_100_000, credit: 712, saved: 240_000 },
+    { back: 1, net: 4_350_000, credit: 728, saved: 310_000 },
+    { back: 0, net: 4_620_000, credit: 741, saved: 385_000 },
+  ]
+
+  /*
+   * **Written through the repository rather than `recordFinance`**, which
+   * is the one place this seeder does not drive a use case. That function
+   * derives the month from the clock on purpose — a reading is a
+   * statement about *now* — so it cannot write history, and history is
+   * exactly what a trend needs. Two points make a direction; one makes a
+   * number.
+   */
+  for (const month of months) {
+    await deps.finance.save({
+      month: monthsAgo(deps.clock, month.back),
+      netWorthMinor: month.net,
+      retirementMinor: Math.round(month.net * 0.42),
+      creditScore: month.credit,
+      salaryMinor: 11_800_000,
+      savingsMinor: month.saved,
+      surplusMinor: 90_000,
+    })
+  }
+}
+
+/** The long arc, with one stage already met so the bars are not all empty. */
+async function seedArc(deps: DemoDeps): Promise<void> {
+  await addCampaign(
+    {
+      name: 'Move somewhere with a garden',
+      aim: 'Out of the flat and into somewhere with a bit of outside.',
+      stages: [
+        { name: 'Fix up the flat', requirement: { kind: 'house-jobs', count: 8 } },
+        { name: 'Improve my income', requirement: { kind: 'salary', minorUnits: 15_000_000 } },
+        { name: 'Save the deposit', requirement: { kind: 'savings', minorUnits: 1_000_000 } },
+      ],
+    },
+    deps,
+  )
+}
+
+/**
+ * Potions and restoratives, which are the two cards the landing page
+ * draws under "Buffs" and the health bar.
+ *
+ * Written through the repository rather than a use case for the reason
+ * the finance history is: the pools need *spends already on them* to
+ * demonstrate anything, and spending is a thing that happens at a
+ * moment rather than something a create call takes.
+ */
+async function seedBuffs(deps: DemoDeps): Promise<void> {
+  const at = (daysBack: number, hour: number) => {
+    const day = new Date(deps.clock.now().getTime() - daysBack * 86_400_000)
+    day.setHours(hour, 0, 0, 0)
+    return day.toISOString()
+  }
+
+  const pools = [
+    {
+      id: deps.ids.next(),
+      name: 'Caffeine',
+      capacity: 400,
+      unit: 'mg',
+      icon: 'coffee',
+      cycle: { kind: 'calendar', period: 'day' },
+      presets: [
+        { label: 'Coffee', amount: 95 },
+        { label: 'Double espresso', amount: 130 },
+      ],
+      /* Two in today, so the pool reads part-spent rather than untouched. */
+      spent: [`${at(0, 8)}#95`, `${at(0, 11)}#130`],
+    },
+    {
+      id: deps.ids.next(),
+      name: 'Alcohol',
+      capacity: 3,
+      icon: 'beer',
+      cycle: { kind: 'calendar', period: 'day' },
+      daysLimit: { days: 2, period: 'week' },
+      spent: [at(2, 20), at(2, 21)],
+    },
+    {
+      id: deps.ids.next(),
+      name: 'Water',
+      capacity: 128,
+      unit: 'oz',
+      icon: 'droplet',
+      direction: 'target',
+      cycle: { kind: 'calendar', period: 'day' },
+      presets: [
+        { label: 'Gallon jug', amount: 128 },
+        { label: 'Bottle', amount: 32 },
+      ],
+      spent: [`${at(0, 9)}#32`, `${at(0, 13)}#32`, `${at(1, 10)}#128`],
+    },
+    {
+      id: deps.ids.next(),
+      name: 'Vegetables',
+      capacity: 2,
+      icon: 'carrot',
+      direction: 'target',
+      cycle: { kind: 'calendar', period: 'day' },
+      spent: [at(0, 13), at(0, 19), at(1, 19)],
+    },
+  ]
+
+  for (const pool of pools) {
+    await deps.vices.save(pool as unknown as Parameters<typeof deps.vices.save>[0])
+  }
+}
+
+/**
+ * Somewhere to go, and somewhere already been.
+ *
+ * **The visited half is what lights the fog.** `allExploredCells`
+ * derives cells from places carrying a `dateVisited`, so the exploration
+ * ladder and the cleared area on the map need no fixture of their own —
+ * and seeding `exploredCells` directly would be a second, disagreeing
+ * answer to the same question.
+ *
+ * Every coordinate is a public landmark in one city, which is the whole
+ * safety argument for this section rather than a matter of taste: an
+ * address is the one field on this screen that could be somebody's home,
+ * so the fixture contains none that is not already on a postcard. They
+ * sit close together so the map opens on a frame rather than on an ocean.
+ */
+async function seedMap(deps: DemoDeps): Promise<void> {
+  const atlas = {
+    places: deps.places,
+    explored: deps.explored,
+    clock: deps.clock,
+    ids: deps.ids,
+  }
+
+  const rows = [
+    {
+      name: 'Golden Gate Park',
+      categoryId: 'outdoors' as CategoryId,
+      latitude: 37.7694,
+      longitude: -122.4862,
+      city: 'San Francisco',
+      visited: true,
+      favorite: true,
+      tags: ['walkable', 'free'],
+    },
+    {
+      name: 'Ferry Building Marketplace',
+      categoryId: 'food' as CategoryId,
+      latitude: 37.7955,
+      longitude: -122.3937,
+      city: 'San Francisco',
+      visited: true,
+      tags: ['coffee'],
+    },
+    {
+      name: 'Exploratorium',
+      categoryId: 'culture' as CategoryId,
+      latitude: 37.8017,
+      longitude: -122.3973,
+      city: 'San Francisco',
+      visited: true,
+    },
+    {
+      name: 'Lands End Trail',
+      categoryId: 'outdoors' as CategoryId,
+      latitude: 37.7809,
+      longitude: -122.5058,
+      city: 'San Francisco',
+      priority: 'high' as const,
+      tags: ['walkable'],
+    },
+    {
+      name: 'City Lights Booksellers',
+      categoryId: 'shops' as CategoryId,
+      latitude: 37.7976,
+      longitude: -122.4066,
+      city: 'San Francisco',
+      priority: 'high' as const,
+    },
+    {
+      name: 'Coit Tower',
+      categoryId: 'landmarks' as CategoryId,
+      latitude: 37.8025,
+      longitude: -122.4058,
+      city: 'San Francisco',
+      priority: 'low' as const,
+    },
+    /*
+     * **A place with no point is a supported entry, not a broken one.**
+     * It is the name-only capture the inbox exists to resolve, and
+     * without one that screen has nothing to demonstrate.
+     */
+    { name: 'That ramen place someone mentioned', categoryId: 'food' as CategoryId },
+  ]
+
+  for (const { visited, ...input } of rows) {
+    const created = await addPlace(input, atlas)
+    if (visited === true && created.place !== undefined) {
+      await visitPlace(created.place.id, atlas)
+    }
+  }
+}
+
+/**
+ * The one setting the demo states, and it is a denominator.
+ *
+ * **A ladder is only a ladder because something outside the app fixes
+ * its scale**, and for exploration that is the area of the region being
+ * explored — which nothing here can know. Left unset the reading is
+ * *absent*, which is the honest answer and demonstrates nothing, so the
+ * fixture names a region the way a person would: the city its places are
+ * in, at roughly its real area.
+ *
+ * **Merged rather than replaced.** Everything else in settings is a
+ * default the app chose, and overwriting the blob to set one field would
+ * make the demo silently responsible for every other one.
+ */
+async function seedSettings(deps: DemoDeps): Promise<void> {
+  const current = await deps.settings.get()
+  /* San Francisco, near enough. */
+  await deps.settings.save({ ...current, exploredRegionKm2: 121 })
+}
+
+/**
+ * Three finished sessions, so Strength and Stamina are not empty bars.
+ *
+ * **This is the one part written as records rather than driven through
+ * the use cases**, and it is worth saying why, because the rest of this
+ * file argues the opposite. `startWorkout` opens *today's* programme day
+ * and `finishWorkout` advances the position from wherever it now stands,
+ * so a loop of start-then-finish yields three sessions all dated today
+ * with the block three days further on than the history claims. There is
+ * no way to ask those use cases for a session that happened last week,
+ * because from the app's point of view there never is one.
+ *
+ * What that gives up is the guarantee that the fixture can only hold
+ * states the app could produce. It is bought back with the real exercise
+ * slugs, the real `SetPrescription` shape and the real roles — and by
+ * the parity test, which renders the screens rather than trusting the
+ * records.
+ */
+async function seedTraining(deps: DemoDeps): Promise<void> {
+  const lifted = (
+    slug: string,
+    order: number,
+    role: LogEntry['role'],
+    load: number,
+    reps: number,
+  ): LogEntry => ({
+    exerciseId: slug as ExerciseId,
+    role,
+    order,
+    sets: Array.from({ length: 3 }, () => ({
+      prescription: {
+        load: { kind: 'working' as const },
+        reps: { kind: 'range' as const, low: reps - 2, high: reps + 2 },
+      },
+      plannedLoad: load,
+      plannedReps: reps,
+      actualLoad: load,
+      actualReps: reps,
+      outcome: 'completed' as const,
+      isWarmup: false,
+    })),
+  })
+
+  /*
+   * The conditioning entry is what pays Stamina, and only because a set
+   * on it is completed: `hasConditioning` asks whether the work was
+   * *done* rather than whether it was scheduled. A fixture of slots with
+   * nothing logged against them would leave that bar empty while looking,
+   * from the record, like a full week of training.
+   */
+  const walked = (order: number): LogEntry => ({
+    exerciseId: 'incline-walk' as ExerciseId,
+    role: 'conditioning',
+    order,
+    sets: [
+      {
+        prescription: {
+          load: { kind: 'bodyweight' as const },
+          reps: { kind: 'time' as const, seconds: 1800 },
+        },
+        outcome: 'completed' as const,
+        isWarmup: false,
+      },
+    ],
+  })
+
+  const sessions = [
+    {
+      daysBack: 6,
+      entries: [
+        lifted('low-bar-squat', 0, 'strength', 245, 5),
+        lifted('bench-press', 1, 'hypertrophy', 165, 10),
+        lifted('barbell-row', 2, 'hypertrophy', 135, 10),
+        walked(3),
+      ],
+    },
+    {
+      daysBack: 4,
+      entries: [
+        lifted('bench-press', 0, 'strength', 190, 5),
+        lifted('pull-up', 1, 'hypertrophy', 0, 8),
+        lifted('db-lateral-raise', 2, 'hypertrophy', 20, 15),
+        walked(3),
+      ],
+    },
+    {
+      daysBack: 2,
+      entries: [
+        lifted('sumo-deadlift', 0, 'strength', 315, 5),
+        lifted('dips', 1, 'hypertrophy', 0, 10),
+        lifted('barbell-calf-raise', 2, 'hypertrophy', 185, 15),
+        walked(3),
+      ],
+    },
+  ]
+
+  for (const session of sessions) {
+    const on = new Date(deps.clock.now().getTime() - session.daysBack * 86_400_000)
+    const log: WorkoutLog = {
+      id: deps.ids.next() as WorkoutId,
+      date: dayKeyAgo(deps.clock, session.daysBack),
+      startedAt: daysAgo(deps.clock, session.daysBack),
+      completedAt: daysAgo(deps.clock, session.daysBack),
+      status: 'completed',
+      /*
+       * **The weekday is read off the date rather than written beside
+       * it.** The app titles a session "Monday — Squat", and a fixture
+       * that hardcoded the word would be right on the day it was written
+       * and wrong every day after — a session dated Thursday reading
+       * "Friday", which is the exact rot relative dates exist to avoid,
+       * reintroduced in the label.
+       */
+      title: `${on.toLocaleDateString('en-US', { weekday: 'long' })} — Full body`,
+      entries: session.entries,
+    }
+    await deps.workouts.save(log)
+  }
+}
