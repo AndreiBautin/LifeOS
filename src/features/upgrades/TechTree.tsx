@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 
 import type { TreeEntry } from '@/domain/upgrades/recommendation'
 import { shelfOf, UPGRADE_SHELF_LABELS } from '@/domain/upgrades/shelf'
-import { formatMinorUnits, isOwned } from '@/domain/upgrades/upgrade'
+import { formatMinorUnits, isOpen, isOwned } from '@/domain/upgrades/upgrade'
 
 import { layoutTree, type LaidOutNode } from './tree-layout'
 
@@ -239,19 +239,35 @@ function TreeNodeBox({
   if (entry === undefined) return null
 
   const owned = isOwned(entry.upgrade)
+  /*
+   * **A dropped node is drawn and must never be drawn as reachable.**
+   * The lists below fold owned and dropped away behind the eye, and the
+   * picture did not — so an upgrade you had decided against came out
+   * accented, which on this screen means *the thing you can act on*.
+   * That is the defect the lists were already fixed for, surviving one
+   * layer up in the drawing: the tech tree recommending something you
+   * had said no to.
+   *
+   * It stays **drawn** rather than filtered, for the reason a locked
+   * node is: it may be somebody else's prerequisite, and removing it
+   * would leave a locked node with nothing on screen explaining why.
+   */
+  const dropped = !owned && !isOpen(entry.upgrade)
   const locked = entry.gates.length > 0
 
   /*
-   * Three states and each looks different at a glance, which is what a
-   * tech tree is for: owned is filled and quiet, reachable is accented
-   * because it is the thing you can act on, and locked is dimmed with
-   * its reason on the node.
+   * Four states, each different at a glance, which is what a tech tree
+   * is for: owned is filled and quiet, dropped is struck through and
+   * quieter still, reachable is accented because it is the thing you
+   * can act on, and locked is dimmed with its reason on the node.
    */
   const tone = owned
     ? 'border-good-500/40 bg-good-500/10 text-ink-100'
-    : entry.affordable
-      ? 'border-accent-500/50 bg-accent-500/10 text-ink-50'
-      : 'border-ink-800 bg-ink-900 text-ink-500'
+    : dropped
+      ? 'border-ink-800 bg-ink-900 text-ink-700'
+      : entry.affordable
+        ? 'border-accent-500/50 bg-accent-500/10 text-ink-50'
+        : 'border-ink-800 bg-ink-900 text-ink-500'
 
   return (
     <button
@@ -262,10 +278,16 @@ function TreeNodeBox({
       style={style}
       className={`tap-target absolute flex flex-col justify-center gap-0.5 rounded-lg border px-2 py-1.5 text-center ${tone}`}
     >
-      <span className="text-xs leading-tight font-medium break-words">{entry.upgrade.title}</span>
+      <span
+        className={`text-xs leading-tight font-medium break-words ${dropped ? 'line-through' : ''}`}
+      >
+        {entry.upgrade.title}
+      </span>
 
       {owned ? (
         <span className="text-good-500 text-[10px]">Owned</span>
+      ) : dropped ? (
+        <span className="text-ink-700 text-[10px]">Dropped</span>
       ) : (
         <span className="numeric text-[10px] opacity-80">
           {entry.upgrade.estimatedCostMinorUnits === undefined
@@ -274,7 +296,7 @@ function TreeNodeBox({
         </span>
       )}
 
-      {locked && !owned && (
+      {locked && !owned && !dropped && (
         <span className="text-ink-600 flex items-center justify-center gap-1 text-[10px]">
           <Lock size={9} aria-hidden />
           {/*
