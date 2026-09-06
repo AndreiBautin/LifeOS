@@ -7660,6 +7660,115 @@ A feature is usually a slice through the layers, inner first:
 4. **`features/<area>/hooks.ts`** — a TanStack Query hook resolving
    services from `useServices()`.
 5. **`features/<area>/`** — the component.
+   **The app is a portfolio piece now, and the deployed build is the demo
+   build.** Asked for as _"everything I want out of this app I can get
+   better from another. Instead of trying to use this, let's take what we
+   have and make a solid portfolio ready gamified productivity system. Not
+   need to try to actually implement, just set it up with demo data."_
+
+**That reverses the deploy.** `VITE_DEMO_MODE=true` and **no**
+`VITE_FIREBASE_*`, so the published page signs into nothing, stores
+locally, and fills itself on first open. The account gate is untouched
+and still works — it is simply not applied to what deploys, and
+`VITE_ALLOWED_UIDS` is now an inert repository variable. **The deployed
+site does not sync**; personal use runs from a local build with
+`.env.local`. This is the one paragraph that overrides everything above
+about the deploy being the personal app.
+
+**The fixture is generated, never captured**, and that is the whole
+safety argument. There is no export step from a personal device anywhere
+in the pipeline, so there is no path by which real records could reach
+it. `seed.test.ts` reads its own source and scans for emails, phone
+numbers, credential shapes and links out — the risk is not a typo, it is
+somebody pasting a real record in while debugging.
+
+**Two more barriers, both structural.** `VITE_DEMO_MODE` moves the
+database name and every storage key to a `lifeos.demo` prefix, so the
+demo and a personal build on one browser cannot collide. And
+`seedDemoData` **refuses when anything is already stored** — named for
+filling, with deliberately no flag that makes it overwrite, the rule this
+file holds for destructive pairs everywhere else.
+
+**It drives the use cases rather than writing records**, so a fixture
+that compiles is a fixture the app could have produced. **The workout
+history is the one exception and says why in place**: `startWorkout`
+opens _today's_ day and `finishWorkout` advances the position, so a loop
+of start-then-finish yields three sessions all dated today with the block
+three days ahead of what the history claims. There is no way to ask those
+use cases for a session that happened last week.
+
+**Every date is an offset from the seed moment**, and the weekday in a
+session title is read off the date rather than written beside it — a
+hardcoded "Friday" is right on the day it is typed and wrong every day
+after, which is the exact rot relative dates exist to avoid, reappearing
+in the label.
+
+**Four defects were found by opening the demo, with the suite green
+throughout.** They are listed because the shape is the lesson: a fixture
+is the first thing that has ever exercised these paths together.
+
+- **Finishing is a stamp, not a status.** `tallyActs` counts
+  `dateCompleted`, so a fixture of `status: 'completed'` records with no
+  completion dates paid **no XP at all** — the landing page read Level 1
+  with every trait empty.
+- **A counted _target_ drew what was left rather than what was done.**
+  Hitting two of two servings rendered an empty row of pips reading
+  `0 of 2` beside a **Reached** badge. The measured branch had always
+  shown `onCooldown`; `litPips` is the counted half catching up. **A
+  limit draws what is left; a target draws what is done.**
+- **The drawn tech tree recommended what you had decided against.** It
+  was handed every entry, so a cancelled upgrade rendered with the
+  accented tone — which on that screen means _the thing you can act on_.
+  That is the defect the **lists** were already fixed for, surviving one
+  layer up in the picture. There are four node states now, and a dropped
+  one is struck through. It stays **drawn** rather than filtered, for the
+  reason a locked node is: it may be another node's prerequisite.
+- **Session titles named weekdays their dates did not match.**
+
+**`parity.test.ts` is the guard, and the failure it catches is unique to
+having a demo.** A feature works perfectly against real data and renders
+an empty box on the deployed site, because the fixture has nothing that
+exercises it. Nothing errors, the feature's own tests keep passing, and
+the person who notices is the employer. It asserts obligations as
+**properties** — more than one trait proved, both shelves of the tree
+populated, the map holding places _and_ cleared ground — so editing the
+fixture stays free and hollowing it out does not.
+
+**Two areas read silent and that is correct**: `upgrades` and `vitals`
+both measure without paying.
+
+**CI builds the demo configuration too**, because it takes a different
+branch at startup and it is the one that actually deploys.
+
+**`COMPOUND_RANGE` and `ISOLATION_RANGE` are deleted from
+`progression.ts`.** Neither had a caller anywhere — the assembler carries
+its own `COMPOUND_REPS` and `ISOLATION_REPS` — and `COMPOUND_RANGE` had
+**drifted to 10–15 while the live one moved to 5–10.** A constant that
+looks authoritative, disagrees with the live one and is read by nothing
+is the worst of the three states it can be in: it is what somebody
+documenting the rep ranges would cite, which is exactly how it was found.
+
+**The docs had gone stale in the way this file warns about, and the
+README was the visible half.** It described RTS, tiers, MEV/MAV/MRV
+landmarks, five-day splits and a Social area, none of which have existed
+for months. Three others were worse in kind:
+
+- `ARCHITECTURE.md` opened _"no network calls at runtime"_, which stopped
+  being true the day Leaflet rendered a tile, and traced a request
+  through RTS top sets and a `ProgramInstance` with a frozen
+  `templateSnapshot` — a type that no longer exists.
+- `TESTING.md` **claimed coverage that is not there**: "no muscle exceeds
+  its MRV", "landmarks stay ordered under sustained pressure", "readiness
+  never moves a landmark". No test names `MRV` or `proposeLandmarks`
+  anywhere. A testing document asserting tests that were deleted with
+  their subject is worse than no document.
+- `GAME_MODEL.md` listed Social as area 4 of seven. There are thirteen.
+
+**A stale document is the same defect as a stale comment**, which this
+file already records four instances of, and it fails the same way: it
+reads as an ordinary sentence and is false. The rule that follows is
+narrow — **when a subject is removed, grep the docs for it in the same
+change**, because the tests go with the code and the prose does not.
 
 ## Traps
 

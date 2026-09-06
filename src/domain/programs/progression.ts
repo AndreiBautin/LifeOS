@@ -25,9 +25,22 @@ import type { RepRange } from './prescription'
 /** Three, on everything. */
 export const STRAIGHT_SETS = 3
 
+/**
+ * The competition lifts' range, and the only one stated here.
+ *
+ * The accessory ranges used to sit beside it — `COMPOUND_RANGE` at
+ * 10–15 and `ISOLATION_RANGE` at 15–30 — and **neither had a caller
+ * anywhere.** The assembler carries its own `COMPOUND_REPS` and
+ * `ISOLATION_REPS`, which is where the fill actually reads them, so
+ * these were a second copy that decided nothing.
+ *
+ * They had also drifted: the compounds moved to 5–10 when the accessory
+ * volume was cut to three sets a week, and this copy stayed at 10–15.
+ * A constant that looks authoritative, disagrees with the live one and
+ * is read by nothing is the worst of the three states it can be in — it
+ * is what somebody documenting the rep ranges would cite.
+ */
 export const STRENGTH_RANGE: RepRange = { low: 3, high: 5 }
-export const COMPOUND_RANGE: RepRange = { low: 10, high: 15 }
-export const ISOLATION_RANGE: RepRange = { low: 15, high: 30 }
 
 /**
  * What the last session did on one exercise.

@@ -142,44 +142,136 @@ never needed a separate repository to hold.
 
 ## Every area, and how it is scored
 
-`registry.ts`, with the phase of the absorption sequence that lands it.
+Read off `registry.ts`. **Thirteen areas**, and the table is the whole
+model — an area joins the character sheet by gaining a row there.
 
-| Phase | Area       | Ladders                       | Ratings                              | Acts                                 | Tree |
-| ----: | ---------- | ----------------------------- | ------------------------------------ | ------------------------------------ | ---- |
-|     0 | Training   | Squat, bench, deadlift, total | Consistency                          | Session finished, working set logged | —    |
-|     1 | Backlog    | —                             | Backlog age                          | Progress logged, item finished       | —    |
-|     2 | Projects   | —                             | Throughput                           | Action closed                        | —    |
-|     3 | Upgrades   | —                             | Purchase progress                    | —                                    | ✓    |
-|     4 | Social     | —                             | Contact frequency                    | Saw somebody                         | —    |
-|     5 | Places     | Exploration coverage          | —                                    | Place visited                        | —    |
-|     6 | Job search | —                             | Applications sent, stage progression | Application sent                     | —    |
+| Area             | Ladders                       | Ratings                              | Acts                                     | Tree |
+| ---------------- | ----------------------------- | ------------------------------------ | ---------------------------------------- | ---- |
+| **Training**     | Squat, bench, deadlift, total | Consistency                          | Session finished, working set logged     | —    |
+| **Conditioning** | —                             | —                                    | Session with conditioning completed      | —    |
+| **Crafting**     | —                             | —                                    | Build progress, build finished, DIY step | —    |
+| **Backlog**      | —                             | Backlog age                          | Progress logged, item finished           | —    |
+| **Projects**     | —                             | Throughput                           | Main step closed, side step closed       | —    |
+| **Upgrades**     | —                             | Purchase progress                    | —                                        | ✓    |
+| **Base**         | —                             | Clear, house jobs                    | Step on a house job                      | —    |
+| **Upkeep**       | —                             | Kept inside the limits               | —                                        | —    |
+| **Places**       | Exploration coverage          | —                                    | Place visited                            | —    |
+| **Job search**   | —                             | Applications sent, stage progression | Application sent                         | —    |
+| **Finance**      | Credit, net worth, retirement | —                                    | —                                        | —    |
+| **Challenges**   | —                             | —                                    | Challenge completed                      | —    |
+| **Mind**         | —                             | Problems solved, days practised      | Problem solved                           | —    |
 
-Two things this table is saying by omission:
+Several things this table says by omission.
 
-**Upgrades has no acts.** Buying a node is not paid in XP and does not earn
-XP. The gates are real money and real prerequisites, and the reward for
-reaching a node is the node.
+**Exactly one area has a tree**, and `registry.test.ts` asserts it. The
+model allows one area that _spends_ rather than measures. Base shows
+house upgrades and the tech tree shows the rest, but that is a question
+of which screen a row appears on — a dishwasher and a barbell are the
+same record with the same gates, so splitting the picture across two
+screens does not make a second spender.
+
+**Upgrades has no acts.** Buying a node is not paid in XP and does not
+earn XP. The gates are real money and real prerequisites, and the reward
+for reaching a node is the node.
+
+**Finance measures and pays nothing**, which is the clearest case in the
+app for the act/outcome line. Three numbers a month, read off a
+statement. Typing your net worth in is a _measurement_ — which the model
+already refuses to pay for when it is a bodyweight — and paying for the
+number going up would be paying for an outcome. So `acts: []`,
+deliberately. **An area that measures without paying is not an incomplete
+area.**
+
+**Upkeep is the other one.** Its limits are judged and nothing in it
+pays: not drinking is an outcome, and the only real _act_ was spending a
+charge, where paying XP for logging a beer is perverse.
 
 **Job search has no ladder.** A campaign has stages and an end, which is
 not the same as having a ceiling — there is no such thing as being
 maximally good at looking for work.
 
-**Dashboard is not an area.** It is the machinery by which areas are
-scored: `Category → MetricDefinition → evaluator`, all data rather than
-enums. Its own categories stay rows in a registry of their own; what
-phase 4 brings is the spine every other area plugs into.
+**Mind has no ladder either, and it is where a count is most tempting.**
+Every practice site publishes a total solved, so a "1,200 problems"
+ceiling _looks_ like an external standard. It is a count of one site's
+catalogue, which grows, and nothing about having solved half of it says
+you are halfway to anything.
 
-## What phase 7 has to do with this
+**Conditioning is its own area rather than a share of training**, because
+a trait re-presents the XP of the areas it claims and an area feeds
+exactly one trait. Its sets still pay `training.working-set-logged`; what
+changed is which bar the _doing_ of it shows under.
 
-The character sheet generalises from a lifting readout to the whole system,
-and its discipline is visual rather than architectural: **a ladder, a
-rating and a tree node must not look alike.**
+**Crafting is split off two other areas rather than being a new place to
+log things.** Lego builds come out of the backlog and DIY house jobs out
+of Base, and `tallyActs` removes each from its original count before
+counting — so rule three holds by construction. The rates are the same on
+both sides, so moving a record between areas never changes what it is
+worth.
+
+## Traits, and why they are not a fourth currency
+
+Each area belongs to **at most one** trait, and a trait's XP is the sum of
+what those areas already paid. Same acts, new name. The partition is what
+makes rule three hold by construction rather than by attention.
+
+| Trait            | Fed by        |
+| ---------------- | ------------- |
+| **Strength**     | Training      |
+| **Stamina**      | Conditioning  |
+| **Intelligence** | Backlog, Mind |
+| **Crafting**     | Crafting      |
+
+**Eight areas belong to no trait**, named exactly in `UNCLAIMED_AREAS`:
+places, projects, upgrades, base, jobs, upkeep, finance, challenges. So
+**the bars add up to less than the level above them**, which is precisely
+the symptom the original guard existed to catch. What makes it a decision
+rather than the bug: that list is asserted exactly, so an area added
+tomorrow with no trait still fails the build until somebody says which it
+is. The sum test checks the trait totals plus the unclaimed areas equal
+the XP total.
+
+Two traits have been deleted, for opposite reasons worth keeping.
+**Vitality** went because no act in the app could ever fill it — a bar
+nothing can move is worse than an absent one. **Charisma** went because
+the person stopped wanting the thing measured, and the area, its act, its
+rating and its screen went with it.
+
+They share the character level curve rather than getting one each. A
+second curve would be a second answer to "what is a level worth", and the
+first thing anybody would do is compare a Strength 12 to a character
+level 20. Sharing it means a trait level is exactly what it looks like:
+the level you would be if this were all you had ever done.
+
+## Where the rating half stands
+
+**Dormant, and the screen is what is missing rather than the rule.** The
+monthly review was removed and it was the only thing that filed a month,
+so a rating — which is a _direction_, and needs two points in time — has
+nothing new to read. Declarations stand, `readout` still runs, and it
+finds whatever was filed before.
+
+`measureAll` is live and must stay: the character sheet's **ladders**
+read it. Only the recording half went dark.
+
+If ratings are wanted back, the missing piece is a screen. If they are
+decided against for good, the removal is the registry's `ratings`
+declarations, this document's three-currency claim, and the sheet's
+`RatingStanding` — a deliberate model change rather than a tidy-up.
+
+## The visual discipline
+
+**A ladder, a rating and a tree node must not look alike.**
 
 If exploration coverage renders as a progress bar and backlog health
 renders as the same progress bar, the distinction this document draws is
 invisible to the only person who uses the app — and an invisible
 distinction is one that quietly stops being maintained.
 
-Someone reading that page should be able to tell, without being told,
-which numbers have a real top, which are judged on direction, and which are
-things they are working toward.
+Someone reading the character sheet should be able to tell, without being
+told, which numbers have a real top, which are judged on direction, and
+which are things they are working toward.
+
+That is also why `Meter` takes `value` and `of` and has no `percent`
+prop. A percentage is where a denominator goes to hide: a bar at 70% of a
+threshold this app invented looks exactly like a bar at 70% of your own
+last season, and only one of those is a measurement.
