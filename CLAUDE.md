@@ -2740,12 +2740,25 @@ end of a phone. It answers in words — "Already the newest" is the reply
 that was impossible to get before, and it is the one that separates a
 device that will not update from a deploy that did not happen.
 
-**The service-worker lifecycle cannot be tested from the agent's
-browser.** Registration is refused there ("An unknown error occurred when
-fetching the script"), so the install → wait → skip-waiting path is the
-one piece of this app that ships on reasoning and a production build
-rather than on having been driven. Anything changed here wants testing in
-a real browser against `vite preview`.
+**The service worker registers fine, and the paragraph that used to sit
+here said it could not.** It claimed registration was refused in the
+agent's browser ("An unknown error occurred when fetching the script"),
+so the whole lifecycle shipped on reasoning. Measured against the
+deployed HTTPS site: **one registration, `activated`, controlling the
+page** — and the "new version is ready" banner has been seen firing after
+a deploy, so `onNeedReload` is exercised too.
+
+**What is genuinely still undriven is narrower:** offline serving from
+the precache, and the full install → wait → skip-waiting sequence across
+two versions in one session. Those want a real browser against
+`vite preview` with the network cut.
+
+**Third carried-forward claim checked this round, and the second one
+wrong**, after "tombstones are vestigial". Both were written once from
+reasoning that sounded complete and then repeated for months across
+several documents. **A claim that something _cannot_ be done is worth
+re-running before it is repeated** — environments change, and nothing in
+a test suite can contradict a claim about what is untestable.
 
 **A shipped change reaches an installed PWA only when something asks for
 it.** `registerType: 'prompt'` decides what happens once a new version is

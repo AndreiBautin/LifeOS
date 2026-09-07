@@ -383,6 +383,10 @@ Stated here rather than discovered:
   built for and which Firestore does nothing about: a backup file is a
   second copy of the database travelling through time.
 - **Settings and the fog do not travel between devices.**
-- **The service-worker lifecycle cannot be tested from an agent's
-  browser** — registration is refused there — so the install → wait →
-  activate path ships on reasoning and a production build.
+- **The service worker is partly verified and partly not**, and the
+  claim that used to sit here — that registration is refused in an
+  agent's browser — is no longer true. Measured against the live site:
+  one registration, `activated`, controlling the page, and the
+  "new version is ready" banner has been seen firing after a deploy.
+  What is **still unverified** is offline serving from the precache, and
+  the full install → wait → skip-waiting sequence across two versions.

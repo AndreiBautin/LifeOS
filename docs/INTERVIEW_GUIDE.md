@@ -278,9 +278,11 @@ reads better than one who says nothing is wrong.
 > error from loading is still the thorough version.
 >
 > Settings and the map's fog
-> do not travel between devices. And the service-worker lifecycle is the
-> one thing here that ships on reasoning rather than on having been
-> driven, because registration is refused in the automation environment.
+> do not travel between devices — the fog has no Firestore repository at
+> all, and settings are read straight from `localStorage`. And the
+> service worker is only partly verified: it registers, activates and
+> controls the page on the live site, and the update banner has been seen
+> firing, but offline serving from the precache has not been driven.
 
 ---
 
