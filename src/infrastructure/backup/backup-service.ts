@@ -205,6 +205,7 @@ function emptyCounts(): Record<keyof BackupCounts, number> {
     finance: 0,
     places: 0,
     trips: 0,
+    goals: 0,
     exploredCells: 0,
   }
 }

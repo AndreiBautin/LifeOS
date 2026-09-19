@@ -2,6 +2,7 @@ import type { Room } from '@/domain/base/declutter'
 import type { Attempt } from '@/domain/mind/practice'
 import type { ChallengeMark } from '@/domain/challenges/challenge'
 import type { Campaign } from '@/domain/campaign/campaign'
+import type { Goal } from '@/domain/goals/goal'
 import type { DBSchema, IDBPDatabase } from 'idb'
 import { openDB } from 'idb'
 
@@ -64,7 +65,7 @@ export const DB_NAME = 'lifeos'
  * a device that already ran it will not run it again, so changing one
  * leaves two devices with different schemas and no way to tell.
  */
-export const DB_VERSION = 20
+export const DB_VERSION = 21
 
 /**
  * A workout as it is stored, which is not quite a workout as the domain
@@ -408,6 +409,17 @@ export interface LiftDB extends DBSchema {
     key: string
     value: Campaign
   }
+  /**
+   * Complex goals -- several parallel workstreams of facts, hypotheses,
+   * decisions, questions, actions and milestones, with dependencies
+   * between them. A goal holds its items inline, the reason a campaign
+   * holds its stages inline: an item has no meaning apart from the goal
+   * it belongs to, and nothing queries them independently.
+   */
+  goals: {
+    key: string
+    value: Goal
+  }
   /** The resume, one row under a fixed key. */
   resume: {
     key: string
@@ -676,6 +688,12 @@ export function openDatabase(name = DB_NAME): Promise<AppDatabase> {
         // apart from the arc it belongs to and nothing queries them.
         db.createObjectStore('campaigns', { keyPath: 'id' })
       }
+
+      if (oldVersion < 21) {
+        // Complex goals. Keyed by id, items inline -- the same call the
+        // campaign store already makes and for the same reason.
+        db.createObjectStore('goals', { keyPath: 'id' })
+      }
     },
 
     blocked() {
@@ -743,6 +761,7 @@ export async function clearAllStores(db: AppDatabase): Promise<void> {
       'challenges',
       'dayReadings',
       'rooms',
+      'goals',
     ],
     'readwrite',
   )
@@ -772,6 +791,7 @@ export async function clearAllStores(db: AppDatabase): Promise<void> {
     tx.objectStore('challenges').clear(),
     tx.objectStore('dayReadings').clear(),
     tx.objectStore('rooms').clear(),
+    tx.objectStore('goals').clear(),
     tx.done,
   ])
 }

@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest'
 
 import { atlasView } from '@/application/use-cases/atlas/atlas'
 import { characterSheet } from '@/application/use-cases/character/sheet'
+import { goalStandings } from '@/application/use-cases/goals/goals'
 import { listProjects } from '@/application/use-cases/projects/projects'
 import { shelfTree } from '@/application/use-cases/upgrades/upgrades'
+import { nextAvailableItem } from '@/domain/goals/goal'
 import { UNCLAIMED_AREAS } from '@/domain/game/traits'
 import type { Clock } from '@/domain/repositories/ports'
 
@@ -92,6 +94,7 @@ function services() {
     rooms: store(),
     finance: store('month'),
     campaigns: store(),
+    goals: store(),
     vices: store(),
     places: store(),
     workouts: store(),
@@ -311,5 +314,34 @@ describe('what a reviewer sees on the other screens', () => {
     const deps = await seeded()
 
     expect((await deps.finance.all()).length).toBeGreaterThanOrEqual(3)
+  })
+
+  /*
+   * The goal screen fails this way most easily of all: a goal with one
+   * workstream and no dependency reads exactly like a to-do list, which
+   * is the one thing this feature exists to be more than.
+   */
+  it('gives the goal several workstreams and a real dependency', async () => {
+    const deps = await seeded()
+    const goals = (await deps.goals.all()) as readonly {
+      items: readonly { workstream: string; dependsOn: readonly string[] }[]
+    }[]
+
+    expect(goals.length).toBeGreaterThan(0)
+    const workstreams = new Set(goals.flatMap((goal) => goal.items.map((one) => one.workstream)))
+    expect(workstreams.size).toBeGreaterThan(3)
+    expect(goals.some((goal) => goal.items.some((one) => one.dependsOn.length > 0))).toBe(true)
+  })
+
+  /*
+   * The Today screen's goals card is silent when nothing is available to
+   * work on next -- correct behaviour, and exactly the kind of correct
+   * behaviour that quietly hides an empty fixture. Without this, every
+   * item could be settled or blocked and the reviewer's first screen
+   * would never show the card at all.
+   */
+  it('leaves the goal something available, so the Today card has one to show', async () => {
+    const standings = await goalStandings(await seeded())
+    expect(standings.some((standing) => nextAvailableItem(standing) !== undefined)).toBe(true)
   })
 })

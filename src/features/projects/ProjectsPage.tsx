@@ -12,6 +12,7 @@ import {
   Receipt,
   Swords,
   Trash2,
+  Waypoints,
 } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { buttonStyles } from '@/components/shared/styles'
@@ -540,10 +541,25 @@ export function ProjectsPage() {
         title="Quests"
         subtitle="What you are trying to get done, and what is blocking what."
         action={
-          <Link to="/jobs" className={buttonStyles({ variant: 'ghost', size: 'sm' })}>
-            <Briefcase size={16} aria-hidden />
-            Job search
-          </Link>
+          <>
+            {/*
+              **Goals is reached from here for the same reason job search
+              is** — a tab is unconditional and a goal's own screen is
+              not reachable from anywhere else, so this is the root of
+              that chain too. It sits beside the arc rather than inside
+              it: a campaign is one measured chain, a goal is several
+              parallel ones with real unknowns in more than one, and the
+              two are not the same reading — see `domain/goals/goal.ts`.
+            */}
+            <Link to="/goals" className={buttonStyles({ variant: 'ghost', size: 'sm' })}>
+              <Waypoints size={16} aria-hidden />
+              Goals
+            </Link>
+            <Link to="/jobs" className={buttonStyles({ variant: 'ghost', size: 'sm' })}>
+              <Briefcase size={16} aria-hidden />
+              Job search
+            </Link>
+          </>
         }
       />
 

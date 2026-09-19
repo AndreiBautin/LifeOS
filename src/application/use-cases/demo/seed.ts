@@ -1,4 +1,14 @@
 import { addCampaign } from '@/application/use-cases/campaign/campaign'
+import {
+  addGoal,
+  addItemTo,
+  answerQuestionIn,
+  completeItemIn,
+  confirmHypothesisIn,
+  decideItemIn,
+  refuteHypothesisIn,
+  setDependenciesIn,
+} from '@/application/use-cases/goals/goals'
 import { addPlace, visitPlace } from '@/application/use-cases/atlas/atlas'
 import { completeChallenge, readChallenges } from '@/application/use-cases/challenges/challenges'
 import { logAttempt } from '@/application/use-cases/mind/practice'
@@ -108,6 +118,7 @@ export async function seedDemoData(deps: DemoDeps): Promise<SeedResult> {
   await seedBase(deps)
   await seedFinance(deps)
   await seedArc(deps)
+  await seedGoals(deps)
   await seedBuffs(deps)
   await seedMap(deps)
   await seedSettings(deps)
@@ -454,6 +465,123 @@ async function seedArc(deps: DemoDeps): Promise<void> {
     },
     deps,
   )
+}
+
+/**
+ * A complex, multi-branch goal — several parallel workstreams, some
+ * settled and some still open, with real dependencies between two of
+ * them.
+ *
+ * **Fictional throughout, and deliberately not a copy of any real
+ * situation.** The scenario this feature was built for is a house move
+ * with an undecided destination; the fixture is the same *shape* —
+ * shared criteria, a destination search, money, career, the current
+ * house, and the move itself — with invented people, an invented city
+ * and invented numbers, so nothing here could be mistaken for a real
+ * decision somebody is partway through.
+ *
+ * **Demonstrates the two things a flat quest list cannot.** A cross-
+ * workstream dependency (visiting candidate cities waits on a shared
+ * decision about how far from family is acceptable), and a hypothesis
+ * resolved by being ruled out rather than confirmed — which is real
+ * progress and reads as such rather than as a failure.
+ */
+async function seedGoals(deps: DemoDeps): Promise<void> {
+  const created = await addGoal(
+    {
+      name: 'Move somewhere with shorter winters',
+      aim: 'Somewhere we both actually want to live, not just away from here.',
+    },
+    deps,
+  )
+  const goalId = created.goal?.id
+  if (goalId === undefined) return
+
+  const add = (workstream: string, kind: Parameters<typeof addItemTo>[1]['kind'], title: string) =>
+    addItemTo(goalId, { workstream, kind, title }, deps)
+
+  // Shared criteria
+  await add('Shared criteria', 'fact', 'Winters here run about four grey months')
+  const howFar = await add(
+    'Shared criteria',
+    'decision',
+    'How far from family we are willing to move',
+  )
+  if (howFar.item !== undefined) {
+    await decideItemIn(goalId, howFar.item.id, 'Within a four-hour flight', deps)
+  }
+
+  // Destination exploration
+  const suits = await add(
+    'Destination',
+    'hypothesis',
+    'A smaller city would suit us better than a big one',
+  )
+  if (suits.item !== undefined) {
+    // Ruled out rather than confirmed -- a resolved hypothesis either way,
+    // and genuine progress rather than a dead end.
+    await refuteHypothesisIn(goalId, suits.item.id, deps)
+  }
+  const cheaper = await add(
+    'Destination',
+    'hypothesis',
+    'Cost of living is meaningfully lower in both finalist cities',
+  )
+  if (cheaper.item !== undefined) await confirmHypothesisIn(goalId, cheaper.item.id, deps)
+
+  const remoteQuestion = await add(
+    'Destination',
+    'question',
+    'Which candidate city actually has the tech job market we need',
+  )
+  const visit = await add('Destination', 'action', 'Visit the two leading candidate cities')
+  if (visit.item !== undefined && howFar.item !== undefined) {
+    // A dependency reaching into a different workstream -- the case a
+    // single ordered chain cannot express, because "how far" is a shared
+    // decision and "where to visit" is a destination-search action.
+    await setDependenciesIn(goalId, visit.item.id, [howFar.item.id], deps)
+  }
+
+  // Financial feasibility
+  await add('Finances', 'fact', 'Combined household income is steady, not growing')
+  const budget = await add('Finances', 'decision', 'What monthly housing payment we are targeting')
+  await add('Finances', 'milestone', 'Down payment fund reaches the target')
+
+  // Career
+  await add(
+    'Career',
+    'question',
+    'Would a remote-first role let either of us move without changing jobs',
+  )
+  const resume = await add('Career', 'action', 'Update the resume and portfolio')
+  if (resume.item !== undefined) await completeItemIn(goalId, resume.item.id, deps)
+
+  // Current house readiness
+  const declutter = await add('Current house', 'action', 'Declutter the garage and office')
+  const inspection = await add('Current house', 'action', 'Get a pre-listing inspection')
+  if (inspection.item !== undefined && declutter.item !== undefined) {
+    await setDependenciesIn(goalId, inspection.item.id, [declutter.item.id], deps)
+  }
+
+  // Sale, purchase and logistics
+  const listed = await add('Sale and move', 'milestone', 'House listed for sale')
+  if (listed.item !== undefined) {
+    const waitingOn = [inspection.item?.id, budget.item?.id].filter(
+      (id): id is NonNullable<typeof id> => id !== undefined,
+    )
+    if (waitingOn.length > 0) await setDependenciesIn(goalId, listed.item.id, waitingOn, deps)
+  }
+  await add('Sale and move', 'question', 'Do we rent for a few months before buying')
+
+  /*
+   * Answered last, after the dependency it happens to share a workstream
+   * with is already wired -- order does not matter to the domain, and
+   * this is here to prove it: nothing above depended on this being
+   * settled first.
+   */
+  if (remoteQuestion.item !== undefined) {
+    await answerQuestionIn(goalId, remoteQuestion.item.id, 'Both finalists have one', deps)
+  }
 }
 
 /**

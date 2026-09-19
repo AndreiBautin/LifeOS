@@ -37,6 +37,7 @@ export const TOMBSTONED_COLLECTIONS = [
   'attempts',
   'challenges',
   'rooms',
+  'goals',
   /*
    * 'conditions' and 'dayReadings' were both here and are gone with the
    * records that needed them.

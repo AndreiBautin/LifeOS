@@ -1,4 +1,5 @@
 import type { Room } from '@/domain/base/declutter'
+import type { Goal } from '@/domain/goals/goal'
 import type { TrackExercise, TrackId } from '@/domain/mind/tracks'
 import type { Attempt } from '@/domain/mind/practice'
 import type { ChallengeMark } from '@/domain/challenges/challenge'
@@ -29,6 +30,7 @@ import type {
   CampaignId,
   AttemptId,
   RoomId,
+  GoalId,
 } from '@/domain/ids/ids'
 import type { WorkoutLog } from '@/domain/logging/workout-log'
 import type { ProgramPosition } from '@/domain/programs/position'
@@ -413,6 +415,18 @@ export interface CampaignRepository {
   remove(id: CampaignId): Promise<void>
   /** Deletes without a tombstone -- the receiving half of a sync. */
   purge(id: CampaignId): Promise<void>
+}
+
+/** Complex goals -- a relocation, or anything shaped like one. */
+export interface GoalRepository {
+  all(): Promise<readonly Goal[]>
+  byId(id: GoalId): Promise<Goal | undefined>
+  save(goal: Goal): Promise<void>
+  /** Writes exactly as given, without stamping. See the note on `ExerciseRepository`. */
+  restoreMany(goals: readonly Goal[]): Promise<void>
+  remove(id: GoalId): Promise<void>
+  /** Deletes without a tombstone -- the receiving half of a sync. */
+  purge(id: GoalId): Promise<void>
 }
 
 export interface TripRepository {

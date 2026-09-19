@@ -5,6 +5,7 @@ import type { ChallengeMark } from '@/domain/challenges/challenge'
 import type { CheckIn } from '@/domain/autoregulation/check-in'
 import type { Exercise } from '@/domain/exercises/exercise'
 import type { FinanceReading } from '@/domain/finance/reading'
+import type { Goal } from '@/domain/goals/goal'
 import type { Attempt } from '@/domain/mind/practice'
 import type { Place } from '@/domain/atlas/place/Place'
 import type { Project } from '@/domain/projects/project'
@@ -22,6 +23,7 @@ import type {
   CheckInRepository,
   ExerciseRepository,
   FinanceRepository,
+  GoalRepository,
   PlaceRepository,
   ProjectRepository,
   ResumeRepository,
@@ -321,6 +323,19 @@ export function createFirestoreCampaigns(deps: FirestoreCollectionDeps): Campaig
     all: () => store.all(),
     byId: (id) => store.byId(id),
     save: (campaign) => store.save(campaign),
+    restoreMany: (rows) => store.restoreMany(rows),
+    remove: (id) => store.remove(id),
+    purge: (id) => store.remove(id),
+  }
+}
+
+export function createFirestoreGoals(deps: FirestoreCollectionDeps): GoalRepository {
+  const store = createFirestoreCollection<Goal>(deps, 'goals', undefined, 'goals')
+
+  return {
+    all: () => store.all(),
+    byId: (id) => store.byId(id),
+    save: (goal) => store.save(goal),
     restoreMany: (rows) => store.restoreMany(rows),
     remove: (id) => store.remove(id),
     purge: (id) => store.remove(id),

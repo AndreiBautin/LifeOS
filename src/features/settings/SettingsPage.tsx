@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { BuildLine } from '@/features/pwa/BuildLine'
 import { PageHeader } from '@/components/shared/PageHeader'
 
-import type { BackupCounts } from '@/domain/backup/envelope'
+import { COUNT_LABELS } from './count-labels'
 import { AlertTriangle, Download, HardDrive, Upload } from 'lucide-react'
 import { useId, useRef, useState } from 'react'
 
@@ -376,21 +376,6 @@ interface ImportPanelProps {
   readonly onCancel: () => void
   readonly busy: boolean
 }
-
-/** What each collection is called, in the order a person would read it. */
-const COUNT_LABELS: readonly (readonly [keyof BackupCounts, string])[] = [
-  ['workouts', 'workouts'],
-  ['exercises', 'exercises'],
-  ['checkIns', 'check-ins'],
-  ['items', 'backlog items'],
-  ['projects', 'projects'],
-  ['upgrades', 'upgrades'],
-  ['places', 'places'],
-  ['trips', 'trips'],
-  ['reviews', 'monthly reviews'],
-  ['metrics', 'tracked metrics'],
-  ['exploredCells', 'squares of walked ground'],
-]
 
 const REPLACE_PHRASE = 'replace'
 

@@ -4,6 +4,7 @@ import type { Room } from '@/domain/base/declutter'
 import type { Attempt } from '@/domain/mind/practice'
 import type { ChallengeMark } from '@/domain/challenges/challenge'
 import type { Campaign } from '@/domain/campaign/campaign'
+import type { Goal } from '@/domain/goals/goal'
 import type { Resume } from '@/domain/resume/resume'
 import type { Vice } from '@/domain/vitals/charges'
 import type { CheckIn } from '@/domain/autoregulation/check-in'
@@ -101,6 +102,7 @@ export interface BackupCounts {
   readonly challenges: number
   readonly rooms: number
   readonly resume: number
+  readonly goals: number
   /** Geohash cells of walked ground. Counted, though it is a set of ids. */
   readonly exploredCells: number
 }
@@ -153,6 +155,7 @@ export interface BackupData {
   readonly attempts?: readonly Attempt[]
   readonly challenges?: readonly ChallengeMark[]
   readonly rooms?: readonly Room[]
+  readonly goals?: readonly Goal[]
   /**
    * Walked ground, as bare cell ids.
    *
@@ -182,6 +185,7 @@ export function countsFor(data: BackupData): BackupCounts {
     challenges: data.challenges?.length ?? 0,
     rooms: data.rooms?.length ?? 0,
     resume: data.resume?.length ?? 0,
+    goals: data.goals?.length ?? 0,
     exploredCells: data.exploredCells?.length ?? 0,
   }
 }
@@ -205,6 +209,7 @@ export const BACKUP_COUNT_KEYS = [
   'challenges',
   'rooms',
   'resume',
+  'goals',
   'exploredCells',
 ] as const satisfies readonly (keyof BackupCounts)[]
 

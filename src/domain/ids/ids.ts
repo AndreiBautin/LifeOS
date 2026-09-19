@@ -41,6 +41,15 @@ export type StageId = Branded<'StageId'>
 export type AttemptId = Branded<'AttemptId'>
 export type HomeCandidateId = Branded<'HomeCandidateId'>
 export type RoomId = Branded<'RoomId'>
+/**
+ * A complex goal — a relocation, or anything shaped like one — and one
+ * typed item inside it (a fact, a hypothesis, a decision, a question, an
+ * action or a milestone). Named apart from `ProjectId` for the reason
+ * `CampaignId`/`StageId` are: a different record type with a different
+ * scoring rule needs an id nothing can mix up with a quest's.
+ */
+export type GoalId = Branded<'GoalId'>
+export type GoalItemId = Branded<'GoalItemId'>
 
 /* The resume: a bullet is referable because tailoring picks bullets. */
 export type BulletId = Branded<'BulletId'>
@@ -69,6 +78,8 @@ export const asStageId = (value: string): StageId => value as StageId
 export const asAttemptId = (value: string): AttemptId => value as AttemptId
 export const asHomeCandidateId = (value: string): HomeCandidateId => value as HomeCandidateId
 export const asRoomId = (value: string): RoomId => value as RoomId
+export const asGoalId = (value: string): GoalId => value as GoalId
+export const asGoalItemId = (value: string): GoalItemId => value as GoalItemId
 
 /**
  * Generating an id is a side effect, so the domain takes it as a

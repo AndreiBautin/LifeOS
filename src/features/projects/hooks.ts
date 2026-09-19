@@ -18,6 +18,8 @@ import {
   type ProjectChanges,
   updateProject,
 } from '@/application/use-cases/projects/projects'
+import { unlinkProjectEverywhere } from '@/application/use-cases/goals/goals'
+import { GOALS } from '@/features/goals/hooks'
 import type { ActionId, ProjectId } from '@/domain/ids/ids'
 import type { QuestKind } from '@/domain/projects/project'
 import { logger } from '@/shared/logging/logger'
@@ -148,10 +150,34 @@ export function useMoveProjectHome() {
   )
 }
 
+/**
+ * Deleting a quest also clears any goal item linked to it.
+ *
+ * `unlinkProjectEverywhere` lives in `application/use-cases/goals`, which
+ * `application/projects` must not import — so the two writes are
+ * sequenced here, at the one layer allowed to know about both features.
+ * The Goals query key is invalidated alongside `PROJECTS` for the same
+ * reason `useSetActiveQuest` invalidates `['today']`: a mutation that can
+ * move more than the record it names must invalidate everything it can move.
+ */
 export function useDeleteProject() {
-  return useProjectMutation<ProjectId, unknown>('projects.delete', (id, services) =>
-    deleteProject(id, services),
-  )
+  const services = useServices()
+  const client = useQueryClient()
+
+  return useMutation<unknown, Error, ProjectId>({
+    mutationFn: async (id) => {
+      await unlinkProjectEverywhere(id, services)
+      return deleteProject(id, services)
+    },
+    onSuccess: () => {
+      logger.info('projects.delete', {})
+      void client.invalidateQueries({ queryKey: PROJECTS })
+      void client.invalidateQueries({ queryKey: GOALS })
+    },
+    onError: (error) => {
+      logger.error('projects.delete-failed', error)
+    },
+  })
 }
 
 export function useAddAction() {

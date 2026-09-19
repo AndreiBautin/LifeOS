@@ -6,6 +6,7 @@ import { Card } from '@/components/shared/primitives'
 import { buttonStyles } from '@/components/shared/styles'
 import { ActiveQuests } from '@/features/projects/ActiveQuests'
 import { useActiveQuests } from '@/features/projects/hooks'
+import { GoalsCard } from '@/features/goals/GoalsCard'
 import { ChallengePass } from '@/features/challenges/ChallengePass'
 import { SheetCard } from '@/features/character/SheetCard'
 import { useCharacterSheet, useSeasonProgress } from '@/features/character/hooks'
@@ -146,6 +147,14 @@ export function HomePage() {
         {...(leadingArc === undefined ? {} : { arc: leadingArc })}
         showLink
       />
+
+      {/*
+        Silent unless a goal has something available to work on next —
+        see the note in `GoalsCard`. A goal is a planning surface rather
+        than a quest, so this sits beside the quests it is adjacent to in
+        spirit without pretending to be one.
+      */}
+      <GoalsCard />
 
       {/*
         The card names itself and links to the screen, which is why

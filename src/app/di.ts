@@ -19,6 +19,7 @@ import type {
   RoomRepository,
   TrackGateway,
   CampaignRepository,
+  GoalRepository,
   FinanceRepository,
   ResumeRepository,
   TripRepository,
@@ -52,6 +53,7 @@ import {
   createChallengeRepository,
   createRoomRepository,
   createCampaignRepository,
+  createGoalRepository,
   createFinanceRepository,
   createResumeRepository,
   createTripRepository,
@@ -98,6 +100,7 @@ export interface AppServices {
   readonly places: PlaceRepository
   readonly finance: FinanceRepository
   readonly campaigns: CampaignRepository
+  readonly goals: GoalRepository
   readonly attempts: AttemptRepository
   readonly challenges: ChallengeRepository
   readonly rooms: RoomRepository
@@ -282,6 +285,10 @@ export async function bootstrap(): Promise<BootstrapResult> {
       remote === undefined
         ? createCampaignRepository(db, systemClock)
         : firestoreRepos().createFirestoreCampaigns(remote),
+    goals:
+      remote === undefined
+        ? createGoalRepository(db, systemClock)
+        : firestoreRepos().createFirestoreGoals(remote),
     attempts:
       remote === undefined
         ? createAttemptRepository(db, systemClock)

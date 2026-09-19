@@ -1,6 +1,8 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom'
 
 import { AtlasPage } from '@/features/atlas/AtlasPage'
+import { GoalsPage } from '@/features/goals/GoalsPage'
+import { GoalPage } from '@/features/goals/GoalPage'
 import { InboxPage } from '@/features/atlas/InboxPage'
 import { HomePage } from '@/features/today/HomePage'
 import { SharePage } from '@/features/atlas/SharePage'
@@ -41,6 +43,8 @@ export const router = createBrowserRouter(
         // first screen should be the answer to "what now".
         { index: true, element: <Navigate to="/today" replace /> },
         { path: 'quests', element: <ProjectsPage /> },
+        { path: 'goals', element: <GoalsPage /> },
+        { path: 'goals/:id', element: <GoalPage /> },
         /*
          * Kept as a redirect rather than deleted. The PWA manifest shipped
          * a "What next" shortcut pointing here, and a shortcut is

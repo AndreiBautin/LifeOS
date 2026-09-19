@@ -1,8 +1,9 @@
-import type { AttemptId, CampaignId, RoomId } from '@/domain/ids/ids'
+import type { AttemptId, CampaignId, GoalId, RoomId } from '@/domain/ids/ids'
 import type { Room } from '@/domain/base/declutter'
 import type { Attempt } from '@/domain/mind/practice'
 import type { ChallengeMark } from '@/domain/challenges/challenge'
 import type { Campaign } from '@/domain/campaign/campaign'
+import type { Goal } from '@/domain/goals/goal'
 import type { CheckIn } from '@/domain/autoregulation/check-in'
 import type { FinanceReading } from '@/domain/finance/reading'
 import type { Resume } from '@/domain/resume/resume'
@@ -41,6 +42,7 @@ import type {
   ChallengeRepository,
   RoomRepository,
   CampaignRepository,
+  GoalRepository,
   ResumeRepository,
   ExploredAreaRepository,
   PlaceRepository,
@@ -656,6 +658,38 @@ export function createCampaignRepository(db: AppDatabase, clock: Clock): Campaig
     },
     async purge(id: CampaignId) {
       await db.delete('campaigns', id)
+    },
+  }
+}
+
+/**
+ * Complex goals, one row each.
+ *
+ * Items live inline on the goal for the reason a campaign's stages do:
+ * an item has no meaning apart from the goal it belongs to, and nothing
+ * queries them independently of it.
+ */
+export function createGoalRepository(db: AppDatabase, clock: Clock): GoalRepository {
+  return {
+    async all() {
+      return db.getAll('goals')
+    },
+    async byId(id: GoalId) {
+      return db.get('goals', id)
+    },
+    async save(goal: Goal) {
+      await db.put('goals', stamp(goal, clock))
+    },
+    async restoreMany(goals: readonly Goal[]) {
+      const tx = db.transaction('goals', 'readwrite')
+      await Promise.all([...goals.map((one) => tx.store.put(one)), tx.done])
+    },
+    async remove(id: GoalId) {
+      await db.delete('goals', id)
+      await bury(db, clock, 'goals', id)
+    },
+    async purge(id: GoalId) {
+      await db.delete('goals', id)
     },
   }
 }

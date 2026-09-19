@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 
 import { describe, expect, it } from 'vitest'
 
+import { standingFor, type Goal } from '@/domain/goals/goal'
 import type { Clock } from '@/domain/repositories/ports'
 
 import { seedDemoData } from './seed'
@@ -57,6 +58,7 @@ function deps() {
     rooms: store(),
     finance: store('month'),
     campaigns: store(),
+    goals: store(),
     vices: store(),
     attempts: store(),
     challenges: store(),
@@ -135,6 +137,7 @@ describe('seeding the demo', () => {
     expect(services.upgrades.rows.size).toBeGreaterThan(2)
     expect(services.rooms.rows.size).toBeGreaterThan(3)
     expect(services.campaigns.rows.size).toBe(1)
+    expect(services.goals.rows.size).toBe(1)
     expect(services.places.rows.size).toBeGreaterThan(4)
     expect(services.workouts.rows.size).toBeGreaterThan(2)
   })
@@ -205,6 +208,37 @@ describe('seeding the demo', () => {
     expect(conditioning.every((one) => one.sets.some((set) => set.outcome === 'completed'))).toBe(
       true,
     )
+  })
+
+  /*
+   * The goal is what the "complex, multi-branch goal" feature actually
+   * demonstrates, so its shape matters more than its count: several
+   * workstreams, a cross-workstream dependency, and a hypothesis resolved
+   * by being ruled out rather than confirmed — genuine progress that a
+   * flat "done" count would render identically to a dead end.
+   */
+  it('gives the relocation goal parallel workstreams and a real dependency', async () => {
+    const services = deps()
+    await seedDemoData(services)
+
+    const [goal] = [...services.goals.rows.values()] as Goal[]
+    if (goal === undefined) throw new Error('The demo did not seed a goal.')
+
+    const standing = standingFor(goal)
+    expect(standing.workstreams.length).toBeGreaterThan(3)
+
+    const blocked = standing.items.filter((one) => one.standing === 'blocked')
+    expect(blocked.length).toBeGreaterThan(0)
+    // At least one blocked item is waiting on an item from a *different*
+    // workstream -- the case a single ordered chain cannot express.
+    expect(
+      blocked.some((one) =>
+        one.waitingOn.some((dependency) => dependency.workstream !== one.item.workstream),
+      ),
+    ).toBe(true)
+
+    const refuted = standing.items.filter((one) => one.item.refutedAt !== undefined)
+    expect(refuted.length).toBeGreaterThan(0)
   })
 
   /*

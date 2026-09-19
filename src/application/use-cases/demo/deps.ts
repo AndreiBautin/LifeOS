@@ -6,6 +6,7 @@ import type {
   Clock,
   ExploredAreaRepository,
   FinanceRepository,
+  GoalRepository,
   PlaceRepository,
   ProjectRepository,
   ResumeRepository,
@@ -35,6 +36,7 @@ export interface DemoDeps {
   readonly rooms: RoomRepository
   readonly finance: FinanceRepository
   readonly campaigns: CampaignRepository
+  readonly goals: GoalRepository
   readonly vices: ViceRepository
   readonly places: PlaceRepository
   /**

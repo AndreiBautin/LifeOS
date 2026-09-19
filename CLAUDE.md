@@ -96,6 +96,220 @@ That file is the only place allowed to name a concrete implementation.
 These are each enforced by a lint rule or a test. They are listed here so
 you know _why_ before you meet the error.
 
+**Complex, multi-branch goals are `domain/goals/`, and they are neither a
+`Campaign` nor a `Project`.** Asked for as a way to hold a relocation
+honestly: several workstreams running at once — shared criteria,
+destination research, money, career, the current house, the move
+itself — some of it decided, most of it not, with real dependencies
+between two of them and no single ordering that is true.
+
+A campaign is one chain of measured-or-declared stages read live against
+Base, Jobs and Finance; forcing this into it would mean either one
+campaign per workstream, which loses the dependencies between them, or
+one chain wearing six unrelated requirement kinds. A project's steps are
+homogeneous — things to do — and closing one pays XP in its own area; a
+goal item is as often a fact, a hypothesis, a decision or an open
+question as it is an action, and none of those is a thing anybody
+_does_. **A goal pays no XP**, the same footing a campaign stands on —
+it does not join `LIFE_AREAS`, and there is no act to be missing.
+
+**What it borrows rather than reinvents.** The dependency graph —
+`dependsOn`, cycle detection via a breadth-first walk with a visited
+set, cascade-clear on delete — is the exact shape
+`domain/projects/blocking.ts` already solved for quest blockers, applied
+to a graph of six-kind items instead of a graph of projects. The
+"ordered but not gated" stance is the one `Campaign` already takes:
+nothing here refuses to resolve a blocked item, because a screen that
+policed that would be deciding your life for you rather than reporting
+on it. `standingOf` only ever _names_ an item blocked; `ResolveControl`
+in `GoalPage.tsx` shows the control regardless.
+
+**A hypothesis resolves two ways, and ruling one out is not a failure.**
+`refutedAt` and `confirmedAt` are both terminal — `isResolved` treats
+either as settled — because the whole value of testing a hypothesis is
+finding out, and a screen that read a refutation as a dead end would be
+punishing the one kind of progress that does not look like progress.
+The demo fixture exercises both directions on purpose.
+
+**A dependency can reach into a different workstream, and that is the
+actual gap this fills.** "Visit the candidate cities" (Destination)
+waits on "how far from family" (Shared criteria); "House listed for
+sale" (Sale and move) waits on both a Current-house action and a
+Finances decision. Neither is expressible as one campaign's ordered
+stages or one project's flat step list — it needs a graph, not a chain.
+
+**One collection, items inline — the same call `Campaign`/`Stage`
+makes.** A `Goal` holds its `GoalItem[]` in one document; an item has no
+meaning apart from the goal it belongs to and nothing queries them
+independently. That single-collection shape is what kept the storage
+footprint to one new store rather than one per item type: `goals` joined
+`TOMBSTONED_COLLECTIONS`, the IndexedDB schema (`DB_VERSION` 21), the
+Firestore mirror via the generic `createFirestoreCollection`, `di.ts`,
+and the backup envelope — the same checklist every other collection
+here follows, all for one store.
+
+**Reached from the Quests page header, not a ninth nav tab.** The bottom
+nav is already at its eight-cell ceiling (see the mobile-UX notes
+below), so `/goals` and `/goals/:id` are routed but not tabbed — a
+"Goals" link sits beside "Job search" on `ProjectsPage`, the same
+`root-of-the-chain` reasoning that link's own comment already states.
+
+**The demo fixture is fictional throughout and is not the real
+scenario.** `seedGoals` in `application/use-cases/demo/seed.ts` invents a
+couple, an invented city and invented numbers — same shape as the real
+motivating case (shared criteria, destination search, money, career,
+current-house readiness, sale-and-move) so the feature demonstrates
+honestly, deliberately disconnected from any real address or income so
+it stays safe to publish. `parity.test.ts` holds it to the same
+obligation every other screen's fixture carries: several workstreams,
+not one, and at least one dependency that crosses them.
+
+**A goal item can link to a real quest, and resolution then follows the
+quest rather than a second tick.** `GoalItem.linkedProjectId` points at a
+`Project`; `isEffectivelyResolved` reads the quest's live status through
+a `LinkedProjectInfo` the use-case layer builds from `deps.projects.all()`
+— the same "evidence gathered live, never copied" stance `Campaign`
+already takes on Base and Jobs. **Nothing is written back onto the goal
+item.** `completedAt` stays empty forever on a linked item; the badge and
+the resolve control both read the live standing instead. Unlinking
+returns the item to whatever its own fields say, which for a
+never-manually-ticked item is unresolved again — there is no residue.
+
+The point of it: "declutter the garage" as a goal action and "declutter
+the garage" as a Base house job were two checkboxes for one piece of
+work before this, and ticking one taught you nothing about the other. A
+blocked goal item now unblocks the moment the linked quest is marked
+complete, verified end to end in the demo fixture — link, complete the
+quest, watch the dependent item's standing flip from `blocked` to
+`available` with no goal-side write at all.
+
+**The link only ever adds a second way to resolve, never a competing
+one.** `isEffectivelyResolved` is `isResolved(item) || linked-and-
+completed`, so an item ticked by hand and then linked (or the reverse)
+lands on the same answer rather than one overruling the other — the same
+"ordered but not gated" tolerance for redundancy the rest of this file
+already extends to campaign stages.
+
+**An item's title, workstream and notes are editable now, in one
+write.** `renameItem` is the same shape `renameStage`/`relabelDaily`
+already are: a label, not a re-interpretation — the item means what it
+meant before, and every dependency and every resolution survives
+untouched. It was missing for the same reason those two were missing
+before they got one: a record typed once and then wrong forever is
+worse than the retype-from-scratch it forces.
+
+**The `notes` field existed end to end except in the one place that
+could set it.** It was on the domain type, the use-case, the repository
+— and the "Add something" form never asked for it, so it could never
+actually be populated from a fresh goal. The same trap this file records
+elsewhere under "a capability nothing can reach": a field that compiles
+is not a field that works. Both the add form and the new item editor
+carry it now.
+
+**`COUNT_LABELS` in `SettingsPage.tsx` had drifted, silently, for a
+while — and not because of anything to do with goals.** It is a
+hand-written list beside `BackupCounts` for the import preview, and
+`vices`, `finance`, `campaigns`, `attempts`, `challenges`, `rooms` and
+`resume` were all missing from it before `goals` ever existed to add an
+eighth. The import itself was never wrong — it reads `BackupCounts`
+directly — but the preview screen had been undercounting a real backup
+for months with nothing to say so. Moved to its own file,
+`count-labels.ts`, for the reason `styles.ts` already states: a file
+exporting both a component and a constant breaks Fast Refresh. A guard
+test now holds it to naming every key in `BackupCounts` exactly once, so
+the next collection that joins the backup fails a test rather than
+quietly repeating this.
+
+**Deleting a linked quest clears the link, everywhere it was made.**
+`unlinkProjectEverywhere` in `application/use-cases/goals/goals.ts` walks
+every goal, not just the one a screen happens to be open on, because
+nothing stops the same quest being linked from two different goal items —
+verified by a test that links one project into two separate goals and
+checks both clear. It mirrors `withoutBlocker`'s cascade-clear for a
+deleted project's own blockers, and it has to live in the Goals module
+rather than in Projects: `application/projects` must not import
+`application/goals`, so `deleteProject` itself cannot know goals exist.
+The two writes are sequenced instead at `useDeleteProject` in
+`features/projects/hooks.ts`, the one layer allowed to import both
+features, which invalidates the `GOALS` query key alongside `PROJECTS` —
+the same shape `useSetActiveQuest` already uses for a mutation that moves
+more than the record it names.
+
+Without this, `standingFor` already read a missing project as unlinked —
+a dangling id was never a _correctness_ bug, only a leak: the reference
+would sit in the record forever, travel over sync, and leave the item's
+own Unlink control unreachable, since that control only shows for a link
+that still resolves to something.
+
+**The link and dependency pickers show which candidates are already
+settled.** `LinkPicker` marks a quest `status === 'completed'` with a
+check; `DependencyEditor` now takes `readonly GoalItemStanding[]` instead
+of `readonly GoalItem[]` so it can read each candidate's own `standing`
+and mark a `resolved` one the same way. Picking a quest that is already
+done, or making an item depend on one already settled, is a legitimate
+thing to do — nothing here gates it — but doing it blind was the one gap:
+nothing on either chip said so before you pressed it.
+
+**A workstream renames in one write, across every item that carries
+it.** `renameWorkstream` in `domain/goals/goal.ts` matches the string
+exactly — the same value `byWorkstream` groups on — because a looser
+match would rename items a grouping pass would not have considered the
+same workstream. There was no bulk path before this: a workstream typed
+once wrong, or named before the plan settled, could only be fixed one
+item at a time through `renameItemIn`, which is fine for a title and
+wrong for a label sixteen items might share. `WorkstreamSection` in
+`GoalPage.tsx` puts the control in the `Section` component's existing
+`action` slot rather than making `title` a prop that can be an input —
+`Section` is used across the app and its title has always been a plain
+string, so the rename form opens as a sibling above the item list
+instead, the same "offered inline, not in place" shape `ItemEditor`
+already uses for a single item.
+
+**Deleting a goal with linked items says so before the second tap.**
+The "Sure?" confirm was generic — the same shape as removing an item —
+and a goal's link to a quest is goal-side only, so removing the goal
+loses the connection with nothing on the quest itself to show it ever
+existed. The warning only appears when there is something to lose, the
+rule `Campaigns`' stage-drop confirm already follows: a goal with no
+linked items gets the plain "Sure?" and nothing else. It names the
+count rather than just warning in the abstract, and says explicitly
+that the quest is untouched — the destructive half is entirely on the
+goal side, and a lifter reading the warning should not have to guess
+whether the quest itself is at risk too.
+
+**A goal surfaces on Today as a readout, the same stance `ArcSlot` takes
+on a campaign standing in for a main quest.** `nextAvailableItem` in
+`domain/goals/goal.ts` names the earliest _available_ item — never a
+resolved or blocked one, and never the most recently touched one, the
+same "earliest outstanding, highlighted rather than moved" rule
+`Campaign`'s own `next` already follows. `GoalsCard` reads it per goal
+and links straight to the goal page; nothing here can be ticked or
+closed from Today, because a goal pays no XP and a card that let you
+close an item from here would be inventing a second control for a write
+the goal page already owns.
+
+**Silent whenever nothing qualifies**, deliberately covering three
+different states with one behaviour: no goals exist yet, every item in
+every goal is resolved, or everything outstanding is blocked. All three
+read the same from Today's point of view — there is nothing available to
+name — and a card that distinguished them would be explaining a fact
+about the data rather than reporting on the day. Goal creation is
+discovered from the Quests page header regardless, so Today does not
+need to double as the onboarding surface the way Buffs' "Set up" prompt
+does.
+
+**Loading is folded into "nothing yet" rather than given a skeleton**,
+the same call the campaign arc slot already makes for `leadingArc`: this
+is an optional extra on the day, not a primary control somebody manages
+from here, so a card that flickered in after the fetch would be more
+noise than the alternative of it simply appearing a moment late.
+
+**`parity.test.ts` gained a line for exactly the failure this feature
+invites**: the card is silent by design, which is also how a hollowed-out
+demo fixture would fail — every item settled or blocked, and the
+reviewer's first screen never shows it. The added test asserts a goal
+in the fixture always has something `nextAvailableItem` can name.
+
 **The program is never the log.** A `ProgramTemplate` stores intent and a
 `WorkoutLog` stores what happened. Never write a result back into a
 template. All three predecessor apps collapsed these, and that single
