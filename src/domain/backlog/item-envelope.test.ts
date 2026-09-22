@@ -63,9 +63,7 @@ describe('createItemEnvelope / parseItemEnvelope', () => {
 describe('parseItemEnvelope daily-goal normalization', () => {
   /** Backlogs saved before daily goals existed have neither field. */
   function legacyRaw(overrides: Record<string, unknown> = {}): string {
-    const { dailyProgress, dailyGoal, ...legacyItem } = buildItem()
-    void dailyProgress
-    void dailyGoal
+    const { dailyProgress: _dailyProgress, dailyGoal: _dailyGoal, ...legacyItem } = buildItem()
     return JSON.stringify({ version: 1, items: [{ ...legacyItem, ...overrides }] })
   }
 

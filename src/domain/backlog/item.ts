@@ -182,8 +182,7 @@ export function applyItemUpdate(item: Item, changes: ItemChanges, deps: ItemDeps
 
   // Spreading `withoutGoal` rather than `item` is what lets a goal be *removed*:
   // a conditional spread can add an optional key back, never take one away.
-  const { dailyGoal: currentGoal, ...withoutGoal } = item
-  void currentGoal
+  const { dailyGoal: _currentGoal, ...withoutGoal } = item
 
   return {
     ...withoutGoal,

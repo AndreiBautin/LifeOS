@@ -108,8 +108,7 @@ function normalizeItem(item: Item): Item {
   const rawProgress = raw.dailyProgress
   const legacyStamp = raw.lastUpdated
 
-  const { dailyGoal: storedGoal, ...withoutGoal } = item
-  void storedGoal
+  const { dailyGoal: _storedGoal, ...withoutGoal } = item
 
   const safe = { ...withoutGoal } as Record<string, unknown>
   for (const key of [...POLLUTING_KEYS, 'lastUpdated']) {
