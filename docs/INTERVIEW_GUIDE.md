@@ -295,6 +295,28 @@ Or:
 > did it eight times. The habit I have now is that a rule and its control
 > land in the same change.
 
+### "Your resume is all .NET, Azure and RAG — why show me a React app with none of that?"
+
+Expect this one. Answer it directly rather than defending the stack
+choice.
+
+> The stack is deliberately not the point. The day job is enterprise
+> .NET and Azure, and this was built outside it specifically so it is
+> evidence of my own judgment rather than a restatement of employer
+> work I can't show you anyway. What I'd want you to look at is not
+> "does he know React" — it's the layer boundaries enforced by lint
+> rather than convention, the decision to keep double progression pure
+> and derive the programme rather than store it, the demo-data
+> discipline, and `CLAUDE.md`, which is months of documented trade-offs
+> and a couple of times I was wrong and fixed it. That's the same
+> judgment I'd bring to an Azure RAG pipeline; I just didn't have an
+> Azure RAG pipeline of my own to build it on.
+>
+> If the role is close enough to the RAG platform at 3Cloud, I'd rather
+> walk through that verbally — the async Service Bus replacement and
+> the telemetry-driven stabilization are the more directly relevant
+> story, I just can't hand you a link to click through it.
+
 ### "This is a personal app — how would it change for a team?"
 
 > The layer boundaries and the repository ports are already the seam, so
