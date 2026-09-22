@@ -238,7 +238,7 @@ a phone layout stranded in the middle of a monitor.
   migrations included, and **the Firestore emulator** so the access
   rules are exercised too.
 
-Roughly **1,400 tests** across 119 files, run on every push.
+Roughly **1,480 tests** across 122 files, run on every push.
 
 ## Documentation
 

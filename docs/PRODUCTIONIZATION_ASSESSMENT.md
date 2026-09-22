@@ -120,3 +120,77 @@ what the workflow builds, not where it puts it.
 Findings 4, 6 and 7 are named and deliberately not addressed first: they
 are real, none of them blocks a reviewer, and a demo that exists beats a
 tidier codebase nobody can open.
+
+---
+
+## Round 2 — reassessed at `170a1a0`
+
+Everything above was executed. The demo build deploys, the fixture is
+generated and namespace-isolated, `parity.test.ts` guards it, and both
+`INTERVIEW_GUIDE.md` and `DEMO_DATA.md` exist. Baseline for this round:
+**1,482 tests in 122 files, all passing**; `pnpm verify` green; 402
+source files; worktree clean. A substantial feature — complex
+multi-branch goals, linked to real quests — shipped since Round 1 and is
+live in the demo.
+
+This round is not a rebuild. It is what three days of real work between
+sessions costs a productionized repo if nobody re-checks it: nothing here
+was ever fixed once and then re-broken by hand. Two things drifted
+silently and one thing was never wired up.
+
+### Findings
+
+| #   | Finding                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         | Impact                                                                              | Severity |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- | -------- |
+| 1   | **The CI workflow was manually disabled** (`state: disabled_manually` via the Actions API), with no comment or marker anywhere explaining why or that it was temporary — unlike Dependabot, which was paused by a file rename that says exactly that. Every push since it was turned off, including the Goals feature, deployed on the strength of the pre-push hook and the deploy workflow's own `verify` job alone. Those cover typecheck/lint/format/test/build; they do **not** cover the demo-configuration build check, the icon-generator drift check, the dependency audit, or the secret scan — all four are CI-only. | A regression in any of those four would have shipped to the live demo undetected.   | **High** |
+| 2   | **No branch protection on `main`** (`GET .../protection` returned 404). Nothing stopped a force-push or a branch deletion, and nothing required the CI checks to pass before a merge from anywhere but this machine's own hook.                                                                                                                                                                                                                                                                                                                                                                                                 | The gate depended entirely on one machine's git hooks being installed and honoured. | Medium   |
+| 3   | **Three documents had gone stale against the Goals feature**: `DEMO_DATA.md`'s per-screen table had no Goals row despite the fixture demonstrating it in the deployed app right now; `INTERVIEW_GUIDE.md` had no second design-decision story to reach for beyond the training model; both it and the README quoted test/file counts from before the feature shipped.                                                                                                                                                                                                                                                           | A reviewer opening the live demo sees a screen none of the documentation mentions.  | Medium   |
+| 4   | Dependabot was paused "for consolidation" during the Goals work and the pause outlived the reason for it.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       | Routine dependency updates silently stopped.                                        | Low      |
+
+None of these are code defects — `pnpm verify` was green throughout, and the app itself was never at risk. They are the specific failure mode Phase 8 exists to close: a machine-checked gate that quietly stops being checked reads, from the outside, exactly like one that is still working.
+
+### What was fixed this round
+
+- CI re-enabled via the Actions API, then triggered manually against
+  current `main` and watched to completion — typecheck, lint, format,
+  test, build, the demo-configuration build, the icon-generator check,
+  the dependency audit and the secret scan **all green on today's code**,
+  not assumed from the workflow file.
+- Branch protection added to `main`: the two CI status checks required
+  (**not** the Deploy checks, which do not run on PRs and would
+  deadlock); no required review (solo maintainer — requiring one
+  deadlocks every PR the maintainer opens); admins not enforced, so the
+  direct-push escape hatch survives with the local hook still guarding
+  it; force-push and branch deletion blocked.
+- Dependabot restored (the rename back to `dependabot.yml` was the
+  documented restoration path, not a new decision).
+- `DEMO_DATA.md`, `INTERVIEW_GUIDE.md`, `TESTING.md` and the README
+  updated: a Goals row in the demo-data table, a second design-decision
+  story (`Campaign`/`Project`/`Goal`, why neither existing shape fit, the
+  dependency-graph reuse, the quest-link trade-off), and current
+  test/file/line counts everywhere they were quoted.
+- Verified live: the deployed demo at `170a1a0` renders the Goals card
+  on Today, the goal detail page, and Settings' build sha matches the
+  commit actually pushed — checked against the running site, not
+  inferred from the deploy log.
+
+### What is unchanged and still true
+
+Findings 4, 6 and 7 from Round 1 (the failed-read banner's remaining
+scope, the three vestigial IndexedDB stores, the >500 KB chunk) are
+still accurate as originally stated and still not worth interrupting a
+reviewer over. The Firebase-SDK bundling fix from between rounds
+(`ec4f7e5`) was re-verified this round by reading the live site's actual
+network requests rather than the build's file listing: the 535 KB chunk
+exists in the output and is never fetched by the demo, confirmed both
+locally and against the deployed URL.
+
+### Order of work for next time
+
+The lesson worth keeping, not just the fixes: **a disabled GitHub Actions
+workflow produces no error, no notification, and no diff** — it is a
+server-side setting, invisible to `git status`, `git log`, and a config
+file read. The only way to catch it is to ask the platform directly
+(`gh api .../actions/workflows`), which is now worth doing at the start
+of any future productionization pass on this repo, before trusting a
+green history of individual runs.

@@ -3,7 +3,7 @@
 Run with `pnpm test` (watch) or `pnpm test:run` (once). `pnpm verify`
 runs them alongside typecheck, lint, format and build.
 
-**1,405 tests across 119 files**, all passing. The Firestore emulator
+**1,482 tests across 122 files**, all passing. The Firestore emulator
 suites are separate — see below.
 
 ## The strategy

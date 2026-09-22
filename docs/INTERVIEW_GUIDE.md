@@ -131,6 +131,48 @@ it derived deleted all four.
 
 ---
 
+## A second one, if they want more
+
+**"Goals" is a genuine relocation plan — several workstreams running in
+parallel, some of it decided and most of it not, with real dependencies
+between two of them.** It is the newest feature in the app and the one
+where "which existing shape does this fit" was a real question rather
+than an obvious one.
+
+> Two shapes already existed for "a thing with structure": `Campaign` is
+> one ordered chain of stages read live against other areas, and
+> `Project` is a flat list of homogeneous steps that pay XP when closed.
+> Neither fit. A campaign forces one chain per workstream, which throws
+> away the dependencies between them. A project's steps are all the same
+> kind of thing — actions — and a goal item is as often a fact, a
+> hypothesis, or an open question as it is something to go and do. None
+> of those is a thing anybody _does_, so closing one is not an act, and
+> paying XP for deciding where to live would cross the same act/outcome
+> line the rest of the model refuses. **A goal pays no XP** — same
+> footing as the campaign, and it does not join the registry.
+
+**What it reuses rather than reinvents** is the better half of the
+story: the dependency graph — cycle detection via a breadth-first walk,
+cascade-clear when an item is deleted — is the exact shape already
+solved for quest blockers, applied to a graph of six kinds of item
+instead of a graph of projects. And it is **ordered but not gated**, the
+stance the campaign already takes on its stages: a blocked item is
+_named_ blocked and nothing refuses to resolve it anyway, because a
+screen that policed the order would be deciding somebody's life for them
+rather than reporting on it.
+
+**The trade-off, if pushed:** an item can link to a real quest so
+resolution follows the actual work instead of a second checkbox — link
+"declutter the garage" to the house job doing it, and the item unblocks
+the moment the quest is marked done, with nothing written back onto the
+goal item at all. That reuse is also the honest cost: a goal's link to a
+quest is one-directional bookkeeping, so deleting the quest has to walk
+every goal to clear the dangling reference, and it does — that cascade
+is its own function precisely because the two record types live in
+different modules that must not import each other.
+
+---
+
 ## The story about being wrong
 
 Interviewers ask for a mistake. Give a real one with a real mechanism.
@@ -290,9 +332,9 @@ reads better than one who says nothing is wrong.
 
 |              |                                                                     |
 | ------------ | ------------------------------------------------------------------- |
-| TypeScript   | ~72,000 lines across 391 files                                      |
-| Tests        | 1,405 across 119 files, plus three Firestore-emulator suites        |
-| Domain layer | 111 files, zero React and zero browser APIs                         |
+| TypeScript   | ~76,000 lines across 402 files                                      |
+| Tests        | 1,482 across 122 files, plus three Firestore-emulator suites        |
+| Domain layer | 112 files, zero React and zero browser APIs                         |
 | Verification | one command — typecheck, lint, format, test, build                  |
 | Gate         | pre-push hook and CI run the same command; the deploy depends on it |
 

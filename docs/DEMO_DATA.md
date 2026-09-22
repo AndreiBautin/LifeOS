@@ -62,16 +62,17 @@ Enough that every screen has something to draw, and no more. The shape
 of the dataset is chosen so a reviewer understands the app in about ten
 seconds per screen.
 
-| Screen        | What the fixture gives it                                                                    |
-| ------------- | -------------------------------------------------------------------------------------------- |
-| **You**       | Level 2, four trait bars with two proven, a season's challenges, four buff pools mid-day     |
-| **Train**     | Three finished sessions across a week, so history, volume and the Strength ladder all report |
-| **Quests**    | A main quest, a side quest, a one-off contract, and one finished                             |
-| **Codex**     | Eleven entries covering every status, two with a run of progress days                        |
-| **Map**       | Seven places, three visited — which is what clears the fog — and one with no point yet       |
-| **Base**      | Four rooms read for clutter and one never read, plus house jobs at different stages          |
-| **Finance**   | Three months of readings, so every trend has two points to compare                           |
-| **Tech tree** | A prerequisite chain, something owned, something dropped, something out of reach             |
+| Screen        | What the fixture gives it                                                                                                                                                                  |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **You**       | Level 2, four trait bars with two proven, a season's challenges, four buff pools mid-day                                                                                                   |
+| **Train**     | Three finished sessions across a week, so history, volume and the Strength ladder all report                                                                                               |
+| **Quests**    | A main quest, a side quest, a one-off contract, and one finished                                                                                                                           |
+| **Codex**     | Eleven entries covering every status, two with a run of progress days                                                                                                                      |
+| **Map**       | Seven places, three visited — which is what clears the fog — and one with no point yet                                                                                                     |
+| **Base**      | Four rooms read for clutter and one never read, plus house jobs at different stages                                                                                                        |
+| **Finance**   | Three months of readings, so every trend has two points to compare                                                                                                                         |
+| **Tech tree** | A prerequisite chain, something owned, something dropped, something out of reach                                                                                                           |
+| **Goals**     | A relocation plan across six workstreams, a dependency crossing two of them, a confirmed and a refuted hypothesis, and one item linked to a real quest so completing the quest unblocks it |
 
 ### The edge cases it deliberately includes
 
