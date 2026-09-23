@@ -1,3 +1,5 @@
+import type { CSSProperties } from 'react'
+
 import type { Avatar } from '@/domain/game/avatar'
 import { SEASON_LABELS, type Season } from '@/domain/game/season'
 import { cn } from '@/lib/cn'
@@ -118,6 +120,25 @@ export function AvatarPortrait({
 
   return (
     <div className={cn('relative shrink-0', boxClass, className)}>
+      {/*
+        **Two rings, breathing outward — `large` and `2xl` only.** The
+        same gating as the box size itself, because this is the same
+        "fill the freed space with something that is decoration *and*
+        real information" reasoning: the tint is the season, so the
+        pulse is reading the same fact the ring around the figure does,
+        not adding a new one. `aria-hidden` because the season and level
+        are both already in the SVG's own `aria-label`.
+      */}
+      {size === 'large' && (
+        <div aria-hidden className="pointer-events-none absolute inset-0 hidden 2xl:block">
+          <div className="avatar-pulse-ring" style={{ '--pulse-tint': tint } as CSSProperties} />
+          <div
+            className="avatar-pulse-ring"
+            style={{ '--pulse-tint': tint, animationDelay: '1.8s' } as CSSProperties}
+          />
+        </div>
+      )}
+
       <svg
         viewBox={`0 0 ${String(SIZE)} ${String(SIZE)}`}
         className="h-full w-full"

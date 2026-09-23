@@ -5,6 +5,7 @@ import type { TraitStanding } from '@/domain/game/traits'
 
 import { PortraitBand } from './PortraitBand'
 import { Traits } from './Traits'
+import { TraitRadar } from './TraitRadar'
 
 /**
  * The character sheet, as one card and the first thing on the screen.
@@ -45,30 +46,79 @@ export function SheetCard({
   readonly avatarSize?: 'large'
 }) {
   return (
-    <Card>
+    <div className="relative">
       {/*
-        **The figure and its season are one block, with no rule between
-        them.** Asked for as _"can we move the season progress up into
-        the row with the avatar."_ The season names itself in the column
-        beside the portrait and its bar runs full width underneath, which
-        is the only place a meter fits: the column next to a 120-pixel
-        figure is about 200 wide at 375.
-
-        A rule here would say these are two readings. They are one — the
-        level is XP over all of it and the season is XP over this chapter
-        — and the traits below still get their rule, because that is
-        genuinely the same quantity split a third way.
+        **A slow wash behind the card, `2xl` and `large` only.** Reported
+        after the width and column fixes still left the page "sparse
+        with cards": _"I'm thinking more or adding in new UI elements to
+        make this app feel more alive and premium."_ This is one of the
+        four directions chosen from that reply. It sits *behind* the
+        card in DOM order and `-z-10` in paint order, `pointer-events-none`
+        so it can never intercept a click meant for the card above it,
+        and it is not clipped to the card's own rounded corners — a wash
+        that bleeds past the edge reads as ambient light rather than as a
+        second, smaller card glowing inside the first.
       */}
-      <PortraitBand
-        {...(action === undefined ? {} : { action })}
-        {...(avatarSize === undefined ? {} : { avatarSize })}
-      />
-
-      {traits !== undefined && (
-        <div className="border-ink-800 mt-4 border-t pt-4">
-          <Traits traits={traits} />
+      {avatarSize === 'large' && (
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -inset-10 -z-10 hidden rounded-[2rem] 2xl:block"
+          style={{
+            background: 'radial-gradient(60% 60% at 30% 20%, var(--glow-accent), transparent 70%)',
+          }}
+        >
+          <div className="sheet-glow h-full w-full" />
         </div>
       )}
-    </Card>
+
+      <Card>
+        {/*
+          **The figure and its season are one block, with no rule between
+          them.** Asked for as _"can we move the season progress up into
+          the row with the avatar."_ The season names itself in the column
+          beside the portrait and its bar runs full width underneath, which
+          is the only place a meter fits: the column next to a 120-pixel
+          figure is about 200 wide at 375.
+
+          A rule here would say these are two readings. They are one — the
+          level is XP over all of it and the season is XP over this chapter
+          — and the traits below still get their rule, because that is
+          genuinely the same quantity split a third way.
+        */}
+        <PortraitBand
+          {...(action === undefined ? {} : { action })}
+          {...(avatarSize === undefined ? {} : { avatarSize })}
+        />
+
+        {traits !== undefined && (
+          <div className="border-ink-800 mt-4 border-t pt-4">
+            {/*
+              **The radar is a second reading of the same bars, `2xl`
+              and `large` only — never a replacement.** A bar answers
+              "how far into level 6"; a radar answers "what shape is my
+              week" at a glance, which a stack of seven bars cannot say
+              in one look. Both read the same `TraitStanding[]`, so
+              there is no second source to drift from the first — an
+              unproven trait plots at the centre in the radar for the
+              same reason its bar reads "Nothing yet" rather than a
+              guessed value.
+
+              Side by side rather than stacked, because the radar is
+              exactly the kind of freed 2xl-only width this pass exists
+              to fill — stacking it above the bars would just move the
+              sparseness down a card instead of using it.
+            */}
+            <div className="2xl:grid 2xl:grid-cols-[1fr_auto] 2xl:items-center 2xl:gap-6">
+              <Traits traits={traits} />
+              {avatarSize === 'large' && (
+                <div className="hidden 2xl:block">
+                  <TraitRadar traits={traits} />
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </Card>
+    </div>
   )
 }

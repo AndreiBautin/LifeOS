@@ -244,6 +244,34 @@
   }
 
   /*
+   * A card lifts under a pointer that can actually hover.
+   *
+   * **`(hover: hover)` rather than a bare `:hover`**, because a touch tap
+   * *is* a hover event on most mobile browsers with nothing to end it
+   * until the next tap lands elsewhere — a card on a phone would lift and
+   * stay lifted. This app is used one-handed on a phone as often as on a
+   * desktop, so the effect is scoped to the input that can withdraw.
+   *
+   * Reported as wanting the desktop screen to feel "alive and premium"
+   * rather than sparse; a card that answers a pointer is cheap motion
+   * that costs nothing on the surfaces that cannot trigger it.
+   */
+  @media (hover: hover) {
+    .card {
+      transition:
+        transform 220ms cubic-bezier(0.16, 1, 0.3, 1),
+        box-shadow 220ms cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .card:hover {
+      transform: translateY(-3px);
+      box-shadow:
+        inset 0 1px 0 0 var(--card-sheen),
+        0 20px 36px -18px rgb(0 0 0 / 85%);
+    }
+  }
+
+  /*
    * A control built out of the same three things a card is.
    *
    * Reported against the old primary button: *"I don't like the style of
@@ -391,6 +419,68 @@
 
 .xp-award {
   animation: xp-award-in 260ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/*
+ * Two rings breathing outward from the large avatar, `2xl` only.
+ *
+ * **Composited, never laid out** — `transform` and `opacity` only, so the
+ * animation costs the browser nothing beyond the paint of a thin circle.
+ * Two rings rather than one, offset by `animation-delay` in the markup,
+ * because a single ring reads as a blink and a pair reads as a pulse.
+ *
+ * The colour arrives as `--pulse-tint`, set inline by `AvatarPortrait`
+ * from the same season tint the ring itself already uses — so the pulse
+ * and the ring it surrounds are always one colour, never two readings of
+ * the season wearing different hues.
+ */
+@keyframes avatar-pulse {
+  0% {
+    transform: scale(0.86);
+    opacity: 0.45;
+  }
+  70% {
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1.4);
+    opacity: 0;
+  }
+}
+
+.avatar-pulse-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  border: 1.5px solid var(--pulse-tint, var(--color-accent-500));
+  animation: avatar-pulse 3.6s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+  pointer-events: none;
+}
+
+/*
+ * A slow wash behind the sheet card, `2xl` only, tied to the large-avatar
+ * context.
+ *
+ * **Reuses the body's own `--glow-accent` token** rather than inventing a
+ * second gradient recipe — the same wash that already sits fixed behind
+ * every screen, given its own soft pulse and confined to the one card
+ * that earns it, instead of a new colour the palette has not chosen.
+ * `pointer-events: none` and negative `z-index`: it is behind the card in
+ * the paint order and cannot intercept a click meant for what is drawn
+ * over it.
+ */
+@keyframes sheet-glow-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.sheet-glow {
+  animation: sheet-glow-pulse 6s ease-in-out infinite;
 }
 
 /* A placeholder with a shape, for the moment before data arrives.
