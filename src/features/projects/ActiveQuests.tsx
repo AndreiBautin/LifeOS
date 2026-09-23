@@ -7,6 +7,7 @@ import type { Project } from '@/domain/projects/project'
 import { QUEST_KIND_LABELS, type QuestKind } from '@/domain/projects/project'
 import { Badge, Button, Card } from '@/components/shared/primitives'
 
+import { CampaignPath } from './CampaignPath'
 import { useRecommendation, useSetActiveQuest } from './hooks'
 
 /**
@@ -165,6 +166,13 @@ function ArcSlot({ arc }: { readonly arc: CampaignStanding & { next: StageStandi
             question the side quest's does, and reads the same way.
           */}
           <p className="text-ink-500 truncate text-xs">Next: {step ?? stage.name}</p>
+
+          {/*
+            The road, `lg` and up — see `CampaignPath`'s own doc for why
+            this duplicates nothing above it. `arc.total`/`arc.stages`
+            already came down with the rest of `CampaignStanding`.
+          */}
+          <CampaignPath stages={arc.stages} nextPosition={arc.nextPosition} />
 
           <Link to="/quests" className="text-ink-500 hover:text-ink-300 mt-2 block text-xs">
             Open the arc →

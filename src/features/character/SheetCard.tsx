@@ -48,7 +48,7 @@ export function SheetCard({
   return (
     <div className="relative">
       {/*
-        **A slow wash behind the card, `2xl` and `large` only.** Reported
+        **A slow wash behind the card, `lg` and `large` only.** Reported
         after the width and column fixes still left the page "sparse
         with cards": _"I'm thinking more or adding in new UI elements to
         make this app feel more alive and premium."_ This is one of the
@@ -58,11 +58,16 @@ export function SheetCard({
         and it is not clipped to the card's own rounded corners — a wash
         that bleeds past the edge reads as ambient light rather than as a
         second, smaller card glowing inside the first.
+
+        **`lg`, not `2xl`** — it shipped at `2xl` and a real two-monitor
+        screenshot showed a secondary monitor's window sitting above
+        `lg` and below `2xl`, getting none of it. `lg` is the line the
+        desktop sidebar nav already switches on.
       */}
       {avatarSize === 'large' && (
         <div
           aria-hidden
-          className="pointer-events-none absolute -inset-10 -z-10 hidden rounded-[2rem] 2xl:block"
+          className="pointer-events-none absolute -inset-10 -z-10 hidden rounded-[2rem] lg:block"
           style={{
             background: 'radial-gradient(60% 60% at 30% 20%, var(--glow-accent), transparent 70%)',
           }}
@@ -104,14 +109,14 @@ export function SheetCard({
               guessed value.
 
               Side by side rather than stacked, because the radar is
-              exactly the kind of freed 2xl-only width this pass exists
-              to fill — stacking it above the bars would just move the
-              sparseness down a card instead of using it.
+              exactly the kind of freed `lg`-and-up width this pass
+              exists to fill — stacking it above the bars would just
+              move the sparseness down a card instead of using it.
             */}
-            <div className="2xl:grid 2xl:grid-cols-[1fr_auto] 2xl:items-center 2xl:gap-6">
+            <div className="lg:grid lg:grid-cols-[1fr_auto] lg:items-center lg:gap-6">
               <Traits traits={traits} />
               {avatarSize === 'large' && (
-                <div className="hidden 2xl:block">
+                <div className="hidden lg:block">
                   <TraitRadar traits={traits} />
                 </div>
               )}

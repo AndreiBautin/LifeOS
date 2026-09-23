@@ -63,8 +63,16 @@ const BOX_CLASSES = {
    * for every level is the one thing on the page that is decoration
    * *and* real information, the same reasoning behind Spinner's vinyl
    * record. Every other caller keeps the fixed 120px it always had.
+   *
+   * **`lg`, not `2xl`.** It shipped gated at `2xl` first and a real
+   * two-monitor screenshot showed why that was wrong: a secondary
+   * monitor's browser window sits well above `lg` and well below `2xl`,
+   * so the whole "large" treatment — this box, the pulse rings, the
+   * radar, the sheet glow — simply never appeared there. `lg` is the
+   * same line the sidebar nav already switches on, so anything wide
+   * enough for the desktop nav is wide enough for this too.
    */
-  large: 'h-[120px] w-[120px] 2xl:h-[220px] 2xl:w-[220px]',
+  large: 'h-[120px] w-[120px] lg:h-[220px] lg:w-[220px]',
 } as const
 
 export function AvatarPortrait({
@@ -130,7 +138,7 @@ export function AvatarPortrait({
         are both already in the SVG's own `aria-label`.
       */}
       {size === 'large' && (
-        <div aria-hidden className="pointer-events-none absolute inset-0 hidden 2xl:block">
+        <div aria-hidden className="pointer-events-none absolute inset-0 hidden lg:block">
           <div className="avatar-pulse-ring" style={{ '--pulse-tint': tint } as CSSProperties} />
           <div
             className="avatar-pulse-ring"
@@ -231,7 +239,7 @@ export function AvatarPortrait({
         className={cn(
           'bg-ink-950 text-ink-50 numeric absolute -bottom-1 left-1/2 -translate-x-1/2 rounded-full border px-2 font-semibold',
           compact ? 'text-[10px]' : 'text-xs',
-          size === 'large' && '2xl:-bottom-2 2xl:px-3 2xl:text-base',
+          size === 'large' && 'lg:-bottom-2 lg:px-3 lg:text-base',
         )}
         style={{ borderColor: tint }}
       >

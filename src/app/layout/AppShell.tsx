@@ -275,26 +275,31 @@ export function AppShell() {
         this file already knows to apply to itself: a class present in
         the markup is not evidence that it is winning.
 
-        **The cap is a share of the viewport now, not a guessed pixel
-        number.** It went from `2xl:max-w-7xl` (1280px) to a fixed
-        `2xl:max-w-[1600px]` after the first report of empty space on a
-        wide monitor, and that still weren't enough — measured afterward
-        at 1920px CSS-pixel width (itself a guess at the actual
-        hardware, which this session cannot see), 1600px still left a
-        160px gap by design, because the cap simply stopped scaling
-        past it. A number picked to look generous on one assumed screen
-        is exactly the mistake a second "still lots of whitespace"
-        report is evidence against.
-        `min(94vw,2400px)` fixes the shape of the mistake rather than
-        raising the same kind of guess again: **94vw** keeps the cap a
-        constant *proportion* of whatever the real viewport turns out to
-        be, at any width, with no number to get wrong — and the 2400px
-        ceiling only exists so a card grid does not stretch into a
-        single sparse row on a genuinely enormous ultrawide.
+        **The cap went to `min(94vw,2400px)` and back to a fixed number,
+        and both moves were correct for what the page held at the time.**
+        A viewport-proportional cap was the right fix for a page with a
+        handful of thin cards and a lot of empty width to account for —
+        `94vw` meant the cap could never again be "generous on one
+        assumed screen and short on the next", which was the exact
+        mistake a fixed `1600px` had just made. That argument does not
+        survive the page gaining real content: once `SheetCard` carries a
+        radar, two pulse rings and a glow, and the quest and challenge
+        cards carry a roadmap and a ring, growing the shell to 94% of a
+        genuinely wide monitor spreads that same content into more, and
+        thinner, masonry columns rather than filling the extra width —
+        which is exactly the "big empty void on the right and bottom" a
+        real two-monitor screenshot showed on the main display.
+
+        **`2xl:max-w-[1600px]` is back, deliberately not proportional
+        this time.** The point of a fixed cap here is that it *should
+        not* keep growing with the monitor — past this width the answer
+        to "how do I fill the rest" is more real content on the cards
+        that exist, which is what shipped alongside this change, not a
+        wider stage for the same five cards to spread thinner across.
       */}
       <main
         id="main"
-        className="mx-auto w-full max-w-2xl lg:max-w-4xl xl:max-w-6xl 2xl:max-w-[min(94vw,2400px)] flex-1 pb-28 pt-[calc(1rem_+_var(--safe-top))] pl-[calc(1rem_+_var(--safe-left))] lg:pl-[calc(1rem_+_var(--safe-left)_+_var(--sidebar-w))] pr-[calc(1rem_+_var(--safe-right))]"
+        className="mx-auto w-full max-w-2xl lg:max-w-4xl xl:max-w-6xl 2xl:max-w-[1600px] flex-1 pb-28 pt-[calc(1rem_+_var(--safe-top))] pl-[calc(1rem_+_var(--safe-left))] lg:pl-[calc(1rem_+_var(--safe-left)_+_var(--sidebar-w))] pr-[calc(1rem_+_var(--safe-right))]"
       >
         <Outlet />
       </main>

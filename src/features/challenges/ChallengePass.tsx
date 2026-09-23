@@ -5,6 +5,7 @@ import { Button, Empty } from '@/components/shared/primitives'
 import { Meter } from '@/components/shared/Meter'
 import type { Challenge } from '@/domain/challenges/challenge'
 
+import { ChallengeRing } from './ChallengeRing'
 import {
   useAddChallenge,
   useChallenges,
@@ -173,28 +174,41 @@ export function ChallengePass({
         </div>
       )}
 
-      <div className="flex items-baseline justify-between gap-3">
-        <span className="text-ink-500 text-sm">Challenges done</span>
-        <span className="numeric text-ink-50 text-sm font-semibold">
-          {data.done}
-          <span className="text-ink-500 font-normal"> / {data.total}</span>
-        </span>
-      </div>
+      <div className="flex items-center gap-3">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-baseline justify-between gap-3">
+            <span className="text-ink-500 text-sm">Challenges done</span>
+            <span className="numeric text-ink-50 text-sm font-semibold">
+              {data.done}
+              <span className="text-ink-500 font-normal"> / {data.total}</span>
+            </span>
+          </div>
 
-      {/*
-        `of` is the count of challenges that exist — a denominator taken
-        from the list below rather than a threshold. `Meter` requires both
-        numbers precisely so a call site cannot hide what it divides by,
-        and this one has nothing to hide.
-      */}
-      <Meter
-        className="mt-2"
-        value={data.done}
-        of={data.total}
-        tone={data.total > 0 && data.done === data.total ? 'good' : 'accent'}
-        glow
-        label={`${String(data.done)} of ${String(data.total)} challenges finished`}
-      />
+          {/*
+            `of` is the count of challenges that exist — a denominator
+            taken from the list below rather than a threshold. `Meter`
+            requires both numbers precisely so a call site cannot hide
+            what it divides by, and this one has nothing to hide.
+          */}
+          <Meter
+            className="mt-2"
+            value={data.done}
+            of={data.total}
+            tone={data.total > 0 && data.done === data.total ? 'good' : 'accent'}
+            glow
+            label={`${String(data.done)} of ${String(data.total)} challenges finished`}
+          />
+        </div>
+
+        {/*
+          **The same fraction, read as a ring — `lg` and up.** Not a
+          replacement for the bar above: the bar is what mobile has
+          always had and keeps having, and the ring is the "fill the
+          freed space with a real chart" answer for the width that only
+          exists on a wider screen.
+        */}
+        <ChallengeRing done={data.done} total={data.total} />
+      </div>
 
       <div className="mt-3 space-y-3">
         {data.challenges.length === 0 ? (
