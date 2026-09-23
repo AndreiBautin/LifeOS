@@ -234,9 +234,9 @@ async function seedQuests(deps: DemoDeps): Promise<void> {
 
   await addProject(
     {
-      name: 'Learn enough Rust to be dangerous',
+      name: 'Learn woodworking basics',
       kind: 'side',
-      steps: ['Read the book to chapter 10', 'Port one small tool'],
+      steps: ['Build a small shelf', 'Learn to use a router'],
     },
     deps,
   )
