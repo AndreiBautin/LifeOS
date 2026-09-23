@@ -1,9 +1,26 @@
-import { BookMarked, Dumbbell, Home, Map, Network, Target, User, Wallet } from 'lucide-react'
+import {
+  BookMarked,
+  ChevronLeft,
+  ChevronRight,
+  Dumbbell,
+  Home,
+  Map,
+  Network,
+  Target,
+  User,
+  Wallet,
+} from 'lucide-react'
+import { useState } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
 
+import { STORAGE_KEYS } from '@/config/storage-keys'
 import { ReadFailure } from '@/features/errors/ReadFailure'
 import { UpdatePrompt } from '@/features/pwa/UpdatePrompt'
 import { LiveRecords } from '@/features/sync/LiveRecords'
+import {
+  readSidebarCollapsed,
+  saveSidebarCollapsed,
+} from '@/infrastructure/storage/sidebar-collapsed-store'
 
 /**
  * The shell every screen sits inside.
@@ -90,25 +107,36 @@ const NAV = [
  *
  * Fixed rather than sticky-in-flow, because it must not scroll with the
  * page it sits beside — a rail that scrolled away would leave desktop
- * worse off than the bottom bar it replaced. `SIDEBAR_WIDTH` is the one
- * number `AppShell`, `RestTimer` and this component all have to agree
- * on, so it is exported rather than repeated as a bare `56` in three
- * places that could quietly drift apart.
+ * worse off than the bottom bar it replaced.
+ *
+ * **Its width is a CSS custom property, not a Tailwind class, because
+ * it now has two states.** `AppShell` sets `--sidebar-w` once on the
+ * shell's outer element; this component, `main`'s padding and
+ * `RestTimer`'s position all read the same variable rather than each
+ * carrying its own copy of "expanded or collapsed" that could drift
+ * out of step with the other two.
  */
-export const SIDEBAR_WIDTH = 'w-56' // 14rem / 224px
+const SIDEBAR_EXPANDED = '14rem' // 224px
+const SIDEBAR_COLLAPSED = '4.5rem' // 72px, icon plus its own padding
 
-function SidebarNav() {
+function SidebarNav({
+  collapsed,
+  onToggle,
+}: {
+  readonly collapsed: boolean
+  readonly onToggle: () => void
+}) {
   return (
     <nav
       aria-label="Main"
-      className={`glass fixed inset-y-0 left-0 z-40 hidden ${SIDEBAR_WIDTH} flex-col border-r lg:flex`}
+      className="glass fixed inset-y-0 left-0 z-40 hidden w-[var(--sidebar-w)] flex-col border-r transition-[width] duration-200 lg:flex"
       style={{
         backgroundColor: 'color-mix(in oklab, var(--surface-raised) 72%, transparent)',
         borderColor: 'var(--border-subtle)',
         paddingTop: 'calc(1.5rem + var(--safe-top))',
       }}
     >
-      <ul className="flex flex-col gap-1 px-3">
+      <ul className="flex flex-1 flex-col gap-1 px-3">
         {NAV.map(({ to, label, Icon }) => (
           <li key={to}>
             {/*
@@ -116,12 +144,21 @@ function SidebarNav() {
               turned ninety degrees: a bar down the left edge of the row
               instead of one along its top, since "top" on a horizontal
               rail is the edge closest to the label it marks.
+
+              Collapsed drops the label and centres the icon rather than
+              truncating the text, and picks up an `aria-label` in its
+              place — a visible label and an `aria-label` together would
+              leave the two disagreeing about which one is the accessible
+              name, so this is either-or rather than both-always.
             */}
             <NavLink
               to={to}
+              {...(collapsed ? { 'aria-label': label } : {})}
+              title={label}
               className={({ isActive }) =>
                 [
                   'relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
+                  collapsed ? 'justify-center' : '',
                   isActive ? 'text-accent-400' : 'text-ink-500 hover:text-ink-300',
                 ].join(' ')
               }
@@ -135,14 +172,41 @@ function SidebarNav() {
                       style={{ boxShadow: '0 0 8px var(--color-accent-500)' }}
                     />
                   )}
-                  <Icon size={20} aria-hidden strokeWidth={isActive ? 2.4 : 1.8} />
-                  <span>{label}</span>
+                  <Icon
+                    size={20}
+                    aria-hidden
+                    strokeWidth={isActive ? 2.4 : 1.8}
+                    className="shrink-0"
+                  />
+                  {!collapsed && <span>{label}</span>}
                 </>
               )}
             </NavLink>
           </li>
         ))}
       </ul>
+
+      <div className="border-ink-800 border-t px-3 py-3">
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          className={[
+            'text-ink-500 hover:text-ink-300 tap-target flex w-full items-center gap-3 rounded-lg px-3 transition-colors',
+            collapsed ? 'justify-center' : '',
+          ].join(' ')}
+        >
+          {collapsed ? (
+            <ChevronRight size={18} aria-hidden />
+          ) : (
+            <>
+              <ChevronLeft size={18} aria-hidden />
+              <span className="text-sm">Collapse</span>
+            </>
+          )}
+        </button>
+      </div>
     </nav>
   )
 }
@@ -156,8 +220,20 @@ export function AppShell() {
    * taller than the viewport by exactly that inset. Every short page on a
    * notched phone had thirty-four pixels of scroll with nothing in them.
    */
+  const [collapsed, setCollapsed] = useState(() =>
+    readSidebarCollapsed(STORAGE_KEYS.sidebarCollapsed),
+  )
+
   return (
-    <div className="flex flex-col" style={{ minHeight: 'calc(100dvh - var(--safe-bottom))' }}>
+    <div
+      className="flex flex-col"
+      style={
+        {
+          minHeight: 'calc(100dvh - var(--safe-bottom))',
+          '--sidebar-w': collapsed ? SIDEBAR_COLLAPSED : SIDEBAR_EXPANDED,
+        } as React.CSSProperties
+      }
+    >
       <a
         href="#main"
         className="sr-only-focusable bg-accent-500 fixed left-2 z-50 rounded-md px-3 py-2 text-sm font-medium text-black"
@@ -169,7 +245,16 @@ export function AppShell() {
       <UpdatePrompt />
       <ReadFailure />
       <LiveRecords />
-      <SidebarNav />
+      <SidebarNav
+        collapsed={collapsed}
+        onToggle={() => {
+          setCollapsed((current) => {
+            const next = !current
+            saveSidebarCollapsed(STORAGE_KEYS.sidebarCollapsed, next)
+            return next
+          })
+        }}
+      />
 
       {/*
         The safe area is the shell's job, not each page's — every screen
@@ -189,10 +274,18 @@ export function AppShell() {
         224px the class asked for, which is the `--color-ink-600` lesson
         this file already knows to apply to itself: a class present in
         the markup is not evidence that it is winning.
+
+        **The cap grew again**, reported directly against the first
+        version: on an actually wide monitor, `2xl:max-w-7xl` (1280px)
+        left most of the screen empty either side of a centred column
+        that had stopped growing. `2xl:max-w-[1600px]` is not "no cap" —
+        a card grid with no ceiling at 3440px would read as three
+        columns lost in a field — but it moves the ceiling out
+        considerably further before it applies.
       */}
       <main
         id="main"
-        className="mx-auto w-full max-w-2xl lg:max-w-4xl xl:max-w-6xl 2xl:max-w-7xl flex-1 pb-28 pt-[calc(1rem_+_var(--safe-top))] pl-[calc(1rem_+_var(--safe-left))] lg:pl-[calc(1rem_+_var(--safe-left)_+_14rem)] pr-[calc(1rem_+_var(--safe-right))]"
+        className="mx-auto w-full max-w-2xl lg:max-w-4xl xl:max-w-6xl 2xl:max-w-[1600px] flex-1 pb-28 pt-[calc(1rem_+_var(--safe-top))] pl-[calc(1rem_+_var(--safe-left))] lg:pl-[calc(1rem_+_var(--safe-left)_+_var(--sidebar-w))] pr-[calc(1rem_+_var(--safe-right))]"
       >
         <Outlet />
       </main>

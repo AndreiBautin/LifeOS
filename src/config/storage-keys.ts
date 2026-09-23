@@ -68,6 +68,8 @@ export const STORAGE_KEYS = {
    * load would make a device collect back everything it had ever sent.
    */
   deviceId: `${PREFIX}.device-id`,
+  /** Whether the desktop sidebar is collapsed to icons only. */
+  sidebarCollapsed: `${PREFIX}.sidebar-collapsed`,
 } as const
 
 /** The IndexedDB database name, kept in the same namespace as the keys. */

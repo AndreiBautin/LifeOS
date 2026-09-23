@@ -69,12 +69,15 @@ export function RestTimer({ startedAt, seconds, onDismiss }: Props) {
   return (
     <div
       /*
-       * `lg:left-56` matches `SIDEBAR_WIDTH` in `AppShell.tsx` (14rem):
+       * `lg:left-[var(--sidebar-w)]` reads the same custom property
+       * `AppShell.tsx` sets on the shell for its own collapsible rail:
        * the bar carries its own background, so it has to actually move
        * clear of the rail rather than gain invisible padding the way
-       * the page's own content does.
+       * the page's own content does — and reading the variable rather
+       * than a bare `56` is what keeps it in step when the rail
+       * collapses, with no separate prop to wire through.
        */
-      className="border-ink-800 bg-ink-900 fixed inset-x-0 lg:left-56 z-30 mx-auto max-w-2xl lg:max-w-4xl xl:max-w-6xl 2xl:max-w-7xl rounded-t-2xl border-t px-4 py-3"
+      className="border-ink-800 bg-ink-900 fixed inset-x-0 lg:left-[var(--sidebar-w)] z-30 mx-auto max-w-2xl lg:max-w-4xl xl:max-w-6xl 2xl:max-w-[1600px] rounded-t-2xl border-t px-4 py-3 transition-[left] duration-200"
       /*
        * Sits on top of the navigation, and the navigation is taller than
        * it looks.
