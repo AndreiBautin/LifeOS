@@ -275,17 +275,26 @@ export function AppShell() {
         this file already knows to apply to itself: a class present in
         the markup is not evidence that it is winning.
 
-        **The cap grew again**, reported directly against the first
-        version: on an actually wide monitor, `2xl:max-w-7xl` (1280px)
-        left most of the screen empty either side of a centred column
-        that had stopped growing. `2xl:max-w-[1600px]` is not "no cap" —
-        a card grid with no ceiling at 3440px would read as three
-        columns lost in a field — but it moves the ceiling out
-        considerably further before it applies.
+        **The cap is a share of the viewport now, not a guessed pixel
+        number.** It went from `2xl:max-w-7xl` (1280px) to a fixed
+        `2xl:max-w-[1600px]` after the first report of empty space on a
+        wide monitor, and that still weren't enough — measured afterward
+        at 1920px CSS-pixel width (itself a guess at the actual
+        hardware, which this session cannot see), 1600px still left a
+        160px gap by design, because the cap simply stopped scaling
+        past it. A number picked to look generous on one assumed screen
+        is exactly the mistake a second "still lots of whitespace"
+        report is evidence against.
+        `min(94vw,2400px)` fixes the shape of the mistake rather than
+        raising the same kind of guess again: **94vw** keeps the cap a
+        constant *proportion* of whatever the real viewport turns out to
+        be, at any width, with no number to get wrong — and the 2400px
+        ceiling only exists so a card grid does not stretch into a
+        single sparse row on a genuinely enormous ultrawide.
       */}
       <main
         id="main"
-        className="mx-auto w-full max-w-2xl lg:max-w-4xl xl:max-w-6xl 2xl:max-w-[1600px] flex-1 pb-28 pt-[calc(1rem_+_var(--safe-top))] pl-[calc(1rem_+_var(--safe-left))] lg:pl-[calc(1rem_+_var(--safe-left)_+_var(--sidebar-w))] pr-[calc(1rem_+_var(--safe-right))]"
+        className="mx-auto w-full max-w-2xl lg:max-w-4xl xl:max-w-6xl 2xl:max-w-[min(94vw,2400px)] flex-1 pb-28 pt-[calc(1rem_+_var(--safe-top))] pl-[calc(1rem_+_var(--safe-left))] lg:pl-[calc(1rem_+_var(--safe-left)_+_var(--sidebar-w))] pr-[calc(1rem_+_var(--safe-right))]"
       >
         <Outlet />
       </main>
