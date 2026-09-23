@@ -57,24 +57,33 @@ import { LimitsCard } from '@/features/vitals/LimitsCard'
  * information, the level and the date, moved into the card, and its
  * settings link went with them.
  *
- * **From `lg` up, the cards flow into two, three, or four CSS columns
- * instead of one stretched line.** Widening the shell's max-width alone
- * left the freed space sitting empty on both sides — reported as "still
- * looks like a mobile site slapped onto a desktop monitor." A fixed
- * sidebar was tried next and reported back too: `SheetCard` is much
- * shorter than the quest-and-buffs stack beside it, so a two-column
- * *grid* left a slab of dead space under the sidebar once the taller
- * column ran past it. `2xl:columns-4` followed a third report, once the
- * shell's own cap grew past 1280px — three wide columns on an ultra-wide
- * monitor read as sparse as one, so the column count keeps pace with the
- * cap rather than each column just growing wider.
+ * **From `lg` up, the cards flow into as many CSS columns as the screen
+ * actually holds, rather than one stretched line.** Widening the shell's
+ * max-width alone left the freed space sitting empty on both sides —
+ * reported as "still looks like a mobile site slapped onto a desktop
+ * monitor." A fixed sidebar was tried next and reported back too:
+ * `SheetCard` is much shorter than the quest-and-buffs stack beside it,
+ * so a two-column *grid* left a slab of dead space under the sidebar
+ * once the taller column ran past it. A discrete `columns-2` /
+ * `columns-3` / `2xl:columns-4` ladder came after that and *also* came
+ * back short — a fixed pixel breakpoint is a guess at how wide the
+ * visitor's browser actually renders in CSS pixels, and a guess is
+ * exactly what a report of "still lots of whitespace" on hardware this
+ * session cannot see is telling you was wrong.
  *
- * `columns-2`/`columns-3`/`columns-4` lay the same cards out the way a
- * newspaper does — top to bottom filling one column, then continuing in
- * the next — so a short card and a tall one share a column with no gap
- * forced between them. `break-inside-avoid` on each card stops one being
- * cut in half at a column boundary. Below `lg` the `columns-*` classes do
- * nothing, so the phone layout is the same single stack it always was.
+ * `[column-width:22rem]` sidesteps guessing entirely: it asks for
+ * columns *about* 22rem wide and lets the browser divide whatever space
+ * `main` actually has by that figure, so a fourth or fifth column
+ * appears the moment there is room for one rather than at a number
+ * picked in advance. `columns-2` and friends set a *count*; this sets a
+ * *target width* and lets the count be however many of those fit.
+ *
+ * The cards still lay out the way a newspaper does — top to bottom
+ * filling one column, then continuing in the next — so a short card and
+ * a tall one share a column with no gap forced between them.
+ * `break-inside-avoid` on each card stops one being cut in half at a
+ * column boundary. Below `lg` the column classes do nothing, so the
+ * phone layout is the same single stack it always was.
  */
 
 export function HomePage() {
@@ -125,7 +134,7 @@ export function HomePage() {
       from what follows it. It reaches exactly the blocks that state
       nothing.
     */
-    <div className="space-y-8 lg:columns-2 lg:gap-8 lg:space-y-0 xl:columns-3 2xl:columns-4 [&>*]:mb-8 [&>*]:break-inside-avoid [&>*]:last:mb-0">
+    <div className="space-y-8 lg:[column-width:22rem] lg:gap-8 lg:space-y-0 [&>*]:mb-8 [&>*]:break-inside-avoid [&>*]:last:mb-0">
       {/*
         ── The glance ──────────────────────────────────────────────────
         Who you are, the chapter you are in, and the same XP split eight
