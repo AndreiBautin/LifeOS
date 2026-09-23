@@ -617,15 +617,6 @@ async function seedBuffs(deps: DemoDeps): Promise<void> {
     },
     {
       id: deps.ids.next(),
-      name: 'Alcohol',
-      capacity: 3,
-      icon: 'beer',
-      cycle: { kind: 'calendar', period: 'day' },
-      daysLimit: { days: 2, period: 'week' },
-      spent: [at(2, 20), at(2, 21)],
-    },
-    {
-      id: deps.ids.next(),
       name: 'Water',
       capacity: 128,
       unit: 'oz',
@@ -637,15 +628,6 @@ async function seedBuffs(deps: DemoDeps): Promise<void> {
         { label: 'Bottle', amount: 32 },
       ],
       spent: [`${at(0, 9)}#32`, `${at(0, 13)}#32`, `${at(1, 10)}#128`],
-    },
-    {
-      id: deps.ids.next(),
-      name: 'Vegetables',
-      capacity: 2,
-      icon: 'carrot',
-      direction: 'target',
-      cycle: { kind: 'calendar', period: 'day' },
-      spent: [at(0, 13), at(0, 19), at(1, 19)],
     },
   ]
 
