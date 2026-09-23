@@ -57,14 +57,20 @@ import { LimitsCard } from '@/features/vitals/LimitsCard'
  * information, the level and the date, moved into the card, and its
  * settings link went with them.
  *
- * **From `lg` up, the glance and the day sit side by side.** Widening the
- * shell's max-width alone left this page as one stretched column with the
+ * **From `lg` up, the cards flow into two or three CSS columns instead of
+ * one stretched line.** Widening the shell's max-width alone left the
  * freed space sitting empty on both sides — reported as "still looks like
- * a mobile site slapped onto a desktop monitor." The glance (`SheetCard`)
- * takes a sticky left column and the day's stack scrolls in the wider one
- * beside it, which is the vertical order above turned into two columns
- * rather than a different order. Below `lg` the grid classes do nothing,
- * so the phone layout is untouched by construction.
+ * a mobile site slapped onto a desktop monitor." A fixed sidebar was
+ * tried next and reported back too: `SheetCard` is much shorter than the
+ * quest-and-buffs stack beside it, so a two-column *grid* left a slab of
+ * dead space under the sidebar once the taller column ran past it.
+ *
+ * `columns-2`/`columns-3` lay the same cards out the way a newspaper
+ * does — top to bottom filling one column, then continuing in the next —
+ * so a short card and a tall one share a column with no gap forced
+ * between them. `break-inside-avoid` on each card stops one being cut in
+ * half at a column boundary. Below `lg` the `columns-*` classes do
+ * nothing, so the phone layout is the same single stack it always was.
  */
 
 export function HomePage() {
@@ -115,7 +121,7 @@ export function HomePage() {
       from what follows it. It reaches exactly the blocks that state
       nothing.
     */
-    <div className="space-y-8 lg:grid lg:grid-cols-[380px_1fr] lg:items-start lg:gap-8 lg:space-y-0 xl:grid-cols-[420px_1fr]">
+    <div className="space-y-8 lg:columns-2 lg:gap-8 lg:space-y-0 xl:columns-3 [&>*]:mb-8 [&>*]:break-inside-avoid [&>*]:last:mb-0">
       {/*
         ── The glance ──────────────────────────────────────────────────
         Who you are, the chapter you are in, and the same XP split eight
@@ -124,30 +130,22 @@ export function HomePage() {
         **is** the XP bar — same numerator, same denominator — so nothing
         in it draws that quantity twice.
 
-        **A left column from `lg` up, not a wider single column.** The
-        width fix alone left every card stacked in one stretched line
-        with the freed space sitting empty on both sides — reported as
-        "still looks like a mobile site slapped onto a desktop monitor."
-        The glance and the day are already two different questions this
-        file's own comments name; a two-column screen is that split made
-        visible instead of read top to bottom. `sticky` keeps the glance
-        in view while the day's list scrolls past it, the way a portrait
-        would sit beside a longer page in print.
+        First in DOM order, so it is the first thing a column-1 reader
+        meets — the same "glance before the day" order this page has
+        always used, now expressed as flow order rather than row order.
       */}
-      <div className="lg:sticky lg:top-8">
-        <SheetCard
-          {...(sheet.data === undefined ? {} : { traits: sheet.data.traits })}
-          action={
-            <Link
-              to="/settings"
-              aria-label="Settings"
-              className={buttonStyles({ variant: 'ghost', size: 'sm' })}
-            >
-              <Settings size={16} aria-hidden />
-            </Link>
-          }
-        />
-      </div>
+      <SheetCard
+        {...(sheet.data === undefined ? {} : { traits: sheet.data.traits })}
+        action={
+          <Link
+            to="/settings"
+            aria-label="Settings"
+            className={buttonStyles({ variant: 'ghost', size: 'sm' })}
+          >
+            <Settings size={16} aria-hidden />
+          </Link>
+        }
+      />
 
       {/*
         ── The day ─────────────────────────────────────────────────────
@@ -161,65 +159,63 @@ export function HomePage() {
         gamified and breaks up the flow"_: each card names itself, and
         the rules were doing separating that the spacing already does.
       */}
-      <div className="space-y-8">
-        <ActiveQuests
-          main={active.data?.main}
-          side={active.data?.side}
-          {...(leadingArc === undefined ? {} : { arc: leadingArc })}
-          showLink
-        />
+      <ActiveQuests
+        main={active.data?.main}
+        side={active.data?.side}
+        {...(leadingArc === undefined ? {} : { arc: leadingArc })}
+        showLink
+      />
 
-        {/*
-          Silent unless a goal has something available to work on next —
-          see the note in `GoalsCard`. A goal is a planning surface rather
-          than a quest, so this sits beside the quests it is adjacent to in
-          spirit without pretending to be one.
-        */}
-        <GoalsCard />
+      {/*
+        Silent unless a goal has something available to work on next —
+        see the note in `GoalsCard`. A goal is a planning surface rather
+        than a quest, so this sits beside the quests it is adjacent to in
+        spirit without pretending to be one.
+      */}
+      <GoalsCard />
 
-        {/*
-          The card names itself and links to the screen, which is why
-          losing the heading above it cost nothing here — it had been
-          saying "Buffs" directly over a card whose first line says Buffs.
-        */}
-        <LimitsCard />
+      {/*
+        The card names itself and links to the screen, which is why
+        losing the heading above it cost nothing here — it had been
+        saying "Buffs" directly over a card whose first line says Buffs.
+      */}
+      <LimitsCard />
 
-        {/* Both silent unless this morning's read found something. */}
+      {/* Both silent unless this morning's read found something. */}
 
-        {/*
-          **The season sits below the day now**, asked for as _"I'd move
-          season info underneath traits and today."_ That reverses its last
-          move, which brought it up into the portrait's own row, and the
-          reversal has a reason the earlier arrangement did not: a season
-          is the slowest thing on this screen. It changes four times a
-          year, where everything above it changes today, and the ordering
-          this screen has always argued about — work first, readout last —
-          puts the slowest readout at the bottom rather than in the first
-          thing you see each morning.
+      {/*
+        **The season sits below the day now**, asked for as _"I'd move
+        season info underneath traits and today."_ That reverses its last
+        move, which brought it up into the portrait's own row, and the
+        reversal has a reason the earlier arrangement did not: a season
+        is the slowest thing on this screen. It changes four times a
+        year, where everything above it changes today, and the ordering
+        this screen has always argued about — work first, readout last —
+        puts the slowest readout at the bottom rather than in the first
+        thing you see each morning.
 
-          Above the Areas list and the ladder legend, because those two are
-          **navigation and reference** rather than readings. This is still
-          something to look at; they are ways to leave.
-        */}
-        {/*
-          **The season names itself inside the card now.** Its heading went
-          with the others, and the label could not go with it: what the
-          season line says — which chapter of the year this is — is not
-          recoverable from a list of challenges. So it moved in as the
-          card's first line, keeping the name beside the measurement the
-          way this file already insists.
+        Above the Areas list and the ladder legend, because those two are
+        **navigation and reference** rather than readings. This is still
+        something to look at; they are ways to leave.
+      */}
+      {/*
+        **The season names itself inside the card now.** Its heading went
+        with the others, and the label could not go with it: what the
+        season line says — which chapter of the year this is — is not
+        recoverable from a list of challenges. So it moved in as the
+        card's first line, keeping the name beside the measurement the
+        way this file already insists.
 
-          The comment sits *above* the conditional rather than inside it,
-          because a JSX comment cannot be a bare sibling in a `&&`
-          expression — the same trap this file records for attribute
-          expressions, one shape along.
-        */}
-        {season.data !== undefined && (
-          <Card>
-            <ChallengePass season={{ label: season.data.label, daysLeft: season.data.daysLeft }} />
-          </Card>
-        )}
-      </div>
+        The comment sits *above* the conditional rather than inside it,
+        because a JSX comment cannot be a bare sibling in a `&&`
+        expression — the same trap this file records for attribute
+        expressions, one shape along.
+      */}
+      {season.data !== undefined && (
+        <Card>
+          <ChallengePass season={{ label: season.data.label, daysLeft: season.data.daysLeft }} />
+        </Card>
+      )}
 
       {/*
         **The stray-links block is gone.** Reported as _"it just felt
