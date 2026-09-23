@@ -8,11 +8,20 @@ import { LiveRecords } from '@/features/sync/LiveRecords'
 /**
  * The shell every screen sits inside.
  *
- * Bottom navigation rather than a sidebar or a hamburger: this is a phone
- * app used one-handed with a thumb, and the bottom of the screen is the
- * only region a thumb reaches comfortably. StrengthFlow used a vertical
- * icon rail borrowed from a desktop layout, which put every destination
- * at the top-left corner of a six-inch screen.
+ * Bottom navigation on a phone rather than a sidebar or a hamburger: this
+ * is a phone app used one-handed with a thumb, and the bottom of the
+ * screen is the only region a thumb reaches comfortably. StrengthFlow
+ * used a vertical icon rail borrowed from a desktop layout, which put
+ * every destination at the top-left corner of a six-inch screen.
+ *
+ * **From `lg` up, that reasoning reverses rather than merely stops
+ * applying.** A mouse reaches every corner of a monitor equally, so
+ * there is no thumb-reach argument for the bottom strip on desktop —
+ * and the fixed bar was sitting on a stretch of screen a cursor never
+ * needed to be near, in the one direction a landscape monitor has the
+ * least of anyway. `SidebarNav` takes the left edge instead, hidden
+ * below `lg`, and the bottom bar hides in exactly the range the
+ * sidebar shows.
  */
 
 /*
@@ -76,6 +85,68 @@ const NAV = [
   { to: '/base', label: 'Base', Icon: Home },
 ] as const
 
+/**
+ * The desktop nav, a vertical rail down the left edge from `lg` up.
+ *
+ * Fixed rather than sticky-in-flow, because it must not scroll with the
+ * page it sits beside — a rail that scrolled away would leave desktop
+ * worse off than the bottom bar it replaced. `SIDEBAR_WIDTH` is the one
+ * number `AppShell`, `RestTimer` and this component all have to agree
+ * on, so it is exported rather than repeated as a bare `56` in three
+ * places that could quietly drift apart.
+ */
+export const SIDEBAR_WIDTH = 'w-56' // 14rem / 224px
+
+function SidebarNav() {
+  return (
+    <nav
+      aria-label="Main"
+      className={`glass fixed inset-y-0 left-0 z-40 hidden ${SIDEBAR_WIDTH} flex-col border-r lg:flex`}
+      style={{
+        backgroundColor: 'color-mix(in oklab, var(--surface-raised) 72%, transparent)',
+        borderColor: 'var(--border-subtle)',
+        paddingTop: 'calc(1.5rem + var(--safe-top))',
+      }}
+    >
+      <ul className="flex flex-col gap-1 px-3">
+        {NAV.map(({ to, label, Icon }) => (
+          <li key={to}>
+            {/*
+              Same lit-rather-than-recoloured signal the bottom bar uses,
+              turned ninety degrees: a bar down the left edge of the row
+              instead of one along its top, since "top" on a horizontal
+              rail is the edge closest to the label it marks.
+            */}
+            <NavLink
+              to={to}
+              className={({ isActive }) =>
+                [
+                  'relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
+                  isActive ? 'text-accent-400' : 'text-ink-500 hover:text-ink-300',
+                ].join(' ')
+              }
+            >
+              {({ isActive }) => (
+                <>
+                  {isActive && (
+                    <span
+                      aria-hidden
+                      className="bg-accent-500 absolute inset-y-1 left-0 w-0.5 rounded-full"
+                      style={{ boxShadow: '0 0 8px var(--color-accent-500)' }}
+                    />
+                  )}
+                  <Icon size={20} aria-hidden strokeWidth={isActive ? 2.4 : 1.8} />
+                  <span>{label}</span>
+                </>
+              )}
+            </NavLink>
+          </li>
+        ))}
+      </ul>
+    </nav>
+  )
+}
+
 export function AppShell() {
   /*
    * The shell is `100dvh` *minus the bottom inset*, not `min-h-dvh`.
@@ -98,6 +169,7 @@ export function AppShell() {
       <UpdatePrompt />
       <ReadFailure />
       <LiveRecords />
+      <SidebarNav />
 
       {/*
         The safe area is the shell's job, not each page's — every screen
@@ -106,10 +178,14 @@ export function AppShell() {
 
         The sides matter in landscape on a notched phone, where the cutout
         eats into one edge; without them a heading starts underneath it.
+
+        `lg:pl-56` clears the sidebar, matching `SIDEBAR_WIDTH` above —
+        without it the rail sits on top of the page's own left padding
+        rather than beside it.
       */}
       <main
         id="main"
-        className="mx-auto w-full max-w-2xl lg:max-w-4xl xl:max-w-6xl 2xl:max-w-7xl flex-1 pb-28"
+        className="mx-auto w-full max-w-2xl lg:max-w-4xl xl:max-w-6xl 2xl:max-w-7xl flex-1 pb-28 lg:pl-56"
         style={{
           paddingTop: 'calc(1rem + var(--safe-top))',
           paddingLeft: 'calc(1rem + var(--safe-left))',
@@ -119,9 +195,13 @@ export function AppShell() {
         <Outlet />
       </main>
 
+      {/*
+        Hidden from `lg` up, where `SidebarNav` takes over — the same
+        NAV list, so the two can never disagree about which routes exist.
+      */}
       <nav
         aria-label="Main"
-        className="glass fixed inset-x-0 bottom-0 z-40 border-t"
+        className="glass fixed inset-x-0 bottom-0 z-40 border-t lg:hidden"
         style={{
           // Let more through now the blur is stronger. At 92% opaque the
           // frost had nothing to work with and the effect was invisible.
@@ -130,7 +210,7 @@ export function AppShell() {
           paddingBottom: 'var(--safe-bottom)',
         }}
       >
-        <ul className="mx-auto flex max-w-2xl lg:max-w-4xl xl:max-w-6xl 2xl:max-w-7xl">
+        <ul className="mx-auto flex max-w-2xl">
           {NAV.map(({ to, label, Icon }) => (
             <li key={to} className="flex-1">
               {/*
