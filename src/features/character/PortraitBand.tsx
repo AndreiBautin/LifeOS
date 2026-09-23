@@ -60,7 +60,14 @@ import { useAvatar } from './hooks'
  * quantity drawn in two places, which is the split this card was
  * assembled to close in the first place.
  */
-export function PortraitBand({ action }: { readonly action?: ReactNode }) {
+export function PortraitBand({
+  action,
+  avatarSize,
+}: {
+  readonly action?: ReactNode
+  /** Forwarded to `AvatarPortrait`; see its own doc for what `'large'` does. */
+  readonly avatarSize?: 'large'
+}) {
   const avatar = useAvatar()
 
   if (avatar.data === undefined) {
@@ -81,7 +88,10 @@ export function PortraitBand({ action }: { readonly action?: ReactNode }) {
   return (
     <>
       <div className="flex items-center gap-4">
-        <AvatarPortrait avatar={avatar.data} />
+        <AvatarPortrait
+          avatar={avatar.data}
+          {...(avatarSize === undefined ? {} : { size: avatarSize })}
+        />
 
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">

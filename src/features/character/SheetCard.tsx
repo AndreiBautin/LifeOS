@@ -36,10 +36,13 @@ import { Traits } from './Traits'
 export function SheetCard({
   traits,
   action,
+  avatarSize,
 }: {
   readonly traits?: readonly TraitStanding[] | undefined
   /** The settings link, which used to be the page header's action. */
   readonly action?: ReactNode
+  /** Forwarded to `PortraitBand`/`AvatarPortrait`; see its own doc for what `'large'` does. */
+  readonly avatarSize?: 'large'
 }) {
   return (
     <Card>
@@ -56,7 +59,10 @@ export function SheetCard({
         — and the traits below still get their rule, because that is
         genuinely the same quantity split a third way.
       */}
-      <PortraitBand {...(action === undefined ? {} : { action })} />
+      <PortraitBand
+        {...(action === undefined ? {} : { action })}
+        {...(avatarSize === undefined ? {} : { avatarSize })}
+      />
 
       {traits !== undefined && (
         <div className="border-ink-800 mt-4 border-t pt-4">

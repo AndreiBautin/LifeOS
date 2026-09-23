@@ -146,9 +146,19 @@ export function HomePage() {
         First in DOM order, so it is the first thing a column-1 reader
         meets — the same "glance before the day" order this page has
         always used, now expressed as flow order rather than row order.
+
+        **`avatarSize="large"` grows the figure at `2xl`**, reported
+        after the width and column fixes still left the page "sparse
+        with cards" — filling the gutter with more empty column width
+        was never going to read as designed, and the figure this app
+        already draws for every level is the one element on the screen
+        that is decoration *and* real information at once, the same
+        reasoning behind Spinner's spinning record. No other screen
+        opts in, so the character sheet itself keeps its fixed 120px.
       */}
       <SheetCard
         {...(sheet.data === undefined ? {} : { traits: sheet.data.traits })}
+        avatarSize="large"
         action={
           <Link
             to="/settings"
