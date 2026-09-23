@@ -179,18 +179,20 @@ export function AppShell() {
         The sides matter in landscape on a notched phone, where the cutout
         eats into one edge; without them a heading starts underneath it.
 
-        `lg:pl-56` clears the sidebar, matching `SIDEBAR_WIDTH` above —
-        without it the rail sits on top of the page's own left padding
-        rather than beside it.
+        **The safe-area padding is Tailwind arbitrary values now, not an
+        inline `style` object, and that is a correctness fix rather than
+        a style preference.** An inline `style` always wins the cascade
+        over a class regardless of breakpoint, so the `lg:pl-56` this
+        line used to carry alongside a `style={{ paddingLeft: … }}` was
+        silently overridden at every width — verified by reading the
+        *computed* padding at 1024px and finding 16px rather than the
+        224px the class asked for, which is the `--color-ink-600` lesson
+        this file already knows to apply to itself: a class present in
+        the markup is not evidence that it is winning.
       */}
       <main
         id="main"
-        className="mx-auto w-full max-w-2xl lg:max-w-4xl xl:max-w-6xl 2xl:max-w-7xl flex-1 pb-28 lg:pl-56"
-        style={{
-          paddingTop: 'calc(1rem + var(--safe-top))',
-          paddingLeft: 'calc(1rem + var(--safe-left))',
-          paddingRight: 'calc(1rem + var(--safe-right))',
-        }}
+        className="mx-auto w-full max-w-2xl lg:max-w-4xl xl:max-w-6xl 2xl:max-w-7xl flex-1 pb-28 pt-[calc(1rem_+_var(--safe-top))] pl-[calc(1rem_+_var(--safe-left))] lg:pl-[calc(1rem_+_var(--safe-left)_+_14rem)] pr-[calc(1rem_+_var(--safe-right))]"
       >
         <Outlet />
       </main>
