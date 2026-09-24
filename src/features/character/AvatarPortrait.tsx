@@ -1,5 +1,3 @@
-import type { CSSProperties } from 'react'
-
 import type { Avatar } from '@/domain/game/avatar'
 import { SEASON_LABELS, type Season } from '@/domain/game/season'
 import { cn } from '@/lib/cn'
@@ -67,10 +65,21 @@ const BOX_CLASSES = {
    * **`lg`, not `2xl`.** It shipped gated at `2xl` first and a real
    * two-monitor screenshot showed why that was wrong: a secondary
    * monitor's browser window sits well above `lg` and well below `2xl`,
-   * so the whole "large" treatment — this box, the pulse rings, the
-   * radar, the sheet glow — simply never appeared there. `lg` is the
-   * same line the sidebar nav already switches on, so anything wide
-   * enough for the desktop nav is wide enough for this too.
+   * so the whole "large" treatment — this box, the radar, the sheet
+   * glow — simply never appeared there. `lg` is the same line the
+   * sidebar nav already switches on, so anything wide enough for the
+   * desktop nav is wide enough for this too.
+   *
+   * **There is no `2xl` step, and there was one for one round.** It grew
+   * this box to 300px, which left almost no width for the "Level N" /
+   * XP column beside it in the ~350–450px masonry column this actually
+   * renders inside — reported plainly as "this ruined it... there's a
+   * lot of overlap," visible as "Level" and "4" wrapping onto separate
+   * lines. Growing an element without checking it against the column
+   * width it actually has to share is exactly the trap this file
+   * already names for fixed pixel breakpoints; reverted rather than
+   * re-tuned, because the failure mode (text wrapping inside a shrunk
+   * column) would recur at any second size step chosen the same way.
    */
   large: 'h-[120px] w-[120px] lg:h-[220px] lg:w-[220px]',
 } as const
@@ -128,25 +137,6 @@ export function AvatarPortrait({
 
   return (
     <div className={cn('relative shrink-0', boxClass, className)}>
-      {/*
-        **Two rings, breathing outward — `large` and `2xl` only.** The
-        same gating as the box size itself, because this is the same
-        "fill the freed space with something that is decoration *and*
-        real information" reasoning: the tint is the season, so the
-        pulse is reading the same fact the ring around the figure does,
-        not adding a new one. `aria-hidden` because the season and level
-        are both already in the SVG's own `aria-label`.
-      */}
-      {size === 'large' && (
-        <div aria-hidden className="pointer-events-none absolute inset-0 hidden lg:block">
-          <div className="avatar-pulse-ring" style={{ '--pulse-tint': tint } as CSSProperties} />
-          <div
-            className="avatar-pulse-ring"
-            style={{ '--pulse-tint': tint, animationDelay: '1.8s' } as CSSProperties}
-          />
-        </div>
-      )}
-
       <svg
         viewBox={`0 0 ${String(SIZE)} ${String(SIZE)}`}
         className="h-full w-full"

@@ -422,65 +422,24 @@
 }
 
 /*
- * Two rings breathing outward from the large avatar, `2xl` only.
- *
- * **Composited, never laid out** — `transform` and `opacity` only, so the
- * animation costs the browser nothing beyond the paint of a thin circle.
- * Two rings rather than one, offset by `animation-delay` in the markup,
- * because a single ring reads as a blink and a pair reads as a pulse.
- *
- * The colour arrives as `--pulse-tint`, set inline by `AvatarPortrait`
- * from the same season tint the ring itself already uses — so the pulse
- * and the ring it surrounds are always one colour, never two readings of
- * the season wearing different hues.
- */
-@keyframes avatar-pulse {
-  0% {
-    transform: scale(0.86);
-    opacity: 0.45;
-  }
-  70% {
-    opacity: 0;
-  }
-  100% {
-    transform: scale(1.4);
-    opacity: 0;
-  }
-}
-
-.avatar-pulse-ring {
-  position: absolute;
-  inset: 0;
-  border-radius: 9999px;
-  border: 1.5px solid var(--pulse-tint, var(--color-accent-500));
-  animation: avatar-pulse 3.6s cubic-bezier(0.16, 1, 0.3, 1) infinite;
-  pointer-events: none;
-}
-
-/*
- * A slow wash behind the sheet card, `2xl` only, tied to the large-avatar
+ * A slow wash behind the sheet card, `lg` only, tied to the large-avatar
  * context.
  *
  * **Reuses the body's own `--glow-accent` token** rather than inventing a
  * second gradient recipe — the same wash that already sits fixed behind
- * every screen, given its own soft pulse and confined to the one card
- * that earns it, instead of a new colour the palette has not chosen.
- * `pointer-events: none` and negative `z-index`: it is behind the card in
- * the paint order and cannot intercept a click meant for what is drawn
- * over it.
+ * every screen, confined to the one card that earns it, instead of a new
+ * colour the palette has not chosen.
+ *
+ * **Static, not animated — this used to pulse, and a second animated
+ * effect right beside it (two breathing rings around the avatar) drew a
+ * direct complaint: "the blinking does not look good."** The rings are
+ * gone outright and this one lost its `@keyframes` rather than being
+ * re-tuned to a gentler pulse — two independent animated elements in one
+ * corner of the screen is the failure mode, not the specific timing of
+ * either one, so the fix is one of them not moving at all.
  */
-@keyframes sheet-glow-pulse {
-  0%,
-  100% {
-    opacity: 0.55;
-  }
-  50% {
-    opacity: 1;
-  }
-}
-
 .sheet-glow {
-  animation: sheet-glow-pulse 6s ease-in-out infinite;
+  opacity: 0.75;
 }
 
 /* A placeholder with a shape, for the moment before data arrives.
