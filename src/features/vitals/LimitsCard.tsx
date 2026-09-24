@@ -2,7 +2,7 @@ import { Gauge } from 'lucide-react'
 import { Skeleton } from '@/components/shared/Skeleton'
 import { Link } from 'react-router-dom'
 
-import { Card } from '@/components/shared/primitives'
+import { Card, CardHeading } from '@/components/shared/primitives'
 import { Fold } from '@/components/shared/Fold'
 import { counted } from '@/lib/counted'
 import { buttonStyles } from '@/components/shared/styles'
@@ -63,16 +63,15 @@ export function LimitsCard() {
 
   return (
     <Card>
-      <div className="mb-2 flex items-center justify-between gap-2">
-        {/* A heading rather than a span — see the note in ChallengePass. */}
-        <h2 className="text-ink-500 flex items-center gap-2 text-sm">
-          <Gauge size={16} aria-hidden />
-          Buffs
-        </h2>
-        <Link to="/limits" className={buttonStyles({ variant: 'ghost', size: 'sm' })}>
-          {pools.length === 0 ? 'Set up' : 'Open'}
-        </Link>
-      </div>
+      <CardHeading
+        icon={<Gauge size={16} aria-hidden />}
+        title="Buffs"
+        action={
+          <Link to="/limits" className={buttonStyles({ variant: 'ghost', size: 'sm' })}>
+            {pools.length === 0 ? 'Set up' : 'Open'}
+          </Link>
+        }
+      />
 
       {pools.length === 0 ? (
         <p className="text-ink-500 text-sm">
