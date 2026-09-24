@@ -20,8 +20,25 @@ export function Button({ className, variant, size, full, ...props }: ButtonProps
   return <button className={cn(buttonStyles({ variant, size, full }), className)} {...props} />
 }
 
+/*
+ * **`lg:p-6`, added after three rounds of adding content to close a
+ * vertical gap on wide monitors still left one.** Reported plainly:
+ * *"isn't there a simpler solution you haven't implemented?"* There is
+ * — every card in the app is a flat `p-4` regardless of screen size, so
+ * the same sixteen pixels of breathing room a phone needs was also all
+ * a 2000-pixel monitor got. Growing it at `lg` makes the *existing*
+ * content occupy more of the page rather than inventing more content to
+ * fill it, which is both the simpler lever and closer to what "more
+ * premium" asked for in the first place — more air around what is
+ * already there, not a taller list.
+ *
+ * One line, every card in the app, rather than a per-screen override:
+ * `Card` has exactly one call site pattern (`className={cn('card p-4',
+ * className)}`), so this is the one place that can change it for
+ * everywhere at once.
+ */
 export function Card({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn('card p-4', className)} {...props} />
+  return <div className={cn('card p-4 lg:p-6', className)} {...props} />
 }
 
 interface SectionProps {

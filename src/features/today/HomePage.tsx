@@ -135,8 +135,17 @@ export function HomePage() {
       ends 2rem from what follows it and the header still ends 1.5rem
       from what follows it. It reaches exactly the blocks that state
       nothing.
+
+      **`lg:[&>*]:mb-10` rather than the mobile `mb-8`, alongside `Card`'s
+      own new `lg:p-6`.** Both are the same answer to *"isn't there a
+      simpler solution?"* after three rounds of adding content to close a
+      vertical gap: more air around what is already here, at the one
+      breakpoint the gap was ever reported at, rather than another
+      widget. Mobile keeps its tighter `mb-8` — a phone has no gap to
+      close and this app is used one-handed, where more scrolling per
+      screen is a real cost.
     */
-    <div className="space-y-8 lg:[column-width:22rem] lg:gap-8 lg:space-y-0 [&>*]:mb-8 [&>*]:break-inside-avoid [&>*]:last:mb-0">
+    <div className="space-y-8 lg:[column-width:22rem] lg:gap-10 lg:space-y-0 [&>*]:mb-8 lg:[&>*]:mb-10 [&>*]:break-inside-avoid [&>*]:last:mb-0">
       {/*
         ── The glance ──────────────────────────────────────────────────
         Who you are, the chapter you are in, and the same XP split eight
