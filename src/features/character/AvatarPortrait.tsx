@@ -71,8 +71,20 @@ const BOX_CLASSES = {
    * radar, the sheet glow — simply never appeared there. `lg` is the
    * same line the sidebar nav already switches on, so anything wide
    * enough for the desktop nav is wide enough for this too.
+   *
+   * **A second step at `2xl`, added after "isn't there a simpler
+   * solution" and "make it feel more premium, like a video player
+   * filling the screen."** Padding and more cards closed most of the
+   * vertical gap; what was still missing was that nothing on the page
+   * actually got *bigger* on a bigger monitor — every card stayed the
+   * same size with more air around it. This is the one element on the
+   * screen built to be a hero rather than a data row, the same
+   * reasoning `large` was introduced for in the first place, so it is
+   * the one thing that keeps growing rather than the whole page
+   * scaling — a video expands to fill its frame while the player's
+   * other controls stay the size controls should be.
    */
-  large: 'h-[120px] w-[120px] lg:h-[220px] lg:w-[220px]',
+  large: 'h-[120px] w-[120px] lg:h-[220px] lg:w-[220px] 2xl:h-[300px] 2xl:w-[300px]',
 } as const
 
 export function AvatarPortrait({
@@ -239,7 +251,8 @@ export function AvatarPortrait({
         className={cn(
           'bg-ink-950 text-ink-50 numeric absolute -bottom-1 left-1/2 -translate-x-1/2 rounded-full border px-2 font-semibold',
           compact ? 'text-[10px]' : 'text-xs',
-          size === 'large' && 'lg:-bottom-2 lg:px-3 lg:text-base',
+          size === 'large' &&
+            'lg:-bottom-2 lg:px-3 lg:text-base 2xl:-bottom-3 2xl:px-4 2xl:text-lg',
         )}
         style={{ borderColor: tint }}
       >
