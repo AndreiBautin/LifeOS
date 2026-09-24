@@ -4,16 +4,41 @@ import { useEffect, useRef, useState } from 'react'
  * Scales a block of content down, never up, so it fits a landscape
  * monitor's viewport with no scrollbar at all — page or panel.
  *
- * **The third answer on this page, and the first two are worth knowing
- * before touching this one.** A height cap with `overflow-y-auto` on
- * each column technically stopped the *page* from scrolling and was
- * rightly rejected — *"adding a scroll to the sections was not what I
- * had in mind."* Tightening spacing afterwards worked, but only by
- * coincidence: it fit *this* database's amount of content on *that*
- * monitor, and the next arc or challenge added would have silently
- * broken it again. Scaling is the only one of the three that holds for
- * content of any size — nothing is clipped, nothing gets its own
- * scrollbar, the whole block just gets smaller.
+ * **The fourth answer on this page, and the first three are worth
+ * knowing before touching this one.** A height cap with
+ * `overflow-y-auto` on each column stopped the *page* from scrolling and
+ * was rightly rejected — *"adding a scroll to the sections was not what
+ * I had in mind."* Tightening spacing afterwards worked only by
+ * coincidence, for whatever amount of content happened to be in the
+ * database that day. Scaling this whole block is the mechanism that
+ * holds for content of any size — nothing is clipped, nothing gets its
+ * own scrollbar — and it is the one part of this that has been right
+ * since the first attempt.
+ *
+ * **What kept breaking was *when* it recomputes, not the arithmetic
+ * itself.** Two event-driven versions shipped and both were caught live:
+ * a plain `window.resize` listener read a `natural` height mid-drag,
+ * before the masonry had finished reflowing at the new width, and then
+ * nothing measured again once the drag stopped. Debouncing that, plus
+ * adding a `ResizeObserver` and a `MutationObserver` as backup signals,
+ * still left a real, reported case — *"this looked solid full screen,
+ * but then when I shrank the screen it looked like this"* — a tiny
+ * scaled block sitting in a mostly empty page, meaning something that
+ * should have fired did not.
+ *
+ * **The fix is to stop trusting any single signal to say when
+ * something changed, and check every frame instead.** A
+ * `requestAnimationFrame` loop reads the same two numbers — the
+ * content's natural height and the space actually available below it —
+ * on every frame while this is active, and only calls `setState` when
+ * the computed scale or height actually differs from what is already
+ * applied. This cannot miss a resize, a drag mid-motion, or a query
+ * resolving and adding a card, because it never waits for any of those
+ * to announce themselves — it simply looks again, sixty times a second,
+ * which is cheap for two DOM reads and a subtraction. `tree-layout.ts`
+ * already has one documented case of `ResizeObserver` silently not
+ * firing; this is the version of that fix which cannot have a "the
+ * signal didn't fire" failure mode at all, because there is no signal.
  *
  * **Only on a wide, landscape screen.** Asked for directly: *"my side
  * vertical monitor and phone of course scroll is fine but a large
@@ -21,60 +46,15 @@ import { useEffect, useRef, useState } from 'react'
  * scrollbars."* `min-width: 1024px` alone cannot tell those apart — a
  * rotated monitor is easily 1024px wide. `orientation: landscape` is
  * width-versus-height of the viewport the browser actually has, which
- * is the one signal that survives a rotated monitor: it reads portrait
- * there and landscape on an ordinary wide screen, regardless of the
- * raw pixel width either one reports.
- *
- * **Measured, not guessed — including where the page previously guessed
- * wrong.** The height-cap attempt computed "space available" as a CSS
- * `calc()` copied from the shell's own padding values; this reads
- * `getBoundingClientRect().top` off the real element instead, so it
- * cannot drift the moment any padding between here and the page top
- * changes. `scrollHeight` is the content's natural, *unscaled* height —
- * a CSS `transform` never changes what `scrollHeight`/`offsetHeight`
- * report, only how the box paints, so there is no reset-then-remeasure
- * step needed before reading it.
- *
- * **Three signals recompute it, not one.** `HomePage`'s content mounts
- * short and grows as its several queries resolve — the quests, the
- * season, the character sheet each arrive on their own — so a measurement
- * taken once at mount is stale within the same second. `ResizeObserver`
- * on `contentRef` is the obvious answer and was, on its own, observed to
- * miss exactly that growth: this file already has one documented case of
- * `ResizeObserver` silently not firing on a real page (`tree-layout.ts`),
- * and the fix there was the same one applied here — never trust a single
- * signal for something this visible. A `MutationObserver` on the same
- * node, watching for children being added anywhere in the subtree, is a
- * second and more direct signal for the exact event that changes the
- * height: a card mounting. `window`'s own `resize` covers the monitor or
- * browser window changing size, which neither of the other two would
- * ever see.
- *
- * **Every one of those signals is debounced, and shipping without that
- * was the second real bug.** Reported directly: *"this looked solid full
- * screen, but then when I shrank the screen on my main monitor it looked
- * like this"* — a screenshot of the whole block rendered tiny in the
- * top-left corner of a mostly empty page. A window drag fires `resize`
- * dozens of times before it settles, and `column-width` reflows the
- * masonry at every one of those intermediate widths — so a measurement
- * taken mid-drag reads a `natural` height that belongs to a size the
- * window is only passing through, computes a scale for *that*, and then
- * nothing ever measures again once the drag stops, because the drag's
- * own last `resize` event already consumed the one measurement this hook
- * took. `scheduleMeasure` waits `SETTLE_MS` after the *last* signal
- * before it actually reads anything, so a drag's rapid-fire events
- * collapse into exactly one measurement of the size the window actually
- * ends up at.
+ * is the one signal that survives a rotated monitor.
  *
  * **The scaled block can leave a strip of unused width, and that is a
  * deliberate trade rather than an oversight.** Scaling only the height
  * axis would flatten circles into ellipses and text into a squashed
  * version of itself; scaling evenly is the only way to shrink a block
- * without distorting it, and evenly means the width shrinks by the same
- * fraction the height does. `HomePage` centers the scaled block
+ * without distorting it. `HomePage` centers the scaled block
  * horizontally so that strip splits evenly left and right rather than
- * sitting only on one side — the same "zoomed out, not cropped" reading
- * a fit-to-window slide gives.
+ * sitting only on one side.
  */
 
 const LANDSCAPE_DESKTOP = '(min-width: 1024px) and (orientation: landscape)'
@@ -89,18 +69,33 @@ const LANDSCAPE_DESKTOP = '(min-width: 1024px) and (orientation: landscape)'
 const BOTTOM_MARGIN = 32
 
 /**
- * How long a burst of resize/mutation signals must go quiet before any
- * of them is actually read. Long enough to swallow a window drag's
- * rapid-fire `resize` events and a page's data queries settling in
- * quick succession; short enough that it never reads as a delay to a
- * person watching the screen.
+ * How much a scale or a height must differ from what is already applied
+ * before it is worth a re-render. Without a threshold, sub-pixel jitter
+ * from rounding would `setState` on every single frame forever.
  */
-const SETTLE_MS = 150
+const SCALE_EPSILON = 0.001
+const HEIGHT_EPSILON = 0.5
+
+interface Fit {
+  readonly scale: number
+  readonly height: number
+}
+
+function sameFit(a: Fit | null, b: Fit | null): boolean {
+  if (a === null || b === null) return a === b
+  return (
+    Math.abs(a.scale - b.scale) < SCALE_EPSILON && Math.abs(a.height - b.height) < HEIGHT_EPSILON
+  )
+}
 
 export function useFitToViewport() {
   const containerRef = useRef<HTMLDivElement>(null)
   const contentRef = useRef<HTMLDivElement>(null)
-  const [fit, setFit] = useState<{ readonly scale: number; readonly height: number } | null>(null)
+  const [fit, setFit] = useState<Fit | null>(null)
+  const fitRef = useRef<Fit | null>(null)
+  useEffect(() => {
+    fitRef.current = fit
+  }, [fit])
 
   const [active, setActive] = useState(false)
 
@@ -117,56 +112,40 @@ export function useFitToViewport() {
   }, [])
 
   useEffect(() => {
-    const measure = () => {
-      if (!active) {
-        setFit(null)
-        return
-      }
+    const reset = () => {
+      setFit(null)
+    }
 
+    if (!active) {
+      reset()
+      return
+    }
+
+    let frame: number
+
+    const tick = () => {
       const content = contentRef.current
       const container = containerRef.current
-      if (content === null || container === null) return
 
-      const top = container.getBoundingClientRect().top
-      const available = window.innerHeight - top - BOTTOM_MARGIN
-      const natural = content.scrollHeight
+      if (content !== null && container !== null) {
+        const top = container.getBoundingClientRect().top
+        const available = window.innerHeight - top - BOTTOM_MARGIN
+        const natural = content.scrollHeight
 
-      if (natural <= 0 || natural <= available) {
-        setFit(null)
-        return
+        const next: Fit | null =
+          natural > 0 && natural > available
+            ? { scale: available / natural, height: available }
+            : null
+
+        if (!sameFit(fitRef.current, next)) setFit(next)
       }
 
-      setFit({ scale: available / natural, height: available })
+      frame = requestAnimationFrame(tick)
     }
 
-    let settle: ReturnType<typeof setTimeout> | undefined
-    const scheduleMeasure = () => {
-      if (settle !== undefined) clearTimeout(settle)
-      settle = setTimeout(measure, SETTLE_MS)
-    }
-
-    measure()
-    window.addEventListener('resize', scheduleMeasure)
-
-    const content = contentRef.current
-    const resizeObserver =
-      content !== null && typeof ResizeObserver !== 'undefined'
-        ? new ResizeObserver(scheduleMeasure)
-        : undefined
-    const mutationObserver =
-      content !== null && typeof MutationObserver !== 'undefined'
-        ? new MutationObserver(scheduleMeasure)
-        : undefined
-    if (content !== null) {
-      resizeObserver?.observe(content)
-      mutationObserver?.observe(content, { childList: true, subtree: true })
-    }
-
+    frame = requestAnimationFrame(tick)
     return () => {
-      if (settle !== undefined) clearTimeout(settle)
-      window.removeEventListener('resize', scheduleMeasure)
-      resizeObserver?.disconnect()
-      mutationObserver?.disconnect()
+      cancelAnimationFrame(frame)
     }
   }, [active])
 
