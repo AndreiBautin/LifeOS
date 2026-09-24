@@ -199,12 +199,32 @@ async function seedCodex(deps: DemoDeps): Promise<void> {
     make('Designing Data-Intensive Applications', 'books', { status: 'backlog' }, 25),
     finished(make('Project Hail Mary', 'books', { status: 'completed', favorite: true }, 90), 12),
     withProgress(
-      make('Outer Wilds', 'games', { status: 'currently-using', priority: 'high' }, 20),
+      make(
+        'Outer Wilds',
+        'games',
+        {
+          status: 'currently-using',
+          priority: 'high',
+          dailyGoal: { amount: 1, unit: 'expedition' },
+        },
+        20,
+      ),
       [1, 4, 6],
     ),
     finished(make('Return of the Obra Dinn', 'games', { status: 'completed' }, 120), 30),
     make('Slay the Spire', 'games', { status: 'paused' }, 60),
-    make('Frieren: Beyond Journey’s End', 'anime', { status: 'currently-using' }, 15),
+    withProgress(
+      make(
+        'Frieren: Beyond Journey’s End',
+        'anime',
+        {
+          status: 'currently-using',
+          dailyGoal: { amount: 1, unit: 'episode' },
+        },
+        15,
+      ),
+      [0, 2],
+    ),
     make('The Bear', 'tv-shows', { status: 'backlog', priority: 'low' }, 10),
     finished(make('Everything Everywhere All At Once', 'movies', { status: 'completed' }, 200), 45),
     /* Only the required fields — the minimal record a screen must survive. */
@@ -451,11 +471,23 @@ async function seedFinance(deps: DemoDeps): Promise<void> {
   }
 }
 
-/** The long arc, with one stage already met so the bars are not all empty. */
+/**
+ * The long arc, with one stage already met so the bars are not all empty.
+ *
+ * **The same move `seedGoals` plans, seen from execution rather than
+ * decision.** Reported: *"the garden quest and then the [goal] seem
+ * different unless I'm not following how this is supposed to be set
+ * up"* — a fair read, because both fixtures used to be named after a
+ * destination criterion ("a garden", "shorter winters"), which reads as
+ * two unrelated moves rather than one. They are one: this campaign is
+ * the checklist for getting the current place ready and affordable, and
+ * the goal below is the still-open question of where to go and how to
+ * get there. The names now say which half of the story each one is.
+ */
 async function seedArc(deps: DemoDeps): Promise<void> {
   await addCampaign(
     {
-      name: 'Move somewhere with a garden',
+      name: 'Get ready to move',
       aim: 'Out of the flat and into somewhere with a bit of outside.',
       stages: [
         { name: 'Fix up the flat', requirement: { kind: 'house-jobs', count: 8 } },
@@ -489,7 +521,7 @@ async function seedArc(deps: DemoDeps): Promise<void> {
 async function seedGoals(deps: DemoDeps): Promise<void> {
   const created = await addGoal(
     {
-      name: 'Move somewhere with shorter winters',
+      name: 'Decide where we move to',
       aim: 'Somewhere we both actually want to live, not just away from here.',
     },
     deps,
@@ -956,6 +988,39 @@ async function seedTraining(deps: DemoDeps): Promise<void> {
   })
 
   const sessions = [
+    /*
+     * **Three older sessions, added so `RecentTraining`'s chart on
+     * Today has more than three bars to show.** `useRecentWorkouts(6)`
+     * reads up to six; without these it silently had nothing beyond
+     * the three below to fetch.
+     */
+    {
+      daysBack: 12,
+      entries: [
+        lifted('low-bar-squat', 0, 'strength', 235, 5, 4),
+        lifted('bench-press', 1, 'hypertrophy', 160, 10),
+        lifted('barbell-row', 2, 'hypertrophy', 130, 10),
+        walked(3),
+      ],
+    },
+    {
+      daysBack: 10,
+      entries: [
+        lifted('bench-press', 0, 'strength', 185, 5),
+        lifted('pull-up', 1, 'hypertrophy', 0, 8),
+        lifted('db-lateral-raise', 2, 'hypertrophy', 20, 15),
+        walked(3),
+      ],
+    },
+    {
+      daysBack: 8,
+      entries: [
+        lifted('sumo-deadlift', 0, 'strength', 305, 5),
+        lifted('dips', 1, 'hypertrophy', 0, 10),
+        lifted('barbell-calf-raise', 2, 'hypertrophy', 180, 15),
+        walked(3),
+      ],
+    },
     {
       daysBack: 6,
       entries: [
