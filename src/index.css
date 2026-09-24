@@ -162,6 +162,43 @@
     scroll-behavior: smooth;
   }
 
+  /*
+   * **The root font size grows at wide breakpoints, and this is the one
+   * lever that reaches every card at once.** Reported against the
+   * deployed dashboard on a real monitor: *"this looks small and
+   * crammed together still"* — checked first, and it was not a layout
+   * bug. Measured live: Quests' masonry already stretches its columns
+   * from a 416px minimum to 561px actual, with only 26px of unused
+   * width to the viewport edge. The width math was already correct; the
+   * text and padding *inside* each card were not using it, because
+   * `text-sm`/`text-xs` and the spacing scale are `rem`-based and every
+   * card was built against a phone's 16px root regardless of how wide
+   * its column had grown.
+   *
+   * Every `text-*` and every `p-*`/`gap-*` class in the app is `rem`, so
+   * scaling the root here scales all of them together, proportionally,
+   * without a single component changing — the alternative was editing
+   * `text-sm` to `lg:text-base` (or similar) at every one of the
+   * several dozen call sites, which is both far more error-prone and
+   * far more likely to leave a few behind. Icons are the one exception:
+   * `lucide-react` icons here are sized with a pixel prop
+   * (`size={16}`), not `rem`, so they do not grow with this — a known,
+   * accepted gap rather than an oversight, and the reason a much larger
+   * root bump was not chosen: icons drifting too far out of proportion
+   * to their now-larger text would be its own complaint.
+   */
+  @media (min-width: 1024px) {
+    html {
+      font-size: 106.25%; /* ~17px */
+    }
+  }
+
+  @media (min-width: 1536px) {
+    html {
+      font-size: 112.5%; /* 18px */
+    }
+  }
+
   @media (prefers-reduced-motion: reduce) {
     html {
       scroll-behavior: auto;
