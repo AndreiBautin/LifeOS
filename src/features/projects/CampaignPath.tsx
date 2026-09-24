@@ -1,3 +1,5 @@
+import type { CSSProperties } from 'react'
+
 import type { StageStanding } from '@/domain/campaign/campaign'
 
 /**
@@ -5,13 +7,28 @@ import type { StageStanding } from '@/domain/campaign/campaign'
  *
  * **`lg` and up only**, in the arc's own quest slot — the same reasoning
  * as `TraitRadar`: a second reading of data `ArcSlot` already has, not a
- * new fetch. The existing "stage 2 of 6" line stays exactly as it is,
- * because it says which stage by *name*, which a row of dots cannot.
+ * new fetch.
+ *
+ * **HTML dots rather than a stretched SVG, and that reverses the first
+ * version.** A single SVG scaled with `preserveAspectRatio="none"` to
+ * fill whatever width the card happens to render at stretches the X axis
+ * only — a circle drawn small enough to fit a handful of stages was
+ * quietly rendering as a wide ellipse the moment the card was wider than
+ * that. Fixed-size HTML circles cannot do that: a dot is `size-3.5
+ * rounded-full` regardless of how wide its flex cell is.
+ *
+ * **Named now, not just dotted.** Asked for directly — *"don't be afraid
+ * to stretch things out."* The first version deliberately carried no
+ * label, reasoning that the "stage N of M" line above already named the
+ * *current* one — true, and it left five-sixths of a six-stage arc
+ * unnamed. Each dot gets its own stage name underneath, truncated to its
+ * own flex cell rather than the row's, so a long name cannot push a
+ * short one's dot out of alignment with the line.
  *
  * **Ordered but not gated, read honestly.** A later stage can be met
- * before an earlier one — `docs/CLAUDE.md` states this as a rule, not an
- * accident — so a dot's fill is `met`, never "reached": the road can
- * light up out of order, and it does whenever the underlying arc does.
+ * before an earlier one, so a dot's fill is `met`, never "reached": the
+ * road can light up out of order, and it does whenever the underlying
+ * arc does.
  *
  * **Unproven is its own mark, not a blank.** A stage nothing has been
  * recorded to judge — a net-worth target with no finance reading yet —
@@ -19,19 +36,9 @@ import type { StageStanding } from '@/domain/campaign/campaign'
  * of the other two states standing in for "no answer".
  */
 
-const DOT = 10
-const GAP_MIN = 28
-
-function dotFill(standing: StageStanding, isNext: boolean): string {
+function dotColor(standing: StageStanding, isNext: boolean): string {
   if (standing.met) return 'var(--color-good-500)'
   if (isNext) return 'var(--color-accent-500)'
-  return 'transparent'
-}
-
-function dotStroke(standing: StageStanding, isNext: boolean): string {
-  if (standing.met) return 'var(--color-good-500)'
-  if (isNext) return 'var(--color-accent-500)'
-  if (standing.unproven) return 'var(--color-ink-700)'
   return 'var(--color-ink-700)'
 }
 
@@ -45,44 +52,43 @@ export function CampaignPath({
 }) {
   if (stages.length < 2) return null
 
-  const width = Math.max(120, (stages.length - 1) * GAP_MIN + DOT)
-  const gap = stages.length > 1 ? (width - DOT) / (stages.length - 1) : 0
-  const y = DOT / 2
-
   return (
-    <svg
-      viewBox={`0 0 ${String(width)} ${String(DOT)}`}
-      className="mt-2 hidden h-2.5 w-full lg:block"
-      preserveAspectRatio="none"
+    <div
+      className="relative mt-3 hidden lg:block"
       role="img"
       aria-label={`${String(stages.filter((one) => one.met).length)} of ${String(stages.length)} stages met`}
     >
-      {/* The road itself, under every dot, so a met stage reads as a
-          filled segment of one path rather than islands. */}
-      <line
-        x1={DOT / 2}
-        y1={y}
-        x2={width - DOT / 2}
-        y2={y}
-        stroke="var(--color-ink-800)"
-        strokeWidth={2}
+      {/* The road, under every dot — a single line the row of dots sits
+          on top of, rather than one segment per gap that would have to
+          agree with the dots on exactly where they land. */}
+      <div
+        aria-hidden
+        className="bg-ink-800 absolute top-[7px] right-[calc(50%/var(--stage-count))] left-[calc(50%/var(--stage-count))] h-px"
+        style={{ '--stage-count': stages.length } as CSSProperties}
       />
 
-      {stages.map((standing, index) => {
-        const isNext = nextPosition === index + 1
-        return (
-          <circle
-            key={standing.stage.id}
-            cx={DOT / 2 + index * gap}
-            cy={y}
-            r={DOT / 2}
-            fill={dotFill(standing, isNext)}
-            stroke={dotStroke(standing, isNext)}
-            strokeWidth={1.5}
-            strokeDasharray={!standing.met && standing.unproven ? '2 2' : undefined}
-          />
-        )
-      })}
-    </svg>
+      <div className="relative flex items-start">
+        {stages.map((standing, index) => {
+          const isNext = nextPosition === index + 1
+          const color = dotColor(standing, isNext)
+          return (
+            <div key={standing.stage.id} className="flex min-w-0 flex-1 flex-col items-center">
+              <span
+                aria-hidden
+                className="size-3.5 shrink-0 rounded-full border-2"
+                style={{
+                  borderColor: color,
+                  backgroundColor: standing.met || isNext ? color : 'transparent',
+                  borderStyle: !standing.met && standing.unproven ? 'dashed' : 'solid',
+                }}
+              />
+              <span className="text-ink-600 mt-1.5 max-w-full truncate px-0.5 text-[10px]">
+                {standing.stage.name}
+              </span>
+            </div>
+          )
+        })}
+      </div>
+    </div>
   )
 }

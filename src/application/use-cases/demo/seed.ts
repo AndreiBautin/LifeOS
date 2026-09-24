@@ -901,11 +901,24 @@ async function seedTraining(deps: DemoDeps): Promise<void> {
     role: LogEntry['role'],
     load: number,
     reps: number,
+    /*
+     * **Defaults to three and is overridable, which is what stops every
+     * session totalling the same number.** It shipped fixed at three
+     * with no parameter at all, so three `lifted()` calls plus one
+     * `walked()` summed to exactly ten *every single time* — reported
+     * as "the training data is all 10" against `RecentTraining`'s bar
+     * chart, which was reading the fixture correctly and reporting a
+     * fact about it that made the chart look broken. A heavier day
+     * with a fourth back-off set, or a session with one more accessory,
+     * is the realistic reason totals actually differ session to
+     * session.
+     */
+    setCount = 3,
   ): LogEntry => ({
     exerciseId: slug as ExerciseId,
     role,
     order,
-    sets: Array.from({ length: 3 }, () => ({
+    sets: Array.from({ length: setCount }, () => ({
       prescription: {
         load: { kind: 'working' as const },
         reps: { kind: 'range' as const, low: reps - 2, high: reps + 2 },
@@ -958,13 +971,14 @@ async function seedTraining(deps: DemoDeps): Promise<void> {
         lifted('bench-press', 0, 'strength', 190, 5),
         lifted('pull-up', 1, 'hypertrophy', 0, 8),
         lifted('db-lateral-raise', 2, 'hypertrophy', 20, 15),
-        walked(3),
+        lifted('skullcrusher', 3, 'hypertrophy', 60, 12),
+        walked(4),
       ],
     },
     {
       daysBack: 2,
       entries: [
-        lifted('sumo-deadlift', 0, 'strength', 315, 5),
+        lifted('sumo-deadlift', 0, 'strength', 315, 5, 4),
         lifted('dips', 1, 'hypertrophy', 0, 10),
         lifted('barbell-calf-raise', 2, 'hypertrophy', 185, 15),
         walked(3),

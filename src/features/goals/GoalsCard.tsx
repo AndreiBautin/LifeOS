@@ -1,7 +1,7 @@
 import { Waypoints } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
-import { Card } from '@/components/shared/primitives'
+import { Badge, Card } from '@/components/shared/primitives'
 import { nextAvailableItem } from '@/domain/goals/goal'
 
 import { useGoals } from './hooks'
@@ -25,6 +25,15 @@ import { useGoals } from './hooks'
  * extra on the day, not a primary control somebody manages from here, and
  * a goal is created from the Quests page header regardless of whether
  * this card has ever shown anything.
+ *
+ * **A `Goal` badge, which this card shipped without.** Reported: *"the
+ * garden quest and the quest under it seem different?"* They are — the
+ * card above is `ArcSlot`, standing in for a main quest; this is a life
+ * goal, which pays no XP and is not a quest at all — but nothing on the
+ * row said so, so two structurally different records sat back to back
+ * wearing the same unlabelled shape. `cool` is the one badge tone
+ * neither quest badge uses (`Main` is accent, `Side` is neutral), so a
+ * reader can now tell the three apart by colour alone.
  */
 export function GoalsCard() {
   const goals = useGoals()
@@ -44,7 +53,12 @@ export function GoalsCard() {
             <Link to={`/goals/${standing.goal.id}`} className="flex items-start gap-2">
               <Waypoints size={16} className="text-accent-400 mt-0.5 shrink-0" aria-hidden />
               <div className="min-w-0 flex-1">
-                <p className="text-ink-50 truncate text-sm font-medium">{standing.goal.name}</p>
+                <div className="flex items-center gap-2">
+                  <p className="text-ink-50 truncate text-sm font-medium">{standing.goal.name}</p>
+                  <Badge tone="cool" className="shrink-0">
+                    Goal
+                  </Badge>
+                </div>
                 <p className="text-ink-500 truncate text-xs">Next: {next.item.title}</p>
               </div>
             </Link>

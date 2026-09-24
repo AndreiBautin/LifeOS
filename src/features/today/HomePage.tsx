@@ -7,6 +7,7 @@ import { buttonStyles } from '@/components/shared/styles'
 import { ActiveQuests } from '@/features/projects/ActiveQuests'
 import { useActiveQuests } from '@/features/projects/hooks'
 import { GoalsCard } from '@/features/goals/GoalsCard'
+import { TodayGoals } from '@/features/backlog/TodayGoals'
 import { ChallengePass } from '@/features/challenges/ChallengePass'
 import { SheetCard } from '@/features/character/SheetCard'
 import { useCharacterSheet, useSeasonProgress } from '@/features/character/hooks'
@@ -218,6 +219,14 @@ export function HomePage() {
         footing every other card on this page stands on.
       */}
       <RecentTraining />
+
+      {/*
+        **A second real-content addition from the same "add more" round.**
+        `TodayGoals` reuses `GoalsToday`/`GoalRow` wholesale — see its own
+        doc for why this was a capability the app already had and nothing
+        rendered. Silent under the same rule as everything else here.
+      */}
+      <TodayGoals />
 
       {/* Both silent unless this morning's read found something. */}
 
