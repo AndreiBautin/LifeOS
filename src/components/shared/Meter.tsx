@@ -13,6 +13,12 @@ import { cn } from '@/lib/cn'
  *
  * `of <= 0` renders the track alone rather than a full bar or a NaN one.
  * Nothing over nothing is not complete.
+ *
+ * **The track carries a small inset shadow, the fill does not.** A flat
+ * `bg-ink-850` rectangle reads as a shape drawn on the card rather than
+ * a channel the fill sits inside; the same "surface with a thickness"
+ * argument `.card` already makes, at groove scale rather than panel
+ * scale.
  */
 
 export type MeterTone = 'accent' | 'good' | 'warn' | 'bad' | 'cool'
@@ -51,7 +57,7 @@ export function Meter({
   return (
     <div
       className={cn('bg-ink-850 w-full overflow-hidden rounded-full', className)}
-      style={{ height }}
+      style={{ height, boxShadow: 'inset 0 1px 3px 0 rgb(0 0 0 / 45%)' }}
       role="progressbar"
       aria-valuenow={Math.round(fraction * 100)}
       aria-valuemin={0}

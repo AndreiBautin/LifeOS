@@ -545,3 +545,48 @@
     font-size: 16px;
   }
 }
+
+/*
+ * The text you select is tinted the app's own accent rather than the
+ * browser's default blue — the same reason the focus ring is
+ * `--color-accent-400` rather than left at whatever the platform ships.
+ * A stray default blue highlight is the fastest way for a page to look
+ * like nobody touched it.
+ */
+::selection {
+  background-color: color-mix(in oklab, var(--color-accent-500) 35%, transparent);
+  color: var(--text-primary);
+}
+
+/*
+ * A themed scrollbar, thin rather than the platform default's full-width
+ * bar. Chrome/Edge/Safari read the `::-webkit-scrollbar` rules; Firefox
+ * reads `scrollbar-color`/`scrollbar-width` on `html` — both are declared
+ * so neither browser falls back to an unstyled bar that breaks the dark
+ * surface it sits on.
+ */
+html {
+  scrollbar-color: var(--color-ink-700) transparent;
+  scrollbar-width: thin;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: var(--color-ink-700);
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color-ink-500);
+  background-clip: padding-box;
+}
