@@ -308,10 +308,25 @@ export function AppShell() {
         to "how do I fill the rest" is more real content on the cards
         that exist, which is what shipped alongside this change, not a
         wider stage for the same five cards to spread thinner across.
+
+        **Raised to `2000px`, once Quests merged in and there was
+        genuinely more content to spread.** Reported: "why would the 4th
+        column be narrower — just use the massive amount of horizontal
+        padding." Right — `column-width:22rem` already stretches
+        existing columns to fill whatever width `main` hands it, so a
+        4th column does not need `column-width` narrowed at all; it only
+        needs `main` to hand over enough width for one. At `2000px`,
+        content width comes out to roughly 1740px after the sidebar and
+        padding, which is enough for four columns comfortably over
+        `400px` each — safely above the ~375px `SheetCard`'s avatar-plus-
+        heading row needs, which is the exact failure mode a too-narrow
+        column caused two commits ago. This is a fixed ceiling for the
+        same reason `1600px` was: it should stop growing with the
+        monitor rather than spreading the same cards thinner forever.
       */}
       <main
         id="main"
-        className="mx-auto w-full max-w-2xl lg:max-w-4xl xl:max-w-6xl 2xl:max-w-[1600px] flex-1 pb-28 pt-[calc(1rem_+_var(--safe-top))] pl-[calc(1rem_+_var(--safe-left))] lg:pl-[calc(1rem_+_var(--safe-left)_+_var(--sidebar-w))] pr-[calc(1rem_+_var(--safe-right))]"
+        className="mx-auto w-full max-w-2xl lg:max-w-4xl xl:max-w-6xl 2xl:max-w-[2000px] flex-1 pb-28 pt-[calc(1rem_+_var(--safe-top))] pl-[calc(1rem_+_var(--safe-left))] lg:pl-[calc(1rem_+_var(--safe-left)_+_var(--sidebar-w))] pr-[calc(1rem_+_var(--safe-right))]"
       >
         <Outlet />
       </main>
