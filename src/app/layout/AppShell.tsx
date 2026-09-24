@@ -1,13 +1,4 @@
-import {
-  BookMarked,
-  ChevronLeft,
-  ChevronRight,
-  Dumbbell,
-  Home,
-  Map,
-  Network,
-  User,
-} from 'lucide-react'
+import { BookMarked, ChevronLeft, ChevronRight, Home, Map, Network, User } from 'lucide-react'
 import { useState } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
 
@@ -52,26 +43,28 @@ import {
  * a link on the hub is for somewhere you decide.
  */
 /**
- * Six cells now. Today and You merging took this from eight to seven;
+ * Five cells now. Today and You merging took this from eight to seven;
  * Quests folding in kept it at seven, because Party's seat had already
  * split into Finance and Tech by the time Quests left. Finance folding
- * in a second time is the one that actually drops the count, to six —
- * *"folding in the finance page to the homepage too."*
+ * in dropped it to six, and Train folding in a third time — *"fold
+ * training into it"* — takes it to five.
  *
  * **The Today/You merge fixed an overflow this file used to warn about
  * rather than only saving a slot.** Every cell carries `.tap-target`, a
  * 44-pixel accessibility floor that refuses to shrink — so eight need
- * 352 and an iPhone SE at 320 clipped the last tab by 32. Six need 264
+ * 352 and an iPhone SE at 320 clipped the last tab by 32. Five need 220
  * and fit with room to spare.
  *
- * **Quests and Finance folding in were the same kind of ask** —
- * "condense pages, as its not enough content to fill a page in a full
- * monitor screen without looking awkward." `Campaigns` and `QuestBoard`
- * on Today carry everything `/quests` held; `FinanceZone` carries
- * everything `/finance` held. The room each one freed on the nav bar is
- * real, even when the cell count did not move with the first of the two
- * — one fewer destination to scan for, on a bar that was already within
- * its 320px budget.
+ * **Train is the one fold in this line that trades something real.**
+ * Quests and Finance are planning/reference screens with no daily
+ * reason to open on their own; Train's "start a session" is arguably
+ * the single most action-oriented tap in the app, and it lost its
+ * direct nav icon. What replaces it: `TrainZone`'s "Start session"
+ * button sits on Today, which is the screen the app already opens on
+ * — so starting a session is still one tap away, just from the landing
+ * screen rather than from a dedicated icon. `/train` itself still
+ * exists and still takes over full-screen the moment a workout is
+ * active; only the *icon* is gone, not the route.
  *
  * The freed room in the bar itself is deliberately left as room. The
  * screens without a tab — Limits, Vitals, Job search, Mind, Houses,
@@ -88,7 +81,6 @@ const NAV = [
    * the same reason.
    */
   { to: '/today', label: 'You', Icon: User },
-  { to: '/train', label: 'Train', Icon: Dumbbell },
   { to: '/backlog', label: 'Codex', Icon: BookMarked },
   { to: '/map', label: 'Map', Icon: Map },
   /*

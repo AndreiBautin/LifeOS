@@ -14,6 +14,7 @@ import { ChallengePass } from '@/features/challenges/ChallengePass'
 import { FinanceZone } from '@/features/finance/FinanceZone'
 import { SheetCard } from '@/features/character/SheetCard'
 import { useCharacterSheet, useSeasonProgress } from '@/features/character/hooks'
+import { TrainZone } from '@/features/train/TrainZone'
 import { LimitsCard } from '@/features/vitals/LimitsCard'
 import { WeightTrend } from '@/features/vitals/WeightTrend'
 
@@ -65,15 +66,30 @@ import { useFitToViewport } from './useFitToViewport'
  * now does. The remaining single-purpose readouts sit under "Today",
  * which is the one grouping word that was missing rather than repeated.
  *
- * **"Finance" is the third, folded in for the same reason Quests was.**
- * `FinanceZone` carries the five cards `/finance` used to hold at its
- * own route with its own nav tab — asked for directly, *"folding in the
- * finance page to the homepage too."* It gets the auto-balanced
- * `ZONE_FLOW`, like Quests, rather than Today's hand-paired 2-column
- * grid: five differently-shaped cards (a ladder card, the pool, an
- * entry form, a birth-year card, a folding history list) balance across
- * columns the way Quests' four to seven do, where Today's grid exists
- * specifically because *its* four cards kept landing three-and-one.
+ * **"Finance" and "Train" followed, folded in for the same reason
+ * Quests was.** `FinanceZone` carries the five cards `/finance` used to
+ * hold at its own route with its own nav tab — asked for directly,
+ * *"folding in the finance page to the homepage too."* It gets the
+ * auto-balanced `ZONE_FLOW`, like Quests, rather than Today's
+ * hand-paired 2-column grid: five differently-shaped cards (a ladder
+ * card, the pool, an entry form, a birth-year card, a folding history
+ * list) balance across columns the way Quests' four to seven do, where
+ * Today's grid exists specifically because *its* four cards kept
+ * landing three-and-one.
+ *
+ * **Train is the one fold with a wrinkle.** An active workout still
+ * takes over the whole screen at `/train` — that rule survives intact,
+ * see `TrainZone`'s own doc for how. What folded in here is only the
+ * plan and the standards.
+ *
+ * **"Today" and "Train" sit side by side at `xl`, reported once four
+ * zones made the page feel cramped again: "it's getting cramped again
+ * spread it out."** Stacking every zone vertically is what was making
+ * the page taller every time one more folded in, on a monitor with
+ * plenty of unused width beside each zone. See the `xl:grid` wrapper
+ * around them for the reasoning on why those two specifically pair —
+ * Finance stays full-width, because its own five cards already spread
+ * across columns and pairing it beside another zone would squeeze both.
  *
  * **Spacing lives on the outer stack, not on each zone.** `Section`
  * already exists in `primitives.tsx` and was not reused here because it
@@ -226,66 +242,96 @@ export function HomePage() {
             </div>
           </div>
 
-          <div>
-            <ZoneHeading>Today</ZoneHeading>
-            {/*
-          **A fixed 2-column pairing, not the auto-balanced `ZONE_FLOW`
-          the "Quests" zone uses.** Reported against the auto-balanced
-          version: "maybe move the bottom row up so we don't need to
-          scroll... and fill that last bit of bottom right space."
-          `column-fill:balance` genuinely struggles with only four
-          blocks of wildly different heights — `ChallengePass` alone can
-          be four times `TodayGoals`' height — so at some widths it drew
-          three columns with one nearly empty. Four blocks are simple
-          enough to pair by hand instead of trusting an algorithm with
-          too little to balance: `LimitsCard` and `WeightTrend` are
-          both compact day-to-day readouts, `TodayGoals` and
-          `ChallengePass` are both slower-moving ones, so each pair
-          shares a column and the two columns land far closer in height
-          than three auto-balanced ones did.
-        */}
-            <div className="space-y-6 lg:grid lg:grid-cols-2 lg:items-start lg:gap-8 lg:space-y-0">
-              <div className="space-y-6 lg:space-y-8">
-                {/*
-              The card names itself and links to the screen, which is
-              why this zone's heading does not repeat "Buffs" — it had
-              been saying so directly over a card whose first line
-              already does.
-            */}
-                <LimitsCard />
+          {/*
+        **"Today" and "Train" sit side by side at `xl`, not stacked.**
+        Reported once Train folded in too: *"it's getting cramped again
+        — spread it out."* Both are compact, daily-use zones — a couple
+        of pool rows, a weight reading, today's reading goals, the
+        season card, one lifting card and a standards card — so putting
+        them beside each other rather than under each other uses the
+        width a wide monitor actually has instead of making the page
+        taller every time one more zone folds in. `xl` rather than `lg`,
+        because at `lg` each zone's own masonry columns are already
+        claiming the width; two zones side by side needs the room `xl`
+        actually frees.
+      */}
+          <div className="space-y-8 xl:grid xl:grid-cols-2 xl:items-start xl:gap-8 xl:space-y-0">
+            <div>
+              <ZoneHeading>Today</ZoneHeading>
+              {/*
+            **A fixed 2-column pairing, not the auto-balanced `ZONE_FLOW`
+            the "Quests" zone uses.** Reported against the auto-balanced
+            version: "maybe move the bottom row up so we don't need to
+            scroll... and fill that last bit of bottom right space."
+            `column-fill:balance` genuinely struggles with only four
+            blocks of wildly different heights — `ChallengePass` alone can
+            be four times `TodayGoals`' height — so at some widths it drew
+            three columns with one nearly empty. Four blocks are simple
+            enough to pair by hand instead of trusting an algorithm with
+            too little to balance: `LimitsCard` and `WeightTrend` are
+            both compact day-to-day readouts, `TodayGoals` and
+            `ChallengePass` are both slower-moving ones, so each pair
+            shares a column and the two columns land far closer in height
+            than three auto-balanced ones did.
+          */}
+              <div className="space-y-6 lg:grid lg:grid-cols-2 lg:items-start lg:gap-8 lg:space-y-0">
+                <div className="space-y-6 lg:space-y-8">
+                  {/*
+                The card names itself and links to the screen, which is
+                why this zone's heading does not repeat "Buffs" — it had
+                been saying so directly over a card whose first line
+                already does.
+              */}
+                  <LimitsCard />
 
-                {/*
-              `WeightTrend` replaces `RecentTraining` in this slot,
-              asked for directly — "recent training bar graph isn't
-              that good, replace it with a weight tracker." See its own
-              doc for the history of the domain it reintroduces.
-            */}
-                <WeightTrend />
+                  {/*
+                `WeightTrend` replaces `RecentTraining` in this slot,
+                asked for directly — "recent training bar graph isn't
+                that good, replace it with a weight tracker." See its own
+                doc for the history of the domain it reintroduces.
+              */}
+                  <WeightTrend />
+                </div>
+
+                <div className="space-y-6 lg:space-y-8">
+                  {/*
+                `TodayGoals` reuses `GoalsToday`/`GoalRow` wholesale —
+                see its own doc for why this was a capability the app
+                already had and nothing rendered. Silent under the same
+                rule as everything else here.
+              */}
+                  <TodayGoals />
+
+                  {/*
+                **The season names itself inside the card**, keeping the
+                name beside the measurement the way this file has
+                always insisted. The comment sits *above* the
+                conditional rather than inside it, because a JSX comment
+                cannot be a bare sibling in a `&&` expression.
+              */}
+                  {season.data !== undefined && (
+                    <Card>
+                      <ChallengePass
+                        season={{ label: season.data.label, daysLeft: season.data.daysLeft }}
+                      />
+                    </Card>
+                  )}
+                </div>
               </div>
+            </div>
 
-              <div className="space-y-6 lg:space-y-8">
-                {/*
-              `TodayGoals` reuses `GoalsToday`/`GoalRow` wholesale —
-              see its own doc for why this was a capability the app
-              already had and nothing rendered. Silent under the same
-              rule as everything else here.
-            */}
-                <TodayGoals />
-
-                {/*
-              **The season names itself inside the card**, keeping the
-              name beside the measurement the way this file has
-              always insisted. The comment sits *above* the
-              conditional rather than inside it, because a JSX comment
-              cannot be a bare sibling in a `&&` expression.
-            */}
-                {season.data !== undefined && (
-                  <Card>
-                    <ChallengePass
-                      season={{ label: season.data.label, daysLeft: season.data.daysLeft }}
-                    />
-                  </Card>
-                )}
+            <div>
+              <ZoneHeading>Train</ZoneHeading>
+              {/*
+            **`TrainZone` folded in, asked for directly: "fold training
+            into it."** Unlike Quests and Finance, this one has a
+            wrinkle: an active workout takes over the whole screen, and
+            that behaviour did not move — see `TrainZone`'s and
+            `TrainPage`'s own docs. What is here is only the plan and the
+            standards; the takeover still happens at `/train`.
+          */}
+              <div className={ZONE_FLOW}>
+                <TrainZone />
               </div>
             </div>
           </div>
