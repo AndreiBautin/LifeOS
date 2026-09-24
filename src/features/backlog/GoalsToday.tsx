@@ -78,7 +78,19 @@ export function GoalRow({ status }: { readonly status: DailyGoalStatus }) {
   )
 }
 
-export function GoalsToday({ statuses }: { readonly statuses: readonly DailyGoalStatus[] }) {
+export function GoalsToday({
+  statuses,
+  bare = false,
+}: {
+  readonly statuses: readonly DailyGoalStatus[]
+  /**
+   * Skips this component's own `Card` wrapper, for a caller that already
+   * supplies one — see `TodayGoals`, which wraps this in a `CardHeading`
+   * so the heading and the rows share one card boundary instead of a
+   * floating title sitting above a separate box.
+   */
+  readonly bare?: boolean
+}) {
   /*
    * **One line rather than a dashed box**, the treatment the empty quest
    * slots got. It drew a full `Empty` — a bordered panel with a title and
@@ -99,11 +111,15 @@ export function GoalsToday({ statuses }: { readonly statuses: readonly DailyGoal
     )
   }
 
-  return (
-    <Card className="divide-ink-800 divide-y py-0">
+  const rows = (
+    <div className="divide-ink-800 divide-y">
       {statuses.map((status) => (
         <GoalRow key={status.item.id} status={status} />
       ))}
-    </Card>
+    </div>
   )
+
+  if (bare) return rows
+
+  return <Card className="py-0">{rows}</Card>
 }

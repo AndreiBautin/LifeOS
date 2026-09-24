@@ -1,3 +1,7 @@
+import { BookOpen } from 'lucide-react'
+
+import { Card, CardHeading } from '@/components/shared/primitives'
+
 import { GoalsToday } from './GoalsToday'
 import { useDailyGoals } from './hooks'
 
@@ -23,6 +27,12 @@ import { useDailyGoals } from './hooks'
  * goal, which pays no XP and has a dependency graph. Reusing the word
  * here, for a reading streak that very much does pay XP, would recreate
  * the exact ambiguity that badge exists to resolve.
+ *
+ * **One `Card`, not two boxes.** This used to float a bold `h2` above
+ * `GoalsToday`'s own separately-bordered card — reported, among the
+ * rest of Today's headers, as inconsistent. `GoalsToday` takes a `bare`
+ * prop now so its rows can sit inside *this* card, under one
+ * `CardHeading`, matching `Buffs` and `Recent training` exactly.
  */
 export function TodayGoals() {
   const goals = useDailyGoals()
@@ -31,9 +41,9 @@ export function TodayGoals() {
   if (statuses.length === 0) return null
 
   return (
-    <div>
-      <h2 className="text-ink-50 mb-2 font-medium">Working through</h2>
-      <GoalsToday statuses={statuses} />
-    </div>
+    <Card>
+      <CardHeading icon={<BookOpen size={16} aria-hidden />} title="Working through" />
+      <GoalsToday statuses={statuses} bare />
+    </Card>
   )
 }

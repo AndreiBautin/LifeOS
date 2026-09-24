@@ -1,7 +1,7 @@
-import { Check, Plus, X } from 'lucide-react'
+import { CalendarDays, Check, Plus, X } from 'lucide-react'
 import { useState } from 'react'
 
-import { Button, Empty } from '@/components/shared/primitives'
+import { Button, CardHeading, Empty } from '@/components/shared/primitives'
 import { Meter } from '@/components/shared/Meter'
 import type { Challenge } from '@/domain/challenges/challenge'
 import { cn } from '@/lib/cn'
@@ -210,19 +210,26 @@ export function ChallengePass({
   return (
     <div>
       {season !== undefined && (
-        <div className="border-ink-850 mb-3 flex items-baseline justify-between gap-3 border-b pb-3">
+        <div className="border-ink-850 mb-3 border-b pb-3">
           {/*
-            An `h2` rather than a span, and it looks identical. Dropping
-            the section headers took every landmark off this screen bar
-            the level, so somebody navigating by heading had one stop for
-            the whole page. The cards already name themselves; making
-            those names headings gives the structure back without putting
-            a rule and a caption back on the screen.
+            **`CardHeading`, matching every other card in this zone.**
+            It read as its own bold `h2` before, which is what made this
+            card's title look like a different weight of thing next to
+            `Buffs` and `Recent training`'s dim, icon-led labels —
+            reported as "all of the sections have inconsistent
+            headers." The days-left figure moves into the action slot
+            `CardHeading` already has for exactly this: a title and one
+            piece of context beside it.
           */}
-          <h2 className="text-ink-50 font-medium">{season.label}</h2>
-          <span className="text-ink-700 numeric shrink-0 text-xs">
-            {season.daysLeft > 0 ? `${String(season.daysLeft)} days left` : 'Last day'}
-          </span>
+          <CardHeading
+            icon={<CalendarDays size={16} aria-hidden />}
+            title={season.label}
+            action={
+              <span className="text-ink-700 numeric shrink-0 text-xs">
+                {season.daysLeft > 0 ? `${String(season.daysLeft)} days left` : 'Last day'}
+              </span>
+            }
+          />
         </div>
       )}
 

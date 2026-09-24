@@ -192,44 +192,65 @@ export function HomePage() {
 
       <div>
         <ZoneHeading>Today</ZoneHeading>
-        <div className={ZONE_FLOW}>
-          {/*
-            The card names itself and links to the screen, which is why
-            this zone's heading does not repeat "Buffs" — it had been
-            saying so directly over a card whose first line already
-            does.
-          */}
-          <LimitsCard />
+        {/*
+          **A fixed 2-column pairing, not the auto-balanced `ZONE_FLOW`
+          the "Quests" zone uses.** Reported against the auto-balanced
+          version: "maybe move the bottom row up so we don't need to
+          scroll... and fill that last bit of bottom right space."
+          `column-fill:balance` genuinely struggles with only four
+          blocks of wildly different heights — `ChallengePass` alone can
+          be four times `TodayGoals`' height — so at some widths it drew
+          three columns with one nearly empty. Four blocks are simple
+          enough to pair by hand instead of trusting an algorithm with
+          too little to balance: `LimitsCard` and `RecentTraining` are
+          both compact day-to-day readouts, `TodayGoals` and
+          `ChallengePass` are both slower-moving ones, so each pair
+          shares a column and the two columns land far closer in height
+          than three auto-balanced ones did.
+        */}
+        <div className="space-y-8 lg:grid lg:grid-cols-2 lg:items-start lg:gap-10 lg:space-y-0">
+          <div className="space-y-8 lg:space-y-10">
+            {/*
+              The card names itself and links to the screen, which is
+              why this zone's heading does not repeat "Buffs" — it had
+              been saying so directly over a card whose first line
+              already does.
+            */}
+            <LimitsCard />
 
-          {/*
-            `RecentTraining` reads `useRecentWorkouts`, already built for
-            the History screen, and is silent under two sessions rather
-            than showing a single bar that cannot be a trend.
-          */}
-          <RecentTraining />
+            {/*
+              `RecentTraining` reads `useRecentWorkouts`, already built
+              for the History screen, and is silent under two sessions
+              rather than showing a single point that cannot be a
+              trend.
+            */}
+            <RecentTraining />
+          </div>
 
-          {/*
-            `TodayGoals` reuses `GoalsToday`/`GoalRow` wholesale — see
-            its own doc for why this was a capability the app already
-            had and nothing rendered. Silent under the same rule as
-            everything else here.
-          */}
-          <TodayGoals />
+          <div className="space-y-8 lg:space-y-10">
+            {/*
+              `TodayGoals` reuses `GoalsToday`/`GoalRow` wholesale —
+              see its own doc for why this was a capability the app
+              already had and nothing rendered. Silent under the same
+              rule as everything else here.
+            */}
+            <TodayGoals />
 
-          {/*
-            **The season names itself inside the card**, keeping the
-            name beside the measurement the way this file has always
-            insisted. The comment sits *above* the conditional rather
-            than inside it, because a JSX comment cannot be a bare
-            sibling in a `&&` expression.
-          */}
-          {season.data !== undefined && (
-            <Card>
-              <ChallengePass
-                season={{ label: season.data.label, daysLeft: season.data.daysLeft }}
-              />
-            </Card>
-          )}
+            {/*
+              **The season names itself inside the card**, keeping the
+              name beside the measurement the way this file has
+              always insisted. The comment sits *above* the
+              conditional rather than inside it, because a JSX comment
+              cannot be a bare sibling in a `&&` expression.
+            */}
+            {season.data !== undefined && (
+              <Card>
+                <ChallengePass
+                  season={{ label: season.data.label, daysLeft: season.data.daysLeft }}
+                />
+              </Card>
+            )}
+          </div>
         </div>
       </div>
     </div>
