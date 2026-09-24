@@ -5,7 +5,9 @@ import { Link } from 'react-router-dom'
 import { Card } from '@/components/shared/primitives'
 import { buttonStyles } from '@/components/shared/styles'
 import { ActiveQuests } from '@/features/projects/ActiveQuests'
+import { QuestBoard } from '@/features/projects/QuestBoard'
 import { useActiveQuests } from '@/features/projects/hooks'
+import { Campaigns } from '@/features/campaign/Campaigns'
 import { GoalsCard } from '@/features/goals/GoalsCard'
 import { TodayGoals } from '@/features/backlog/TodayGoals'
 import { ChallengePass } from '@/features/challenges/ChallengePass'
@@ -42,6 +44,13 @@ import { LimitsCard } from '@/features/vitals/LimitsCard'
  * screen: every cell clears 44px, so eight need 352 and an iPhone SE has
  * 320 — the last tab was clipped by 32 pixels. Seven need 308. The
  * overflow this file warned about is gone rather than worked around.
+ *
+ * **Quests folded in later, the same way, for the same kind of reason.**
+ * Reported after several rounds of decoration failed to close a vertical
+ * gap on a wide monitor: "maybe just consider condensing pages, as its
+ * not enough content to fill a page in a full monitor screen without
+ * looking awkward." `Campaigns` and `QuestBoard` carry the rest of what
+ * `/quests` held — see `QuestBoard`'s own doc. Six nav cells now.
  *
  * **Three bands, in the order a person moves through them.** A glance at
  * where you are, then the things the day asks for, then the standing
@@ -197,7 +206,6 @@ export function HomePage() {
         main={active.data?.main}
         side={active.data?.side}
         {...(leadingArc === undefined ? {} : { arc: leadingArc })}
-        showLink
       />
 
       {/*
@@ -207,6 +215,18 @@ export function HomePage() {
         spirit without pretending to be one.
       */}
       <GoalsCard />
+
+      {/*
+        **Quests merged into Today wholesale — see `QuestBoard`'s own
+        doc.** `Campaigns` is the arc at full size (every stage, every
+        lap, editable), which `ActiveQuests`' `ArcSlot` only ever
+        summarised. It is a fragment returning one `<Section>` per arc,
+        so each arc becomes its own masonry block rather than one giant
+        one — the same transparency `QuestBoard` relies on for Suggested,
+        Contracts and the board to distribute independently too.
+      */}
+      <Campaigns />
+      <QuestBoard />
 
       {/*
         The card names itself and links to the screen, which is why
@@ -281,9 +301,10 @@ export function HomePage() {
         fact about the navigation rather than about the person.
 
         Each one went where it belongs instead. Resume and Mind hang off
-        Job search, which hangs off Quests; Houses off the house-search
-        stage of the arc. Every route is now *about* something rather
-        than a leftover, which is what the block could never be.
+        Job search; Houses off the house-search stage of the arc. Job
+        search and Goals themselves now hang off `QuestBoard`'s own
+        heading, on this page, since Quests stopped being a separate
+        screen with a header of its own to carry them.
       */}
 
       {/*

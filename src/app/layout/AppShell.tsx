@@ -6,7 +6,6 @@ import {
   Home,
   Map,
   Network,
-  Target,
   User,
   Wallet,
 } from 'lucide-react'
@@ -54,17 +53,25 @@ import {
  * a link on the hub is for somewhere you decide.
  */
 /**
- * Seven cells, and it was eight until Today and You became one screen.
+ * Six cells, and it was eight before Today absorbed first You and then
+ * Quests.
  *
- * **That merge fixed an overflow this file used to warn about rather
- * than only saving a slot.** Every cell carries `.tap-target`, a 44-pixel
- * accessibility floor that refuses to shrink — so eight need 352 and an
- * iPhone SE at 320 clipped the last tab by 32. Seven need 308 and fit.
+ * **The first merge fixed an overflow this file used to warn about
+ * rather than only saving a slot.** Every cell carries `.tap-target`, a
+ * 44-pixel accessibility floor that refuses to shrink — so eight need
+ * 352 and an iPhone SE at 320 clipped the last tab by 32. Seven need 308
+ * and fit.
+ *
+ * **The second, Quests, was a different kind of ask** — "condense pages,
+ * as its not enough content to fill a page in a full monitor screen
+ * without looking awkward," after several rounds of decoration failed to
+ * do that on their own. `Campaigns` and `QuestBoard` on Today now carry
+ * everything `/quests` held; see `QuestBoard`'s own doc.
  *
  * The freed room is deliberately left as room. The screens without a tab
- * — Limits, Vitals, Job search, Mind, Houses, Finance, Resume, the tech
- * tree — are eight, and promoting any one of them is a claim that it is
- * used daily. None of them is.
+ * — Limits, Vitals, Job search, Mind, Houses, Resume, the tech tree —
+ * are seven, and promoting any one of them is a claim that it is used
+ * daily. None of them is.
  */
 const NAV = [
   /*
@@ -77,7 +84,6 @@ const NAV = [
    */
   { to: '/today', label: 'You', Icon: User },
   { to: '/train', label: 'Train', Icon: Dumbbell },
-  { to: '/quests', label: 'Quests', Icon: Target },
   { to: '/backlog', label: 'Codex', Icon: BookMarked },
   { to: '/map', label: 'Map', Icon: Map },
   /*

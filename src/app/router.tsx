@@ -8,7 +8,6 @@ import { HomePage } from '@/features/today/HomePage'
 import { SharePage } from '@/features/atlas/SharePage'
 import { TripsPage } from '@/features/atlas/TripsPage'
 import { BacklogPage } from '@/features/backlog/BacklogPage'
-import { ProjectsPage } from '@/features/projects/ProjectsPage'
 import { BasePage } from '@/features/base/BasePage'
 import { LimitsPage } from '@/features/limits/LimitsPage'
 import { MindPage } from '@/features/mind/MindPage'
@@ -42,7 +41,15 @@ export const router = createBrowserRouter(
         // is the change from a training app to a hub: the first thing on the
         // first screen should be the answer to "what now".
         { index: true, element: <Navigate to="/today" replace /> },
-        { path: 'quests', element: <ProjectsPage /> },
+        /*
+         * **Quests merged into Today outright** — see `QuestBoard`'s own
+         * doc in `features/projects/QuestBoard.tsx`. Kept as a redirect
+         * rather than deleted, the rule `/character`, `/party` and
+         * `/vitals` already follow: a PWA shortcut is registered with the
+         * operating system at install time, so an installed copy goes on
+         * asking for this path long after the nav stops mentioning it.
+         */
+        { path: 'quests', element: <Navigate to="/today" replace /> },
         { path: 'goals', element: <GoalsPage /> },
         { path: 'goals/:id', element: <GoalPage /> },
         /*
@@ -50,9 +57,11 @@ export const router = createBrowserRouter(
          * a "What next" shortcut pointing here, and a shortcut is
          * registered with the operating system when the app is installed —
          * an installed copy goes on asking for this path long after the
-         * manifest stops mentioning it.
+         * manifest stops mentioning it. Points straight at `/today` now
+         * rather than through `/quests`, which would otherwise be two
+         * redirects to reach the one destination.
          */
-        { path: 'next', element: <Navigate to="/quests" replace /> },
+        { path: 'next', element: <Navigate to="/today" replace /> },
         { path: 'train', element: <TrainPage /> },
         /*
          * The Plan screen is gone and `/plan` lands on the Program page.

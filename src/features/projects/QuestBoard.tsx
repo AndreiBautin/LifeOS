@@ -1,5 +1,3 @@
-import { Campaigns } from '@/features/campaign/Campaigns'
-import { useCampaigns } from '@/features/campaign/hooks'
 import {
   Briefcase,
   Check,
@@ -10,12 +8,9 @@ import {
   Lightbulb,
   Plus,
   Receipt,
-  Swords,
   Trash2,
   Waypoints,
 } from 'lucide-react'
-import { PageHeader } from '@/components/shared/PageHeader'
-import { buttonStyles } from '@/components/shared/styles'
 import { Link } from 'react-router-dom'
 import { useState } from 'react'
 
@@ -23,7 +18,6 @@ import { useServices } from '@/app/context'
 import { kindOf } from '@/domain/projects/active'
 import { QUEST_KIND_LABELS, type QuestKind } from '@/domain/projects/project'
 import { board, byOutstanding, contracts } from '@/domain/projects/contract'
-import { ActiveQuests } from './ActiveQuests'
 import { Badge, Button, Card, CardHeading, Empty } from '@/components/shared/primitives'
 import { EyeIcon } from '@/components/shared/EyeIcon'
 
@@ -47,17 +41,30 @@ import {
 import { NextAction, StatusBadge } from './NextAction'
 
 /**
- * The quest log.
+ * Everything the old `/quests` page held below its Active section, now
+ * on Today.
  *
- * The recommendation is the top of the page and the reason the app opens
- * here: in a hub used daily, "what should I do right now, and what is the
- * exact next step" is the single most valuable thing on the screen.
- * Everything below it is the material that answer is derived from.
+ * **Quests merged into Today outright**, asked for after several rounds
+ * of decoration failed to close a vertical gap on a wide monitor: "maybe
+ * just consider condensing pages, as its not enough content to fill a
+ * page in a full monitor screen without looking awkward." Right — the
+ * decorative fixes were treating a symptom. `/quests` held Suggested,
+ * Contracts and the full board, none of it duplicated on Today, all of
+ * it real. The nav drops from seven cells to six; `router.tsx` redirects
+ * `/quests` to `/today` for the same reason `/character`, `/party` and
+ * `/vitals` already do — a PWA shortcut installed against the old path
+ * has to keep resolving.
  *
- * Projects are quest chains, actions are steps and blockers are gates —
- * which is what the source already was, under different names. Nothing
- * here is a ladder: throughput has no ceiling, so it gets no level. See
- * docs/GAME_MODEL.md.
+ * **The Active section did not come with it.** `ActiveQuests` already
+ * renders on Today in its own right; importing it a second time here
+ * would put the main/side quest cards on the page twice.
+ *
+ * **Goals and Job search moved here from the page header Today never
+ * had.** Both are reached from nowhere else — a tab is the only
+ * unconditional route in this app, and neither has one — so losing their
+ * old header would have made them unreachable, the exact "capability
+ * nothing can reach" trap this codebase keeps a record of falling into.
+ * They sit in the board's own heading action slot instead.
  */
 
 const FIELD =
@@ -75,24 +82,6 @@ function ActionRow({
 
   return (
     <div className="flex items-center gap-3 py-2">
-      {/*
-        **A box, empty or ticked — not a tick that means "press me".**
-        Reported: *"I added a new side quest, but the steps make it seem
-        like they're already completed once we add them."* They did: a
-        pending step drew a bare ✓ and a closed one drew an undo arrow,
-        so a fresh three-step quest opened as what looks exactly like a
-        finished checklist, with "0% done" above it saying the opposite.
-
-        The icon was the *affordance* — press this to close it — and
-        nothing on the row said which state it was in except a
-        strikethrough that is easy to miss. An empty square reads as
-        outstanding to everybody, which is why `DailyRow` has drawn one
-        since it was written; this is that control, not a new one.
-
-        Unticking is the same box, for the reason a daily's is: a mis-tap
-        on the thing you tap most should cost exactly one more tap, so
-        there is no separate undo to aim at.
-      */}
       <button
         type="button"
         aria-label={done ? `Re-open ${action.description}` : `Close ${action.description}`}
@@ -125,14 +114,6 @@ function ActionRow({
   )
 }
 
-/**
- * What a project is waiting on, and the refusal when that would close a
- * loop.
- *
- * The error is rendered rather than thrown. Every way to get this wrong is
- * something a person did on purpose — "that would create a circular
- * dependency" is a sentence they need to read, not an exception.
- */
 function Blockers({
   project,
   others,
@@ -278,11 +259,6 @@ function ProjectCard({
             </Button>
           </form>
 
-          {/*
-            A rule nothing can reach is a rule nobody can trust — the same
-            reason the deadline field below exists. Without this, "active"
-            would be a domain concept no screen could set.
-          */}
           <Button
             full
             variant={isActive ? 'outline' : 'primary'}
@@ -298,14 +274,6 @@ function ProjectCard({
               : `Make this my ${QUEST_KIND_LABELS[kindOf(project)].toLowerCase()} quest`}
           </Button>
 
-          {/*
-            The deadline was readable and not settable, which made it a
-            rule nothing could reach: it drives `computeEffectiveUrgency`
-            and now the Today agenda, and no screen could put one on.
-            Clearing it sends `null` rather than `undefined` — the use case
-            distinguishes "leave it alone" from "remove it", and a spread
-            of `undefined` means the first.
-          */}
           <label className="mt-3 block">
             <span className="text-ink-500 mb-1 block text-xs font-medium tracking-wide uppercase">
               Deadline
@@ -350,12 +318,6 @@ function ProjectCard({
               </Button>
             )}
 
-            {/*
-              Moving to Base rather than retyping it there.
-              The common case is a quest log that has quietly filled with
-              house work, and the leaking tap on it has a month of steps
-              and history that a re-create would throw away.
-            */}
             <Button
               variant="ghost"
               size="sm"
@@ -391,24 +353,6 @@ function ProjectCard({
   )
 }
 
-/**
- * One-off things, kept off the board.
- *
- * The ask: *"maybe we need contracts or something to track little
- * one-off things that come up."* The board is for what you chose and are
- * working through; a parcel to return does not belong there wearing the
- * same clothes. Same crowding argument that moved house work to Base.
- *
- * **A view, not a record type.** A contract is a `Project` with one
- * step, so it reuses the board's own card, the same 20 points for
- * closing the step, and every rule about blockers and homes. Nothing new
- * had to be stored to give the shape a name.
- *
- * **Adding one writes the step with it**, because a contract with no
- * steps would pay nothing — XP comes from closing an action, and nothing
- * pays for a project existing. The section would have filled with things
- * that earn nothing, which teaches you not to use it.
- */
 function Contracts({
   projects,
   all,
@@ -472,133 +416,29 @@ function Contracts({
   )
 }
 
-export function ProjectsPage() {
+export function QuestBoard() {
   const [name, setName] = useState('')
   const [kind, setKind] = useState<QuestKind>('side')
-  /* What the eye on the board reveals — see the note beside it. */
   const [showingFinished, setShowingFinished] = useState(false)
   const projects = useProjects()
-  const active = useActiveQuests()
-  /*
-   * The first arc with something outstanding. Several arcs are possible
-   * and one that is finished has nothing to say about what you are
-   * working on now.
-   */
-  const arcs = useCampaigns()
-  const leadingArc = (arcs.data ?? []).find((one) => one.next !== undefined)
 
   const recommendation = useRecommendation('own-area')
   const add = useAddProject()
   const setActive = useSetActiveQuest()
 
-  /*
-   * Through the injected clock, and read once per render rather than per
-   * card. A lint rule forbids reading the system clock here at all, which
-   * is the right rule: two cards scoring against two different instants is
-   * harmless today and is exactly the sort of thing that stops being
-   * harmless at midnight.
-   */
   const today = useServices().clock.now()
 
-  // The recommendation carries ids rather than the record, so the button
-  // below needs the quest itself to know which kind it would activate.
   const suggested = (projects.data ?? []).find(
     (project) => project.id === recommendation.data?.projectId,
   )
 
-  /*
-   * One-offs come off the board and into their own section. They are
-   * still quests and still pay the same 20 for the step; what changes is
-   * that a parcel to return no longer sits among the things you chose to
-   * work through, which is the same crowding argument that moved house
-   * work to Base.
-   */
   const outstanding = (projects.data ?? []).filter((project) => project.status !== 'completed')
   const oneOffs = byOutstanding(contracts(outstanding))
   const open = board(outstanding)
   const done = (projects.data ?? []).filter((project) => project.status === 'completed')
 
   return (
-    /*
-      `space-y-4` between blocks, where five `Section`s each supplied
-      their own two rem. That gap was holding apart divisions of a page;
-      these are labelled runs of cards, and at 2rem they read as separate
-      screens stacked on one route.
-    */
-    <div className="space-y-4">
-      {/*
-        **Job search is reached from here**, which is what makes the two
-        links on that screen safe to rely on.
-
-        Reported as _"job search should be linked through main quest"_,
-        and an arc stage does link to it — but only once a stage of that
-        kind exists, and the leads card on Today is silent when there is
-        nothing out. Two conditionals deep is how a screen becomes
-        unreachable, which is the trap the deleted block existed to
-        prevent. A tab is unconditional; this is the root of the chain.
-      */}
-      <PageHeader
-        title="Quests"
-        subtitle="What you are trying to get done, and what is blocking what."
-        action={
-          <>
-            {/*
-              **Goals is reached from here for the same reason job search
-              is** — a tab is unconditional and a goal's own screen is
-              not reachable from anywhere else, so this is the root of
-              that chain too. It sits beside the arc rather than inside
-              it: a campaign is one measured chain, a goal is several
-              parallel ones with real unknowns in more than one, and the
-              two are not the same reading — see `domain/goals/goal.ts`.
-            */}
-            <Link to="/goals" className={buttonStyles({ variant: 'ghost', size: 'sm' })}>
-              <Waypoints size={16} aria-hidden />
-              Goals
-            </Link>
-            <Link to="/jobs" className={buttonStyles({ variant: 'ghost', size: 'sm' })}>
-              <Briefcase size={16} aria-hidden />
-              Job search
-            </Link>
-          </>
-        }
-      />
-
-      {/*
-        The arc leads, because it is what "main quest" means at full
-        size -- the active quests below it are this week's version of the
-        same question. It is a readout rather than a board: nothing on it
-        is a thing to do, and everything on it is met by work recorded
-        somewhere else.
-      */}
-      <Campaigns />
-
-      <div>
-        <CardHeading icon={<Swords size={16} aria-hidden />} title="Active" />
-        <ActiveQuests
-          main={active.data?.main}
-          side={active.data?.side}
-          {...(leadingArc === undefined ? {} : { arc: leadingArc })}
-        />
-      </div>
-
-      {/*
-        The recommendation stopped being the top of this page and became a
-        suggestion under it.
-
-        The engine is unchanged — priority, the blocker graph, the deadline
-        ramp — but what it is *for* moved. It could always tell you which
-        quest scored highest; what it could never know is which one you
-        mean to be working on. So it proposes something to activate, and
-        you ignore it or you do not.
-      */}
-      {/*
-        **Silent when there is nothing to suggest**, where it used to draw
-        a heading and a description over nothing. A section that renders
-        its title and no content is the defect Today was fixed for, and
-        this page had it on an empty board — a "Suggested" heading with a
-        blank space under it, on the screen you open to find something to
-        do.
-      */}
+    <>
       {recommendation.data?.actionId !== undefined && (
         <div>
           <CardHeading icon={<Lightbulb size={16} aria-hidden />} title="Suggested" />
@@ -620,52 +460,41 @@ export function ProjectsPage() {
       <Contracts projects={oneOffs} today={today} all={projects.data ?? []} />
 
       <div>
-        {/*
-          **Finished quests fold behind the eye rather than getting a
-          section of their own.** A completed quest is a record, not
-          something to do — the same call the done chores got on Base —
-          and its card carries the only route back to reopening it, so it
-          folds rather than being dropped.
-
-          The count moved into the card body with the rows it describes.
-          As a section *description* it sat above the add form, which put
-          "3 open" two controls away from the three cards it was about.
-        */}
         <CardHeading
           icon={<ClipboardList size={16} aria-hidden />}
           title="The board"
           action={
-            done.length > 0 && (
-              <Button
-                size="sm"
-                variant={showingFinished ? 'primary' : 'ghost'}
-                aria-pressed={showingFinished}
-                aria-label={`${showingFinished ? 'Hide' : 'Show'} ${String(done.length)} finished`}
-                onClick={() => {
-                  setShowingFinished(!showingFinished)
-                }}
-              >
-                <EyeIcon open={showingFinished} />
-              </Button>
-            )
+            <div className="flex items-center gap-3">
+              {/*
+                **Goals and Job search, relocated from the page header
+                this screen never had.** Neither is reached from anywhere
+                else in the app, so losing their old home on `/quests`
+                would have made them unreachable outright.
+              */}
+              <Link to="/goals" className="text-ink-500 hover:text-ink-300 text-xs">
+                <Waypoints size={13} className="mr-1 inline" aria-hidden />
+                Goals
+              </Link>
+              <Link to="/jobs" className="text-ink-500 hover:text-ink-300 text-xs">
+                <Briefcase size={13} className="mr-1 inline" aria-hidden />
+                Job search
+              </Link>
+              {done.length > 0 && (
+                <Button
+                  size="sm"
+                  variant={showingFinished ? 'primary' : 'ghost'}
+                  aria-pressed={showingFinished}
+                  aria-label={`${showingFinished ? 'Hide' : 'Show'} ${String(done.length)} finished`}
+                  onClick={() => {
+                    setShowingFinished(!showingFinished)
+                  }}
+                >
+                  <EyeIcon open={showingFinished} />
+                </Button>
+              )}
+            </div>
           }
         />
-        {/*
-          **Two rows, because three controls do not fit on one.**
-          Reported as *"I don't seem to be able to add new side quests at
-          the bottom of the quests page"* — and the form did work, which
-          is what makes this worth writing down rather than calling a
-          styling nit. On a 375-pixel phone the name field, the Side/Main
-          pair and the Add button shared a flex row and the field was
-          squeezed to **177px**, clipping its own placeholder mid-word to
-          "Something you are tr…". A control that cannot finish saying
-          what it is for reads as disabled, and the loud Add button
-          beside it reads as the whole form.
-
-          The Contracts section directly above gets this right by
-          accident — one field, one plus, full width — which is why that
-          one looks like somewhere to type and this one did not.
-        */}
         <form
           className="mb-3 space-y-2"
           onSubmit={(event) => {
@@ -692,12 +521,6 @@ export function ProjectsPage() {
             }}
           />
           <div className="flex gap-2">
-            {/*
-              Side is the default, and this toggle is how something becomes a
-              main quest. Deliberately two buttons rather than a select: it is
-              a binary, and a two-option dropdown is a tap and a decision
-              where a tap would do.
-            */}
             <div className="flex flex-1 gap-1">
               {(['side', 'main'] as const).map((option) => (
                 <button
@@ -761,6 +584,6 @@ export function ProjectsPage() {
           </div>
         )}
       </div>
-    </div>
+    </>
   )
 }

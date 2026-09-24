@@ -1,5 +1,4 @@
 import { Swords, Sparkle, X } from 'lucide-react'
-import { Link } from 'react-router-dom'
 
 import type { CampaignStanding, Requirement, StageStanding } from '@/domain/campaign/campaign'
 import type { HomeFilter } from '@/domain/base/base'
@@ -150,10 +149,9 @@ function ArcSlot({ arc }: { readonly arc: CampaignStanding & { next: StageStandi
             Nothing is lost by dropping it. **"Stage" is the arc's own
             word** — a quest has steps and only an arc has stages — so
             the vocabulary still separates this card from the side quest
-            below it, and "Open the arc →" says so outright. Those,
-            plus the absent stand-down button, are what keep the *Main*
-            badge honest; the prefix was the one part doing it by
-            assertion rather than by construction.
+            below it. Those, plus the absent stand-down button, are what
+            keep the *Main* badge honest; the prefix was the one part
+            doing it by assertion rather than by construction.
           */}
           <p className="text-ink-600 mt-0.5 truncate text-xs">
             {step === undefined ? 'Stage' : `${stage.name} · stage`} {arc.nextPosition ?? arc.total}{' '}
@@ -174,9 +172,13 @@ function ArcSlot({ arc }: { readonly arc: CampaignStanding & { next: StageStandi
           */}
           <CampaignPath stages={arc.stages} nextPosition={arc.nextPosition} />
 
-          <Link to="/quests" className="text-ink-500 hover:text-ink-300 mt-2 block text-xs">
-            Open the arc →
-          </Link>
+          {/*
+            **"Open the arc →" is gone, not repointed.** It used to link
+            to `/quests`, which is now `/today` under a redirect —
+            navigating there from here would land back on this exact
+            page. `Campaigns` renders the arc at full size further down
+            this same screen now, so there is nothing left to "open".
+          */}
         </div>
       </div>
     </Card>
@@ -274,7 +276,6 @@ export function ActiveQuests({
   main,
   side,
   arc,
-  showLink = false,
 }: {
   readonly main: Project | undefined
   readonly side: Project | undefined
@@ -284,17 +285,11 @@ export function ActiveQuests({
    * the direction underneath it.
    */
   readonly arc?: CampaignStanding
-  readonly showLink?: boolean
 }) {
   return (
     <div className="space-y-2">
       <Slot kind="main" quest={main} {...(arc === undefined ? {} : { arc })} />
       <Slot kind="side" quest={side} />
-      {showLink && (
-        <Link to="/quests" className="text-ink-500 hover:text-ink-300 block text-xs">
-          All quests →
-        </Link>
-      )}
     </div>
   )
 }
