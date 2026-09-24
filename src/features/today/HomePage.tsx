@@ -10,6 +10,7 @@ import { GoalsCard } from '@/features/goals/GoalsCard'
 import { ChallengePass } from '@/features/challenges/ChallengePass'
 import { SheetCard } from '@/features/character/SheetCard'
 import { useCharacterSheet, useSeasonProgress } from '@/features/character/hooks'
+import { RecentTraining } from '@/features/train/RecentTraining'
 import { LimitsCard } from '@/features/vitals/LimitsCard'
 
 /**
@@ -203,6 +204,20 @@ export function HomePage() {
         saying "Buffs" directly over a card whose first line says Buffs.
       */}
       <LimitsCard />
+
+      {/*
+        **Added as real content, not decoration.** Reported after the
+        `lg` breakpoint and the fixed shell cap still left a genuinely
+        tall window with empty space below the cards: capping width
+        fixed the horizontal spread, and the answer to the *vertical*
+        gap picked from that report was "add real content widgets", not
+        another gated visual flourish. `RecentTraining` reads
+        `useRecentWorkouts`, already built for the History screen, and
+        is silent under two sessions rather than showing a single bar
+        that cannot be a trend. It renders at every width, the same
+        footing every other card on this page stands on.
+      */}
+      <RecentTraining />
 
       {/* Both silent unless this morning's read found something. */}
 
