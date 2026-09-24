@@ -1,8 +1,10 @@
 import { Link } from 'react-router-dom'
 
+import { useSettings } from '@/app/context'
 import { Card } from '@/components/shared/primitives'
 import type { WorkoutLog } from '@/domain/logging/workout-log'
 import { workingSets } from '@/domain/logging/workout-log'
+import { formatLoad } from '@/domain/units/weight'
 
 import { useRecentWorkouts } from './hooks'
 
@@ -17,30 +19,34 @@ import { useRecentWorkouts } from './hooks'
  * earns a permanent place on every width, the same footing
  * `ActiveQuests` and `ChallengePass` already stand on.
  *
- * **Working sets, not volume in pounds.** A count of completed,
- * non-warm-up sets is comparable across a squat day and an upper day in
- * a way a load total is not — a heavy triple and a set of fifteen curls
- * would otherwise be added together as if they meant the same thing.
- * `workingSets` is the domain's own predicate, reused rather than
- * reimplemented here.
+ * **The heaviest working set that session, not a count of sets.** It
+ * shipped counting working sets first, and that was the wrong axis:
+ * reported plainly, *"just having sets logged in training history isn't
+ * that useful cause I just see a bar chart with 10 everyday — my daily
+ * volume stays pretty consistent anyway."* True by design — the
+ * assembler targets a fixed set count per muscle per session, so a
+ * chart of set counts was always going to be flat regardless of how
+ * training was actually going. Load is not fixed the same way: RTS
+ * autoregulates it set by set specifically so it climbs as the lifter
+ * progresses, so the heaviest completed, non-warm-up load logged that
+ * day is the one number on this screen that is *supposed* to trend
+ * rather than hold steady. `workingSets` is still the domain's own
+ * filter for "completed and not a warm-up"; this just reads
+ * `actualLoad` off what it returns instead of counting it.
  *
  * **Silent under two sessions.** One bar cannot show a trend, and a
  * chart claiming to compare sessions with only one to show would be
  * reporting a fact about the fixture rather than about training.
  *
- * **A unit caption and a per-bar title, added after "recent training
- * still makes no sense with just blocks."** Fair — a bar chart with a
- * number over each bar and a weekday under it says nothing about what
- * the number counts unless you already know. The caption states it
- * once; the `title` attribute puts each session's own name (`"Wednesday
- * — Full body"`) on the bar itself, reachable by hover or by a screen
- * reader, without spending permanent space on it in a chart this
- * narrow.
+ * **A unit caption and a per-bar title.** The caption states what the
+ * bars measure once; the `title` attribute puts each session's own name
+ * on the bar itself, reachable by hover or by a screen reader, without
+ * spending permanent space on it in a chart this narrow.
  */
 
-function height(sets: number, max: number): number {
+function height(load: number, max: number): number {
   if (max <= 0) return 4
-  return Math.max(4, Math.round((sets / max) * 64))
+  return Math.max(4, Math.round((load / max) * 64))
 }
 
 function label(log: WorkoutLog): string {
@@ -48,8 +54,20 @@ function label(log: WorkoutLog): string {
   return on.toLocaleDateString('en-US', { weekday: 'short' })
 }
 
+/** The heaviest completed, non-warm-up load logged anywhere in the session. */
+function topLoad(log: WorkoutLog): number {
+  return log.entries.reduce((sessionMax, entry) => {
+    const entryMax = workingSets(entry).reduce(
+      (setMax, set) => Math.max(setMax, set.actualLoad ?? 0),
+      0,
+    )
+    return Math.max(sessionMax, entryMax)
+  }, 0)
+}
+
 export function RecentTraining() {
   const recent = useRecentWorkouts(6)
+  const { settings } = useSettings()
   const data = recent.data
 
   if (data === undefined) return null
@@ -62,8 +80,8 @@ export function RecentTraining() {
   const sessions = [...data].filter((log) => log.status !== 'in-progress').reverse()
   if (sessions.length < 2) return null
 
-  const sets = sessions.map((log) => log.entries.reduce((sum, e) => sum + workingSets(e).length, 0))
-  const max = Math.max(...sets)
+  const loads = sessions.map(topLoad)
+  const max = Math.max(...loads)
 
   return (
     <Card>
@@ -73,22 +91,23 @@ export function RecentTraining() {
           History →
         </Link>
       </div>
-      <p className="text-ink-700 mt-0.5 text-xs">Working sets logged, oldest to newest</p>
+      <p className="text-ink-700 mt-0.5 text-xs">Heaviest working set, oldest to newest</p>
 
       <div className="mt-4 flex items-end justify-between gap-2" style={{ height: 64 }}>
         {sessions.map((log, index) => {
           const abandoned = log.status === 'abandoned'
+          const load = loads[index] ?? 0
           return (
             <div
               key={log.id}
               className="flex flex-1 flex-col items-center justify-end gap-1.5"
-              title={`${log.title} — ${String(sets[index])} working sets`}
+              title={`${log.title} — ${formatLoad(load, settings.units)}`}
             >
-              <span className="text-ink-500 numeric text-[10px]">{sets[index]}</span>
+              <span className="text-ink-500 numeric text-[10px]">{Math.round(load)}</span>
               <div
                 className="meter-fill w-full rounded-t-sm"
                 style={{
-                  height: height(sets[index] ?? 0, max),
+                  height: height(load, max),
                   backgroundColor: abandoned
                     ? 'var(--color-ink-700)'
                     : index === sessions.length - 1

@@ -117,20 +117,37 @@ export function HomePage() {
         a page that opens on a picture of you does not need to be told
         it is about you, the same call this file has made since the
         page had no header at all.
+
+        **Capped at `lg:max-w-xl`, and this needed a real fix rather than
+        being left alone.** Pulling `SheetCard` out of the old page-wide
+        masonry flow to make room for the "Quests" and "Today" zones
+        also pulled it out of the one thing that had ever bounded its
+        width — a masonry column. With nothing capping it, it stretched
+        to the full page, and a real screenshot showed the avatar,
+        trait bars and radar spread thin across nearly two thousand
+        pixels: reported as "cap it back to match the other cards'
+        width." `xl` (36rem) sits a little wider than a single zone
+        column on purpose — this card carries an avatar, a radar and
+        eight trait bars side by side, genuinely more than a Buffs or
+        Recent-training card holds, so matching a column exactly would
+        have squeezed it back toward the wrapping bug two commits
+        already had to fix.
       */}
-      <SheetCard
-        {...(sheet.data === undefined ? {} : { traits: sheet.data.traits })}
-        avatarSize="large"
-        action={
-          <Link
-            to="/settings"
-            aria-label="Settings"
-            className={buttonStyles({ variant: 'ghost', size: 'sm' })}
-          >
-            <Settings size={16} aria-hidden />
-          </Link>
-        }
-      />
+      <div className="lg:max-w-xl">
+        <SheetCard
+          {...(sheet.data === undefined ? {} : { traits: sheet.data.traits })}
+          avatarSize="large"
+          action={
+            <Link
+              to="/settings"
+              aria-label="Settings"
+              className={buttonStyles({ variant: 'ghost', size: 'sm' })}
+            >
+              <Settings size={16} aria-hidden />
+            </Link>
+          }
+        />
+      </div>
 
       <div>
         <ZoneHeading>Quests</ZoneHeading>
