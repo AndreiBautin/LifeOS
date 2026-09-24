@@ -39,6 +39,14 @@ import { useRecentWorkouts } from './hooks'
  * exactly this reason: the number that matters is the change, not the
  * distance from an arbitrary zero nobody was ever going to lift.
  *
+ * **The box grows taller at `lg`, not just wider.** Paired beside `Buffs`
+ * in a half-width desktop column, the card is close to 900px wide and
+ * `preserveAspectRatio="none"` stretches the fixed 300×72 viewBox to fill
+ * whatever box it is given — so an 80px-tall box under that width smeared
+ * the line nearly flat, reported as "the bar graph is stretched." The
+ * viewBox stays the same; only the CSS box grows, which is what actually
+ * controls the on-screen aspect ratio under `none`.
+ *
  * **Silent under two sessions.** One point cannot show a trend, and a
  * chart claiming to compare sessions with only one to show would be
  * reporting a fact about the fixture rather than about training.
@@ -121,7 +129,7 @@ export function RecentTraining() {
 
       <svg
         viewBox={`0 0 ${String(WIDTH)} ${String(HEIGHT)}`}
-        className="mt-3 h-20 w-full"
+        className="mt-3 h-24 w-full lg:h-40"
         preserveAspectRatio="none"
         role="img"
         aria-label={`Heaviest working set across ${String(sessions.length)} recent sessions, ${formatLoad(loads[0] ?? 0, settings.units)} to ${formatLoad(loads[loads.length - 1] ?? 0, settings.units)}`}
