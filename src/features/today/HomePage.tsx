@@ -157,7 +157,7 @@ export function HomePage() {
       close and this app is used one-handed, where more scrolling per
       screen is a real cost.
     */
-    <div className="space-y-8 lg:[column-width:22rem] lg:gap-10 lg:space-y-0 [&>*]:mb-8 lg:[&>*]:mb-10 [&>*]:break-inside-avoid [&>*]:last:mb-0">
+    <div className="space-y-8 lg:[column-width:22rem] 2xl:[column-width:26rem] lg:gap-10 lg:space-y-0 [&>*]:mb-8 lg:[&>*]:mb-10 [&>*]:break-inside-avoid [&>*]:last:mb-0">
       {/*
         ── The glance ──────────────────────────────────────────────────
         Who you are, the chapter you are in, and the same XP split eight

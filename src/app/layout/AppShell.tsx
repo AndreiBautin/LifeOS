@@ -320,13 +320,26 @@ export function AppShell() {
         padding, which is enough for four columns comfortably over
         `400px` each — safely above the ~375px `SheetCard`'s avatar-plus-
         heading row needs, which is the exact failure mode a too-narrow
-        column caused two commits ago. This is a fixed ceiling for the
-        same reason `1600px` was: it should stop growing with the
-        monitor rather than spreading the same cards thinner forever.
+        column caused two commits ago.
+
+        **Raised again to `2400px`, and `column-width` raised alongside
+        it rather than left alone.** Reported: "looking better but can
+        we still reduce the horizontal padding." `2000px` sat close to a
+        cliff: content width there was already at 4.95 columns' worth of
+        the 22rem minimum, so any further increase to the cap alone would
+        have tipped a fifth column into existence at an unsafe width —
+        the same wrapping failure, reintroduced by the next honest
+        attempt to shrink the margins. `HomePage.tsx` raises
+        `column-width` to `26rem` at `2xl` for the same range this cap
+        applies to, so the freed width goes into four *wider* columns
+        (~500px+ at this cap) rather than a fifth narrow one. This is
+        still a fixed ceiling for the reason `1600px` and `2000px` both
+        were: it should stop growing with the monitor rather than
+        spreading the same cards thinner forever.
       */}
       <main
         id="main"
-        className="mx-auto w-full max-w-2xl lg:max-w-4xl xl:max-w-6xl 2xl:max-w-[2000px] flex-1 pb-28 pt-[calc(1rem_+_var(--safe-top))] pl-[calc(1rem_+_var(--safe-left))] lg:pl-[calc(1rem_+_var(--safe-left)_+_var(--sidebar-w))] pr-[calc(1rem_+_var(--safe-right))]"
+        className="mx-auto w-full max-w-2xl lg:max-w-4xl xl:max-w-6xl 2xl:max-w-[2400px] flex-1 pb-28 pt-[calc(1rem_+_var(--safe-top))] pl-[calc(1rem_+_var(--safe-left))] lg:pl-[calc(1rem_+_var(--safe-left)_+_var(--sidebar-w))] pr-[calc(1rem_+_var(--safe-right))]"
       >
         <Outlet />
       </main>
