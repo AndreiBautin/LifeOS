@@ -55,6 +55,18 @@ import { useEffect, useRef, useState } from 'react'
  * without distorting it. `HomePage` centers the scaled block
  * horizontally so that strip splits evenly left and right rather than
  * sitting only on one side.
+ *
+ * **Below `MIN_SCALE`, this switches off rather than keep shrinking.**
+ * Confirmed against a real, reported window: 1044×848 — barely past the
+ * `min-width: 1024px` gate. At that width the masonry drops to fewer
+ * columns than it has room for at a genuinely wide monitor, `natural`
+ * height balloons, and the scale needed to fit it came out small enough
+ * to look exactly like the "tiny block in a mostly empty page" failure
+ * the frame-polling fix was built to rule out — except this one is not a
+ * stale measurement, it is the correct answer to an ugly question. A
+ * floor answers a different question instead: below it, showing the
+ * content at a legible size with ordinary page scroll beats showing all
+ * of it correctly-but-illegibly with none.
  */
 
 const LANDSCAPE_DESKTOP = '(min-width: 1024px) and (orientation: landscape)'
@@ -75,6 +87,16 @@ const BOTTOM_MARGIN = 32
  */
 const SCALE_EPSILON = 0.001
 const HEIGHT_EPSILON = 0.5
+
+/**
+ * Below this, the content would be shrunk past the point of being
+ * legible, and ordinary page scroll is the better failure. Chosen by
+ * checking real widths: 1920 wide (a genuinely large monitor) computed
+ * to roughly 0.5; 1044 wide (barely past the `landscape desktop` gate)
+ * computed to roughly 0.18. The floor sits between those two so the
+ * former still gets the no-scroll treatment and the latter falls back.
+ */
+const MIN_SCALE = 0.4
 
 interface Fit {
   readonly scale: number
@@ -132,9 +154,10 @@ export function useFitToViewport() {
         const available = window.innerHeight - top - BOTTOM_MARGIN
         const natural = content.scrollHeight
 
+        const candidateScale = natural > 0 ? available / natural : 1
         const next: Fit | null =
-          natural > 0 && natural > available
-            ? { scale: available / natural, height: available }
+          natural > 0 && natural > available && candidateScale >= MIN_SCALE
+            ? { scale: candidateScale, height: available }
             : null
 
         if (!sameFit(fitRef.current, next)) setFit(next)
