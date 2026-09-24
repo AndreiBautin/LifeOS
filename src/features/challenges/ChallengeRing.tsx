@@ -35,6 +35,9 @@ export function ChallengeRing({ done, total }: { readonly done: number; readonly
         stroke="var(--color-ink-800)"
         strokeWidth={STROKE}
       />
+      {/* The same lit-ring treatment `AvatarPortrait`'s level ring already
+          uses — a bare stroke beside that portrait's glowing one would
+          read as the quieter, unfinished version of the same idea. */}
       <circle
         cx={CENTRE}
         cy={CENTRE}
@@ -45,6 +48,9 @@ export function ChallengeRing({ done, total }: { readonly done: number; readonly
         strokeLinecap="round"
         strokeDasharray={`${String(filled)} ${String(circumference)}`}
         transform={`rotate(-90 ${String(CENTRE)} ${String(CENTRE)})`}
+        style={{
+          filter: `drop-shadow(0 0 4px ${complete ? 'var(--color-good-500)' : 'var(--color-accent-500)'})`,
+        }}
       />
       <text
         x={CENTRE}
