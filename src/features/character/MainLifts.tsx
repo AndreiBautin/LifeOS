@@ -1,22 +1,30 @@
 import { useSettings } from '@/app/context'
 import { buildCharacter } from '@/domain/game/character'
 
-import { AttributeRow } from './CharacterParts'
+import { LiftRadar } from './LiftRadar'
 
 /**
  * The three competition lifts, read against published strength
- * standards — replacing `TraitRadar` in this exact slot.
+ * standards — replacing `TraitRadar` in this exact slot, and since
+ * replaced again itself.
  *
- * **Asked for directly, after the trait radar shipped overlapping its
- * own labels: "the secondary graph for attributes would make more
- * sense as showing off the 1RMs for the main lifts instead."** Fair on
- * both counts — the radar was reading XP, which barely moves week to
- * week and gave a shape that rarely changed, where the estimated maxes
- * behind these three rows are the one thing on this screen RTS is
- * actually built to move session over session.
+ * **First became three rows (`AttributeRow`), asked for directly after
+ * the trait radar shipped overlapping its own labels:** *"the secondary
+ * graph for attributes would make more sense as showing off the 1RMs
+ * for the main lifts instead."* Fair — the trait radar was reading XP,
+ * which barely moves week to week and gave a shape that rarely changed.
+ *
+ * **Now a radar again, asked for directly:** *"make the squat bench
+ * deadlift thing the chart... where it starts at the center and goes
+ * further out in different directions."* Not the same objection this
+ * time: unlike XP, these three lifts are each anchored to a published
+ * bodyweight-multiple standard and RTS is built to move the load behind
+ * them session over session, so the shape `LiftRadar` draws is one of
+ * the few in the app that actually changes on a normal week. See that
+ * component's own doc for how a spoke is computed.
  *
  * **`buildCharacter` already existed for this** — `StrengthStandards`
- * on the Train page calls it for the same three rows. Reusing it here
+ * on the Train page calls it for the same three lifts. Reusing it here
  * rather than reimplementing anything: the ladder placement
  * (`placeOnLadder` against published bodyweight-multiple standards) is
  * the one part of this app that must never be a guessed scale, and
@@ -39,11 +47,5 @@ export function MainLifts() {
     workingSets: 0,
   })
 
-  return (
-    <div className="space-y-3">
-      {character.lifts.map((lift) => (
-        <AttributeRow key={lift.name} attribute={lift} />
-      ))}
-    </div>
-  )
+  return <LiftRadar lifts={character.lifts} />
 }
