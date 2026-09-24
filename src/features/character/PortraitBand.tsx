@@ -3,7 +3,6 @@ import type { ReactNode } from 'react'
 import { HealthBar } from './HealthBar'
 
 import { Skeleton } from '@/components/shared/Skeleton'
-import { cn } from '@/lib/cn'
 
 import { AvatarPortrait } from './AvatarPortrait'
 import { useAvatar } from './hooks'
@@ -86,20 +85,9 @@ export function PortraitBand({
 
   const { into, level, needed } = avatar.data
 
-  /*
-   * **The heading grows with the hero avatar, `2xl` and `large` only.**
-   * Asked for directly, after the avatar itself gained a `2xl` step:
-   * "make it feel more premium, like a video player filling the
-   * screen." A 300px ring beside an 18px heading reads as a mistake
-   * rather than a hero, the same proportion problem a video player
-   * would have if its controls stayed pinned at their smallest size
-   * while the video itself filled the frame.
-   */
-  const heroText = avatarSize === 'large'
-
   return (
     <>
-      <div className={cn('flex items-center gap-4', heroText && '2xl:gap-8')}>
+      <div className="flex items-center gap-4">
         <AvatarPortrait
           avatar={avatar.data}
           {...(avatarSize === undefined ? {} : { size: avatarSize })}
@@ -121,7 +109,7 @@ export function PortraitBand({
                 the moment either changed. Which screen you are on is
                 said by the nav cell, which carries `aria-current`.
               */}
-              <h1 className={cn('text-ink-50 text-lg font-semibold', heroText && '2xl:text-4xl')}>
+              <h1 className="text-ink-50 text-lg font-semibold">
                 Level <span className="numeric">{level}</span>
               </h1>
 
@@ -144,12 +132,7 @@ export function PortraitBand({
                 said otherwise. It is one line to bring back if the
                 number is missed.
               */}
-              <p
-                className={cn(
-                  'text-ink-500 numeric mt-0.5 text-sm',
-                  heroText && '2xl:mt-2 2xl:text-xl',
-                )}
-              >
+              <p className="text-ink-500 numeric mt-0.5 text-sm">
                 {needed > 0 ? `${String(into)} / ${String(needed)} XP` : 'Top of the ladder'}
               </p>
 

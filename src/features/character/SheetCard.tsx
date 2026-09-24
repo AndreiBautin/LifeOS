@@ -63,16 +63,11 @@ export function SheetCard({
         screenshot showed a secondary monitor's window sitting above
         `lg` and below `2xl`, getting none of it. `lg` is the line the
         desktop sidebar nav already switches on.
-
-        **The inset grows at `2xl`**, alongside the avatar's own second
-        growth step there — a 300px hero ring inside the same 40px halo
-        that suited a 220px one reads as the glow shrinking relative to
-        what it surrounds.
       */}
       {avatarSize === 'large' && (
         <div
           aria-hidden
-          className="pointer-events-none absolute -inset-10 -z-10 hidden rounded-[2rem] lg:block 2xl:-inset-16"
+          className="pointer-events-none absolute -inset-10 -z-10 hidden rounded-[2rem] lg:block"
           style={{
             background: 'radial-gradient(60% 60% at 30% 20%, var(--glow-accent), transparent 70%)',
           }}
