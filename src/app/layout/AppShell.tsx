@@ -332,14 +332,33 @@ export function AppShell() {
         attempt to shrink the margins. `HomePage.tsx` raises
         `column-width` to `26rem` at `2xl` for the same range this cap
         applies to, so the freed width goes into four *wider* columns
-        (~500px+ at this cap) rather than a fifth narrow one. This is
-        still a fixed ceiling for the reason `1600px` and `2000px` both
-        were: it should stop growing with the monitor rather than
-        spreading the same cards thinner forever.
+        (~500px+ at this cap) rather than a fifth narrow one.
+
+        **The cap is gone at `2xl`, rather than raised a fourth time.**
+        Reported against `2400px`, on a monitor wide enough that it still
+        left visible margin: "needs a bit more space to be taken up but
+        almost there." Every previous round of this picked a ceiling
+        number and then had to re-derive, by hand, whether that number
+        was still safe alongside `column-width` — three rounds of that
+        is three chances to get the arithmetic wrong on hardware this
+        session cannot see, which is exactly the mistake this file
+        already warns about for fixed breakpoints.
+
+        `column-width` is the part of this that was never a guess: it is
+        a real CSS *minimum*, and the browser only ever adds a column
+        once there is a full extra `column-width + gap` of room —
+        existing columns stretch wider first, so per-column width can
+        never drop below the minimum however wide `main` gets. That
+        makes the outer cap redundant as a safety mechanism once
+        `column-width` carries it: `main` can fill however much space
+        the sidebar leaves it (`2xl:max-w-none`) and the page still
+        cannot produce an unsafely narrow column on any monitor, because
+        `column-width:26rem` is the thing refusing that, not a ceiling
+        picked to suit one assumed screen.
       */}
       <main
         id="main"
-        className="mx-auto w-full max-w-2xl lg:max-w-4xl xl:max-w-6xl 2xl:max-w-[2400px] flex-1 pb-28 pt-[calc(1rem_+_var(--safe-top))] pl-[calc(1rem_+_var(--safe-left))] lg:pl-[calc(1rem_+_var(--safe-left)_+_var(--sidebar-w))] pr-[calc(1rem_+_var(--safe-right))]"
+        className="mx-auto w-full max-w-2xl lg:max-w-4xl xl:max-w-6xl 2xl:max-w-none flex-1 pb-28 pt-[calc(1rem_+_var(--safe-top))] pl-[calc(1rem_+_var(--safe-left))] lg:pl-[calc(1rem_+_var(--safe-left)_+_var(--sidebar-w))] pr-[calc(1rem_+_var(--safe-right))]"
       >
         <Outlet />
       </main>
