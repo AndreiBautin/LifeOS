@@ -363,8 +363,7 @@ export function AppShell() {
          * that nav is gone (`SidebarNav` takes the left edge instead), so
          * the same padding was 112px of dead space at the bottom of every
          * desktop page for no reason any element still needed. `lg:pb-6`
-         * recovers it — real height back for `HomePage`'s no-scroll cap
-         * to work with, not just a cosmetic trim.
+         * recovers it.
          */
         className="mx-auto w-full max-w-2xl lg:max-w-4xl xl:max-w-6xl 2xl:max-w-none flex-1 pb-28 lg:pb-6 pt-[calc(1rem_+_var(--safe-top))] pl-[calc(1rem_+_var(--safe-left))] lg:pl-[calc(1rem_+_var(--safe-left)_+_var(--sidebar-w))] pr-[calc(1rem_+_var(--safe-right))]"
       >

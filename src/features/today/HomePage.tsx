@@ -67,36 +67,30 @@ import { LimitsCard } from '@/features/vitals/LimitsCard'
  * hardcodes its own `mb-8` — stacking that against the outer
  * `space-y-*` this file already uses would double the gap, the same
  * trap this file's own history already records once. `ZoneHeading`
- * carries no margin of its own below the zone; the outer `space-y-10
- * lg:space-y-12` is the only thing deciding the gap between zones.
+ * carries no margin of its own below the zone; the outer `space-y-8
+ * lg:space-y-10` is the only thing deciding the gap between zones.
  *
- * **From `lg` up, the page stops scrolling and its two rows scroll
- * internally instead.** Reported against a monitor tall enough to hold
- * both rows already: *"we shouldn't need to scroll — fill the max
- * height and width responsively when it's a large monitor like this."*
- * Below `lg` none of this applies; a phone screen is short enough that
- * page scroll is the only sane behaviour and nothing here changes it.
+ * **A capped, per-panel-scrolling layout was tried here and reversed in
+ * the same round.** Reported against a monitor tall enough to hold both
+ * rows already: *"we shouldn't need to scroll — fill the max height and
+ * width responsively when it's a large monitor like this."* The first
+ * answer capped the page to the viewport and gave the Quests column and
+ * each Today column their own `overflow-y-auto` — which technically
+ * stopped the page from scrolling, and read as three fussy little
+ * scrollbars boxed into a page that used to just be a page: *"adding a
+ * scroll to the sections was not what I had in mind."* Fair — a
+ * scrollbar nested inside a scrollbar's replacement is not the same
+ * thing as not scrolling.
  *
- * The outer div is capped to the exact height `main` actually has left
- * — `100dvh` minus the shell's own bottom inset, minus `main`'s own top
- * and bottom padding — rather than a guessed pixel figure, so it holds on
- * any monitor rather than one this session happened to test against.
- * `AppShell`'s `pb-28` (clearing a bottom nav that does not exist at
- * `lg`) had to shrink to `lg:pb-6` for that number to mean anything; a
- * cap computed against padding that was itself dead space would have
- * been short by 112px on every desktop load.
- *
- * **Each row gets a fixed share of that height and scrolls on its own**,
- * not the page. `lg:min-h-0` on every flex child is not decoration —
- * without it a flex item refuses to shrink below its content's natural
- * height and `overflow-y-auto` never engages at all, which is the
- * standard flexbox trap for exactly this layout. The 7:5 split is a
- * judgement call rather than a measurement: the Quests row usually holds
- * more cards (arcs, contracts, the board) than Today's two paired
- * columns do, so it gets the larger share. `SheetCard`'s own column does
- * not scroll — its content is a portrait and eight trait bars, which is
- * bounded, not a list that grows — so it is left to sit at its natural
- * height inside a row that stretches to match its neighbour.
+ * **What is here instead is density, not a height cap.** Every gap this
+ * page controls — between the two rows, inside `ZONE_FLOW`, between
+ * `Today`'s paired cards — is tighter at `lg` than it was, so the whole
+ * page's *natural* height sits closer to a large monitor's viewport
+ * without clipping or scrolling anything to get there. Ordinary page
+ * scroll is still exactly what handles the case this cannot: a real
+ * database with six open arcs is taller than any monitor, and the right
+ * answer to that is the scrollbar the browser has always drawn down the
+ * right edge of the page, not a cage built to hide it.
  */
 
 function ZoneHeading({ children }: { readonly children: string }) {
@@ -120,7 +114,7 @@ function ZoneHeading({ children }: { readonly children: string }) {
  * unrelated to zones.
  */
 const ZONE_FLOW =
-  'space-y-8 lg:[column-width:22rem] 2xl:[column-width:26rem] lg:gap-10 lg:space-y-0 [&>*]:mb-8 lg:[&>*]:mb-10 [&>*]:break-inside-avoid [&>*]:last:mb-0'
+  'space-y-6 lg:[column-width:22rem] 2xl:[column-width:26rem] lg:gap-8 lg:space-y-0 [&>*]:mb-6 lg:[&>*]:mb-8 [&>*]:break-inside-avoid [&>*]:last:mb-0'
 
 export function HomePage() {
   const active = useActiveQuests()
@@ -136,7 +130,7 @@ export function HomePage() {
   const sheet = useCharacterSheet()
 
   return (
-    <div className="space-y-10 lg:flex lg:h-[calc(100dvh_-_var(--safe-bottom)_-_var(--safe-top)_-_2.5rem)] lg:flex-col lg:gap-8 lg:space-y-0 lg:overflow-hidden">
+    <div className="space-y-8 lg:space-y-10">
       {/*
         ── The glance ──────────────────────────────────────────────────
         Who you are, the chapter you are in, and the same XP split eight
@@ -170,7 +164,7 @@ export function HomePage() {
         right — so the freed space actually holds quest cards rather
         than sitting behind the avatar doing nothing.
       */}
-      <div className="space-y-10 lg:flex lg:min-h-0 lg:flex-[7] lg:items-stretch lg:gap-10 lg:space-y-0">
+      <div className="space-y-10 lg:flex lg:items-start lg:gap-8 lg:space-y-0">
         <div className="lg:max-w-xl lg:shrink-0">
           <SheetCard
             {...(sheet.data === undefined ? {} : { traits: sheet.data.traits })}
@@ -187,7 +181,7 @@ export function HomePage() {
           />
         </div>
 
-        <div className="min-w-0 lg:h-full lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
+        <div className="min-w-0 lg:flex-1">
           <ZoneHeading>Quests</ZoneHeading>
           <div className={ZONE_FLOW}>
             <ActiveQuests
@@ -218,7 +212,7 @@ export function HomePage() {
         </div>
       </div>
 
-      <div className="lg:flex lg:min-h-0 lg:flex-[5] lg:flex-col">
+      <div>
         <ZoneHeading>Today</ZoneHeading>
         {/*
           **A fixed 2-column pairing, not the auto-balanced `ZONE_FLOW`
@@ -236,8 +230,8 @@ export function HomePage() {
           shares a column and the two columns land far closer in height
           than three auto-balanced ones did.
         */}
-        <div className="space-y-8 lg:grid lg:min-h-0 lg:flex-1 lg:grid-cols-2 lg:items-stretch lg:gap-10 lg:space-y-0">
-          <div className="space-y-8 lg:h-full lg:min-h-0 lg:space-y-10 lg:overflow-y-auto">
+        <div className="space-y-6 lg:grid lg:grid-cols-2 lg:items-start lg:gap-8 lg:space-y-0">
+          <div className="space-y-6 lg:space-y-8">
             {/*
               The card names itself and links to the screen, which is
               why this zone's heading does not repeat "Buffs" — it had
@@ -255,7 +249,7 @@ export function HomePage() {
             <RecentTraining />
           </div>
 
-          <div className="space-y-8 lg:h-full lg:min-h-0 lg:space-y-10 lg:overflow-y-auto">
+          <div className="space-y-6 lg:space-y-8">
             {/*
               `TodayGoals` reuses `GoalsToday`/`GoalRow` wholesale —
               see its own doc for why this was a capability the app
