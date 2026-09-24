@@ -12,7 +12,6 @@ import { BasePage } from '@/features/base/BasePage'
 import { LimitsPage } from '@/features/limits/LimitsPage'
 import { MindPage } from '@/features/mind/MindPage'
 import { JobsPage } from '@/features/jobs/JobsPage'
-import { FinancePage } from '@/features/finance/FinancePage'
 import { ResumePage } from '@/features/resume/ResumePage'
 import { UpgradesPage } from '@/features/upgrades/UpgradesPage'
 import { HistoryPage } from '@/features/history/HistoryPage'
@@ -100,7 +99,11 @@ export const router = createBrowserRouter(
         { path: 'limits', element: <LimitsPage /> },
         { path: 'mind', element: <MindPage /> },
         { path: 'jobs', element: <JobsPage /> },
-        { path: 'finance', element: <FinancePage /> },
+        /*
+         * Folded into Today, the same call `/quests` already made — see
+         * `FinanceZone`'s own doc.
+         */
+        { path: 'finance', element: <Navigate to="/today" replace /> },
         { path: 'resume', element: <ResumePage /> },
         { path: 'map', element: <AtlasPage /> },
         { path: 'map/share', element: <SharePage /> },

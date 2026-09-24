@@ -7,7 +7,6 @@ import { AreaLadders } from '@/features/character/CharacterParts'
 import { useSpendingPool, useWholeTree } from '@/features/upgrades/hooks'
 import { isOpen } from '@/domain/upgrades/upgrade'
 import { wishlistTotal } from '@/domain/upgrades/wishlist'
-import { PageHeader } from '@/components/shared/PageHeader'
 import { Button, Card, CardHeading, Empty } from '@/components/shared/primitives'
 import { EyeIcon } from '@/components/shared/EyeIcon'
 import { CREDIT_RANGE, toMonthKey, type FinanceReading } from '@/domain/finance/reading'
@@ -21,7 +20,14 @@ import type { NewFinanceReading } from '@/application/use-cases/finance/finance'
 import { useFinance, useRecordFinance } from './hooks'
 
 /**
- * The money figures, once a month.
+ * The money figures, once a month — folded into Today, not its own page.
+ *
+ * **This was `FinancePage`, at its own route, with its own nav tab.**
+ * Folded in for the same reason Quests was: *"folding in the finance
+ * page to the homepage too."* `/finance` redirects to `/today` now, the
+ * same rule `/quests` already follows, and the tab it sat in is gone
+ * from `AppShell`'s nav — a screen with five cards and no daily reason
+ * to open it on its own does not need a permanent seat on the bar.
  *
  * **Three numbers and no transactions.** A ledger needs every purchase
  * entered, it is the first thing to fall behind, and everything derived
@@ -322,7 +328,7 @@ function AboutYou() {
 /** Months of history shown before the rest folds away. */
 const HISTORY_SHOWN = 12
 
-export function FinancePage() {
+export function FinanceZone() {
   const readings = useFinance()
   const record = useRecordFinance()
 
@@ -380,9 +386,7 @@ export function FinancePage() {
     (!Number.isFinite(score) || score < CREDIT_RANGE.min || score > CREDIT_RANGE.max)
 
   return (
-    <div className="space-y-4">
-      <PageHeader title="Finance" subtitle="Five numbers, once a month" />
-
+    <>
       {/*
         **The money ladders, on the money screen.** They were under the
         Fortune trait; reported as *"for the finance stuff, let's move
@@ -625,6 +629,6 @@ export function FinancePage() {
           </ul>
         )}
       </Card>
-    </div>
+    </>
   )
 }

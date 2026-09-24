@@ -7,7 +7,6 @@ import {
   Map,
   Network,
   User,
-  Wallet,
 } from 'lucide-react'
 import { useState } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
@@ -53,26 +52,26 @@ import {
  * a link on the hub is for somewhere you decide.
  */
 /**
- * Seven cells. Today and You merging once already took this from eight
- * to seven; Quests folding in a second time keeps the count at seven
- * rather than dropping it further, because Party's seat had already
- * split into Finance and Tech by the time Quests left, and that split
- * is what put the count back up to eight beforehand.
+ * Six cells now. Today and You merging took this from eight to seven;
+ * Quests folding in kept it at seven, because Party's seat had already
+ * split into Finance and Tech by the time Quests left. Finance folding
+ * in a second time is the one that actually drops the count, to six —
+ * *"folding in the finance page to the homepage too."*
  *
  * **The Today/You merge fixed an overflow this file used to warn about
  * rather than only saving a slot.** Every cell carries `.tap-target`, a
  * 44-pixel accessibility floor that refuses to shrink — so eight need
- * 352 and an iPhone SE at 320 clipped the last tab by 32. Seven need 308
- * and fit.
+ * 352 and an iPhone SE at 320 clipped the last tab by 32. Six need 264
+ * and fit with room to spare.
  *
- * **Quests folding in was a different kind of ask** — "condense pages,
- * as its not enough content to fill a page in a full monitor screen
- * without looking awkward," after several rounds of decoration failed to
- * do that on their own. `Campaigns` and `QuestBoard` on Today now carry
- * everything `/quests` held; see `QuestBoard`'s own doc. The room this
- * one freed on the nav bar is real, even though the cell count did not
- * move — one fewer destination to scan for, on a bar that was already
- * within its 320px budget.
+ * **Quests and Finance folding in were the same kind of ask** —
+ * "condense pages, as its not enough content to fill a page in a full
+ * monitor screen without looking awkward." `Campaigns` and `QuestBoard`
+ * on Today carry everything `/quests` held; `FinanceZone` carries
+ * everything `/finance` held. The room each one freed on the nav bar is
+ * real, even when the cell count did not move with the first of the two
+ * — one fewer destination to scan for, on a bar that was already within
+ * its 320px budget.
  *
  * The freed room in the bar itself is deliberately left as room. The
  * screens without a tab — Limits, Vitals, Job search, Mind, Houses,
@@ -109,7 +108,6 @@ const NAV = [
    * abbreviation the bar can hold, the same trade "You" made for
    * "Character".
    */
-  { to: '/finance', label: 'Finance', Icon: Wallet },
   { to: '/upgrades', label: 'Tech', Icon: Network },
   { to: '/base', label: 'Base', Icon: Home },
 ] as const
