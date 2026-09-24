@@ -53,25 +53,31 @@ import {
  * a link on the hub is for somewhere you decide.
  */
 /**
- * Six cells, and it was eight before Today absorbed first You and then
- * Quests.
+ * Seven cells. Today and You merging once already took this from eight
+ * to seven; Quests folding in a second time keeps the count at seven
+ * rather than dropping it further, because Party's seat had already
+ * split into Finance and Tech by the time Quests left, and that split
+ * is what put the count back up to eight beforehand.
  *
- * **The first merge fixed an overflow this file used to warn about
+ * **The Today/You merge fixed an overflow this file used to warn about
  * rather than only saving a slot.** Every cell carries `.tap-target`, a
  * 44-pixel accessibility floor that refuses to shrink — so eight need
  * 352 and an iPhone SE at 320 clipped the last tab by 32. Seven need 308
  * and fit.
  *
- * **The second, Quests, was a different kind of ask** — "condense pages,
+ * **Quests folding in was a different kind of ask** — "condense pages,
  * as its not enough content to fill a page in a full monitor screen
  * without looking awkward," after several rounds of decoration failed to
  * do that on their own. `Campaigns` and `QuestBoard` on Today now carry
- * everything `/quests` held; see `QuestBoard`'s own doc.
+ * everything `/quests` held; see `QuestBoard`'s own doc. The room this
+ * one freed on the nav bar is real, even though the cell count did not
+ * move — one fewer destination to scan for, on a bar that was already
+ * within its 320px budget.
  *
- * The freed room is deliberately left as room. The screens without a tab
- * — Limits, Vitals, Job search, Mind, Houses, Resume, the tech tree —
- * are seven, and promoting any one of them is a claim that it is used
- * daily. None of them is.
+ * The freed room in the bar itself is deliberately left as room. The
+ * screens without a tab — Limits, Vitals, Job search, Mind, Houses,
+ * Resume, the tech tree — are seven, and promoting any one of them is a
+ * claim that it is used daily. None of them is.
  */
 const NAV = [
   /*

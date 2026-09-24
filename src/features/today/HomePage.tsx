@@ -50,7 +50,10 @@ import { LimitsCard } from '@/features/vitals/LimitsCard'
  * gap on a wide monitor: "maybe just consider condensing pages, as its
  * not enough content to fill a page in a full monitor screen without
  * looking awkward." `Campaigns` and `QuestBoard` carry the rest of what
- * `/quests` held — see `QuestBoard`'s own doc. Six nav cells now.
+ * `/quests` held — see `QuestBoard`'s own doc. The nav bar stays at
+ * seven cells rather than dropping to six, because Party's seat had
+ * already split into Finance and Tech by the time Quests left — one
+ * fewer destination to scan for regardless.
  *
  * **Three bands, in the order a person moves through them.** A glance at
  * where you are, then the things the day asks for, then the standing

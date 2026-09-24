@@ -50,7 +50,9 @@ import { NextAction, StatusBadge } from './NextAction'
  * page in a full monitor screen without looking awkward." Right — the
  * decorative fixes were treating a symptom. `/quests` held Suggested,
  * Contracts and the full board, none of it duplicated on Today, all of
- * it real. The nav drops from seven cells to six; `router.tsx` redirects
+ * it real. The nav bar stays at seven cells — Party's seat had already
+ * split into Finance and Tech by the time Quests left — but loses one
+ * destination regardless; `router.tsx` redirects
  * `/quests` to `/today` for the same reason `/character`, `/party` and
  * `/vitals` already do — a PWA shortcut installed against the old path
  * has to keep resolving.
