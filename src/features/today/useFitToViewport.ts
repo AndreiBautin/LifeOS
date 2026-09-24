@@ -67,6 +67,19 @@ import { useEffect, useRef, useState } from 'react'
  * floor answers a different question instead: below it, showing the
  * content at a legible size with ordinary page scroll beats showing all
  * of it correctly-but-illegibly with none.
+ *
+ * **`top` is measured relative to the document, not the viewport, and
+ * that distinction is what a real scroll-position bug came down to.**
+ * Reported: *"when I scroll down, it reshapes and then scrolls up in a
+ * strange manner."* `getBoundingClientRect().top` answers "how far is
+ * this from the top of what's currently on screen," which shrinks as
+ * you scroll down past it — so in the floor's fallback state (ordinary
+ * scroll, ordinary height), scrolling itself was inflating `available`
+ * every frame, until it crossed `natural` and the mechanism switched
+ * itself back on mid-scroll, collapsing the page's height and yanking
+ * the scroll position back toward the top. Adding `window.scrollY`
+ * converts it to "how far from the top of the *document*," a number
+ * that does not move just because the reader does.
  */
 
 const LANDSCAPE_DESKTOP = '(min-width: 1024px) and (orientation: landscape)'
@@ -150,7 +163,7 @@ export function useFitToViewport() {
       const container = containerRef.current
 
       if (content !== null && container !== null) {
-        const top = container.getBoundingClientRect().top
+        const top = container.getBoundingClientRect().top + window.scrollY
         const available = window.innerHeight - top - BOTTOM_MARGIN
         const natural = content.scrollHeight
 
