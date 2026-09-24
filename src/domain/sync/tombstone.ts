@@ -39,6 +39,11 @@ export const TOMBSTONED_COLLECTIONS = [
   'rooms',
   'goals',
   /*
+   * Un-retired alongside the store and the repository — see
+   * `weighIns` in `database.ts` for why it came back.
+   */
+  'weighIns',
+  /*
    * 'conditions' and 'dayReadings' were both here and are gone with the
    * records that needed them.
    * A tombstone already written under that name still arrives from

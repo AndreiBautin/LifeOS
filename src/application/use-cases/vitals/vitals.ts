@@ -1,7 +1,12 @@
 import { toDayKey } from '@/domain/time/day'
 import type { IdGenerator, ViceId } from '@/domain/ids/ids'
 import { asViceId } from '@/domain/ids/ids'
-import type { Clock, SettingsRepository, ViceRepository } from '@/domain/repositories/ports'
+import type {
+  Clock,
+  SettingsRepository,
+  ViceRepository,
+  WeighInRepository,
+} from '@/domain/repositories/ports'
 import type { ChargeCycle, ChargeDirection, ChargePreset, DaysLimit } from '@/domain/vitals/charges'
 import { saneDaysLimit } from '@/domain/vitals/charges'
 import {
@@ -13,6 +18,7 @@ import {
   type ChargeReading,
   type Vice,
 } from '@/domain/vitals/charges'
+import { ordered, type WeighIn } from '@/domain/vitals/weight'
 
 /**
  * Vitals: what the body is doing, and what you have left to spend on it.
@@ -33,13 +39,14 @@ import {
  * disagree with the first. See CLAUDE.md for what went and why the
  * store it wrote to is still there.
  *
- * **The scale went the way the day figures did**, and for the reason
- * given for them: *"no need to track weight either, same reason."* A
- * weigh-in is a number a scale and a phone already keep between them, so
- * a row here was a second copy of it. `settings.bodyweight` stays — a
- * single figure somebody states, which `resolve.ts` needs to load a
- * bodyweight-plus set and the strength ladders need to divide by. That
- * is not tracking, and it is why removing the series did not take it.
+ * **The scale went, and then came back.** It was scrapped on the
+ * reasoning that a weigh-in is a number a scale and a phone already keep
+ * between them, so a row here was a second copy of it — that reasoning
+ * still holds, and it was reintroduced anyway, asked for directly,
+ * knowing the cost. `settings.bodyweight` is a different thing and was
+ * never affected either way: a single figure somebody states, which
+ * `resolve.ts` needs to load a bodyweight-plus set and the strength
+ * ladders need to divide by, not a series.
  */
 
 export interface VitalsDeps {
@@ -47,6 +54,17 @@ export interface VitalsDeps {
   readonly settings: SettingsRepository
   readonly clock: Clock
   readonly ids: IdGenerator
+}
+
+/**
+ * Kept apart from `VitalsDeps` rather than folded in, the same call this
+ * app already makes for `MeasureDeps`: widening a shared deps interface
+ * means every function using it carries a repository most of them never
+ * ask about. Pool functions have no reason to see `weighIns`.
+ */
+export interface WeightDeps {
+  readonly weighIns: WeighInRepository
+  readonly clock: Clock
 }
 
 export interface PoolView {
@@ -223,4 +241,23 @@ export async function retireVice(id: ViceId, deps: VitalsDeps): Promise<Vice | u
 
 export async function removeVice(id: ViceId, deps: VitalsDeps): Promise<void> {
   await deps.vices.remove(id)
+}
+
+/**
+ * Every reading, oldest to newest — the chart's own job to decide how
+ * much of this it actually draws.
+ */
+export async function weighInHistory(deps: WeightDeps): Promise<readonly WeighIn[]> {
+  return ordered(await deps.weighIns.all())
+}
+
+/**
+ * Today's reading replaces rather than adds — see `WeighIn.day`'s own
+ * doc for why a second weigh-in on one morning is a correction, not a
+ * second data point.
+ */
+export async function recordWeighIn(weight: number, deps: WeightDeps): Promise<WeighIn> {
+  const weighIn: WeighIn = { day: toDayKey(deps.clock.now()), weight }
+  await deps.weighIns.save(weighIn)
+  return weighIn
 }

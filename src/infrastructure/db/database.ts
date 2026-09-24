@@ -16,6 +16,7 @@ import type { MetricDefinition, MonthlySnapshot } from '@/domain/review/metric'
 import type { Place } from '@/domain/atlas/place/Place'
 import type { Trip } from '@/domain/atlas/trip/Trip'
 import type { Vice } from '@/domain/vitals/charges'
+import type { WeighIn } from '@/domain/vitals/weight'
 import type { Tombstone } from '@/domain/sync/tombstone'
 import type { Exercise } from '@/domain/exercises/exercise'
 import type { WorkoutLog } from '@/domain/logging/workout-log'
@@ -333,19 +334,21 @@ export interface LiftDB extends DBSchema {
     value: Vice
   }
   /**
-   * Retired, the third of these and on the same terms as the two below.
+   * Un-retired. It held one bodyweight reading a day, was scrapped on the
+   * reasoning that a scale and a phone already keep this between them —
+   * a copy here was a second one — and came back anyway, asked for
+   * directly, knowing that cost. See `domain/vitals/weight.ts` for what
+   * "came back" means here: a number and a trend, not the phase-and-rate
+   * machinery the first version also carried.
    *
-   * It held one bodyweight reading a day. The series went the way the
-   * day figures did — a scale and a phone already keep it between them,
-   * so a copy here was a second one — and the store stays because
-   * removing it would mean editing a migration step. `settings.bodyweight`
-   * is untouched and is not this: one figure somebody states, which
-   * `resolve.ts` loads a bodyweight-plus set from and the strength
-   * ladders divide by.
+   * `settings.bodyweight` is untouched and is not this: one figure
+   * somebody states, which `resolve.ts` loads a bodyweight-plus set from
+   * and the strength ladders divide by. This is a series; that is a
+   * constant.
    */
   weighIns: {
     key: string
-    value: RetiredDayRow
+    value: WeighIn
   }
   /**
    * Retired, like `conditions` below and on the same terms.

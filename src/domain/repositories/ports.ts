@@ -37,6 +37,7 @@ import type { ProgramPosition } from '@/domain/programs/position'
 import type { AppSettings } from '@/domain/settings/settings'
 import type { Tombstone } from '@/domain/sync/tombstone'
 import type { Vice } from '@/domain/vitals/charges'
+import type { WeighIn } from '@/domain/vitals/weight'
 
 /**
  * The ports the application layer talks to.
@@ -334,6 +335,20 @@ export interface FinanceRepository {
   restoreMany(readings: readonly FinanceReading[]): Promise<void>
   remove(month: string): Promise<void>
   purge(month: string): Promise<void>
+}
+
+/**
+ * Bodyweight readings, keyed by day — the same shape `FinanceRepository`
+ * already is for a month, reused for the reason it was reused there: no
+ * `byId`, because the key *is* the day and every caller either wants all
+ * of them or wants to write this one.
+ */
+export interface WeighInRepository {
+  all(): Promise<readonly WeighIn[]>
+  save(weighIn: WeighIn): Promise<void>
+  restoreMany(weighIns: readonly WeighIn[]): Promise<void>
+  remove(day: string): Promise<void>
+  purge(day: string): Promise<void>
 }
 
 /**

@@ -5,11 +5,13 @@ import {
   addVice,
   editVice,
   listVices,
+  recordWeighIn,
   removeVice,
   retireVice,
   spendVice,
   undoVice,
   vitalsToday,
+  weighInHistory,
   type NewVice,
 } from '@/application/use-cases/vitals/vitals'
 import type { ViceId } from '@/domain/ids/ids'
@@ -110,4 +112,25 @@ export function useRemoveVice() {
   const services = useServices()
 
   return useInvalidating((id: ViceId) => removeVice(id, services), 'remove-vice')
+}
+
+export function useWeighInHistory() {
+  const services = useServices()
+
+  return useQuery({ queryKey: ['vitals', 'weighIns'], queryFn: () => weighInHistory(services) })
+}
+
+export function useRecordWeighIn() {
+  const services = useServices()
+  const client = useQueryClient()
+
+  return useMutation({
+    mutationFn: (weight: number) => recordWeighIn(weight, services),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: ['vitals', 'weighIns'] })
+    },
+    onError: (error: unknown) => {
+      logger.error('vitals.mutation-failed', { what: 'record-weigh-in', message: String(error) })
+    },
+  })
 }

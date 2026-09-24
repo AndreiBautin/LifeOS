@@ -11,10 +11,11 @@ import { Campaigns } from '@/features/campaign/Campaigns'
 import { GoalsCard } from '@/features/goals/GoalsCard'
 import { TodayGoals } from '@/features/backlog/TodayGoals'
 import { ChallengePass } from '@/features/challenges/ChallengePass'
+import { FinanceZone } from '@/features/finance/FinanceZone'
 import { SheetCard } from '@/features/character/SheetCard'
 import { useCharacterSheet, useSeasonProgress } from '@/features/character/hooks'
-import { RecentTraining } from '@/features/train/RecentTraining'
 import { LimitsCard } from '@/features/vitals/LimitsCard'
+import { WeightTrend } from '@/features/vitals/WeightTrend'
 
 import { useFitToViewport } from './useFitToViewport'
 
@@ -53,16 +54,26 @@ import { useFitToViewport } from './useFitToViewport'
  * flow, so a zone's cards can only ever land in a column that also
  * holds that zone's heading.
  *
- * **Two zones, not one per card.** `SheetCard`, and each single-card
- * block further down (`LimitsCard`, `RecentTraining`, `TodayGoals`,
- * `ChallengePass`) already open with their own name — "Buffs", "Recent
- * training" — so a zone heading over just one of those would repeat
- * what the card already says. The disjointed feeling was specifically
- * the *Quests* cluster: `ActiveQuests`, `GoalsCard`, `Campaigns` and
- * `QuestBoard` are four to seven differently-named cards with nothing
- * tying them together as one subject, which "Quests" now does. The
- * remaining single-purpose readouts sit under "Today", which is the one
- * grouping word that was missing rather than repeated.
+ * **Three zones now, not one per card.** `SheetCard`, and each
+ * single-card block further down (`LimitsCard`, `WeightTrend`,
+ * `TodayGoals`, `ChallengePass`) already open with their own name —
+ * "Buffs", "Weight" — so a zone heading over just one of those would
+ * repeat what the card already says. The disjointed feeling was
+ * specifically the *Quests* cluster: `ActiveQuests`, `GoalsCard`,
+ * `Campaigns` and `QuestBoard` are four to seven differently-named
+ * cards with nothing tying them together as one subject, which "Quests"
+ * now does. The remaining single-purpose readouts sit under "Today",
+ * which is the one grouping word that was missing rather than repeated.
+ *
+ * **"Finance" is the third, folded in for the same reason Quests was.**
+ * `FinanceZone` carries the five cards `/finance` used to hold at its
+ * own route with its own nav tab — asked for directly, *"folding in the
+ * finance page to the homepage too."* It gets the auto-balanced
+ * `ZONE_FLOW`, like Quests, rather than Today's hand-paired 2-column
+ * grid: five differently-shaped cards (a ladder card, the pool, an
+ * entry form, a birth-year card, a folding history list) balance across
+ * columns the way Quests' four to seven do, where Today's grid exists
+ * specifically because *its* four cards kept landing three-and-one.
  *
  * **Spacing lives on the outer stack, not on each zone.** `Section`
  * already exists in `primitives.tsx` and was not reused here because it
@@ -227,7 +238,7 @@ export function HomePage() {
           be four times `TodayGoals`' height — so at some widths it drew
           three columns with one nearly empty. Four blocks are simple
           enough to pair by hand instead of trusting an algorithm with
-          too little to balance: `LimitsCard` and `RecentTraining` are
+          too little to balance: `LimitsCard` and `WeightTrend` are
           both compact day-to-day readouts, `TodayGoals` and
           `ChallengePass` are both slower-moving ones, so each pair
           shares a column and the two columns land far closer in height
@@ -244,12 +255,12 @@ export function HomePage() {
                 <LimitsCard />
 
                 {/*
-              `RecentTraining` reads `useRecentWorkouts`, already built
-              for the History screen, and is silent under two sessions
-              rather than showing a single point that cannot be a
-              trend.
+              `WeightTrend` replaces `RecentTraining` in this slot,
+              asked for directly — "recent training bar graph isn't
+              that good, replace it with a weight tracker." See its own
+              doc for the history of the domain it reintroduces.
             */}
-                <RecentTraining />
+                <WeightTrend />
               </div>
 
               <div className="space-y-6 lg:space-y-8">
@@ -276,6 +287,13 @@ export function HomePage() {
                   </Card>
                 )}
               </div>
+            </div>
+          </div>
+
+          <div>
+            <ZoneHeading>Finance</ZoneHeading>
+            <div className={ZONE_FLOW}>
+              <FinanceZone />
             </div>
           </div>
         </div>
