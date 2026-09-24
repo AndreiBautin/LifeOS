@@ -35,6 +35,37 @@ import { useEffect, useRef, useState } from 'react'
  * report, only how the box paints, so there is no reset-then-remeasure
  * step needed before reading it.
  *
+ * **Three signals recompute it, not one.** `HomePage`'s content mounts
+ * short and grows as its several queries resolve — the quests, the
+ * season, the character sheet each arrive on their own — so a measurement
+ * taken once at mount is stale within the same second. `ResizeObserver`
+ * on `contentRef` is the obvious answer and was, on its own, observed to
+ * miss exactly that growth: this file already has one documented case of
+ * `ResizeObserver` silently not firing on a real page (`tree-layout.ts`),
+ * and the fix there was the same one applied here — never trust a single
+ * signal for something this visible. A `MutationObserver` on the same
+ * node, watching for children being added anywhere in the subtree, is a
+ * second and more direct signal for the exact event that changes the
+ * height: a card mounting. `window`'s own `resize` covers the monitor or
+ * browser window changing size, which neither of the other two would
+ * ever see.
+ *
+ * **Every one of those signals is debounced, and shipping without that
+ * was the second real bug.** Reported directly: *"this looked solid full
+ * screen, but then when I shrank the screen on my main monitor it looked
+ * like this"* — a screenshot of the whole block rendered tiny in the
+ * top-left corner of a mostly empty page. A window drag fires `resize`
+ * dozens of times before it settles, and `column-width` reflows the
+ * masonry at every one of those intermediate widths — so a measurement
+ * taken mid-drag reads a `natural` height that belongs to a size the
+ * window is only passing through, computes a scale for *that*, and then
+ * nothing ever measures again once the drag stops, because the drag's
+ * own last `resize` event already consumed the one measurement this hook
+ * took. `scheduleMeasure` waits `SETTLE_MS` after the *last* signal
+ * before it actually reads anything, so a drag's rapid-fire events
+ * collapse into exactly one measurement of the size the window actually
+ * ends up at.
+ *
  * **The scaled block can leave a strip of unused width, and that is a
  * deliberate trade rather than an oversight.** Scaling only the height
  * axis would flatten circles into ellipses and text into a squashed
@@ -56,6 +87,15 @@ const LANDSCAPE_DESKTOP = '(min-width: 1024px) and (orientation: landscape)'
  * this block, not space this block can paint into.
  */
 const BOTTOM_MARGIN = 32
+
+/**
+ * How long a burst of resize/mutation signals must go quiet before any
+ * of them is actually read. Long enough to swallow a window drag's
+ * rapid-fire `resize` events and a page's data queries settling in
+ * quick succession; short enough that it never reads as a delay to a
+ * person watching the screen.
+ */
+const SETTLE_MS = 150
 
 export function useFitToViewport() {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -99,19 +139,34 @@ export function useFitToViewport() {
       setFit({ scale: available / natural, height: available })
     }
 
+    let settle: ReturnType<typeof setTimeout> | undefined
+    const scheduleMeasure = () => {
+      if (settle !== undefined) clearTimeout(settle)
+      settle = setTimeout(measure, SETTLE_MS)
+    }
+
     measure()
-    window.addEventListener('resize', measure)
+    window.addEventListener('resize', scheduleMeasure)
 
     const content = contentRef.current
-    const observer =
-      active && content !== null && typeof ResizeObserver !== 'undefined'
-        ? new ResizeObserver(measure)
+    const resizeObserver =
+      content !== null && typeof ResizeObserver !== 'undefined'
+        ? new ResizeObserver(scheduleMeasure)
         : undefined
-    if (content !== null) observer?.observe(content)
+    const mutationObserver =
+      content !== null && typeof MutationObserver !== 'undefined'
+        ? new MutationObserver(scheduleMeasure)
+        : undefined
+    if (content !== null) {
+      resizeObserver?.observe(content)
+      mutationObserver?.observe(content, { childList: true, subtree: true })
+    }
 
     return () => {
-      window.removeEventListener('resize', measure)
-      observer?.disconnect()
+      if (settle !== undefined) clearTimeout(settle)
+      window.removeEventListener('resize', scheduleMeasure)
+      resizeObserver?.disconnect()
+      mutationObserver?.disconnect()
     }
   }, [active])
 
