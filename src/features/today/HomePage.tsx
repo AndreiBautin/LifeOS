@@ -16,6 +16,8 @@ import { useCharacterSheet, useSeasonProgress } from '@/features/character/hooks
 import { RecentTraining } from '@/features/train/RecentTraining'
 import { LimitsCard } from '@/features/vitals/LimitsCard'
 
+import { useFitToViewport } from './useFitToViewport'
+
 /**
  * One screen: who you are, what today asks, and where you stand.
  *
@@ -70,27 +72,15 @@ import { LimitsCard } from '@/features/vitals/LimitsCard'
  * carries no margin of its own below the zone; the outer `space-y-8
  * lg:space-y-10` is the only thing deciding the gap between zones.
  *
- * **A capped, per-panel-scrolling layout was tried here and reversed in
- * the same round.** Reported against a monitor tall enough to hold both
- * rows already: *"we shouldn't need to scroll — fill the max height and
- * width responsively when it's a large monitor like this."* The first
- * answer capped the page to the viewport and gave the Quests column and
- * each Today column their own `overflow-y-auto` — which technically
- * stopped the page from scrolling, and read as three fussy little
- * scrollbars boxed into a page that used to just be a page: *"adding a
- * scroll to the sections was not what I had in mind."* Fair — a
- * scrollbar nested inside a scrollbar's replacement is not the same
- * thing as not scrolling.
- *
- * **What is here instead is density, not a height cap.** Every gap this
- * page controls — between the two rows, inside `ZONE_FLOW`, between
- * `Today`'s paired cards — is tighter at `lg` than it was, so the whole
- * page's *natural* height sits closer to a large monitor's viewport
- * without clipping or scrolling anything to get there. Ordinary page
- * scroll is still exactly what handles the case this cannot: a real
- * database with six open arcs is taller than any monitor, and the right
- * answer to that is the scrollbar the browser has always drawn down the
- * right edge of the page, not a cage built to hide it.
+ * **Two answers already tried and reversed before this one.** A height
+ * cap with `overflow-y-auto` on each column stopped the page from
+ * scrolling and read as three fussy little scrollbars boxed into a page
+ * that used to just be a page — rightly rejected: *"adding a scroll to
+ * the sections was not what I had in mind."* Tightening the spacing
+ * afterwards worked only by coincidence, for whatever amount of content
+ * happened to be in the database that day. What holds regardless of how
+ * much content there is lives in `useFitToViewport` — see its own doc —
+ * and is applied below to the whole returned block.
  */
 
 function ZoneHeading({ children }: { readonly children: string }) {
@@ -129,9 +119,22 @@ export function HomePage() {
   const season = useSeasonProgress()
   const sheet = useCharacterSheet()
 
+  const { containerRef, contentRef, fit } = useFitToViewport()
+
   return (
-    <div className="space-y-8 lg:space-y-10">
-      {/*
+    <div
+      ref={containerRef}
+      style={fit === null ? undefined : { height: fit.height, overflow: 'hidden' }}
+    >
+      <div
+        style={
+          fit === null
+            ? undefined
+            : { transform: `scale(${String(fit.scale)})`, transformOrigin: 'top center' }
+        }
+      >
+        <div ref={contentRef} className="space-y-8 lg:space-y-10">
+          {/*
         ── The glance ──────────────────────────────────────────────────
         Who you are, the chapter you are in, and the same XP split eight
         ways. One card, because those are one quantity at three
@@ -164,57 +167,57 @@ export function HomePage() {
         right — so the freed space actually holds quest cards rather
         than sitting behind the avatar doing nothing.
       */}
-      <div className="space-y-10 lg:flex lg:items-start lg:gap-8 lg:space-y-0">
-        <div className="lg:max-w-xl lg:shrink-0">
-          <SheetCard
-            {...(sheet.data === undefined ? {} : { traits: sheet.data.traits })}
-            avatarSize="large"
-            action={
-              <Link
-                to="/settings"
-                aria-label="Settings"
-                className={buttonStyles({ variant: 'ghost', size: 'sm' })}
-              >
-                <Settings size={16} aria-hidden />
-              </Link>
-            }
-          />
-        </div>
+          <div className="space-y-10 lg:flex lg:items-start lg:gap-8 lg:space-y-0">
+            <div className="lg:max-w-xl lg:shrink-0">
+              <SheetCard
+                {...(sheet.data === undefined ? {} : { traits: sheet.data.traits })}
+                avatarSize="large"
+                action={
+                  <Link
+                    to="/settings"
+                    aria-label="Settings"
+                    className={buttonStyles({ variant: 'ghost', size: 'sm' })}
+                  >
+                    <Settings size={16} aria-hidden />
+                  </Link>
+                }
+              />
+            </div>
 
-        <div className="min-w-0 lg:flex-1">
-          <ZoneHeading>Quests</ZoneHeading>
-          <div className={ZONE_FLOW}>
-            <ActiveQuests
-              main={active.data?.main}
-              side={active.data?.side}
-              {...(leadingArc === undefined ? {} : { arc: leadingArc })}
-            />
+            <div className="min-w-0 lg:flex-1">
+              <ZoneHeading>Quests</ZoneHeading>
+              <div className={ZONE_FLOW}>
+                <ActiveQuests
+                  main={active.data?.main}
+                  side={active.data?.side}
+                  {...(leadingArc === undefined ? {} : { arc: leadingArc })}
+                />
 
-            {/*
+                {/*
               Silent unless a goal has something available to work on
               next — see the note in `GoalsCard`. A goal is a planning
               surface rather than a quest, so this sits beside the
               quests it is adjacent to in spirit without pretending to
               be one.
             */}
-            <GoalsCard />
+                <GoalsCard />
 
-            {/*
+                {/*
               `Campaigns` is the arc at full size (every stage, every
               lap, editable), which `ActiveQuests`' `ArcSlot` only ever
               summarised. It is a fragment returning one `<Section>`
               per arc, so each arc becomes its own masonry block within
               this zone rather than one giant one.
             */}
-            <Campaigns />
-            <QuestBoard />
+                <Campaigns />
+                <QuestBoard />
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
 
-      <div>
-        <ZoneHeading>Today</ZoneHeading>
-        {/*
+          <div>
+            <ZoneHeading>Today</ZoneHeading>
+            {/*
           **A fixed 2-column pairing, not the auto-balanced `ZONE_FLOW`
           the "Quests" zone uses.** Reported against the auto-balanced
           version: "maybe move the bottom row up so we don't need to
@@ -230,48 +233,50 @@ export function HomePage() {
           shares a column and the two columns land far closer in height
           than three auto-balanced ones did.
         */}
-        <div className="space-y-6 lg:grid lg:grid-cols-2 lg:items-start lg:gap-8 lg:space-y-0">
-          <div className="space-y-6 lg:space-y-8">
-            {/*
+            <div className="space-y-6 lg:grid lg:grid-cols-2 lg:items-start lg:gap-8 lg:space-y-0">
+              <div className="space-y-6 lg:space-y-8">
+                {/*
               The card names itself and links to the screen, which is
               why this zone's heading does not repeat "Buffs" — it had
               been saying so directly over a card whose first line
               already does.
             */}
-            <LimitsCard />
+                <LimitsCard />
 
-            {/*
+                {/*
               `RecentTraining` reads `useRecentWorkouts`, already built
               for the History screen, and is silent under two sessions
               rather than showing a single point that cannot be a
               trend.
             */}
-            <RecentTraining />
-          </div>
+                <RecentTraining />
+              </div>
 
-          <div className="space-y-6 lg:space-y-8">
-            {/*
+              <div className="space-y-6 lg:space-y-8">
+                {/*
               `TodayGoals` reuses `GoalsToday`/`GoalRow` wholesale —
               see its own doc for why this was a capability the app
               already had and nothing rendered. Silent under the same
               rule as everything else here.
             */}
-            <TodayGoals />
+                <TodayGoals />
 
-            {/*
+                {/*
               **The season names itself inside the card**, keeping the
               name beside the measurement the way this file has
               always insisted. The comment sits *above* the
               conditional rather than inside it, because a JSX comment
               cannot be a bare sibling in a `&&` expression.
             */}
-            {season.data !== undefined && (
-              <Card>
-                <ChallengePass
-                  season={{ label: season.data.label, daysLeft: season.data.daysLeft }}
-                />
-              </Card>
-            )}
+                {season.data !== undefined && (
+                  <Card>
+                    <ChallengePass
+                      season={{ label: season.data.label, daysLeft: season.data.daysLeft }}
+                    />
+                  </Card>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       </div>
