@@ -83,7 +83,7 @@ function ActionRow({
   const done = action.status === 'done'
 
   return (
-    <div className="flex items-center gap-3 py-2">
+    <div className="row-hover -mx-2 flex items-center gap-3 px-2 py-2">
       <button
         type="button"
         aria-label={done ? `Re-open ${action.description}` : `Close ${action.description}`}

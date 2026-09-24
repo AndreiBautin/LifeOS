@@ -96,6 +96,15 @@ export function Section({ title, description, action, children }: SectionProps) 
  * The heading is deliberately `text-sm` and dim: it is a label on a
  * panel rather than the page's own title, and the largest thing on a
  * screen should be the thing you came to read.
+ *
+ * **The icon sits in a tinted badge, not bare.** A plain 16px glyph in
+ * the same dim ink as the label read as an afterthought — every card on
+ * the app opens with one, so a bare icon was really the first thing
+ * every screen showed, and it looked like clip art. A small
+ * accent-tinted square gives it the weight of a mark rather than a
+ * decoration, the same "tint over the surface" recipe `.control-surface`
+ * already uses for a button, at a scale that reads as a badge instead of
+ * a control.
  */
 export function CardHeading({
   icon,
@@ -107,9 +116,13 @@ export function CardHeading({
   readonly action?: ReactNode
 }) {
   return (
-    <div className="mb-2 flex items-center justify-between gap-2">
+    <div className="mb-3 flex items-center justify-between gap-2">
       <h2 className="text-ink-500 flex items-center gap-2 text-sm">
-        {icon}
+        {icon !== undefined && (
+          <span className="bg-accent-500/10 text-accent-400 flex size-6 shrink-0 items-center justify-center rounded-md">
+            {icon}
+          </span>
+        )}
         {title}
       </h2>
       {action !== undefined && <div className="flex items-center gap-1">{action}</div>}

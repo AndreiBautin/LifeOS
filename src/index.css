@@ -272,6 +272,48 @@
   }
 
   /*
+   * A card arrives rather than simply being there on the next paint.
+   * `both` holds the `from` state before the animation starts and the
+   * `to` state after it ends, so there is no flash of full-opacity
+   * content before the animation engine has taken over on a slow paint.
+   * Covered by the reduced-motion block above like everything else here
+   * — it collapses the duration to 0.01ms rather than needing a second
+   * gate.
+   */
+  @keyframes card-in {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .card {
+    animation: card-in 460ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  /*
+   * A row answers being pointed at, the same "cheap motion, real
+   * pointer only" rule `.card`'s hover lift already follows. Rows inside
+   * a card are the app's densest interactive surface — a quest, a
+   * challenge, a goal — and a flat background gave none of them any
+   * feedback before the tap itself landed.
+   */
+  @media (hover: hover) {
+    .row-hover {
+      transition: background-color 160ms ease-out;
+      border-radius: 0.625rem;
+    }
+
+    .row-hover:hover {
+      background-color: color-mix(in oklab, var(--text-primary) 5%, transparent);
+    }
+  }
+
+  /*
    * A control built out of the same three things a card is.
    *
    * Reported against the old primary button: *"I don't like the style of

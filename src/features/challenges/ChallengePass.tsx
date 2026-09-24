@@ -44,7 +44,7 @@ function ChallengeRow({ challenge }: { readonly challenge: Challenge }) {
   const done = challenge.completedAt !== undefined
 
   return (
-    <div className="flex items-center gap-3 py-1.5">
+    <div className="row-hover -mx-2 flex items-center gap-3 px-2 py-1.5">
       {/*
         **A box, empty or ticked — never an icon that means "press me".**
         The rule this app learned on quest steps: an icon that changes

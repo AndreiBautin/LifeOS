@@ -37,7 +37,7 @@ export function GoalRow({ status }: { readonly status: DailyGoalStatus }) {
   const log = useLogProgress()
 
   return (
-    <div className="flex items-center gap-3 py-3">
+    <div className="row-hover -mx-2 flex items-center gap-3 px-2 py-3">
       <div className="min-w-0 flex-1">
         <p className="text-ink-50 truncate font-medium">{item.title}</p>
         <p className="text-ink-500 mt-0.5 flex items-center gap-2 text-sm">
