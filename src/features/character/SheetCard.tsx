@@ -3,9 +3,9 @@ import type { ReactNode } from 'react'
 import { Card } from '@/components/shared/primitives'
 import type { TraitStanding } from '@/domain/game/traits'
 
+import { MainLifts } from './MainLifts'
 import { PortraitBand } from './PortraitBand'
 import { Traits } from './Traits'
-import { TraitRadar } from './TraitRadar'
 
 /**
  * The character sheet, as one card and the first thing on the screen.
@@ -98,26 +98,21 @@ export function SheetCard({
         {traits !== undefined && (
           <div className="border-ink-800 mt-4 border-t pt-4">
             {/*
-              **The radar is a second reading of the same bars, `2xl`
-              and `large` only — never a replacement.** A bar answers
-              "how far into level 6"; a radar answers "what shape is my
-              week" at a glance, which a stack of seven bars cannot say
-              in one look. Both read the same `TraitStanding[]`, so
-              there is no second source to drift from the first — an
-              unproven trait plots at the centre in the radar for the
-              same reason its bar reads "Nothing yet" rather than a
-              guessed value.
-
-              Side by side rather than stacked, because the radar is
-              exactly the kind of freed `lg`-and-up width this pass
-              exists to fill — stacking it above the bars would just
-              move the sparseness down a card instead of using it.
+              **`MainLifts` replaced `TraitRadar` in this exact slot.**
+              Reported against the radar: "the secondary graph for
+              attributes would make more sense as showing off the 1RMs
+              for the main lifts instead." The trait bars still lead —
+              they are XP, the currency this card is otherwise entirely
+              about — and the lifts sit beside them at `lg` and up, the
+              same "freed width" reasoning the radar was built for, on
+              data that is actually built to move week to week rather
+              than XP's slow, steady climb. See `MainLifts`' own doc.
             */}
-            <div className="lg:grid lg:grid-cols-[1fr_auto] lg:items-center lg:gap-6">
+            <div className="lg:grid lg:grid-cols-[1fr_auto] lg:items-start lg:gap-6">
               <Traits traits={traits} />
               {avatarSize === 'large' && (
-                <div className="hidden lg:block">
-                  <TraitRadar traits={traits} />
+                <div className="hidden lg:block lg:w-64">
+                  <MainLifts />
                 </div>
               )}
             </div>

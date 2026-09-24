@@ -6,7 +6,7 @@ import type { StageStanding } from '@/domain/campaign/campaign'
  * The arc's stages, drawn as a road rather than read as "2 of 6".
  *
  * **`lg` and up only**, in the arc's own quest slot — the same reasoning
- * as `TraitRadar`: a second reading of data `ArcSlot` already has, not a
+ * as `MainLifts`: a second reading of data `ArcSlot` already has, not a
  * new fetch.
  *
  * **HTML dots rather than a stretched SVG, and that reverses the first

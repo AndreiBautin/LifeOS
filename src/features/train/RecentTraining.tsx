@@ -12,7 +12,7 @@ import { useRecentWorkouts } from './hooks'
  * The last few sessions, as bars rather than a list.
  *
  * **A real content card, not a `lg`-only decoration** — the other three
- * (`TraitRadar`, `CampaignPath`, `ChallengeRing`) are second readings of
+ * (`MainLifts`, `CampaignPath`, `ChallengeRing`) are second readings of
  * data already on screen, gated to wide windows because the bars and
  * text beside them already say the same thing. This says something
  * nothing else on Today does: how the last few sessions compare. It
