@@ -5,6 +5,7 @@ import { useServices } from '@/app/context'
 import { Button, Card, CardHeading } from '@/components/shared/primitives'
 import { currentTrend } from '@/domain/vitals/weight'
 import type { WeighIn } from '@/domain/vitals/weight'
+import { cn } from '@/lib/cn'
 
 import { useRecordWeighIn, useWeighInHistory } from './hooks'
 
@@ -55,7 +56,7 @@ function yAt(value: number, min: number, max: number): number {
   return PAD_Y + (1 - (value - min) / span) * (HEIGHT - PAD_Y * 2)
 }
 
-export function WeightTrend() {
+export function WeightTrend({ className }: { readonly className?: string }) {
   const history = useWeighInHistory()
   const record = useRecordWeighIn()
   const now = useServices().clock.now()
@@ -67,97 +68,99 @@ export function WeightTrend() {
   const recent = rows.slice(-14)
 
   return (
-    <Card>
+    <Card className={cn('flex flex-col', className)}>
       <CardHeading icon={<Scale size={16} aria-hidden />} title="Weight" />
 
-      {recent.length < 2 ? (
-        <p className="text-ink-500 text-sm">Log a weigh-in to start the trend.</p>
-      ) : (
-        <>
-          {(() => {
-            const values = recent.map((row) => row.weight)
-            const min = Math.min(...values)
-            const max = Math.max(...values)
+      <div className="flex-1">
+        {recent.length < 2 ? (
+          <p className="text-ink-500 text-sm">Log a weigh-in to start the trend.</p>
+        ) : (
+          <>
+            {(() => {
+              const values = recent.map((row) => row.weight)
+              const min = Math.min(...values)
+              const max = Math.max(...values)
 
-            const points = recent.map((row, index) => ({
-              x: xAt(index, recent.length),
-              y: yAt(row.weight, min, max),
-            }))
+              const points = recent.map((row, index) => ({
+                x: xAt(index, recent.length),
+                y: yAt(row.weight, min, max),
+              }))
 
-            const linePath = points
-              .map((p, i) => `${i === 0 ? 'M' : 'L'} ${String(p.x)} ${String(p.y)}`)
-              .join(' ')
-            const areaPath = `${linePath} L ${String(points[points.length - 1]?.x ?? 0)} ${String(HEIGHT)} L ${String(points[0]?.x ?? 0)} ${String(HEIGHT)} Z`
+              const linePath = points
+                .map((p, i) => `${i === 0 ? 'M' : 'L'} ${String(p.x)} ${String(p.y)}`)
+                .join(' ')
+              const areaPath = `${linePath} L ${String(points[points.length - 1]?.x ?? 0)} ${String(HEIGHT)} L ${String(points[0]?.x ?? 0)} ${String(HEIGHT)} Z`
 
-            return (
-              <svg
-                viewBox={`0 0 ${String(WIDTH)} ${String(HEIGHT)}`}
-                className="mt-3 h-24 w-full lg:h-40"
-                preserveAspectRatio="none"
-                role="img"
-                aria-label={`Weight across ${String(recent.length)} recent readings, ${String(values[0])} to ${String(values[values.length - 1])}`}
-              >
-                <defs>
-                  <linearGradient id="weight-trend-fill" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="var(--color-cool-500)" stopOpacity="0.35" />
-                    <stop offset="100%" stopColor="var(--color-cool-500)" stopOpacity="0" />
-                  </linearGradient>
-                </defs>
+              return (
+                <svg
+                  viewBox={`0 0 ${String(WIDTH)} ${String(HEIGHT)}`}
+                  className="mt-3 h-24 w-full lg:h-40"
+                  preserveAspectRatio="none"
+                  role="img"
+                  aria-label={`Weight across ${String(recent.length)} recent readings, ${String(values[0])} to ${String(values[values.length - 1])}`}
+                >
+                  <defs>
+                    <linearGradient id="weight-trend-fill" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="var(--color-cool-500)" stopOpacity="0.35" />
+                      <stop offset="100%" stopColor="var(--color-cool-500)" stopOpacity="0" />
+                    </linearGradient>
+                  </defs>
 
-                <path d={areaPath} fill="url(#weight-trend-fill)" />
-                <path
-                  d={linePath}
-                  fill="none"
-                  stroke="var(--color-cool-500)"
-                  strokeWidth={2}
-                  strokeLinejoin="round"
-                  strokeLinecap="round"
-                />
+                  <path d={areaPath} fill="url(#weight-trend-fill)" />
+                  <path
+                    d={linePath}
+                    fill="none"
+                    stroke="var(--color-cool-500)"
+                    strokeWidth={2}
+                    strokeLinejoin="round"
+                    strokeLinecap="round"
+                  />
 
-                {recent.map((row, index) => {
-                  const point = points[index]
-                  if (point === undefined) return null
-                  const isLast = index === recent.length - 1
-                  const labelY = point.y < PAD_Y + 10 ? point.y + 14 : point.y - 8
+                  {recent.map((row, index) => {
+                    const point = points[index]
+                    if (point === undefined) return null
+                    const isLast = index === recent.length - 1
+                    const labelY = point.y < PAD_Y + 10 ? point.y + 14 : point.y - 8
 
-                  return (
-                    <g key={row.day}>
-                      <title>{`${row.day} — ${String(row.weight)}`}</title>
-                      <circle
-                        cx={point.x}
-                        cy={point.y}
-                        r={isLast ? 4 : 2.5}
-                        fill="var(--color-cool-500)"
-                        style={
-                          isLast ? { filter: 'drop-shadow(0 0 3px var(--color-cool-500))' } : {}
-                        }
-                      />
-                      <text
-                        x={point.x}
-                        y={labelY}
-                        textAnchor="middle"
-                        fontSize={9}
-                        fill="var(--text-secondary)"
-                        className="numeric"
-                      >
-                        {Math.round(row.weight * 10) / 10}
-                      </text>
-                    </g>
-                  )
-                })}
-              </svg>
-            )
-          })()}
+                    return (
+                      <g key={row.day}>
+                        <title>{`${row.day} — ${String(row.weight)}`}</title>
+                        <circle
+                          cx={point.x}
+                          cy={point.y}
+                          r={isLast ? 4 : 2.5}
+                          fill="var(--color-cool-500)"
+                          style={
+                            isLast ? { filter: 'drop-shadow(0 0 3px var(--color-cool-500))' } : {}
+                          }
+                        />
+                        <text
+                          x={point.x}
+                          y={labelY}
+                          textAnchor="middle"
+                          fontSize={9}
+                          fill="var(--text-secondary)"
+                          className="numeric"
+                        >
+                          {Math.round(row.weight * 10) / 10}
+                        </text>
+                      </g>
+                    )
+                  })}
+                </svg>
+              )
+            })()}
 
-          <div className="mt-1 flex justify-between gap-2">
-            {recent.map((row) => (
-              <span key={row.day} className="text-ink-700 flex-1 text-center text-[10px]">
-                {label(row)}
-              </span>
-            ))}
-          </div>
-        </>
-      )}
+            <div className="mt-1 flex justify-between gap-2">
+              {recent.map((row) => (
+                <span key={row.day} className="text-ink-700 flex-1 text-center text-[10px]">
+                  {label(row)}
+                </span>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
 
       {(() => {
         const trend = currentTrend(rows, now)

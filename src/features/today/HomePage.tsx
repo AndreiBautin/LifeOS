@@ -254,9 +254,19 @@ export function HomePage() {
         because at `lg` each zone's own masonry columns are already
         claiming the width; two zones side by side needs the room `xl`
         actually frees.
+
+        **`xl:items-stretch`, not `items-start`.** Asked directly —
+        *"what's preventing you from spreading these out to take the
+        full height and width available?"* — and the honest answer was
+        that nothing does: every card and column here is sized to its
+        own content, so a shorter zone simply ended with blank page
+        below it rather than the taller neighbour's height. Stretch
+        makes both zone containers match the taller one; the short
+        zone's own last card is what has to absorb the difference, one
+        level down, which is what `flex-1` below is for.
       */}
-          <div className="space-y-8 xl:grid xl:grid-cols-2 xl:items-start xl:gap-8 xl:space-y-0">
-            <div>
+          <div className="space-y-8 xl:grid xl:grid-cols-2 xl:items-stretch xl:gap-8 xl:space-y-0">
+            <div className="xl:flex xl:flex-col">
               <ZoneHeading>Today</ZoneHeading>
               {/*
             **A fixed 2-column pairing, not the auto-balanced `ZONE_FLOW`
@@ -274,8 +284,8 @@ export function HomePage() {
             shares a column and the two columns land far closer in height
             than three auto-balanced ones did.
           */}
-              <div className="space-y-6 lg:grid lg:grid-cols-2 lg:items-start lg:gap-8 lg:space-y-0">
-                <div className="space-y-6 lg:space-y-8">
+              <div className="space-y-6 lg:grid lg:flex-1 lg:grid-cols-2 lg:items-stretch lg:gap-8 lg:space-y-0">
+                <div className="space-y-6 lg:flex lg:flex-col lg:space-y-8">
                   {/*
                 The card names itself and links to the screen, which is
                 why this zone's heading does not repeat "Buffs" — it had
@@ -289,11 +299,17 @@ export function HomePage() {
                 asked for directly — "recent training bar graph isn't
                 that good, replace it with a weight tracker." See its own
                 doc for the history of the domain it reintroduces.
+
+                **`lg:flex-1`, so it is the one absorbing the stretch.**
+                Its content is genuinely the shortest of the four — an
+                input and a chart against `ChallengePass`'s five-item
+                list — so it is also the one where a taller card with
+                room to spare reads as normal rather than as a mistake.
               */}
-                  <WeightTrend />
+                  <WeightTrend className="lg:flex-1" />
                 </div>
 
-                <div className="space-y-6 lg:space-y-8">
+                <div className="space-y-6 lg:flex lg:flex-col lg:space-y-8">
                   {/*
                 `TodayGoals` reuses `GoalsToday`/`GoalRow` wholesale —
                 see its own doc for why this was a capability the app
@@ -310,7 +326,7 @@ export function HomePage() {
                 cannot be a bare sibling in a `&&` expression.
               */}
                   {season.data !== undefined && (
-                    <Card>
+                    <Card className="lg:flex-1">
                       <ChallengePass
                         season={{ label: season.data.label, daysLeft: season.data.daysLeft }}
                       />
@@ -320,7 +336,7 @@ export function HomePage() {
               </div>
             </div>
 
-            <div>
+            <div className="xl:flex xl:flex-col">
               <ZoneHeading>Train</ZoneHeading>
               {/*
             **`TrainZone` folded in, asked for directly: "fold training
