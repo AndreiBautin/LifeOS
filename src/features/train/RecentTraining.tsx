@@ -27,6 +27,15 @@ import { useRecentWorkouts } from './hooks'
  * **Silent under two sessions.** One bar cannot show a trend, and a
  * chart claiming to compare sessions with only one to show would be
  * reporting a fact about the fixture rather than about training.
+ *
+ * **A unit caption and a per-bar title, added after "recent training
+ * still makes no sense with just blocks."** Fair — a bar chart with a
+ * number over each bar and a weekday under it says nothing about what
+ * the number counts unless you already know. The caption states it
+ * once; the `title` attribute puts each session's own name (`"Wednesday
+ * — Full body"`) on the bar itself, reachable by hover or by a screen
+ * reader, without spending permanent space on it in a chart this
+ * narrow.
  */
 
 function height(sets: number, max: number): number {
@@ -64,12 +73,17 @@ export function RecentTraining() {
           History →
         </Link>
       </div>
+      <p className="text-ink-700 mt-0.5 text-xs">Working sets logged, oldest to newest</p>
 
       <div className="mt-4 flex items-end justify-between gap-2" style={{ height: 64 }}>
         {sessions.map((log, index) => {
           const abandoned = log.status === 'abandoned'
           return (
-            <div key={log.id} className="flex flex-1 flex-col items-center justify-end gap-1.5">
+            <div
+              key={log.id}
+              className="flex flex-1 flex-col items-center justify-end gap-1.5"
+              title={`${log.title} — ${String(sets[index])} working sets`}
+            >
               <span className="text-ink-500 numeric text-[10px]">{sets[index]}</span>
               <div
                 className="meter-fill w-full rounded-t-sm"

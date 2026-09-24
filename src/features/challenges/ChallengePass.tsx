@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Button, Empty } from '@/components/shared/primitives'
 import { Meter } from '@/components/shared/Meter'
 import type { Challenge } from '@/domain/challenges/challenge'
+import { cn } from '@/lib/cn'
 
 import { ChallengeRing } from './ChallengeRing'
 import {
@@ -93,6 +94,57 @@ function ChallengeRow({ challenge }: { readonly challenge: Challenge }) {
       >
         <X size={14} aria-hidden />
       </button>
+    </div>
+  )
+}
+
+/**
+ * The pass drawn as a reward track, one node per challenge.
+ *
+ * **Asked for directly: "autumn 2026 could have more of a battle pass
+ * look."** The card's own doc already refuses the usual battle-pass
+ * shape — a hundred numbered tiers is exactly the invented scale
+ * `domain/game/season.ts` states in writing this model does not do —
+ * so this is not that. It is the same real denominator the `Meter`
+ * above already draws, read as a row of nodes instead of a fill
+ * percentage: one node per challenge that actually exists this season,
+ * lit when it is done, numbered when it is not. Nothing here is a tier
+ * nobody can see the bottom of.
+ *
+ * **A second reading, not a replacement.** The `Meter` stays — it is
+ * what mobile has always had, and it says the fraction in one glance a
+ * scrolling row of small nodes cannot. This sits underneath it as the
+ * "look" that was asked for, on the same data.
+ */
+function PassTrack({ challenges }: { readonly challenges: readonly Challenge[] }) {
+  if (challenges.length === 0) return null
+
+  return (
+    <div className="mt-3 flex items-center gap-1 overflow-x-auto pb-1">
+      {challenges.map((challenge, index) => {
+        const done = challenge.completedAt !== undefined
+        return (
+          <div key={challenge.id} className="flex items-center">
+            <div
+              title={challenge.title}
+              className={cn(
+                'flex size-7 shrink-0 items-center justify-center rounded-md border text-[10px] font-semibold',
+                done
+                  ? 'border-good-500 bg-good-500/20 text-good-500'
+                  : 'border-ink-700 text-ink-600',
+              )}
+            >
+              {done ? <Check size={14} aria-hidden /> : index + 1}
+            </div>
+            {index < challenges.length - 1 && (
+              <div
+                aria-hidden
+                className={cn('h-0.5 w-3 shrink-0', done ? 'bg-good-500/50' : 'bg-ink-800')}
+              />
+            )}
+          </div>
+        )
+      })}
     </div>
   )
 }
@@ -209,6 +261,8 @@ export function ChallengePass({
         */}
         <ChallengeRing done={data.done} total={data.total} />
       </div>
+
+      <PassTrack challenges={data.challenges} />
 
       <div className="mt-3 space-y-3">
         {data.challenges.length === 0 ? (

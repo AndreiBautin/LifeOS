@@ -31,74 +31,68 @@ import { LimitsCard } from '@/features/vitals/LimitsCard'
  * first.* That is a legitimate call about their own app and it is
  * recorded here rather than quietly applied.
  *
- * **The cost is exactly what the old rule predicted, and it is real.**
- * The dailies now sit below three blocks of readout — the portrait, the
- * season and the traits — where they used to sit below two. Opening the
- * app in the morning shows a level before it shows a checkbox. If
- * ticking habits starts feeling like a chore buried under a scoreboard,
- * this ordering is the thing to suspect, and moving `Standing` above
- * `The day` is a two-line change.
+ * **Quests folded in later, for the same kind of reason** — see
+ * `QuestBoard`'s own doc.
  *
- * **What the merge buys, besides the ask.** The navigation drops from
- * eight cells to seven, and eight was over the line on a 320-pixel
- * screen: every cell clears 44px, so eight need 352 and an iPhone SE has
- * 320 — the last tab was clipped by 32 pixels. Seven need 308. The
- * overflow this file warned about is gone rather than worked around.
+ * **Zones, not one flat masonry flow.** Every card used to be a direct
+ * child of one page-wide `column-width` container, which is what let a
+ * quest card, a buff card and a training chart land in adjacent columns
+ * with nothing saying they were different kinds of thing. Reported
+ * plainly once the width fix landed and there was finally room to see
+ * it: *"it seems a little bit disjointed, could we get some headers to
+ * organize the sections."*
  *
- * **Quests folded in later, the same way, for the same kind of reason.**
- * Reported after several rounds of decoration failed to close a vertical
- * gap on a wide monitor: "maybe just consider condensing pages, as its
- * not enough content to fill a page in a full monitor screen without
- * looking awkward." `Campaigns` and `QuestBoard` carry the rest of what
- * `/quests` held — see `QuestBoard`'s own doc. The nav bar stays at
- * seven cells rather than dropping to six, because Party's seat had
- * already split into Finance and Tech by the time Quests left — one
- * fewer destination to scan for regardless.
+ * **A header cannot just sit inside the old flow, or it drifts from its
+ * own group.** `column-fill:balance` places content by height alone, so
+ * a heading and the first card of the group it names could land at the
+ * bottom of one column while the rest of the group starts the next —
+ * an orphaned label pointing at nothing. Each zone below is its own
+ * `<div>` with a heading followed by its *own* nested `column-width`
+ * flow, so a zone's cards can only ever land in a column that also
+ * holds that zone's heading.
  *
- * **Three bands, in the order a person moves through them.** A glance at
- * where you are, then the things the day asks for, then the standing
- * that only changes over months. The third band is at the bottom because
- * that is where it was already read from — scrolled to, deliberately,
- * rather than met on the way to a checkbox.
+ * **Two zones, not one per card.** `SheetCard`, and each single-card
+ * block further down (`LimitsCard`, `RecentTraining`, `TodayGoals`,
+ * `ChallengePass`) already open with their own name — "Buffs", "Recent
+ * training" — so a zone heading over just one of those would repeat
+ * what the card already says. The disjointed feeling was specifically
+ * the *Quests* cluster: `ActiveQuests`, `GoalsCard`, `Campaigns` and
+ * `QuestBoard` are four to seven differently-named cards with nothing
+ * tying them together as one subject, which "Quests" now does. The
+ * remaining single-purpose readouts sit under "Today", which is the one
+ * grouping word that was missing rather than repeated.
  *
- * **The first band is now one card and no page header.** Asked for as
- * *"let's just drop that entire heading section and just start with the
- * card"*, with the season and the traits merged into it. The page is
- * therefore the only screen in the app with no `PageHeader` — which is
- * a deliberate exception rather than a miss: every other heading says
- * what the screen is, and a portrait of you at the top of a page opened
- * every morning says it without a word. The header's two pieces of
- * information, the level and the date, moved into the card, and its
- * settings link went with them.
- *
- * **From `lg` up, the cards flow into as many CSS columns as the screen
- * actually holds, rather than one stretched line.** Widening the shell's
- * max-width alone left the freed space sitting empty on both sides —
- * reported as "still looks like a mobile site slapped onto a desktop
- * monitor." A fixed sidebar was tried next and reported back too:
- * `SheetCard` is much shorter than the quest-and-buffs stack beside it,
- * so a two-column *grid* left a slab of dead space under the sidebar
- * once the taller column ran past it. A discrete `columns-2` /
- * `columns-3` / `2xl:columns-4` ladder came after that and *also* came
- * back short — a fixed pixel breakpoint is a guess at how wide the
- * visitor's browser actually renders in CSS pixels, and a guess is
- * exactly what a report of "still lots of whitespace" on hardware this
- * session cannot see is telling you was wrong.
- *
- * `[column-width:22rem]` sidesteps guessing entirely: it asks for
- * columns *about* 22rem wide and lets the browser divide whatever space
- * `main` actually has by that figure, so a fourth or fifth column
- * appears the moment there is room for one rather than at a number
- * picked in advance. `columns-2` and friends set a *count*; this sets a
- * *target width* and lets the count be however many of those fit.
- *
- * The cards still lay out the way a newspaper does — top to bottom
- * filling one column, then continuing in the next — so a short card and
- * a tall one share a column with no gap forced between them.
- * `break-inside-avoid` on each card stops one being cut in half at a
- * column boundary. Below `lg` the column classes do nothing, so the
- * phone layout is the same single stack it always was.
+ * **Spacing lives on the outer stack, not on each zone.** `Section`
+ * already exists in `primitives.tsx` and was not reused here because it
+ * hardcodes its own `mb-8` — stacking that against the outer
+ * `space-y-*` this file already uses would double the gap, the same
+ * trap this file's own history already records once. `ZoneHeading`
+ * carries no margin of its own below the zone; the outer `space-y-10
+ * lg:space-y-12` is the only thing deciding the gap between zones.
  */
+
+function ZoneHeading({ children }: { readonly children: string }) {
+  return (
+    <div
+      className="border-ink-800 mb-4 border-l-2 pl-2.5"
+      style={{ borderColor: 'var(--color-accent-500)' }}
+    >
+      <h2 className="text-ink-50 text-lg font-semibold tracking-tight">{children}</h2>
+    </div>
+  )
+}
+
+/*
+ * The same masonry recipe the page used to run at top level, now scoped
+ * to one zone's cards rather than the whole page. Repeated as a literal
+ * class string rather than factored into a shared constant, because
+ * Tailwind's own arbitrary-value classes are easiest to grep for when
+ * whichever number in them needs to change again — this file has
+ * changed `column-width` three times already for reasons fully
+ * unrelated to zones.
+ */
+const ZONE_FLOW =
+  'space-y-8 lg:[column-width:22rem] 2xl:[column-width:26rem] lg:gap-10 lg:space-y-0 [&>*]:mb-8 lg:[&>*]:mb-10 [&>*]:break-inside-avoid [&>*]:last:mb-0'
 
 export function HomePage() {
   const active = useActiveQuests()
@@ -113,71 +107,16 @@ export function HomePage() {
   const season = useSeasonProgress()
   const sheet = useCharacterSheet()
 
-  /*
-   * **The ladders are not on this screen any more, and the traits are
-   * bars alone.** Reported: *"let's keep all traits as purely bars to
-   * keep it more sleek cause this looks busy."*
-
-   * Each one went to the screen that owns it — the lifts to Train, the
-   * money to Finance, the exploration share to the Map — which is why
-   * `buildCharacter`, the workouts query and the whole `traitLadders`
-   * map came out of here with them. A reading belongs beside the thing
-   * it measures and beside the controls that move it; this screen is the
-   * glance, and it had been carrying four readings that are acted on
-   * elsewhere.
-   */
-
   return (
-    /*
-      The page owns the rhythm between its blocks, because not every block
-      on it is a `Section`.
-
-      `Section` carries its own `mb-8` and every other screen is nothing
-      but sections, so the spacing looked like it came from somewhere.
-      Today is the one screen that also puts **bare cards** at page level
-      — the portrait, the condition, the leads and the digest — and a bare
-      card carries no margin at all. So the season heading sat flush
-      against the portrait while every other gap on the screen was 2rem,
-      which reads as a rendering fault rather than as a group.
-
-      `space-y-8` rather than an `mb-8` on each of the four, because the
-      fifth card added here would have the bug again. It cannot
-      double-space what is already spaced: a margin utility on the child
-      wins over the `:where()` rule this generates, so a section still
-      ends 2rem from what follows it and the header still ends 1.5rem
-      from what follows it. It reaches exactly the blocks that state
-      nothing.
-
-      **`lg:[&>*]:mb-10` rather than the mobile `mb-8`, alongside `Card`'s
-      own new `lg:p-6`.** Both are the same answer to *"isn't there a
-      simpler solution?"* after three rounds of adding content to close a
-      vertical gap: more air around what is already here, at the one
-      breakpoint the gap was ever reported at, rather than another
-      widget. Mobile keeps its tighter `mb-8` — a phone has no gap to
-      close and this app is used one-handed, where more scrolling per
-      screen is a real cost.
-    */
-    <div className="space-y-8 lg:[column-width:22rem] 2xl:[column-width:26rem] lg:gap-10 lg:space-y-0 [&>*]:mb-8 lg:[&>*]:mb-10 [&>*]:break-inside-avoid [&>*]:last:mb-0">
+    <div className="space-y-10 lg:space-y-12">
       {/*
         ── The glance ──────────────────────────────────────────────────
         Who you are, the chapter you are in, and the same XP split eight
         ways. One card, because those are one quantity at three
-        resolutions rather than three questions. The ring on the portrait
-        **is** the XP bar — same numerator, same denominator — so nothing
-        in it draws that quantity twice.
-
-        First in DOM order, so it is the first thing a column-1 reader
-        meets — the same "glance before the day" order this page has
-        always used, now expressed as flow order rather than row order.
-
-        **`avatarSize="large"` grows the figure at `2xl`**, reported
-        after the width and column fixes still left the page "sparse
-        with cards" — filling the gutter with more empty column width
-        was never going to read as designed, and the figure this app
-        already draws for every level is the one element on the screen
-        that is decoration *and* real information at once, the same
-        reasoning behind Spinner's spinning record. No other screen
-        opts in, so the character sheet itself keeps its fixed 120px.
+        resolutions rather than three questions. No heading of its own —
+        a page that opens on a picture of you does not need to be told
+        it is about you, the same call this file has made since the
+        page had no header at all.
       */}
       <SheetCard
         {...(sheet.data === undefined ? {} : { traits: sheet.data.traits })}
@@ -193,137 +132,77 @@ export function HomePage() {
         }
       />
 
-      {/*
-        ── The day ─────────────────────────────────────────────────────
-        **The habits used to lead this band and are gone entirely.** The
-        recurring tracking moved to a calendar, so what the day asks of
-        you is now the quests you chose, the buffs you have left, and the
-        season's challenges — the things with a decision in them rather
-        than a checkbox.
+      <div>
+        <ZoneHeading>Quests</ZoneHeading>
+        <div className={ZONE_FLOW}>
+          <ActiveQuests
+            main={active.data?.main}
+            side={active.data?.side}
+            {...(leadingArc === undefined ? {} : { arc: leadingArc })}
+          />
 
-        No section headers here, reported as _"it makes the app feel less
-        gamified and breaks up the flow"_: each card names itself, and
-        the rules were doing separating that the spacing already does.
-      */}
-      <ActiveQuests
-        main={active.data?.main}
-        side={active.data?.side}
-        {...(leadingArc === undefined ? {} : { arc: leadingArc })}
-      />
+          {/*
+            Silent unless a goal has something available to work on
+            next — see the note in `GoalsCard`. A goal is a planning
+            surface rather than a quest, so this sits beside the quests
+            it is adjacent to in spirit without pretending to be one.
+          */}
+          <GoalsCard />
 
-      {/*
-        Silent unless a goal has something available to work on next —
-        see the note in `GoalsCard`. A goal is a planning surface rather
-        than a quest, so this sits beside the quests it is adjacent to in
-        spirit without pretending to be one.
-      */}
-      <GoalsCard />
+          {/*
+            `Campaigns` is the arc at full size (every stage, every lap,
+            editable), which `ActiveQuests`' `ArcSlot` only ever
+            summarised. It is a fragment returning one `<Section>` per
+            arc, so each arc becomes its own masonry block within this
+            zone rather than one giant one.
+          */}
+          <Campaigns />
+          <QuestBoard />
+        </div>
+      </div>
 
-      {/*
-        **Quests merged into Today wholesale — see `QuestBoard`'s own
-        doc.** `Campaigns` is the arc at full size (every stage, every
-        lap, editable), which `ActiveQuests`' `ArcSlot` only ever
-        summarised. It is a fragment returning one `<Section>` per arc,
-        so each arc becomes its own masonry block rather than one giant
-        one — the same transparency `QuestBoard` relies on for Suggested,
-        Contracts and the board to distribute independently too.
-      */}
-      <Campaigns />
-      <QuestBoard />
+      <div>
+        <ZoneHeading>Today</ZoneHeading>
+        <div className={ZONE_FLOW}>
+          {/*
+            The card names itself and links to the screen, which is why
+            this zone's heading does not repeat "Buffs" — it had been
+            saying so directly over a card whose first line already
+            does.
+          */}
+          <LimitsCard />
 
-      {/*
-        The card names itself and links to the screen, which is why
-        losing the heading above it cost nothing here — it had been
-        saying "Buffs" directly over a card whose first line says Buffs.
-      */}
-      <LimitsCard />
+          {/*
+            `RecentTraining` reads `useRecentWorkouts`, already built for
+            the History screen, and is silent under two sessions rather
+            than showing a single bar that cannot be a trend.
+          */}
+          <RecentTraining />
 
-      {/*
-        **Added as real content, not decoration.** Reported after the
-        `lg` breakpoint and the fixed shell cap still left a genuinely
-        tall window with empty space below the cards: capping width
-        fixed the horizontal spread, and the answer to the *vertical*
-        gap picked from that report was "add real content widgets", not
-        another gated visual flourish. `RecentTraining` reads
-        `useRecentWorkouts`, already built for the History screen, and
-        is silent under two sessions rather than showing a single bar
-        that cannot be a trend. It renders at every width, the same
-        footing every other card on this page stands on.
-      */}
-      <RecentTraining />
+          {/*
+            `TodayGoals` reuses `GoalsToday`/`GoalRow` wholesale — see
+            its own doc for why this was a capability the app already
+            had and nothing rendered. Silent under the same rule as
+            everything else here.
+          */}
+          <TodayGoals />
 
-      {/*
-        **A second real-content addition from the same "add more" round.**
-        `TodayGoals` reuses `GoalsToday`/`GoalRow` wholesale — see its own
-        doc for why this was a capability the app already had and nothing
-        rendered. Silent under the same rule as everything else here.
-      */}
-      <TodayGoals />
-
-      {/* Both silent unless this morning's read found something. */}
-
-      {/*
-        **The season sits below the day now**, asked for as _"I'd move
-        season info underneath traits and today."_ That reverses its last
-        move, which brought it up into the portrait's own row, and the
-        reversal has a reason the earlier arrangement did not: a season
-        is the slowest thing on this screen. It changes four times a
-        year, where everything above it changes today, and the ordering
-        this screen has always argued about — work first, readout last —
-        puts the slowest readout at the bottom rather than in the first
-        thing you see each morning.
-
-        Above the Areas list and the ladder legend, because those two are
-        **navigation and reference** rather than readings. This is still
-        something to look at; they are ways to leave.
-      */}
-      {/*
-        **The season names itself inside the card now.** Its heading went
-        with the others, and the label could not go with it: what the
-        season line says — which chapter of the year this is — is not
-        recoverable from a list of challenges. So it moved in as the
-        card's first line, keeping the name beside the measurement the
-        way this file already insists.
-
-        The comment sits *above* the conditional rather than inside it,
-        because a JSX comment cannot be a bare sibling in a `&&`
-        expression — the same trap this file records for attribute
-        expressions, one shape along.
-      */}
-      {season.data !== undefined && (
-        <Card>
-          <ChallengePass season={{ label: season.data.label, daysLeft: season.data.daysLeft }} />
-        </Card>
-      )}
-
-      {/*
-        **The stray-links block is gone.** Reported as _"it just felt
-        random having those as stray links while everything else fit
-        nicely into a gamified layout"_ — and it was: a row of chips for
-        screens whose only shared property was lacking a tab, which is a
-        fact about the navigation rather than about the person.
-
-        Each one went where it belongs instead. Resume and Mind hang off
-        Job search; Houses off the house-search stage of the arc. Job
-        search and Goals themselves now hang off `QuestBoard`'s own
-        heading, on this page, since Quests stopped being a separate
-        screen with a header of its own to carry them.
-      */}
-
-      {/*
-        **The ladder legend is gone too.** It listed Untrained through
-        Elite with a note that the bodyweight multiples are fixed on
-        purpose, and it was the last thing on the screen — a key to
-        badges that appear on Train and Finance rather than here.
-
-        What it cost is worth naming: the five words now have no
-        explanation anywhere in the app. They are still anchored — the
-        thresholds live in `domain/game/character.ts` and each ladder row
-        states the load or figure its next rung needs — but the sentence
-        saying the scale is not the app's to move is only in the code
-        now. If a rung ever reads as arbitrary, that is the sentence to
-        bring back, on Train rather than here.
-      */}
+          {/*
+            **The season names itself inside the card**, keeping the
+            name beside the measurement the way this file has always
+            insisted. The comment sits *above* the conditional rather
+            than inside it, because a JSX comment cannot be a bare
+            sibling in a `&&` expression.
+          */}
+          {season.data !== undefined && (
+            <Card>
+              <ChallengePass
+                season={{ label: season.data.label, daysLeft: season.data.daysLeft }}
+              />
+            </Card>
+          )}
+        </div>
+      </div>
     </div>
   )
 }
