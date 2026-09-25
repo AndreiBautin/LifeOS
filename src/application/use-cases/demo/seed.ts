@@ -361,6 +361,23 @@ async function seedQuests(deps: DemoDeps): Promise<void> {
 }
 
 /** Two shelves, a prerequisite chain, and something already owned. */
+/**
+ * Two shelves, each with more than one root and one chain running three
+ * levels deep — wide and tall enough that the tree draws as an actual
+ * tree rather than a couple of boxes in the corner of the page.
+ *
+ * **Grown from four upgrades to nine, asked for directly**: "build out
+ * the tech tree more so that it fills the entire page width." The tree
+ * never scales *up* to fill space it does not have content for — see
+ * `TechTree`'s own doc, "a small tree is never blown up to fill a
+ * desktop, which would make three upgrades look like a skill web" —
+ * so the honest fix for a thin-looking tree is more real content, not a
+ * different scaling rule. Base gets three independent roots (desk,
+ * dishwasher, power rack) instead of one; Gadgets keeps its
+ * cross-branch edge off the desk and gains a second level on it
+ * (monitor arm → ultrawide monitor) plus an independent root of its
+ * own (headphones).
+ */
 async function seedTechTree(deps: DemoDeps): Promise<void> {
   const desk = await addUpgrade(
     {
@@ -372,14 +389,26 @@ async function seedTechTree(deps: DemoDeps): Promise<void> {
     deps,
   )
 
-  await addUpgrade(
+  const arm = await addUpgrade(
     {
       title: 'Monitor arm',
       category: 'office',
       shelf: 'tech',
       estimatedCostMinorUnits: 12_000,
-      /* Gated on the desk, so the tree has an edge to draw and a lock. */
+      /* Gated on the desk, so the tree has a cross-branch edge to draw. */
       ...(desk.upgrade === undefined ? {} : { prerequisiteId: desk.upgrade.id }),
+    },
+    deps,
+  )
+
+  await addUpgrade(
+    {
+      title: 'Ultrawide monitor',
+      category: 'technology',
+      shelf: 'tech',
+      estimatedCostMinorUnits: 70_000,
+      /* A second level on the same chain — desk -> arm -> monitor. */
+      ...(arm.upgrade === undefined ? {} : { prerequisiteId: arm.upgrade.id }),
     },
     deps,
   )
@@ -403,6 +432,48 @@ async function seedTechTree(deps: DemoDeps): Promise<void> {
   if (keyboard.upgrade !== undefined) {
     await updateUpgrade(keyboard.upgrade.id, { status: 'purchased' }, deps)
   }
+
+  await addUpgrade(
+    {
+      title: 'Noise-cancelling headphones',
+      category: 'technology',
+      shelf: 'tech',
+      estimatedCostMinorUnits: 30_000,
+    },
+    deps,
+  )
+
+  const dishwasher = await addUpgrade(
+    {
+      title: 'Dishwasher',
+      category: 'home',
+      shelf: 'base',
+      estimatedCostMinorUnits: 80_000,
+    },
+    deps,
+  )
+
+  await addUpgrade(
+    {
+      title: 'Water filter',
+      category: 'home',
+      shelf: 'base',
+      estimatedCostMinorUnits: 15_000,
+      ...(dishwasher.upgrade === undefined ? {} : { prerequisiteId: dishwasher.upgrade.id }),
+    },
+    deps,
+  )
+
+  /* Priced above the pool on purpose, for a node that reads "Short". */
+  await addUpgrade(
+    {
+      title: 'Power rack',
+      category: 'gym',
+      shelf: 'base',
+      estimatedCostMinorUnits: 350_000,
+    },
+    deps,
+  )
 
   const dropped = await addUpgrade(
     {
