@@ -405,190 +405,194 @@ export function BasePage() {
       <PageHeader title="Base" subtitle="The place you live, and what it is asking for" />
 
       {/*
-        **Cards that name themselves, where four `Section`s used to stack
-        a heading and a lit rule above each one.** Asked for as _"refactor
-        its looks so it's cleaner like we did with the homepage"_ — and
-        the home screen's own note is the argument: a heading over a rule
-        over a description, four times down one screen, is what a settings
-        pane looks like. Each of those headings named something the card
-        beneath it already said.
-
-        `space-y-4` rather than `space-y-8` for the same reason. Two rem
-        between cards was holding apart blocks that had a heading each;
-        without them the gap reads as a gulf.
+        **Two columns, not one long stack.** Reported directly: "could we
+        make codex, map, tech and base also not scroll." `Declutter`
+        alone (a house-wide reading plus every room) runs about as tall
+        as Jobs and Upgrades put together, so it gets a column to
+        itself; the other two — both short, both lists of a handful of
+        rows — share the second. `lg:items-start`, the same "a shorter
+        column simply ends" call Today and Quests already make, rather
+        than stretching either to match the other.
       */}
-      {/*
-        **Declutter leads now, because the chores are gone.** A chore
-        was a `Daily` filed to Base, so removing the recurring tracking
-        took them off this screen too — that half of the house moved to
-        a calendar. What is left is the work that has an end: how clear
-        each room is, the jobs with steps, and what there is to save
-        for.
-      */}
-      <Declutter />
+      <div className="space-y-4 lg:grid lg:grid-cols-2 lg:items-start lg:gap-4 lg:space-y-0">
+        {/*
+          **Declutter leads now, because the chores are gone.** A chore
+          was a `Daily` filed to Base, so removing the recurring tracking
+          took them off this screen too — that half of the house moved to
+          a calendar. What is left is the work that has an end: how clear
+          each room is, the jobs with steps, and what there is to save
+          for.
+        */}
+        <Declutter />
 
-      <Card>
-        <CardHeading
-          icon={<Hammer size={16} aria-hidden />}
-          title="Jobs"
-          action={
-            <Button
-              size="sm"
-              onClick={() => {
-                setAddingJob(!addingJob)
-              }}
-            >
-              {addingJob ? 'Close' : 'Add'}
-            </Button>
-          }
-        />
-
-        {addingJob && (
-          <AddJob
-            onDone={() => {
-              setAddingJob(false)
-            }}
-          />
-        )}
-
-        {jobs.data === undefined ? null : jobs.data.length === 0 ? (
-          <Empty title="Nothing broken">
-            A job opens with the errand it usually is — find the right person, get a quote, book the
-            appointment — or with the one you do yourself: work out what it needs, get the
-            materials, do the work.
-          </Empty>
-        ) : (
-          <ul>
-            {jobs.data.map((project) => (
-              <JobRow key={project.id} project={project} />
-            ))}
-          </ul>
-        )}
-      </Card>
-
-      <Card>
-        <CardHeading
-          icon={<Wrench size={16} aria-hidden />}
-          title="Upgrades"
-          action={
-            <>
-              {/*
-                **What is already in the house, and what was decided
-                against, behind the same eye the chores use.** Both are
-                records rather than things to do: the list you open this
-                card for is what you are saving for. Folded rather than
-                dropped, because the only control that can un-cancel a
-                dropped upgrade lives on its row.
-              */}
-              {restingUpgrades.length > 0 && (
+        <div className="space-y-4">
+          <Card>
+            <CardHeading
+              icon={<Hammer size={16} aria-hidden />}
+              title="Jobs"
+              action={
                 <Button
                   size="sm"
-                  variant={showingRestUpgrades ? 'primary' : 'ghost'}
-                  aria-pressed={showingRestUpgrades}
-                  aria-label={`${showingRestUpgrades ? 'Hide' : 'Show'} ${String(restingUpgrades.length)} owned and dropped`}
                   onClick={() => {
-                    setShowingRestUpgrades(!showingRestUpgrades)
+                    setAddingJob(!addingJob)
                   }}
                 >
-                  <EyeIcon open={showingRestUpgrades} />
+                  {addingJob ? 'Close' : 'Add'}
                 </Button>
-              )}
-              <Button
-                size="sm"
-                onClick={() => {
-                  setAddingUpgrade(!addingUpgrade)
+              }
+            />
+
+            {addingJob && (
+              <AddJob
+                onDone={() => {
+                  setAddingJob(false)
                 }}
-              >
-                {addingUpgrade ? 'Close' : 'Add'}
-              </Button>
-            </>
-          }
-        />
-
-        {addingUpgrade && (
-          <AddHouseUpgrade
-            onDone={() => {
-              setAddingUpgrade(false)
-            }}
-          />
-        )}
-
-        {upgrades.data === undefined ? null : upgrades.data.length === 0 ? (
-          <Empty title="Nothing on the list">
-            Add one above, or send something across from the tech tree. It shares the same wallet
-            either way — a dishwasher and a barbell come out of the same money.
-          </Empty>
-        ) : (
-          <>
-            {houseWanted.length > 0 && (
-              <div>
-                {/*
-                  What the list comes to, with the unpriced ones *named*
-                  rather than folded in as nothing. A couch with no
-                  estimate is not a free couch, and a total that pretended
-                  otherwise would be understated in the direction that
-                  matters.
-
-                  The "Wanted" label above it is gone: with the owned and
-                  dropped rows behind the eye, this list is the only one
-                  on screen and a heading over it says nothing the card's
-                  own name did not.
-                */}
-                {total.priced > 0 && (
-                  <p className="text-ink-700 numeric mb-1.5 text-xs">
-                    {formatMinorUnits(total.minorUnits)} across {total.priced}
-                    {total.unpriced > 0 && ` · ${String(total.unpriced)} unpriced`}
-                  </p>
-                )}
-                <ul className="space-y-1.5">
-                  {houseWanted.map((upgrade) => (
-                    <UpgradeRow key={upgrade.id} upgrade={upgrade} />
-                  ))}
-                </ul>
-              </div>
+              />
             )}
 
-            {houseWanted.length === 0 && !showingRestUpgrades && (
-              <p className="text-ink-500 text-sm">Nothing on the wishlist.</p>
+            {jobs.data === undefined ? null : jobs.data.length === 0 ? (
+              <Empty title="Nothing broken">
+                A job opens with the errand it usually is — find the right person, get a quote, book
+                the appointment — or with the one you do yourself: work out what it needs, get the
+                materials, do the work.
+              </Empty>
+            ) : (
+              <ul>
+                {jobs.data.map((project) => (
+                  <JobRow key={project.id} project={project} />
+                ))}
+              </ul>
+            )}
+          </Card>
+
+          <Card>
+            <CardHeading
+              icon={<Wrench size={16} aria-hidden />}
+              title="Upgrades"
+              action={
+                <>
+                  {/*
+                    **What is already in the house, and what was decided
+                    against, behind the same eye the chores use.** Both are
+                    records rather than things to do: the list you open this
+                    card for is what you are saving for. Folded rather than
+                    dropped, because the only control that can un-cancel a
+                    dropped upgrade lives on its row.
+                  */}
+                  {restingUpgrades.length > 0 && (
+                    <Button
+                      size="sm"
+                      variant={showingRestUpgrades ? 'primary' : 'ghost'}
+                      aria-pressed={showingRestUpgrades}
+                      aria-label={`${showingRestUpgrades ? 'Hide' : 'Show'} ${String(restingUpgrades.length)} owned and dropped`}
+                      onClick={() => {
+                        setShowingRestUpgrades(!showingRestUpgrades)
+                      }}
+                    >
+                      <EyeIcon open={showingRestUpgrades} />
+                    </Button>
+                  )}
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      setAddingUpgrade(!addingUpgrade)
+                    }}
+                  >
+                    {addingUpgrade ? 'Close' : 'Add'}
+                  </Button>
+                </>
+              }
+            />
+
+            {addingUpgrade && (
+              <AddHouseUpgrade
+                onDone={() => {
+                  setAddingUpgrade(false)
+                }}
+              />
             )}
 
-            {showingRestUpgrades && (
-              <div className="border-ink-800 mt-3 space-y-3 border-t pt-3">
-                {houseOwned.length > 0 && (
+            {upgrades.data === undefined ? null : upgrades.data.length === 0 ? (
+              <Empty title="Nothing on the list">
+                Add one above, or send something across from the tech tree. It shares the same
+                wallet either way — a dishwasher and a barbell come out of the same money.
+              </Empty>
+            ) : (
+              <>
+                {houseWanted.length > 0 && (
                   <div>
-                    <span className="text-ink-700 mb-1.5 block text-xs tracking-wide uppercase">
-                      In the house
-                    </span>
+                    {/*
+                      What the list comes to, with the unpriced ones *named*
+                      rather than folded in as nothing. A couch with no
+                      estimate is not a free couch, and a total that pretended
+                      otherwise would be understated in the direction that
+                      matters.
+
+                      The "Wanted" label above it is gone: with the owned and
+                      dropped rows behind the eye, this list is the only one
+                      on screen and a heading over it says nothing the card's
+                      own name did not.
+                    */}
+                    {total.priced > 0 && (
+                      <p className="text-ink-700 numeric mb-1.5 text-xs">
+                        {formatMinorUnits(total.minorUnits)} across {total.priced}
+                        {total.unpriced > 0 && ` · ${String(total.unpriced)} unpriced`}
+                      </p>
+                    )}
                     <ul className="space-y-1.5">
-                      {houseOwned.map((upgrade) => (
+                      {houseWanted.map((upgrade) => (
                         <UpgradeRow key={upgrade.id} upgrade={upgrade} />
                       ))}
                     </ul>
                   </div>
                 )}
 
-                {houseDropped.length > 0 && (
-                  <div>
-                    <span className="text-ink-700 mb-1.5 block text-xs tracking-wide uppercase">
-                      Dropped
-                    </span>
-                    <ul className="space-y-1.5">
-                      {houseDropped.map((upgrade) => (
-                        <UpgradeRow key={upgrade.id} upgrade={upgrade} />
-                      ))}
-                    </ul>
+                {houseWanted.length === 0 && !showingRestUpgrades && (
+                  <p className="text-ink-500 text-sm">Nothing on the wishlist.</p>
+                )}
+
+                {showingRestUpgrades && (
+                  <div className="border-ink-800 mt-3 space-y-3 border-t pt-3">
+                    {houseOwned.length > 0 && (
+                      <div>
+                        <span className="text-ink-700 mb-1.5 block text-xs tracking-wide uppercase">
+                          In the house
+                        </span>
+                        <ul className="space-y-1.5">
+                          {houseOwned.map((upgrade) => (
+                            <UpgradeRow key={upgrade.id} upgrade={upgrade} />
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {houseDropped.length > 0 && (
+                      <div>
+                        <span className="text-ink-700 mb-1.5 block text-xs tracking-wide uppercase">
+                          Dropped
+                        </span>
+                        <ul className="space-y-1.5">
+                          {houseDropped.map((upgrade) => (
+                            <UpgradeRow key={upgrade.id} upgrade={upgrade} />
+                          ))}
+                        </ul>
+                      </div>
+                    )}
                   </div>
                 )}
-              </div>
+              </>
             )}
-          </>
-        )}
 
-        <Link to="/upgrades" className={cn(buttonStyles({ variant: 'outline' }), 'mt-3 w-full')}>
-          <Wrench size={16} aria-hidden />
-          The rest of the tech tree
-        </Link>
-      </Card>
+            <Link
+              to="/upgrades"
+              className={cn(buttonStyles({ variant: 'outline' }), 'mt-3 w-full')}
+            >
+              <Wrench size={16} aria-hidden />
+              The rest of the tech tree
+            </Link>
+          </Card>
+        </div>
+      </div>
     </div>
   )
 }

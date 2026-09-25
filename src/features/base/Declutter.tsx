@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useServices } from '@/app/context'
 import { Badge, Button, Card, CardHeading, Empty } from '@/components/shared/primitives'
 import { Meter } from '@/components/shared/Meter'
+import { PercentRing } from '@/components/shared/PercentRing'
 import { describeClear, ROOM_SUGGESTIONS, type RoomStanding } from '@/domain/base/declutter'
 import {
   addRoom,
@@ -366,46 +367,63 @@ export function Declutter() {
             it as zero would make adding one read as the house getting
             worse.
           */}
-          <div className="border-ink-800 mb-2 border-b pb-3">
-            <div className="flex items-baseline justify-between gap-2">
-              <span className="text-ink-50 text-sm font-medium">The house</span>
-              {standing?.clear === undefined ? (
-                <Badge tone="neutral">Nothing read yet</Badge>
-              ) : (
-                <span className="flex items-center gap-2">
-                  {standing.change !== undefined && standing.change !== 0 && (
-                    <span
-                      className={[
-                        'numeric text-xs',
-                        standing.change > 0 ? 'text-good-500' : 'text-bad-500',
-                      ].join(' ')}
-                    >
-                      {standing.change > 0 ? '+' : ''}
-                      {standing.change} in {COMPARE_DAYS} days
-                    </span>
-                  )}
-                  <Badge tone={standing.clear >= 70 ? 'good' : 'neutral'}>
-                    {describeClear(standing.clear)}
-                  </Badge>
-                </span>
+          <div className="border-ink-800 mb-2 flex items-start gap-3 border-b pb-3">
+            <div className="min-w-0 flex-1">
+              <div className="flex items-baseline justify-between gap-2">
+                <span className="text-ink-50 text-sm font-medium">The house</span>
+                {standing?.clear === undefined ? (
+                  <Badge tone="neutral">Nothing read yet</Badge>
+                ) : (
+                  <span className="flex items-center gap-2">
+                    {standing.change !== undefined && standing.change !== 0 && (
+                      <span
+                        className={[
+                          'numeric text-xs',
+                          standing.change > 0 ? 'text-good-500' : 'text-bad-500',
+                        ].join(' ')}
+                      >
+                        {standing.change > 0 ? '+' : ''}
+                        {standing.change} in {COMPARE_DAYS} days
+                      </span>
+                    )}
+                    <Badge tone={standing.clear >= 70 ? 'good' : 'neutral'}>
+                      {describeClear(standing.clear)}
+                    </Badge>
+                  </span>
+                )}
+              </div>
+
+              {standing?.clear !== undefined && (
+                <Meter
+                  className="mt-1.5"
+                  value={standing.clear}
+                  of={100}
+                  height={6}
+                  label="The house overall"
+                />
+              )}
+
+              {standing !== undefined && standing.unread.length > 0 && (
+                <p className="text-ink-700 mt-1 text-xs">
+                  {standing.unread.length} room{standing.unread.length === 1 ? '' : 's'} not looked
+                  at yet, and left out of the average rather than counted as nothing.
+                </p>
               )}
             </div>
 
+            {/*
+              **A second reading of the same fraction, the same
+              "line stays, ring is the wide-screen extra" call
+              `ChallengePass`/`ChallengeRing` already make.** Base was
+              otherwise all `Meter` bars and cards; asked directly for
+              "some sort of interesting visual" per page.
+            */}
             {standing?.clear !== undefined && (
-              <Meter
-                className="mt-1.5"
+              <PercentRing
                 value={standing.clear}
-                of={100}
-                height={6}
-                label="The house overall"
+                good={standing.clear >= 70}
+                label={`The house is ${describeClear(standing.clear)}, ${String(standing.clear)}% clear`}
               />
-            )}
-
-            {standing !== undefined && standing.unread.length > 0 && (
-              <p className="text-ink-700 mt-1 text-xs">
-                {standing.unread.length} room{standing.unread.length === 1 ? '' : 's'} not looked at
-                yet, and left out of the average rather than counted as nothing.
-              </p>
             )}
           </div>
 
