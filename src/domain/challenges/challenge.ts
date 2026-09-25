@@ -44,7 +44,8 @@ export interface ShippedChallenge {
   /** What it belongs to, for grouping on screen. */
   readonly event: string
   readonly title: string
-  readonly blurb: string
+  /** Absent when the title already says the whole thing. */
+  readonly blurb?: string
   /** `MM-DD`. */
   readonly from: string
   readonly to: string
@@ -138,7 +139,7 @@ export function challengesFor(
         id,
         title: one.title,
         event: one.event,
-        blurb: one.blurb,
+        ...(one.blurb === undefined ? {} : { blurb: one.blurb }),
         from: `${String(year)}-${one.from}`,
         to: `${String(toYear)}-${one.to}`,
         ...(mark?.completedAt === undefined ? {} : { completedAt: mark.completedAt }),
@@ -203,40 +204,28 @@ export const SHIPPED_CHALLENGES: readonly ShippedChallenge[] = [
   {
     slug: 'harvest-walk',
     event: 'Turning of the year',
-    title: 'Walk somewhere the leaves have turned',
-    blurb: 'A short walk while the colour lasts.',
+    title: 'Visit a pumpkin patch',
     from: '09-20',
     to: '10-31',
   },
   {
     slug: 'halloween-carve',
     event: 'Halloween',
-    title: 'Carve something',
-    blurb: 'A pumpkin, or anything else.',
+    title: 'Carve a pumpkin',
     from: '10-20',
     to: '10-31',
   },
   {
     slug: 'halloween-horror',
     event: 'Halloween',
-    title: 'Watch something frightening',
-    blurb: 'Log it in the Codex too and it pays twice.',
+    title: 'Watch a scary movie',
     from: '10-20',
     to: '10-31',
   },
   {
     slug: 'thanksgiving-cook',
     event: 'Thanksgiving',
-    title: 'Cook for somebody else',
-    blurb: 'Any meal, for someone else.',
-    from: '11-20',
-    to: '11-30',
-  },
-  {
-    slug: 'thanksgiving-move',
-    event: 'Thanksgiving',
-    title: 'Move before the meal',
-    blurb: 'A walk or a session, before the table.',
+    title: 'Thanksgiving dinner with family',
     from: '11-20',
     to: '11-30',
   },
