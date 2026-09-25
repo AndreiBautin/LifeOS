@@ -110,7 +110,7 @@ export function TrainZone() {
     <div className="space-y-6 lg:grid lg:grid-cols-2 lg:items-start lg:gap-8 lg:space-y-0">
       <div className="space-y-6">
         {nextDay !== undefined ? (
-          <div>
+          <Card>
             <CardHeading
               icon={<Dumbbell size={16} aria-hidden />}
               title="Next session"
@@ -128,7 +128,7 @@ export function TrainZone() {
               }
             />
             {week?.label !== undefined && <p className="text-ink-500 mb-2 text-sm">{week.label}</p>}
-            <Card>
+            <div>
               <div className="mb-3 flex items-start justify-between gap-2">
                 <div className="min-w-0">
                   <h3 className="text-ink-50 text-lg font-semibold">{nextDay.label}</h3>
@@ -191,8 +191,8 @@ export function TrainZone() {
                   {skipSession.isPending ? 'Skipping…' : 'Skip this one'}
                 </Button>
               )}
-            </Card>
-          </div>
+            </div>
+          </Card>
         ) : (
           <Empty title="Building your session">
             <p>One moment — the block is put together from your priorities each time.</p>
