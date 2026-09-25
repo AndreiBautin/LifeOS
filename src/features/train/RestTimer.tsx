@@ -77,7 +77,7 @@ export function RestTimer({ startedAt, seconds, onDismiss }: Props) {
        * than a bare `56` is what keeps it in step when the rail
        * collapses, with no separate prop to wire through.
        */
-      className="border-ink-800 bg-ink-900 fixed inset-x-0 lg:left-[var(--sidebar-w)] z-30 mx-auto max-w-2xl lg:max-w-4xl xl:max-w-6xl 2xl:max-w-none rounded-t-2xl border-t px-4 py-3 transition-[left] duration-200"
+      className="border-ink-800 bg-ink-900 fixed inset-x-0 lg:left-[var(--sidebar-w)] z-30 mx-auto max-w-2xl lg:max-w-none rounded-t-2xl border-t px-4 py-3 transition-[left] duration-200"
       /*
        * Sits on top of the navigation, and the navigation is taller than
        * it looks.

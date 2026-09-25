@@ -324,15 +324,19 @@ export function AppShell() {
         applies to, so the freed width goes into four *wider* columns
         (~500px+ at this cap) rather than a fifth narrow one.
 
-        **The cap is gone at `2xl`, rather than raised a fourth time.**
-        Reported against `2400px`, on a monitor wide enough that it still
-        left visible margin: "needs a bit more space to be taken up but
-        almost there." Every previous round of this picked a ceiling
-        number and then had to re-derive, by hand, whether that number
-        was still safe alongside `column-width` — three rounds of that
-        is three chances to get the arithmetic wrong on hardware this
-        session cannot see, which is exactly the mistake this file
-        already warns about for fixed breakpoints.
+        **The cap was gone at `2xl` and not before, and that was still
+        too conservative.** Reported against a real wide monitor whose
+        browser window sat in the `xl` tier rather than past `2xl`
+        (1536px): the page was still visibly capped at `max-w-6xl`
+        (1152px) with real gutters on both sides — "just stretch so all
+        the cards fit the full width of the screen, unless it's mobile
+        or portrait, in which case stack." That is a plainer rule than
+        three tiers converging on `none`: there is no reason to wait for
+        a specific pixel threshold once `column-width` is doing the real
+        safety work (see below), so the cap drops out entirely as soon
+        as the layout is in its landscape-desktop shape at all — `lg`,
+        the same breakpoint every stacked grid on this page switches to
+        columns at.
 
         `column-width` is the part of this that was never a guess: it is
         a real CSS *minimum*, and the browser only ever adds a column
@@ -341,10 +345,10 @@ export function AppShell() {
         never drop below the minimum however wide `main` gets. That
         makes the outer cap redundant as a safety mechanism once
         `column-width` carries it: `main` can fill however much space
-        the sidebar leaves it (`2xl:max-w-none`) and the page still
+        the sidebar leaves it (`lg:max-w-none`) and the page still
         cannot produce an unsafely narrow column on any monitor, because
-        `column-width:26rem` is the thing refusing that, not a ceiling
-        picked to suit one assumed screen.
+        `column-width:22rem`/`26rem` is the thing refusing that, not a
+        ceiling picked to suit one assumed screen.
       */}
       <main
         id="main"
@@ -355,7 +359,7 @@ export function AppShell() {
          * desktop page for no reason any element still needed. `lg:pb-6`
          * recovers it.
          */
-        className="mx-auto w-full max-w-2xl lg:max-w-4xl xl:max-w-6xl 2xl:max-w-none flex-1 pb-28 lg:pb-6 pt-[calc(1rem_+_var(--safe-top))] pl-[calc(1rem_+_var(--safe-left))] lg:pl-[calc(1rem_+_var(--safe-left)_+_var(--sidebar-w))] pr-[calc(1rem_+_var(--safe-right))]"
+        className="mx-auto w-full max-w-2xl lg:max-w-none flex-1 pb-28 lg:pb-6 pt-[calc(1rem_+_var(--safe-top))] pl-[calc(1rem_+_var(--safe-left))] lg:pl-[calc(1rem_+_var(--safe-left)_+_var(--sidebar-w))] pr-[calc(1rem_+_var(--safe-right))]"
       >
         <Outlet />
       </main>
