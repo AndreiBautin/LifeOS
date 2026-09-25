@@ -4,9 +4,13 @@ import { Link } from 'react-router-dom'
 import { Card } from '@/components/shared/primitives'
 import { buttonStyles } from '@/components/shared/styles'
 import { TodayGoals } from '@/features/backlog/TodayGoals'
+import { useCampaigns } from '@/features/campaign/hooks'
 import { ChallengePass } from '@/features/challenges/ChallengePass'
 import { SheetCard } from '@/features/character/SheetCard'
 import { useCharacterSheet, useSeasonProgress } from '@/features/character/hooks'
+import { ActiveQuests } from '@/features/projects/ActiveQuests'
+import { useActiveQuests } from '@/features/projects/hooks'
+import { NextSessionCard } from '@/features/train/NextSessionCard'
 import { LimitsCard } from '@/features/vitals/LimitsCard'
 
 /**
@@ -49,10 +53,20 @@ import { LimitsCard } from '@/features/vitals/LimitsCard'
  * day's own readouts — is short enough that this page has never needed
  * scroll protection in the first place.
  *
- * **One zone now, not several.** With Quests, Finance and Train gone,
- * the only grouped block left is the day's own readouts — Buffs,
- * today's reading goals, the season card — which do not need a "Today"
- * heading repeating the page's own subject.
+ * **The un-fold took the daily glance off Today along with the full
+ * board, and that was too much.** Reported directly: *"we completely
+ * removed the today's quests stuff from you page... could we make that
+ * a full today page where it has working through, similarly it has
+ * today's training, quests, etc."* Right — `TodayGoals` had already
+ * established the pattern this page runs on: a short daily summary
+ * here, the full screen (Codex) elsewhere. Removing `ActiveQuests` and
+ * the next session outline along with `QuestBoard` and the rest of
+ * `TrainZone` threw the summary out with the board. `ActiveQuests` (the
+ * two quest slots) and `NextSessionCard` (shared with `TrainZone`, at
+ * full detail rather than a trimmed teaser — asked for that way
+ * directly) are both back, and neither reintroduces the height problem
+ * this page was un-folded to fix: that came from four *entire zones*
+ * landing on one page at once, not from two moderate cards.
  *
  * **Weight came and went within this same page's lifetime.** It sat
  * here briefly as `WeightTrend`, reintroduced this session and then
@@ -65,6 +79,15 @@ import { LimitsCard } from '@/features/vitals/LimitsCard'
 export function HomePage() {
   const season = useSeasonProgress()
   const sheet = useCharacterSheet()
+  const active = useActiveQuests()
+  /*
+   * The first arc with something outstanding. Several arcs are possible
+   * and one that is finished has nothing to say about what you are
+   * working on now — the same logic `QuestsPage` runs for the same
+   * reason.
+   */
+  const arcs = useCampaigns()
+  const leadingArc = (arcs.data ?? []).find((one) => one.next !== undefined)
 
   return (
     <div className="space-y-8 lg:space-y-10">
@@ -157,9 +180,29 @@ export function HomePage() {
               rule as everything else here.
             */}
             <TodayGoals />
+
+            {/*
+              **The two quest slots, same component `QuestsPage` opens
+              on.** No heading of its own, matching `LimitsCard` and
+              `TodayGoals` beside it — the cards already say what they
+              are. `QuestBoard`, `GoalsCard` and `Campaigns` stay on
+              `/quests`; this is the glance, not the board.
+            */}
+            <ActiveQuests
+              main={active.data?.main}
+              side={active.data?.side}
+              {...(leadingArc === undefined ? {} : { arc: leadingArc })}
+            />
           </div>
 
           <div className="space-y-6">
+            {/*
+              **The full next-session card, shared with `TrainZone`.**
+              Asked for at this depth rather than a trimmed teaser —
+              see `NextSessionCard`'s own doc.
+            */}
+            <NextSessionCard />
+
             {/*
               **The season names itself inside the card**, keeping the
               name beside the measurement the way this file has

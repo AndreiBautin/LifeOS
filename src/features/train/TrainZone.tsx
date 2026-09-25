@@ -1,25 +1,15 @@
-import { Dumbbell, History, ListChecks, Plus, Play, SkipForward, Trophy } from 'lucide-react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Plus, Trophy } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 
 import { useServices, useSettings } from '@/app/context'
 import { useQuery } from '@tanstack/react-query'
 import { buildCharacter } from '@/domain/game/character'
 import { totalWorkingSets } from '@/domain/logging/workout-log'
 import { AttributeRow } from '@/features/character/CharacterParts'
-import { clampPosition, dayAt, weekAt } from '@/application/use-cases/programs/current-program'
-import { STARTING_POSITION } from '@/domain/programs/position'
-import { Badge, Button, Card, CardHeading, Empty } from '@/components/shared/primitives'
-import { buttonStyles } from '@/components/shared/styles'
+import { Button, Card, CardHeading } from '@/components/shared/primitives'
 
-import {
-  useActiveWorkout,
-  useExercises,
-  usePosition,
-  useProgram,
-  useSkipSession,
-  useStartWorkout,
-} from './hooks'
-import { SessionOutline, VolumeTargets } from './SessionOutline'
+import { useActiveWorkout, useStartWorkout } from './hooks'
+import { NextSessionCard } from './NextSessionCard'
 
 /**
  * Train's at-a-glance content — the plan, the standards, and a way to
@@ -53,6 +43,11 @@ import { SessionOutline, VolumeTargets } from './SessionOutline'
  * past a typical window. Side by side it is the *taller* of the two,
  * which is what actually fits. The same 2-column pairing `HomePage`
  * already uses for its own two cards.
+ *
+ * **`NextSessionCard` moved out to its own file**, because `HomePage`
+ * renders it too now — see that component's own doc for why a glance
+ * of it came back to Today. Nothing about its content changed here;
+ * only where the JSX lives.
  */
 function StrengthStandards() {
   const services = useServices()
@@ -86,118 +81,16 @@ function StrengthStandards() {
 }
 
 export function TrainZone() {
-  const program = useProgram()
-  const position = usePosition()
-  const exercises = useExercises()
   const startWorkout = useStartWorkout()
-  const skipSession = useSkipSession()
   const activeWorkout = useActiveWorkout()
   const navigate = useNavigate()
-
-  const here =
-    program.data === undefined
-      ? undefined
-      : clampPosition(program.data, position.data ?? { ...STARTING_POSITION, startedAt: '' })
-
-  const nextDay =
-    program.data === undefined || here === undefined ? undefined : dayAt(program.data, here)
-  const week =
-    program.data === undefined || here === undefined ? undefined : weekAt(program.data, here)
 
   const alreadyOpen = activeWorkout.data != null
 
   return (
     <div className="space-y-6 lg:grid lg:grid-cols-2 lg:items-start lg:gap-8 lg:space-y-0">
       <div className="space-y-6">
-        {nextDay !== undefined ? (
-          <Card>
-            <CardHeading
-              icon={<Dumbbell size={16} aria-hidden />}
-              title="Next session"
-              action={
-                <>
-                  <Link to="/program" className={buttonStyles({ variant: 'ghost', size: 'sm' })}>
-                    <ListChecks size={16} aria-hidden />
-                    Program
-                  </Link>
-                  <Link to="/history" className={buttonStyles({ variant: 'ghost', size: 'sm' })}>
-                    <History size={16} aria-hidden />
-                    History
-                  </Link>
-                </>
-              }
-            />
-            {week?.label !== undefined && <p className="text-ink-500 mb-2 text-sm">{week.label}</p>}
-            <div>
-              <div className="mb-3 flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <h3 className="text-ink-50 text-lg font-semibold">{nextDay.label}</h3>
-                  {nextDay.focus !== undefined && (
-                    <p className="text-ink-500 mt-0.5 text-xs">{nextDay.focus}</p>
-                  )}
-                </div>
-                <div className="flex shrink-0 gap-1.5">
-                  {week?.isDeload === true && <Badge tone="warn">deload</Badge>}
-                  <Badge>cycle {here?.cycleNumber ?? 1}</Badge>
-                </div>
-              </div>
-
-              <SessionOutline day={nextDay} library={exercises.data ?? []} />
-
-              <VolumeTargets day={nextDay} />
-
-              {alreadyOpen ? (
-                <Button
-                  variant="primary"
-                  size="lg"
-                  full
-                  onClick={() => {
-                    void navigate('/train')
-                  }}
-                >
-                  <Play size={20} aria-hidden />
-                  Resume session
-                </Button>
-              ) : (
-                <Button
-                  variant="primary"
-                  size="lg"
-                  full
-                  disabled={startWorkout.isPending}
-                  onClick={() => {
-                    startWorkout.mutate(undefined, {
-                      onSuccess: () => {
-                        void navigate('/train')
-                      },
-                    })
-                  }}
-                >
-                  <Play size={20} aria-hidden />
-                  Start session
-                </Button>
-              )}
-
-              {!alreadyOpen && (
-                <Button
-                  variant="ghost"
-                  full
-                  className="mt-2"
-                  disabled={skipSession.isPending}
-                  onClick={() => {
-                    skipSession.mutate()
-                  }}
-                >
-                  <SkipForward size={16} aria-hidden />
-                  {skipSession.isPending ? 'Skipping…' : 'Skip this one'}
-                </Button>
-              )}
-            </div>
-          </Card>
-        ) : (
-          <Empty title="Building your session">
-            <p>One moment — the block is put together from your priorities each time.</p>
-          </Empty>
-        )}
+        <NextSessionCard />
       </div>
 
       <div className="space-y-6">
