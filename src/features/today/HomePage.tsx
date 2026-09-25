@@ -1,25 +1,17 @@
 import { Settings } from 'lucide-react'
-import { useCampaigns } from '@/features/campaign/hooks'
 import { Link } from 'react-router-dom'
 
 import { Card } from '@/components/shared/primitives'
 import { buttonStyles } from '@/components/shared/styles'
-import { ActiveQuests } from '@/features/projects/ActiveQuests'
-import { QuestBoard } from '@/features/projects/QuestBoard'
-import { useActiveQuests } from '@/features/projects/hooks'
-import { Campaigns } from '@/features/campaign/Campaigns'
-import { GoalsCard } from '@/features/goals/GoalsCard'
 import { TodayGoals } from '@/features/backlog/TodayGoals'
 import { ChallengePass } from '@/features/challenges/ChallengePass'
-import { FinanceZone } from '@/features/finance/FinanceZone'
 import { SheetCard } from '@/features/character/SheetCard'
 import { useCharacterSheet, useSeasonProgress } from '@/features/character/hooks'
-import { TrainZone } from '@/features/train/TrainZone'
 import { LimitsCard } from '@/features/vitals/LimitsCard'
 import { WeightTrend } from '@/features/vitals/WeightTrend'
 
 /**
- * One screen: who you are, what today asks, and where you stand.
+ * Who you are, and what today asks of you.
  *
  * **This merges Today and You, and it reverses a rule this file used to
  * state.** That rule was "Today is present tense, You is standing", and
@@ -33,136 +25,38 @@ import { WeightTrend } from '@/features/vitals/WeightTrend'
  * first.* That is a legitimate call about their own app and it is
  * recorded here rather than quietly applied.
  *
- * **Quests folded in later, for the same kind of reason** — see
- * `QuestBoard`'s own doc.
+ * **Quests, Finance and Train all folded in here for a while, and all
+ * three un-folded again.** Each was asked for directly — condensing
+ * pages that felt too sparse on a wide monitor — and each held for as
+ * long as the resulting page was short enough to read without a
+ * scrollbar. It stopped holding once all three were folded in at once:
+ * natural content height outgrew what a typical landscape-desktop
+ * window could show, and the `useFitToViewport` mechanism built to
+ * avoid a scrollbar on a large monitor was shrinking the *entire page*
+ * to compensate — reported as "still condensed" well after a real width
+ * fix had already landed and been verified live, and only explained by
+ * reading the actual DOM on the reporter's own browser through the
+ * Claude-in-Chrome extension, which found a `transform: scale(0.43)`
+ * centred on the block. At 2765px of natural content height against a
+ * ~1200px available window, no scale exists that both avoids a
+ * scrollbar and keeps the text legible.
  *
- * **Zones, not one flat masonry flow.** Every card used to be a direct
- * child of one page-wide `column-width` container, which is what let a
- * quest card, a buff card and a training chart land in adjacent columns
- * with nothing saying they were different kinds of thing. Reported
- * plainly once the width fix landed and there was finally room to see
- * it: *"it seems a little bit disjointed, could we get some headers to
- * organize the sections."*
+ * Given the choice — full-size text with ordinary scroll, or a
+ * shrink-to-fit that reads as tiny and cramped — the explicit answer was
+ * neither: split the zones back into their own screens, `/quests`,
+ * `/finance`, and `TrainZone` back under `/train`, so no one page has to
+ * hold this much height at once. `useFitToViewport.ts` is deleted with
+ * no caller left to use it. What is left here — `SheetCard` and the
+ * day's own readouts — is short enough that this page has never needed
+ * scroll protection in the first place.
  *
- * **A header cannot just sit inside the old flow, or it drifts from its
- * own group.** `column-fill:balance` places content by height alone, so
- * a heading and the first card of the group it names could land at the
- * bottom of one column while the rest of the group starts the next —
- * an orphaned label pointing at nothing. Each zone below is its own
- * `<div>` with a heading followed by its *own* nested `column-width`
- * flow, so a zone's cards can only ever land in a column that also
- * holds that zone's heading.
- *
- * **Three zones now, not one per card.** `SheetCard`, and each
- * single-card block further down (`LimitsCard`, `WeightTrend`,
- * `TodayGoals`, `ChallengePass`) already open with their own name —
- * "Buffs", "Weight" — so a zone heading over just one of those would
- * repeat what the card already says. The disjointed feeling was
- * specifically the *Quests* cluster: `ActiveQuests`, `GoalsCard`,
- * `Campaigns` and `QuestBoard` are four to seven differently-named
- * cards with nothing tying them together as one subject, which "Quests"
- * now does. The remaining single-purpose readouts sit under "Today",
- * which is the one grouping word that was missing rather than repeated.
- *
- * **"Finance" and "Train" followed, folded in for the same reason
- * Quests was.** `FinanceZone` carries the five cards `/finance` used to
- * hold at its own route with its own nav tab — asked for directly,
- * *"folding in the finance page to the homepage too."* It gets the
- * auto-balanced `ZONE_FLOW`, like Quests, rather than Today's
- * hand-paired 2-column grid: five differently-shaped cards (a ladder
- * card, the pool, an entry form, a birth-year card, a folding history
- * list) balance across columns the way Quests' four to seven do, where
- * Today's grid exists specifically because *its* four cards kept
- * landing three-and-one.
- *
- * **Train is the one fold with a wrinkle.** An active workout still
- * takes over the whole screen at `/train` — that rule survives intact,
- * see `TrainZone`'s own doc for how. What folded in here is only the
- * plan and the standards.
- *
- * **"Today" and "Train" sit side by side at `xl`, reported once four
- * zones made the page feel cramped again: "it's getting cramped again
- * spread it out."** Stacking every zone vertically is what was making
- * the page taller every time one more folded in, on a monitor with
- * plenty of unused width beside each zone. See the `xl:grid` wrapper
- * around them for the reasoning on why those two specifically pair —
- * Finance stays full-width, because its own five cards already spread
- * across columns and pairing it beside another zone would squeeze both.
- *
- * **Spacing lives on the outer stack, not on each zone.** `Section`
- * already exists in `primitives.tsx` and was not reused here because it
- * hardcodes its own `mb-8` — stacking that against the outer
- * `space-y-*` this file already uses would double the gap, the same
- * trap this file's own history already records once. `ZoneHeading`
- * carries no margin of its own below the zone; the outer `space-y-8
- * lg:space-y-10` is the only thing deciding the gap between zones.
- *
- * **Two answers already tried and reversed before this one, and a third
- * — scale-to-fit — reversed after this one.** A height cap with
- * `overflow-y-auto` on each column stopped the page from scrolling and
- * read as three fussy little scrollbars boxed into a page that used to
- * just be a page — rightly rejected: *"adding a scroll to the sections
- * was not what I had in mind."* Tightening the spacing afterwards worked
- * only by coincidence, for whatever amount of content happened to be in
- * the database that day.
- *
- * **`useFitToViewport` held for a while — scaling the whole block down
- * so a landscape desktop never needed a scrollbar — and it stopped
- * holding once Quests, Train and Finance had all folded onto this one
- * page.** Reported as "still condensed" after a real width fix had
- * already landed and been verified live: the actual cause was a
- * `transform: scale(0.43)` centred on the block, not a width cap at
- * all — confirmed by reading the live DOM through the Claude-in-Chrome
- * extension on the reporter's own browser, which is what finally cut
- * through several rounds of a plausible-looking wrong theory (stale
- * cache, then CDN staleness, then browser zoom, all ruled out one at a
- * time before the actual transform was found). At 2765px of natural
- * content height against a 1199px available window, no scale exists
- * that both avoids a scrollbar and keeps the text legible — the
- * mechanism's own `MIN_SCALE` floor exists for exactly this ("below
- * this, ordinary page scroll beats showing everything correctly but
- * illegibly"), and by this point almost every real window lands below
- * it. The premise the whole mechanism was built on — that the content
- * fits without scaling on a wide monitor — stopped being true once four
- * zones lived on one page, so the fix is to let this page scroll like
- * every other page in the app rather than keep shrinking to avoid it.
- * `useFitToViewport.ts` is deleted rather than kept unused; it has no
- * other caller.
+ * **One zone now, not several.** With Quests, Finance and Train gone,
+ * the only grouped block left is the day's own readouts — Buffs,
+ * Weight, today's reading goals, the season card — which do not need a
+ * "Today" heading repeating the page's own subject.
  */
-
-function ZoneHeading({ children }: { readonly children: string }) {
-  return (
-    <div
-      className="border-ink-800 mb-4 border-l-2 pl-2.5"
-      style={{ borderColor: 'var(--color-accent-500)' }}
-    >
-      <h2 className="text-ink-50 text-lg font-semibold tracking-tight">{children}</h2>
-    </div>
-  )
-}
-
-/*
- * The same masonry recipe the page used to run at top level, now scoped
- * to one zone's cards rather than the whole page. Repeated as a literal
- * class string rather than factored into a shared constant, because
- * Tailwind's own arbitrary-value classes are easiest to grep for when
- * whichever number in them needs to change again — this file has
- * changed `column-width` three times already for reasons fully
- * unrelated to zones.
- */
-const ZONE_FLOW =
-  'space-y-6 lg:[column-width:22rem] 2xl:[column-width:26rem] lg:gap-8 lg:space-y-0 [&>*]:mb-6 lg:[&>*]:mb-8 [&>*]:break-inside-avoid [&>*]:last:mb-0'
 
 export function HomePage() {
-  const active = useActiveQuests()
-  /*
-   * The first arc with something outstanding. Several arcs are possible
-   * and one that is finished has nothing to say about what you are
-   * working on now.
-   */
-  const arcs = useCampaigns()
-  const leadingArc = (arcs.data ?? []).find((one) => one.next !== undefined)
-
   const season = useSeasonProgress()
   const sheet = useCharacterSheet()
 
@@ -177,29 +71,28 @@ export function HomePage() {
         it is about you, the same call this file has made since the
         page had no header at all.
 
-        **Capped at `lg:max-w-xl`, and set beside "Quests" rather than
-        stacked above it.** Both needed a real fix rather than being
-        left alone. Pulling `SheetCard` out of the old page-wide
-        masonry flow to make room for zones also pulled it out of the
-        one thing that had ever bounded its width — a masonry column —
-        so with nothing capping it, it stretched to the full page:
-        reported as "cap it back to match the other cards' width."
+        **Capped at `lg:max-w-xl`, and set beside the day's readouts
+        rather than stacked above them.** Both needed a real fix rather
+        than being left alone. Pulling `SheetCard` out of the old
+        page-wide masonry flow to make room for zones also pulled it out
+        of the one thing that had ever bounded its width — a masonry
+        column — so with nothing capping it, it stretched to the full
+        page: reported as "cap it back to match the other cards' width."
         `xl` (36rem) sits a little wider than a single zone column on
         purpose — this card carries an avatar, `MainLifts` and eight
-        trait bars, genuinely more than a Buffs or Recent-training card
+        trait bars, genuinely more than a Buffs or weight-trend card
         holds, so matching a column exactly would have squeezed it back
-        toward the wrapping bug two commits already had to fix.
+        toward a wrapping bug an earlier commit already had to fix.
 
-        **Stacking it above "Quests" full-width also left the entire
-        row beside it empty**, reported the very next round: "you have
-        to scroll to see everything despite lots of white space on the
-        first row." Capping the width fixed how thin the card spread;
-        it did nothing about the fact that a capped, standalone block
-        no longer shares a row with anything. `lg:flex` puts the two
-        side by side instead — `SheetCard` fixed at its own cap on the
-        left, the "Quests" zone filling whatever width is left on the
-        right — so the freed space actually holds quest cards rather
-        than sitting behind the avatar doing nothing.
+        **Stacking it above the readouts full-width also left the entire
+        row beside it empty**, reported once already for the same
+        arrangement beside a different neighbour: "you have to scroll to
+        see everything despite lots of white space on the first row."
+        Capping the width fixed how thin the card spread; it did nothing
+        about the fact that a capped, standalone block no longer shares
+        a row with anything. `lg:flex` puts the two side by side instead
+        — `SheetCard` fixed at its own cap on the left, the day's
+        readouts filling whatever width is left on the right.
       */}
       <div className="space-y-10 lg:flex lg:items-start lg:gap-8 lg:space-y-0">
         <div className="lg:max-w-xl lg:shrink-0">
@@ -218,151 +111,68 @@ export function HomePage() {
           />
         </div>
 
-        <div className="min-w-0 lg:flex-1">
-          <ZoneHeading>Quests</ZoneHeading>
-          <div className={ZONE_FLOW}>
-            <ActiveQuests
-              main={active.data?.main}
-              side={active.data?.side}
-              {...(leadingArc === undefined ? {} : { arc: leadingArc })}
-            />
+        {/*
+          **A fixed 2-column pairing, not an auto-balanced masonry
+          flow.** Reported against an auto-balanced version elsewhere on
+          this page, before it moved out: "maybe move the bottom row up
+          so we don't need to scroll... and fill that last bit of bottom
+          right space." `column-fill:balance` genuinely struggles with
+          only four blocks of wildly different heights — `ChallengePass`
+          alone can be four times `TodayGoals`' height. Four blocks are
+          simple enough to pair by hand instead: `LimitsCard` and
+          `WeightTrend` are both compact day-to-day readouts,
+          `TodayGoals` and `ChallengePass` are both slower-moving ones,
+          so each pair shares a column and the two columns land far
+          closer in height than an auto-balanced flow did.
+        */}
+        <div className="min-w-0 space-y-6 lg:grid lg:flex-1 lg:grid-cols-2 lg:items-stretch lg:gap-8 lg:space-y-0">
+          <div className="space-y-6 lg:flex lg:flex-col lg:space-y-8">
+            {/*
+              The card names itself and links to the screen, which is
+              why nothing here repeats "Buffs" — it had been saying so
+              directly over a card whose first line already does.
+            */}
+            <LimitsCard />
 
             {/*
-              Silent unless a goal has something available to work on
-              next — see the note in `GoalsCard`. A goal is a planning
-              surface rather than a quest, so this sits beside the
-              quests it is adjacent to in spirit without pretending to
-              be one.
+              `WeightTrend` replaces `RecentTraining` in this slot,
+              asked for directly — "recent training bar graph isn't
+              that good, replace it with a weight tracker." See its own
+              doc for the history of the domain it reintroduces.
+
+              **`lg:flex-1`, so it is the one absorbing the stretch.**
+              Its content is genuinely the shortest of the four — an
+              input and a chart against `ChallengePass`'s five-item
+              list — so it is also the one where a taller card with
+              room to spare reads as normal rather than as a mistake.
             */}
-            <GoalsCard />
+            <WeightTrend className="lg:flex-1" />
+          </div>
+
+          <div className="space-y-6 lg:flex lg:flex-col lg:space-y-8">
+            {/*
+              `TodayGoals` reuses `GoalsToday`/`GoalRow` wholesale —
+              see its own doc for why this was a capability the app
+              already had and nothing rendered. Silent under the same
+              rule as everything else here.
+            */}
+            <TodayGoals />
 
             {/*
-              `Campaigns` is the arc at full size (every stage, every
-              lap, editable), which `ActiveQuests`' `ArcSlot` only ever
-              summarised. It is a fragment returning one `<Section>`
-              per arc, so each arc becomes its own masonry block within
-              this zone rather than one giant one.
+              **The season names itself inside the card**, keeping the
+              name beside the measurement the way this file has
+              always insisted. The comment sits *above* the
+              conditional rather than inside it, because a JSX comment
+              cannot be a bare sibling in a `&&` expression.
             */}
-            <Campaigns />
-            <QuestBoard />
+            {season.data !== undefined && (
+              <Card className="lg:flex-1">
+                <ChallengePass
+                  season={{ label: season.data.label, daysLeft: season.data.daysLeft }}
+                />
+              </Card>
+            )}
           </div>
-        </div>
-      </div>
-
-      {/*
-        **"Today" and "Train" sit side by side at `xl`, not stacked.**
-        Reported once Train folded in too: *"it's getting cramped again
-        — spread it out."* Both are compact, daily-use zones — a couple
-        of pool rows, a weight reading, today's reading goals, the
-        season card, one lifting card and a standards card — so putting
-        them beside each other rather than under each other uses the
-        width a wide monitor actually has instead of making the page
-        taller every time one more zone folds in. `xl` rather than `lg`,
-        because at `lg` each zone's own masonry columns are already
-        claiming the width; two zones side by side needs the room `xl`
-        actually frees.
-
-        **`xl:items-stretch`, not `items-start`.** Asked directly —
-        *"what's preventing you from spreading these out to take the
-        full height and width available?"* — and the honest answer was
-        that nothing does: every card and column here is sized to its
-        own content, so a shorter zone simply ended with blank page
-        below it rather than the taller neighbour's height. Stretch
-        makes both zone containers match the taller one; the short
-        zone's own last card is what has to absorb the difference, one
-        level down, which is what `flex-1` below is for.
-      */}
-      <div className="space-y-8 xl:grid xl:grid-cols-2 xl:items-stretch xl:gap-8 xl:space-y-0">
-        <div className="xl:flex xl:flex-col">
-          <ZoneHeading>Today</ZoneHeading>
-          {/*
-            **A fixed 2-column pairing, not the auto-balanced `ZONE_FLOW`
-            the "Quests" zone uses.** Reported against the auto-balanced
-            version: "maybe move the bottom row up so we don't need to
-            scroll... and fill that last bit of bottom right space."
-            `column-fill:balance` genuinely struggles with only four
-            blocks of wildly different heights — `ChallengePass` alone can
-            be four times `TodayGoals`' height — so at some widths it drew
-            three columns with one nearly empty. Four blocks are simple
-            enough to pair by hand instead of trusting an algorithm with
-            too little to balance: `LimitsCard` and `WeightTrend` are
-            both compact day-to-day readouts, `TodayGoals` and
-            `ChallengePass` are both slower-moving ones, so each pair
-            shares a column and the two columns land far closer in height
-            than three auto-balanced ones did.
-          */}
-          <div className="space-y-6 lg:grid lg:flex-1 lg:grid-cols-2 lg:items-stretch lg:gap-8 lg:space-y-0">
-            <div className="space-y-6 lg:flex lg:flex-col lg:space-y-8">
-              {/*
-                The card names itself and links to the screen, which is
-                why this zone's heading does not repeat "Buffs" — it had
-                been saying so directly over a card whose first line
-                already does.
-              */}
-              <LimitsCard />
-
-              {/*
-                `WeightTrend` replaces `RecentTraining` in this slot,
-                asked for directly — "recent training bar graph isn't
-                that good, replace it with a weight tracker." See its own
-                doc for the history of the domain it reintroduces.
-
-                **`lg:flex-1`, so it is the one absorbing the stretch.**
-                Its content is genuinely the shortest of the four — an
-                input and a chart against `ChallengePass`'s five-item
-                list — so it is also the one where a taller card with
-                room to spare reads as normal rather than as a mistake.
-              */}
-              <WeightTrend className="lg:flex-1" />
-            </div>
-
-            <div className="space-y-6 lg:flex lg:flex-col lg:space-y-8">
-              {/*
-                `TodayGoals` reuses `GoalsToday`/`GoalRow` wholesale —
-                see its own doc for why this was a capability the app
-                already had and nothing rendered. Silent under the same
-                rule as everything else here.
-              */}
-              <TodayGoals />
-
-              {/*
-                **The season names itself inside the card**, keeping the
-                name beside the measurement the way this file has
-                always insisted. The comment sits *above* the
-                conditional rather than inside it, because a JSX comment
-                cannot be a bare sibling in a `&&` expression.
-              */}
-              {season.data !== undefined && (
-                <Card className="lg:flex-1">
-                  <ChallengePass
-                    season={{ label: season.data.label, daysLeft: season.data.daysLeft }}
-                  />
-                </Card>
-              )}
-            </div>
-          </div>
-        </div>
-
-        <div className="xl:flex xl:flex-col">
-          <ZoneHeading>Train</ZoneHeading>
-          {/*
-            **`TrainZone` folded in, asked for directly: "fold training
-            into it."** Unlike Quests and Finance, this one has a
-            wrinkle: an active workout takes over the whole screen, and
-            that behaviour did not move — see `TrainZone`'s and
-            `TrainPage`'s own docs. What is here is only the plan and the
-            standards; the takeover still happens at `/train`.
-          */}
-          <div className={ZONE_FLOW}>
-            <TrainZone />
-          </div>
-        </div>
-      </div>
-
-      <div>
-        <ZoneHeading>Finance</ZoneHeading>
-        <div className={ZONE_FLOW}>
-          <FinanceZone />
         </div>
       </div>
     </div>

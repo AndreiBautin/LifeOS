@@ -22,24 +22,28 @@ import {
 import { SessionOutline, VolumeTargets } from './SessionOutline'
 
 /**
- * Train's at-a-glance content — folded into Today, the same call
- * Quests and Finance already made: *"fold training into it."*
+ * Train's at-a-glance content — the plan, the standards, and a way to
+ * start a session. Rendered by `TrainPage` at `/train` whenever no
+ * workout is active.
  *
- * **What did not move: the takeover.** `TrainPage` — still mounted at
- * `/train` — keeps its own doc's rule intact: *"an unfinished workout
- * is the only thing that matters until it is finished, and burying it
- * behind a dashboard is how half-logged sessions get lost."* This
- * component never renders `SessionPlayer` or `SessionReport`; it is the
- * plan and the standards, nothing more. Pressing "Start session" here
- * starts the workout and then navigates to `/train`, which is where the
- * full-screen player still lives — Today's multi-zone layout has
- * nowhere to put a screen that is supposed to own the whole viewport.
+ * **This briefly lived embedded on Today instead of here**, folded in
+ * on *"fold training into it,"* and un-folded once Today had absorbed
+ * Quests, Finance and Train all at once and grown taller than a
+ * landscape-desktop window could show without shrinking everything
+ * illegibly small — see `HomePage`'s own doc for the diagnosis. It is
+ * still its own component rather than inlined into `TrainPage`, since
+ * nothing about its content changed, only where it is mounted.
  *
- * If there is already a workout in progress when this renders, the
- * "Next session" card still shows the *next* one rather than the one
- * under way — that is fine, because `/train` is one tap away
- * (the button below still navigates there) and a person mid-session is
- * not the one reading Today for what to do next.
+ * **What never moved: the takeover.** `TrainPage`'s own rule stays
+ * intact: *"an unfinished workout is the only thing that matters until
+ * it is finished, and burying it behind a dashboard is how half-logged
+ * sessions get lost."* This component never renders `SessionPlayer` or
+ * `SessionReport` itself — `TrainPage` decides which of the two to show,
+ * and only falls through to this one when neither applies. Pressing
+ * "Start session" starts the workout and then navigates to `/train`,
+ * which is a no-op route change when this is already mounted there —
+ * the workout query refetching is what actually swaps the view to the
+ * player.
  */
 function StrengthStandards() {
   const services = useServices()

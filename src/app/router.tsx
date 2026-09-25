@@ -12,6 +12,8 @@ import { BasePage } from '@/features/base/BasePage'
 import { LimitsPage } from '@/features/limits/LimitsPage'
 import { MindPage } from '@/features/mind/MindPage'
 import { JobsPage } from '@/features/jobs/JobsPage'
+import { FinancePage } from '@/features/finance/FinancePage'
+import { QuestsPage } from '@/features/projects/QuestsPage'
 import { ResumePage } from '@/features/resume/ResumePage'
 import { UpgradesPage } from '@/features/upgrades/UpgradesPage'
 import { HistoryPage } from '@/features/history/HistoryPage'
@@ -41,26 +43,18 @@ export const router = createBrowserRouter(
         // first screen should be the answer to "what now".
         { index: true, element: <Navigate to="/today" replace /> },
         /*
-         * **Quests merged into Today outright** — see `QuestBoard`'s own
-         * doc in `features/projects/QuestBoard.tsx`. Kept as a redirect
-         * rather than deleted, the rule `/character`, `/party` and
-         * `/vitals` already follow: a PWA shortcut is registered with the
-         * operating system at install time, so an installed copy goes on
-         * asking for this path long after the nav stops mentioning it.
+         * **Quests un-folded from Today back onto its own page** — see
+         * `QuestsPage`'s own doc. It had briefly redirected to `/today`
+         * while folded in; now it renders directly again.
          */
-        { path: 'quests', element: <Navigate to="/today" replace /> },
+        { path: 'quests', element: <QuestsPage /> },
         { path: 'goals', element: <GoalsPage /> },
         { path: 'goals/:id', element: <GoalPage /> },
         /*
-         * Kept as a redirect rather than deleted. The PWA manifest shipped
-         * a "What next" shortcut pointing here, and a shortcut is
-         * registered with the operating system when the app is installed —
-         * an installed copy goes on asking for this path long after the
-         * manifest stops mentioning it. Points straight at `/today` now
-         * rather than through `/quests`, which would otherwise be two
-         * redirects to reach the one destination.
+         * The PWA manifest ships a "What next" shortcut pointing here.
+         * Quests having its own page again is what "next" actually means.
          */
-        { path: 'next', element: <Navigate to="/today" replace /> },
+        { path: 'next', element: <Navigate to="/quests" replace /> },
         { path: 'train', element: <TrainPage /> },
         /*
          * The Plan screen is gone and `/plan` lands on the Program page.
@@ -100,10 +94,10 @@ export const router = createBrowserRouter(
         { path: 'mind', element: <MindPage /> },
         { path: 'jobs', element: <JobsPage /> },
         /*
-         * Folded into Today, the same call `/quests` already made — see
-         * `FinanceZone`'s own doc.
+         * Un-folded from Today back onto its own page — see
+         * `FinancePage`'s own doc.
          */
-        { path: 'finance', element: <Navigate to="/today" replace /> },
+        { path: 'finance', element: <FinancePage /> },
         { path: 'resume', element: <ResumePage /> },
         { path: 'map', element: <AtlasPage /> },
         { path: 'map/share', element: <SharePage /> },

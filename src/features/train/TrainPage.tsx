@@ -1,30 +1,32 @@
 import { useState } from 'react'
-import { Navigate } from 'react-router-dom'
 
 import type { WorkoutReport } from '@/application/use-cases/training/finish-workout'
 import { useSettings } from '@/app/context'
+import { PageHeader } from '@/components/shared/PageHeader'
 
 import { useActiveWorkout, useExercises, useFinishWorkout, useAbandonWorkout } from './hooks'
 import { SessionPlayer } from './SessionPlayer'
 import { SessionReport } from './SessionReport'
+import { TrainZone } from './TrainZone'
 
 /**
- * `/train` now holds only the takeover, not the dashboard.
+ * `/train` — the takeover when a workout is live, `TrainZone` otherwise.
  *
- * **The at-a-glance content — Next session, Standards, log-from-scratch
- * — moved to `TrainZone` on Today**, folded in the same way Quests and
- * Finance were: *"fold training into it."* What could not move is the
- * rule this screen's own history already states: *"an unfinished
- * workout is the only thing that matters until it is finished, and
- * burying it behind a dashboard is how half-logged sessions get lost."*
- * Today's multi-zone layout has nowhere to put a screen that needs the
- * whole viewport, so this route still exists for exactly that case —
- * `TrainZone`'s "Start session" button starts the workout and then
- * navigates here.
+ * **Un-folded from Today**, reversing "fold training into it": once
+ * Quests, Train and Finance had all folded onto one page, that page's
+ * natural content height outgrew what any landscape-desktop window
+ * could show without either scrolling or shrinking everything to
+ * illegible size — see `HomePage`'s own doc for the diagnosis. Splitting
+ * back into separate screens is the fix that keeps every screen short
+ * enough to read at full size without asking any one of them to hold
+ * four zones' worth of content at once.
  *
- * **Redirects to `/today` when neither a workout nor a report is
- * live**, rather than rendering anything of its own. A bare redirect
- * route is the same shape `/quests` and `/finance` already are.
+ * **What never moved: the takeover.** This screen's own history already
+ * states the rule — *"an unfinished workout is the only thing that
+ * matters until it is finished, and burying it behind a dashboard is how
+ * half-logged sessions get lost."* That held true through the fold and
+ * holds true now: a `SessionPlayer` or `SessionReport` in progress always
+ * wins over `TrainZone`, whatever else is on screen.
  */
 export function TrainPage() {
   const { settings } = useSettings()
@@ -68,10 +70,15 @@ export function TrainPage() {
 
   /*
    * Still resolving whether a workout is active — render nothing rather
-   * than redirect on a guess, or a page load straight into a session
-   * would flash Today before snapping back here.
+   * than the dashboard on a guess, or a page load straight into a
+   * session would flash the plan before snapping back to the player.
    */
   if (activeWorkout.isPending) return null
 
-  return <Navigate to="/today" replace />
+  return (
+    <div className="space-y-4">
+      <PageHeader title="Train" />
+      <TrainZone />
+    </div>
+  )
 }

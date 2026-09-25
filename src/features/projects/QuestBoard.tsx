@@ -41,32 +41,31 @@ import {
 import { NextAction, StatusBadge } from './NextAction'
 
 /**
- * Everything the old `/quests` page held below its Active section, now
- * on Today.
+ * Suggested, Contracts, and the full board — the half of `/quests`
+ * `ActiveQuests` doesn't already cover.
  *
- * **Quests merged into Today outright**, asked for after several rounds
- * of decoration failed to close a vertical gap on a wide monitor: "maybe
- * just consider condensing pages, as its not enough content to fill a
- * page in a full monitor screen without looking awkward." Right — the
- * decorative fixes were treating a symptom. `/quests` held Suggested,
- * Contracts and the full board, none of it duplicated on Today, all of
- * it real. The nav bar stays at seven cells — Party's seat had already
- * split into Finance and Tech by the time Quests left — but loses one
- * destination regardless; `router.tsx` redirects
- * `/quests` to `/today` for the same reason `/character`, `/party` and
- * `/vitals` already do — a PWA shortcut installed against the old path
- * has to keep resolving.
+ * **This spent a while folded into Today and is back on its own page.**
+ * Folded in after several rounds of decoration failed to close a
+ * vertical gap on a wide monitor: "maybe just consider condensing
+ * pages." Un-folded once Today had absorbed Quests, Finance and Train
+ * all at once and the resulting page was taller than any window could
+ * show without shrinking everything illegibly small — see `HomePage`'s
+ * and `QuestsPage`'s own docs. `QuestsPage` renders `ActiveQuests` and
+ * this side by side rather than stacked, which is also what fixed the
+ * masonry-balance gap this component's mixed-height cards produced when
+ * every block on Today ran through one auto-balanced flow.
  *
- * **The Active section did not come with it.** `ActiveQuests` already
- * renders on Today in its own right; importing it a second time here
- * would put the main/side quest cards on the page twice.
+ * **The Active section still does not come with it.** `ActiveQuests`
+ * renders separately on `QuestsPage`, in its own column; importing it a
+ * second time here would put the main/side quest cards on the page
+ * twice.
  *
- * **Goals and Job search moved here from the page header Today never
- * had.** Both are reached from nowhere else — a tab is the only
- * unconditional route in this app, and neither has one — so losing their
- * old header would have made them unreachable, the exact "capability
- * nothing can reach" trap this codebase keeps a record of falling into.
- * They sit in the board's own heading action slot instead.
+ * **Goals and Job search live in this board's own heading**, not a page
+ * header `/quests` never had. Both are reached from nowhere else — a tab
+ * is the only unconditional route in this app, and neither has one — so
+ * putting them anywhere less permanent would have made them
+ * unreachable, the exact "capability nothing can reach" trap this
+ * codebase keeps a record of falling into.
  */
 
 const FIELD =

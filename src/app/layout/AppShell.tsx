@@ -1,4 +1,15 @@
-import { BookMarked, ChevronLeft, ChevronRight, Home, Map, Network, User } from 'lucide-react'
+import {
+  BookMarked,
+  ChevronLeft,
+  ChevronRight,
+  Dumbbell,
+  Home,
+  Map,
+  Network,
+  Target,
+  User,
+  Wallet,
+} from 'lucide-react'
 import { useState } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
 
@@ -43,33 +54,35 @@ import {
  * a link on the hub is for somewhere you decide.
  */
 /**
- * Five cells now. Today and You merging took this from eight to seven;
- * Quests folding in kept it at seven, because Party's seat had already
- * split into Finance and Tech by the time Quests left. Finance folding
- * in dropped it to six, and Train folding in a third time — *"fold
- * training into it"* — takes it to five.
+ * Eight cells again, after a round trip through five.
  *
- * **The Today/You merge fixed an overflow this file used to warn about
- * rather than only saving a slot.** Every cell carries `.tap-target`, a
- * 44-pixel accessibility floor that refuses to shrink — so eight need
- * 352 and an iPhone SE at 320 clipped the last tab by 32. Five need 220
- * and fit with room to spare.
+ * **Quests, Finance and Train all folded into Today at various points,
+ * each on its own explicit ask, and all three un-folded together.** The
+ * fold reasoning was sound at the time — a page with too little content
+ * to fill a wide monitor without looking awkward. It stopped being sound
+ * once all three were folded in *at once*: the combined page grew taller
+ * than a landscape-desktop window could show without either scrolling or
+ * shrinking every card to illegible size, which is what a persistent
+ * "still looks cramped" report turned out to trace back to — see
+ * `HomePage`'s own doc for the diagnosis. Splitting back into separate
+ * screens is what keeps each one short enough to read at full size.
  *
- * **Train is the one fold in this line that trades something real.**
- * Quests and Finance are planning/reference screens with no daily
- * reason to open on their own; Train's "start a session" is arguably
- * the single most action-oriented tap in the app, and it lost its
- * direct nav icon. What replaces it: `TrainZone`'s "Start session"
- * button sits on Today, which is the screen the app already opens on
- * — so starting a session is still one tap away, just from the landing
- * screen rather than from a dedicated icon. `/train` itself still
- * exists and still takes over full-screen the moment a workout is
- * active; only the *icon* is gone, not the route.
+ * **This file's own measurement already covers eight cells**, from
+ * before the first fold: 46.9 pixels each at 375 wide, nothing clips,
+ * and the one real limit is a 320-wide iPhone SE 1st-gen, where
+ * `8 × 44 = 352` overflows by 32 — the 44-pixel tap target is an
+ * accessibility floor and does not shrink, so that width would need a
+ * horizontally scrolling bar rather than a narrower cell. Taken
+ * deliberately, the same call it was the first time the bar reached
+ * eight.
  *
- * The freed room in the bar itself is deliberately left as room. The
- * screens without a tab — Limits, Vitals, Job search, Mind, Houses,
- * Resume, the tech tree — are seven, and promoting any one of them is a
- * claim that it is used daily. None of them is.
+ * The freed room in the bar was, for a while, deliberately left as
+ * room — the screens without a tab (Limits, Vitals, Job search, Mind,
+ * Houses, Resume) are a claim that none of them is used daily. Quests,
+ * Finance and Train are not "used daily" in quite the same sense either,
+ * but each one holds enough content on its own that folding it back into
+ * Today is what caused the height problem in the first place, so the
+ * room this time goes to un-cramming rather than staying unclaimed.
  */
 const NAV = [
   /*
@@ -81,6 +94,8 @@ const NAV = [
    * the same reason.
    */
   { to: '/today', label: 'You', Icon: User },
+  { to: '/train', label: 'Train', Icon: Dumbbell },
+  { to: '/quests', label: 'Quests', Icon: Target },
   { to: '/backlog', label: 'Codex', Icon: BookMarked },
   { to: '/map', label: 'Map', Icon: Map },
   /*
@@ -88,18 +103,13 @@ const NAV = [
    * should be its own tab, let's replace the party section."_ Social is
    * not being tracked, so the tab went with the trait and the area.
    *
-   * That takes the bar to **eight**, which this file's own measurement
-   * says is fine at 375 — 46.9 pixels a cell — and clips on a 320-wide
-   * iPhone SE 1st-gen, where 8 × 44 = 352 against 320. The 44-pixel tap
-   * target is an accessibility floor and does not shrink, so 320 would
-   * need a scrolling bar. Chosen deliberately rather than stumbled into.
-   *
    * **"Tech" rather than "Tech tree"**, because the label has to fit the
    * cell: at nine characters it measures past the 46.9 available and
    * would wrap or clip. The screen keeps its full name; this is the
    * abbreviation the bar can hold, the same trade "You" made for
    * "Character".
    */
+  { to: '/finance', label: 'Finance', Icon: Wallet },
   { to: '/upgrades', label: 'Tech', Icon: Network },
   { to: '/base', label: 'Base', Icon: Home },
 ] as const
