@@ -12,7 +12,9 @@ const NOW = new Date('2026-09-05T12:00:00.000Z')
 const clock: Clock = { now: () => NOW }
 
 /** An in-memory stand-in for one collection. */
-function store<T extends { id?: unknown; month?: unknown }>(key: 'id' | 'month' = 'id') {
+function store<T extends { id?: unknown; month?: unknown; day?: unknown }>(
+  key: 'id' | 'month' | 'day' = 'id',
+) {
   const rows = new Map<string, T>()
   const idOf = (row: T) => String(row[key])
 
@@ -65,6 +67,7 @@ function deps() {
     trips: store(),
     places: store(),
     workouts: store(),
+    weighIns: store('day'),
   }
 
   /*

@@ -274,7 +274,7 @@ export function ChallengePass({
       <div className="mt-3 space-y-3">
         {data.challenges.length === 0 ? (
           <Empty title="Nothing this season">
-            <p>Add something you mean to do before it turns.</p>
+            <p>Add something before the season ends.</p>
           </Empty>
         ) : (
           grouped(data.challenges).map(([event, list]) => (
@@ -315,7 +315,7 @@ export function ChallengePass({
               value={title}
               autoFocus
               aria-label="A challenge of your own"
-              placeholder="Something to do before the season turns"
+              placeholder="Something to do this season"
               onChange={(event) => {
                 setTitle(event.target.value)
               }}
