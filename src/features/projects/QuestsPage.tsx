@@ -1,6 +1,9 @@
+import { Swords } from 'lucide-react'
+
 import { useCampaigns } from '@/features/campaign/hooks'
 
 import { PageHeader } from '@/components/shared/PageHeader'
+import { CardHeading } from '@/components/shared/primitives'
 import { ActiveQuests } from './ActiveQuests'
 import { QuestBoard } from './QuestBoard'
 import { useActiveQuests } from './hooks'
@@ -46,6 +49,19 @@ import { GoalsCard } from '@/features/goals/GoalsCard'
  * one is not a gap needing to be filled, the way it is not a bug when
  * two ordinary web pages sitting side by side happen to differ in
  * length.
+ *
+ * **The left column carries an "Active" heading it did not need
+ * content-wise, purely to keep the two columns' visible card borders
+ * lined up.** Reported after the Train page's own top-alignment fix —
+ * *"Quests needs the same treatment."* `ActiveQuests`' first `Slot` is a
+ * bordered `Card` starting flush at the top of its column, where
+ * `QuestBoard`'s first block, "Suggested", leads with a bare
+ * `CardHeading` sitting above its own `NextAction` card — measured at a
+ * real 40px gap between the two columns' first visible borders. Wrapping
+ * "Suggested"'s heading into a `Card` the way Train's was would nest one
+ * `Card` inside `NextAction`'s own, which already carries a border of
+ * its own; matching the missing heading on the *short* side instead
+ * avoids stacking two borders for one block.
  */
 export function QuestsPage() {
   const active = useActiveQuests()
@@ -63,6 +79,8 @@ export function QuestsPage() {
 
       <div className="space-y-6 lg:grid lg:grid-cols-2 lg:items-start lg:gap-8 lg:space-y-0">
         <div className="space-y-6">
+          <CardHeading icon={<Swords size={16} aria-hidden />} title="Active" />
+
           <ActiveQuests
             main={active.data?.main}
             side={active.data?.side}
