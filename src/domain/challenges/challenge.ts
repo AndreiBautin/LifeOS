@@ -233,7 +233,7 @@ export const SHIPPED_CHALLENGES: readonly ShippedChallenge[] = [
   // Winter
   {
     slug: 'winter-give',
-    event: 'Midwinter',
+    event: 'Christmas',
     title: 'Christmas shopping',
     from: '12-01',
     to: '12-24',
@@ -257,13 +257,6 @@ export const SHIPPED_CHALLENGES: readonly ShippedChallenge[] = [
     event: 'New Year',
     title: "New Year's Eve countdown",
     from: '12-27',
-    to: '01-07',
-  },
-  {
-    slug: 'newyear-cold',
-    event: 'New Year',
-    title: 'Polar plunge',
-    from: '01-01',
     to: '01-07',
   },
   {
@@ -296,33 +289,12 @@ export const SHIPPED_CHALLENGES: readonly ShippedChallenge[] = [
     from: '04-01',
     to: '05-31',
   },
-  {
-    slug: 'spring-new-route',
-    event: 'Spring',
-    title: 'Easter egg hunt',
-    from: '04-01',
-    to: '05-31',
-  },
 
   // Summer
-  {
-    slug: 'solstice-late',
-    event: 'Midsummer',
-    title: 'Backyard bonfire',
-    from: '06-15',
-    to: '06-30',
-  },
   {
     slug: 'summer-water',
     event: 'Summer',
     title: 'Go swimming',
-    from: '06-01',
-    to: '08-31',
-  },
-  {
-    slug: 'summer-trip',
-    event: 'Summer',
-    title: 'Go camping',
     from: '06-01',
     to: '08-31',
   },
