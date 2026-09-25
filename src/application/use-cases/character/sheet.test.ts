@@ -69,7 +69,6 @@ function harness(
     dailies: list([]),
     rooms: list([]),
     vices: list([]),
-    weighIns: list([]),
     finance: list([]),
     explored: {
       all: () => Promise.resolve(new Set()),

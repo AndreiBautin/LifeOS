@@ -15,7 +15,6 @@ import type {
   TripRepository,
   UpgradeRepository,
   ViceRepository,
-  WeighInRepository,
   WorkoutRepository,
 } from '@/domain/repositories/ports'
 import type { IdGenerator } from '@/domain/ids/ids'
@@ -48,8 +47,6 @@ export interface DemoDeps {
    */
   readonly explored: ExploredAreaRepository
   readonly workouts: WorkoutRepository
-  /** A trend needs several days of readings, not one. */
-  readonly weighIns: WeighInRepository
   /**
    * Written once, for one field. The exploration ladder has no
    * denominator until somebody names the region they are exploring, so

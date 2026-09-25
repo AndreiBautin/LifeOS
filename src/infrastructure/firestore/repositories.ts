@@ -14,7 +14,6 @@ import type { MetricDefinition, MonthlySnapshot } from '@/domain/review/metric'
 import type { Trip } from '@/domain/atlas/trip/Trip'
 import type { Upgrade } from '@/domain/upgrades/upgrade'
 import type { Vice } from '@/domain/vitals/charges'
-import type { WeighIn } from '@/domain/vitals/weight'
 import type { WorkoutLog } from '@/domain/logging/workout-log'
 import type {
   AttemptRepository,
@@ -33,7 +32,6 @@ import type {
   TripRepository,
   UpgradeRepository,
   ViceRepository,
-  WeighInRepository,
   WorkoutRepository,
 } from '@/domain/repositories/ports'
 
@@ -272,18 +270,6 @@ export function createFirestoreFinance(deps: FirestoreCollectionDeps): FinanceRe
     restoreMany: (rows) => store.restoreMany(rows),
     remove: (month) => store.remove(month),
     purge: (month) => store.remove(month),
-  }
-}
-
-export function createFirestoreWeighIn(deps: FirestoreCollectionDeps): WeighInRepository {
-  const store = createFirestoreCollection<WeighIn>(deps, 'weighIns', (row) => row.day, 'weighIns')
-
-  return {
-    all: () => store.all(),
-    save: (weighIn) => store.save(weighIn),
-    restoreMany: (rows) => store.restoreMany(rows),
-    remove: (day) => store.remove(day),
-    purge: (day) => store.remove(day),
   }
 }
 

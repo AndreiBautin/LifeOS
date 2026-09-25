@@ -16,7 +16,6 @@ import type { MetricDefinition, MonthlySnapshot } from '@/domain/review/metric'
 import type { Place } from '@/domain/atlas/place/Place'
 import type { Trip } from '@/domain/atlas/trip/Trip'
 import type { Vice } from '@/domain/vitals/charges'
-import type { WeighIn } from '@/domain/vitals/weight'
 import type { Tombstone } from '@/domain/sync/tombstone'
 import type { Exercise } from '@/domain/exercises/exercise'
 import type { WorkoutLog } from '@/domain/logging/workout-log'
@@ -334,21 +333,23 @@ export interface LiftDB extends DBSchema {
     value: Vice
   }
   /**
-   * Un-retired. It held one bodyweight reading a day, was scrapped on the
-   * reasoning that a scale and a phone already keep this between them —
-   * a copy here was a second one — and came back anyway, asked for
-   * directly, knowing that cost. See `domain/vitals/weight.ts` for what
-   * "came back" means here: a number and a trend, not the phase-and-rate
-   * machinery the first version also carried.
+   * Retired a second time. It held one bodyweight reading a day, was
+   * scrapped on the reasoning that a scale and a phone already keep this
+   * between them, came back for a session on the same terms, and was
+   * dropped again — reported directly against a real card: "this is
+   * still massive... let's just drop it for now since it's not even
+   * wired up." The full feature (domain, repositories, `WeightTrend`,
+   * demo seeding) survives on the `weight-tracking` branch rather than in
+   * history alone, in case it comes back a third time.
    *
-   * `settings.bodyweight` is untouched and is not this: one figure
+   * `settings.bodyweight` is untouched and was never this: one figure
    * somebody states, which `resolve.ts` loads a bodyweight-plus set from
    * and the strength ladders divide by. This is a series; that is a
    * constant.
    */
   weighIns: {
     key: string
-    value: WeighIn
+    value: RetiredDayRow
   }
   /**
    * Retired, like `conditions` below and on the same terms.

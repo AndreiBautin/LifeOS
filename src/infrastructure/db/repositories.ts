@@ -15,7 +15,6 @@ import type { Place } from '@/domain/atlas/place/Place'
 import type { PlaceId } from '@/domain/atlas/place/PlaceId'
 import type { Trip } from '@/domain/atlas/trip/Trip'
 import type { Vice } from '@/domain/vitals/charges'
-import type { WeighIn } from '@/domain/vitals/weight'
 import type { TripId } from '@/domain/atlas/trip/TripId'
 import type { CellId } from '@/domain/atlas/exploration/GeoCell'
 import type { ProgramPosition } from '@/domain/programs/position'
@@ -54,7 +53,6 @@ import type {
   TripRepository,
   UpgradeRepository,
   ViceRepository,
-  WeighInRepository,
   WorkoutQuery,
   WorkoutRepository,
 } from '@/domain/repositories/ports'
@@ -510,28 +508,6 @@ export function createFinanceRepository(db: AppDatabase, clock: Clock): FinanceR
     },
     async purge(month: string) {
       await db.delete('finance', month)
-    },
-  }
-}
-
-export function createWeighInRepository(db: AppDatabase, clock: Clock): WeighInRepository {
-  return {
-    async all() {
-      return db.getAll('weighIns')
-    },
-    async save(weighIn: WeighIn) {
-      await db.put('weighIns', stamp(weighIn, clock))
-    },
-    async restoreMany(weighIns: readonly WeighIn[]) {
-      const tx = db.transaction('weighIns', 'readwrite')
-      await Promise.all([...weighIns.map((weighIn) => tx.store.put(weighIn)), tx.done])
-    },
-    async remove(day: string) {
-      await db.delete('weighIns', day)
-      await bury(db, clock, 'weighIns', day)
-    },
-    async purge(day: string) {
-      await db.delete('weighIns', day)
     },
   }
 }

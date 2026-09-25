@@ -8,7 +8,6 @@ import { ChallengePass } from '@/features/challenges/ChallengePass'
 import { SheetCard } from '@/features/character/SheetCard'
 import { useCharacterSheet, useSeasonProgress } from '@/features/character/hooks'
 import { LimitsCard } from '@/features/vitals/LimitsCard'
-import { WeightTrend } from '@/features/vitals/WeightTrend'
 
 /**
  * Who you are, and what today asks of you.
@@ -52,8 +51,15 @@ import { WeightTrend } from '@/features/vitals/WeightTrend'
  *
  * **One zone now, not several.** With Quests, Finance and Train gone,
  * the only grouped block left is the day's own readouts — Buffs,
- * Weight, today's reading goals, the season card — which do not need a
- * "Today" heading repeating the page's own subject.
+ * today's reading goals, the season card — which do not need a "Today"
+ * heading repeating the page's own subject.
+ *
+ * **Weight came and went within this same page's lifetime.** It sat
+ * here briefly as `WeightTrend`, reintroduced this session and then
+ * dropped again once a real chart made it "the massive... focal point"
+ * of the page rather than the quiet log form it was meant to be. The
+ * feature survives on the `weight-tracking` branch; nothing here
+ * references it.
  */
 
 export function HomePage() {
@@ -116,31 +122,24 @@ export function HomePage() {
           flow.** Reported against an auto-balanced version elsewhere on
           this page, before it moved out: "maybe move the bottom row up
           so we don't need to scroll... and fill that last bit of bottom
-          right space." `column-fill:balance` genuinely struggles with
-          only four blocks of wildly different heights — `ChallengePass`
-          alone can be four times `TodayGoals`' height. Four blocks are
-          simple enough to pair by hand instead: `LimitsCard` and
-          `WeightTrend` are both compact day-to-day readouts,
-          `TodayGoals` and `ChallengePass` are both slower-moving ones,
-          so each pair shares a column and the two columns land far
-          closer in height than an auto-balanced flow did.
+          right space." `column-fill:balance` genuinely struggles with a
+          handful of blocks of wildly different heights —
+          `ChallengePass` alone can run several times `TodayGoals`' or
+          `LimitsCard`'s height, so it gets a column to itself rather
+          than being paired with anything; the two shorter, compact
+          readouts share the other.
 
-          **`lg:items-start`, not `lg:items-stretch`.** The columns used
-          to be force-matched to the taller one's height, with
-          `WeightTrend` given `flex-1` to absorb the difference —
-          reported once `WeightTrend` had a real chart in it rather than
-          the empty-state placeholder it launched with: "weight tracker
-          appears clunky due to how large it is... it shouldn't really
-          be as much of a focal point as it is here." Stretching a
-          two-line log form and a fixed-height chart to fill whatever
-          gap `ChallengePass`'s challenge list happens to leave is
-          exactly the "taller card with room to spare reads as normal"
-          bet the earlier version made, and a real season with several
-          challenges listed is what showed it does not read as normal —
-          it reads as a chart that swallowed the bottom half of the
-          screen. The left column now simply ends where its own content
-          ends, the same "not a gap needing to be filled" call the
-          Quests page's two columns already make.
+          **`lg:items-start`, not `lg:items-stretch`.** The two columns
+          used to be force-matched to the taller one's height, with
+          whichever card was shortest given `flex-1` to absorb the
+          difference — which read fine while that card was an
+          empty-state placeholder and badly once it held a real chart,
+          reported directly: "this is still massive... it shouldn't
+          really be as much of a focal point as it is here." Neither
+          column stretches to match the other now; the shorter one
+          simply ends where its own content ends, the same "not a gap
+          needing to be filled" call the Quests page's two columns
+          already make.
         */}
         <div className="min-w-0 space-y-6 lg:grid lg:flex-1 lg:grid-cols-2 lg:items-start lg:gap-8 lg:space-y-0">
           <div className="space-y-6">
@@ -152,25 +151,15 @@ export function HomePage() {
             <LimitsCard />
 
             {/*
-              `WeightTrend` replaces `RecentTraining` in this slot,
-              asked for directly — "recent training bar graph isn't
-              that good, replace it with a weight tracker." See its own
-              doc for the history of the domain it reintroduces, and the
-              comment above for why it no longer stretches to fill the
-              column.
-            */}
-            <WeightTrend />
-          </div>
-
-          <div className="space-y-6">
-            {/*
               `TodayGoals` reuses `GoalsToday`/`GoalRow` wholesale —
               see its own doc for why this was a capability the app
               already had and nothing rendered. Silent under the same
               rule as everything else here.
             */}
             <TodayGoals />
+          </div>
 
+          <div className="space-y-6">
             {/*
               **The season names itself inside the card**, keeping the
               name beside the measurement the way this file has

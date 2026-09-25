@@ -117,7 +117,6 @@ export async function seedDemoData(deps: DemoDeps): Promise<SeedResult> {
   await seedTechTree(deps)
   await seedBase(deps)
   await seedFinance(deps)
-  await seedWeighIns(deps)
   await seedArc(deps)
   await seedGoals(deps)
   await seedBuffs(deps)
@@ -469,38 +468,6 @@ async function seedFinance(deps: DemoDeps): Promise<void> {
       savingsMinor: month.saved,
       surplusMinor: 90_000,
     })
-  }
-}
-
-/**
- * Two weeks of readings, gently down, so `WeightTrend` has a line to draw
- * and a seven-day average to report rather than the empty state.
- *
- * A handful of days are skipped on purpose — a real person does not step
- * on a scale every single morning, and a chart with no gaps at all is the
- * one shape a real one never has. Written through the repository the same
- * way `seedFinance` writes history: `WeighIn` has no use case of its own
- * to log a *past* day through, only today's, and history is exactly what
- * a trend needs.
- */
-async function seedWeighIns(deps: DemoDeps): Promise<void> {
-  const readings: readonly [daysAgo: number, weight: number][] = [
-    [13, 202.4],
-    [12, 201.8],
-    [10, 201.2],
-    [9, 200.6],
-    [8, 201.0],
-    [6, 200.2],
-    [5, 199.8],
-    [4, 200.4],
-    [3, 199.6],
-    [2, 199.0],
-    [1, 199.4],
-    [0, 198.8],
-  ]
-
-  for (const [back, weight] of readings) {
-    await deps.weighIns.save({ day: dayKeyAgo(deps.clock, back), weight })
   }
 }
 

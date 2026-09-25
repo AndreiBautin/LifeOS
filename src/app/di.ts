@@ -24,7 +24,6 @@ import type {
   ResumeRepository,
   TripRepository,
   ViceRepository,
-  WeighInRepository,
   UpgradeRepository,
   WorkoutRepository,
 } from '@/domain/repositories/ports'
@@ -59,7 +58,6 @@ import {
   createResumeRepository,
   createTripRepository,
   createViceRepository,
-  createWeighInRepository,
   createUpgradeRepository,
   createWorkoutRepository,
 } from '@/infrastructure/db/repositories'
@@ -111,7 +109,6 @@ export interface AppServices {
   readonly resume: ResumeRepository
   readonly trips: TripRepository
   readonly vices: ViceRepository
-  readonly weighIns: WeighInRepository
   readonly explored: ExploredAreaRepository
   /** The device's own position, behind a port so a test can fake it. */
   readonly geolocation: Geolocation
@@ -317,10 +314,6 @@ export async function bootstrap(): Promise<BootstrapResult> {
       remote === undefined
         ? createViceRepository(db, systemClock)
         : firestoreRepos().createFirestoreVices(remote),
-    weighIns:
-      remote === undefined
-        ? createWeighInRepository(db, systemClock)
-        : firestoreRepos().createFirestoreWeighIn(remote),
     explored: createExploredAreaRepository(db),
     geolocation: createBrowserGeolocation(),
     placeSearch: new NominatimSearchProvider(),

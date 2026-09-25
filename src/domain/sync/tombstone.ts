@@ -39,17 +39,14 @@ export const TOMBSTONED_COLLECTIONS = [
   'rooms',
   'goals',
   /*
-   * Un-retired alongside the store and the repository — see
-   * `weighIns` in `database.ts` for why it came back.
-   */
-  'weighIns',
-  /*
-   * 'conditions' and 'dayReadings' were both here and are gone with the
-   * records that needed them.
-   * A tombstone already written under that name still arrives from
-   * another device or from Firestore, and is simply not matched — which
-   * is the right outcome, because there is no longer a repository for it
-   * to purge from. Nothing has to be cleaned up for that to be safe.
+   * 'conditions', 'dayReadings' and 'weighIns' were all here and are
+   * gone with the records that needed them — 'weighIns' twice over, once
+   * retired and once un-retired for a session before going again.
+   * A tombstone already written under one of these names still arrives
+   * from another device or from Firestore, and is simply not matched —
+   * which is the right outcome, because there is no longer a repository
+   * for it to purge from. Nothing has to be cleaned up for that to be
+   * safe.
    */
 ] as const
 

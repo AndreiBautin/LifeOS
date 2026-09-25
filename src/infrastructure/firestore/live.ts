@@ -28,7 +28,6 @@ export const LIVE_COLLECTIONS = [
   'trips',
   'vices',
   'finance',
-  'weighIns',
   'rooms',
   'attempts',
   'challenges',
