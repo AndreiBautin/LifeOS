@@ -18,8 +18,6 @@ import { TrainZone } from '@/features/train/TrainZone'
 import { LimitsCard } from '@/features/vitals/LimitsCard'
 import { WeightTrend } from '@/features/vitals/WeightTrend'
 
-import { useFitToViewport } from './useFitToViewport'
-
 /**
  * One screen: who you are, what today asks, and where you stand.
  *
@@ -99,15 +97,37 @@ import { useFitToViewport } from './useFitToViewport'
  * carries no margin of its own below the zone; the outer `space-y-8
  * lg:space-y-10` is the only thing deciding the gap between zones.
  *
- * **Two answers already tried and reversed before this one.** A height
- * cap with `overflow-y-auto` on each column stopped the page from
- * scrolling and read as three fussy little scrollbars boxed into a page
- * that used to just be a page — rightly rejected: *"adding a scroll to
- * the sections was not what I had in mind."* Tightening the spacing
- * afterwards worked only by coincidence, for whatever amount of content
- * happened to be in the database that day. What holds regardless of how
- * much content there is lives in `useFitToViewport` — see its own doc —
- * and is applied below to the whole returned block.
+ * **Two answers already tried and reversed before this one, and a third
+ * — scale-to-fit — reversed after this one.** A height cap with
+ * `overflow-y-auto` on each column stopped the page from scrolling and
+ * read as three fussy little scrollbars boxed into a page that used to
+ * just be a page — rightly rejected: *"adding a scroll to the sections
+ * was not what I had in mind."* Tightening the spacing afterwards worked
+ * only by coincidence, for whatever amount of content happened to be in
+ * the database that day.
+ *
+ * **`useFitToViewport` held for a while — scaling the whole block down
+ * so a landscape desktop never needed a scrollbar — and it stopped
+ * holding once Quests, Train and Finance had all folded onto this one
+ * page.** Reported as "still condensed" after a real width fix had
+ * already landed and been verified live: the actual cause was a
+ * `transform: scale(0.43)` centred on the block, not a width cap at
+ * all — confirmed by reading the live DOM through the Claude-in-Chrome
+ * extension on the reporter's own browser, which is what finally cut
+ * through several rounds of a plausible-looking wrong theory (stale
+ * cache, then CDN staleness, then browser zoom, all ruled out one at a
+ * time before the actual transform was found). At 2765px of natural
+ * content height against a 1199px available window, no scale exists
+ * that both avoids a scrollbar and keeps the text legible — the
+ * mechanism's own `MIN_SCALE` floor exists for exactly this ("below
+ * this, ordinary page scroll beats showing everything correctly but
+ * illegibly"), and by this point almost every real window lands below
+ * it. The premise the whole mechanism was built on — that the content
+ * fits without scaling on a wide monitor — stopped being true once four
+ * zones lived on one page, so the fix is to let this page scroll like
+ * every other page in the app rather than keep shrinking to avoid it.
+ * `useFitToViewport.ts` is deleted rather than kept unused; it has no
+ * other caller.
  */
 
 function ZoneHeading({ children }: { readonly children: string }) {
@@ -146,22 +166,9 @@ export function HomePage() {
   const season = useSeasonProgress()
   const sheet = useCharacterSheet()
 
-  const { containerRef, contentRef, fit } = useFitToViewport()
-
   return (
-    <div
-      ref={containerRef}
-      style={fit === null ? undefined : { height: fit.height, overflow: 'hidden' }}
-    >
-      <div
-        style={
-          fit === null
-            ? undefined
-            : { transform: `scale(${String(fit.scale)})`, transformOrigin: 'top center' }
-        }
-      >
-        <div ref={contentRef} className="space-y-8 lg:space-y-10">
-          {/*
+    <div className="space-y-8 lg:space-y-10">
+      {/*
         ── The glance ──────────────────────────────────────────────────
         Who you are, the chapter you are in, and the same XP split eight
         ways. One card, because those are one quantity at three
@@ -194,55 +201,55 @@ export function HomePage() {
         right — so the freed space actually holds quest cards rather
         than sitting behind the avatar doing nothing.
       */}
-          <div className="space-y-10 lg:flex lg:items-start lg:gap-8 lg:space-y-0">
-            <div className="lg:max-w-xl lg:shrink-0">
-              <SheetCard
-                {...(sheet.data === undefined ? {} : { traits: sheet.data.traits })}
-                avatarSize="large"
-                action={
-                  <Link
-                    to="/settings"
-                    aria-label="Settings"
-                    className={buttonStyles({ variant: 'ghost', size: 'sm' })}
-                  >
-                    <Settings size={16} aria-hidden />
-                  </Link>
-                }
-              />
-            </div>
+      <div className="space-y-10 lg:flex lg:items-start lg:gap-8 lg:space-y-0">
+        <div className="lg:max-w-xl lg:shrink-0">
+          <SheetCard
+            {...(sheet.data === undefined ? {} : { traits: sheet.data.traits })}
+            avatarSize="large"
+            action={
+              <Link
+                to="/settings"
+                aria-label="Settings"
+                className={buttonStyles({ variant: 'ghost', size: 'sm' })}
+              >
+                <Settings size={16} aria-hidden />
+              </Link>
+            }
+          />
+        </div>
 
-            <div className="min-w-0 lg:flex-1">
-              <ZoneHeading>Quests</ZoneHeading>
-              <div className={ZONE_FLOW}>
-                <ActiveQuests
-                  main={active.data?.main}
-                  side={active.data?.side}
-                  {...(leadingArc === undefined ? {} : { arc: leadingArc })}
-                />
+        <div className="min-w-0 lg:flex-1">
+          <ZoneHeading>Quests</ZoneHeading>
+          <div className={ZONE_FLOW}>
+            <ActiveQuests
+              main={active.data?.main}
+              side={active.data?.side}
+              {...(leadingArc === undefined ? {} : { arc: leadingArc })}
+            />
 
-                {/*
+            {/*
               Silent unless a goal has something available to work on
               next — see the note in `GoalsCard`. A goal is a planning
               surface rather than a quest, so this sits beside the
               quests it is adjacent to in spirit without pretending to
               be one.
             */}
-                <GoalsCard />
+            <GoalsCard />
 
-                {/*
+            {/*
               `Campaigns` is the arc at full size (every stage, every
               lap, editable), which `ActiveQuests`' `ArcSlot` only ever
               summarised. It is a fragment returning one `<Section>`
               per arc, so each arc becomes its own masonry block within
               this zone rather than one giant one.
             */}
-                <Campaigns />
-                <QuestBoard />
-              </div>
-            </div>
+            <Campaigns />
+            <QuestBoard />
           </div>
+        </div>
+      </div>
 
-          {/*
+      {/*
         **"Today" and "Train" sit side by side at `xl`, not stacked.**
         Reported once Train folded in too: *"it's getting cramped again
         — spread it out."* Both are compact, daily-use zones — a couple
@@ -265,10 +272,10 @@ export function HomePage() {
         zone's own last card is what has to absorb the difference, one
         level down, which is what `flex-1` below is for.
       */}
-          <div className="space-y-8 xl:grid xl:grid-cols-2 xl:items-stretch xl:gap-8 xl:space-y-0">
-            <div className="xl:flex xl:flex-col">
-              <ZoneHeading>Today</ZoneHeading>
-              {/*
+      <div className="space-y-8 xl:grid xl:grid-cols-2 xl:items-stretch xl:gap-8 xl:space-y-0">
+        <div className="xl:flex xl:flex-col">
+          <ZoneHeading>Today</ZoneHeading>
+          {/*
             **A fixed 2-column pairing, not the auto-balanced `ZONE_FLOW`
             the "Quests" zone uses.** Reported against the auto-balanced
             version: "maybe move the bottom row up so we don't need to
@@ -284,17 +291,17 @@ export function HomePage() {
             shares a column and the two columns land far closer in height
             than three auto-balanced ones did.
           */}
-              <div className="space-y-6 lg:grid lg:flex-1 lg:grid-cols-2 lg:items-stretch lg:gap-8 lg:space-y-0">
-                <div className="space-y-6 lg:flex lg:flex-col lg:space-y-8">
-                  {/*
+          <div className="space-y-6 lg:grid lg:flex-1 lg:grid-cols-2 lg:items-stretch lg:gap-8 lg:space-y-0">
+            <div className="space-y-6 lg:flex lg:flex-col lg:space-y-8">
+              {/*
                 The card names itself and links to the screen, which is
                 why this zone's heading does not repeat "Buffs" — it had
                 been saying so directly over a card whose first line
                 already does.
               */}
-                  <LimitsCard />
+              <LimitsCard />
 
-                  {/*
+              {/*
                 `WeightTrend` replaces `RecentTraining` in this slot,
                 asked for directly — "recent training bar graph isn't
                 that good, replace it with a weight tracker." See its own
@@ -306,39 +313,39 @@ export function HomePage() {
                 list — so it is also the one where a taller card with
                 room to spare reads as normal rather than as a mistake.
               */}
-                  <WeightTrend className="lg:flex-1" />
-                </div>
+              <WeightTrend className="lg:flex-1" />
+            </div>
 
-                <div className="space-y-6 lg:flex lg:flex-col lg:space-y-8">
-                  {/*
+            <div className="space-y-6 lg:flex lg:flex-col lg:space-y-8">
+              {/*
                 `TodayGoals` reuses `GoalsToday`/`GoalRow` wholesale —
                 see its own doc for why this was a capability the app
                 already had and nothing rendered. Silent under the same
                 rule as everything else here.
               */}
-                  <TodayGoals />
+              <TodayGoals />
 
-                  {/*
+              {/*
                 **The season names itself inside the card**, keeping the
                 name beside the measurement the way this file has
                 always insisted. The comment sits *above* the
                 conditional rather than inside it, because a JSX comment
                 cannot be a bare sibling in a `&&` expression.
               */}
-                  {season.data !== undefined && (
-                    <Card className="lg:flex-1">
-                      <ChallengePass
-                        season={{ label: season.data.label, daysLeft: season.data.daysLeft }}
-                      />
-                    </Card>
-                  )}
-                </div>
-              </div>
+              {season.data !== undefined && (
+                <Card className="lg:flex-1">
+                  <ChallengePass
+                    season={{ label: season.data.label, daysLeft: season.data.daysLeft }}
+                  />
+                </Card>
+              )}
             </div>
+          </div>
+        </div>
 
-            <div className="xl:flex xl:flex-col">
-              <ZoneHeading>Train</ZoneHeading>
-              {/*
+        <div className="xl:flex xl:flex-col">
+          <ZoneHeading>Train</ZoneHeading>
+          {/*
             **`TrainZone` folded in, asked for directly: "fold training
             into it."** Unlike Quests and Finance, this one has a
             wrinkle: an active workout takes over the whole screen, and
@@ -346,18 +353,16 @@ export function HomePage() {
             `TrainPage`'s own docs. What is here is only the plan and the
             standards; the takeover still happens at `/train`.
           */}
-              <div className={ZONE_FLOW}>
-                <TrainZone />
-              </div>
-            </div>
+          <div className={ZONE_FLOW}>
+            <TrainZone />
           </div>
+        </div>
+      </div>
 
-          <div>
-            <ZoneHeading>Finance</ZoneHeading>
-            <div className={ZONE_FLOW}>
-              <FinanceZone />
-            </div>
-          </div>
+      <div>
+        <ZoneHeading>Finance</ZoneHeading>
+        <div className={ZONE_FLOW}>
+          <FinanceZone />
         </div>
       </div>
     </div>
