@@ -44,6 +44,15 @@ import { SessionOutline, VolumeTargets } from './SessionOutline'
  * which is a no-op route change when this is already mounted there —
  * the workout query refetching is what actually swaps the view to the
  * player.
+ *
+ * **Next session and Standards sit side by side at `lg`, not stacked.**
+ * Reported straight after this page un-folded from Today: "much much
+ * better but Train's got some scroll still." Stacked, the page's height
+ * is the *sum* of both cards — a full session outline (warm-up through
+ * conditioning) plus four standards rows is enough on its own to run
+ * past a typical window. Side by side it is the *taller* of the two,
+ * which is what actually fits. The same 2-column pairing `HomePage`
+ * already uses for its own two cards.
  */
 function StrengthStandards() {
   const services = useServices()
@@ -98,119 +107,123 @@ export function TrainZone() {
   const alreadyOpen = activeWorkout.data != null
 
   return (
-    <>
-      {nextDay !== undefined ? (
-        <div>
-          <CardHeading
-            icon={<Dumbbell size={16} aria-hidden />}
-            title="Next session"
-            action={
-              <>
-                <Link to="/program" className={buttonStyles({ variant: 'ghost', size: 'sm' })}>
-                  <ListChecks size={16} aria-hidden />
-                  Program
-                </Link>
-                <Link to="/history" className={buttonStyles({ variant: 'ghost', size: 'sm' })}>
-                  <History size={16} aria-hidden />
-                  History
-                </Link>
-              </>
-            }
-          />
-          {week?.label !== undefined && <p className="text-ink-500 mb-2 text-sm">{week.label}</p>}
-          <Card>
-            <div className="mb-3 flex items-start justify-between gap-2">
-              <div className="min-w-0">
-                <h3 className="text-ink-50 text-lg font-semibold">{nextDay.label}</h3>
-                {nextDay.focus !== undefined && (
-                  <p className="text-ink-500 mt-0.5 text-xs">{nextDay.focus}</p>
-                )}
+    <div className="space-y-6 lg:grid lg:grid-cols-2 lg:items-start lg:gap-8 lg:space-y-0">
+      <div className="space-y-6">
+        {nextDay !== undefined ? (
+          <div>
+            <CardHeading
+              icon={<Dumbbell size={16} aria-hidden />}
+              title="Next session"
+              action={
+                <>
+                  <Link to="/program" className={buttonStyles({ variant: 'ghost', size: 'sm' })}>
+                    <ListChecks size={16} aria-hidden />
+                    Program
+                  </Link>
+                  <Link to="/history" className={buttonStyles({ variant: 'ghost', size: 'sm' })}>
+                    <History size={16} aria-hidden />
+                    History
+                  </Link>
+                </>
+              }
+            />
+            {week?.label !== undefined && <p className="text-ink-500 mb-2 text-sm">{week.label}</p>}
+            <Card>
+              <div className="mb-3 flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <h3 className="text-ink-50 text-lg font-semibold">{nextDay.label}</h3>
+                  {nextDay.focus !== undefined && (
+                    <p className="text-ink-500 mt-0.5 text-xs">{nextDay.focus}</p>
+                  )}
+                </div>
+                <div className="flex shrink-0 gap-1.5">
+                  {week?.isDeload === true && <Badge tone="warn">deload</Badge>}
+                  <Badge>cycle {here?.cycleNumber ?? 1}</Badge>
+                </div>
               </div>
-              <div className="flex shrink-0 gap-1.5">
-                {week?.isDeload === true && <Badge tone="warn">deload</Badge>}
-                <Badge>cycle {here?.cycleNumber ?? 1}</Badge>
-              </div>
-            </div>
 
-            <SessionOutline day={nextDay} library={exercises.data ?? []} />
+              <SessionOutline day={nextDay} library={exercises.data ?? []} />
 
-            <VolumeTargets day={nextDay} />
+              <VolumeTargets day={nextDay} />
 
-            {alreadyOpen ? (
-              <Button
-                variant="primary"
-                size="lg"
-                full
-                onClick={() => {
-                  void navigate('/train')
-                }}
-              >
-                <Play size={20} aria-hidden />
-                Resume session
-              </Button>
-            ) : (
-              <Button
-                variant="primary"
-                size="lg"
-                full
-                disabled={startWorkout.isPending}
-                onClick={() => {
-                  startWorkout.mutate(undefined, {
-                    onSuccess: () => {
-                      void navigate('/train')
-                    },
-                  })
-                }}
-              >
-                <Play size={20} aria-hidden />
-                Start session
-              </Button>
-            )}
+              {alreadyOpen ? (
+                <Button
+                  variant="primary"
+                  size="lg"
+                  full
+                  onClick={() => {
+                    void navigate('/train')
+                  }}
+                >
+                  <Play size={20} aria-hidden />
+                  Resume session
+                </Button>
+              ) : (
+                <Button
+                  variant="primary"
+                  size="lg"
+                  full
+                  disabled={startWorkout.isPending}
+                  onClick={() => {
+                    startWorkout.mutate(undefined, {
+                      onSuccess: () => {
+                        void navigate('/train')
+                      },
+                    })
+                  }}
+                >
+                  <Play size={20} aria-hidden />
+                  Start session
+                </Button>
+              )}
 
-            {!alreadyOpen && (
-              <Button
-                variant="ghost"
-                full
-                className="mt-2"
-                disabled={skipSession.isPending}
-                onClick={() => {
-                  skipSession.mutate()
-                }}
-              >
-                <SkipForward size={16} aria-hidden />
-                {skipSession.isPending ? 'Skipping…' : 'Skip this one'}
-              </Button>
-            )}
-          </Card>
-        </div>
-      ) : (
-        <Empty title="Building your session">
-          <p>One moment — the block is put together from your priorities each time.</p>
-        </Empty>
-      )}
+              {!alreadyOpen && (
+                <Button
+                  variant="ghost"
+                  full
+                  className="mt-2"
+                  disabled={skipSession.isPending}
+                  onClick={() => {
+                    skipSession.mutate()
+                  }}
+                >
+                  <SkipForward size={16} aria-hidden />
+                  {skipSession.isPending ? 'Skipping…' : 'Skip this one'}
+                </Button>
+              )}
+            </Card>
+          </div>
+        ) : (
+          <Empty title="Building your session">
+            <p>One moment — the block is put together from your priorities each time.</p>
+          </Empty>
+        )}
+      </div>
 
-      <StrengthStandards />
+      <div className="space-y-6">
+        <StrengthStandards />
 
-      {!alreadyOpen && (
-        <Button
-          variant="outline"
-          full
-          disabled={startWorkout.isPending}
-          onClick={() => {
-            startWorkout.mutate(
-              { freestyleTitle: 'Open session' },
-              {
-                onSuccess: () => {
-                  void navigate('/train')
+        {!alreadyOpen && (
+          <Button
+            variant="outline"
+            full
+            disabled={startWorkout.isPending}
+            onClick={() => {
+              startWorkout.mutate(
+                { freestyleTitle: 'Open session' },
+                {
+                  onSuccess: () => {
+                    void navigate('/train')
+                  },
                 },
-              },
-            )
-          }}
-        >
-          <Plus size={18} aria-hidden />
-          Log a session from scratch
-        </Button>
-      )}
-    </>
+              )
+            }}
+          >
+            <Plus size={18} aria-hidden />
+            Log a session from scratch
+          </Button>
+        )}
+      </div>
+    </div>
   )
 }
