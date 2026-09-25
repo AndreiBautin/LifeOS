@@ -124,9 +124,26 @@ export function HomePage() {
           `TodayGoals` and `ChallengePass` are both slower-moving ones,
           so each pair shares a column and the two columns land far
           closer in height than an auto-balanced flow did.
+
+          **`lg:items-start`, not `lg:items-stretch`.** The columns used
+          to be force-matched to the taller one's height, with
+          `WeightTrend` given `flex-1` to absorb the difference —
+          reported once `WeightTrend` had a real chart in it rather than
+          the empty-state placeholder it launched with: "weight tracker
+          appears clunky due to how large it is... it shouldn't really
+          be as much of a focal point as it is here." Stretching a
+          two-line log form and a fixed-height chart to fill whatever
+          gap `ChallengePass`'s challenge list happens to leave is
+          exactly the "taller card with room to spare reads as normal"
+          bet the earlier version made, and a real season with several
+          challenges listed is what showed it does not read as normal —
+          it reads as a chart that swallowed the bottom half of the
+          screen. The left column now simply ends where its own content
+          ends, the same "not a gap needing to be filled" call the
+          Quests page's two columns already make.
         */}
-        <div className="min-w-0 space-y-6 lg:grid lg:flex-1 lg:grid-cols-2 lg:items-stretch lg:gap-8 lg:space-y-0">
-          <div className="space-y-6 lg:flex lg:flex-col lg:space-y-8">
+        <div className="min-w-0 space-y-6 lg:grid lg:flex-1 lg:grid-cols-2 lg:items-start lg:gap-8 lg:space-y-0">
+          <div className="space-y-6">
             {/*
               The card names itself and links to the screen, which is
               why nothing here repeats "Buffs" — it had been saying so
@@ -138,18 +155,14 @@ export function HomePage() {
               `WeightTrend` replaces `RecentTraining` in this slot,
               asked for directly — "recent training bar graph isn't
               that good, replace it with a weight tracker." See its own
-              doc for the history of the domain it reintroduces.
-
-              **`lg:flex-1`, so it is the one absorbing the stretch.**
-              Its content is genuinely the shortest of the four — an
-              input and a chart against `ChallengePass`'s five-item
-              list — so it is also the one where a taller card with
-              room to spare reads as normal rather than as a mistake.
+              doc for the history of the domain it reintroduces, and the
+              comment above for why it no longer stretches to fill the
+              column.
             */}
-            <WeightTrend className="lg:flex-1" />
+            <WeightTrend />
           </div>
 
-          <div className="space-y-6 lg:flex lg:flex-col lg:space-y-8">
+          <div className="space-y-6">
             {/*
               `TodayGoals` reuses `GoalsToday`/`GoalRow` wholesale —
               see its own doc for why this was a capability the app
@@ -166,7 +179,7 @@ export function HomePage() {
               cannot be a bare sibling in a `&&` expression.
             */}
             {season.data !== undefined && (
-              <Card className="lg:flex-1">
+              <Card>
                 <ChallengePass
                   season={{ label: season.data.label, daysLeft: season.data.daysLeft }}
                 />
