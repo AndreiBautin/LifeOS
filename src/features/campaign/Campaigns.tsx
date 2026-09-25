@@ -149,17 +149,21 @@ function describe(requirement: Requirement, standing: StageStanding): string {
  * measured version of house-hunting and does link, so a house-search
  * stage that wants one is a retarget away in the editor.
  *
+ * **The five money kinds lost their link when Finance's own screen
+ * did.** Reported directly against the deployed nav: "it doesn't really
+ * fit and could vibe weird to employers." Those stages read exactly the
+ * way a declared one does now — no evidence link, because there is no
+ * longer a screen to point one at — while `latest(finance, …)` still
+ * reads whatever is already on file, so `net-worth`, `salary`, `savings`
+ * and the rest still resolve `met`/`progress` correctly. Only the link
+ * is gone.
+ *
  * The routes live here rather than in `domain/campaign` for the reason
  * `AREA_LINKS` does: the domain must not know that a browser exists.
  */
 const EVIDENCE_SCREENS: Partial<Record<Requirement['kind'], { to: string; label: string }>> = {
   'house-jobs': { to: '/base', label: 'Base' },
   offers: { to: '/jobs', label: 'Job search' },
-  'net-worth': { to: '/finance', label: 'Finance' },
-  salary: { to: '/finance', label: 'Finance' },
-  savings: { to: '/finance', label: 'Finance' },
-  retirement: { to: '/finance', label: 'Finance' },
-  'credit-score': { to: '/finance', label: 'Finance' },
 }
 
 function StageRow({

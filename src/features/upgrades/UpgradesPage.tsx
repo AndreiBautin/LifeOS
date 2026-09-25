@@ -1,7 +1,6 @@
 import { Check, ListTree, Lock, Network, Plus, Trash2, Wallet } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
 
 import { Badge, Button, Card, CardHeading, Empty } from '@/components/shared/primitives'
 import { EyeIcon } from '@/components/shared/EyeIcon'
@@ -455,13 +454,7 @@ function PoolCard() {
 
       <p className="text-ink-700 mt-1 text-xs">
         {data.monthsBanked === 0 ? (
-          <>
-            Nothing banked yet. Record a month&rsquo;s surplus on{' '}
-            <Link to="/finance" className="text-accent-400 underline">
-              Finance
-            </Link>{' '}
-            and it lands here.
-          </>
+          'Nothing banked yet.'
         ) : (
           <>
             {formatMinorUnits(data.bankedMinor)} banked over {data.monthsBanked}{' '}

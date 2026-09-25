@@ -1,6 +1,29 @@
 import type { Clock, FinanceRepository } from '@/domain/repositories/ports'
 import { toMonthKey, type FinanceReading } from '@/domain/finance/reading'
 
+/**
+ * Reading and writing a month's figures — with no screen left that calls
+ * either function.
+ *
+ * **The Finance screen was removed, not folded anywhere.** Reported
+ * directly against the deployed demo: "it doesn't really fit and could
+ * vibe weird to employers." `FinancePage`, its hooks and the nav tab are
+ * gone; this file is not, on the same reasoning `review.ts`'s write use
+ * cases were kept once their own screen went — `finance.test.ts` still
+ * exercises the merge-not-replace behaviour directly, which is real
+ * logic a future editor (in Settings, say, if this is ever wanted back)
+ * would need again rather than reinvent.
+ *
+ * **What still reads this data**: the quest arc's `salary`, `savings`,
+ * `net-worth`, `retirement` and `credit-score` stages call
+ * `latest(finance, …)` straight through the repository in
+ * `application/use-cases/campaign/campaign.ts`, independent of this
+ * file entirely — so a stage already met by a historical reading stays
+ * met, and the demo's own "Improve my income"/"Save the deposit" stages
+ * keep working against the fixture `seedFinance` writes. What is
+ * genuinely gone is the ability to add a *new* reading — `recordFinance`
+ * has no caller left in the app, only in its test.
+ */
 export interface FinanceDeps {
   readonly finance: FinanceRepository
   readonly clock: Clock

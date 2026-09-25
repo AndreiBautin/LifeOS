@@ -12,7 +12,6 @@ import { BasePage } from '@/features/base/BasePage'
 import { LimitsPage } from '@/features/limits/LimitsPage'
 import { MindPage } from '@/features/mind/MindPage'
 import { JobsPage } from '@/features/jobs/JobsPage'
-import { FinancePage } from '@/features/finance/FinancePage'
 import { QuestsPage } from '@/features/projects/QuestsPage'
 import { ResumePage } from '@/features/resume/ResumePage'
 import { UpgradesPage } from '@/features/upgrades/UpgradesPage'
@@ -94,10 +93,19 @@ export const router = createBrowserRouter(
         { path: 'mind', element: <MindPage /> },
         { path: 'jobs', element: <JobsPage /> },
         /*
-         * Un-folded from Today back onto its own page — see
-         * `FinancePage`'s own doc.
+         * **Removed outright, not folded back into Today.** Reported
+         * directly: "it doesn't really fit and could vibe weird to
+         * employers" — a portfolio concern, since this deployed build is
+         * the demo build a reviewer actually opens. The nav tab and this
+         * screen are gone; the repository, the domain and the quest
+         * arc's salary/savings stages are not — see
+         * `application/use-cases/finance/finance.ts`'s own doc for what
+         * stayed and why. Kept as a redirect rather than deleted, the
+         * rule `/next` and `/character` already follow: a PWA shortcut
+         * is registered with the operating system at install time, and
+         * an installed copy goes on asking for this path.
          */
-        { path: 'finance', element: <FinancePage /> },
+        { path: 'finance', element: <Navigate to="/today" replace /> },
         { path: 'resume', element: <ResumePage /> },
         { path: 'map', element: <AtlasPage /> },
         { path: 'map/share', element: <SharePage /> },

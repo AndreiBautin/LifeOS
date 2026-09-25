@@ -8,7 +8,6 @@ import {
   Network,
   Target,
   User,
-  Wallet,
 } from 'lucide-react'
 import { useState } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
@@ -54,7 +53,7 @@ import {
  * a link on the hub is for somewhere you decide.
  */
 /**
- * Eight cells again, after a round trip through five.
+ * Seven cells, after a round trip through eight and five.
  *
  * **Quests, Finance and Train all folded into Today at various points,
  * each on its own explicit ask, and all three un-folded together.** The
@@ -67,22 +66,31 @@ import {
  * `HomePage`'s own doc for the diagnosis. Splitting back into separate
  * screens is what keeps each one short enough to read at full size.
  *
+ * **Finance then came off the bar again, on different grounds.** Not a
+ * height problem this time — a portfolio one, reported directly: "it
+ * doesn't really fit and could vibe weird to employers." This deployed
+ * build is the demo build a reviewer actually opens, and a personal
+ * finance tab sitting beside a training app is an odd thing for that
+ * reviewer to land on. The screen and the tab are gone; the quest arc's
+ * salary/savings stages still work, reading from whatever is already on
+ * file rather than through a dedicated editor — see
+ * `application/use-cases/finance/finance.ts`'s own doc.
+ *
  * **This file's own measurement already covers eight cells**, from
  * before the first fold: 46.9 pixels each at 375 wide, nothing clips,
  * and the one real limit is a 320-wide iPhone SE 1st-gen, where
  * `8 × 44 = 352` overflows by 32 — the 44-pixel tap target is an
  * accessibility floor and does not shrink, so that width would need a
- * horizontally scrolling bar rather than a narrower cell. Taken
- * deliberately, the same call it was the first time the bar reached
- * eight.
+ * horizontally scrolling bar rather than a narrower cell. Seven fits
+ * with more room again now that Finance is gone.
  *
  * The freed room in the bar was, for a while, deliberately left as
  * room — the screens without a tab (Limits, Vitals, Job search, Mind,
- * Houses, Resume) are a claim that none of them is used daily. Quests,
- * Finance and Train are not "used daily" in quite the same sense either,
- * but each one holds enough content on its own that folding it back into
+ * Houses, Resume) are a claim that none of them is used daily. Quests
+ * and Train are not "used daily" in quite the same sense either, but
+ * each one holds enough content on its own that folding it back into
  * Today is what caused the height problem in the first place, so the
- * room this time goes to un-cramming rather than staying unclaimed.
+ * room goes to un-cramming rather than staying unclaimed.
  */
 const NAV = [
   /*
@@ -99,17 +107,12 @@ const NAV = [
   { to: '/backlog', label: 'Codex', Icon: BookMarked },
   { to: '/map', label: 'Map', Icon: Map },
   /*
-   * **Party's seat became two**, asked for as _"tech tree and finances
-   * should be its own tab, let's replace the party section."_ Social is
-   * not being tracked, so the tab went with the trait and the area.
-   *
    * **"Tech" rather than "Tech tree"**, because the label has to fit the
    * cell: at nine characters it measures past the 46.9 available and
    * would wrap or clip. The screen keeps its full name; this is the
    * abbreviation the bar can hold, the same trade "You" made for
    * "Character".
    */
-  { to: '/finance', label: 'Finance', Icon: Wallet },
   { to: '/upgrades', label: 'Tech', Icon: Network },
   { to: '/base', label: 'Base', Icon: Home },
 ] as const
