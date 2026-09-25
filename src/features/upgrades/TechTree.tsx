@@ -30,16 +30,34 @@ import { layoutTree, type LaidOutNode } from './tree-layout'
  * behind a gesture, and on a phone a tree one column too wide was
  * scrolling for the sake of a few pixels.
  *
- * So the canvas is measured against its container and scaled down to
- * fit. **Down only** — a small tree is never blown up to fill a desktop,
- * which would make three upgrades look like a skill web.
+ * So the canvas is measured against its container and scaled to fit —
+ * down when it is too wide, and now **up too, within a cap**, when it
+ * is narrower than the room it has. "Down only" was the rule for a
+ * while, on the reasoning that blowing a small tree up to fill a
+ * desktop would make three upgrades look like a skill web. Grown to
+ * nine upgrades across two branches and still only drawing at roughly a
+ * third of the available width, left-anchored with the rest as dead
+ * space, is what that rule actually produced — reported directly:
+ * "build out the tech tree more so that it fills the entire page
+ * width." Content came first (see `seedTechTree`'s own doc) and was not
+ * enough on its own; the tree's natural size is fixed by its node count
+ * regardless of how wide the container is, so filling the width needed
+ * the scale cap to move too.
  *
- * **`MIN_SCALE` is what keeps the old argument alive.** A tree of any
- * width genuinely cannot be squeezed into 375 pixels with readable
- * nodes, so below that floor it stops shrinking and scrolls as it always
- * did — the one place in this app where sideways scrolling is correct.
- * The page itself must never scroll sideways, so the overflow stays on
- * this container alone.
+ * **`MAX_SCALE` is deliberately modest.** 1.4 turns a 116-pixel node
+ * into 162 — bigger and easier to tap, not a poster. Filling literally
+ * every pixel would mean scaling to whatever the widest window is,
+ * which is exactly the "look like a skill web" outcome the original
+ * rule was written to avoid; a cap keeps nodes a sane size and leaves
+ * the canvas centred in whatever room is left over, rather than pinned
+ * to the left edge the way the down-only version always was.
+ *
+ * **`MIN_SCALE` is what keeps the old argument alive on the small
+ * side.** A tree of any width genuinely cannot be squeezed into 375
+ * pixels with readable nodes, so below that floor it stops shrinking
+ * and scrolls as it always did — the one place in this app where
+ * sideways scrolling is correct. The page itself must never scroll
+ * sideways, so the overflow stays on this container alone.
  *
  * **Locked nodes are drawn, never hidden.** Seeing *why* the thing you
  * want is out of reach is the entire point of a tech tree; a view that
@@ -60,6 +78,9 @@ const NODE_HEIGHT = 64
  * stops being a kindness. A tree that cannot fit at this scale scrolls.
  */
 const MIN_SCALE = 0.7
+
+/** How far a small tree may grow to use spare width. See the doc above. */
+const MAX_SCALE = 1.4
 
 const x = (col: number): number => col * COL_WIDTH + COL_WIDTH / 2
 const y = (row: number): number => row * ROW_HEIGHT + ROW_HEIGHT / 2
@@ -121,16 +142,35 @@ export function TechTree({
   }, [])
 
   /*
-   * Scale down to fit and never up. Before the first measurement this is
-   * 1, which draws the tree at full size for one frame — the honest
-   * starting point, since guessing a scale would make a narrow tree jump
-   * on load.
+   * Scale to fit — down when the tree is wider than the room it has,
+   * up to `MAX_SCALE` when it is narrower. Before the first measurement
+   * this is 1, which draws the tree at its natural size for one frame —
+   * the honest starting point, since guessing a scale would make the
+   * tree jump on load either way.
    */
   const scale =
-    available === undefined || width <= available ? 1 : Math.max(MIN_SCALE, available / width)
+    available === undefined
+      ? 1
+      : width <= available
+        ? Math.min(MAX_SCALE, available / width)
+        : Math.max(MIN_SCALE, available / width)
+
+  /*
+   * **Centred only when it actually fits.** `justify-center` on an
+   * `overflow-x-auto` flex row hides the *start* of an overflowing
+   * child behind equal padding on both sides, so a tree still too wide
+   * even at `MIN_SCALE` would need scrolling in both directions to see
+   * either edge. That case keeps the old left-anchored, ordinary L-to-R
+   * scroll; only a tree that fits within `available` gets centred in
+   * the room it did not need.
+   */
+  const overflowing = available !== undefined && width * scale > available + 0.5
 
   return (
-    <div ref={box} className="-mx-4 overflow-x-auto px-4 pb-2">
+    <div
+      ref={box}
+      className={`-mx-4 flex overflow-x-auto px-4 pb-2 ${overflowing ? '' : 'justify-center'}`}
+    >
       {/*
         The scaled canvas keeps its own layout size, so the wrapper has to
         carry the *drawn* height or the page reserves room for a tree
