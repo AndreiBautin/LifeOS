@@ -64,9 +64,23 @@ import { LimitsCard } from '@/features/vitals/LimitsCard'
  * `TrainZone` threw the summary out with the board. `ActiveQuests` (the
  * two quest slots) and `NextSessionCard` (shared with `TrainZone`, at
  * full detail rather than a trimmed teaser — asked for that way
- * directly) are both back, and neither reintroduces the height problem
- * this page was un-folded to fix: that came from four *entire zones*
- * landing on one page at once, not from two moderate cards.
+ * directly) are both back.
+ *
+ * **Bringing both back at full size reintroduced scroll, and the fix
+ * was to spread the columns rather than trim anything.** Reported
+ * plainly against a screenshot: *"seems like there's plenty of
+ * whitespace"* — the 2-column pairing below `SheetCard` put
+ * `NextSessionCard` and `ChallengePass` in the *same* column, which
+ * made that one column by far the page's tallest while `SheetCard`'s
+ * own column sat mostly empty underneath it. Two changes, not one:
+ * `ActiveQuests` moved into `SheetCard`'s own column, since both are
+ * short and "who you are and what you are on" reads as one cluster
+ * anyway; and the grid holding the rest went from two columns to
+ * three, giving `NextSessionCard` and `ChallengePass` a column each
+ * instead of stacking them. Four unevenly-tall blocks in two columns
+ * is exactly the `column-fill:balance` failure this file's own history
+ * already names; three columns for four blocks is what actually
+ * balances them.
  *
  * **Weight came and went within this same page's lifetime.** It sat
  * here briefly as `WeightTrend`, reintroduced this session and then
@@ -122,9 +136,15 @@ export function HomePage() {
         a row with anything. `lg:flex` puts the two side by side instead
         — `SheetCard` fixed at its own cap on the left, the day's
         readouts filling whatever width is left on the right.
+
+        **`ActiveQuests` sits under `SheetCard` in the same column, not
+        in the grid beside it.** Both are short and both are about the
+        person rather than the day's tasks — who you are, and what
+        you're on — so stacking them fills the gap that used to sit
+        empty below the portrait once the taller columns beside it grew.
       */}
       <div className="space-y-10 lg:flex lg:items-start lg:gap-8 lg:space-y-0">
-        <div className="lg:max-w-xl lg:shrink-0">
+        <div className="space-y-6 lg:max-w-xl lg:shrink-0">
           <SheetCard
             {...(sheet.data === undefined ? {} : { traits: sheet.data.traits })}
             avatarSize="large"
@@ -138,33 +158,44 @@ export function HomePage() {
               </Link>
             }
           />
+
+          {/*
+            **The two quest slots, same component `QuestsPage` opens
+            on.** No heading of its own, matching `LimitsCard` and
+            `TodayGoals` in the grid beside it — the cards already say
+            what they are. `QuestBoard`, `GoalsCard` and `Campaigns`
+            stay on `/quests`; this is the glance, not the board.
+          */}
+          <ActiveQuests
+            main={active.data?.main}
+            side={active.data?.side}
+            {...(leadingArc === undefined ? {} : { arc: leadingArc })}
+          />
         </div>
 
         {/*
-          **A fixed 2-column pairing, not an auto-balanced masonry
-          flow.** Reported against an auto-balanced version elsewhere on
-          this page, before it moved out: "maybe move the bottom row up
-          so we don't need to scroll... and fill that last bit of bottom
-          right space." `column-fill:balance` genuinely struggles with a
-          handful of blocks of wildly different heights —
-          `ChallengePass` alone can run several times `TodayGoals`' or
-          `LimitsCard`'s height, so it gets a column to itself rather
-          than being paired with anything; the two shorter, compact
-          readouts share the other.
+          **Three columns, not two — `NextSessionCard` and
+          `ChallengePass` each get their own rather than sharing one.**
+          Reported against a screenshot after both came back at full
+          size: "seems like there's plenty of whitespace." Pairing them
+          in one column made that column run far taller than the other,
+          which is the same `column-fill:balance`-style imbalance this
+          file's history already names for uneven blocks — the fix
+          there was more columns, not less content, and it is the fix
+          here too. `LimitsCard` and `TodayGoals` are still short enough
+          to share a column between them.
 
-          **`lg:items-start`, not `lg:items-stretch`.** The two columns
-          used to be force-matched to the taller one's height, with
-          whichever card was shortest given `flex-1` to absorb the
-          difference — which read fine while that card was an
-          empty-state placeholder and badly once it held a real chart,
-          reported directly: "this is still massive... it shouldn't
-          really be as much of a focal point as it is here." Neither
-          column stretches to match the other now; the shorter one
-          simply ends where its own content ends, the same "not a gap
-          needing to be filled" call the Quests page's two columns
-          already make.
+          **`lg:items-start`, not `lg:items-stretch`.** Columns used to
+          be force-matched to the tallest one's height, with whichever
+          card was shortest given `flex-1` to absorb the difference —
+          reported directly as "this is still massive... it shouldn't
+          really be as much of a focal point as it is here" once that
+          card held real content. No column stretches to match another
+          now; each simply ends where its own content ends, the same
+          "not a gap needing to be filled" call the Quests page's
+          columns already make.
         */}
-        <div className="min-w-0 space-y-6 lg:grid lg:flex-1 lg:grid-cols-2 lg:items-start lg:gap-8 lg:space-y-0">
+        <div className="min-w-0 space-y-6 lg:grid lg:flex-1 lg:grid-cols-3 lg:items-start lg:gap-8 lg:space-y-0">
           <div className="space-y-6">
             {/*
               The card names itself and links to the screen, which is
@@ -180,44 +211,29 @@ export function HomePage() {
               rule as everything else here.
             */}
             <TodayGoals />
-
-            {/*
-              **The two quest slots, same component `QuestsPage` opens
-              on.** No heading of its own, matching `LimitsCard` and
-              `TodayGoals` beside it — the cards already say what they
-              are. `QuestBoard`, `GoalsCard` and `Campaigns` stay on
-              `/quests`; this is the glance, not the board.
-            */}
-            <ActiveQuests
-              main={active.data?.main}
-              side={active.data?.side}
-              {...(leadingArc === undefined ? {} : { arc: leadingArc })}
-            />
           </div>
 
-          <div className="space-y-6">
-            {/*
-              **The full next-session card, shared with `TrainZone`.**
-              Asked for at this depth rather than a trimmed teaser —
-              see `NextSessionCard`'s own doc.
-            */}
-            <NextSessionCard />
+          {/*
+            **The full next-session card, shared with `TrainZone`.**
+            Asked for at this depth rather than a trimmed teaser — see
+            `NextSessionCard`'s own doc.
+          */}
+          <NextSessionCard />
 
-            {/*
-              **The season names itself inside the card**, keeping the
-              name beside the measurement the way this file has
-              always insisted. The comment sits *above* the
-              conditional rather than inside it, because a JSX comment
-              cannot be a bare sibling in a `&&` expression.
-            */}
-            {season.data !== undefined && (
-              <Card>
-                <ChallengePass
-                  season={{ label: season.data.label, daysLeft: season.data.daysLeft }}
-                />
-              </Card>
-            )}
-          </div>
+          {/*
+            **The season names itself inside the card**, keeping the
+            name beside the measurement the way this file has always
+            insisted. The comment sits *above* the conditional rather
+            than inside it, because a JSX comment cannot be a bare
+            sibling in a `&&` expression.
+          */}
+          {season.data !== undefined && (
+            <Card>
+              <ChallengePass
+                season={{ label: season.data.label, daysLeft: season.data.daysLeft }}
+              />
+            </Card>
+          )}
         </div>
       </div>
     </div>
