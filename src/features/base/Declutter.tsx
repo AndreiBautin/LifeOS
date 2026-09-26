@@ -1,6 +1,6 @@
 import { Plus, Sofa, Trash2, X } from 'lucide-react'
 import { useState } from 'react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 
 import { useServices } from '@/app/context'
 import { Badge, Button, Card, CardHeading, Empty } from '@/components/shared/primitives'
@@ -10,11 +10,12 @@ import { describeClear, ROOM_SUGGESTIONS, type RoomStanding } from '@/domain/bas
 import {
   addRoom,
   COMPARE_DAYS,
-  houseClutter,
   recordClear,
   removeRoom,
 } from '@/application/use-cases/base/declutter'
 import type { RoomId } from '@/domain/ids/ids'
+
+import { CLUTTER, useHouse } from './hooks'
 
 /**
  * How clear the house is, room by room.
@@ -35,14 +36,6 @@ import type { RoomId } from '@/domain/ids/ids'
  * August, and a checklist would make the one thing worth knowing
  * invisible.
  */
-
-const CLUTTER = ['base', 'clutter'] as const
-
-function useHouse() {
-  const services = useServices()
-
-  return useQuery({ queryKey: CLUTTER, queryFn: () => houseClutter(services) })
-}
 
 function useClutterMutation<T>(
   run: (input: T, services: ReturnType<typeof useServices>) => Promise<unknown>,

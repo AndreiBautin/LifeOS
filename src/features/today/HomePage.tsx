@@ -3,7 +3,9 @@ import { Link } from 'react-router-dom'
 
 import { Card } from '@/components/shared/primitives'
 import { buttonStyles } from '@/components/shared/styles'
+import { MapGlance } from '@/features/atlas/MapGlance'
 import { TodayGoals } from '@/features/backlog/TodayGoals'
+import { BaseGlance } from '@/features/base/BaseGlance'
 import { useCampaigns } from '@/features/campaign/hooks'
 import { ChallengePass } from '@/features/challenges/ChallengePass'
 import { SheetCard } from '@/features/character/SheetCard'
@@ -11,6 +13,7 @@ import { useCharacterSheet, useSeasonProgress } from '@/features/character/hooks
 import { ActiveQuests } from '@/features/projects/ActiveQuests'
 import { useActiveQuests } from '@/features/projects/hooks'
 import { NextSessionCard } from '@/features/train/NextSessionCard'
+import { NextUpgradeGlance } from '@/features/upgrades/NextUpgradeGlance'
 import { LimitsCard } from '@/features/vitals/LimitsCard'
 
 /**
@@ -88,6 +91,21 @@ import { LimitsCard } from '@/features/vitals/LimitsCard'
  * of the page rather than the quiet log form it was meant to be. The
  * feature survives on the `weight-tracking` branch; nothing here
  * references it.
+ *
+ * **Base, the tech tree and the map joined the glance, closing the
+ * set.** Asked for directly: *"could we add something from each
+ * section to you/today like train/codex have? quests, base status,
+ * next upgrade... the goal would be a solid at-a-glance dashboard with
+ * the ability to drill into each section."* Train and Codex already had
+ * one; Vitals and Quests too. Three sections had no presence here at
+ * all, which made "each section" a promise the page did not keep.
+ *
+ * `BaseGlance`, `NextUpgradeGlance` and `MapGlance` are two lines each
+ * — a reading and, where one exists, the next thing worth doing —
+ * never the full screen, the same restraint `LimitsCard` and
+ * `TodayGoals` already hold. One joined each of the three grid
+ * columns rather than opening a fourth, so no column goes from short
+ * to empty-looking sparse while another holds four cards.
  */
 
 export function HomePage() {
@@ -211,29 +229,36 @@ export function HomePage() {
               rule as everything else here.
             */}
             <TodayGoals />
+            <BaseGlance />
           </div>
 
-          {/*
-            **The full next-session card, shared with `TrainZone`.**
-            Asked for at this depth rather than a trimmed teaser — see
-            `NextSessionCard`'s own doc.
-          */}
-          <NextSessionCard />
+          <div className="space-y-6">
+            {/*
+              **The full next-session card, shared with `TrainZone`.**
+              Asked for at this depth rather than a trimmed teaser — see
+              `NextSessionCard`'s own doc.
+            */}
+            <NextSessionCard />
+            <NextUpgradeGlance />
+          </div>
 
-          {/*
-            **The season names itself inside the card**, keeping the
-            name beside the measurement the way this file has always
-            insisted. The comment sits *above* the conditional rather
-            than inside it, because a JSX comment cannot be a bare
-            sibling in a `&&` expression.
-          */}
-          {season.data !== undefined && (
-            <Card>
-              <ChallengePass
-                season={{ label: season.data.label, daysLeft: season.data.daysLeft }}
-              />
-            </Card>
-          )}
+          <div className="space-y-6">
+            {/*
+              **The season names itself inside the card**, keeping the
+              name beside the measurement the way this file has always
+              insisted. The comment sits *above* the conditional rather
+              than inside it, because a JSX comment cannot be a bare
+              sibling in a `&&` expression.
+            */}
+            {season.data !== undefined && (
+              <Card>
+                <ChallengePass
+                  season={{ label: season.data.label, daysLeft: season.data.daysLeft }}
+                />
+              </Card>
+            )}
+            <MapGlance />
+          </div>
         </div>
       </div>
     </div>
