@@ -2,8 +2,9 @@ import { Library, Plus, Target, Trash2 } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { useState } from 'react'
 
-import { Badge, Button, Card, CardHeading, Empty } from '@/components/shared/primitives'
+import { Badge, Button, CardHeading, Empty } from '@/components/shared/primitives'
 import { EyeIcon } from '@/components/shared/EyeIcon'
+import { PercentRing } from '@/components/shared/PercentRing'
 import { getCategoryDefinition } from '@/domain/backlog/category-registry'
 import type { CreateItemInput, Item } from '@/domain/backlog/item'
 import { PRIORITY_LABELS } from '@/domain/backlog/priority'
@@ -60,7 +61,7 @@ function ItemRow({
   const Icon = CATEGORY_ICONS[item.category]
 
   return (
-    <div className="flex items-center gap-3 py-3">
+    <div className="border-ink-800 bg-ink-900/30 mb-2 flex items-center gap-3 rounded-xl border px-3 py-3 break-inside-avoid-column">
       <Icon size={18} className="text-ink-500 shrink-0" aria-hidden />
 
       <button
@@ -226,10 +227,25 @@ export function BacklogPage() {
         />
 
         {overview.data !== undefined && (
-          <p className="text-ink-500 mb-2 text-sm">
-            {overview.data.stats.totalBacklog.toString()} waiting ·{' '}
-            {overview.data.stats.completionPercentage.toString()}% finished
-          </p>
+          /*
+            **A second visual, the same "ring beside the reading" treatment
+            `Declutter`'s house figure gets.** Asked for directly — "we
+            should also ensure each page has some sort of interesting
+            visual and its not just all cards" — and Codex was otherwise a
+            list of rows and a percentage in prose, where Map has the
+            Leaflet tile and Tech has the tree itself.
+          */
+          <div className="mb-2 flex items-start gap-3">
+            <p className="text-ink-500 min-w-0 flex-1 text-sm">
+              {overview.data.stats.totalBacklog.toString()} waiting ·{' '}
+              {overview.data.stats.completionPercentage.toString()}% finished
+            </p>
+            <PercentRing
+              value={overview.data.stats.completionPercentage}
+              good={overview.data.stats.completionPercentage >= 70}
+              label={`${overview.data.stats.completionPercentage.toString()}% of the backlog finished`}
+            />
+          </div>
         )}
         {(adding || editing !== undefined) && (
           <div className="mb-4">
@@ -314,7 +330,22 @@ export function BacklogPage() {
               : 'Nothing matches that filter.'}
           </Empty>
         ) : (
-          <Card className="divide-ink-800 divide-y py-0">
+          /*
+            **Many rows of roughly one height, not a few blocks of wildly
+            different ones — so `columns`, not an explicit grid.** Quests
+            moved away from CSS multi-column for exactly the opposite
+            case: a handful of unevenly tall sections where
+            `column-fill:balance` guessed badly. A backlog entry list is
+            the case that flow was always meant for — every row the same
+            height, so a reader scans down one column before moving to the
+            next rather than needing row-major order.
+
+            Each `ItemRow` carries its own border and `break-inside-
+            avoid-column` now, rather than sharing one `Card`'s `divide-y`
+            — a shared divider only makes sense for a single column, and
+            a row split across a column break would be unreadable.
+          */
+          <div className="columns-1 gap-3 lg:columns-2 2xl:columns-3">
             {shown.map((item) => (
               <ItemRow
                 key={item.id}
@@ -334,11 +365,11 @@ export function BacklogPage() {
                 }}
               />
             ))}
-          </Card>
+          </div>
         )}
 
         {showingDone && restingItems.length > 0 && (
-          <Card className="divide-ink-800 divide-y mt-2 py-0">
+          <div className="columns-1 gap-3 lg:columns-2 2xl:columns-3">
             {restingItems.map((item) => (
               <ItemRow
                 key={item.id}
@@ -358,7 +389,7 @@ export function BacklogPage() {
                 }}
               />
             ))}
-          </Card>
+          </div>
         )}
       </div>
     </div>

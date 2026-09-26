@@ -81,7 +81,7 @@ function PlaceRow({ place }: { readonly place: Place }) {
   const category = ATLAS_CATEGORIES.find((one) => one.id === place.categoryId)
 
   return (
-    <div className="flex items-center gap-3 py-2">
+    <div className="border-ink-800 bg-ink-900/30 mb-2 flex items-center gap-3 rounded-xl border px-3 py-2 break-inside-avoid-column">
       <span aria-hidden className="shrink-0 text-lg">
         {category?.icon ?? '✳️'}
       </span>
@@ -702,19 +702,29 @@ export function AtlasPage() {
                   : 'Everywhere saved has been visited. What you have been to is behind the eye above.'}
               </Empty>
             ) : (
-              <Card className="divide-ink-800 divide-y py-0">
+              /*
+                **Many rows of one height, so `columns` rather than a
+                shared `divide-y`.** The same call Codex's entry list
+                makes, for the same reason: a place row is a fixed
+                height, so a reader scans down one column before the
+                next rather than needing row-major order. Each `PlaceRow`
+                now carries its own border and `break-inside-avoid-
+                column`, since a shared divider only reads correctly in
+                a single column.
+              */
+              <div className="columns-1 gap-3 lg:columns-2 2xl:columns-3">
                 {listed.map((place) => (
                   <PlaceRow key={place.id} place={place} />
                 ))}
-              </Card>
+              </div>
             )}
 
             {showingBeen && restingPlaces.length > 0 && (
-              <Card className="divide-ink-800 divide-y mt-2 py-0">
+              <div className="columns-1 gap-3 lg:columns-2 2xl:columns-3">
                 {restingPlaces.map((place) => (
                   <PlaceRow key={place.id} place={place} />
                 ))}
-              </Card>
+              </div>
             )}
           </>
         )}
