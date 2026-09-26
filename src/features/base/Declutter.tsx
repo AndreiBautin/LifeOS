@@ -367,7 +367,14 @@ export function Declutter() {
             it as zero would make adding one read as the house getting
             worse.
           */}
-          <div className="border-ink-800 mb-2 flex items-start gap-3 border-b pb-3">
+          {/*
+            `max-w-md` on the row itself, not just the text inside it —
+            `flex-1` alone stretches the paragraph across the whole card
+            on a wide monitor, dragging the ring far from the sentence it
+            sits beside. Measured on a 2560px screen: 1000px of empty
+            space between "58% clear" and its own ring without this.
+          */}
+          <div className="border-ink-800 mb-2 flex max-w-md items-start gap-3 border-b pb-3">
             <div className="min-w-0 flex-1">
               <div className="flex items-baseline justify-between gap-2">
                 <span className="text-ink-50 text-sm font-medium">The house</span>

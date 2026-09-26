@@ -234,8 +234,13 @@ export function BacklogPage() {
             visual and its not just all cards" — and Codex was otherwise a
             list of rows and a percentage in prose, where Map has the
             Leaflet tile and Tech has the tree itself.
+
+            `max-w-xs` on the row, not just the text — `flex-1` alone
+            stretches the sentence across the whole page width on a wide
+            monitor and drags the ring far from it, the same defect
+            Declutter's own house row had at the same width.
           */
-          <div className="mb-2 flex items-start gap-3">
+          <div className="mb-2 flex max-w-xs items-start gap-3">
             <p className="text-ink-500 min-w-0 flex-1 text-sm">
               {overview.data.stats.totalBacklog.toString()} waiting ·{' '}
               {overview.data.stats.completionPercentage.toString()}% finished
