@@ -59,14 +59,34 @@ import { layoutTree, type LaidOutNode } from './tree-layout'
  * sideways scrolling is correct. The page itself must never scroll
  * sideways, so the overflow stays on this container alone.
  *
+ * **Drawn sideways, not top-down — depth runs right, siblings run
+ * down.** Reported after the width fix landed: "no scroll on tech tree
+ * still tho. maybe we could make it go horizontally?" Right, and the
+ * two overflow axes were never symmetric here. `layoutTree` still
+ * computes exactly what it always did — a `row` per depth level and
+ * per branch-band, a `col` per sibling — the geometry never changed.
+ * What changed is which pixel axis each one drives: `row` now drives
+ * `x` and `col` now drives `y`, so the quantity that used to grow
+ * without bound (every branch's chain, stacked one band under the
+ * last) now grows the axis this container was already allowed to
+ * scroll on, and the quantity that stayed small (how many siblings the
+ * widest branch ever has at one level) now bounds the *page's* axis,
+ * which must never scroll here.
+ *
  * **Locked nodes are drawn, never hidden.** Seeing *why* the thing you
  * want is out of reach is the entire point of a tech tree; a view that
  * showed only what you could afford would be a shopping list.
  */
 
-/** Grid to pixels. Wide enough for a node, tall enough for a label to wrap. */
-const COL_WIDTH = 132
-const ROW_HEIGHT = 96
+/**
+ * Grid to pixels, sized for the rotated axes rather than the node's own
+ * shape. `DEPTH_SPACING` is the *horizontal* gap between one depth level
+ * and the next, so it has to clear a node's width plus room for the
+ * curve; `SIBLING_SPACING` is the *vertical* gap between one sibling row
+ * and the next, so it only has to clear a node's height.
+ */
+const DEPTH_SPACING = 176
+const SIBLING_SPACING = 88
 const NODE_WIDTH = 116
 const NODE_HEIGHT = 64
 
@@ -82,8 +102,15 @@ const MIN_SCALE = 0.7
 /** How far a small tree may grow to use spare width. See the doc above. */
 const MAX_SCALE = 1.4
 
-const x = (col: number): number => col * COL_WIDTH + COL_WIDTH / 2
-const y = (row: number): number => row * ROW_HEIGHT + ROW_HEIGHT / 2
+/*
+ * `x` takes `row` and `y` takes `col` — the rotation is entirely in
+ * which grid axis feeds which pixel axis. Nothing about `layoutTree`
+ * itself changed: `row` is still depth-and-branch-band, `col` is still
+ * sibling position, and this is the one place that decides depth reads
+ * left-to-right instead of top-to-bottom.
+ */
+const x = (row: number): number => row * DEPTH_SPACING + DEPTH_SPACING / 2
+const y = (col: number): number => col * SIBLING_SPACING + SIBLING_SPACING / 2
 
 export function TechTree({
   entries,
@@ -107,8 +134,14 @@ export function TechTree({
   const byId = new Map(entries.map((entry) => [entry.upgrade.id as string, entry]))
   const positions = new Map(layout.nodes.map((node) => [node.id, node]))
 
-  const width = layout.cols * COL_WIDTH
-  const height = layout.rows * ROW_HEIGHT
+  /*
+   * `rows` (depth-and-branch-bands) now drives width, `cols` (siblings)
+   * now drives height — the swap that puts the unbounded quantity on
+   * the axis this container is allowed to scroll, and the bounded one
+   * on the axis the page never may.
+   */
+  const width = layout.rows * DEPTH_SPACING
+  const height = layout.cols * SIBLING_SPACING
 
   /*
    * Measured on mount and on resize, from the element's own
@@ -204,16 +237,23 @@ export function TechTree({
               const to = positions.get(edge.to)
               if (from === undefined || to === undefined) return null
 
-              const x1 = x(from.col)
-              const y1 = y(from.row) + NODE_HEIGHT / 2
-              const x2 = x(to.col)
-              const y2 = y(to.row) - NODE_HEIGHT / 2
-              const mid = (y1 + y2) / 2
+              /*
+                Parent's right edge to child's left edge, curving through
+                a horizontal midpoint — the mirror of the old top-to-
+                bottom curve, bent the other way for the same reason: a
+                straight line between two rows of different depth would
+                cross through whatever sits between them.
+              */
+              const x1 = x(from.row) + NODE_WIDTH / 2
+              const y1 = y(from.col)
+              const x2 = x(to.row) - NODE_WIDTH / 2
+              const y2 = y(to.col)
+              const mid = (x1 + x2) / 2
 
               return (
                 <path
                   key={`${edge.from}->${edge.to}`}
-                  d={`M ${String(x1)} ${String(y1)} C ${String(x1)} ${String(mid)}, ${String(x2)} ${String(mid)}, ${String(x2)} ${String(y2)}`}
+                  d={`M ${String(x1)} ${String(y1)} C ${String(mid)} ${String(y1)}, ${String(mid)} ${String(y2)}, ${String(x2)} ${String(y2)}`}
                   fill="none"
                   stroke="currentColor"
                   strokeWidth={edge.crossBranch ? 1 : 1.5}
@@ -248,8 +288,8 @@ function TreeNodeBox({
   readonly onPick: (id: string) => void
 }) {
   const style = {
-    left: x(node.col) - NODE_WIDTH / 2,
-    top: y(node.row) - NODE_HEIGHT / 2,
+    left: x(node.row) - NODE_WIDTH / 2,
+    top: y(node.col) - NODE_HEIGHT / 2,
     width: NODE_WIDTH,
     minHeight: NODE_HEIGHT,
   }
@@ -258,7 +298,7 @@ function TreeNodeBox({
     return (
       <div
         className="border-accent-500/40 bg-accent-500/10 text-accent-300 absolute grid place-items-center rounded-full border text-sm font-semibold"
-        style={{ ...style, minHeight: 44, height: 44, top: y(node.row) - 22 }}
+        style={{ ...style, minHeight: 44, height: 44, top: y(node.col) - 22 }}
       >
         {node.label}
       </div>
@@ -269,7 +309,7 @@ function TreeNodeBox({
     return (
       <div
         className="border-ink-700 bg-ink-850 text-ink-100 absolute grid place-items-center rounded-lg border px-2 text-center text-sm font-semibold"
-        style={{ ...style, minHeight: 44, height: 44, top: y(node.row) - 22 }}
+        style={{ ...style, minHeight: 44, height: 44, top: y(node.col) - 22 }}
       >
         {node.shelf === undefined ? node.label : UPGRADE_SHELF_LABELS[node.shelf]}
       </div>
