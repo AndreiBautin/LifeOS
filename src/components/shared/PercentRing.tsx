@@ -33,6 +33,16 @@ export function PercentRing({
   const fraction = Math.max(0, Math.min(1, value / 100))
   const filled = fraction * circumference
   const tone = good ? 'var(--color-good-500)' : 'var(--color-accent-500)'
+  /*
+   * Read off `fraction` rather than clamping `value` a second time —
+   * a caller whose value can run past 100 (the tech-tree glance's pool
+   * coverage, which can exceed the price it is saving toward) showed
+   * "2175%" here while the arc beside it correctly stopped at a full
+   * circle, because only the arc's own fraction was ever clamped. One
+   * number, computed once, is what stops the ring and its label from
+   * being able to disagree again.
+   */
+  const displayed = Math.round(fraction * 100)
 
   return (
     <svg
@@ -74,7 +84,7 @@ export function PercentRing({
         fontSize={14}
         fontWeight={600}
       >
-        {Math.round(value)}%
+        {displayed}%
       </text>
     </svg>
   )
