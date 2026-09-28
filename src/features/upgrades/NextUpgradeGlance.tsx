@@ -47,10 +47,17 @@ export function NextUpgradeGlance() {
 
   const next = tree.data.find((entry) => isOpen(entry.upgrade) && !isOwned(entry.upgrade))
   const price = next?.upgrade.estimatedCostMinorUnits
+  /*
+   * Clamped here, not just where it is drawn — the ring's own arc always
+   * stopped at one full circle, and the label used to keep going past it
+   * regardless, announcing "1740% saved" for a pool that had long since
+   * covered the price. A pool cannot save more than 100% of anything;
+   * the rest is surplus toward whatever comes after this one.
+   */
   const saved =
     price === undefined || price <= 0
       ? undefined
-      : Math.max(0, (pool.data.availableMinor / price) * 100)
+      : Math.min(100, Math.max(0, (pool.data.availableMinor / price) * 100))
 
   return (
     <Card>
