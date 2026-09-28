@@ -102,6 +102,27 @@ const MIN_SCALE = 0.7
 /** How far a small tree may grow to use spare width. See the doc above. */
 const MAX_SCALE = 1.4
 
+/**
+ * Extra canvas below every node, reserved for cross-branch prerequisite
+ * edges to dip through.
+ *
+ * Reported directly, against a screenshot: "the overlap between base
+ * and gadgets feels a bit weird." It was the cross-branch edge — the
+ * same S-curve every ordinary edge uses, asked to span the entire
+ * horizontal gap between two branch bands instead of one depth step.
+ * At that distance the curve is nearly a straight line for most of its
+ * length, which cuts straight through whatever nodes happen to share
+ * its rough height — here, Espresso machine and the Gadgets branch
+ * label both sat almost exactly between Standing desk and Monitor arm.
+ *
+ * A dedicated detour fixes it rather than a sharper curve: the path
+ * drops straight down from the source, runs along a lane below every
+ * node on the canvas, and rises straight up into the target — so it
+ * reads as a back-channel link rather than as a line that happens to
+ * graze the tree it is crossing.
+ */
+const CROSS_BRANCH_BOW = 40
+
 /*
  * `x` takes `row` and `y` takes `col` — the rotation is entirely in
  * which grid axis feeds which pixel axis. Nothing about `layoutTree`
@@ -199,6 +220,9 @@ export function TechTree({
    */
   const overflowing = available !== undefined && width * scale > available + 0.5
 
+  /* Every node sits within `height`; the bow lane is blank canvas below it. */
+  const canvasHeight = height + CROSS_BRANCH_BOW
+
   return (
     <div
       ref={box}
@@ -210,12 +234,12 @@ export function TechTree({
         taller than the one on screen — a transform does not change what
         the box model thinks it occupies.
       */}
-      <div style={{ height: height * scale, width: width * scale }}>
+      <div style={{ height: canvasHeight * scale, width: width * scale }}>
         <div
           className="relative"
           style={{
             width,
-            height,
+            height: canvasHeight,
             transform: scale === 1 ? undefined : `scale(${String(scale)})`,
             transformOrigin: 'top left',
           }}
@@ -229,36 +253,73 @@ export function TechTree({
             aria-hidden
             className="absolute inset-0"
             width={width}
-            height={height}
-            viewBox={`0 0 ${String(width)} ${String(height)}`}
+            height={canvasHeight}
+            viewBox={`0 0 ${String(width)} ${String(canvasHeight)}`}
           >
             {layout.edges.map((edge) => {
               const from = positions.get(edge.from)
               const to = positions.get(edge.to)
               if (from === undefined || to === undefined) return null
 
-              /*
-                Parent's right edge to child's left edge, curving through
-                a horizontal midpoint — the mirror of the old top-to-
-                bottom curve, bent the other way for the same reason: a
-                straight line between two rows of different depth would
-                cross through whatever sits between them.
-              */
               const x1 = x(from.row) + NODE_WIDTH / 2
               const y1 = y(from.col)
               const x2 = x(to.row) - NODE_WIDTH / 2
               const y2 = y(to.col)
-              const mid = (x1 + x2) / 2
+
+              /*
+                **Cross-branch edges detour through the bow lane** rather
+                than sharing the ordinary S-curve — see `CROSS_BRANCH_BOW`.
+                Straight-down, straight-up tangents at each end (the
+                control point sits directly under the endpoint) are what
+                make it drop and rise cleanly instead of curving sideways
+                into whatever is nearby.
+              */
+              const path = edge.crossBranch
+                ? `M ${String(x1)} ${String(y1)} C ${String(x1)} ${String(canvasHeight)}, ${String(x2)} ${String(canvasHeight)}, ${String(x2)} ${String(y2)}`
+                : `M ${String(x1)} ${String(y1)} C ${String((x1 + x2) / 2)} ${String(y1)}, ${String((x1 + x2) / 2)} ${String(y2)}, ${String(x2)} ${String(y2)}`
+
+              /*
+                **A path glows toward what it leads to, never decoratively.**
+                "Give edges a subtle glow" landed here rather than on the
+                nodes: several nodes are legitimately affordable at once,
+                which already earns them the accent tint it always has, and
+                stacking a glow on every one of them would be the thing this
+                app's own buttons are deliberately restrained about — a glow
+                is for the one thing pressed, not for a whole tree lighting
+                up at once. An edge is singular by construction, one for
+                each step, so it can say "this step is already paid for" or
+                "this step is open to you" without making the same claim
+                more than once.
+              */
+              const targetEntry = to.upgradeId === undefined ? undefined : byId.get(to.upgradeId)
+              const targetOwned = targetEntry !== undefined && isOwned(targetEntry.upgrade)
+              const targetOpen = targetEntry !== undefined && isOpen(targetEntry.upgrade)
+              const targetReachable =
+                targetEntry !== undefined && !targetOwned && targetOpen && targetEntry.affordable
+              const tint = targetOwned
+                ? 'var(--color-good-500)'
+                : targetReachable
+                  ? 'var(--color-accent-500)'
+                  : undefined
 
               return (
                 <path
                   key={`${edge.from}->${edge.to}`}
-                  d={`M ${String(x1)} ${String(y1)} C ${String(mid)} ${String(y1)}, ${String(mid)} ${String(y2)}, ${String(x2)} ${String(y2)}`}
+                  d={path}
                   fill="none"
-                  stroke="currentColor"
-                  strokeWidth={edge.crossBranch ? 1 : 1.5}
+                  stroke={tint ?? 'currentColor'}
+                  strokeWidth={edge.crossBranch ? 1 : tint === undefined ? 1.5 : 2}
                   strokeDasharray={edge.crossBranch ? '3 3' : undefined}
-                  className={edge.crossBranch ? 'text-ink-700' : 'text-ink-800'}
+                  className={
+                    tint !== undefined
+                      ? undefined
+                      : edge.crossBranch
+                        ? 'text-ink-700'
+                        : 'text-ink-800'
+                  }
+                  style={
+                    tint === undefined ? undefined : { filter: `drop-shadow(0 0 3px ${tint})` }
+                  }
                 />
               )
             })}
@@ -297,7 +358,7 @@ function TreeNodeBox({
   if (node.kind === 'trunk') {
     return (
       <div
-        className="border-accent-500/40 bg-accent-500/10 text-accent-300 absolute grid place-items-center rounded-full border text-sm font-semibold"
+        className="control-surface control-surface-lit [--control-tint:var(--color-accent-500)] text-accent-300 absolute grid place-items-center rounded-full text-sm font-semibold"
         style={{ ...style, minHeight: 44, height: 44, top: y(node.col) - 22 }}
       >
         {node.label}
@@ -308,7 +369,7 @@ function TreeNodeBox({
   if (node.kind === 'branch') {
     return (
       <div
-        className="border-ink-700 bg-ink-850 text-ink-100 absolute grid place-items-center rounded-lg border px-2 text-center text-sm font-semibold"
+        className="control-surface tech-node [--control-tint:var(--color-ink-500)] text-ink-100 absolute grid place-items-center px-2 text-center text-sm font-semibold"
         style={{ ...style, minHeight: 44, height: 44, top: y(node.col) - 22 }}
       >
         {node.shelf === undefined ? node.label : UPGRADE_SHELF_LABELS[node.shelf]}
@@ -342,12 +403,12 @@ function TreeNodeBox({
    * can act on, and locked is dimmed with its reason on the node.
    */
   const tone = owned
-    ? 'border-good-500/40 bg-good-500/10 text-ink-100'
+    ? 'control-surface tech-node [--control-tint:var(--color-good-500)] text-ink-100'
     : dropped
-      ? 'border-ink-800 bg-ink-900 text-ink-700'
+      ? 'control-surface tech-node [--control-tint:var(--color-ink-500)] text-ink-700'
       : entry.affordable
-        ? 'border-accent-500/50 bg-accent-500/10 text-ink-50'
-        : 'border-ink-800 bg-ink-900 text-ink-500'
+        ? 'control-surface tech-node [--control-tint:var(--color-accent-500)] text-ink-50'
+        : 'control-surface tech-node [--control-tint:var(--color-ink-500)] text-ink-500'
 
   return (
     <button
@@ -356,7 +417,7 @@ function TreeNodeBox({
         onPick(entry.upgrade.id)
       }}
       style={style}
-      className={`tap-target absolute flex flex-col justify-center gap-0.5 rounded-lg border px-2 py-1.5 text-center ${tone}`}
+      className={`tap-target absolute flex flex-col justify-center gap-0.5 px-2 py-1.5 text-center ${tone}`}
     >
       <span
         className={`text-xs leading-tight font-medium break-words ${dropped ? 'line-through' : ''}`}
