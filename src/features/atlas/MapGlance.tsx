@@ -1,12 +1,11 @@
 import { MapPin } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
-import { CountRing } from '@/components/shared/CountRing'
 import { Card, CardHeading } from '@/components/shared/primitives'
 import { Skeleton } from '@/components/shared/Skeleton'
 import { buttonStyles } from '@/components/shared/styles'
 import { formatArea } from '@/application/use-cases/atlas/exploration'
-import { isResolved } from '@/domain/atlas/place/Place'
+import { isResolved, type ResolvedPlace } from '@/domain/atlas/place/Place'
 
 import { useAtlas } from './hooks'
 
@@ -20,14 +19,58 @@ import { useAtlas } from './hooks'
  * state in words: the area walked, and how many saved places have not
  * been visited yet.
  *
- * **Visited over every place with a location, as a `CountRing`.**
- * Asked for directly, alongside the tech tree and Working-through
- * glances: "needs the same treatment." A place with no point yet is a
- * deliberate, supported entry — a name to resolve later — so it is left
- * out of the denominator the same way `isResolved` already excludes it
- * from `outstanding`; counting it as neither visited nor to-go would be
- * inventing a third state this reading has no business claiming.
+ * **A cluster of pins, not a ring.** The first pass gave this the same
+ * ring `Base`, the tech tree and Working-through all got, and it read
+ * back correctly: "you literally just added the same visual to all of
+ * them... it should be a unique interesting visual for each." A ring is
+ * an abstract fraction; a place actually *is* a pin on this screen's
+ * own map, so lighting up the same glyph `CardHeading` already draws
+ * for every place that has one — filled once visited, hollow while it
+ * is still somewhere to go — reads as this card's own subject rather
+ * than a borrowed shape. A place with no point yet is a deliberate,
+ * supported entry — a name to resolve later — so it is left out
+ * entirely, the same way `isResolved` already excludes it from
+ * `outstanding`.
  */
+function PinCluster({ places }: { readonly places: readonly ResolvedPlace[] }) {
+  const shown = places.slice(0, 9)
+  const overflow = places.length - shown.length
+  const visited = places.filter(
+    (place) => place.status === 'visited' || place.status === 'archived',
+  ).length
+
+  return (
+    <div className="hidden w-14 shrink-0 flex-col items-end gap-2 lg:flex">
+      <span
+        className="flex flex-wrap justify-end gap-1"
+        aria-label={`${String(visited)} of ${String(places.length)} saved places visited`}
+      >
+        {shown.map((place) => (
+          <MapPin
+            key={place.id}
+            aria-hidden
+            size={14}
+            /*
+             * Colour rather than fill — lucide's pin is stroke-only, and
+             * a lucide icon's own `fill="none"` on its inner path is a
+             * presentation attribute set directly on that element, which
+             * a `fill-*` class on the outer `svg` cannot override by
+             * inheritance. Lit vs dim is the same idiom `LifeWheel`'s
+             * legend and the goal pips already use.
+             */
+            className={
+              place.status === 'visited' || place.status === 'archived'
+                ? 'text-accent-500'
+                : 'text-ink-700'
+            }
+          />
+        ))}
+      </span>
+      {overflow > 0 && <span className="text-ink-700 numeric text-xs">+{overflow}</span>}
+    </div>
+  )
+}
+
 export function MapGlance() {
   const atlas = useAtlas()
 
@@ -44,7 +87,6 @@ export function MapGlance() {
   const outstanding = resolved.filter(
     (place) => place.status !== 'visited' && place.status !== 'archived',
   ).length
-  const visited = resolved.length - outstanding
 
   return (
     <Card>
@@ -70,13 +112,7 @@ export function MapGlance() {
           </p>
         </div>
 
-        {resolved.length > 0 && (
-          <CountRing
-            done={visited}
-            total={resolved.length}
-            label={`${String(visited)} of ${String(resolved.length)} saved places visited`}
-          />
-        )}
+        {resolved.length > 0 && <PinCluster places={resolved} />}
       </div>
     </Card>
   )

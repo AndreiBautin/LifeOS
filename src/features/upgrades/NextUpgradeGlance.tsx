@@ -2,10 +2,10 @@ import { Network } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
 import { Card, CardHeading } from '@/components/shared/primitives'
-import { PercentRing } from '@/components/shared/PercentRing'
 import { Skeleton } from '@/components/shared/Skeleton'
 import { buttonStyles } from '@/components/shared/styles'
 import { formatMinorUnits, isOpen, isOwned } from '@/domain/upgrades/upgrade'
+import { cn } from '@/lib/cn'
 
 import { useSpendingPool, useWholeTree } from './hooks'
 
@@ -23,15 +23,45 @@ import { useSpendingPool, useWholeTree } from './hooks'
  * shortfall is exactly what the full tree would tell you first, so the
  * badge here is the same word `TechTree`'s own node draws.
  *
- * **The pool's own share of the price, as a `PercentRing`.** Asked for
- * directly, alongside the Working-through and map glances: "needs the
- * same treatment." Not a new reading — `pool.data.availableMinor`
- * against `next.upgrade.estimatedCostMinorUnits` is the exact
- * arithmetic already deciding whether "Short" gets printed, only shown
- * here as a number instead of implied by one word. A pool allowed to
- * run negative clamps to 0% rather than reading as a nonsense negative
- * share.
+ * **A savings gauge, not a ring.** The first pass gave this the same
+ * ring `Base`, Working-through and the map glances all got, and it read
+ * back correctly: "you literally just added the same visual to all of
+ * them... it should be a unique interesting visual for each." A vertical
+ * fill reads as a fundraising thermometer, which is closer to what this
+ * actually is — money accumulating toward one thing — than an abstract
+ * percentage circle ever was. Still the same reading underneath:
+ * `pool.data.availableMinor` against `next.upgrade.estimatedCostMinorUnits`
+ * is the exact arithmetic already deciding whether "Short" gets printed.
+ * A pool allowed to run negative clamps to an empty tube rather than a
+ * nonsense negative fill.
  */
+function SavingsGauge({ percent, label }: { readonly percent: number; readonly label: string }) {
+  const clamped = Math.max(0, Math.min(100, percent))
+  const complete = clamped >= 100
+
+  return (
+    <div
+      className="hidden w-14 shrink-0 flex-col items-center gap-1.5 lg:flex"
+      role="img"
+      aria-label={label}
+    >
+      <span className="numeric text-ink-100 text-xs font-semibold">{Math.round(clamped)}%</span>
+      <div className="bg-ink-800 relative h-14 w-3 overflow-hidden rounded-full" aria-hidden>
+        <div
+          className={cn(
+            'absolute inset-x-0 bottom-0 rounded-full transition-[height]',
+            complete ? 'bg-good-500' : 'bg-accent-500',
+          )}
+          style={{
+            height: `${String(clamped)}%`,
+            boxShadow: complete ? '0 0 6px var(--color-good-500)' : undefined,
+          }}
+        />
+      </div>
+    </div>
+  )
+}
+
 export function NextUpgradeGlance() {
   const pool = useSpendingPool()
   const tree = useWholeTree(pool.data?.availableMinor ?? 0)
@@ -87,9 +117,8 @@ export function NextUpgradeGlance() {
           </div>
 
           {saved !== undefined && (
-            <PercentRing
-              value={saved}
-              good={saved >= 100}
+            <SavingsGauge
+              percent={saved}
               label={`${String(Math.round(saved))}% of the price saved toward ${next.upgrade.title}`}
             />
           )}
