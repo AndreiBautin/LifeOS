@@ -237,8 +237,22 @@ export function HomePage() {
           one column until `xl`, two until the width three can actually
           hold — rather than one breakpoint asked to cover both a
           half-width laptop window and a monitor twice its size.
+
+          **The third step is `.today-readouts` in `index.css`, not a
+          Tailwind `min-[1800px]:` variant — the variant was tried first
+          and silently lost.** Tailwind v4 sorts every named breakpoint
+          (`lg`, `xl`, ...) into one group placed *after* all arbitrary
+          variants in the compiled stylesheet, whatever pixel value each
+          one names. So the arbitrary 1800px rule always compiled
+          *before* `xl:grid-cols-2`, and past 1280px `xl` won every
+          time — the grid was stuck at two columns even at 1900px,
+          caught only by reading `getComputedStyle` on the live site
+          rather than trusting the class list. The unlayered escape
+          hatch two rules up in `index.css` (the 16px input font-size
+          fix) already outranks every layered Tailwind utility outright,
+          which is what makes it immune to this ordering.
         */}
-        <div className="min-w-0 space-y-6 lg:grid lg:grid-cols-1 xl:grid-cols-2 min-[1800px]:grid-cols-3 lg:flex-1 lg:items-start lg:gap-8 lg:space-y-0">
+        <div className="today-readouts min-w-0 space-y-6 lg:grid lg:grid-cols-1 xl:grid-cols-2 lg:flex-1 lg:items-start lg:gap-8 lg:space-y-0">
           <div className="space-y-6">
             {/*
               The card names itself and links to the screen, which is

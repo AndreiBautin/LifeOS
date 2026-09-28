@@ -583,6 +583,31 @@
   }
 }
 
+/* Today's readouts grid steps 1 -> 2 -> 3 columns, and the third step
+   needs a threshold no named Tailwind breakpoint sits at — empirically
+   verified against the live site, not guessed: three columns still wrap
+   text badly as late as 1600px, and only clear up around 1800.
+
+   **`min-[1800px]:grid-cols-3` looked right and lost, silently.**
+   Tailwind v4 sorts its named breakpoints (sm/md/lg/xl/2xl) into one
+   group placed *after* every arbitrary variant in the generated
+   stylesheet, regardless of the pixel value either one names. So the
+   1800px rule was compiled *before* `xl:grid-cols-2` in the cascade,
+   and at any width past 1280 — including 1900 — the later `xl` rule
+   always won: the grid was stuck at two columns forever, confirmed by
+   reading `getComputedStyle` on the live site rather than trusting the
+   class list.
+
+   **Unlayered CSS is the fix already established two rules up.** It
+   outranks every layered Tailwind utility outright, so where the rule
+   sits in this file cannot lose a cascade fight to a class Tailwind
+   decided to sort later. */
+@media (min-width: 1800px) {
+  .today-readouts {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
 /*
  * The text you select is tinted the app's own accent rather than the
  * browser's default blue — the same reason the focus ring is
