@@ -103,17 +103,17 @@ const MIN_SCALE = 0.7
 const MAX_SCALE = 1.4
 
 /**
- * Extra canvas below every node, reserved for cross-branch prerequisite
- * edges to dip through.
+ * Extra canvas below every node, reserved for long-distance edges to
+ * dip through — see `longDistanceEdges` in the component for which
+ * edges that is and why it is not only prerequisite links.
  *
  * Reported directly, against a screenshot: "the overlap between base
- * and gadgets feels a bit weird." It was the cross-branch edge — the
- * same S-curve every ordinary edge uses, asked to span the entire
- * horizontal gap between two branch bands instead of one depth step.
- * At that distance the curve is nearly a straight line for most of its
- * length, which cuts straight through whatever nodes happen to share
- * its rough height — here, Espresso machine and the Gadgets branch
- * label both sat almost exactly between Standing desk and Monitor arm.
+ * and gadgets feels a bit weird" — and then, once the first fix missed
+ * the real cause, "it seems like Gadgets is a child of Espresso machine
+ * rather than a sibling of Base." Any edge that spans more than one
+ * depth step is nearly a straight line for most of its length, which
+ * cuts straight through whatever nodes happen to share its rough
+ * height on the way.
  *
  * A dedicated detour fixes it rather than a sharper curve: the path
  * drops straight down from the source, runs along a lane below every
@@ -121,7 +121,9 @@ const MAX_SCALE = 1.4
  * reads as a back-channel link rather than as a line that happens to
  * graze the tree it is crossing.
  */
-const CROSS_BRANCH_BOW = 40
+const BOW_MARGIN = 40
+/** Extra depth per additional long-distance edge, so two of them fan out rather than coincide. */
+const BOW_LANE_GAP = 14
 
 /*
  * `x` takes `row` and `y` takes `col` — the rotation is entirely in
@@ -154,6 +156,32 @@ export function TechTree({
 
   const byId = new Map(entries.map((entry) => [entry.upgrade.id as string, entry]))
   const positions = new Map(layout.nodes.map((node) => [node.id, node]))
+
+  /*
+   * **Every edge that skips more than one depth step detours through the
+   * bow lane, not only prerequisite links.** Reported directly: "it
+   * seems like Gadgets is a child of Espresso machine rather than a
+   * sibling of Base." It was neither — that line is the trunk's own
+   * ordinary edge to the *second* branch, which has to travel past the
+   * first branch's entire subtree to get there. `crossBranch` alone
+   * missed it, because a trunk-to-branch edge is not a prerequisite; it
+   * is simply long, the same way a cross-branch prerequisite is long,
+   * and the S-curve treats both identically regardless of *why* they
+   * are far apart.
+   *
+   * Each one gets its own lane rather than sharing a single line at the
+   * bottom, so two long edges dipping through the same stretch read as
+   * two separate detours instead of merging into a new tangle of their
+   * own.
+   */
+  const longDistanceEdges = layout.edges.filter((edge) => {
+    const from = positions.get(edge.from)
+    const to = positions.get(edge.to)
+    return from !== undefined && to !== undefined && to.row - from.row > 1
+  })
+  const laneOf = new Map(
+    longDistanceEdges.map((edge, index) => [`${edge.from}->${edge.to}`, index]),
+  )
 
   /*
    * `rows` (depth-and-branch-bands) now drives width, `cols` (siblings)
@@ -220,8 +248,9 @@ export function TechTree({
    */
   const overflowing = available !== undefined && width * scale > available + 0.5
 
-  /* Every node sits within `height`; the bow lane is blank canvas below it. */
-  const canvasHeight = height + CROSS_BRANCH_BOW
+  /* Every node sits within `height`; the bow lanes are blank canvas below it. */
+  const canvasHeight =
+    height + BOW_MARGIN + Math.max(0, longDistanceEdges.length - 1) * BOW_LANE_GAP
 
   return (
     <div
@@ -267,16 +296,21 @@ export function TechTree({
               const y2 = y(to.col)
 
               /*
-                **Cross-branch edges detour through the bow lane** rather
-                than sharing the ordinary S-curve — see `CROSS_BRANCH_BOW`.
-                Straight-down, straight-up tangents at each end (the
-                control point sits directly under the endpoint) are what
-                make it drop and rise cleanly instead of curving sideways
-                into whatever is nearby.
+                **Long-distance edges detour through their own bow lane**
+                rather than sharing the ordinary S-curve — see
+                `longDistanceEdges` above and `BOW_MARGIN`. Straight-down,
+                straight-up tangents at each end (the control point sits
+                directly under the endpoint) are what make it drop and
+                rise cleanly instead of curving sideways into whatever is
+                nearby.
               */
-              const path = edge.crossBranch
-                ? `M ${String(x1)} ${String(y1)} C ${String(x1)} ${String(canvasHeight)}, ${String(x2)} ${String(canvasHeight)}, ${String(x2)} ${String(y2)}`
-                : `M ${String(x1)} ${String(y1)} C ${String((x1 + x2) / 2)} ${String(y1)}, ${String((x1 + x2) / 2)} ${String(y2)}, ${String(x2)} ${String(y2)}`
+              const lane = laneOf.get(`${edge.from}->${edge.to}`)
+              const bowY =
+                lane === undefined ? undefined : height + BOW_MARGIN + lane * BOW_LANE_GAP
+              const path =
+                bowY === undefined
+                  ? `M ${String(x1)} ${String(y1)} C ${String((x1 + x2) / 2)} ${String(y1)}, ${String((x1 + x2) / 2)} ${String(y2)}, ${String(x2)} ${String(y2)}`
+                  : `M ${String(x1)} ${String(y1)} C ${String(x1)} ${String(bowY)}, ${String(x2)} ${String(bowY)}, ${String(x2)} ${String(y2)}`
 
               /*
                 **A path glows toward what it leads to, never decoratively.**
@@ -369,7 +403,7 @@ function TreeNodeBox({
   if (node.kind === 'branch') {
     return (
       <div
-        className="control-surface tech-node [--control-tint:var(--color-ink-500)] text-ink-100 absolute grid place-items-center px-2 text-center text-sm font-semibold"
+        className="control-surface rounded-lg [--control-tint:var(--color-ink-500)] text-ink-100 absolute grid place-items-center px-2 text-center text-sm font-semibold"
         style={{ ...style, minHeight: 44, height: 44, top: y(node.col) - 22 }}
       >
         {node.shelf === undefined ? node.label : UPGRADE_SHELF_LABELS[node.shelf]}
@@ -403,12 +437,12 @@ function TreeNodeBox({
    * can act on, and locked is dimmed with its reason on the node.
    */
   const tone = owned
-    ? 'control-surface tech-node [--control-tint:var(--color-good-500)] text-ink-100'
+    ? 'control-surface rounded-lg [--control-tint:var(--color-good-500)] text-ink-100'
     : dropped
-      ? 'control-surface tech-node [--control-tint:var(--color-ink-500)] text-ink-700'
+      ? 'control-surface rounded-lg [--control-tint:var(--color-ink-500)] text-ink-700'
       : entry.affordable
-        ? 'control-surface tech-node [--control-tint:var(--color-accent-500)] text-ink-50'
-        : 'control-surface tech-node [--control-tint:var(--color-ink-500)] text-ink-500'
+        ? 'control-surface rounded-lg [--control-tint:var(--color-accent-500)] text-ink-50'
+        : 'control-surface rounded-lg [--control-tint:var(--color-ink-500)] text-ink-500'
 
   return (
     <button

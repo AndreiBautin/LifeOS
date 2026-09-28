@@ -402,28 +402,6 @@
       var(--card-shadow);
   }
 
-  /*
-   * **The tech tree's own panel cut** — asked for directly, "make this
-   * look more like a legit RPG tech tree." `.control-surface` already
-   * gives every node the same lit-panel material a card and a button
-   * are made of; this is the one shape change on top of it, a beveled
-   * corner rather than a rounded one, which is what turns a rounded
-   * rectangle into something that reads as a game panel rather than a
-   * form control. Cut at two opposite corners only — all four would
-   * read as an octagon, and a shape with no rectangle left in it stops
-   * looking cut and starts looking like a different shape entirely.
-   */
-  .tech-node {
-    clip-path: polygon(
-      10px 0,
-      100% 0,
-      100% calc(100% - 10px),
-      calc(100% - 10px) 100%,
-      0 100%,
-      0 10px
-    );
-  }
-
   /* Every interactive control clears the 44px minimum touch target. This
      is a gym app: it is used with chalky hands, in a hurry, one-handed. */
   .tap-target {
