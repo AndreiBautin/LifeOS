@@ -1,7 +1,26 @@
 import { Card, CardHeading } from '@/components/shared/primitives'
+import type { LifeArea } from '@/domain/game/registry'
 import { PieChart } from 'lucide-react'
 
 import { useCharacterSheet } from './hooks'
+
+/**
+ * The registry's own names are addresses, not copy — `CLAUDE.md` is
+ * explicit that the screens and the domain use different words on
+ * purpose (Codex over `backlog`, Map over `domain/atlas`), and every
+ * other screen already reads this legend's two odd ones out as Codex
+ * and Map. Reported directly: "Backlog, Mind and Places read a bit
+ * awkward." Only two are actually wrong — Mind has no other name
+ * anywhere in the app, so it stays; it reads oddly here only because
+ * its neighbours didn't yet.
+ */
+const DISPLAY_NAME: Partial<Record<LifeArea, string>> = {
+  backlog: 'Codex',
+  places: 'Map',
+}
+
+const displayName = (area: { readonly area: string; readonly name: string }): string =>
+  DISPLAY_NAME[area.area as LifeArea] ?? area.name
 
 /**
  * Every life area, as one ring — the signature visual this screen was
@@ -64,7 +83,7 @@ export function LifeWheel() {
                   className="h-2.5 w-2.5 shrink-0 rounded-full"
                   style={{ backgroundColor: 'var(--color-accent-500)', opacity: opacityFor(index) }}
                 />
-                <span className="text-ink-100 min-w-0 flex-1 truncate">{area.name}</span>
+                <span className="text-ink-100 min-w-0 flex-1 truncate">{displayName(area)}</span>
                 <span className="text-ink-500 numeric shrink-0">
                   {Math.round((area.xp / total) * 100)}%
                 </span>
@@ -135,7 +154,7 @@ function Wheel({
       height={SIZE}
       className="shrink-0"
       role="img"
-      aria-label={`XP by area: ${areas.map((a) => `${a.name} ${String(Math.round((a.xp / total) * 100))}%`).join(', ')}`}
+      aria-label={`XP by area: ${areas.map((a) => `${displayName(a)} ${String(Math.round((a.xp / total) * 100))}%`).join(', ')}`}
     >
       <circle
         cx={CENTRE}
