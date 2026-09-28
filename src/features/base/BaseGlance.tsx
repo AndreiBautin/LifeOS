@@ -2,6 +2,7 @@ import { Home } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
 import { Card, CardHeading } from '@/components/shared/primitives'
+import { PercentRing } from '@/components/shared/PercentRing'
 import { Skeleton } from '@/components/shared/Skeleton'
 import { buttonStyles } from '@/components/shared/styles'
 import { describeClear } from '@/domain/base/declutter'
@@ -20,10 +21,20 @@ import { useHouse } from './hooks'
  *
  * **Two readings, not the full screen.** How clear the house is and
  * what job is furthest along — the same pairing `Declutter`'s own
- * summary row draws, in words rather than a ring, because a glance
- * card sits beside four others and a ring here would be the fourth one
- * on this page alone. `Declutter` still owns the picture; this owns
- * the one sentence.
+ * summary row draws. `Declutter` still owns the room-by-room picture;
+ * this owns the one sentence, plus the same headline ring `Declutter`
+ * already draws for the identical number.
+ *
+ * **The ring is `lg` and up only, the same restriction `PercentRing`
+ * already carries everywhere else it appears.** Asked for directly
+ * against a screenshot of this exact card — *"lets make this page more
+ * interesting with some sort of visual as well"* — after weighing it
+ * against the glance card's own original reasoning: a ring here reads
+ * as one more on a page that already has several. `PercentRing`'s
+ * built-in `lg:` gate is what keeps that reasoning true on the phone
+ * this card is mostly seen on, and turns it into extra texture only on
+ * the wide screens with room to spare — the same trade `Declutter`
+ * itself already makes for its own ring.
  *
  * **The job named is the one already open, not the highest priority.**
  * `JobRow` on Base itself ranks by what has actually been started
@@ -58,15 +69,27 @@ export function BaseGlance() {
         }
       />
 
-      <p className="text-ink-500 text-sm">
-        {house.data.clear === undefined
-          ? 'Nothing read yet.'
-          : `The house is ${describeClear(house.data.clear)}, ${String(house.data.clear)}% clear.`}
-      </p>
+      <div className="flex items-start gap-3">
+        <div className="min-w-0 flex-1">
+          <p className="text-ink-500 text-sm">
+            {house.data.clear === undefined
+              ? 'Nothing read yet.'
+              : `The house is ${describeClear(house.data.clear)}, ${String(house.data.clear)}% clear.`}
+          </p>
 
-      {next !== undefined && (
-        <p className="text-ink-50 mt-1 truncate text-sm font-medium">{next.name}</p>
-      )}
+          {next !== undefined && (
+            <p className="text-ink-50 mt-1 truncate text-sm font-medium">{next.name}</p>
+          )}
+        </div>
+
+        {house.data.clear !== undefined && (
+          <PercentRing
+            value={house.data.clear}
+            good={house.data.clear >= 70}
+            label={`The house is ${describeClear(house.data.clear)}, ${String(house.data.clear)}% clear`}
+          />
+        )}
+      </div>
     </Card>
   )
 }
