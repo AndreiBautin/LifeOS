@@ -80,8 +80,16 @@ const BOX_CLASSES = {
    * already names for fixed pixel breakpoints; reverted rather than
    * re-tuned, because the failure mode (text wrapping inside a shrunk
    * column) would recur at any second size step chosen the same way.
+   *
+   * **220px was too much of the same thing, reported on a fresh look**
+   * rather than a layout bug: "the massive avatar and the bold font and
+   * large font make this feel clunky." No overlap this time, no wrapping
+   * — just a figure eating most of the card's own weight. 150px keeps
+   * the point of the `lg` step (something in the freed width, the same
+   * reasoning Spinner's record still holds) without it reading as the
+   * card's whole reason for being there.
    */
-  large: 'h-[120px] w-[120px] lg:h-[220px] lg:w-[220px]',
+  large: 'h-[120px] w-[120px] lg:h-[150px] lg:w-[150px]',
 } as const
 
 export function AvatarPortrait({

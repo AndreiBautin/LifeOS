@@ -8,6 +8,7 @@ import { TodayGoals } from '@/features/backlog/TodayGoals'
 import { BaseGlance } from '@/features/base/BaseGlance'
 import { useCampaigns } from '@/features/campaign/hooks'
 import { ChallengePass } from '@/features/challenges/ChallengePass'
+import { LifeWheel } from '@/features/character/LifeWheel'
 import { SheetCard } from '@/features/character/SheetCard'
 import { useCharacterSheet, useSeasonProgress } from '@/features/character/hooks'
 import { ActiveQuests } from '@/features/projects/ActiveQuests'
@@ -176,6 +177,16 @@ export function HomePage() {
               </Link>
             }
           />
+
+          {/*
+            **The signature visual, directly under the sheet it reads
+            from.** Asked for after a fresh look at Today: "it needs more
+            diagrams/graphs/charts and ideally one cool unique visual,
+            similar to how we have the spinning DJ record." See
+            `LifeWheel`'s own doc for why this reaches five areas no
+            trait bar ever shows.
+          */}
+          <LifeWheel />
 
           {/*
             **The two quest slots, same component `QuestsPage` opens
