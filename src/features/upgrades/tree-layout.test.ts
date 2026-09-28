@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { branchId, layoutTree, TRUNK_ID, type LayoutInput } from './tree-layout'
+import { branchId, layoutTree, type LayoutInput } from './tree-layout'
 
 function node(
   id: string,
@@ -21,14 +21,13 @@ const at = (layout: ReturnType<typeof layoutTree>, id: string) =>
   layout.nodes.find((one) => one.id === id)
 
 describe('layoutTree', () => {
-  it('puts the trunk above the branches and the branches above the upgrades', () => {
+  it('starts every branch label at row 0 and its own roots at row 1', () => {
     const layout = layoutTree([node('desk', 'base'), node('phone', 'tech')])
 
-    expect(at(layout, TRUNK_ID)?.row).toBe(0)
-    expect(at(layout, branchId('base'))?.row).toBe(1)
-    expect(at(layout, 'desk')?.row).toBe(2)
-    /* The second branch is below the first, not beside it. */
-    expect(at(layout, branchId('tech'))?.row).toBeGreaterThan(2)
+    expect(at(layout, branchId('base'))?.row).toBe(0)
+    expect(at(layout, 'desk')?.row).toBe(1)
+    expect(at(layout, branchId('tech'))?.row).toBe(0)
+    expect(at(layout, 'phone')?.row).toBe(1)
   })
 
   /*
@@ -42,29 +41,20 @@ describe('layoutTree', () => {
       node('bulb', 'base', 'lamp'),
     ])
 
-    /*
-     * **Relative to the branch, not to the canvas.** These were absolute
-     * rows — 2, 3, 4 — which was the same thing while every branch's
-     * roots sat on row 2. Branches stack into bands of their own now, so
-     * a root's row depends on how deep the branches above it run, and an
-     * absolute figure here would be asserting the *order of the shelves*
-     * while claiming to assert nesting.
-     */
-    const base = at(layout, branchId('base'))?.row ?? 0
-
-    expect(at(layout, 'desk')?.row).toBe(base + 1)
-    expect(at(layout, 'lamp')?.row).toBe(base + 2)
-    expect(at(layout, 'bulb')?.row).toBe(base + 3)
+    expect(at(layout, 'desk')?.row).toBe(1)
+    expect(at(layout, 'lamp')?.row).toBe(2)
+    expect(at(layout, 'bulb')?.row).toBe(3)
     expect(layout.rows).toBeGreaterThan(at(layout, 'bulb')?.row ?? 0)
   })
 
   /*
-   * **The width is the widest branch, not the sum of them**, which is the
-   * whole reason the bands exist. Two branches of three roots each came
-   * out at seven columns side by side and read as "scroll all the way
-   * over" on a phone; stacked they are three.
+   * **The height is every branch stacked, not just the widest one.**
+   * With no shared trunk to avoid overlapping, branches no longer stagger
+   * across depth to keep clear of each other — they stack across columns
+   * instead, so two branches of three roots each come out needing seven:
+   * three, a gap, three.
    */
-  it('sizes the canvas to the widest branch rather than to every branch', () => {
+  it('sizes the canvas to every branch stacked, with a gap between them', () => {
     const layout = layoutTree([
       node('a', 'base'),
       node('b', 'base'),
@@ -74,21 +64,21 @@ describe('layoutTree', () => {
       node('z', 'tech'),
     ])
 
-    expect(layout.cols).toBe(3)
+    expect(layout.cols).toBe(7)
   })
 
-  /* And a band cannot overlap the one above it. */
-  it('gives each branch a row band of its own', () => {
+  /* And a branch's own column band cannot overlap the one before it. */
+  it('gives each branch a column band of its own', () => {
     const layout = layoutTree([
       node('desk', 'base'),
       node('lamp', 'base', 'desk'),
       node('phone', 'tech'),
     ])
 
-    const deepestBase = at(layout, 'lamp')?.row ?? 0
-    const techBranch = at(layout, branchId('tech'))?.row ?? 0
+    const baseCols = layout.nodes.filter((one) => one.shelf === 'base').map((one) => one.col)
+    const techBranchCol = at(layout, branchId('tech'))?.col ?? 0
 
-    expect(techBranch).toBeGreaterThan(deepestBase)
+    expect(techBranchCol).toBeGreaterThan(Math.max(...baseCols))
   })
 
   /* A parent centred over its children is what makes it look drawn. */
@@ -113,9 +103,9 @@ describe('layoutTree', () => {
   it('keeps a cross-branch prerequisite on its own branch and draws the link separately', () => {
     const layout = layoutTree([node('desk', 'base'), node('arm', 'tech', 'desk')])
 
-    /* One row under its own branch label, wherever that band starts. */
+    /* One row under its own branch label, same as any other root. */
     expect(at(layout, 'arm')?.shelf).toBe('tech')
-    expect(at(layout, 'arm')?.row).toBe((at(layout, branchId('tech'))?.row ?? 0) + 1)
+    expect(at(layout, 'arm')?.row).toBe(1)
     expect(layout.edges).toContainEqual({ from: branchId('tech'), to: 'arm', crossBranch: false })
     expect(layout.edges).toContainEqual({ from: 'desk', to: 'arm', crossBranch: true })
   })
@@ -127,7 +117,7 @@ describe('layoutTree', () => {
   it('treats a dangling prerequisite as a root rather than dropping the node', () => {
     const layout = layoutTree([node('lamp', 'base', 'gone')])
 
-    expect(at(layout, 'lamp')?.row).toBe(2)
+    expect(at(layout, 'lamp')?.row).toBe(1)
     expect(layout.edges).toContainEqual({ from: branchId('base'), to: 'lamp', crossBranch: false })
   })
 
@@ -139,12 +129,10 @@ describe('layoutTree', () => {
   it('draws a branch that has nothing on it', () => {
     const layout = layoutTree([node('desk', 'base')])
 
-    expect(at(layout, branchId('tech'))).toBeDefined()
-    expect(layout.edges).toContainEqual({
-      from: TRUNK_ID,
-      to: branchId('tech'),
-      crossBranch: false,
-    })
+    const tech = at(layout, branchId('tech'))
+    expect(tech).toBeDefined()
+    /* Nothing points at a branch — branches are roots now, not children of anything. */
+    expect(layout.edges.some((edge) => edge.to === branchId('tech'))).toBe(false)
   })
 
   it('sorts the most wanted leftward within a branch', () => {
@@ -156,10 +144,11 @@ describe('layoutTree', () => {
     expect(at(layout, 'high')?.col).toBeLessThan(at(layout, 'low')?.col ?? 0)
   })
 
-  it('lays out an empty tree without inventing a node', () => {
+  it('lays out an empty tree as branches with nothing under them', () => {
     const layout = layoutTree([])
 
-    expect(at(layout, TRUNK_ID)).toBeDefined()
     expect(layout.nodes.filter((one) => one.kind === 'upgrade')).toHaveLength(0)
+    expect(layout.nodes.every((one) => one.kind === 'branch')).toBe(true)
+    expect(layout.nodes.length).toBeGreaterThan(0)
   })
 })

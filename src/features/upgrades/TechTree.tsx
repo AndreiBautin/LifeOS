@@ -73,6 +73,21 @@ import { layoutTree, type LaidOutNode } from './tree-layout'
  * widest branch ever has at one level) now bounds the *page's* axis,
  * which must never scroll here.
  *
+ * **There is no trunk any more.** Reported plainly: "doesn't really make
+ * sense to have 'You' in the tech tree" — it stood for nothing the data
+ * could name, and it was the entire reason branches had to stagger
+ * across depth in the first place, to avoid drawing on top of a shared
+ * root both of them connected to. Removing it let branches stack across
+ * *columns* instead — see `tree-layout.ts`'s own doc — which is also
+ * what retired the long structural edge a screenshot once read as "a
+ * child of Espresso machine": that edge does not exist any more, because
+ * nothing connects the branches to each other or to anything above them.
+ * `longDistanceEdges` below still exists for prerequisite links that
+ * genuinely span more than one depth step, which mostly no longer
+ * happens either — two branches at nearly the same depth make the
+ * ordinary S-curve between them close to a straight line through the
+ * gap that already separates them.
+ *
  * **Locked nodes are drawn, never hidden.** Seeing *why* the thing you
  * want is out of reach is the entire point of a tech tree; a view that
  * showed only what you could afford would be a shopping list.
@@ -400,17 +415,6 @@ function TreeNodeBox({
     top: y(node.col) - NODE_HEIGHT / 2,
     width: NODE_WIDTH,
     minHeight: NODE_HEIGHT,
-  }
-
-  if (node.kind === 'trunk') {
-    return (
-      <div
-        className="control-surface control-surface-lit [--control-tint:var(--color-accent-500)] text-accent-300 absolute grid place-items-center rounded-full text-sm font-semibold"
-        style={{ ...style, minHeight: 44, height: 44, top: y(node.col) - 22 }}
-      >
-        {node.label}
-      </div>
-    )
   }
 
   if (node.kind === 'branch') {

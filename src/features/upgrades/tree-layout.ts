@@ -20,26 +20,44 @@ import { UPGRADE_SHELVES, type UpgradeShelf } from '@/domain/upgrades/upgrade'
  * half. The component multiplies by a pixel constant, so nothing here
  * needs to know how wide a node is.
  *
- * **Branches stack down the page rather than side by side, and that is
- * the whole of what makes this usable on a phone.** Reported as _"I have
- * to scroll all the way over to see it in mobile which isn't a great
- * experience."_
+ * **There is no trunk any more, and removing it is what let the branches
+ * stop staggering.** Reported plainly: "doesn't really make sense to
+ * have 'You' in the tech tree." It never stood for anything the data
+ * could name — it was a picture of the *account*, drawn as a node, and
+ * every branch had to connect to it somehow.
  *
- * Columns used to be handed out in one running sequence across every
- * branch, so the canvas was as wide as **the sum of all of them**:
- * measured at **1320 pixels** on eight upgrades across two shelves, on a
- * 375-pixel screen. You could see 28% of your own tech tree, and the
- * second branch was entirely off the right edge.
+ * That single requirement — a shared root every branch must reach — is
+ * the entire reason branches used to stagger across *depth* instead of
+ * sitting side by side: with one shared starting point, two branches at
+ * the same depth would draw on top of each other, so each branch's own
+ * band started only after the previous branch's deepest chain finished.
+ * That is also, precisely, what made a structural trunk-to-second-branch
+ * edge have to travel the width of the first branch's entire subtree to
+ * reach it — the edge a screenshot later called "a child of Espresso
+ * machine" for exactly that reason.
  *
- * Each branch now starts at column 0 in a row-band of its own, so the
- * width is **the widest single branch** rather than the sum. Height grows
- * instead, which is the axis a phone already scrolls. The same eight
- * upgrades come out at 528.
+ * With no shared root, branches do not need to avoid each other in
+ * depth at all. They now stack in the *other* axis — each starts fresh
+ * at its own row 1, and it is columns that accumulate from one branch to
+ * the next, the same job rows used to do. A prerequisite that crosses
+ * branches is the only edge left with real distance to cover, and it
+ * covers it directly: two branches side by side share almost the same
+ * depth, so the edge between them is close to a straight vertical line
+ * through the gap that already separates the branches, rather than a
+ * detour around anything.
  *
- * It can still overflow — four siblings at 132 pixels is 528 whatever the
- * screen — and that is the case the container's horizontal scroll is
- * genuinely for. What it no longer does is hide a whole branch off-screen
- * before you have seen anything.
+ * **Branches stack rather than sitting in one running sequence, and
+ * that is the whole of what makes this usable on a phone.** Reported as
+ * _"I have to scroll all the way over to see it in mobile which isn't a
+ * great experience."_ Columns used to be handed out in one running
+ * sequence across every branch too, before rows took over that job for a
+ * while — the effect is the same either way: two branches of three
+ * upgrades each come out needing seven columns' worth of canvas rather
+ * than the three either one alone would need, and that is deliberate.
+ * After the tree rotated to read sideways, that total drives the
+ * canvas's *height*, which this screen keeps small on purpose — but the
+ * cost of two branches instead of one showing on it plainly is a couple
+ * of extra rows, not a redesign.
  */
 export interface LayoutInput {
   readonly id: string
@@ -50,10 +68,10 @@ export interface LayoutInput {
   readonly priority: number
 }
 
-export type NodeKind = 'trunk' | 'branch' | 'upgrade'
+export type NodeKind = 'branch' | 'upgrade'
 
 export interface LaidOutNode {
-  /** `trunk`, `shelf:<shelf>`, or the upgrade's own id. */
+  /** `shelf:<shelf>`, or the upgrade's own id. */
   readonly id: string
   readonly kind: NodeKind
   readonly label: string
@@ -89,27 +107,29 @@ export interface TreeLayout {
 }
 
 /**
- * Empty rows left between one branch's band and the next.
+ * Empty columns left between one branch's band and the next.
  *
- * It was a *column* gutter, for the reason recorded below: with branches
- * side by side and columns in one running sequence, the last node of one
- * and the first of the next sat adjacent with nothing between them, and
- * a Monitor filed under Gadgets appeared to hang off Base. Stacking the
- * branches answers that by construction — they cannot be adjacent
- * sideways any more — but the bands still need air between them or the
- * deepest node of one band touches the next band's label.
+ * The column axis is what separates branches now that they stack side
+ * by side rather than one after another in depth — without a gap, the
+ * last root of one branch and the first root of the next would sit
+ * adjacent with nothing between them, the same "a Monitor filed under
+ * Gadgets appeared to hang off Base" failure this file has already
+ * named once, on the axis that mattered before the tree rotated.
  */
 const BRANCH_GAP = 1
 
-export const TRUNK_ID = 'trunk'
 export const branchId = (shelf: UpgradeShelf): string => `shelf:${shelf}`
 
 /**
- * Lays the whole tree out: a trunk, a branch per shelf, and each shelf's
- * upgrades nested by prerequisite beneath it.
+ * Lays the whole tree out: a branch per shelf, stacked side by side, and
+ * each shelf's upgrades nested by prerequisite beside it.
  *
- * Rows are fixed by kind — trunk 0, branches 1, upgrades 2 and down —
- * so every branch label sits on one line however deep its chains run.
+ * Every branch's own roots sit one row below its own label — row 0 is
+ * the label, row 1 is where its roots start — because there is no
+ * shared trunk above them to offset from any more. What used to stagger
+ * branches across rows to keep them from overlapping a trunk now
+ * stacks them across columns instead, which is the axis a second branch
+ * actually needs of its own.
  */
 export function layoutTree(
   upgrades: readonly LayoutInput[],
@@ -173,39 +193,39 @@ export function layoutTree(
     return col
   }
 
-  const branchCols: number[] = []
-  /** The widest any single branch got — the canvas width, not the sum. */
-  let widest = 1
-  /** The next free row band. Row 0 is the trunk. */
-  let bandRow = 1
+  /** The deepest any single branch's own chain reached. */
+  let deepestAnyRow = 1
 
   for (const shelf of shelves) {
     const roots = ordered(
       upgrades.filter((one) => one.shelf === shelf && nestsUnder(one) === undefined),
     )
 
-    /* Each band starts at the left edge; that is what caps the width. */
-    nextCol = 0
-    deepestRow = bandRow
+    /*
+     * Every branch's roots start at row 1 — there is no trunk above them
+     * to offset from any more — so depth resets per branch while columns
+     * do not: columns are what stack one branch under the last now, the
+     * job rows used to do while a shared root meant branches had to
+     * avoid overlapping it in depth instead.
+     */
+    deepestRow = 1
 
     /*
      * A branch with nothing on it still gets drawn. An empty branch is a
      * shelf you have not put anything on, which is information — and a
-     * tree whose branches appear only once populated would rearrange
+     * tree whose branches appeared only once populated would rearrange
      * itself as things were added.
      */
-    const cols = roots.map((root) => place(root, bandRow + 1))
+    const cols = roots.map((root) => place(root, 1))
     const col = cols.length === 0 ? nextCol++ : (Math.min(...cols) + Math.max(...cols)) / 2
 
-    widest = Math.max(widest, nextCol)
+    deepestAnyRow = Math.max(deepestAnyRow, deepestRow)
 
-    branchCols.push(col)
-    nodes.push({ id: branchId(shelf), kind: 'branch', label: shelf, col, row: bandRow, shelf })
+    nodes.push({ id: branchId(shelf), kind: 'branch', label: shelf, col, row: 0 })
 
-    edges.push({ from: TRUNK_ID, to: branchId(shelf), crossBranch: false })
     for (const root of roots) edges.push({ from: branchId(shelf), to: root.id, crossBranch: false })
 
-    bandRow = deepestRow + 1 + BRANCH_GAP
+    nextCol += BRANCH_GAP
   }
 
   /* Cross-branch prerequisites, drawn as their own edges — see `crossBranch`. */
@@ -216,26 +236,11 @@ export function layoutTree(
     edges.push({ from: parent.id, to: one.id, crossBranch: true })
   }
 
-  /*
-   * The trunk sits above the *first* branch rather than centred across
-   * all of them. Side by side, the centre was between the branches and
-   * every edge ran down and outwards; stacked, they are all below it, so
-   * the centre of the topmost band is the only position from which the
-   * edges do not cross the bands underneath.
-   */
-  nodes.push({
-    id: TRUNK_ID,
-    kind: 'trunk',
-    label: 'You',
-    col: branchCols[0] ?? 0,
-    row: 0,
-  })
-
   return {
     nodes,
     edges,
-    cols: Math.max(widest, 1),
-    /* `bandRow` has already stepped past the last band's gap. */
-    rows: Math.max(bandRow - BRANCH_GAP, 1),
+    /* `nextCol` has already stepped past the last branch's own trailing gap. */
+    cols: Math.max(nextCol - BRANCH_GAP, 1),
+    rows: Math.max(deepestAnyRow + 1, 1),
   }
 }
