@@ -7,16 +7,23 @@ import { useCharacterSheet } from './hooks'
 /**
  * The registry's own names are addresses, not copy — `CLAUDE.md` is
  * explicit that the screens and the domain use different words on
- * purpose (Codex over `backlog`, Map over `domain/atlas`), and every
- * other screen already reads this legend's two odd ones out as Codex
- * and Map. Reported directly: "Backlog, Mind and Places read a bit
- * awkward." Only two are actually wrong — Mind has no other name
- * anywhere in the app, so it stays; it reads oddly here only because
- * its neighbours didn't yet.
+ * purpose (Codex over `backlog`, Map over `domain/atlas`, Quests over
+ * `Project`), and every other screen already reads three of this
+ * legend's entries as Codex, Map and Quests. Reported directly:
+ * "Backlog, Mind and Places read a bit awkward," then, checking
+ * whether `projects` was secretly `crafting`: it is not — they are
+ * two separate areas (`projects`' own acts are "Closed a main quest
+ * step"/"Closed a side quest step", the quest log; Crafting is the
+ * DIY/Lego area split off from it and already has its own trait bar)
+ * — but the same rule that renamed Backlog and Places had been missed
+ * on `projects` itself. Mind has no other name anywhere in the app,
+ * so it stays; it read oddly at first only because its neighbours
+ * hadn't been translated yet.
  */
 const DISPLAY_NAME: Partial<Record<LifeArea, string>> = {
   backlog: 'Codex',
   places: 'Map',
+  projects: 'Quests',
 }
 
 const displayName = (area: { readonly area: string; readonly name: string }): string =>
