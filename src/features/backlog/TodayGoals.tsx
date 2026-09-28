@@ -1,5 +1,6 @@
 import { BookOpen } from 'lucide-react'
 
+import { CountRing } from '@/components/shared/CountRing'
 import { Card, CardHeading } from '@/components/shared/primitives'
 
 import { GoalsToday } from './GoalsToday'
@@ -33,6 +34,14 @@ import { useDailyGoals } from './hooks'
  * rest of Today's headers, as inconsistent. `GoalsToday` takes a `bare`
  * prop now so its rows can sit inside *this* card, under one
  * `CardHeading`, matching `Buffs` and `Recent training` exactly.
+ *
+ * **How many are met today, as the same `CountRing` `ChallengePass`
+ * already draws.** Asked for directly against a screenshot of this
+ * card, alongside the tech tree and map glances: "needs the same
+ * treatment." The real denominator was already sitting in `statuses` —
+ * `status.isMet` per goal — so this is the identical "done of a real
+ * total" shape as a challenge finished, not a new reading invented for
+ * the occasion.
  */
 export function TodayGoals() {
   const goals = useDailyGoals()
@@ -40,10 +49,21 @@ export function TodayGoals() {
 
   if (statuses.length === 0) return null
 
+  const met = statuses.filter((status) => status.isMet).length
+
   return (
     <Card>
       <CardHeading icon={<BookOpen size={16} aria-hidden />} title="Working through" />
-      <GoalsToday statuses={statuses} bare />
+      <div className="flex items-start gap-3">
+        <div className="min-w-0 flex-1">
+          <GoalsToday statuses={statuses} bare />
+        </div>
+        <CountRing
+          done={met}
+          total={statuses.length}
+          label={`${String(met)} of ${String(statuses.length)} goals met today`}
+        />
+      </div>
     </Card>
   )
 }

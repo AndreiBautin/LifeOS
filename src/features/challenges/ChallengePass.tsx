@@ -2,11 +2,11 @@ import { CalendarDays, Check, Plus, X } from 'lucide-react'
 import { useState } from 'react'
 
 import { Button, CardHeading, Empty } from '@/components/shared/primitives'
+import { CountRing } from '@/components/shared/CountRing'
 import { Meter } from '@/components/shared/Meter'
 import type { Challenge } from '@/domain/challenges/challenge'
 import { cn } from '@/lib/cn'
 
-import { ChallengeRing } from './ChallengeRing'
 import {
   useAddChallenge,
   useChallenges,
@@ -264,9 +264,15 @@ export function ChallengePass({
           replacement for the bar above: the bar is what mobile has
           always had and keeps having, and the ring is the "fill the
           freed space with a real chart" answer for the width that only
-          exists on a wider screen.
+          exists on a wider screen. `CountRing` rather than a private
+          component now that "goals met today" and "places visited"
+          turned out to want the exact same shape.
         */}
-        <ChallengeRing done={data.done} total={data.total} />
+        <CountRing
+          done={data.done}
+          total={data.total}
+          label={`${String(data.done)} of ${String(data.total)} challenges finished`}
+        />
       </div>
 
       <PassTrack challenges={data.challenges} />

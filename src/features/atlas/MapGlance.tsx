@@ -1,6 +1,7 @@
 import { MapPin } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
+import { CountRing } from '@/components/shared/CountRing'
 import { Card, CardHeading } from '@/components/shared/primitives'
 import { Skeleton } from '@/components/shared/Skeleton'
 import { buttonStyles } from '@/components/shared/styles'
@@ -18,6 +19,14 @@ import { useAtlas } from './hooks'
  * this reads the same two facts `AtlasPage`'s own headers already
  * state in words: the area walked, and how many saved places have not
  * been visited yet.
+ *
+ * **Visited over every place with a location, as a `CountRing`.**
+ * Asked for directly, alongside the tech tree and Working-through
+ * glances: "needs the same treatment." A place with no point yet is a
+ * deliberate, supported entry — a name to resolve later — so it is left
+ * out of the denominator the same way `isResolved` already excludes it
+ * from `outstanding`; counting it as neither visited nor to-go would be
+ * inventing a third state this reading has no business claiming.
  */
 export function MapGlance() {
   const atlas = useAtlas()
@@ -31,9 +40,11 @@ export function MapGlance() {
     )
   }
 
-  const outstanding = atlas.data.places.filter(
-    (place) => isResolved(place) && place.status !== 'visited' && place.status !== 'archived',
+  const resolved = atlas.data.places.filter(isResolved)
+  const outstanding = resolved.filter(
+    (place) => place.status !== 'visited' && place.status !== 'archived',
   ).length
+  const visited = resolved.length - outstanding
 
   return (
     <Card>
@@ -47,14 +58,26 @@ export function MapGlance() {
         }
       />
 
-      <p className="text-ink-500 text-sm">
-        {formatArea(atlas.data.areaKm2)} covered · {atlas.data.cellCount.toString()} squares
-      </p>
-      <p className="text-ink-500 mt-0.5 text-sm">
-        {outstanding === 0
-          ? 'Everywhere saved has been visited.'
-          : `${outstanding.toString()} places to go`}
-      </p>
+      <div className="flex items-start gap-3">
+        <div className="min-w-0 flex-1">
+          <p className="text-ink-500 text-sm">
+            {formatArea(atlas.data.areaKm2)} covered · {atlas.data.cellCount.toString()} squares
+          </p>
+          <p className="text-ink-500 mt-0.5 text-sm">
+            {outstanding === 0
+              ? 'Everywhere saved has been visited.'
+              : `${outstanding.toString()} places to go`}
+          </p>
+        </div>
+
+        {resolved.length > 0 && (
+          <CountRing
+            done={visited}
+            total={resolved.length}
+            label={`${String(visited)} of ${String(resolved.length)} saved places visited`}
+          />
+        )}
+      </div>
     </Card>
   )
 }
