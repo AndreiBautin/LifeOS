@@ -298,19 +298,32 @@ export function TechTree({
               /*
                 **Long-distance edges detour through their own bow lane**
                 rather than sharing the ordinary S-curve — see
-                `longDistanceEdges` above and `BOW_MARGIN`. Straight-down,
-                straight-up tangents at each end (the control point sits
-                directly under the endpoint) are what make it drop and
-                rise cleanly instead of curving sideways into whatever is
-                nearby.
+                `longDistanceEdges` above and `BOW_MARGIN`.
+
+                **The lane is a straight line at a fixed depth, not a
+                single long curve that eases toward it.** A single bezier
+                spanning the whole x1-to-x2 distance only *approaches*
+                `bowY` gradually — reported directly, against a
+                screenshot, "it still goes through standing desk." A node
+                sitting close to the source end sits inside the stretch
+                where the curve has not finished dropping yet, so a
+                clearance that is generous once the curve is flat was not
+                generous where the curve was still mid-turn. Two short
+                curves (`TURN` wide, fixed regardless of the edge's own
+                length) handle the drop and the rise; the long middle
+                stretch is a plain horizontal line at exactly `bowY`,
+                which is the one shape that cannot graze anything — its
+                distance from every node is the same distance the lane
+                itself was given.
               */
               const lane = laneOf.get(`${edge.from}->${edge.to}`)
               const bowY =
                 lane === undefined ? undefined : height + BOW_MARGIN + lane * BOW_LANE_GAP
+              const TURN = 24
               const path =
                 bowY === undefined
                   ? `M ${String(x1)} ${String(y1)} C ${String((x1 + x2) / 2)} ${String(y1)}, ${String((x1 + x2) / 2)} ${String(y2)}, ${String(x2)} ${String(y2)}`
-                  : `M ${String(x1)} ${String(y1)} C ${String(x1)} ${String(bowY)}, ${String(x2)} ${String(bowY)}, ${String(x2)} ${String(y2)}`
+                  : `M ${String(x1)} ${String(y1)} C ${String(x1)} ${String(bowY)}, ${String(x1 + TURN)} ${String(bowY)}, ${String(x1 + TURN)} ${String(bowY)} L ${String(x2 - TURN)} ${String(bowY)} C ${String(x2 - TURN)} ${String(bowY)}, ${String(x2)} ${String(bowY)}, ${String(x2)} ${String(y2)}`
 
               /*
                 **A path glows toward what it leads to, never decoratively.**
