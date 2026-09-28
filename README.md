@@ -71,10 +71,6 @@ turns them into things to optimise rather than things to use.
 - **[`features/upgrades/tree-layout.ts`](src/features/upgrades/tree-layout.ts)**
   — pure graph layout, in the feature rather than the domain, because
   positions are presentation.
-- **[`CLAUDE.md`](CLAUDE.md)** — the decision log. Every load-bearing
-  invariant, why it exists, and what it cost to learn. It is long
-  because the app is, and it is the most useful thing here for
-  understanding _why_ rather than _what_.
 
 ## Architecture
 
