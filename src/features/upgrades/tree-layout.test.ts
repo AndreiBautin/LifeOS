@@ -31,6 +31,17 @@ describe('layoutTree', () => {
   })
 
   /*
+   * The component reads a branch node's own `shelf` to look up its
+   * pretty label — without it, a shipped regression fell back to the
+   * raw id, showing "base" and "tech" instead of "Base" and "Gadgets".
+   */
+  it('carries the shelf on the branch node itself, not only on its upgrades', () => {
+    const layout = layoutTree([node('desk', 'base')])
+
+    expect(at(layout, branchId('base'))?.shelf).toBe('base')
+  })
+
+  /*
    * A chain is what makes it a tree rather than two rows, so each link
    * has to drop a row.
    */

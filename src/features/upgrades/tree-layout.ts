@@ -221,7 +221,7 @@ export function layoutTree(
 
     deepestAnyRow = Math.max(deepestAnyRow, deepestRow)
 
-    nodes.push({ id: branchId(shelf), kind: 'branch', label: shelf, col, row: 0 })
+    nodes.push({ id: branchId(shelf), kind: 'branch', label: shelf, col, row: 0, shelf })
 
     for (const root of roots) edges.push({ from: branchId(shelf), to: root.id, crossBranch: false })
 
