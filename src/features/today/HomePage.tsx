@@ -223,8 +223,22 @@ export function HomePage() {
           now; each simply ends where its own content ends, the same
           "not a gap needing to be filled" call the Quests page's
           columns already make.
+
+          **Three columns only earns its keep past 1800px, and jumping
+          straight to it at `lg` (1024) is what a real report caught:**
+          "if i make this half width alongside another window on my
+          main monitor, the ui is not responsive." Measured against the
+          live site rather than guessed — `lg`'s flat `grid-cols-3` was
+          still wrapping "Thanksgiving dinner with family" onto four
+          lines at 1600px wide, because `SheetCard`'s own 576px column
+          plus the sidebar leaves three columns fighting over roughly
+          200px each at anything under about 1800. Two genuinely usable
+          steps now sit between the mobile stack and the full spread —
+          one column until `xl`, two until the width three can actually
+          hold — rather than one breakpoint asked to cover both a
+          half-width laptop window and a monitor twice its size.
         */}
-        <div className="min-w-0 space-y-6 lg:grid lg:flex-1 lg:grid-cols-3 lg:items-start lg:gap-8 lg:space-y-0">
+        <div className="min-w-0 space-y-6 lg:grid lg:grid-cols-1 xl:grid-cols-2 min-[1800px]:grid-cols-3 lg:flex-1 lg:items-start lg:gap-8 lg:space-y-0">
           <div className="space-y-6">
             {/*
               The card names itself and links to the screen, which is
