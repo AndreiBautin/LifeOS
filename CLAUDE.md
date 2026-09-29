@@ -13,8 +13,28 @@ Nominatim to turn a name into coordinates. Both are the same third party,
 both are opt-in in the sense that they only happen on the map screens, and
 neither carries a record — but "no network calls" was never true once
 Leaflet was rendering live tiles, and claiming it made the _other_
-requests look like a bigger step than they are. Firebase sync, when
-configured, is the other one.
+requests look like a bigger step than they are.
+
+**Firebase is gone, and every paragraph below about Firestore, sync,
+`AuthGate`, `VITE_ALLOWED_UIDS` or the emulator is history.** Asked for
+as _"cut off any sort of firebase integration. Lean into keeping it
+strictly as a local only client side DB… if we had a cloud DB involved
+that we do it properly."_ The public build never used it, and it cost a
+second storage path, a sign-in gate, access rules and an emulator suite.
+A cloud store worth adding is the real source of truth with proper
+accounts — not a copy kept in step with IndexedDB. The history is in git.
+
+What survives, and why: **tombstones**, because importing an older backup
+would otherwise resurrect deleted records; and `settings/synced.ts`,
+which only decides when the settings blob is re-stamped.
+
+**The sample data is filled, never replaced.** `sampleData` in settings
+is `loaded` after seeding (Today shows a dismissible note), `kept`
+once dismissed, and `cleared` after Settings → **Start fresh** — which
+is what stops a demo build reseeding an empty database on the next
+open. **Load sample data** is only offered on an empty app, and
+`seedDemoData` refuses anything else regardless. Two named operations,
+never one that wipes and refills.
 
 ## Before you finish anything
 
@@ -52,9 +72,8 @@ push out is not stopping short of the risky part — it is stopping one
 step before the change exists.
 
 **It authorizes pushing finished work, not pushing anything.** A red
-`pnpm verify`, a half-built change, anything destructive, and anything
-touching `firestore.rules` or `VITE_ALLOWED_UIDS` all still stop and
-ask. A red gate is the one state that is never shippable, and pushing it
+`pnpm verify`, a half-built change, and anything destructive all still
+stop and ask. A red gate is the one state that is never shippable, and pushing it
 burns the deploy and the phone together.
 
 **A push is not a deploy, and the gap is about three minutes.** The

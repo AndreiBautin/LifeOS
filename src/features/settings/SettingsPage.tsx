@@ -3,7 +3,7 @@ import { BuildLine } from '@/features/pwa/BuildLine'
 import { PageHeader } from '@/components/shared/PageHeader'
 
 import { COUNT_LABELS } from './count-labels'
-import { AlertTriangle, Download, HardDrive, Upload } from 'lucide-react'
+import { AlertTriangle, Download, HardDrive, RotateCcw, Sparkles, Upload } from 'lucide-react'
 import { useId, useRef, useState } from 'react'
 
 import { useServices, useSettings } from '@/app/context'
@@ -12,8 +12,7 @@ import { backupAge } from '@/domain/settings/settings'
 import { Badge, Button, Card, Section } from '@/components/shared/primitives'
 import { BacklogSettingsSection } from '@/features/backlog/BacklogSettingsSection'
 import { useBackup } from '@/features/backup/useBackup'
-import { SyncSection } from '@/features/sync/SyncSection'
-import { useAccount, useSyncConfig } from '@/features/sync/useSync'
+import { useSampleData } from '@/features/backup/useSampleData'
 import { MaxesEditor } from './MaxesEditor'
 import {
   describePersistence,
@@ -40,20 +39,26 @@ export function SettingsPage() {
   const storage = useQuery({ queryKey: ['storage-status'], queryFn: storageStatus })
   const exercises = useQuery({ queryKey: ['exercises'], queryFn: () => services.exercises.all() })
 
-  const syncConfig = useSyncConfig()
-  const { account } = useAccount()
-
-  /*
-   * Signed in *and* configured, because either alone is not a second
-   * copy: a configured build nobody has signed into syncs nothing, and
-   * an account on a build with no Firebase project has nowhere to put it.
-   */
-  const syncing = syncConfig.kind === 'configured' && account !== undefined
   const age = backupAge(settings, services.clock.now())
-  const dataLocation =
-    syncConfig.kind === 'configured'
-      ? 'On this device, and in your project if you have signed in'
-      : 'All of it is on this device and nowhere else'
+  const sample = useSampleData()
+  const [confirmFresh, setConfirmFresh] = useState(false)
+  /*
+   * Whether there is anything to wipe, and so which of the two actions
+   * is on offer. The same three collections `seedDemoData` asks before
+   * it will fill anything.
+   */
+  const empty = useQuery({
+    queryKey: ['storage-empty'],
+    queryFn: async () => {
+      const counts = await Promise.all([
+        services.items.count(),
+        services.projects.count(),
+        services.upgrades.count(),
+        services.workouts.count(),
+      ])
+      return counts.every((count) => count === 0)
+    },
+  })
 
   return (
     <div>
@@ -184,18 +189,9 @@ export function SettingsPage() {
         }}
       />
 
-      <SyncSection />
-
-      {/*
-        The description is computed, because the old one — "on this device
-        and nowhere else" — becomes a lie the moment a project is
-        configured, and a reassurance that is quietly false is worse than
-        none. It reports where the data is, not where it used to be.
-      */}
-
       <BacklogSettingsSection />
 
-      <Section title="Your data" description={dataLocation}>
+      <Section title="Your data" description="All of it is in this browser and nowhere else">
         <Card className="space-y-4">
           <div className="flex items-start gap-3">
             <HardDrive size={18} className="text-ink-500 mt-0.5 shrink-0" aria-hidden />
@@ -252,19 +248,9 @@ export function SettingsPage() {
                 labelled &ldquo;cookies and other site data&rdquo; and it takes this database with
                 it.
               </p>
-              {/*
-                **The same stale claim the reminder card was removed
-                for.** "There is no account and no server to sync from"
-                was written before sync existed and is false whenever
-                Firebase is configured and signed in. A warning that
-                cannot check its own premise is worse than none, so this
-                sentence now reads the state rather than asserting it.
-              */}
               <p>
-                Uninstalling the app, switching browser, or moving to a new phone.{' '}
-                {syncing
-                  ? 'None of it transfers on its own — sync restores it once you sign in again.'
-                  : 'None of it transfers; there is no account and no server to sync from.'}
+                Uninstalling the app, switching browser, or moving to a new phone. None of it
+                transfers; there is no account and no server.
               </p>
               <p className="text-ink-100 font-medium">
                 Export is the only thing that survives all of it.
@@ -311,28 +297,16 @@ export function SettingsPage() {
             }}
           />
 
-          {/*
-            **The status line, beside the button that answers it.**
-            This is what replaced the reminder card in `AppShell`, which
-            sat above every screen and came back at every launch because
-            its dismissal was session state.
-
-            It states the two facts and draws no conclusion: how old the
-            backup is, and whether sync means this device is the only
-            copy. The card asserted the second one without being able to
-            check it.
-          */}
-          <p className="text-ink-500 text-xs">
+          <p
+            className={
+              age.stale && age.days !== undefined ? 'text-warn-500 text-xs' : 'text-ink-500 text-xs'
+            }
+          >
             {age.days === undefined
               ? 'No backup taken yet.'
               : `Last export ${new Date(settings.lastExportAt ?? '').toLocaleDateString()} — ${
                   age.days === 0 ? 'today' : `${String(age.days)} days ago`
-                }.`}{' '}
-            <span className={age.stale && !syncing ? 'text-warn-500' : undefined}>
-              {syncing
-                ? 'Sync is on, so this device is not the only copy.'
-                : 'Sync is off, so an export is the only copy.'}
-            </span>
+                }.`}
           </p>
 
           {backup.preview !== undefined && (
@@ -355,6 +329,79 @@ export function SettingsPage() {
               busy={backup.runImport.isPending}
             />
           )}
+
+          {/*
+            **Start fresh and load the sample are never on screen together.**
+            Which one is offered follows whether there is anything here:
+            a database with records can only be wiped, and an empty one
+            can only be filled. The wipe asks twice and offers the export
+            first, because it is the one control here that cannot be undone.
+          */}
+          <div className="border-ink-800 space-y-2 border-t pt-4">
+            {empty.data === true ? (
+              <>
+                <Button
+                  variant="outline"
+                  full
+                  disabled={sample.loadSample.isPending}
+                  onClick={() => {
+                    sample.loadSample.mutate()
+                  }}
+                >
+                  <Sparkles size={16} aria-hidden />
+                  Load sample data
+                </Button>
+                <p className="text-ink-500 text-xs">
+                  Fills the app with a made-up person&rsquo;s quests, lifts and places, to see what
+                  every screen does. Start fresh again whenever you like.
+                </p>
+              </>
+            ) : confirmFresh ? (
+              <div className="border-bad-500/30 bg-bad-500/5 space-y-3 rounded-lg border p-3">
+                <p className="text-ink-100 text-sm font-medium">Delete everything in the app?</p>
+                <p className="text-ink-300 text-xs">
+                  Every quest, session, place and reading on this browser goes, and it cannot be
+                  undone. Export first if you want any of it back. Your settings are kept.
+                </p>
+                <div className="flex gap-2">
+                  <Button
+                    variant="danger"
+                    className="flex-1"
+                    disabled={sample.startFresh.isPending}
+                    onClick={() => {
+                      sample.startFresh.mutate(undefined, {
+                        onSuccess: () => {
+                          setConfirmFresh(false)
+                        },
+                      })
+                    }}
+                  >
+                    Delete everything
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    className="flex-1"
+                    onClick={() => {
+                      setConfirmFresh(false)
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <Button
+                variant="outline"
+                full
+                onClick={() => {
+                  setConfirmFresh(true)
+                }}
+              >
+                <RotateCcw size={16} aria-hidden />
+                Start fresh
+              </Button>
+            )}
+          </div>
         </Card>
       </Section>
 

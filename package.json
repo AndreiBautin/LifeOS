@@ -20,15 +20,12 @@
     "test:run": "vitest run",
     "test:coverage": "vitest run --coverage",
     "audit": "pnpm audit --audit-level high",
-    "verify": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm test:run && pnpm build",
-    "emulator": "firebase emulators:start --only firestore",
-    "test:emulator": "vitest run --config vitest.emulator.config.ts"
+    "verify": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm test:run && pnpm build"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.103.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-    "firebase": "^12.19.0",
     "idb": "^8.0.3",
     "leaflet": "^1.9.4",
     "leaflet.markercluster": "^1.5.3",
@@ -45,7 +42,6 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@firebase/rules-unit-testing": "^5.0.2",
     "@tailwindcss/vite": "^4.3.3",
     "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.3",
@@ -62,7 +58,6 @@
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.7",
     "fake-indexeddb": "^6.2.5",
-    "firebase-tools": "^15.30.2",
     "globals": "^17.12.0",
     "jsdom": "^30.1.0",
     "prettier": "^3.9.8",

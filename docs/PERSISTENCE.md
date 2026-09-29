@@ -223,7 +223,10 @@ taken one. A backup feature nobody is prompted to use is worth nothing.
 ### What is deliberately not here
 
 - **Cloud sync.** It would mean an account, a server, and your training
-  data on someone else's disk. The absence is the product.
+  data on someone else's disk. The absence is the product — and it was
+  tried: optional Firebase sync shipped for a while and was removed,
+  because a second copy kept in step with this one is worse than either
+  a real cloud database or none.
 - **Automatic scheduled backups.** A browser cannot write to your
   filesystem unprompted, and a backup silently held in the same origin's
   storage would die with everything else it was meant to protect.

@@ -29,15 +29,6 @@ import type {
 } from '@/domain/repositories/ports'
 import { DATABASE_NAME, IS_DEMO } from '@/config/storage-keys'
 import { seedDemoData } from '@/application/use-cases/demo/seed'
-import { readFirebaseConfig } from '@/config/firebase'
-import { createAccountHolder, type AccountHolder } from '@/infrastructure/firestore/account-holder'
-import type { FirestoreCollectionDeps } from '@/infrastructure/firestore/collection'
-/*
- * **Type-only, deliberately.** Importing the factories here for real is
- * what put the Firebase SDK in the entry chunk — see `remoteFactories`
- * below.
- */
-import type * as FirestoreRepositories from '@/infrastructure/firestore/repositories'
 import { openDatabase, type AppDatabase } from '@/infrastructure/db/database'
 import {
   createBacklogItemRepository,
@@ -121,16 +112,6 @@ export interface AppServices {
   readonly backlogSettings: BacklogSettingsRepository
   readonly tombstones: TombstoneRepository
   readonly settings: SettingsRepository
-  /**
-   * Which account the record repositories read and write under, absent
-   * on a build with no Firebase project.
-   *
-   * **Its presence is what says where the records live.** Set, they are
-   * Firestore-backed and `AuthGate` must have a uid before any screen
-   * renders; absent, they are the local IndexedDB ones and there is
-   * nobody to sign in as.
-   */
-  readonly account?: AccountHolder
   readonly ids: IdGenerator
   readonly clock: Clock
 }
@@ -155,172 +136,40 @@ export interface BootstrapResult {
 }
 
 export async function bootstrap(): Promise<BootstrapResult> {
+  /*
+   * **Everything lives in this browser.** There is no server and no
+   * account: IndexedDB is the only store, and export/import is how data
+   * moves between devices.
+   */
   const db = await openDatabase(DATABASE_NAME)
-
-  /*
-   * **Where the records live is decided once, by whether there is a
-   * Firebase project.**
-   *
-   * With one, Firestore is the store: no exchange, no merge, no
-   * tombstone, because there is only one copy. The account is not known
-   * yet — sign-in resolves a moment after this runs — which is why the
-   * repositories read a holder per call rather than taking a uid.
-   *
-   * With none, the local IndexedDB repositories, which is what a
-   * development build without `.env.local` gets. That path is kept
-   * deliberately: the app has to be runnable with no Google account and
-   * no network, and `pnpm emulator` covers the rest.
-   *
-   * **Device state is local either way.** The program position is the
-   * one record with no correct last-write-wins answer, and the settings
-   * hold preferences two machines legitimately disagree about — neither
-   * belongs in a shared store.
-   *
-   * The SDK is imported dynamically so it stays out of the entry chunk,
-   * the same reason `useSync` does it. `bootstrap` is already async and
-   * already awaited before the first render, so this costs nothing that
-   * opening the database did not already cost.
-   */
-  const firebase = readFirebaseConfig()
-  let remote: FirestoreCollectionDeps | undefined
-  let account: AccountHolder | undefined
-  let firestore: typeof FirestoreRepositories | undefined
-
-  if (firebase.kind === 'configured') {
-    account = createAccountHolder()
-    /*
-     * **Both of these, and the second one is the whole point.** Importing
-     * `firebase-app` on demand looked like it kept the SDK out of the
-     * entry chunk, and the comment above said so — but the repository
-     * factories were imported statically three lines further up, and they
-     * pull in `firebase/firestore`. One static import defeated every
-     * dynamic one in the app.
-     *
-     * The entry chunk is the same size either way — the SDK was always
-     * its own chunk. What changed is whether that chunk is *fetched*:
-     * a static import made the browser download 535 kB on first paint,
-     * where a dynamic one leaves it listed as a lazy dependency and
-     * never asked for on a build with no project configured.
-     *
-     * It also closes an offline hole. `globIgnores` in `vite.config.ts`
-     * deliberately keeps the SDK out of the precache, on the reasoning
-     * that sync needs a network anyway — which was only safe if nothing
-     * precached depended on it statically. It did.
-     */
-    const [{ firebaseClient }, repositories] = await Promise.all([
-      import('@/infrastructure/sync/firebase-app'),
-      import('@/infrastructure/firestore/repositories'),
-    ])
-    firestore = repositories
-    remote = {
-      firestore: firebaseClient(firebase.config).db,
-      account,
-      clock: systemClock,
-      /*
-       * **The local store, not a Firestore one**, and the asymmetry is
-       * the point. A tombstone exists to answer "was this deleted, or
-       * have I simply never seen it" for a backup file being imported
-       * *on this device*. The file is local, the import is local, and the
-       * question is local. Putting them in Firestore would make deletions
-       * travel — which sync already does, immediately, by deleting the
-       * document.
-       */
-      tombstones: createTombstoneRepository(db),
-    }
-  }
-
-  /*
-   * Narrowing `remote` no longer narrows `firestore`, because they are two
-   * variables assigned in one branch. This asserts the pairing once rather
-   * than at twenty call sites — and it cannot lie: both are set together
-   * or neither is.
-   */
-  const firestoreRepos = (): typeof FirestoreRepositories => {
-    if (firestore === undefined) {
-      throw new Error('The Firestore repositories were asked for without a configured project.')
-    }
-    return firestore
-  }
 
   const services: AppServices = {
     db,
-    exercises:
-      remote === undefined
-        ? createExerciseRepository(db, systemClock)
-        : firestoreRepos().createFirestoreExercises(remote),
+    exercises: createExerciseRepository(db, systemClock),
     position: createPositionRepository(db),
-    workouts:
-      remote === undefined
-        ? createWorkoutRepository(db, systemClock)
-        : firestoreRepos().createFirestoreWorkouts(remote),
-    checkIns:
-      remote === undefined
-        ? createCheckInRepository(db, systemClock)
-        : firestoreRepos().createFirestoreCheckIns(remote),
-    items:
-      remote === undefined
-        ? createBacklogItemRepository(db, systemClock)
-        : firestoreRepos().createFirestoreItems(remote),
-    projects:
-      remote === undefined
-        ? createProjectRepository(db, systemClock)
-        : firestoreRepos().createFirestoreProjects(remote),
-    upgrades:
-      remote === undefined
-        ? createUpgradeRepository(db, systemClock)
-        : firestoreRepos().createFirestoreUpgrades(remote),
-    review:
-      remote === undefined
-        ? createReviewRepository(db, systemClock)
-        : firestoreRepos().createFirestoreReview(remote),
-    places:
-      remote === undefined
-        ? createPlaceRepository(db, systemClock)
-        : firestoreRepos().createFirestorePlaces(remote),
-    finance:
-      remote === undefined
-        ? createFinanceRepository(db, systemClock)
-        : firestoreRepos().createFirestoreFinance(remote),
-    campaigns:
-      remote === undefined
-        ? createCampaignRepository(db, systemClock)
-        : firestoreRepos().createFirestoreCampaigns(remote),
-    goals:
-      remote === undefined
-        ? createGoalRepository(db, systemClock)
-        : firestoreRepos().createFirestoreGoals(remote),
-    attempts:
-      remote === undefined
-        ? createAttemptRepository(db, systemClock)
-        : firestoreRepos().createFirestoreAttempts(remote),
-    challenges:
-      remote === undefined
-        ? createChallengeRepository(db, systemClock)
-        : firestoreRepos().createFirestoreChallenges(remote),
-    rooms:
-      remote === undefined
-        ? createRoomRepository(db, systemClock)
-        : firestoreRepos().createFirestoreRooms(remote),
+    workouts: createWorkoutRepository(db, systemClock),
+    checkIns: createCheckInRepository(db, systemClock),
+    items: createBacklogItemRepository(db, systemClock),
+    projects: createProjectRepository(db, systemClock),
+    upgrades: createUpgradeRepository(db, systemClock),
+    review: createReviewRepository(db, systemClock),
+    places: createPlaceRepository(db, systemClock),
+    finance: createFinanceRepository(db, systemClock),
+    campaigns: createCampaignRepository(db, systemClock),
+    goals: createGoalRepository(db, systemClock),
+    attempts: createAttemptRepository(db, systemClock),
+    challenges: createChallengeRepository(db, systemClock),
+    rooms: createRoomRepository(db, systemClock),
     tracks: createTrackGateway(),
-    resume:
-      remote === undefined
-        ? createResumeRepository(db, systemClock)
-        : firestoreRepos().createFirestoreResume(remote),
-    trips:
-      remote === undefined
-        ? createTripRepository(db, systemClock)
-        : firestoreRepos().createFirestoreTrips(remote),
-    vices:
-      remote === undefined
-        ? createViceRepository(db, systemClock)
-        : firestoreRepos().createFirestoreVices(remote),
+    resume: createResumeRepository(db, systemClock),
+    trips: createTripRepository(db, systemClock),
+    vices: createViceRepository(db, systemClock),
     explored: createExploredAreaRepository(db),
     geolocation: createBrowserGeolocation(),
     placeSearch: new NominatimSearchProvider(),
     backlogSettings: createBacklogSettingsStore(),
     tombstones: createTombstoneRepository(db),
     settings: createSettingsStore(),
-    ...(account === undefined ? {} : { account }),
     ids: cryptoIds,
     clock: systemClock,
   }
@@ -340,32 +189,24 @@ export async function bootstrap(): Promise<BootstrapResult> {
    * delivered by being made. See `domain/exercises/library.ts`.
    */
   /*
-   * **Skipped when the store is remote, and that is a correctness fix
-   * rather than an optimisation.**
-   *
-   * This is a *read*, and with Firestore behind the repositories there
-   * is no account yet — sign-in resolves after `bootstrap` returns. It
-   * threw, and because the failure happens before the first render the
-   * whole app fell back to the "storage is unavailable" screen: an
-   * accurate message about the wrong thing, on a device where storage
-   * was perfectly fine.
-   *
-   * Found by driving it. Nothing depends on the number but a log line.
-   */
-  /*
    * **A demo build fills itself the first time it is opened.**
    *
    * Only when empty — `seedDemoData` refuses otherwise — so a visitor
    * who has since added something of their own keeps it. It runs before
    * the first render for the same reason the database is opened here:
    * no screen should have to handle "the app is not ready yet".
+   *
+   * **Not after "Start fresh".** An emptied database is exactly the
+   * state that triggers the seed, so without `sampleData: 'cleared'` a
+   * person who chose to begin with nothing would get the sample back on
+   * the next open.
    */
-  if (IS_DEMO) {
+  if (IS_DEMO && (await services.settings.get()).sampleData !== 'cleared') {
     const seeded = await seedDemoData(services)
     logger.info('demo.seed', { seeded: seeded.seeded, reason: seeded.reason ?? 'none' })
   }
 
-  const exerciseCount = remote === undefined ? await services.exercises.count() : undefined
+  const exerciseCount = await services.exercises.count()
 
   // Asks the browser to exempt this origin from eviction under disk
   // pressure. Best-effort by design: it cannot fail in a way that should
@@ -376,9 +217,8 @@ export async function bootstrap(): Promise<BootstrapResult> {
   })
 
   logger.info('app.bootstrap', {
-    store: remote === undefined ? 'local' : 'firestore',
     exerciseCount,
   })
 
-  return { services, exerciseCount: exerciseCount ?? 0 }
+  return { services, exerciseCount }
 }

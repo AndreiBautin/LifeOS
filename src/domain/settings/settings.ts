@@ -12,6 +12,9 @@ import type { WeightUnit } from '@/domain/units/weight'
  * time is a disaster, and separating the two means a corrupted database
  * does not take the settings with it.
  */
+export const SAMPLE_DATA_STATES = ['loaded', 'kept', 'cleared'] as const
+export type SampleDataState = (typeof SAMPLE_DATA_STATES)[number]
+
 export interface AppSettings {
   readonly units: WeightUnit
   readonly roundingIncrement: number
@@ -96,6 +99,13 @@ export interface AppSettings {
    */
   readonly updatedAt?: string
   readonly lastExportAt?: string
+  /**
+   * Where the sample data stands on this browser. `loaded` shows the
+   * "you are looking at sample data" note; `kept` means it was dismissed;
+   * `cleared` means the person chose to start fresh, and is what stops a
+   * demo build refilling an empty database on the next open.
+   */
+  readonly sampleData?: SampleDataState
   readonly schemaVersion: number
 }
 

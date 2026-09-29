@@ -128,39 +128,32 @@ pnpm preview
 Or set the flag in a local env file; [`.env.demo`](../.env.demo) is the
 committed configuration the deploy uses.
 
-**Resetting** is deleting the `lifeos.demo` database — through the
-browser's own site-data controls, or from a console:
-
-```js
-indexedDB.deleteDatabase('lifeos.demo')
-```
-
-Seeding then runs again on the next open. There is deliberately no
-in-app "reset the demo" button: it would be a wipe-and-replace operation
-living one tap from an ordinary screen, which is exactly the shape this
+**Resetting** is two buttons in Settings, and they are deliberately two.
+**Start fresh** deletes every record after a confirmation that offers the
+export first; **Load sample data** is only offered once the app is empty,
+and `seedDemoData` refuses a database with anything in it regardless.
+There is no single "reset the demo" control, because that would be a
+wipe-and-replace living one tap from an ordinary screen — the shape this
 codebase refuses everywhere else.
+
+Starting fresh records `sampleData: 'cleared'` in settings, which is what
+stops the first-open seed from refilling an empty database on the next
+visit. Deleting the `lifeos.demo` database from the browser's own
+site-data controls clears that too and brings the sample back.
 
 ## Credentials
 
-**There are none, and that is the design.** The demo build passes no
-Firebase configuration, so there is no sign-in to offer and no account
-to gate on. A reviewer clicking the link is inside the app immediately.
-
-That also means no demo account exists to be abused, no password is
-published in this repository, and nothing a visitor does can reach
-anything but their own browser.
-
-The account gate (`VITE_ALLOWED_UIDS`) still exists and still works —
-see [SECURITY.md](SECURITY.md) — it is simply not applied to the
-published build any more. It is what a personal build uses.
+**There are none, and that is the design.** There is no server, no
+account and no sign-in: a reviewer clicking the link is inside the app
+immediately, and nothing a visitor does can reach anything but their own
+browser.
 
 ## What the demo cannot show
 
 Stated rather than hidden, because a reviewer will notice:
 
-- **Sync.** It needs a Firebase project, which the demo build has none
-  of. The code is exercised by an emulator-backed test suite instead.
 - **The map's geocoder.** It reaches Nominatim, which is a live service
   run on donations; the demo does not call it on load. Typing a name
   into the map's search still works.
-- **Anything requiring a second device**, for the same reason as sync.
+- **Anything requiring a second device.** Moving data is export and
+  import; there is no sync.

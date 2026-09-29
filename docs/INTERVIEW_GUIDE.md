@@ -16,7 +16,8 @@ populated on open.
 
 > It is a gamified productivity system — thirteen areas of one life
 > scored by a single model. Client-only React and TypeScript, deployed
-> as an installable PWA, with optional Firestore sync.
+> as an installable PWA, and everything lives in the visitor's own
+> browser.
 >
 > The interesting part is not the features, it is that the areas are not
 > separate apps sharing a shell. Each one _declares_ what it has in a
@@ -208,14 +209,14 @@ app_, not by the suite:
   plausible, and not the colour anybody chose. No linter has an opinion.
   It can only be caught by reading the _computed_ colour off the element.
 - **A hand-written second copy of a list that already exists** drifted
-  three separate times — the sync cursor, the push collection list, a
-  history row. The third one meant twelve collections were read from the
-  server and written to it by nothing: most of the app was one-way, and
-  from both ends it looked exactly like working sync.
+  three separate times — twice in a sync layer since removed, once in a
+  finance history row. One of them meant twelve collections were read
+  from the server and written to it by nothing, and from both ends it
+  looked exactly like working sync.
 
 The pattern, and the thing I changed: **derive the list rather than
-restate it, and make the compiler the guard.** `KEYED_BY` is a mapped
-type over the sync payload itself, so a field added without a key fails
+restate it, and make the compiler the guard** — a `Record<keyof …>`
+the compiler makes you fill in, so a field added without an entry fails
 the build.
 
 ### "The demo found four bugs the suite couldn't"
@@ -238,30 +239,27 @@ act on. All with a green suite.
 > account to breach and no database of mine holding anybody's records.
 >
 > The honest qualifier is that it is not _no network_ — the map pulls
-> tiles from OpenStreetMap, the geocoder asks Nominatim, and sync is
-> Firestore when you configure it. Three outbound hosts, each one a
-> decision rather than a precedent.
+> tiles from OpenStreetMap and the geocoder asks Nominatim. Two outbound
+> hosts, each one a decision rather than a precedent.
 
-### "How does sync work without a server?"
+### "Didn't this used to sync?"
 
-> Firestore is the source of truth when configured, and a `bootstrap`
-> function picks between it and IndexedDB once, at startup — so the app
-> still runs with no account and no network, which is what a fork and
-> the demo both get.
+> It did — Firestore as the source of truth behind a Google sign-in and
+> an account allowlist, with IndexedDB when nothing was configured. I
+> took it out. The public build never used it, and it was a second
+> storage path, a sign-in gate and a set of access rules to keep right
+> for nothing a visitor could see. If this needed the cloud I would make
+> a real database the one source of truth with proper accounts, not keep
+> two copies in step. Export and import move data between devices now.
 >
-> The interesting part is the merge rules, which live in `domain/sync/`
-> rather than in the database. Most records are whole-record
-> last-write-wins, which is right for a workout. Three are not: a
-> progress log is unioned by day, because a chapter read on the phone on
-> Monday and an episode on the laptop on Tuesday loses Monday under a
-> record-level winner. And the map's fog is a grow-only set with no
-> stamp and no tombstone, because you cannot un-walk ground.
+> The storage swap in both directions never touched `domain/`, which is
+> the part worth pointing at: the repository ports were the seam.
 
 **Have the tombstone answer ready** if they push on deletion: removing a
 row leaves nothing behind, and nothing is indistinguishable from "never
-existed", so any merge reads it as a record the other copy knows about
-and puts it back. That was reachable before sync existed — export, delete
-a session, import, and it returned, counted as an _addition_.
+existed", so importing an older backup reads it as a record the file
+knows about and puts it back — counted as an _addition_. A tombstone is
+what the import filters against.
 
 ### "How do you know the deployed demo has no real data in it?"
 
@@ -320,14 +318,12 @@ choice.
 ### "This is a personal app — how would it change for a team?"
 
 > The layer boundaries and the repository ports are already the seam, so
-> the storage swap is real work but bounded — I did exactly that when
-> Firestore became the source of truth, and it did not touch `domain/`
-> at all.
+> the storage swap is real work but bounded — I did it once, adding
+> Firestore behind the ports and later removing it, and neither
+> direction touched `domain/`.
 >
-> What genuinely changes is that the merge rules stop being enough.
-> Last-write-wins is defensible for one person across two devices and
-> indefensible for two people editing at once. That is CRDTs or a
-> server, and I would want a server.
+> What genuinely changes is concurrency: two people editing at once
+> needs a server that owns the data, and I would want one.
 
 ### "What's still broken?"
 
@@ -341,9 +337,7 @@ reads better than one who says nothing is wrong.
 > than eighty-nine changed call sites. Teaching each card to tell an
 > error from loading is still the thorough version.
 >
-> Settings and the map's fog
-> do not travel between devices — the fog has no Firestore repository at
-> all, and settings are read straight from `localStorage`. And the
+> Nothing travels between devices except by export and import. And the
 > service worker is only partly verified: it registers, activates and
 > controls the page on the live site, and the update banner has been seen
 > firing, but offline serving from the precache has not been driven.
@@ -355,7 +349,7 @@ reads better than one who says nothing is wrong.
 |              |                                                                     |
 | ------------ | ------------------------------------------------------------------- |
 | TypeScript   | ~76,000 lines across 402 files                                      |
-| Tests        | 1,482 across 122 files, plus three Firestore-emulator suites        |
+| Tests        | about 1,450, in one run with no services needed                     |
 | Domain layer | 112 files, zero React and zero browser APIs                         |
 | Verification | one command — typecheck, lint, format, test, build                  |
 | Gate         | pre-push hook and CI run the same command; the deploy depends on it |
@@ -384,7 +378,7 @@ everybody knows it. They are here in case somebody asks about scale.
 Being caught overstating is worse than any gap, and every one of these is
 checkable in about a minute:
 
-- **Not "no network calls".** Three outbound hosts, listed above.
+- **Not "no network calls".** Two outbound hosts, listed above.
 - **Not "fully tested".** Say what is deliberately untested and why —
   `docs/TESTING.md` has that section, and it is the part that reads as
   judgement rather than as a gap.
@@ -392,5 +386,5 @@ checkable in about a minute:
   are. Whether it clears correctly on a walk has a "done when" no suite
   can satisfy: verified by walking, outdoors, and that is still
   outstanding.
-- **Not "it syncs live everywhere".** The deployed demo does not sync at
-  all — it passes no Firebase config, deliberately.
+- **Not "it syncs".** It did once; it does not now. Export and import
+  are the only way data leaves the browser.

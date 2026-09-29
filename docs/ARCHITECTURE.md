@@ -1,15 +1,15 @@
 # Architecture
 
 A client-only React + TypeScript PWA. **No server of ours and no
-database of ours** — records live in IndexedDB, or in Firestore when a
-project is configured, always behind a repository interface.
+database of ours** — records live in IndexedDB in the visitor's own
+browser, behind a repository interface.
 
 That qualifier matters and is stated up front rather than buried: this
 document used to open "no network calls at runtime", which was never
-true once Leaflet was rendering live tiles. Three third parties are
-reachable, each only from the screens that need them — OpenStreetMap for
-map tiles, Nominatim for turning a name into coordinates, and Firebase
-for sync. **Each was a decision, not a precedent.**
+true once Leaflet was rendering live tiles. Two third parties are
+reachable, both only from the map screens — OpenStreetMap for tiles and
+Nominatim for turning a name into coordinates. **Each was a decision,
+not a precedent.**
 
 ## The layers
 
@@ -30,7 +30,7 @@ build with a message explaining why — not by convention.
                            │
    ┌───────────────────────▼───────────────────────────┐
    │  domain/                          ◄───────────────┼── infrastructure/
-   │  pure. no React, no browser, no libraries         │   IndexedDB, Firestore,
+   │  pure. no React, no browser, no libraries         │   IndexedDB, storage,
    │  prescriptions, resolution, progression, scoring  │   backup, settings
    └───────────────────────────────────────────────────┘
 ```
@@ -189,9 +189,8 @@ Starting Wednesday's session and logging the first set of the bench:
 7. The resolved numbers are copied into a new `WorkoutLog` as
    `plannedLoad`, so an estimate revised next month does not
    retroactively alter what this session says it asked for.
-8. **`infrastructure/firestore/repositories.ts`** writes it — or
-   `infrastructure/db/repositories.ts` when no Firebase project is
-   configured. `src/app/di.ts` picks between them once, at boot.
+8. **`infrastructure/db/repositories.ts`** writes it to IndexedDB,
+   wired once in `src/app/di.ts`.
 9. The lifter taps the set. **`SetRow.tsx`** opens prefilled with 190 × 5.
 10. **`application/use-cases/training/log-set.ts`** writes `actualLoad`,
     `actualReps` and `completedAt` beside the planned values.
@@ -206,61 +205,31 @@ week**. That round trip was verified by driving the app.
 
 ## Where the records live
 
-`bootstrap()` in `src/app/di.ts` picks the store **once**, on whether a
-Firebase project is configured:
+In this browser, and nowhere else. `bootstrap()` in `src/app/di.ts`
+opens the IndexedDB database and wires the repositories to it; settings
+and the programme position are `localStorage`. Export and import are
+how data moves between devices.
 
-| Configured                       | Not configured               |
-| -------------------------------- | ---------------------------- |
-| Firestore is the source of truth | IndexedDB, exactly as before |
+**There was optional Firebase sync, and it was removed deliberately.**
+Firestore became the source of truth when configured, with Google
+sign-in and an account allowlist in front of it. It worked, and it
+meant a second storage path, a sign-in gate, access rules and an
+emulator suite — for a public demo that never used any of it. A cloud
+database worth adding would be the real store with proper accounts,
+not a copy kept in step with this one. It is in the git history.
 
-The unconfigured path is kept on purpose — the app has to be runnable
-with no account and no network, which is what a fork, a fresh clone and
-the deployed demo all get.
-
-**Device state stays local either way.** The programme position is the
-one record with no correct last-write-wins answer — two devices both
-advancing one cursor cannot be reconciled by timestamp — and the settings
-hold preferences two machines legitimately disagree about. Neither
-belongs in a shared store.
-
-The account arrives _after_ the repositories exist, which is why they
-read an `AccountHolder` per call rather than taking a uid: `bootstrap`
-runs before sign-in resolves. `AuthGate` sets it **during render, not in
-an effect** — effects run after the commit, so every screen below would
-mount and fire its queries against an empty holder, throw, and sit at
-`data === undefined`, which is the same state a card draws a skeleton
-for. The whole app came up as placeholders on a device that had signed
-in perfectly well. `AuthGate.test.tsx` is the first component test here
-and exists for exactly that.
-
-`watchRecords` is one `onSnapshot` per collection, and a snapshot
-carrying `hasPendingWrites` or `fromCache` is skipped — otherwise saving
-would invalidate the query that just wrote, refetch, and do it again.
-
-## What sync still has to get right
-
-Most records are whole-record last-write-wins, which is correct for a
-workout: you log sets on the phone and read them at the desk. Three are
-not, and `domain/sync/payload.ts` says why:
-
-- **A progress log is unioned by day.** A chapter on the phone on Monday
-  and an episode on the laptop on Tuesday, with neither device having
-  heard from the other, loses Monday entirely under a record-level
-  winner.
-- **A pool's spends are unioned over the string.** `readCharges` counts
-  _entries_, so a record-level winner would not merely lose a row — it
-  would hand back a charge that was genuinely spent.
-- **The fog is a grow-only set.** No stamp and no tombstone, because
-  neither question arises: two copies merge by union and you cannot
-  un-walk ground.
+**The sample data is filled, never replaced.** A demo build seeds an
+empty database on first open; Settings offers **Start fresh** (wipe,
+after a confirmation) and **Load sample data** (only when empty) as two
+separately named operations. Starting fresh records
+`sampleData: 'cleared'` so an empty database is not refilled on the next
+open.
 
 **A deletion is a fact, not an absence.** Removing a row leaves nothing
-behind, and nothing is indistinguishable from "never existed" — so any
-merge reads it as a record the other copy knows about and puts it back.
-`repositories.remove` writes a tombstone for that reason. (With Firestore
-as the source of truth there is one authoritative copy and no tombstone
-is written; the machinery is still declared, because the backup envelope
-and the backlog transfer both carry them.)
+behind, and nothing is indistinguishable from "never existed" — so
+merging in an older backup reads it as a record the file knows about and
+puts it back. `repositories.remove` writes a tombstone for that reason,
+and the backup import filters incoming records through them.
 
 ## The scoring spine
 
@@ -346,15 +315,13 @@ exception, and it says why in place.
 | **React 19 + TS**           | Strict mode with `exactOptionalPropertyTypes` and `noUncheckedIndexedAccess` — this app indexes into weeks, days, slots and sets constantly |
 | **Vite**                    | Fast, and `vite-plugin-pwa` gives Workbox without hand-writing a service worker                                                             |
 | **IndexedDB via `idb`**     | ~1 KB promise wrapper. The repository port is already the seam; a heavier ORM behind it earns nothing                                       |
-| **Firestore**               | Optional, for sync only. The merge rules live in `domain/sync/`, not in the database                                                        |
 | **TanStack Query**          | Caching and invalidation with `staleTime: Infinity` — there is no server of ours, so nothing goes stale on its own                          |
 | **Tailwind v4 + Radix**     | Utility styling with accessible primitives where behaviour matters                                                                          |
-| **Vitest + fake-indexeddb** | Real database semantics in tests, including migrations, without a browser — and the Firestore emulator for the access rules                 |
+| **Vitest + fake-indexeddb** | Real database semantics in tests, including migrations, without a browser                                                                   |
 
 ## What is deliberately absent
 
-- **No auth of ours.** Sign-in is Google through Firebase, and only when
-  sync is configured. `firestore.rules` pins every document to one uid.
+- **No accounts at all.** Nothing to sign in to, so nothing to breach.
 - **No state-management library beyond context.** Server-ish state is
   TanStack Query's; the rest is component state. Redux would be ceremony.
 - **No chart library.** The charts that matter are a handful of `div`s
@@ -377,12 +344,7 @@ Stated here rather than discovered:
   skeletons, and a skeleton beside a banner saying a read failed is no
   longer a lie. Teaching each card to tell the two apart is still the
   thorough fix.
-- **Tombstones are written on both paths now**, and the label they
-  carried here for several rounds — "vestigial under Firestore" — was
-  wrong. They are read by the backup import, which is the case they were
-  built for and which Firestore does nothing about: a backup file is a
-  second copy of the database travelling through time.
-- **Settings and the fog do not travel between devices.**
+- **Nothing travels between devices** except by export and import.
 - **The service worker is partly verified and partly not**, and the
   claim that used to sit here — that registration is refused in an
   agent's browser — is no longer true. Measured against the live site:

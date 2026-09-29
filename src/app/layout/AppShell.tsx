@@ -15,7 +15,6 @@ import { NavLink, Outlet } from 'react-router-dom'
 import { STORAGE_KEYS } from '@/config/storage-keys'
 import { ReadFailure } from '@/features/errors/ReadFailure'
 import { UpdatePrompt } from '@/features/pwa/UpdatePrompt'
-import { LiveRecords } from '@/features/sync/LiveRecords'
 import {
   readSidebarCollapsed,
   saveSidebarCollapsed,
@@ -259,7 +258,6 @@ export function AppShell() {
 
       <UpdatePrompt />
       <ReadFailure />
-      <LiveRecords />
       <SidebarNav
         collapsed={collapsed}
         onToggle={() => {

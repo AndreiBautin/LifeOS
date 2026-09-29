@@ -1,5 +1,9 @@
 import type { AppSettings } from '@/domain/settings/settings'
-import { DEFAULT_SETTINGS, SETTINGS_SCHEMA_VERSION } from '@/domain/settings/settings'
+import {
+  DEFAULT_SETTINGS,
+  SAMPLE_DATA_STATES,
+  SETTINGS_SCHEMA_VERSION,
+} from '@/domain/settings/settings'
 import type { SettingsRepository } from '@/domain/repositories/ports'
 import { migrateBenchEstimate } from '@/domain/exercises/derived-maxes'
 import { syncedPartChanged } from '@/domain/settings/synced'
@@ -233,8 +237,14 @@ function mergeWithDefaults(parsed: unknown): AppSettings {
      */
     ...(typeof stored.updatedAt === 'string' ? { updatedAt: stored.updatedAt } : {}),
     ...(typeof stored.lastExportAt === 'string' ? { lastExportAt: stored.lastExportAt } : {}),
+    ...sampleDataOf(stored.sampleData),
     schemaVersion: SETTINGS_SCHEMA_VERSION,
   }
+}
+
+function sampleDataOf(value: unknown): Pick<AppSettings, 'sampleData'> {
+  const state = SAMPLE_DATA_STATES.find((one) => one === value)
+  return state === undefined ? {} : { sampleData: state }
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

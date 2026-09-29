@@ -24,7 +24,7 @@ Stop and ask when:
   shippable, and pushing it burns the deploy and the phone at once.
 - The change is half-built, or the user is still deciding.
 - It would delete data, rewrite history, or force-push.
-- It touches secrets, `firestore.rules`, or the allowlist.
+- It touches secrets.
 
 ## The steps
 

@@ -3,8 +3,8 @@
 Run with `pnpm test` (watch) or `pnpm test:run` (once). `pnpm verify`
 runs them alongside typecheck, lint, format and build.
 
-**1,482 tests across 122 files**, all passing. The Firestore emulator
-suites are separate — see below.
+**All in one run, no services needed** — every test uses a real
+(fake-indexeddb) database or none.
 
 ## The strategy
 
@@ -45,7 +45,6 @@ that is what the assertions check.
 | `domain/`         | Pure unit tests, table-driven            | The programming itself: rep ranges, load steps, rounding, volume arithmetic, the scoring rules, merge semantics                                                |
 | `application/`    | Against a real (fake-indexeddb) database | Behaviours spanning layers: history becoming a suggested load, a logged set landing in the log rather than the programme, advancing on completion or on a skip |
 | `infrastructure/` | Against a real (fake-indexeddb) database | Schema, indexes, migrations, export/import round-trip                                                                                                          |
-| Firestore         | Against the **emulator**                 | The access rules, batching, the live listener — run separately, needs a JDK 21+                                                                                |
 
 Application tests use a real database rather than mocks on purpose. The
 bugs worth catching there are integration bugs; a mocked repository would

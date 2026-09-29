@@ -1,5 +1,9 @@
 # Productionization assessment
 
+> **Historical.** This records the app as it was assessed. Firebase sync,
+> the account gate and the Firestore rules it discusses have since been
+> removed; the app is local-only. See [ARCHITECTURE.md](ARCHITECTURE.md).
+
 Written before any change, against `daa98e8`. Baseline: **1,382 tests in
 117 files, all passing**; `pnpm verify` green; 387 source files; a
 793 KB JS bundle (239 KB gzipped); worktree clean.

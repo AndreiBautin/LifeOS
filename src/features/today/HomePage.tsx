@@ -5,6 +5,7 @@ import { Masonry } from '@/components/shared/Masonry'
 import { Card } from '@/components/shared/primitives'
 import { buttonStyles } from '@/components/shared/styles'
 import { MapGlance } from '@/features/atlas/MapGlance'
+import { SampleNotice } from './SampleNotice'
 import { TodayGoals } from '@/features/backlog/TodayGoals'
 import { BaseGlance } from '@/features/base/BaseGlance'
 import { useCampaigns } from '@/features/campaign/hooks'
@@ -116,55 +117,58 @@ export function HomePage() {
   const leadingArc = (arcs.data ?? []).find((one) => one.next !== undefined)
 
   return (
-    <Masonry
-      items={[
-        {
-          /*
+    <>
+      <SampleNotice />
+      <Masonry
+        items={[
+          {
+            /*
             The portrait and the two quest slots travel as one item, so
             "who you are and what you are on" always opens the first
             column rather than being split by the balancing.
           */
-          key: 'you',
-          node: (
-            <div className="space-y-6">
-              <SheetCard
-                avatarSize="large"
-                action={
-                  <Link
-                    to="/settings"
-                    aria-label="Settings"
-                    className={buttonStyles({ variant: 'ghost', size: 'sm' })}
-                  >
-                    <Settings size={16} aria-hidden />
-                  </Link>
-                }
-              />
-              <ActiveQuests
-                main={active.data?.main}
-                side={active.data?.side}
-                {...(leadingArc === undefined ? {} : { arc: leadingArc })}
-              />
-            </div>
-          ),
-        },
-        { key: 'buffs', node: <LimitsCard /> },
-        { key: 'goals', node: <TodayGoals /> },
-        { key: 'session', node: <NextSessionCard compact /> },
-        {
-          key: 'season',
-          node:
-            season.data === undefined ? null : (
-              <Card>
-                <ChallengePass
-                  season={{ label: season.data.label, daysLeft: season.data.daysLeft }}
+            key: 'you',
+            node: (
+              <div className="space-y-6">
+                <SheetCard
+                  avatarSize="large"
+                  action={
+                    <Link
+                      to="/settings"
+                      aria-label="Settings"
+                      className={buttonStyles({ variant: 'ghost', size: 'sm' })}
+                    >
+                      <Settings size={16} aria-hidden />
+                    </Link>
+                  }
                 />
-              </Card>
+                <ActiveQuests
+                  main={active.data?.main}
+                  side={active.data?.side}
+                  {...(leadingArc === undefined ? {} : { arc: leadingArc })}
+                />
+              </div>
             ),
-        },
-        { key: 'base', node: <BaseGlance /> },
-        { key: 'upgrade', node: <NextUpgradeGlance /> },
-        { key: 'map', node: <MapGlance /> },
-      ]}
-    />
+          },
+          { key: 'buffs', node: <LimitsCard /> },
+          { key: 'goals', node: <TodayGoals /> },
+          { key: 'session', node: <NextSessionCard compact /> },
+          {
+            key: 'season',
+            node:
+              season.data === undefined ? null : (
+                <Card>
+                  <ChallengePass
+                    season={{ label: season.data.label, daysLeft: season.data.daysLeft }}
+                  />
+                </Card>
+              ),
+          },
+          { key: 'base', node: <BaseGlance /> },
+          { key: 'upgrade', node: <NextUpgradeGlance /> },
+          { key: 'map', node: <MapGlance /> },
+        ]}
+      />
+    </>
   )
 }

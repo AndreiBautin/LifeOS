@@ -976,7 +976,7 @@ async function seedResume(deps: DemoDeps): Promise<void> {
 async function seedSettings(deps: DemoDeps): Promise<void> {
   const current = await deps.settings.get()
   /* San Francisco, near enough. */
-  await deps.settings.save({ ...current, exploredRegionKm2: 121 })
+  await deps.settings.save({ ...current, exploredRegionKm2: 121, sampleData: 'loaded' })
 }
 
 /**

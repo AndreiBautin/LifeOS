@@ -75,46 +75,11 @@ export default defineConfig(({ mode }) => {
           globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
 
           /*
-           * The Firebase SDK is not part of the shell.
-           *
-           * Precaching it undoes the code splitting: every install would
-           * download it on first load whether or not sync is configured,
-           * which for a phone opened in a gym is a third of a megabyte
-           * bought for a feature most sessions never touch.
-           *
-           * Leaving it out costs nothing that matters. Sync needs a
-           * network by definition, so the one situation where a missing
-           * cache entry would hurt — offline — is a situation where the
-           * feature could not run anyway. Everything the app does without
-           * a network is still precached in full.
-           *
-           * **That argument only holds while nothing precached depends on
-           * it statically, and for a long time something did.** `di.ts`
-           * imported the Firestore repository factories at the top of the
-           * file, which pulls in `firebase/firestore`, so the precached
-           * entry chunk carried a static import of a chunk deliberately
-           * left out of the cache. It is a dynamic import now. If a
-           * static one ever comes back, this exclusion becomes an offline
-           * failure rather than a saving.
-           */
-          globIgnores: ['**/firebase-*.js', '**/firebase-*.js.map'],
-
-          /*
-           * Leaflet is *not* on that list, and the asymmetry is the point.
-           *
-           * It is a comparable weight — about 190 kB for the map and its
-           * clustering plugin — and by the same first-load argument it
-           * looks like a candidate. It is not, because of when the map is
-           * actually wanted: outdoors, walking, on a phone with poor
-           * signal, clearing fog. That is precisely the moment a chunk
-           * fetched on demand would fail to arrive.
-           *
-           * The Firebase argument does not transfer either. Sync needs a
-           * network by definition, so leaving it out costs nothing in the
-           * one situation where a missing cache entry would hurt. A map
-           * degrades without a network — no tiles — but the fog and the
-           * markers still draw, and that is most of what the screen is
-           * for.
+           * Leaflet is precached with everything else, deliberately. It
+           * is about 190 kB, and the map is wanted outdoors on poor signal
+           * — exactly when a chunk fetched on demand would fail to arrive.
+           * The fog and the markers draw without a network; only tiles
+           * need one.
            */
           cleanupOutdatedCaches: true,
           // A client-side route requested cold must return the shell
@@ -196,23 +161,6 @@ export default defineConfig(({ mode }) => {
     },
 
     build: {
-      rollupOptions: {
-        output: {
-          /*
-           * Firebase into one predictably named chunk.
-           *
-           * Rollup would otherwise name these after whatever module
-           * happened to be the entry point — `index.esm-<hash>.js` for
-           * the Firestore SDK — and a precache rule cannot exclude a name
-           * that generic without risking excluding something of ours.
-           * Naming it here is what lets the rule above be specific.
-           */
-          manualChunks: (id: string) =>
-            id.includes('node_modules/@firebase') || id.includes('node_modules/firebase')
-              ? 'firebase-sdk'
-              : undefined,
-        },
-      },
       target: 'es2022',
       sourcemap: true,
     },

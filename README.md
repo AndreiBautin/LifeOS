@@ -65,9 +65,9 @@ turns them into things to optimise rather than things to use.
 - **[`domain/assembly/rp-assemble.ts`](src/domain/assembly/rp-assemble.ts)**
   — the training week, filled to per-muscle volume targets after
   subtracting what the strength work already spent.
-- **[`domain/sync/payload.ts`](src/domain/sync/payload.ts)** — merge
-  rules. Most records are whole-record last-write-wins; three are not,
-  and the comments say why a record-level winner loses a day of habits.
+- **[`domain/sync/tombstone.ts`](src/domain/sync/tombstone.ts)** — why
+  a deletion is recorded rather than simply performed: without it,
+  importing an older backup quietly brings deleted records back.
 - **[`features/upgrades/tree-layout.ts`](src/features/upgrades/tree-layout.ts)**
   — pure graph layout, in the feature rather than the domain, because
   positions are presentation.
@@ -129,42 +129,30 @@ than a limitation, and it has consequences worth knowing:
 - **Clearing cookies usually destroys it.** In every mainstream browser
   that control is really "cookies and other site data".
 - **Nothing transfers** to a new phone or a different browser on its own.
-- **Export, or configured sync, is what survives all of it.**
+- **Export is what survives all of it**, and import is how data moves
+  to another device.
 
-Three third parties are reachable, each only from the screens that need
-them: OpenStreetMap for map tiles, Nominatim for turning a place name
-into coordinates, and Firebase for syncing two devices when you
-configure one. **Each was a decision, not a precedent.**
+Two third parties are reachable, both only from the map screens:
+OpenStreetMap for tiles, and Nominatim for turning a place name into
+coordinates. Neither carries a record. **Each was a decision, not a
+precedent.**
+
+### The sample data, and starting fresh
+
+The deployed site fills itself with a made-up person on first open, so
+every screen has something to show. **Settings → Start fresh** deletes
+it and leaves an empty app that is yours; **Load sample data** puts it
+back into an empty one. A banner on the home screen says which you are
+looking at until you dismiss it.
+
+There was optional Firebase sync once, and it was removed on purpose: a
+cloud database worth having is the source of truth with real accounts,
+not a second copy kept in step with this one — and with no server there
+is nothing to breach.
 
 The full account — install, uninstall, update, storage cleanup, and what
 the app does about each — is in
 **[docs/PERSISTENCE.md](docs/PERSISTENCE.md)**.
-
-### Syncing two devices
-
-Optional, and off unless configured. With a Firebase project, a phone
-and a desktop share one history; with none, the app is exactly what it
-was — local, offline, and unaware a network exists.
-
-1. Create a Firebase project, enable **Google** sign-in, create a
-   **Firestore** database.
-2. Copy the four values into `.env.local` (see `.env.example`).
-3. Publish `firestore.rules`. **Do not skip this** — a Firestore on the
-   default test rules is readable by anyone who finds the project id.
-
-Worth knowing:
-
-- **It runs itself, and refuses while a workout is open.** A sync that
-  fires mid-set is a surprise in the middle of a working set. A beacon
-  document makes remote changes arrive within a second or two; a
-  five-minute poll is the safety net behind it.
-- **The Firebase config in the bundle is public, and that is not a
-  leak.** A web config identifies a project; it authorises nothing.
-  Access is decided entirely by `firestore.rules`, which pins every
-  document to the account that owns it.
-- **Your position in the training block does not sync.** It is the one
-  record two devices cannot reconcile by timestamp — both advance the
-  same cursor and neither is wrong — so each device keeps its own.
 
 ## Running it
 
@@ -187,20 +175,6 @@ The demo configuration, which is what deploys:
 ```bash
 VITE_DEMO_MODE=true pnpm build && pnpm preview
 ```
-
-### The Firestore emulator
-
-```bash
-pnpm emulator
-```
-
-Needs a **JDK 21 or newer** on `PATH` — `firebase-tools` refuses
-anything older and the error names the version rather than the cause. On
-Windows: `winget install EclipseAdoptium.Temurin.21.JDK`.
-
-It loads [firestore.rules](firestore.rules), so a test runs against the
-same access rules the deployed app would: an unauthenticated write is
-denied there exactly as it would be in production.
 
 ## On a desktop
 
@@ -227,12 +201,9 @@ a phone layout stranded in the middle of a monitor.
   unbounded, and "what did I lift last time" needs to be an index scan.
 - **TanStack Query** with `staleTime: Infinity` — there is no server of
   ours, so nothing goes stale on its own.
-- **Firestore**, optionally, for sync only. The merge rules live in
-  `domain/sync/`, not in the database.
 - **Tailwind v4 + Radix** for styling and accessible primitives.
 - **Vitest + fake-indexeddb** so tests exercise real database semantics,
-  migrations included, and **the Firestore emulator** so the access
-  rules are exercised too.
+  migrations included.
 
 Roughly **1,480 tests** across 122 files, run on every push.
 
