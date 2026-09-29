@@ -44,21 +44,32 @@ import type { DailyGoalStatus } from '@/domain/backlog/daily-goals'
  * "a half-full bar invites the question of whether that is one and a
  * half coffees; three dots of which one is lit cannot be misread." The
  * same idiom, applied to a different discrete count.
+ *
+ * **A number sits above the dots now — it didn't at first.** Reported
+ * against a screenshot: "three random dots here feel awkward." Fair:
+ * every other reading in this family (`CountRing`, `ChallengePass`'s
+ * own pass track) pairs the shape with a real number, and this was the
+ * one place that shipped the shape alone with only an `aria-label`
+ * standing in for it — invisible to anyone not using a screen reader,
+ * so a sighted reader saw three dots and nothing telling them what they
+ * counted. The fraction is real text now, which is also the better
+ * accessibility shape: a visible node a screen reader announces on its
+ * own beats a label duplicating what a hidden row of spans meant.
  */
 function GoalPips({ statuses }: { readonly statuses: readonly DailyGoalStatus[] }) {
+  const met = statuses.filter((status) => status.isMet).length
   const shown = statuses.slice(0, 9)
   const overflow = statuses.length - shown.length
 
   return (
-    <div className="hidden w-14 shrink-0 flex-col items-end gap-2 lg:flex">
-      <span
-        className="flex flex-wrap justify-end gap-1.5"
-        aria-label={`${String(statuses.filter((status) => status.isMet).length)} of ${String(statuses.length)} goals met today`}
-      >
+    <div className="hidden w-14 shrink-0 flex-col items-end gap-1.5 lg:flex">
+      <span className="text-ink-500 numeric text-xs">
+        {met}/{statuses.length}
+      </span>
+      <span className="flex flex-wrap justify-end gap-1.5" aria-hidden>
         {shown.map((status) => (
           <span
             key={status.item.id}
-            aria-hidden
             className={cn(
               'h-2.5 w-2.5 rounded-full',
               status.isMet ? 'bg-accent-500' : 'bg-ink-700',
