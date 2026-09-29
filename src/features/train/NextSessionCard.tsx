@@ -32,16 +32,27 @@ import { SessionOutline, VolumeTargets } from './SessionOutline'
  * tall — but it took the *glance* off Today along with the full board,
  * where `TodayGoals` had already established the pattern of keeping a
  * short daily summary on Today while the full screen (Codex, here
- * Train) lives elsewhere. This card is that summary for training,
- * exactly as detailed as Train's own page shows it — asked for at full
- * depth rather than a trimmed teaser.
+ * Train) lives elsewhere.
+ *
+ * **`compact` is what Today actually asks for, and the first version
+ * of this restoration guessed wrong.** It shipped at full depth — the
+ * whole `SessionOutline` breakdown, warm-up through conditioning — on
+ * the reasoning that the earlier fold-in had shown it that way too.
+ * Reported back directly: *"Todays training card shouldnt list the
+ * whole workout just a condenseed version like the rest."* Right —
+ * every other glance on Today (`BaseGlance`, the map, the tech tree) is
+ * a heading, an `Open` link, and one or two lines, never the underlying
+ * screen's own detail. `compact` drops `SessionOutline` and
+ * `VolumeTargets` for a day name and a one-line summary, matching that
+ * shape; `/train` itself still renders the uncompacted version, because
+ * that page's whole job is the detail this one now omits.
  *
  * **Pressing "Start session" navigates to `/train`.** From Today that
  * is a real navigation; from `/train` itself, where `TrainZone` also
  * renders this, it is a no-op route change — the workout query
  * refetching is what actually swaps the view to the player either way.
  */
-export function NextSessionCard() {
+export function NextSessionCard({ compact = false }: { readonly compact?: boolean }) {
   const program = useProgram()
   const position = usePosition()
   const exercises = useExercises()
@@ -67,6 +78,62 @@ export function NextSessionCard() {
       <Empty title="Building your session">
         <p>One moment — the block is put together from your priorities each time.</p>
       </Empty>
+    )
+  }
+
+  if (compact) {
+    const summary =
+      nextDay.focus ??
+      `${String(nextDay.slots.length)} ${nextDay.slots.length === 1 ? 'movement' : 'movements'}`
+
+    return (
+      <Card>
+        <CardHeading
+          icon={<Dumbbell size={16} aria-hidden />}
+          title="Next session"
+          action={
+            <Link to="/train" className={buttonStyles({ variant: 'ghost', size: 'sm' })}>
+              Open
+            </Link>
+          }
+        />
+        <div className="mb-3">
+          <h3 className="text-ink-50 text-lg font-semibold">{nextDay.label}</h3>
+          <p className="text-ink-500 mt-0.5 text-xs">
+            {summary}
+            {week?.isDeload === true ? ' · deload' : ''}
+          </p>
+        </div>
+
+        {alreadyOpen ? (
+          <Button
+            variant="primary"
+            full
+            onClick={() => {
+              void navigate('/train')
+            }}
+          >
+            <Play size={18} aria-hidden />
+            Resume session
+          </Button>
+        ) : (
+          <Button
+            variant="primary"
+            full
+            disabled={startWorkout.isPending}
+            onClick={() => {
+              startWorkout.mutate(undefined, {
+                onSuccess: () => {
+                  void navigate('/train')
+                },
+              })
+            }}
+          >
+            <Play size={18} aria-hidden />
+            Start session
+          </Button>
+        )}
+      </Card>
     )
   }
 

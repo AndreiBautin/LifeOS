@@ -260,11 +260,13 @@ export function HomePage() {
 
           <div className="space-y-6">
             {/*
-              **The full next-session card, shared with `TrainZone`.**
-              Asked for at this depth rather than a trimmed teaser — see
-              `NextSessionCard`'s own doc.
+              **The compact next-session glance, shared with `TrainZone`.**
+              Reported once the full breakdown had shipped here: "Todays
+              training card shouldnt list the whole workout just a
+              condensed version like the rest." See `NextSessionCard`'s
+              own doc — `/train` still renders the full version.
             */}
-            <NextSessionCard />
+            <NextSessionCard compact />
             <NextUpgradeGlance />
           </div>
 
