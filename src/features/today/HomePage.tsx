@@ -1,6 +1,7 @@
 import { Settings } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
+import { Masonry } from '@/components/shared/Masonry'
 import { Card } from '@/components/shared/primitives'
 import { buttonStyles } from '@/components/shared/styles'
 import { MapGlance } from '@/features/atlas/MapGlance'
@@ -69,21 +70,17 @@ import { LimitsCard } from '@/features/vitals/LimitsCard'
  * full detail rather than a trimmed teaser — asked for that way
  * directly) are both back.
  *
- * **Bringing both back at full size reintroduced scroll, and the fix
- * was to spread the columns rather than trim anything.** Reported
- * plainly against a screenshot: *"seems like there's plenty of
- * whitespace"* — the 2-column pairing below `SheetCard` put
- * `NextSessionCard` and `ChallengePass` in the *same* column, which
- * made that one column by far the page's tallest while `SheetCard`'s
- * own column sat mostly empty underneath it. Two changes, not one:
- * `ActiveQuests` moved into `SheetCard`'s own column, since both are
- * short and "who you are and what you are on" reads as one cluster
- * anyway; and the grid holding the rest went from two columns to
- * three, giving `NextSessionCard` and `ChallengePass` a column each
- * instead of stacking them. Four unevenly-tall blocks in two columns
- * is exactly the `column-fill:balance` failure this file's own history
- * already names; three columns for four blocks is what actually
- * balances them.
+ * **The cards are balanced by measured height, not assigned to columns.**
+ * A hand-picked split — the portrait in one column, the readouts in a
+ * grid beside it stepping 1 → 2 → 3 by breakpoint — was only ever
+ * balanced at the width it was tuned for. At half a desktop screen the
+ * readouts fell to one column and ran three times the portrait's height:
+ * _"the second column has a lot more content than the first."_ Every
+ * earlier fix here (a third column, an 1800px step in `index.css`,
+ * moving the quests under the portrait) was re-tuning that split for
+ * one more width. `Masonry` takes as many ~360px columns as the width
+ * holds and drops each card into the shortest one, so it balances at
+ * every width, and on a phone it is the same single stack as before.
  *
  * **Weight came and went within this same page's lifetime.** It sat
  * here briefly as `WeightTrend`, reintroduced this session and then
@@ -103,9 +100,7 @@ import { LimitsCard } from '@/features/vitals/LimitsCard'
  * `BaseGlance`, `NextUpgradeGlance` and `MapGlance` are two lines each
  * — a reading and, where one exists, the next thing worth doing —
  * never the full screen, the same restraint `LimitsCard` and
- * `TodayGoals` already hold. One joined each of the three grid
- * columns rather than opening a fourth, so no column goes from short
- * to empty-looking sparse while another holds four cards.
+ * `TodayGoals` already hold.
  */
 
 export function HomePage() {
@@ -121,174 +116,55 @@ export function HomePage() {
   const leadingArc = (arcs.data ?? []).find((one) => one.next !== undefined)
 
   return (
-    <div className="space-y-8 lg:space-y-10">
-      {/*
-        ── The glance ──────────────────────────────────────────────────
-        Who you are, the chapter you are in, and the same XP split eight
-        ways. One card, because those are one quantity at three
-        resolutions rather than three questions. No heading of its own —
-        a page that opens on a picture of you does not need to be told
-        it is about you, the same call this file has made since the
-        page had no header at all.
-
-        **Capped at `lg:max-w-xl`, and set beside the day's readouts
-        rather than stacked above them.** Both needed a real fix rather
-        than being left alone. Pulling `SheetCard` out of the old
-        page-wide masonry flow to make room for zones also pulled it out
-        of the one thing that had ever bounded its width — a masonry
-        column — so with nothing capping it, it stretched to the full
-        page: reported as "cap it back to match the other cards' width."
-        `xl` (36rem) sits a little wider than a single zone column on
-        purpose — this card carries an avatar, `MainLifts` and eight
-        trait bars, genuinely more than a Buffs or weight-trend card
-        holds, so matching a column exactly would have squeezed it back
-        toward a wrapping bug an earlier commit already had to fix.
-
-        **Stacking it above the readouts full-width also left the entire
-        row beside it empty**, reported once already for the same
-        arrangement beside a different neighbour: "you have to scroll to
-        see everything despite lots of white space on the first row."
-        Capping the width fixed how thin the card spread; it did nothing
-        about the fact that a capped, standalone block no longer shares
-        a row with anything. `lg:flex` puts the two side by side instead
-        — `SheetCard` fixed at its own cap on the left, the day's
-        readouts filling whatever width is left on the right.
-
-        **`ActiveQuests` sits under `SheetCard` in the same column, not
-        in the grid beside it.** Both are short and both are about the
-        person rather than the day's tasks — who you are, and what
-        you're on — so stacking them fills the gap that used to sit
-        empty below the portrait once the taller columns beside it grew.
-      */}
-      <div className="space-y-10 lg:flex lg:items-start lg:gap-8 lg:space-y-0">
-        <div className="space-y-6 lg:max-w-xl lg:shrink-0">
-          <SheetCard
-            avatarSize="large"
-            action={
-              <Link
-                to="/settings"
-                aria-label="Settings"
-                className={buttonStyles({ variant: 'ghost', size: 'sm' })}
-              >
-                <Settings size={16} aria-hidden />
-              </Link>
-            }
-          />
-
-          {/*
-            **The two quest slots, same component `QuestsPage` opens
-            on.** No heading of its own, matching `LimitsCard` and
-            `TodayGoals` in the grid beside it — the cards already say
-            what they are. `QuestBoard`, `GoalsCard` and `Campaigns`
-            stay on `/quests`; this is the glance, not the board.
-          */}
-          <ActiveQuests
-            main={active.data?.main}
-            side={active.data?.side}
-            {...(leadingArc === undefined ? {} : { arc: leadingArc })}
-          />
-        </div>
-
-        {/*
-          **Three columns, not two — `NextSessionCard` and
-          `ChallengePass` each get their own rather than sharing one.**
-          Reported against a screenshot after both came back at full
-          size: "seems like there's plenty of whitespace." Pairing them
-          in one column made that column run far taller than the other,
-          which is the same `column-fill:balance`-style imbalance this
-          file's history already names for uneven blocks — the fix
-          there was more columns, not less content, and it is the fix
-          here too. `LimitsCard` and `TodayGoals` are still short enough
-          to share a column between them.
-
-          **`lg:items-start`, not `lg:items-stretch`.** Columns used to
-          be force-matched to the tallest one's height, with whichever
-          card was shortest given `flex-1` to absorb the difference —
-          reported directly as "this is still massive... it shouldn't
-          really be as much of a focal point as it is here" once that
-          card held real content. No column stretches to match another
-          now; each simply ends where its own content ends, the same
-          "not a gap needing to be filled" call the Quests page's
-          columns already make.
-
-          **Three columns only earns its keep past 1800px, and jumping
-          straight to it at `lg` (1024) is what a real report caught:**
-          "if i make this half width alongside another window on my
-          main monitor, the ui is not responsive." Measured against the
-          live site rather than guessed — `lg`'s flat `grid-cols-3` was
-          still wrapping "Thanksgiving dinner with family" onto four
-          lines at 1600px wide, because `SheetCard`'s own 576px column
-          plus the sidebar leaves three columns fighting over roughly
-          200px each at anything under about 1800. Two genuinely usable
-          steps now sit between the mobile stack and the full spread —
-          one column until `xl`, two until the width three can actually
-          hold — rather than one breakpoint asked to cover both a
-          half-width laptop window and a monitor twice its size.
-
-          **The third step is `.today-readouts` in `index.css`, not a
-          Tailwind `min-[1800px]:` variant — the variant was tried first
-          and silently lost.** Tailwind v4 sorts every named breakpoint
-          (`lg`, `xl`, ...) into one group placed *after* all arbitrary
-          variants in the compiled stylesheet, whatever pixel value each
-          one names. So the arbitrary 1800px rule always compiled
-          *before* `xl:grid-cols-2`, and past 1280px `xl` won every
-          time — the grid was stuck at two columns even at 1900px,
-          caught only by reading `getComputedStyle` on the live site
-          rather than trusting the class list. The unlayered escape
-          hatch two rules up in `index.css` (the 16px input font-size
-          fix) already outranks every layered Tailwind utility outright,
-          which is what makes it immune to this ordering.
-        */}
-        <div className="today-readouts min-w-0 space-y-6 lg:grid lg:grid-cols-1 xl:grid-cols-2 lg:flex-1 lg:items-start lg:gap-8 lg:space-y-0">
-          <div className="space-y-6">
-            {/*
-              The card names itself and links to the screen, which is
-              why nothing here repeats "Buffs" — it had been saying so
-              directly over a card whose first line already does.
-            */}
-            <LimitsCard />
-
-            {/*
-              `TodayGoals` reuses `GoalsToday`/`GoalRow` wholesale —
-              see its own doc for why this was a capability the app
-              already had and nothing rendered. Silent under the same
-              rule as everything else here.
-            */}
-            <TodayGoals />
-            <BaseGlance />
-          </div>
-
-          <div className="space-y-6">
-            {/*
-              **The compact next-session glance, shared with `TrainZone`.**
-              Reported once the full breakdown had shipped here: "Todays
-              training card shouldnt list the whole workout just a
-              condensed version like the rest." See `NextSessionCard`'s
-              own doc — `/train` still renders the full version.
-            */}
-            <NextSessionCard compact />
-            <NextUpgradeGlance />
-          </div>
-
-          <div className="space-y-6">
-            {/*
-              **The season names itself inside the card**, keeping the
-              name beside the measurement the way this file has always
-              insisted. The comment sits *above* the conditional rather
-              than inside it, because a JSX comment cannot be a bare
-              sibling in a `&&` expression.
-            */}
-            {season.data !== undefined && (
+    <Masonry
+      items={[
+        {
+          /*
+            The portrait and the two quest slots travel as one item, so
+            "who you are and what you are on" always opens the first
+            column rather than being split by the balancing.
+          */
+          key: 'you',
+          node: (
+            <div className="space-y-6">
+              <SheetCard
+                avatarSize="large"
+                action={
+                  <Link
+                    to="/settings"
+                    aria-label="Settings"
+                    className={buttonStyles({ variant: 'ghost', size: 'sm' })}
+                  >
+                    <Settings size={16} aria-hidden />
+                  </Link>
+                }
+              />
+              <ActiveQuests
+                main={active.data?.main}
+                side={active.data?.side}
+                {...(leadingArc === undefined ? {} : { arc: leadingArc })}
+              />
+            </div>
+          ),
+        },
+        { key: 'buffs', node: <LimitsCard /> },
+        { key: 'goals', node: <TodayGoals /> },
+        { key: 'session', node: <NextSessionCard compact /> },
+        {
+          key: 'season',
+          node:
+            season.data === undefined ? null : (
               <Card>
                 <ChallengePass
                   season={{ label: season.data.label, daysLeft: season.data.daysLeft }}
                 />
               </Card>
-            )}
-            <MapGlance />
-          </div>
-        </div>
-      </div>
-    </div>
+            ),
+        },
+        { key: 'base', node: <BaseGlance /> },
+        { key: 'upgrade', node: <NextUpgradeGlance /> },
+        { key: 'map', node: <MapGlance /> },
+      ]}
+    />
   )
 }
