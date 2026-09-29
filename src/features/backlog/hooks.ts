@@ -78,6 +78,10 @@ function useBacklogMutation<TVariables>(
     onSuccess: () => {
       logger.info(event, {})
       void client.invalidateQueries({ queryKey: BACKLOG })
+      // Progress and finishing both pay XP, so the level and the traits
+      // are stale the moment any of these lands — the challenges and the
+      // practice log already invalidate the same key for the same reason.
+      void client.invalidateQueries({ queryKey: ['character'] })
     },
   })
 }
@@ -186,6 +190,7 @@ export function useBacklogTransfer() {
         valid: result.envelopeValid,
       })
       void client.invalidateQueries({ queryKey: BACKLOG })
+      void client.invalidateQueries({ queryKey: ['character'] })
     },
   })
 

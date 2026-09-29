@@ -8,8 +8,8 @@ export function NotFoundPage() {
   return (
     <Empty title="Nothing here">
       <p>That page does not exist.</p>
-      <Link to="/train" className={cn(buttonStyles({ variant: 'primary' }), 'mt-4')}>
-        Back to training
+      <Link to="/today" className={cn(buttonStyles({ variant: 'primary' }), 'mt-4')}>
+        Back home
       </Link>
     </Empty>
   )

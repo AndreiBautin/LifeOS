@@ -229,9 +229,9 @@ async function seedCodex(deps: DemoDeps): Promise<void> {
     finished(make('Everything Everywhere All At Once', 'movies', { status: 'completed' }, 200), 45),
     /* Only the required fields — the minimal record a screen must survive. */
     make('Dune', 'movies'),
-    /* Long enough to wrap on a phone, which is the layout edge case. */
+    /* Long enough to wrap on a phone — the layout edge case — while still reading as a real article. */
     make(
-      'A Very Long Title That Exists Precisely To Prove The Row Wraps Rather Than Clipping',
+      'How We Cut Query Latency by Ninety Percent Without Adding a Single Index',
       'articles',
       { status: 'backlog' },
       5,

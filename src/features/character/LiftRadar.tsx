@@ -34,6 +34,12 @@ const SIZE = 240
 const CENTRE = SIZE / 2
 const MAX_RADIUS = 82
 const RINGS = [0.25, 0.5, 0.75, 1]
+/*
+ * Horizontal room for the side labels. "Bench press" centred on the
+ * lower-right spoke ends a few units past the square, and an SVG clips
+ * what falls outside its viewBox.
+ */
+const LABEL_PAD = 16
 
 function overallFraction(attribute: Attribute): number {
   const index = LEVELS.indexOf(attribute.level)
@@ -73,7 +79,7 @@ export function LiftRadar({ lifts }: { readonly lifts: readonly Attribute[] }) {
 
   return (
     <svg
-      viewBox={`0 0 ${String(SIZE)} ${String(SIZE)}`}
+      viewBox={`${String(-LABEL_PAD)} 0 ${String(SIZE + 2 * LABEL_PAD)} ${String(SIZE)}`}
       className="mx-auto h-full max-h-[280px] w-full max-w-[280px]"
       role="img"
       aria-label={`Lift shape: ${lifts.map((lift) => `${lift.name} ${LEVEL_LABEL[lift.level]}`).join(', ')}`}

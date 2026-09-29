@@ -115,7 +115,7 @@ export function HistoryPage() {
       />
 
       {weekVolume !== undefined && (
-        <Section title="This week" description="Hard sets against your landmarks">
+        <Section title="This week" description="Working sets against each muscle’s weekly target">
           <Card>
             <ul className="space-y-2">
               {(Object.keys(weekVolume) as MuscleGroup[])
@@ -149,8 +149,8 @@ export function HistoryPage() {
                 })}
             </ul>
             <p className="text-ink-500 mt-3 text-xs">
-              The band is your minimum effective to maximum adaptive volume. Past the right edge is
-              your maximum recoverable — a week or two above it is a choice, a month is a stall.
+              Accessory sets only — the competition lifts are counted apart, and a muscle with no
+              target lives on what those lifts already pay it.
             </p>
           </Card>
         </Section>

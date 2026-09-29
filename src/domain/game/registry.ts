@@ -477,7 +477,7 @@ export const SCORING: readonly AreaScoring[] = [
         source: 'places.explored-share',
         name: 'Exploration',
         unit: 'share of region',
-        anchor: 'The named region boundary — 1.0 is all of it, walked',
+        anchor: 'the region you set in Settings — 1.0 is all of it, walked',
         thresholds: [0.02, 0.1, 0.25, 0.5, 0.85],
       },
     ],
@@ -552,7 +552,7 @@ export const SCORING: readonly AreaScoring[] = [
         source: 'finance.credit-score',
         name: 'Credit',
         unit: 'FICO',
-        anchor: 'The published FICO bands — fair at 580, exceptional at 800',
+        anchor: 'the published FICO bands — fair at 580, exceptional at 800',
         thresholds: [...CREDIT_BANDS],
       },
       /*

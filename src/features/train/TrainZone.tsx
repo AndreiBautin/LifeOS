@@ -82,14 +82,20 @@ function StrengthStandards() {
         has used since it was built: the rows lead, and the radar takes
         the column `lg` and up frees beside them.
       */}
-      <div className="lg:grid lg:grid-cols-[1fr_auto] lg:items-start lg:gap-6">
+      {/*
+        `minmax(0, 1fr)`, not `1fr`: a bare `1fr` will not shrink below
+        its rows' min-content, so at ~1280px the fixed radar column pushed
+        the card past the page edge and the page scrolled sideways. The
+        radar's column shrinks too rather than holding 256px.
+      */}
+      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,16rem)] lg:items-start lg:gap-6">
         <div className="space-y-3">
           <AttributeRow attribute={character.totalAttribute} emphasis />
           {character.lifts.map((lift) => (
             <AttributeRow key={lift.name} attribute={lift} />
           ))}
         </div>
-        <div className="hidden lg:block lg:w-64">
+        <div className="hidden min-w-0 lg:block">
           <MainLifts />
         </div>
       </div>

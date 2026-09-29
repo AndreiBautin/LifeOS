@@ -1,34 +1,25 @@
-import { Upload } from 'lucide-react'
-import { useRef, useState } from 'react'
-
 import { STRENGTH_LIFT_SLUGS } from '@/domain/exercises/catalogue'
 import { asExerciseId, type ExerciseId } from '@/domain/ids/ids'
-import { parseLegacyMaxes, type LegacyMax } from '@/domain/import/legacy-531'
 import type { AppSettings } from '@/domain/settings/settings'
 import type { WeightUnit } from '@/domain/units/weight'
-import { Button, Card, Section } from '@/components/shared/primitives'
+import { Card, Section } from '@/components/shared/primitives'
 
 /**
- * The maxes every suggested load is worked back from.
+ * Where a strength lift starts before it has any history.
  *
- * Under a percentage-driven program this number *was* the prescription,
- * so getting it wrong changed what the program meant. RTS asks for reps
- * at an RPE, so it only decides where the suggestion starts: a wrong one
- * costs a warm-up set's worth of recalibration, not a mis-run cycle.
- * That is what makes an estimate an acceptable basis here.
+ * A first session opens at 85% of this figure; after that the bar is
+ * carried forward from what was actually lifted, so an estimate that is
+ * a little off costs one session's recalibration and nothing more.
  *
- * They can be typed, or read out of an export from the previous app —
- * which is the only thing worth taking from it. The sessions themselves
- * were run under a different framework with a different idea of a hard
- * set, so mixing them into the volume history would compare quantities
- * that are not the same quantity.
+ * Three lifts, because three are trained. The overhead press and a
+ * reader for an old 5/3/1 export both lived here and went with the
+ * frameworks that needed them.
  */
 
 const LIFTS: readonly { readonly id: ExerciseId; readonly label: string }[] = [
   { id: asExerciseId(STRENGTH_LIFT_SLUGS.squat), label: 'Squat' },
   { id: asExerciseId(STRENGTH_LIFT_SLUGS.bench), label: 'Bench press' },
   { id: asExerciseId(STRENGTH_LIFT_SLUGS.deadlift), label: 'Deadlift' },
-  { id: asExerciseId('overhead-press'), label: 'Overhead press' },
 ]
 
 interface Props {
@@ -37,26 +28,6 @@ interface Props {
 }
 
 export function MaxesEditor({ settings, onChange }: Props) {
-  const fileInput = useRef<HTMLInputElement>(null)
-  const [found, setFound] = useState<readonly LegacyMax[] | undefined>(undefined)
-  const [error, setError] = useState<string | undefined>(undefined)
-
-  const read = (text: string): void => {
-    setError(undefined)
-    try {
-      const maxes = parseLegacyMaxes(JSON.parse(text), settings.e1rmFormula)
-      if (maxes.length === 0) {
-        setFound(undefined)
-        setError('No completed sets were found in that file.')
-        return
-      }
-      setFound(maxes)
-    } catch {
-      setFound(undefined)
-      setError('That file is not readable JSON.')
-    }
-  }
-
   return (
     <Section
       title="Current maxes"
@@ -75,74 +46,6 @@ export function MaxesEditor({ settings, onChange }: Props) {
             }}
           />
         ))}
-
-        <div className="border-ink-800 border-t pt-3">
-          <Button
-            variant="outline"
-            full
-            onClick={() => {
-              fileInput.current?.click()
-            }}
-          >
-            <Upload size={16} aria-hidden />
-            Read them from a 5/3/1 export
-          </Button>
-
-          <input
-            ref={fileInput}
-            type="file"
-            accept="application/json,.json"
-            className="hidden"
-            aria-label="Choose a 5/3/1 export file"
-            onChange={(event) => {
-              const file = event.target.files?.[0]
-              if (file === undefined) return
-              void file.text().then(read)
-              event.target.value = ''
-            }}
-          />
-
-          {error !== undefined && (
-            <p className="text-bad-500 mt-2 text-xs" role="alert">
-              {error}
-            </p>
-          )}
-
-          {found !== undefined && (
-            <div className="mt-3 space-y-2">
-              <p className="text-ink-300 text-xs">
-                Each is the best completed work set in the file. Nothing is written until you apply
-                them.
-              </p>
-              <ul className="space-y-1">
-                {found.map((max) => (
-                  <li key={max.exerciseId} className="flex justify-between gap-3 text-xs">
-                    <span className="text-ink-300 truncate">{max.exerciseId}</span>
-                    <span className="numeric text-ink-500 shrink-0">
-                      {max.estimatedMax} {settings.units} — from {max.fromLoad} × {max.fromReps} on{' '}
-                      {max.onDate}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-              <Button
-                variant="primary"
-                full
-                onClick={() => {
-                  onChange({
-                    ...settings.estimatedMaxes,
-                    ...Object.fromEntries(
-                      found.map((max) => [max.exerciseId, max.estimatedMax] as const),
-                    ),
-                  })
-                  setFound(undefined)
-                }}
-              >
-                Apply these
-              </Button>
-            </div>
-          )}
-        </div>
       </Card>
     </Section>
   )
