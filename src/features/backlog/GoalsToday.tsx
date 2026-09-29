@@ -2,8 +2,10 @@ import { Check, Minus, Plus } from 'lucide-react'
 
 import { Badge, Button, Card } from '@/components/shared/primitives'
 import { formatDailyGoal } from '@/domain/backlog/daily-goal'
-import type { DailyGoalStatus } from '@/domain/backlog/daily-goals'
+import type { DailyGoalDay, DailyGoalStatus } from '@/domain/backlog/daily-goals'
+import { cn } from '@/lib/cn'
 
+import { CATEGORY_ICONS } from './category-icons'
 import { useLogProgress } from './hooks'
 
 /**
@@ -26,18 +28,93 @@ function StreakBadge({ status }: { readonly status: DailyGoalStatus }) {
 }
 
 /**
+ * The last fortnight, met or not — `recentDays` on `DailyGoalStatus`,
+ * computed for a "history strip" its own doc comment names and drawn by
+ * nothing until now. The same shape this file elsewhere calls a
+ * capability nothing could reach: `RECENT_DAY_COUNT` and
+ * `getRecentDays` have existed, and been tested, since before this card
+ * had a single line of visual design.
+ *
+ * **Bars, not a ring.** `SheetCard` already owns a ring for the XP
+ * wheel and `LimitsCard` for a pool's cooldown — a third ring here would
+ * be the same shape wearing a different card, not a design that came
+ * from what this card actually holds. A streak is a run of *days*, so a
+ * strip that reads left to right the way a calendar does is the shape
+ * that matches the data instead of the one that was lying around.
+ *
+ * **Three states, not two.** An off day reads as met in `isMet` — a
+ * habit not expected on Sunday should not look broken on Monday — so
+ * telling it apart from a day actually logged needs `amount` too, or a
+ * book untouched for a week of off-days would draw the same solid strip
+ * as one read every day. Missed days are hollow rather than a second
+ * colour: this is a glance, not a report, and a bad day should recede
+ * rather than compete with today's ring for the eye.
+ *
+ * `aria-hidden` on the squares and one summary label on the strip —
+ * the same split `PoolIconMark` draws between a decorative shape and
+ * the sentence that actually says something, except this shape *is*
+ * the sentence, so the label carries the counts the text above it does
+ * not.
+ */
+function GoalHistoryStrip({ days }: { readonly days: readonly DailyGoalDay[] }) {
+  if (days.length === 0) return null
+
+  const met = days.filter((day) => day.isMet && day.amount > 0).length
+  const missed = days.filter((day) => !day.isMet).length
+
+  return (
+    <div
+      className="mt-2 flex items-center gap-[3px]"
+      role="img"
+      aria-label={`Last ${days.length.toString()} days: ${met.toString()} met, ${missed.toString()} missed`}
+    >
+      {days.map((day, index) => {
+        const state = day.isMet && day.amount > 0 ? 'met' : day.isMet ? 'off' : 'missed'
+        const isToday = index === days.length - 1
+
+        return (
+          <span
+            key={day.date}
+            aria-hidden
+            className={cn(
+              'h-3.5 w-[5px] shrink-0 rounded-full',
+              state === 'met' && 'bg-accent-500',
+              state === 'off' && 'bg-ink-850',
+              state === 'missed' && 'bg-ink-700',
+              isToday && 'ring-accent-300 ring-offset-ink-900 ring-1 ring-offset-1',
+            )}
+          />
+        )
+      })}
+    </div>
+  )
+}
+
+/**
  * One goal, as a row you can act on. Exported because Today draws these
  * too — a Codex goal is a recurring, cadenced, streak-holding thing that
  * is answered by logging a bit of it, so it belongs in the day's list,
  * and a second copy of this row is where the two screens would start to
  * disagree about what a plus does.
+ *
+ * **The category medallion is `CATEGORY_ICONS`, already built for the
+ * Codex list** — reused rather than a second lookup, the same call
+ * `BacklogPage`'s own `ItemRow` already makes. Tinted here rather than
+ * flat `ink-500`: this row sits on a card meant to read as a glance
+ * rather than a management list, so the icon carries a little of the
+ * weight `CardHeading`'s own icon badge already does.
  */
 export function GoalRow({ status }: { readonly status: DailyGoalStatus }) {
   const item = status.item
   const log = useLogProgress()
+  const Icon = CATEGORY_ICONS[item.category]
 
   return (
     <div className="row-hover -mx-2 flex items-center gap-3 px-2 py-3">
+      <span className="bg-accent-500/10 text-accent-400 flex size-9 shrink-0 items-center justify-center rounded-lg">
+        <Icon size={17} aria-hidden />
+      </span>
+
       <div className="min-w-0 flex-1">
         <p className="text-ink-50 truncate font-medium">{item.title}</p>
         <p className="text-ink-500 mt-0.5 flex items-center gap-2 text-sm">
@@ -47,6 +124,7 @@ export function GoalRow({ status }: { readonly status: DailyGoalStatus }) {
           </span>
           <StreakBadge status={status} />
         </p>
+        <GoalHistoryStrip days={status.recentDays} />
       </div>
 
       {status.isMet && (
