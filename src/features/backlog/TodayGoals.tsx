@@ -1,11 +1,9 @@
 import { BookOpen } from 'lucide-react'
 
 import { Card, CardHeading } from '@/components/shared/primitives'
-import { cn } from '@/lib/cn'
 
 import { GoalsToday } from './GoalsToday'
 import { useDailyGoals } from './hooks'
-import type { DailyGoalStatus } from '@/domain/backlog/daily-goals'
 
 /**
  * The Codex's daily reading/watching goals, drawn on Today.
@@ -36,52 +34,21 @@ import type { DailyGoalStatus } from '@/domain/backlog/daily-goals'
  * prop now so its rows can sit inside *this* card, under one
  * `CardHeading`, matching `Buffs` and `Recent training` exactly.
  *
- * **One pip per goal, not a ring.** The first pass gave this the same
- * ring `Base`, the tech tree and the map glances all got too, and it
- * read back correctly: "you literally just added the same visual to
- * all of them." A goal is discrete — met today or not — which is
- * exactly the case `Pips` in `PoolRow` already exists for over a ring:
- * "a half-full bar invites the question of whether that is one and a
- * half coffees; three dots of which one is lit cannot be misread." The
- * same idiom, applied to a different discrete count.
- *
- * **A number sits above the dots now — it didn't at first.** Reported
- * against a screenshot: "three random dots here feel awkward." Fair:
- * every other reading in this family (`CountRing`, `ChallengePass`'s
- * own pass track) pairs the shape with a real number, and this was the
- * one place that shipped the shape alone with only an `aria-label`
- * standing in for it — invisible to anyone not using a screen reader,
- * so a sighted reader saw three dots and nothing telling them what they
- * counted. The fraction is real text now, which is also the better
- * accessibility shape: a visible node a screen reader announces on its
- * own beats a label duplicating what a hidden row of spans meant.
+ * **No summary visual, and that is a decision rather than an absence.**
+ * Two rounds went into a "met/total" pip cluster beside the list — a
+ * ring first, then dots with a number added after "three random dots
+ * here feel awkward" — and it still read as clutter: *"positioning is
+ * still random and it just doesn't really add much."* Right, and worth
+ * naming why neither version was going to work. This list holds one to
+ * a handful of rows, each already showing its own progress and streak
+ * badge, so a count of how many are met today tells you nothing the
+ * rows themselves don't already say in the time it takes to glance at
+ * three lines. `Base`, `Map` and the tech tree glances earn a compact
+ * visual because they compress information that is otherwise
+ * invisible on the card; this list has nothing left to compress. Not
+ * every card needs the treatment, and forcing one on here was the
+ * mistake both earlier rounds were trying to fix in the wrong place.
  */
-function GoalPips({ statuses }: { readonly statuses: readonly DailyGoalStatus[] }) {
-  const met = statuses.filter((status) => status.isMet).length
-  const shown = statuses.slice(0, 9)
-  const overflow = statuses.length - shown.length
-
-  return (
-    <div className="hidden w-14 shrink-0 flex-col items-end gap-1.5 lg:flex">
-      <span className="text-ink-500 numeric text-xs">
-        {met}/{statuses.length}
-      </span>
-      <span className="flex flex-wrap justify-end gap-1.5" aria-hidden>
-        {shown.map((status) => (
-          <span
-            key={status.item.id}
-            className={cn(
-              'h-2.5 w-2.5 rounded-full',
-              status.isMet ? 'bg-accent-500' : 'bg-ink-700',
-            )}
-          />
-        ))}
-      </span>
-      {overflow > 0 && <span className="text-ink-700 numeric text-xs">+{overflow}</span>}
-    </div>
-  )
-}
-
 export function TodayGoals() {
   const goals = useDailyGoals()
   const statuses = goals.data?.statuses ?? []
@@ -91,12 +58,7 @@ export function TodayGoals() {
   return (
     <Card>
       <CardHeading icon={<BookOpen size={16} aria-hidden />} title="Working through" />
-      <div className="flex items-start gap-3">
-        <div className="min-w-0 flex-1">
-          <GoalsToday statuses={statuses} bare />
-        </div>
-        <GoalPips statuses={statuses} />
-      </div>
+      <GoalsToday statuses={statuses} bare />
     </Card>
   )
 }
