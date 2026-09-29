@@ -6,6 +6,7 @@ import { useQuery } from '@tanstack/react-query'
 import { buildCharacter } from '@/domain/game/character'
 import { totalWorkingSets } from '@/domain/logging/workout-log'
 import { AttributeRow } from '@/features/character/CharacterParts'
+import { MainLifts } from '@/features/character/MainLifts'
 import { Button, Card, CardHeading } from '@/components/shared/primitives'
 
 import { useActiveWorkout, useStartWorkout } from './hooks'
@@ -70,11 +71,27 @@ function StrengthStandards() {
   return (
     <Card>
       <CardHeading icon={<Trophy size={16} aria-hidden />} title="Standards" />
-      <div className="space-y-3">
-        <AttributeRow attribute={character.totalAttribute} emphasis />
-        {character.lifts.map((lift) => (
-          <AttributeRow key={lift.name} attribute={lift} />
-        ))}
+      {/*
+        **`MainLifts` moved here from `SheetCard`.** Reported: "the
+        squat bench deadlift graphic should probably be grouped in the
+        training section." It was never a reading of the character
+        sheet's own XP the way the portrait, season and traits are —
+        it is a strength standard, the same three lifts these rows
+        already draw, so drawing it a second time on a different screen
+        was the odd one out there. Same "freed width" slot the radar
+        has used since it was built: the rows lead, and the radar takes
+        the column `lg` and up frees beside them.
+      */}
+      <div className="lg:grid lg:grid-cols-[1fr_auto] lg:items-start lg:gap-6">
+        <div className="space-y-3">
+          <AttributeRow attribute={character.totalAttribute} emphasis />
+          {character.lifts.map((lift) => (
+            <AttributeRow key={lift.name} attribute={lift} />
+          ))}
+        </div>
+        <div className="hidden lg:block lg:w-64">
+          <MainLifts />
+        </div>
       </div>
     </Card>
   )

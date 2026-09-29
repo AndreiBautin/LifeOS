@@ -8,9 +8,8 @@ import { TodayGoals } from '@/features/backlog/TodayGoals'
 import { BaseGlance } from '@/features/base/BaseGlance'
 import { useCampaigns } from '@/features/campaign/hooks'
 import { ChallengePass } from '@/features/challenges/ChallengePass'
-import { LifeWheel } from '@/features/character/LifeWheel'
 import { SheetCard } from '@/features/character/SheetCard'
-import { useCharacterSheet, useSeasonProgress } from '@/features/character/hooks'
+import { useSeasonProgress } from '@/features/character/hooks'
 import { ActiveQuests } from '@/features/projects/ActiveQuests'
 import { useActiveQuests } from '@/features/projects/hooks'
 import { NextSessionCard } from '@/features/train/NextSessionCard'
@@ -111,7 +110,6 @@ import { LimitsCard } from '@/features/vitals/LimitsCard'
 
 export function HomePage() {
   const season = useSeasonProgress()
-  const sheet = useCharacterSheet()
   const active = useActiveQuests()
   /*
    * The first arc with something outstanding. Several arcs are possible
@@ -165,7 +163,6 @@ export function HomePage() {
       <div className="space-y-10 lg:flex lg:items-start lg:gap-8 lg:space-y-0">
         <div className="space-y-6 lg:max-w-xl lg:shrink-0">
           <SheetCard
-            {...(sheet.data === undefined ? {} : { traits: sheet.data.traits })}
             avatarSize="large"
             action={
               <Link
@@ -177,16 +174,6 @@ export function HomePage() {
               </Link>
             }
           />
-
-          {/*
-            **The signature visual, directly under the sheet it reads
-            from.** Asked for after a fresh look at Today: "it needs more
-            diagrams/graphs/charts and ideally one cool unique visual,
-            similar to how we have the spinning DJ record." See
-            `LifeWheel`'s own doc for why this reaches five areas no
-            trait bar ever shows.
-          */}
-          <LifeWheel />
 
           {/*
             **The two quest slots, same component `QuestsPage` opens
