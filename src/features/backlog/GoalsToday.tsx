@@ -5,7 +5,6 @@ import { formatDailyGoal } from '@/domain/backlog/daily-goal'
 import type { DailyGoalDay, DailyGoalStatus } from '@/domain/backlog/daily-goals'
 import { cn } from '@/lib/cn'
 
-import { CATEGORY_ICONS } from './category-icons'
 import { useLogProgress } from './hooks'
 
 /**
@@ -97,24 +96,24 @@ function GoalHistoryStrip({ days }: { readonly days: readonly DailyGoalDay[] }) 
  * and a second copy of this row is where the two screens would start to
  * disagree about what a plus does.
  *
- * **The category medallion is `CATEGORY_ICONS`, already built for the
- * Codex list** — reused rather than a second lookup, the same call
- * `BacklogPage`'s own `ItemRow` already makes. Tinted here rather than
- * flat `ink-500`: this row sits on a card meant to read as a glance
- * rather than a management list, so the icon carries a little of the
- * weight `CardHeading`'s own icon badge already does.
+ * **No category medallion, and one shipped briefly before this.**
+ * `CATEGORY_ICONS` was reused from the Codex list the same way
+ * `BacklogPage`'s own `ItemRow` uses it, and it read fine in isolation.
+ * Measured against the live site rather than trusted: this card's own
+ * column is 248px wide at an ordinary 1280px desktop — `HomePage`'s own
+ * history already names this grid as "roughly 200px each," and a
+ * 36px medallion plus its gap was enough to turn "Frieren: Beyond
+ * Journey's End" into "Friere…" and "The Pragmatic Programmer" into
+ * "The P…". A shape that costs shared inline width loses to the title
+ * it is sitting beside; `GoalHistoryStrip` wraps onto its own line and
+ * spends nothing the title needed.
  */
 export function GoalRow({ status }: { readonly status: DailyGoalStatus }) {
   const item = status.item
   const log = useLogProgress()
-  const Icon = CATEGORY_ICONS[item.category]
 
   return (
     <div className="row-hover -mx-2 flex items-center gap-3 px-2 py-3">
-      <span className="bg-accent-500/10 text-accent-400 flex size-9 shrink-0 items-center justify-center rounded-lg">
-        <Icon size={17} aria-hidden />
-      </span>
-
       <div className="min-w-0 flex-1">
         <p className="text-ink-50 truncate font-medium">{item.title}</p>
         <p className="text-ink-500 mt-0.5 flex items-center gap-2 text-sm">
