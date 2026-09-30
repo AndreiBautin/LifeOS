@@ -128,9 +128,24 @@ than a limitation, and it has consequences worth knowing:
 
 - **Clearing cookies usually destroys it.** In every mainstream browser
   that control is really "cookies and other site data".
-- **Nothing transfers** to a new phone or a different browser on its own.
+- **Nothing transfers on its own** unless you connect sync (below).
 - **Export is what survives all of it**, and import is how data moves
-  to another device.
+  by hand.
+
+### Syncing a phone and a desktop
+
+Optional, free, and through a **private GitHub repository of your own**.
+Settings → Sync across devices takes the repository and a fine-grained
+token scoped to it. The app then keeps one backup file there: on launch,
+on every page change (at most every fifteen seconds) and on returning to
+the app, it reads the file, merges it in — **the newer edit wins**, and
+a deletion on one device removes the record on the other — and writes
+back only if something changed.
+
+It reuses the backup format rather than inventing a sync protocol, so
+the same envelope, checksum and tombstones that make an export safe to
+import make a sync safe to merge. The token stays in that browser's
+storage and is never in a backup or the synced file.
 
 Two third parties are reachable, both only from the map screens:
 OpenStreetMap for tiles, and Nominatim for turning a place name into
@@ -145,10 +160,10 @@ it and leaves an empty app that is yours; **Load sample data** puts it
 back into an empty one. A banner on the home screen says which you are
 looking at until you dismiss it.
 
-There was optional Firebase sync once, and it was removed on purpose: a
-cloud database worth having is the source of truth with real accounts,
-not a second copy kept in step with this one — and with no server there
-is nothing to breach.
+There was Firebase sync once, and it was removed: a second database kept
+in step with this one was more machinery than one person on two devices
+needs. The GitHub file above does the same job with no server and no
+vendor beyond the one hosting the code.
 
 The full account — install, uninstall, update, storage cleanup, and what
 the app does about each — is in

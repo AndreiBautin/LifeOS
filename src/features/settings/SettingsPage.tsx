@@ -4,7 +4,7 @@ import { PageHeader } from '@/components/shared/PageHeader'
 
 import { COUNT_LABELS } from './count-labels'
 import { AlertTriangle, Download, HardDrive, RotateCcw, Sparkles, Upload } from 'lucide-react'
-import { useId, useRef, useState } from 'react'
+import { useId, useRef, useState, useSyncExternalStore } from 'react'
 
 import { useServices, useSettings } from '@/app/context'
 import { DEFAULT_INCREMENT } from '@/domain/units/weight'
@@ -13,6 +13,8 @@ import { Badge, Button, Card, Section } from '@/components/shared/primitives'
 import { BacklogSettingsSection } from '@/features/backlog/BacklogSettingsSection'
 import { useBackup } from '@/features/backup/useBackup'
 import { useSampleData } from '@/features/backup/useSampleData'
+import { SyncSection } from '@/features/sync/SyncSection'
+import { syncStore } from '@/features/sync/sync-store'
 import { MaxesEditor } from './MaxesEditor'
 import {
   describePersistence,
@@ -40,6 +42,13 @@ export function SettingsPage() {
   const exercises = useQuery({ queryKey: ['exercises'], queryFn: () => services.exercises.all() })
 
   const age = backupAge(settings, services.clock.now())
+  /*
+   * Whether a second copy exists, read rather than assumed. The sentences
+   * below said "nowhere else" unconditionally once, and the same claim
+   * went stale the last time sync existed — a warning that cannot check
+   * its own premise is worse than none.
+   */
+  const syncing = useSyncExternalStore(syncStore.subscribe, syncStore.get).config !== undefined
   const sample = useSampleData()
   const [confirmFresh, setConfirmFresh] = useState(false)
   /*
@@ -189,9 +198,18 @@ export function SettingsPage() {
         }}
       />
 
+      <SyncSection />
+
       <BacklogSettingsSection />
 
-      <Section title="Your data" description="All of it is in this browser and nowhere else">
+      <Section
+        title="Your data"
+        description={
+          syncing
+            ? 'In this browser, and in your GitHub repository after each sync'
+            : 'All of it is in this browser and nowhere else'
+        }
+      >
         <Card className="space-y-4">
           <div className="flex items-start gap-3">
             <HardDrive size={18} className="text-ink-500 mt-0.5 shrink-0" aria-hidden />
@@ -249,11 +267,15 @@ export function SettingsPage() {
                 it.
               </p>
               <p>
-                Uninstalling the app, switching browser, or moving to a new phone. None of it
-                transfers; there is no account and no server.
+                Uninstalling the app, switching browser, or moving to a new phone.{' '}
+                {syncing
+                  ? 'Connecting the new browser to the same repository brings it all back.'
+                  : 'None of it transfers; there is no account and no server.'}
               </p>
               <p className="text-ink-100 font-medium">
-                Export is the only thing that survives all of it.
+                {syncing
+                  ? 'The repository and an export both survive all of it.'
+                  : 'Export is the only thing that survives all of it.'}
               </p>
             </div>
           </div>

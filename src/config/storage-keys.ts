@@ -68,6 +68,14 @@ export const STORAGE_KEYS = {
    * load would make a device collect back everything it had ever sent.
    */
   deviceId: `${PREFIX}.device-id`,
+  /**
+   * The private repository this device syncs through, and the token for
+   * it. Device-local and **never in the backup**: settings travel in the
+   * backup file, and the backup file is what gets written to the
+   * repository — a token stored there would be uploaded to the place it
+   * unlocks, and into every exported file besides.
+   */
+  githubSync: `${PREFIX}.github-sync`,
   /** Whether the desktop sidebar is collapsed to icons only. */
   sidebarCollapsed: `${PREFIX}.sidebar-collapsed`,
 } as const

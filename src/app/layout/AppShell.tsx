@@ -15,6 +15,8 @@ import { NavLink, Outlet } from 'react-router-dom'
 import { AmbientBackdrop } from './AmbientBackdrop'
 import { useCardSpotlight } from './useCardSpotlight'
 
+import { useGitHubSync } from '@/features/sync/useGitHubSync'
+
 import { STORAGE_KEYS } from '@/config/storage-keys'
 import { ReadFailure } from '@/features/errors/ReadFailure'
 import { UpdatePrompt } from '@/features/pwa/UpdatePrompt'
@@ -242,6 +244,7 @@ export function AppShell() {
     readSidebarCollapsed(STORAGE_KEYS.sidebarCollapsed),
   )
   useCardSpotlight()
+  useGitHubSync()
 
   return (
     <div

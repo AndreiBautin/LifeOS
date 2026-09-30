@@ -83,6 +83,13 @@ interface Collection {
    * error rather than a filter that silently matches nothing.
    */
   readonly tombstoneCollection?: TombstonedCollection
+  /**
+   * Deletes a record without writing a tombstone — the receiving half of
+   * a sync, where the tombstone has already arrived from the other
+   * device. Present exactly when `tombstoneCollection` is: a collection
+   * nothing can delete from has nothing to purge.
+   */
+  readonly purge?: (repositories: BackupRepositories, id: string) => Promise<void>
 }
 
 function define<T>(spec: {
@@ -91,6 +98,7 @@ function define<T>(spec: {
   idOf: (row: T) => string
   restore: (repositories: BackupRepositories, rows: readonly T[]) => Promise<void>
   tombstoneCollection?: TombstonedCollection
+  purge?: (repositories: BackupRepositories, id: string) => Promise<void>
 }): Collection {
   return {
     local: spec.local,
@@ -100,6 +108,7 @@ function define<T>(spec: {
     ...(spec.tombstoneCollection === undefined
       ? {}
       : { tombstoneCollection: spec.tombstoneCollection }),
+    ...(spec.purge === undefined ? {} : { purge: spec.purge }),
   }
 }
 
@@ -110,6 +119,7 @@ export const COLLECTIONS: Readonly<Record<CollectionKey, Collection>> = {
     idOf: (row) => row.id,
     restore: (r, rows) => r.exercises.restoreMany(rows),
     tombstoneCollection: 'exercises',
+    purge: (r, id) => r.exercises.purge(id as never),
   }),
   workouts: define({
     local: (r) => r.workouts.all(),
@@ -117,6 +127,7 @@ export const COLLECTIONS: Readonly<Record<CollectionKey, Collection>> = {
     idOf: (row) => row.id,
     restore: (r, rows) => r.workouts.restoreMany(rows),
     tombstoneCollection: 'workouts',
+    purge: (r, id) => r.workouts.purge(id as never),
   }),
   checkIns: define({
     local: (r) => r.checkIns.all(),
@@ -124,6 +135,7 @@ export const COLLECTIONS: Readonly<Record<CollectionKey, Collection>> = {
     idOf: (row) => row.id,
     restore: (r, rows) => r.checkIns.restoreMany(rows),
     tombstoneCollection: 'checkIns',
+    purge: (r, id) => r.checkIns.purge(id as never),
   }),
   items: define({
     local: (r) => r.items.all(),
@@ -131,6 +143,7 @@ export const COLLECTIONS: Readonly<Record<CollectionKey, Collection>> = {
     idOf: (row) => row.id,
     restore: (r, rows) => r.items.restoreMany(rows),
     tombstoneCollection: 'items',
+    purge: (r, id) => r.items.purge(id as never),
   }),
   projects: define({
     local: (r) => r.projects.all(),
@@ -138,6 +151,7 @@ export const COLLECTIONS: Readonly<Record<CollectionKey, Collection>> = {
     idOf: (row) => row.id,
     restore: (r, rows) => r.projects.restoreMany(rows),
     tombstoneCollection: 'projects',
+    purge: (r, id) => r.projects.purge(id as never),
   }),
   upgrades: define({
     local: (r) => r.upgrades.all(),
@@ -145,6 +159,7 @@ export const COLLECTIONS: Readonly<Record<CollectionKey, Collection>> = {
     idOf: (row) => row.id,
     restore: (r, rows) => r.upgrades.restoreMany(rows),
     tombstoneCollection: 'upgrades',
+    purge: (r, id) => r.upgrades.purge(id as never),
   }),
   metrics: define({
     local: (r) => r.review.metrics(),
@@ -161,6 +176,7 @@ export const COLLECTIONS: Readonly<Record<CollectionKey, Collection>> = {
     idOf: (row) => row.month,
     restore: (r, rows) => r.review.restoreSnapshots(rows),
     tombstoneCollection: 'reviews',
+    purge: (r, month) => r.review.purgeSnapshot(month),
   }),
   places: define({
     local: (r) => r.places.all(),
@@ -168,6 +184,7 @@ export const COLLECTIONS: Readonly<Record<CollectionKey, Collection>> = {
     idOf: (row) => row.id,
     restore: (r, rows) => r.places.restoreMany(rows),
     tombstoneCollection: 'places',
+    purge: (r, id) => r.places.purge(id as never),
   }),
   trips: define({
     local: (r) => r.trips.all(),
@@ -175,6 +192,7 @@ export const COLLECTIONS: Readonly<Record<CollectionKey, Collection>> = {
     idOf: (row) => row.id,
     restore: (r, rows) => r.trips.restoreMany(rows),
     tombstoneCollection: 'trips',
+    purge: (r, id) => r.trips.purge(id as never),
   }),
   vices: define({
     local: (r) => r.vices.all(),
@@ -182,6 +200,7 @@ export const COLLECTIONS: Readonly<Record<CollectionKey, Collection>> = {
     idOf: (row) => row.id,
     restore: (r, rows) => r.vices.restoreMany(rows),
     tombstoneCollection: 'vices',
+    purge: (r, id) => r.vices.purge(id as never),
   }),
   /*
    * Both keyed by the day rather than by a generated id, so `idOf` reads
@@ -195,6 +214,7 @@ export const COLLECTIONS: Readonly<Record<CollectionKey, Collection>> = {
     idOf: (row) => row.month,
     restore: (r, rows) => r.finance.restoreMany(rows),
     tombstoneCollection: 'finance',
+    purge: (r, id) => r.finance.purge(id as never),
   }),
   /*
    * A collection of nought or one, because there is one resume.
@@ -226,6 +246,7 @@ export const COLLECTIONS: Readonly<Record<CollectionKey, Collection>> = {
     idOf: (row) => row.id,
     restore: (r, rows) => r.rooms.restoreMany(rows),
     tombstoneCollection: 'rooms',
+    purge: (r, id) => r.rooms.purge(id as never),
   }),
   attempts: define({
     local: (r) => r.attempts.all(),
@@ -233,6 +254,7 @@ export const COLLECTIONS: Readonly<Record<CollectionKey, Collection>> = {
     idOf: (row) => row.id,
     restore: (r, rows) => r.attempts.restoreMany(rows),
     tombstoneCollection: 'attempts',
+    purge: (r, id) => r.attempts.purge(id as never),
   }),
   challenges: define({
     local: (r) => r.challenges.all(),
@@ -240,6 +262,7 @@ export const COLLECTIONS: Readonly<Record<CollectionKey, Collection>> = {
     idOf: (row) => row.id,
     restore: (r, rows) => r.challenges.restoreMany(rows),
     tombstoneCollection: 'challenges',
+    purge: (r, id) => r.challenges.purge(id as never),
   }),
   campaigns: define({
     local: (r) => r.campaigns.all(),
@@ -247,6 +270,7 @@ export const COLLECTIONS: Readonly<Record<CollectionKey, Collection>> = {
     idOf: (row) => row.id,
     restore: (r, rows) => r.campaigns.restoreMany(rows),
     tombstoneCollection: 'campaigns',
+    purge: (r, id) => r.campaigns.purge(id as never),
   }),
   goals: define({
     local: (r) => r.goals.all(),
@@ -254,6 +278,7 @@ export const COLLECTIONS: Readonly<Record<CollectionKey, Collection>> = {
     idOf: (row) => row.id,
     restore: (r, rows) => r.goals.restoreMany(rows),
     tombstoneCollection: 'goals',
+    purge: (r, id) => r.goals.purge(id as never),
   }),
 }
 

@@ -213,10 +213,20 @@ week**. That round trip was verified by driving the app.
 
 ## Where the records live
 
-In this browser, and nowhere else. `bootstrap()` in `src/app/di.ts`
-opens the IndexedDB database and wires the repositories to it; settings
-and the programme position are `localStorage`. Export and import are
-how data moves between devices.
+In this browser. `bootstrap()` in `src/app/di.ts` opens the IndexedDB
+database and wires the repositories to it; settings and the programme
+position are `localStorage`.
+
+**Optional sync is a backup file in a private GitHub repository.**
+`infrastructure/sync/github-sync.ts` runs one round: read the file
+(`github-file.ts`), merge it with `mergeNewer` — newer `updatedAt` wins,
+tombstones travel both ways, walked ground unions — and write back only
+when `recordsFingerprint` says the records differ. A refused write means
+the other device got there first, so the round starts again from a fresh
+read. `features/sync/useGitHubSync.ts` runs rounds on launch, page
+change and visibility, one at a time and at most every fifteen seconds.
+The import's own merge stays file-wins, because "restore this backup"
+and "take turns with another device" are different requests.
 
 **There was optional Firebase sync, and it was removed deliberately.**
 Firestore became the source of truth when configured, with Google
@@ -352,7 +362,10 @@ Stated here rather than discovered:
   skeletons, and a skeleton beside a banner saying a read failed is no
   longer a lie. Teaching each card to tell the two apart is still the
   thorough fix.
-- **Nothing travels between devices** except by export and import.
+- **Sync is whole-file and turn-taking.** Two devices editing the same
+  record between syncs keep the later edit; nothing merges field by
+  field, and a change reaches the other device on its next round rather
+  than live.
 - **The service worker is partly verified and partly not**, and the
   claim that used to sit here — that registration is refused in an
   agent's browser — is no longer true. Measured against the live site:

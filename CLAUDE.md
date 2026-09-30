@@ -28,6 +28,31 @@ What survives, and why: **tombstones**, because importing an older backup
 would otherwise resurrect deleted records; and `settings/synced.ts`,
 which only decides when the settings blob is re-stamped.
 
+**Sync came back as a file, not a database.** Asked for once the app had
+to run on a phone and a desktop, with "nothing paid" as a hard rule and
+Dexie Cloud and Firestore both turned down. One backup file in the
+lifter's own private GitHub repository, read, merged and written back on
+launch, page change and visibility (`features/sync/useGitHubSync.ts`,
+throttled to fifteen seconds).
+
+- **`mergeNewer` is not the import's merge and must not become it.** The
+  import writes the file over what is here — right for a restore, wrong
+  for two devices taking turns, where it would undo whichever edits the
+  file had not seen. Sync keeps the newer `updatedAt` and purges what a
+  tombstone covers. `sync-merge.test.ts` holds both directions.
+- **Every tombstoned collection needs a `purge`** in the collection table,
+  or the other device's deletion is accepted and the record survives —
+  and is pushed back up on the next round. A test enforces the pairing.
+- **`recordsFingerprint` is what stops a commit per page switch.** It
+  ignores order and settings; if it ever included either, two devices
+  would upload a no-op to each other on every round.
+- **The token is never in `AppSettings`.** Settings travel inside the
+  backup, and the backup is the file written to the repository.
+  `STORAGE_KEYS.githubSync` is its only home.
+- **A file that fails its checksum is refused, not overwritten** — it is
+  most likely a truncated write, and replacing it would discard whatever
+  the other device had.
+
 **The sample data is filled, never replaced.** `sampleData` in settings
 is `loaded` after seeding (Today shows a dismissible note), `kept`
 once dismissed, and `cleared` after Settings → **Start fresh** — which
