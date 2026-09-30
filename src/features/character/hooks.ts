@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 
 import { useServices } from '@/app/context'
 import { seasonProgressFor } from '@/application/use-cases/character/season-progress'
+import { activityFor } from '@/application/use-cases/character/activity'
 import { avatarFor } from '@/application/use-cases/character/avatar'
 import { characterSheet } from '@/application/use-cases/character/sheet'
 
@@ -47,5 +48,20 @@ export function useSeasonProgress() {
   return useQuery({
     queryKey: ['character', 'season'],
     queryFn: () => seasonProgressFor(services),
+  })
+}
+
+/**
+ * XP by day over the last few months, for the activity grid.
+ *
+ * Under `character` for the reason the portrait is: it is the same tally
+ * cut by day, so whatever makes the level move makes this move too.
+ */
+export function useActivity() {
+  const services = useServices()
+
+  return useQuery({
+    queryKey: ['character', 'activity'],
+    queryFn: () => activityFor(services),
   })
 }

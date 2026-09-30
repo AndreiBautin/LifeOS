@@ -10,6 +10,7 @@ import { TodayGoals } from '@/features/backlog/TodayGoals'
 import { BaseGlance } from '@/features/base/BaseGlance'
 import { useCampaigns } from '@/features/campaign/hooks'
 import { ChallengePass } from '@/features/challenges/ChallengePass'
+import { ActivityHeatmap } from '@/features/character/ActivityHeatmap'
 import { SheetCard } from '@/features/character/SheetCard'
 import { useSeasonProgress } from '@/features/character/hooks'
 import { ActiveQuests } from '@/features/projects/ActiveQuests'
@@ -151,6 +152,7 @@ export function HomePage() {
               </div>
             ),
           },
+          { key: 'activity', node: <ActivityHeatmap /> },
           { key: 'buffs', node: <LimitsCard /> },
           { key: 'goals', node: <TodayGoals /> },
           { key: 'session', node: <NextSessionCard compact /> },

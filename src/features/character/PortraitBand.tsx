@@ -133,7 +133,9 @@ export function PortraitBand({
                 said otherwise. It is one line to bring back if the
                 number is missed.
               */}
-              <p className="text-ink-500 numeric mt-0.5 text-sm">
+              {/* Kept on one line: "1,265 / 1,700" left "XP" alone on the
+                  next once the level reached four digits. */}
+              <p className="text-ink-500 numeric mt-0.5 text-sm whitespace-nowrap">
                 {needed > 0 ? (
                   <>
                     <CountUp value={into} /> / {needed.toLocaleString()} XP

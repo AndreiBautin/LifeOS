@@ -194,10 +194,27 @@ async function seedCodex(deps: DemoDeps): Promise<void> {
         },
         40,
       ),
-      [1, 2, 3, 5, 8],
+      [1, 2, 3, 5, 8, 10, 12, 15, 17, 19, 22, 24, 27, 29, 33, 36],
     ),
     make('Designing Data-Intensive Applications', 'books', { status: 'backlog' }, 25),
     finished(make('Project Hail Mary', 'books', { status: 'completed', favorite: true }, 90), 12),
+    /*
+     * **Older finishes, each with the run of days it took**, so the
+     * activity grid has months behind it rather than a fortnight, and a
+     * reviewer scrolling the Codex sees a history rather than a queue.
+     */
+    withProgress(
+      finished(make('Piranesi', 'books', { status: 'completed' }, 90), 58),
+      [58, 60, 62, 65, 67, 70, 72, 75],
+    ),
+    withProgress(
+      finished(make('Hades', 'games', { status: 'completed', favorite: true }, 120), 84),
+      [84, 86, 89, 91, 94, 96, 99, 101, 104],
+    ),
+    withProgress(
+      finished(make('Arcane', 'tv-shows', { status: 'completed' }, 130), 108),
+      [108, 109, 111, 113, 115],
+    ),
     withProgress(
       make(
         'Outer Wilds',
@@ -209,7 +226,7 @@ async function seedCodex(deps: DemoDeps): Promise<void> {
         },
         20,
       ),
-      [1, 4, 6],
+      [1, 4, 6, 9, 11, 14, 16],
     ),
     finished(make('Return of the Obra Dinn', 'games', { status: 'completed' }, 120), 30),
     make('Slay the Spire', 'games', { status: 'paused' }, 60),
@@ -223,7 +240,7 @@ async function seedCodex(deps: DemoDeps): Promise<void> {
         },
         15,
       ),
-      [0, 2],
+      [0, 2, 3, 5, 7, 9, 12],
     ),
     make('The Bear', 'tv-shows', { status: 'backlog', priority: 'low' }, 10),
     finished(make('Everything Everywhere All At Once', 'movies', { status: 'completed' }, 200), 45),
@@ -1058,69 +1075,75 @@ async function seedTraining(deps: DemoDeps): Promise<void> {
     ],
   })
 
-  const sessions = [
-    /*
-     * **Three older sessions, added so `RecentTraining`'s chart on
-     * Today has more than three bars to show.** `useRecentWorkouts(6)`
-     * reads up to six; without these it silently had nothing beyond
-     * the three below to fetch.
-     */
-    {
-      daysBack: 12,
+  /*
+   * **Seventeen weeks of Monday, Wednesday and Friday, generated rather
+   * than listed.** Six hand-written sessions made every history screen
+   * look like the app was installed last week — the activity grid a
+   * single column, the strength chart three points. What a reviewer
+   * should see is somebody four months in, with the loads climbing the
+   * way double progression climbs them.
+   *
+   * Deterministic, so the fixture is the same on every seed: the loads
+   * rise linearly from where each lift started to where it is now, and
+   * roughly one session in thirteen is skipped, because a history with
+   * no missed day is not a history anybody believes.
+   *
+   * **Each lift ends where the Standards card says it is.** Five reps at
+   * the final load estimate the sample's own maxes — 300 for 353, 205
+   * for 238, 315 for 368 — so the strength chart's last point and the
+   * standard beside it are the same number. They disagreed by seventy
+   * pounds on the squat the first time this was generated.
+   */
+  const WEEKS = 17
+  const MAIN: Record<
+    number,
+    { readonly lift: string; readonly title: string; readonly from: number; readonly to: number }
+  > = {
+    1: { lift: 'low-bar-squat', title: 'Squat', from: 255, to: 300 },
+    3: { lift: 'bench-press', title: 'Bench', from: 170, to: 205 },
+    5: { lift: 'sumo-deadlift', title: 'Deadlift', from: 265, to: 315 },
+  }
+  const round5 = (value: number): number => Math.round(value / 5) * 5
+
+  const sessions: { daysBack: number; title: string; entries: LogEntry[] }[] = []
+  for (let back = WEEKS * 7; back >= 1; back -= 1) {
+    const on = new Date(deps.clock.now().getTime() - back * 86_400_000)
+    const main = MAIN[on.getDay()]
+    if (main === undefined) continue
+    if ((back * 7) % 13 === 3) continue
+
+    const through = 1 - back / (WEEKS * 7)
+    const load = round5(main.from + (main.to - main.from) * through)
+    const bump = Math.round(through * 3)
+
+    const accessories: LogEntry[] =
+      main.lift === 'low-bar-squat'
+        ? [
+            lifted('dips', 1, 'hypertrophy', 0, 8 + bump),
+            lifted('pull-up', 2, 'hypertrophy', 0, 6 + bump),
+            lifted('db-curl', 3, 'hypertrophy', round5(25 + 10 * through), 15),
+          ]
+        : main.lift === 'bench-press'
+          ? [
+              lifted('barbell-row', 1, 'hypertrophy', round5(115 + 25 * through), 8),
+              lifted('db-lateral-raise', 2, 'hypertrophy', round5(15 + 5 * through), 18),
+              lifted('skullcrusher', 3, 'hypertrophy', round5(50 + 15 * through), 15),
+            ]
+          : [
+              lifted('dips', 1, 'hypertrophy', 0, 9 + bump),
+              lifted('barbell-calf-raise', 2, 'hypertrophy', round5(150 + 40 * through), 15),
+            ]
+
+    sessions.push({
+      daysBack: back,
+      title: main.title,
       entries: [
-        lifted('low-bar-squat', 0, 'strength', 235, 5, 4),
-        lifted('bench-press', 1, 'hypertrophy', 160, 10),
-        lifted('barbell-row', 2, 'hypertrophy', 130, 10),
-        walked(3),
+        lifted(main.lift, 0, 'strength', load, 5, back % 4 === 0 ? 4 : 3),
+        ...accessories,
+        walked(accessories.length + 1),
       ],
-    },
-    {
-      daysBack: 10,
-      entries: [
-        lifted('bench-press', 0, 'strength', 185, 5),
-        lifted('pull-up', 1, 'hypertrophy', 0, 8),
-        lifted('db-lateral-raise', 2, 'hypertrophy', 20, 15),
-        walked(3),
-      ],
-    },
-    {
-      daysBack: 8,
-      entries: [
-        lifted('sumo-deadlift', 0, 'strength', 305, 5),
-        lifted('dips', 1, 'hypertrophy', 0, 10),
-        lifted('barbell-calf-raise', 2, 'hypertrophy', 180, 15),
-        walked(3),
-      ],
-    },
-    {
-      daysBack: 6,
-      entries: [
-        lifted('low-bar-squat', 0, 'strength', 245, 5),
-        lifted('bench-press', 1, 'hypertrophy', 165, 10),
-        lifted('barbell-row', 2, 'hypertrophy', 135, 10),
-        walked(3),
-      ],
-    },
-    {
-      daysBack: 4,
-      entries: [
-        lifted('bench-press', 0, 'strength', 190, 5),
-        lifted('pull-up', 1, 'hypertrophy', 0, 8),
-        lifted('db-lateral-raise', 2, 'hypertrophy', 20, 15),
-        lifted('skullcrusher', 3, 'hypertrophy', 60, 12),
-        walked(4),
-      ],
-    },
-    {
-      daysBack: 2,
-      entries: [
-        lifted('sumo-deadlift', 0, 'strength', 315, 5, 4),
-        lifted('dips', 1, 'hypertrophy', 0, 10),
-        lifted('barbell-calf-raise', 2, 'hypertrophy', 185, 15),
-        walked(3),
-      ],
-    },
-  ]
+    })
+  }
 
   for (const session of sessions) {
     const on = new Date(deps.clock.now().getTime() - session.daysBack * 86_400_000)
@@ -1138,7 +1161,7 @@ async function seedTraining(deps: DemoDeps): Promise<void> {
        * "Friday", which is the exact rot relative dates exist to avoid,
        * reintroduced in the label.
        */
-      title: `${on.toLocaleDateString('en-US', { weekday: 'long' })} — Full body`,
+      title: `${on.toLocaleDateString('en-US', { weekday: 'long' })} — ${session.title}`,
       entries: session.entries,
     }
     await deps.workouts.save(log)
@@ -1156,6 +1179,14 @@ async function seedTraining(deps: DemoDeps): Promise<void> {
  */
 async function seedMind(deps: DemoDeps): Promise<void> {
   const attempts: readonly [string, number, 'easy' | 'medium' | 'hard'][] = [
+    ['Merge Intervals', 96, 'medium'],
+    ['Climbing Stairs', 89, 'easy'],
+    ['Number of Islands', 75, 'medium'],
+    ['Group Anagrams', 61, 'medium'],
+    ['LRU Cache', 47, 'medium'],
+    ['Binary Tree Level Order Traversal', 33, 'medium'],
+    ['Median of Two Sorted Arrays', 26, 'hard'],
+    ['Top K Frequent Elements', 18, 'medium'],
     ['Two Sum', 9, 'easy'],
     ['Valid Parentheses', 7, 'easy'],
     ['Longest Substring Without Repeating Characters', 4, 'medium'],

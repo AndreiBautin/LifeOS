@@ -107,3 +107,15 @@ function keyOf(date: Date): string {
 export function shiftDay(key: string, days: number): string {
   return keyOf(new Date(parseDay(key).getTime() + days * MS_PER_DAY))
 }
+
+/**
+ * The local day a stored date belongs to.
+ *
+ * Records carry two shapes: a bare day key (`2026-09-29`), which already
+ * is the local day, and a full timestamp written by `toISOString`, which
+ * is UTC. Slicing the second gives the UTC date — the defect this app has
+ * shipped five times — so a timestamp is parsed and read back locally.
+ */
+export function localDayOf(stamp: string): string {
+  return stamp.length <= 10 ? stamp : toDayKey(new Date(stamp))
+}

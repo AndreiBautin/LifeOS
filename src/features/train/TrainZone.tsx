@@ -11,6 +11,7 @@ import { Button, Card, CardHeading } from '@/components/shared/primitives'
 
 import { useActiveWorkout, useStartWorkout } from './hooks'
 import { NextSessionCard } from './NextSessionCard'
+import { StrengthTrendCard } from './StrengthTrendCard'
 
 /**
  * Train's at-a-glance content — the plan, the standards, and a way to
@@ -118,6 +119,7 @@ export function TrainZone() {
 
       <div className="space-y-6">
         <StrengthStandards />
+        <StrengthTrendCard />
 
         {!alreadyOpen && (
           <Button

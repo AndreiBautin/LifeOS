@@ -142,6 +142,26 @@ export async function tallyActs(
   deps: SheetDeps,
   within: Within = ALWAYS,
 ): Promise<Readonly<Record<string, number>>> {
+  return countActs(await loadActRecords(deps), within)
+}
+
+/**
+ * Every record an act can be read from, loaded once.
+ *
+ * Split from the counting so a caller asking many windows of the same
+ * records — the activity heatmap asks one per day — reads each store
+ * once rather than once per window.
+ */
+export interface ActRecords {
+  readonly workouts: Awaited<ReturnType<SheetDeps['workouts']['recent']>>
+  readonly items: readonly Item[]
+  readonly projects: readonly Project[]
+  readonly places: Awaited<ReturnType<SheetDeps['places']['all']>>
+  readonly attempts: Awaited<ReturnType<SheetDeps['attempts']['all']>>
+  readonly challenges: Awaited<ReturnType<SheetDeps['challenges']['all']>>
+}
+
+export async function loadActRecords(deps: SheetDeps): Promise<ActRecords> {
   const [workouts, items, projects, places, attempts, challenges] = await Promise.all([
     deps.workouts.recent(500),
     deps.items.all(),
@@ -150,6 +170,15 @@ export async function tallyActs(
     deps.attempts.all(),
     deps.challenges.all(),
   ])
+  return { workouts, items, projects, places, attempts, challenges }
+}
+
+/** The counting half of `tallyActs`, pure over records already loaded. */
+export function countActs(
+  records: ActRecords,
+  within: Within = ALWAYS,
+): Readonly<Record<string, number>> {
+  const { workouts, items, projects, places, attempts, challenges } = records
 
   /** No date, no act — see the note above on why this holds even all-time. */
   const dated = (date: string | undefined): boolean => date !== undefined && within(date)
