@@ -172,10 +172,10 @@ describe('the shipped week', () => {
   it('holds each routine exactly, in its written order', () => {
     expect(worked(0)).toEqual(['overhead-press', 'dips', 'skullcrusher'])
     expect(worked(1)).toEqual(['pendlay-row', 'barbell-shrug', 'ez-bar-curl'])
-    expect(worked(2)).toEqual(['low-bar-squat', 'barbell-calf-raise', 'ab-wheel'])
+    expect(worked(2)).toEqual(['low-bar-squat', 'kb-swing', 'ab-wheel'])
     expect(worked(3)).toEqual(['bench-press', 'db-lateral-raise', 'french-press'])
     expect(worked(4)).toEqual(['pull-up', 'rear-delt-raise', 'db-curl'])
-    expect(worked(5)).toEqual(['sumo-deadlift', 'kb-swing', 'hanging-leg-raise'])
+    expect(worked(5)).toEqual(['sumo-deadlift', 'barbell-calf-raise', 'hanging-leg-raise'])
   })
 
   /*

@@ -1190,7 +1190,7 @@ async function seedTraining(deps: DemoDeps): Promise<void> {
       case 'Legs A':
         return [
           lifted('low-bar-squat', 0, 'strength', along(255, 305, through), 5, strengthSets),
-          lifted('barbell-calf-raise', 1, 'assistance', along(150, 190, through), 15),
+          swung(1),
           lifted('ab-wheel', 2, 'assistance', 0, 10 + bump),
         ]
       case 'Push B':
@@ -1208,7 +1208,7 @@ async function seedTraining(deps: DemoDeps): Promise<void> {
       case 'Legs B':
         return [
           lifted('sumo-deadlift', 0, 'strength', along(265, 315, through), 5, strengthSets),
-          swung(1),
+          lifted('barbell-calf-raise', 1, 'assistance', along(150, 190, through), 15),
           lifted('hanging-leg-raise', 2, 'assistance', 0, 10 + bump),
         ]
     }

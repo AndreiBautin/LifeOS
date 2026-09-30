@@ -249,8 +249,10 @@ const conditioning = (slug: string): RoutineEntry => ({ kind: 'conditioning', sl
  * The pairs the ask did not name were matched the same way: triceps with
  * triceps, curl with curl, core with core. What was left over went to the
  * day it balances — the A days lean barbell, the B days lean bodyweight
- * and dumbbell, and the swings sit beside the deadlift rather than the
- * squat because both are hinges.
+ * and dumbbell. The swings sit on the squat day and the calves on the
+ * deadlift day, as asked — the reverse of what pairing hinge with hinge
+ * would have chosen, and the lifter's call: it keeps the heaviest hinge
+ * of the week off the day that already has one.
  */
 const PUSH_A: readonly RoutineEntry[] = [
   exercise('overhead-press'),
@@ -278,13 +280,13 @@ const PULL_B: readonly RoutineEntry[] = [
 
 const LEGS_A: readonly RoutineEntry[] = [
   lift('squat'),
-  exercise('barbell-calf-raise'),
+  conditioning('kb-swing'),
   exercise('ab-wheel'),
 ]
 
 const LEGS_B: readonly RoutineEntry[] = [
   lift('deadlift'),
-  conditioning('kb-swing'),
+  exercise('barbell-calf-raise'),
   exercise('hanging-leg-raise'),
 ]
 
@@ -335,7 +337,7 @@ export const PPL_SPLIT: RpSplit = {
       index: 2,
       label: 'Wednesday',
       focusName: 'Legs A',
-      muscles: ['quads', 'glutes', 'calves', 'core'],
+      muscles: ['quads', 'glutes', 'core'],
       routine: LEGS_A,
       warmUp: 'lower',
     },
@@ -359,7 +361,7 @@ export const PPL_SPLIT: RpSplit = {
       index: 5,
       label: 'Saturday',
       focusName: 'Legs B',
-      muscles: ['glutes', 'hamstrings', 'core'],
+      muscles: ['glutes', 'hamstrings', 'calves', 'core'],
       routine: LEGS_B,
       warmUp: 'lower',
     },
