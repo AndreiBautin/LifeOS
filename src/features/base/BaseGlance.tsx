@@ -6,6 +6,7 @@ import { PercentRing } from '@/components/shared/PercentRing'
 import { Skeleton } from '@/components/shared/Skeleton'
 import { buttonStyles } from '@/components/shared/styles'
 import { describeClear } from '@/domain/base/declutter'
+import { currentNextAction } from '@/domain/projects/priority'
 
 import { useBaseProjects } from '../projects/hooks'
 import { useHouse } from './hooks'
@@ -41,6 +42,13 @@ import { useHouse } from './hooks'
  * rather than by impact — you did not choose for the tap to leak — and
  * this glance reads the same list in the same order rather than
  * inventing a second ranking for one line of text.
+ *
+ * **The job's name leads and its next step follows.** Reported against
+ * a card reading only _"Roof"_ — a job name alone says what is broken
+ * and nothing about what to do next. `ArcSlot` already settled the
+ * order, `Fix the porch roof · Find the right person`: name first, so a
+ * truncated line keeps the half that tells jobs apart, since every hired
+ * job opens on the same three steps.
  */
 export function BaseGlance() {
   const house = useHouse()
@@ -56,6 +64,7 @@ export function BaseGlance() {
   }
 
   const next = jobs.data[0]
+  const step = next === undefined ? undefined : currentNextAction(next)
 
   return (
     <Card>
@@ -82,7 +91,10 @@ export function BaseGlance() {
           </p>
 
           {next !== undefined && (
-            <p className="text-ink-50 mt-1 truncate text-sm font-medium">{next.name}</p>
+            <p className="mt-1 truncate text-sm">
+              <span className="text-ink-50 font-medium">{next.name}</span>
+              {step !== undefined && <span className="text-ink-300"> · {step.description}</span>}
+            </p>
           )}
         </div>
 
