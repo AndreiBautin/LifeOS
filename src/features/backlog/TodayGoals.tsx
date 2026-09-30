@@ -48,10 +48,17 @@ import { useDailyGoals } from './hooks'
  * invisible on the card; this list has nothing left to compress. Not
  * every card needs the treatment, and forcing one on here was the
  * mistake both earlier rounds were trying to fix in the wrong place.
+ *
+ * **Only what is due today.** A Mon–Thu game on a Friday is neither met
+ * nor missed, and drawing it here beside the one that *is* due made the
+ * card claim two sessions were outstanding. The board already counts
+ * over `isDueToday`; this is the list agreeing with its own count. The
+ * Codex screen keeps every tracked goal, because logging on a day you
+ * did not plan to is still allowed there.
  */
 export function TodayGoals() {
   const goals = useDailyGoals()
-  const statuses = goals.data?.statuses ?? []
+  const statuses = (goals.data?.statuses ?? []).filter((status) => status.isDueToday)
 
   if (statuses.length === 0) return null
 
