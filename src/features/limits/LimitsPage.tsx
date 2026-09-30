@@ -50,13 +50,8 @@ import { useAddVice, useEditVice, useRetireVice, useVices } from '../vitals/hook
  */
 
 /**
- * The three the request named, offered rather than seeded — and each on
- * the cycle people actually hold it on.
- *
- * Coffee is the case that earns the rolling window: two a day resetting
- * at midnight invites a third at eleven at night, and twelve hours does
- * not. Beer is the case that made hours read as nonsense — nobody
- * budgets four a week as "one back every forty-two hours".
+ * Offered rather than seeded — and each on the cycle people actually hold
+ * it on.
  */
 const SUGGESTIONS: readonly NewVice[] = [
   /*
@@ -67,12 +62,6 @@ const SUGGESTIONS: readonly NewVice[] = [
    * coffee each and roughly three times apart in the thing anybody
    * actually means to keep down. Two pools for one substance is two
    * numbers to keep in step and one of them not being the answer.
-   *
-   * Beer went the same way. A pint and a shot are both "one drink" only
-   * if what you are counting is drinks, so the pool counts **standard
-   * drinks** and is named for the substance. It stays a count rather
-   * than gaining a unit: four is small enough to read as pips, and a
-   * standard drink already *is* the unit.
    */
   /*
    * **The names stay the substances, and the icons do the gamifying.**
@@ -85,22 +74,17 @@ const SUGGESTIONS: readonly NewVice[] = [
    * button that needs to be removed"_. What is shipped as a suggestion
    * is the app guessing at somebody's life, and a guess nobody wanted is
    * worse than an empty list: the add form is one tap away and takes any
-   * name. The two left are the ones with a *number* worth shipping — a
-   * published caffeine ceiling and a standard-drink count — rather than
-   * substances the app assumes you use.
+   * name.
+   *
+   * **Alcohol went for the same reason, from the public demo.** Asked for
+   * directly — _"remove alcohol from the public sample demo version"_.
+   * The deployed build is what an employer opens, and a shipped drinking
+   * allowance is the app volunteering a habit on the reviewer's first
+   * look. The mechanism it demonstrated — a day limit beside an amount —
+   * is untouched and still one tap away in the add form. Caffeine stays
+   * because it carries a *published* ceiling, which is the one thing a
+   * shipped number here is allowed to be.
    */
-  {
-    name: 'Alcohol',
-    capacity: 3,
-    icon: 'beer',
-    cycle: { kind: 'calendar', period: 'day' },
-    /*
-     * Two numbers because it is two decisions. A weekly total alone
-     * permits the whole week's worth on one night, which is the shape of
-     * drinking the limit was meant to discourage.
-     */
-    daysLimit: { days: 2, period: 'week' },
-  },
   /*
    * **Water is not here, and that is the same call supplements got.**
    * It was a target measured in millilitres with buttons for 250, 500
