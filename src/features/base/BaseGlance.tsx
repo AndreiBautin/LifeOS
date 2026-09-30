@@ -11,6 +11,8 @@ import { currentNextAction } from '@/domain/projects/priority'
 import { useBaseProjects } from '../projects/hooks'
 import { useHouse } from './hooks'
 
+const ROW_LABEL = 'text-ink-500 text-xs font-medium tracking-wide uppercase'
+
 /**
  * Base, at a glance — the same treatment Train and Codex already get on
  * Today. Asked for directly: *"could we add something from each section
@@ -49,6 +51,13 @@ import { useHouse } from './hooks'
  * order, `Fix the porch roof · Find the right person`: name first, so a
  * truncated line keeps the half that tells jobs apart, since every hired
  * job opens on the same three steps.
+ *
+ * **Two labelled rows, Clutter and Projects, with a rule between.** It
+ * was one sentence — _"The house is Lived in, 51% clear."_ — over a job
+ * name, reported as reading oddly and as blurring two different things.
+ * They are different: clutter is a level that moves both ways, a job is
+ * a task that closes. The number leads its row and the band follows it,
+ * the same number-then-word order `Declutter` uses.
  */
 export function BaseGlance() {
   const house = useHouse()
@@ -82,30 +91,45 @@ export function BaseGlance() {
         }
       />
 
-      <div className="flex items-start gap-3">
-        <div className="min-w-0 flex-1">
-          <p className="text-ink-500 text-sm">
-            {house.data.clear === undefined
-              ? 'Nothing read yet.'
-              : `The house is ${describeClear(house.data.clear)}, ${String(house.data.clear)}% clear.`}
-          </p>
+      <dl>
+        <div className="flex items-center gap-3">
+          <div className="min-w-0 flex-1">
+            <dt className={ROW_LABEL}>Clutter</dt>
+            <dd className="mt-0.5 text-sm">
+              {house.data.clear === undefined ? (
+                <span className="text-ink-500">No room read yet</span>
+              ) : (
+                <>
+                  <span className="text-ink-50 font-medium">{String(house.data.clear)}% clear</span>
+                  <span className="text-ink-300"> · {describeClear(house.data.clear)}</span>
+                </>
+              )}
+            </dd>
+          </div>
 
-          {next !== undefined && (
-            <p className="mt-1 truncate text-sm">
-              <span className="text-ink-50 font-medium">{next.name}</span>
-              {step !== undefined && <span className="text-ink-300"> · {step.description}</span>}
-            </p>
+          {house.data.clear !== undefined && (
+            <PercentRing
+              value={house.data.clear}
+              good={house.data.clear >= 70}
+              label={`Clutter: ${String(house.data.clear)}% clear, ${describeClear(house.data.clear)}`}
+            />
           )}
         </div>
 
-        {house.data.clear !== undefined && (
-          <PercentRing
-            value={house.data.clear}
-            good={house.data.clear >= 70}
-            label={`The house is ${describeClear(house.data.clear)}, ${String(house.data.clear)}% clear`}
-          />
-        )}
-      </div>
+        <div className="border-ink-800 mt-3 border-t pt-3">
+          <dt className={ROW_LABEL}>Projects</dt>
+          <dd className="mt-0.5 truncate text-sm">
+            {next === undefined ? (
+              <span className="text-ink-500">No open jobs</span>
+            ) : (
+              <>
+                <span className="text-ink-50 font-medium">{next.name}</span>
+                {step !== undefined && <span className="text-ink-300"> · {step.description}</span>}
+              </>
+            )}
+          </dd>
+        </div>
+      </dl>
     </Card>
   )
 }
