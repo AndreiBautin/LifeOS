@@ -113,13 +113,20 @@ reads would make every one of those a guess. That is why assembly takes
 an id generator as a parameter and `current-program.ts` passes a counter
 rather than `crypto.randomUUID`.
 
-Two layers stack, and the second is told what the first spent:
+**The shipped week is a written routine**: push, pull, legs, twice,
+Monday to Saturday (`PPL_SPLIT` in `domain/splits/rp-splits.ts`). A day
+with a `routine` is built exactly as listed — three straight sets per
+exercise, the competition lifts at the strength range — and skips the
+generator below entirely. The generator is still live for any day
+without a routine, and `FULL_BODY_SPLIT` is kept so its tests have a
+week to run against.
 
-1. **The split** — three full-body days, Monday, Wednesday and Friday,
-   each opening on one competition lift (`domain/splits/rp-splits.ts`).
-   A muscle's accessory work sits on the day whose main lift does _not_
-   already train it: chest on Monday because it is benched on Wednesday,
-   upper back on Wednesday because it is deadlifted on Friday.
+For a generated day, two layers stack, and the second is told what the
+first spent:
+
+1. **The split** — the days, each opening on its competition lifts
+   (`carries`). A muscle's accessory work sits on the day whose main lift
+   does _not_ already train it.
 2. **Hypertrophy volume** — fills each day to its share of every
    muscle's weekly target (`domain/assembly/rp-assemble.ts`,
    `domain/volume/`). The whole volume model is one multiplication:

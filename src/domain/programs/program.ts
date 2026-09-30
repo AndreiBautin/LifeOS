@@ -495,3 +495,26 @@ export function estimateWeekMinutes(
 ): readonly number[] {
   return week.days.map((day) => estimateDayMinutes(day, defaultRestSeconds))
 }
+
+/**
+ * The sets a week schedules for each muscle, summed from its days.
+ *
+ * **This is the target a history or a plan should read**, rather than
+ * the per-muscle volume constants: the shipped week is a written routine,
+ * so what it asks of a muscle is whatever the routine lists, and a target
+ * computed from a model the routine no longer consults would describe a
+ * different week. Read off `volumeTargets`, which each day already
+ * carries, so there is one count and not a second.
+ */
+export function scheduledVolume(week: ProgramWeek): Readonly<Partial<Record<MuscleGroup, number>>> {
+  const totals: Partial<Record<MuscleGroup, number>> = {}
+  for (const day of week.days) {
+    for (const [muscle, sets] of Object.entries(day.volumeTargets ?? {}) as [
+      MuscleGroup,
+      number,
+    ][]) {
+      totals[muscle] = (totals[muscle] ?? 0) + sets
+    }
+  }
+  return totals
+}

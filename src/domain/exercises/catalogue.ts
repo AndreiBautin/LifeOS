@@ -357,6 +357,26 @@ const ENTRIES: readonly CatalogueEntry[] = [
     systemicCost: 0.45,
     defaultRestSeconds: REST,
   },
+  {
+    /*
+     * Each rep from a dead stop on the floor, torso flat. Its own entry
+     * rather than a note on the barbell row, because it is the row in the
+     * shipped routine and a strict dead-stop row and a bent-over row
+     * climb at different loads — one history would mix the two.
+     */
+    slug: 'pendlay-row',
+    name: 'Pendlay Row',
+    primaryMuscle: 'upper-back',
+    secondaryMuscles: ['lats', 'biceps', 'rear-delts', 'traps'],
+    equipment: 'barbell',
+    pattern: 'horizontal-pull',
+    isCompound: true,
+    intent: 'hypertrophy',
+    sfr: 3,
+    systemicCost: 0.45,
+    defaultRestSeconds: REST,
+    notes: 'Every rep starts on the floor. Flat back, pull to the lower chest.',
+  },
 
   /* ---- Shoulders ---------------------------------------------------- */
   {
@@ -428,7 +448,7 @@ const ENTRIES: readonly CatalogueEntry[] = [
   },
   {
     slug: 'rear-delt-raise',
-    name: 'Rear Delt Raise',
+    name: 'Rear Delt Reverse Fly',
     primaryMuscle: 'rear-delts',
     secondaryMuscles: ['upper-back'],
     equipment: 'dumbbell',
@@ -527,7 +547,9 @@ const ENTRIES: readonly CatalogueEntry[] = [
   },
   {
     slug: 'french-press',
-    name: 'French Press',
+    // The slug stays: it is written into every filed log. The name is
+    // the one the lifter's own routine uses for the same movement.
+    name: 'Overhead Triceps Extension',
     primaryMuscle: 'triceps',
     equipment: 'ez-bar',
     pattern: 'isolation',

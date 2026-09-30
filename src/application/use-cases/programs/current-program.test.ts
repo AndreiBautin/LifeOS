@@ -69,16 +69,17 @@ describe('a position inside a program that changed shape', () => {
      * A position past the end of the week, which the split can no longer
      * produce by shrinking — there is one split now. It is still reachable
      * from a stored position written by an older build, which is what
-     * `clampPosition` exists for: a stale index on a three-day week would
+     * `clampPosition` exists for: a stale index past the last day would
      * otherwise show an empty session rather than a day.
      */
-    const threeDay = deriveProgram(DEFAULT_SETTINGS, library)
-    const onFriday = { ...start, weekIndex: 0, dayIndex: 9 }
+    const week = deriveProgram(DEFAULT_SETTINGS, library)
+    const pastTheEnd = { ...start, weekIndex: 0, dayIndex: 9 }
+    const lastDay = (week.blocks[0]?.weeks[0]?.days.length ?? 0) - 1
 
-    const clamped = clampPosition(threeDay, onFriday)
+    const clamped = clampPosition(week, pastTheEnd)
 
-    expect(clamped.dayIndex).toBe(2)
-    expect(dayAt(threeDay, clamped)).toBeDefined()
+    expect(clamped.dayIndex).toBe(lastDay)
+    expect(dayAt(week, clamped)).toBeDefined()
   })
 
   it('clamps rather than resetting to week one', () => {
@@ -140,5 +141,74 @@ describe('advancing', () => {
     expect(result.position.cycleNumber).toBe(2)
     expect(result.position.weekIndex).toBe(0)
     expect(result.position.dayIndex).toBe(0)
+  })
+})
+
+/**
+ * The week the app ships is the lifter's own routine, taken as written.
+ *
+ * Asserted exercise by exercise because the failure worth catching is
+ * quiet: a generated fill swapping one movement for another, or two lines
+ * trading places, would still build a perfectly valid week.
+ */
+describe('the shipped week', () => {
+  const week = deriveProgram(DEFAULT_SETTINGS, library).blocks[0]?.weeks[0]
+  const worked = (index: number): readonly string[] =>
+    (week?.days[index]?.slots ?? [])
+      .filter((slot) => slot.role !== 'warmup')
+      .map((slot) => (slot.exercise.kind === 'specific' ? slot.exercise.exerciseId : ''))
+
+  it('runs push, pull, legs twice, Monday to Saturday', () => {
+    expect(week?.days.map((day) => day.label)).toEqual([
+      'Monday — Push',
+      'Tuesday — Pull',
+      'Wednesday — Legs',
+      'Thursday — Push',
+      'Friday — Pull',
+      'Saturday — Legs',
+    ])
+  })
+
+  it('holds each routine exactly, in its written order', () => {
+    expect(worked(0)).toEqual([
+      'bench-press',
+      'overhead-press',
+      'dips',
+      'db-lateral-raise',
+      'skullcrusher',
+      'french-press',
+    ])
+    expect(worked(1)).toEqual([
+      'pendlay-row',
+      'pull-up',
+      'barbell-shrug',
+      'rear-delt-raise',
+      'ez-bar-curl',
+      'db-curl',
+    ])
+    expect(worked(2)).toEqual([
+      'low-bar-squat',
+      'sumo-deadlift',
+      'barbell-calf-raise',
+      'kb-swing',
+      'ab-wheel',
+      'hanging-leg-raise',
+    ])
+    expect(worked(3)).toEqual(worked(0))
+    expect(worked(5)).toEqual(worked(2))
+  })
+
+  it('runs both leg-day lifts as competition lifts, squat first', () => {
+    const strength = (week?.days[2]?.slots ?? []).filter((slot) => slot.role === 'strength')
+    expect(
+      strength.map((slot) => slot.exercise.kind === 'specific' && slot.exercise.exerciseId),
+    ).toEqual(['low-bar-squat', 'sumo-deadlift'])
+  })
+
+  it('prescribes three straight sets on everything lifted', () => {
+    const lifted = (week?.days ?? [])
+      .flatMap((day) => day.slots)
+      .filter((slot) => slot.role !== 'warmup' && slot.role !== 'conditioning')
+    expect(lifted.every((slot) => slot.sets.length === 3)).toBe(true)
   })
 })

@@ -56,38 +56,35 @@ const athlete: AthleteState = {
     [asExerciseId(STRENGTH_LIFT_SLUGS.bench)]: 250,
     [asExerciseId(STRENGTH_LIFT_SLUGS.deadlift)]: 450,
     /*
-     * Monday trains the biceps, so a curl is the day-one exercise a
-     * suggested load can be checked against — but *which* curl is the
-     * fill's business, not this test's. There are four now and the
-     * picker rotates them, so every variant carries a max and the tests
-     * below find whichever one turned up.
+     * Day one is Push, which carries triceps isolation — the day-one
+     * exercise a suggested load can be checked against. *Which* one is
+     * the routine's business, not this test's, so every variant carries
+     * a max and the tests below find whichever one turned up.
      *
-     * Naming one was how these tests failed the day the catalogue
-     * gained a dumbbell curl: a suite about resolution and logging,
-     * broken by a change to exercise selection it has no opinion on.
+     * It was a curl while day one was the full-body Monday. Naming the
+     * exercise was how these tests failed once already: a suite about
+     * resolution and logging, broken by a change to what a day holds.
      */
-    [asExerciseId('ez-bar-curl')]: 60,
-    [asExerciseId('barbell-curl')]: 60,
-    [asExerciseId('db-curl')]: 60,
-    [asExerciseId('hammer-curl')]: 60,
+    [asExerciseId('skullcrusher')]: 60,
+    [asExerciseId('french-press')]: 60,
   },
   bodyweight: 180,
   units: 'lb',
 }
 
 /**
- * Whichever curl the fill happened to pick.
+ * Whichever triceps isolation the day holds.
  *
- * Read off the catalogue rather than listed here, so adding a fifth
- * curl does not break a suite that has no opinion about curls.
+ * Read off the catalogue rather than listed here, so adding one does not
+ * break a suite that has no opinion about triceps work.
  */
-const CURLS = new Set(
+const ACCESSORIES = new Set(
   builtInExercises()
-    .filter((exercise) => exercise.primaryMuscle === 'biceps' && !exercise.isCompound)
+    .filter((exercise) => exercise.primaryMuscle === 'triceps' && !exercise.isCompound)
     .map((exercise) => exercise.id as string),
 )
 
-const isCurl = (id: ExerciseId): boolean => CURLS.has(id)
+const isAccessory = (id: ExerciseId): boolean => ACCESSORIES.has(id)
 
 let program: ReturnType<typeof deriveProgram>
 
@@ -151,7 +148,7 @@ describe('starting a session from a program', () => {
     expect(result.kind).toBe('started')
     if (result.kind !== 'started') throw new Error('expected a started workout')
 
-    const curl = result.workout.entries.find((entry) => isCurl(entry.exerciseId))
+    const curl = result.workout.entries.find((entry) => isAccessory(entry.exerciseId))
     expect(curl).toBeDefined()
 
     /*
@@ -304,13 +301,15 @@ describe('logging', () => {
     const started = await startWorkout({ athlete, program, roundingIncrement: 5 }, deps)
     if (started.kind !== 'started') throw new Error('expected a started workout')
 
-    const curlIndex = started.workout.entries.findIndex((entry) => isCurl(entry.exerciseId))
-    const plannedLoad = started.workout.entries[curlIndex]?.sets[0]?.plannedLoad
+    const accessoryIndex = started.workout.entries.findIndex((entry) =>
+      isAccessory(entry.exerciseId),
+    )
+    const plannedLoad = started.workout.entries[accessoryIndex]?.sets[0]?.plannedLoad
 
     await logSet(
       {
         workoutId: started.workout.id,
-        entryIndex: curlIndex,
+        entryIndex: accessoryIndex,
         setIndex: 0,
         result: { load: 135, reps: 5, outcome: 'completed' },
       },
@@ -318,7 +317,7 @@ describe('logging', () => {
     )
 
     const saved = await deps.workouts.byId(started.workout.id)
-    const topSet = saved?.entries[curlIndex]?.sets[0]
+    const topSet = saved?.entries[accessoryIndex]?.sets[0]
 
     expect(topSet?.plannedLoad).toBe(plannedLoad)
     expect(topSet?.actualLoad).toBe(135)
@@ -337,12 +336,14 @@ describe('logging', () => {
     const started = await startWorkout({ athlete, program, roundingIncrement: 5 }, deps)
     if (started.kind !== 'started') throw new Error('expected a started workout')
 
-    const curlIndex = started.workout.entries.findIndex((entry) => isCurl(entry.exerciseId))
+    const accessoryIndex = started.workout.entries.findIndex((entry) =>
+      isAccessory(entry.exerciseId),
+    )
 
     await logSet(
       {
         workoutId: started.workout.id,
-        entryIndex: curlIndex,
+        entryIndex: accessoryIndex,
         setIndex: 1,
         result: { load: 90, reps: 5, outcome: 'completed' },
       },
@@ -351,7 +352,7 @@ describe('logging', () => {
     await logSet(
       {
         workoutId: started.workout.id,
-        entryIndex: curlIndex,
+        entryIndex: accessoryIndex,
         setIndex: 1,
         result: { outcome: 'skipped' },
       },
@@ -359,7 +360,7 @@ describe('logging', () => {
     )
 
     const saved = await deps.workouts.byId(started.workout.id)
-    const set = saved?.entries[curlIndex]?.sets[1]
+    const set = saved?.entries[accessoryIndex]?.sets[1]
 
     expect(set?.outcome).toBe('skipped')
     // A skipped set must not leave a partial record that later reads as
@@ -421,13 +422,15 @@ describe('finishing a session', () => {
     const started = await startWorkout({ athlete, program, roundingIncrement: 5 }, deps)
     if (started.kind !== 'started') throw new Error('expected a started workout')
 
-    const curlIndex = started.workout.entries.findIndex((entry) => isCurl(entry.exerciseId))
+    const accessoryIndex = started.workout.entries.findIndex((entry) =>
+      isAccessory(entry.exerciseId),
+    )
 
     for (let setIndex = 0; setIndex <= 2; setIndex += 1) {
       await logSet(
         {
           workoutId: started.workout.id,
-          entryIndex: curlIndex,
+          entryIndex: accessoryIndex,
           setIndex,
           result: { load: 100, reps: 5, outcome: 'completed' },
         },
@@ -442,8 +445,8 @@ describe('finishing a session', () => {
     expect(report.tonnage).toBe(1500)
     expect(report.durationMinutes).toBe(80)
     expect(report.progress[0]?.verdict).toBe('new')
-    // The curl is filed under biceps and pays the forearms a fraction.
-    expect(report.volumeByMuscle.map((entry) => entry.muscle)).toContain('biceps')
+    // The accessory is filed under the muscle it is programmed for.
+    expect(report.volumeByMuscle.map((entry) => entry.muscle)).toContain('triceps')
   })
 
   it('excludes warm-ups and unperformed sets from the volume it reports', async () => {
@@ -453,12 +456,14 @@ describe('finishing a session', () => {
 
     // One working set logged; the mobility warm-ups that open the day and
     // everything else left untouched.
-    const curlIndex = started.workout.entries.findIndex((entry) => isCurl(entry.exerciseId))
+    const accessoryIndex = started.workout.entries.findIndex((entry) =>
+      isAccessory(entry.exerciseId),
+    )
 
     await logSet(
       {
         workoutId: started.workout.id,
-        entryIndex: curlIndex,
+        entryIndex: accessoryIndex,
         setIndex: 0,
         result: { load: 100, reps: 5, outcome: 'completed' },
       },
@@ -545,11 +550,13 @@ describe('abandoning a session', () => {
     const started = await startWorkout({ athlete, program, roundingIncrement: 5 }, deps)
     if (started.kind !== 'started') throw new Error('expected a started workout')
 
-    const curlIndex = started.workout.entries.findIndex((entry) => isCurl(entry.exerciseId))
+    const accessoryIndex = started.workout.entries.findIndex((entry) =>
+      isAccessory(entry.exerciseId),
+    )
     await logSet(
       {
         workoutId: started.workout.id,
-        entryIndex: curlIndex,
+        entryIndex: accessoryIndex,
         setIndex: 0,
         result: { load: 135, reps: 5, outcome: 'completed' },
       },

@@ -1,20 +1,9 @@
 import type { MuscleGroup } from '@/domain/exercises/taxonomy'
 import { MUSCLE_GROUP_LABELS, MUSCLE_GROUPS } from '@/domain/exercises/taxonomy'
-import type { LiftSessions, StrengthLift } from '@/domain/priority/tiers'
-import {
-  DEFAULT_LIFT_SESSIONS,
-  STRENGTH_LIFT_LABELS,
-  STRENGTH_LIFTS,
-  strengthSessionsFor,
-} from '@/domain/priority/tiers'
+import type { LiftSessions } from '@/domain/priority/tiers'
+import { STRENGTH_LIFT_LABELS, STRENGTH_LIFTS } from '@/domain/priority/tiers'
 import type { MuscleVolumes, SetsPerSession, VolumeLevel } from '@/domain/volume/levels'
-import {
-  DEFAULT_MUSCLE_VOLUMES,
-  DEFAULT_SETS_PER_SESSION,
-  setsPerSessionFor,
-  VOLUME_LEVEL_LABELS,
-  weeklySetsFor,
-} from '@/domain/volume/levels'
+import { setsPerSessionFor, VOLUME_LEVEL_LABELS, weeklySetsFor } from '@/domain/volume/levels'
 
 /**
  * Why each muscle is getting the volume it is getting.
@@ -31,50 +20,6 @@ import {
  * by hand drifts from the maths on the first change, and this is the one
  * thing in the app a lifter has no way to check.
  */
-
-export type Band = 'maintaining' | 'building' | 'specialising'
-
-export interface MuscleAllocation {
-  readonly muscle: MuscleGroup
-  readonly label: string
-  readonly sessionsPerWeek: number
-  readonly level: VolumeLevel
-  readonly setsPerSession: number
-  readonly weeklySets: number
-  readonly band: Band
-  /** One sentence naming every input that produced the number. */
-  readonly reason: string
-}
-
-export interface StrengthAllocation {
-  readonly lift: StrengthLift
-  readonly label: string
-  readonly sessionsPerWeek: number
-  readonly reason: string
-}
-
-export interface VolumePlan {
-  readonly muscles: readonly MuscleAllocation[]
-  readonly lifts: readonly StrengthAllocation[]
-  /** How many muscles get dedicated work at all. Reported, never applied. */
-  readonly trainedCount: number
-  readonly totalWeeklySets: number
-}
-
-/**
- * The band, which is now a reading of the weekly total rather than a rank.
- *
- * There is no tier to rename any more, so this answers the only question
- * a colour on a bar can usefully answer: is this muscle being pushed,
- * kept going, or left to the compounds? Thresholds rather than a lookup,
- * because two settings multiply into the number and no single one of them
- * decides it — three sessions of two sets and two sessions of three are
- * the same six sets and should read the same way.
- */
-function bandFor(weeklySets: number, sets: SetsPerSession): Band {
-  if (weeklySets <= 0) return 'maintaining'
-  return weeklySets >= sets.high * 2 ? 'specialising' : 'building'
-}
 
 function list(values: readonly string[]): string {
   if (values.length === 0) return 'nothing'
@@ -236,76 +181,5 @@ export function describeBlock(
             ),
           }),
     },
-  }
-}
-
-/**
- * What the week asks of each muscle, and where each number came from.
- *
- * **The three inputs are constants now rather than settings**, so they
- * default to what the assembler actually builds from — the volume
- * customisation was gutted, and a screen reading a copy the lifter could
- * no longer edit would be reporting on nothing. They stay as parameters
- * because the tests vary them, which is the whole reason this is a pure
- * function.
- */
-export function explainVolume(
-  volumes: MuscleVolumes = DEFAULT_MUSCLE_VOLUMES,
-  sets: SetsPerSession = DEFAULT_SETS_PER_SESSION,
-  liftSessions: LiftSessions = DEFAULT_LIFT_SESSIONS,
-): VolumePlan {
-  const muscles = MUSCLE_GROUPS.map((muscle): MuscleAllocation => {
-    const volume = volumes[muscle]
-    const perSession = setsPerSessionFor(volume.level, sets, false)
-    const weeklySets = weeklySetsFor(volume, sets, false)
-
-    return {
-      muscle,
-      label: MUSCLE_GROUP_LABELS[muscle],
-      sessionsPerWeek: volume.sessionsPerWeek,
-      level: volume.level,
-      setsPerSession: perSession,
-      weeklySets,
-      band: bandFor(weeklySets, sets),
-      /*
-       * The whole derivation, because there is only one multiplication in
-       * it. This used to name a landmark band the target was "pushed
-       * toward the top of", which honestly described an interpolation and
-       * would be a strange thing to say about a product of two settings.
-       */
-      reason:
-        volume.sessionsPerWeek > 0
-          ? `${String(volume.sessionsPerWeek)} session${volume.sessionsPerWeek === 1 ? '' : 's'} a week at ${VOLUME_LEVEL_LABELS[volume.level].toLowerCase()} volume — ${String(perSession)} sets each, ${String(weeklySets)} a week.`
-          : 'Not trained directly. What the competition lifts pay it is what it gets.',
-    }
-  })
-
-  const lifts = STRENGTH_LIFTS.map((lift): StrengthAllocation => {
-    const sessions = strengthSessionsFor(liftSessions, lift)
-
-    return {
-      lift,
-      label: STRENGTH_LIFT_LABELS[lift],
-      sessionsPerWeek: sessions,
-      /*
-       * Only what differs between lifts. These sentences used to describe
-       * a tier-dependent fatigue allowance, which stopped being true when
-       * the allowance was flattened; the replacement then explained the
-       * flat rule on every row, which trains the reader to skip all three
-       * including the number that is not identical. What every session
-       * shares belongs above the list, once.
-       */
-      reason:
-        sessions > 0
-          ? `${String(sessions)} session${sessions === 1 ? '' : 's'} a week.`
-          : 'Not trained this block.',
-    }
-  })
-
-  return {
-    muscles,
-    lifts,
-    trainedCount: muscles.filter((entry) => entry.weeklySets > 0).length,
-    totalWeeklySets: muscles.reduce((total, entry) => total + entry.weeklySets, 0),
   }
 }

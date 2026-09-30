@@ -7,7 +7,7 @@ import { DEFAULT_LIFT_SESSIONS } from '@/domain/priority/tiers'
 import type { MuscleVolumes, VolumeLevel } from '@/domain/volume/levels'
 import { DEFAULT_MUSCLE_VOLUMES, DEFAULT_SETS_PER_SESSION } from '@/domain/volume/levels'
 
-import { describeBlock, explainVolume } from './explain'
+import { describeBlock } from './explain'
 
 /**
  * The description is the one thing in the app a lifter cannot check.
@@ -179,54 +179,5 @@ describe('naming a block from its settings', () => {
     }
 
     expect(describeBlock(volumes, sets, evenLifts).name).toBe('Chest')
-  })
-})
-
-describe('explaining the volume', () => {
-  const plan = explainVolume(DEFAULT_MUSCLE_VOLUMES, sets, DEFAULT_LIFT_SESSIONS)
-
-  it('gives every muscle a reason naming its inputs', () => {
-    for (const muscle of plan.muscles) {
-      expect(muscle.reason, muscle.label).toMatch(/sessions? a week|Not trained directly/)
-    }
-  })
-
-  /*
-   * Weekly sets are sessions times sets per session and nothing else.
-   * Asserted against the settings rather than against a constant, so the
-   * arithmetic is what is under test rather than today's defaults.
-   */
-  it('reports weekly sets as the two settings multiplied', () => {
-    for (const muscle of plan.muscles) {
-      expect(muscle.weeklySets, muscle.label).toBe(muscle.sessionsPerWeek * muscle.setsPerSession)
-    }
-  })
-
-  it('reports a muscle with no sessions as getting nothing', () => {
-    for (const muscle of plan.muscles) {
-      if (muscle.sessionsPerWeek > 0) continue
-
-      expect(muscle.weeklySets, muscle.label).toBe(0)
-      expect(muscle.band, muscle.label).toBe('maintaining')
-    }
-  })
-
-  it('counts only the muscles that get dedicated work', () => {
-    expect(plan.trainedCount).toBe(plan.muscles.filter((entry) => entry.weeklySets > 0).length)
-    expect(plan.totalWeeklySets).toBe(
-      plan.muscles.reduce((total, entry) => total + entry.weeklySets, 0),
-    )
-  })
-
-  it('describes a lift that is not trained at all', () => {
-    const none = explainVolume(DEFAULT_MUSCLE_VOLUMES, sets, {
-      squat: 0,
-      bench: 2,
-      deadlift: 2,
-    })
-    const squat = none.lifts.find((lift) => lift.lift === 'squat')
-
-    expect(squat?.sessionsPerWeek).toBe(0)
-    expect(squat?.reason).toBe('Not trained this block.')
   })
 })

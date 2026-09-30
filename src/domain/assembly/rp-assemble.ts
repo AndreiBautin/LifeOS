@@ -411,6 +411,35 @@ function buildWeek(
       slots.push(...warmUpSlots(deps, splitDay, new Set(recipe.excludedExercises)))
     }
 
+    /*
+     * **A written routine is built as written** — see `PPL_SPLIT`. No
+     * fill, no picker and no reordering: the list is the lifter's
+     * decision, in the order they run it. What it shares with the
+     * generated path is everything about how a set is prescribed.
+     */
+    if (splitDay.routine !== undefined) {
+      const written = routineSlots(deps, splitDay, isDeload, new Set(recipe.excludedExercises))
+      slots.push(...written.slots)
+
+      const direct = trainedDirectly(written.slots, deps.exercises)
+      const volumeTargets: Partial<Record<MuscleGroup, number>> = {}
+      for (const muscle of direct) {
+        directDays[muscle] += 1
+        daysTrained[muscle] += 1
+        if (written.spent[muscle] > 0)
+          volumeTargets[muscle] = Number(written.spent[muscle].toFixed(1))
+      }
+      committed = addInto(committed, written.spent)
+
+      days.push({
+        index: dayIndex,
+        ...describeDay(splitDay, slots, deps.exercises, targets),
+        slots,
+        volumeTargets,
+      })
+      continue
+    }
+
     slots.push(...(strength?.slots ?? []))
 
     // Costed before the fill and appended after it. Conditioning is done
@@ -1591,6 +1620,61 @@ function warmUpSlots(
  * against a muscle's weekly target would displace the growth work the
  * target exists to schedule.
  */
+/**
+ * A written day's slots, in the order the routine lists them.
+ *
+ * `spent` counts the accessory work only — the competition lifts are
+ * counted apart, the rule `countsAsHypertrophy` holds everywhere else, so
+ * a routine's "aiming for" line reads the same way a generated day's does.
+ * An excluded exercise is left out rather than substituted: the routine
+ * says what it says, and swapping in something else would be the app
+ * rewriting it.
+ */
+function routineSlots(
+  deps: RpAssembleDeps,
+  day: RpDay,
+  isDeload: boolean,
+  excluded: ReadonlySet<ExerciseId>,
+): BuiltSlots {
+  const slots: Slot[] = []
+  let spent = emptyVolumeMap()
+
+  for (const entry of day.routine ?? []) {
+    if (entry.kind === 'lift') {
+      slots.push(...buildStrengthSlots(deps, entry.lift, 0, isDeload).slots)
+      continue
+    }
+
+    if (entry.kind === 'conditioning') {
+      slots.push(
+        ...conditioningSlots(deps, { ...day, conditioning: [entry.slug] }, isDeload, excluded),
+      )
+      continue
+    }
+
+    const exercise = deps.exercises.find((candidate) => candidate.id === asExerciseId(entry.slug))
+    if (exercise === undefined || excluded.has(exercise.id)) continue
+
+    const count = isDeload ? STRAIGHT_SETS - 1 : STRAIGHT_SETS
+    const sets = hypertrophySets(exercise, count)
+    const range = exercise.repRange ?? (exercise.isCompound ? COMPOUND_REPS : ISOLATION_REPS)
+    slots.push({
+      id: asSlotId(deps.ids.next()),
+      role: exercise.isCompound ? 'hypertrophy' : 'assistance',
+      variant: exercise.isCompound ? 'Compound' : 'Isolation',
+      exercise: { kind: 'specific', exerciseId: exercise.id },
+      sets,
+      restSeconds: exercise.defaultRestSeconds ?? 120,
+      notes: isDeload
+        ? 'Deload — same weight, two sets, stop early.'
+        : `${String(count)} sets of ${String(range.low)}–${String(range.high)}. Hit the top of the range on every set and add weight next time.`,
+    })
+    spent = addInto(spent, slotVolume(exercise, sets))
+  }
+
+  return { slots, spent }
+}
+
 function conditioningSlots(
   deps: RpAssembleDeps,
   day: RpDay,

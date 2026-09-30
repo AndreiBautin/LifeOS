@@ -19,7 +19,7 @@ import {
   weeklySetsFor,
 } from '@/domain/volume/levels'
 
-import { rpSplit } from '@/domain/splits/rp-splits'
+import { FULL_BODY_SPLIT } from '@/domain/splits/rp-splits'
 
 import { assembleRpProgram, defaultRpRecipe, TRAILING_MUSCLES, type RpRecipe } from './rp-assemble'
 
@@ -66,6 +66,12 @@ function build(overrides: Partial<RpRecipe> = {}): ProgramTemplate {
     exercises,
     ids: counterIds(),
     now: new Date('2026-08-24T00:00:00Z'),
+    /*
+     * The generator's own week. The shipped split is a written routine
+     * now (`PPL_SPLIT`), which bypasses everything these tests are about;
+     * the full-body split is what still exercises the fill.
+     */
+    split: FULL_BODY_SPLIT,
   })
 }
 
@@ -1692,7 +1698,7 @@ describe('the split', () => {
    */
   it('trains every muscle as often as its tier asks', () => {
     const week = weekAt(build(), 3)
-    const split = rpSplit()
+    const split = FULL_BODY_SPLIT
 
     const volume = weeklyVolume(week)
 

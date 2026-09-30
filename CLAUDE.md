@@ -63,6 +63,33 @@ input required.
   sample's `estimatedMaxes`; they disagreed by seventy pounds once, side
   by side on Train.
 
+**The week is the lifter's own routine, and that reverses the rule
+against pinning exercises to days.** Asked for as _"make the workout
+routine reflective of my current split"_: push, pull, legs, twice,
+Monday to Saturday, Sunday off — `PPL_SPLIT`, with `RpDay.routine`
+listing each session in the order it is run. The old rule ("do not
+reintroduce a slug list on a day") was right while the week was derived
+from volume targets, because a pinned list outlived the targets that
+justified it. A routine the lifter wrote has nothing underneath to drift
+from. The generator is untouched, still builds any day without a
+routine, and is tested against `FULL_BODY_SPLIT`.
+
+- **Legs runs two competition lifts, both in competition version**,
+  squat then sumo. A generated paired day would run the second as its
+  variation and alternate the order; a routine does not.
+- **Pendlay Row is its own exercise**, and two catalogue names changed
+  to the lifter's words without touching slugs: `french-press` reads
+  "Overhead Triceps Extension", `rear-delt-raise` "Rear Delt Reverse
+  Fly". Slugs are written into every log; names are labels.
+- **The per-muscle volume targets no longer decide the week, so nothing
+  on screen reads them.** History and the Program page take their
+  weekly targets from `scheduledVolume` over the derived week — what the
+  routine actually lists — and `explainVolume`, whose only caller was
+  the Program page, is deleted with its tests.
+- **`current-program.test.ts` → "the shipped week" pins every exercise
+  and its order**, because a routine drifting would still build a valid
+  week and fail nothing else.
+
 ## Before you finish anything
 
 ```bash

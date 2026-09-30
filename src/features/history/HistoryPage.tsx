@@ -6,11 +6,8 @@ import { useNavigate } from 'react-router-dom'
 
 import { useServices, useSettings } from '@/app/context'
 import type { Exercise } from '@/domain/exercises/exercise'
-import {
-  DEFAULT_MUSCLE_VOLUMES,
-  DEFAULT_SETS_PER_SESSION,
-  weeklySetsFor,
-} from '@/domain/volume/levels'
+import { scheduledVolume } from '@/domain/programs/program'
+import { useProgram } from '@/features/train/hooks'
 import { MUSCLE_GROUP_LABELS, type MuscleGroup } from '@/domain/exercises/taxonomy'
 import type { ExerciseId, WorkoutId } from '@/domain/ids/ids'
 import type { WorkoutLog } from '@/domain/logging/workout-log'
@@ -52,11 +49,17 @@ export function HistoryPage() {
    */
   const [confirming, setConfirming] = useState<WorkoutId | undefined>(undefined)
 
+  /*
+   * **The same window the XP tally reads.** This was fifty, and the
+   * header below counts what came back — so four months of a six-day week
+   * read as "50 sessions logged", a total that was really a page size.
+   */
   const workouts = useQuery({
-    queryKey: ['workouts', 'recent', 50],
-    queryFn: () => services.workouts.recent(50),
+    queryKey: ['workouts', 'recent', 500],
+    queryFn: () => services.workouts.recent(500),
   })
   const exercises = useQuery({ queryKey: ['exercises'], queryFn: () => services.exercises.all() })
+  const program = useProgram()
 
   const library = exercises.data ?? []
   const lookup = (id: ExerciseId): Exercise | undefined =>
@@ -89,6 +92,9 @@ export function HistoryPage() {
   const abandoned = (workouts.data ?? []).filter((workout) => workout.status === 'abandoned')
 
   const thisWeek = sessions.filter((workout) => isWithinDays(workout.date, 7))
+
+  const programWeek = program.data?.blocks[0]?.weeks[0]
+  const scheduled = programWeek === undefined ? {} : scheduledVolume(programWeek)
 
   const weekVolume: VolumeMap | undefined =
     thisWeek.length > 0
@@ -123,16 +129,13 @@ export function HistoryPage() {
                 .sort((a, b) => weekVolume[b] - weekVolume[a])
                 .map((muscle) => {
                   /*
-                    The targets are constants now rather than settings —
-                    the volume customisation was gutted — so this reads
-                    the same table the assembler builds from instead of a
-                    copy the lifter could edit.
+                    The target is what the routine schedules for the
+                    muscle in a working week — `scheduledVolume` over the
+                    derived program — rather than the old per-muscle
+                    constants, which the written routine no longer
+                    consults.
                   */
-                  const target = weeklySetsFor(
-                    DEFAULT_MUSCLE_VOLUMES[muscle],
-                    DEFAULT_SETS_PER_SESSION,
-                    false,
-                  )
+                  const target = scheduled[muscle] ?? 0
                   const done = weekVolume[muscle]
                   return (
                     <li key={muscle}>

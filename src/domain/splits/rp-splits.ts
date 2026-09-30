@@ -67,7 +67,28 @@ export interface RpDay {
   readonly conditioning?: readonly string[]
   /** Which warm-up routine precedes it. */
   readonly warmUp: 'upper' | 'lower'
+  /**
+   * The session written out, exercise by exercise, in the order it is run.
+   *
+   * A day with a routine is taken as written: no volume fill, no picker,
+   * no reordering — see `PPL_SPLIT` for why. A day without one is
+   * generated from `muscles` and `carries` exactly as before.
+   */
+  readonly routine?: readonly RoutineEntry[]
 }
+
+/**
+ * One line of a written routine.
+ *
+ * A `lift` is a competition lift and is built by the strength path, so it
+ * takes the competition version (low bar, touch-and-go bench, sumo) and
+ * the strength rep range. An `exercise` is accessory work at the compound
+ * or isolation range. `conditioning` is a timed block.
+ */
+export type RoutineEntry =
+  | { readonly kind: 'lift'; readonly lift: StrengthLift }
+  | { readonly kind: 'exercise'; readonly slug: string }
+  | { readonly kind: 'conditioning'; readonly slug: string }
 
 export interface RpSplit {
   readonly id: string
@@ -172,7 +193,7 @@ const WEDNESDAY: readonly MuscleGroup[] = ['upper-back', 'side-delts', 'biceps',
 
 const FRIDAY: readonly MuscleGroup[] = ['rear-delts', 'calves', 'triceps', 'core']
 
-export const RP_SPLIT: RpSplit = {
+export const FULL_BODY_SPLIT: RpSplit = {
   id: 'full-body-3',
   name: '3-day full body',
   description: 'Monday, Wednesday, Friday. Squat, bench, deadlift — one main lift each.',
@@ -213,7 +234,125 @@ export const RP_SPLIT: RpSplit = {
   ],
 }
 
-export const RP_SPLITS: readonly RpSplit[] = [RP_SPLIT]
+const lift = (which: StrengthLift): RoutineEntry => ({ kind: 'lift', lift: which })
+const exercise = (slug: string): RoutineEntry => ({ kind: 'exercise', slug })
+const conditioning = (slug: string): RoutineEntry => ({ kind: 'conditioning', slug })
+
+const PUSH: readonly RoutineEntry[] = [
+  lift('bench'),
+  exercise('overhead-press'),
+  exercise('dips'),
+  exercise('db-lateral-raise'),
+  exercise('skullcrusher'),
+  exercise('french-press'),
+]
+
+const PULL: readonly RoutineEntry[] = [
+  exercise('pendlay-row'),
+  exercise('pull-up'),
+  exercise('barbell-shrug'),
+  exercise('rear-delt-raise'),
+  exercise('ez-bar-curl'),
+  exercise('db-curl'),
+]
+
+const LEGS: readonly RoutineEntry[] = [
+  lift('squat'),
+  lift('deadlift'),
+  exercise('barbell-calf-raise'),
+  conditioning('kb-swing'),
+  exercise('ab-wheel'),
+  exercise('hanging-leg-raise'),
+]
+
+const PUSH_MUSCLES: readonly MuscleGroup[] = ['chest', 'front-delts', 'side-delts', 'triceps']
+const PULL_MUSCLES: readonly MuscleGroup[] = ['upper-back', 'lats', 'traps', 'rear-delts', 'biceps']
+const LEGS_MUSCLES: readonly MuscleGroup[] = ['quads', 'glutes', 'hamstrings', 'calves', 'core']
+
+/**
+ * **Push, pull, legs, twice — Monday to Saturday, Sunday off.** The
+ * lifter's own routine, asked for as _"make the workout routine
+ * reflective of my current split"_, and taken as written.
+ *
+ * **This reverses a rule recorded against pinning exercises to days.**
+ * That rule held while the week was *derived* from per-muscle volume
+ * targets: a slug list on a day was a transcript that went on being
+ * scheduled after the targets that justified it had moved. Here the list
+ * is the decision itself, stated by the person who trains it, so there is
+ * nothing underneath for it to drift from. The generator is untouched and
+ * still builds any day with no routine — `FULL_BODY_SPLIT` is kept for
+ * exactly that, and the generator's tests run against it.
+ *
+ * What survives from the generated week is how each set is run: three
+ * straight sets, double progression, the strength range on a competition
+ * lift and the compound or isolation range on everything else.
+ *
+ * **Two competition lifts on legs day, both in their competition
+ * version** — low bar, then sumo. A generated paired day would run the
+ * second as its variation and alternate which leads; a written routine
+ * means these two, in this order, every time.
+ */
+export const PPL_SPLIT: RpSplit = {
+  id: 'ppl-6',
+  name: 'Push, pull, legs',
+  description: 'Monday to Saturday, Sunday off. Push, pull, legs, twice through.',
+  daysPerWeek: 6,
+  days: [
+    {
+      index: 0,
+      label: 'Monday',
+      focusName: 'Push',
+      muscles: PUSH_MUSCLES,
+      routine: PUSH,
+      warmUp: 'upper',
+    },
+    {
+      index: 1,
+      label: 'Tuesday',
+      focusName: 'Pull',
+      muscles: PULL_MUSCLES,
+      routine: PULL,
+      warmUp: 'upper',
+    },
+    {
+      index: 2,
+      label: 'Wednesday',
+      focusName: 'Legs',
+      muscles: LEGS_MUSCLES,
+      routine: LEGS,
+      warmUp: 'lower',
+    },
+    {
+      index: 3,
+      label: 'Thursday',
+      focusName: 'Push',
+      muscles: PUSH_MUSCLES,
+      routine: PUSH,
+      warmUp: 'upper',
+    },
+    {
+      index: 4,
+      label: 'Friday',
+      focusName: 'Pull',
+      muscles: PULL_MUSCLES,
+      routine: PULL,
+      warmUp: 'upper',
+    },
+    {
+      index: 5,
+      label: 'Saturday',
+      focusName: 'Legs',
+      muscles: LEGS_MUSCLES,
+      routine: LEGS,
+      warmUp: 'lower',
+    },
+  ],
+}
+
+/** The week the app runs. */
+export const RP_SPLIT: RpSplit = PPL_SPLIT
+
+export const RP_SPLITS: readonly RpSplit[] = [PPL_SPLIT, FULL_BODY_SPLIT]
 
 /**
  * The split, which no longer depends on anything.

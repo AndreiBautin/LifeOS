@@ -5,11 +5,16 @@ import { useSettings } from '@/app/context'
 import type { Exercise } from '@/domain/exercises/exercise'
 import type { ExerciseId } from '@/domain/ids/ids'
 import type { Slot } from '@/domain/programs/program'
-import { slotRoleLabel, slotRoleTone, slotVariant } from '@/domain/programs/program'
+import {
+  scheduledVolume,
+  slotRoleLabel,
+  slotRoleTone,
+  slotVariant,
+} from '@/domain/programs/program'
 import { describeReps } from '@/domain/programs/prescription'
 import { resolveSets } from '@/domain/resolution/resolve'
 import { attributeWeek, type MuscleAttribution } from '@/domain/volume/attribution'
-import { explainVolume } from '@/domain/priority/explain'
+import type { MuscleGroup } from '@/domain/exercises/taxonomy'
 import { Badge, Button, Card, Section } from '@/components/shared/primitives'
 
 import { useExercises, useJumpToWeek, usePosition, useProgram } from '@/features/train/hooks'
@@ -86,7 +91,9 @@ export function ProgramPage() {
   const lookup = (id: ExerciseId): Exercise | undefined =>
     library.find((exercise) => exercise.id === id)
 
-  const targets = explainVolume()
+  // What the routine actually schedules — see `scheduledVolume`.
+  const scheduled = week === undefined ? {} : scheduledVolume(week)
+  const targetOf = (muscle: MuscleGroup): number => scheduled[muscle] ?? 0
   const attribution = week === undefined ? [] : attributeWeek(week, lookup)
 
   if (program.data === undefined || week === undefined) {
@@ -193,21 +200,13 @@ export function ProgramPage() {
 
           <ul className="space-y-1">
             {attribution
-              .filter(
-                (entry) =>
-                  entry.total > 0 ||
-                  (targets.muscles.find((muscle) => muscle.muscle === entry.muscle)?.weeklySets ??
-                    0) > 0,
-              )
+              .filter((entry) => entry.total > 0 || targetOf(entry.muscle) > 0)
               .sort((a, b) => b.total - a.total)
               .map((entry) => (
                 <AttributionRow
                   key={entry.muscle}
                   entry={entry}
-                  target={
-                    targets.muscles.find((muscle) => muscle.muscle === entry.muscle)?.weeklySets ??
-                    0
-                  }
+                  target={targetOf(entry.muscle)}
                   isOpen={openMuscle === entry.muscle}
                   onToggle={() => {
                     setOpenMuscle(openMuscle === entry.muscle ? undefined : entry.muscle)

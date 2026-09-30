@@ -1118,15 +1118,15 @@ async function seedTraining(deps: DemoDeps): Promise<void> {
    * nothing logged against them would leave that bar empty while looking,
    * from the record, like a full week of training.
    */
-  const walked = (order: number): LogEntry => ({
-    exerciseId: 'incline-walk' as ExerciseId,
+  const swung = (order: number): LogEntry => ({
+    exerciseId: 'kb-swing' as ExerciseId,
     role: 'conditioning',
     order,
     sets: [
       {
         prescription: {
-          load: { kind: 'bodyweight' as const },
-          reps: { kind: 'time' as const, seconds: 1800 },
+          load: { kind: 'open' as const },
+          reps: { kind: 'time' as const, seconds: 900 },
         },
         outcome: 'completed' as const,
         isWarmup: false,
@@ -1135,73 +1135,83 @@ async function seedTraining(deps: DemoDeps): Promise<void> {
   })
 
   /*
-   * **Seventeen weeks of Monday, Wednesday and Friday, generated rather
-   * than listed.** Six hand-written sessions made every history screen
-   * look like the app was installed last week — the activity grid a
-   * single column, the strength chart three points. What a reviewer
-   * should see is somebody four months in, with the loads climbing the
-   * way double progression climbs them.
+   * **Seventeen weeks of push, pull, legs, Monday to Saturday — the
+   * shipped routine, generated rather than listed.** Six hand-written
+   * sessions made every history screen look like the app was installed
+   * last week; what a reviewer should see is somebody four months in,
+   * with the loads climbing the way double progression climbs them.
    *
-   * Deterministic, so the fixture is the same on every seed: the loads
-   * rise linearly from where each lift started to where it is now, and
-   * roughly one session in thirteen is skipped, because a history with
-   * no missed day is not a history anybody believes.
+   * Deterministic, so the fixture is the same on every seed: each load
+   * rises linearly from where it started to where it is now, and roughly
+   * one session in thirteen is skipped, because a history with no missed
+   * day is not a history anybody believes.
    *
-   * **Each lift ends where the Standards card says it is.** Five reps at
-   * the final load estimate the sample's own maxes — 300 for 353, 205
-   * for 238, 315 for 368 — so the strength chart's last point and the
-   * standard beside it are the same number. They disagreed by seventy
-   * pounds on the squat the first time this was generated.
+   * **Each competition lift ends where the Standards card says it is.**
+   * Five reps at the final load estimate the sample's own maxes — 300
+   * for 353, 205 for 238, 315 for 368 — so the strength chart's last
+   * point and the standard beside it are the same number. They disagreed
+   * by seventy pounds on the squat the first time this was generated.
    */
   const WEEKS = 17
-  const MAIN: Record<
-    number,
-    { readonly lift: string; readonly title: string; readonly from: number; readonly to: number }
-  > = {
-    1: { lift: 'low-bar-squat', title: 'Squat', from: 255, to: 300 },
-    3: { lift: 'bench-press', title: 'Bench', from: 170, to: 205 },
-    5: { lift: 'sumo-deadlift', title: 'Deadlift', from: 265, to: 315 },
-  }
   const round5 = (value: number): number => Math.round(value / 5) * 5
+  /** Where a load sits between its first and latest session. */
+  const along = (from: number, to: number, through: number): number =>
+    round5(from + (to - from) * through)
+
+  type Day = 'Push' | 'Pull' | 'Legs'
+  /* `getDay()` is Sunday-first; Sunday is the rest day. */
+  const DAYS: Readonly<Record<number, Day>> = {
+    1: 'Push',
+    2: 'Pull',
+    3: 'Legs',
+    4: 'Push',
+    5: 'Pull',
+    6: 'Legs',
+  }
+
+  const session = (day: Day, through: number, heavy: boolean): LogEntry[] => {
+    const bump = Math.round(through * 3)
+    const strengthSets = heavy ? 4 : 3
+    switch (day) {
+      case 'Push':
+        return [
+          lifted('bench-press', 0, 'strength', along(170, 205, through), 5, strengthSets),
+          lifted('overhead-press', 1, 'hypertrophy', along(95, 115, through), 8),
+          lifted('dips', 2, 'hypertrophy', 0, 8 + bump),
+          lifted('db-lateral-raise', 3, 'assistance', along(15, 20, through), 18),
+          lifted('skullcrusher', 4, 'assistance', along(50, 65, through), 15),
+          lifted('french-press', 5, 'assistance', along(40, 55, through), 15),
+        ]
+      case 'Pull':
+        return [
+          lifted('pendlay-row', 0, 'hypertrophy', along(135, 165, through), 8),
+          lifted('pull-up', 1, 'hypertrophy', 0, 6 + bump),
+          lifted('barbell-shrug', 2, 'assistance', along(185, 225, through), 12),
+          lifted('rear-delt-raise', 3, 'assistance', along(15, 20, through), 18),
+          lifted('ez-bar-curl', 4, 'assistance', along(50, 65, through), 15),
+          lifted('db-curl', 5, 'assistance', along(25, 35, through), 15),
+        ]
+      case 'Legs':
+        return [
+          lifted('low-bar-squat', 0, 'strength', along(255, 300, through), 5, strengthSets),
+          lifted('sumo-deadlift', 1, 'strength', along(265, 315, through), 5),
+          lifted('barbell-calf-raise', 2, 'assistance', along(150, 190, through), 15),
+          swung(3),
+          lifted('ab-wheel', 4, 'assistance', 0, 10 + bump),
+          lifted('hanging-leg-raise', 5, 'assistance', 0, 10 + bump),
+        ]
+    }
+  }
 
   const sessions: { daysBack: number; title: string; entries: LogEntry[] }[] = []
   for (let back = WEEKS * 7; back >= 1; back -= 1) {
     const on = new Date(deps.clock.now().getTime() - back * 86_400_000)
-    const main = MAIN[on.getDay()]
-    if (main === undefined) continue
+    const day = DAYS[on.getDay()]
+    if (day === undefined) continue
     if ((back * 7) % 13 === 3) continue
 
     const through = 1 - back / (WEEKS * 7)
-    const load = round5(main.from + (main.to - main.from) * through)
-    const bump = Math.round(through * 3)
-
-    const accessories: LogEntry[] =
-      main.lift === 'low-bar-squat'
-        ? [
-            lifted('dips', 1, 'hypertrophy', 0, 8 + bump),
-            lifted('pull-up', 2, 'hypertrophy', 0, 6 + bump),
-            lifted('db-curl', 3, 'hypertrophy', round5(25 + 10 * through), 15),
-          ]
-        : main.lift === 'bench-press'
-          ? [
-              lifted('barbell-row', 1, 'hypertrophy', round5(115 + 25 * through), 8),
-              lifted('db-lateral-raise', 2, 'hypertrophy', round5(15 + 5 * through), 18),
-              lifted('skullcrusher', 3, 'hypertrophy', round5(50 + 15 * through), 15),
-            ]
-          : [
-              lifted('dips', 1, 'hypertrophy', 0, 9 + bump),
-              lifted('barbell-calf-raise', 2, 'hypertrophy', round5(150 + 40 * through), 15),
-            ]
-
-    sessions.push({
-      daysBack: back,
-      title: main.title,
-      entries: [
-        lifted(main.lift, 0, 'strength', load, 5, back % 4 === 0 ? 4 : 3),
-        ...accessories,
-        walked(accessories.length + 1),
-      ],
-    })
+    sessions.push({ daysBack: back, title: day, entries: session(day, through, back % 4 === 0) })
   }
 
   for (const session of sessions) {
