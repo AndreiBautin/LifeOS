@@ -62,9 +62,19 @@ export function CountRing({
         stroke={tone}
         strokeWidth={STROKE}
         strokeLinecap="round"
-        strokeDasharray={`${String(filled)} ${String(circumference)}`}
+        /* Dashed as one full-length stroke offset back by what is not
+             yet filled, so `.ring-draw` can start it at empty and let it
+             run round to the value. */
+        className="ring-draw"
+        strokeDasharray={`${String(circumference)} ${String(circumference)}`}
+        strokeDashoffset={circumference - filled}
         transform={`rotate(-90 ${String(CENTRE)} ${String(CENTRE)})`}
-        style={{ filter: `drop-shadow(0 0 4px ${tone})` }}
+        style={
+          {
+            filter: `drop-shadow(0 0 4px ${tone})`,
+            '--ring-full': `${String(circumference)}px`,
+          } as React.CSSProperties
+        }
       />
       <text
         x={CENTRE}

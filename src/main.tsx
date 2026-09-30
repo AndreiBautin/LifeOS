@@ -6,6 +6,7 @@ import { bootstrap } from '@/app/di'
 import { AppProviders } from '@/app/providers'
 import { router } from '@/app/router'
 import { watchForStaleChunks } from '@/features/pwa/stale-chunk'
+import { quietSkippedTransitions } from '@/app/view-transitions'
 import { logger } from '@/shared/logging/logger'
 
 import './index.css'
@@ -19,6 +20,7 @@ import './index.css'
  * category of loading state spread across every component.
  */
 watchForStaleChunks()
+quietSkippedTransitions()
 
 const container = document.getElementById('root')
 if (container === null) throw new Error('Root element is missing from the document.')

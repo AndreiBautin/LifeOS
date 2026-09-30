@@ -72,6 +72,14 @@
   --font-mono: ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, Consolas, monospace;
 }
 
+/* Registered so it can be transitioned: an unregistered custom property
+   is a string and snaps between values rather than easing. */
+@property --spot {
+  syntax: '<number>';
+  inherits: false;
+  initial-value: 0;
+}
+
 @layer base {
   :root {
     /* The notch, the status bar and the home indicator.
@@ -267,13 +275,42 @@
      page. No `backdrop-filter` — see `.glass`; this is the surface that
      scrolls, and it is the one place blur must not go. */
   .card {
+    /* Where the pointer is over this card, and how lit that spot is.
+       `useCardSpotlight` writes the position; `--spot` is 0 until a
+       real pointer hovers, so on a phone every layer that reads it
+       resolves to transparent and the card is exactly the flat panel it
+       always was. */
+    --mx: 50%;
+    --my: -20%;
     background-color: var(--surface-raised);
-    background-image: linear-gradient(
-      180deg,
-      color-mix(in oklab, var(--surface-raised) 92%, var(--text-primary) 8%),
-      var(--surface-raised) 55%
-    );
-    border: 1px solid var(--border-subtle);
+    /* Four layers, clipped two ways. The inner two paint the surface:
+       the spotlight wash over the lit-from-above gradient. The outer two
+       paint the 1px border — the same spotlight, stronger, over the flat
+       hairline — which is what makes the edge nearest the pointer catch
+       light the way a real bevel would. A transparent border and a
+       border-box layer is the only way to light part of a border without
+       a pseudo-element, and a pseudo-element would need `position:
+       relative` on every card in the app. */
+    background-image:
+      radial-gradient(
+        420px circle at var(--mx) var(--my),
+        color-mix(in oklab, var(--color-accent-500) calc(var(--spot) * 7%), transparent),
+        transparent 70%
+      ),
+      linear-gradient(
+        180deg,
+        color-mix(in oklab, var(--surface-raised) 92%, var(--text-primary) 8%),
+        var(--surface-raised) 55%
+      ),
+      radial-gradient(
+        260px circle at var(--mx) var(--my),
+        color-mix(in oklab, var(--color-accent-400) calc(var(--spot) * 70%), transparent),
+        transparent 75%
+      ),
+      linear-gradient(var(--border-subtle), var(--border-subtle));
+    background-clip: padding-box, padding-box, border-box, border-box;
+    background-origin: border-box;
+    border: 1px solid transparent;
     border-radius: 0.875rem;
     box-shadow:
       inset 0 1px 0 0 var(--card-sheen),
@@ -297,10 +334,12 @@
     .card {
       transition:
         transform 220ms cubic-bezier(0.16, 1, 0.3, 1),
-        box-shadow 220ms cubic-bezier(0.16, 1, 0.3, 1);
+        box-shadow 220ms cubic-bezier(0.16, 1, 0.3, 1),
+        --spot 320ms ease-out;
     }
 
     .card:hover {
+      --spot: 1;
       transform: translateY(-3px);
       box-shadow:
         inset 0 1px 0 0 var(--card-sheen),
@@ -328,8 +367,39 @@
     }
   }
 
+  /* `--stagger` is set by `Masonry` per card, so a page of cards
+     arrives one after another rather than as a single block. Inherited,
+     so a card nested inside a staggered wrapper keeps its parent's slot. */
   .card {
-    animation: card-in 460ms cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation: card-in 560ms cubic-bezier(0.16, 1, 0.3, 1) var(--stagger, 0ms) both;
+  }
+
+  /* A ring drawing itself round to its value. The element carries its
+     real `stroke-dashoffset`; this only supplies where it starts —
+     `--ring-full`, the whole circumference, which is an empty ring. */
+  @keyframes ring-draw {
+    from {
+      stroke-dashoffset: var(--ring-full);
+    }
+  }
+
+  .ring-draw {
+    animation: ring-draw 1200ms cubic-bezier(0.22, 1, 0.36, 1) calc(var(--stagger, 0ms) + 180ms)
+      both;
+  }
+
+  /* A bar filling from its left edge. `transform` rather than `width`,
+     so the compositor does it without laying the card out again. */
+  @keyframes meter-grow {
+    from {
+      transform: scaleX(0);
+    }
+  }
+
+  .meter-grow {
+    transform-origin: left center;
+    animation: meter-grow 1000ms cubic-bezier(0.22, 1, 0.36, 1) calc(var(--stagger, 0ms) + 220ms)
+      both;
   }
 
   /*
@@ -626,4 +696,241 @@ html {
 ::-webkit-scrollbar-thumb:hover {
   background-color: var(--color-ink-500);
   background-clip: padding-box;
+}
+
+/*
+ * The ambient layer — see `AmbientBackdrop.tsx` for why it looks the way
+ * it does. Behind everything (`z-index: -1` on a fixed box paints above
+ * the body's own background and below every screen), and never a target
+ * for a tap.
+ */
+.ambient {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.ambient-wash {
+  position: absolute;
+  width: 75vmax;
+  height: 75vmax;
+  border-radius: 9999px;
+  background: radial-gradient(
+    closest-side,
+    color-mix(in oklab, var(--wash) 13%, transparent),
+    transparent
+  );
+  will-change: transform;
+}
+
+.ambient-wash-a {
+  top: -35vmax;
+  left: -20vmax;
+  animation: wash-drift-a 64s ease-in-out infinite alternate;
+}
+
+.ambient-wash-b {
+  top: -20vmax;
+  right: -30vmax;
+  opacity: 0.8;
+  animation: wash-drift-b 78s ease-in-out infinite alternate;
+}
+
+.ambient-wash-c {
+  bottom: -45vmax;
+  left: 15vw;
+  opacity: 0.6;
+  animation: wash-drift-c 92s ease-in-out infinite alternate;
+}
+
+@keyframes wash-drift-a {
+  to {
+    transform: translate(18vw, 12vh) scale(1.1);
+  }
+}
+
+@keyframes wash-drift-b {
+  to {
+    transform: translate(-16vw, 18vh) scale(0.92);
+  }
+}
+
+@keyframes wash-drift-c {
+  to {
+    transform: translate(-12vw, -14vh) scale(1.15);
+  }
+}
+
+.ambient-particle {
+  position: absolute;
+  top: 0;
+  opacity: 0.32;
+  animation-name: particle-fall;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  will-change: transform;
+}
+
+@keyframes particle-fall {
+  from {
+    transform: translate(0, -8vh) rotate(0deg);
+  }
+  to {
+    transform: translate(var(--sway), 108vh) rotate(420deg);
+  }
+}
+
+@keyframes particle-rise {
+  0% {
+    transform: translate(0, 104vh);
+    opacity: 0;
+  }
+  25% {
+    opacity: 0.55;
+  }
+  80% {
+    opacity: 0.35;
+  }
+  100% {
+    transform: translate(var(--sway), 40vh);
+    opacity: 0;
+  }
+}
+
+/* A leaf: two opposite corners rounded, falling and turning. */
+[data-season='autumn'] .ambient-particle {
+  border-radius: 0 80% 0 80%;
+  background: color-mix(in oklab, var(--color-warn-500) 70%, var(--color-bad-500));
+}
+
+/* Snow: small, pale, and slower than it looks. */
+[data-season='winter'] .ambient-particle {
+  border-radius: 9999px;
+  background: var(--color-ink-100);
+  opacity: 0.4;
+  transform-origin: center;
+}
+
+/* A petal, pale pink out of the palette's own red. */
+[data-season='spring'] .ambient-particle {
+  border-radius: 70% 0 70% 0;
+  background: color-mix(in oklab, var(--color-bad-500) 45%, var(--color-ink-50));
+}
+
+/* Fireflies: they rise from the lower half and fade, rather than fall. */
+[data-season='summer'] .ambient-particle {
+  border-radius: 9999px;
+  width: 4px !important;
+  height: 4px !important;
+  background: var(--color-warn-500);
+  box-shadow: 0 0 8px 2px color-mix(in oklab, var(--color-warn-500) 60%, transparent);
+  animation-name: particle-rise;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ambient-particle {
+    display: none;
+  }
+}
+
+/* The portrait's figure arriving: a small rise and settle, once. */
+@keyframes figure-in {
+  from {
+    opacity: 0;
+    transform: translateY(6%) scale(0.9);
+  }
+}
+
+.figure-in {
+  transform-box: fill-box;
+  transform-origin: center bottom;
+  animation: figure-in 700ms cubic-bezier(0.22, 1, 0.36, 1) 250ms both;
+}
+
+/* One pass of light across the level badge, timed to land as the ring
+   finishes drawing. Once — a shine that repeated would be the blinking
+   this portrait has already been asked to stop. */
+@keyframes badge-shine {
+  from {
+    transform: translateX(-120%) skewX(-20deg);
+  }
+  to {
+    transform: translateX(220%) skewX(-20deg);
+  }
+}
+
+.badge-shine::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  width: 60%;
+  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 45%), transparent);
+  transform: translateX(-120%);
+  animation: badge-shine 900ms ease-out 1300ms both;
+  pointer-events: none;
+}
+
+/*
+ * Moving between screens.
+ *
+ * Every `Link` carries `viewTransition`, so React Router wraps the route
+ * change in `document.startViewTransition`. The page content leaves with a
+ * small lift and fade and the next one rises into place; the navigation
+ * and the ambient layer are named separately so they hold still rather
+ * than fading out and back in with everything else — a rail that blinked
+ * on every tap would undo the whole point.
+ *
+ * A browser without the API simply navigates, which is the same app one
+ * frame sooner.
+ */
+#main {
+  view-transition-name: page;
+}
+
+.ambient {
+  view-transition-name: ambient;
+}
+
+::view-transition-old(root),
+::view-transition-new(root),
+::view-transition-group(ambient),
+::view-transition-old(ambient),
+::view-transition-new(ambient) {
+  animation: none;
+}
+
+@keyframes page-out {
+  to {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes page-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+
+::view-transition-old(page) {
+  animation: page-out 150ms ease-in both;
+}
+
+::view-transition-new(page) {
+  animation: page-in 380ms cubic-bezier(0.22, 1, 0.36, 1) 60ms both;
+}
+
+::view-transition-group(page) {
+  animation-duration: 440ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
 }

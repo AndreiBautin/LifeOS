@@ -63,7 +63,11 @@ export function BaseGlance() {
         icon={<Home size={16} aria-hidden />}
         title="Base"
         action={
-          <Link to="/base" className={buttonStyles({ variant: 'ghost', size: 'sm' })}>
+          <Link
+            viewTransition
+            to="/base"
+            className={buttonStyles({ variant: 'ghost', size: 'sm' })}
+          >
             Open
           </Link>
         }

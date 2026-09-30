@@ -92,7 +92,11 @@ export function NextSessionCard({ compact = false }: { readonly compact?: boolea
           icon={<Dumbbell size={16} aria-hidden />}
           title="Next session"
           action={
-            <Link to="/train" className={buttonStyles({ variant: 'ghost', size: 'sm' })}>
+            <Link
+              viewTransition
+              to="/train"
+              className={buttonStyles({ variant: 'ghost', size: 'sm' })}
+            >
               Open
             </Link>
           }
@@ -144,11 +148,19 @@ export function NextSessionCard({ compact = false }: { readonly compact?: boolea
         title="Next session"
         action={
           <>
-            <Link to="/program" className={buttonStyles({ variant: 'ghost', size: 'sm' })}>
+            <Link
+              viewTransition
+              to="/program"
+              className={buttonStyles({ variant: 'ghost', size: 'sm' })}
+            >
               <ListChecks size={16} aria-hidden />
               Program
             </Link>
-            <Link to="/history" className={buttonStyles({ variant: 'ghost', size: 'sm' })}>
+            <Link
+              viewTransition
+              to="/history"
+              className={buttonStyles({ variant: 'ghost', size: 'sm' })}
+            >
               <History size={16} aria-hidden />
               History
             </Link>

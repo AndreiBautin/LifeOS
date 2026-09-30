@@ -67,7 +67,11 @@ export function LimitsCard() {
         icon={<Gauge size={16} aria-hidden />}
         title="Buffs"
         action={
-          <Link to="/limits" className={buttonStyles({ variant: 'ghost', size: 'sm' })}>
+          <Link
+            viewTransition
+            to="/limits"
+            className={buttonStyles({ variant: 'ghost', size: 'sm' })}
+          >
             {pools.length === 0 ? 'Set up' : 'Open'}
           </Link>
         }

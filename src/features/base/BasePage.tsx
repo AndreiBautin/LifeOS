@@ -584,6 +584,7 @@ export function BasePage() {
             )}
 
             <Link
+              viewTransition
               to="/upgrades"
               className={cn(buttonStyles({ variant: 'outline' }), 'mt-3 w-full')}
             >

@@ -170,13 +170,38 @@ export function AvatarPortrait({
             <stop offset="0%" stopColor={tint} stopOpacity="0.55" />
             <stop offset="100%" stopColor={tint} stopOpacity="1" />
           </linearGradient>
+          <radialGradient id="avatar-rim" cx="50%" cy="0%" r="80%">
+            <stop offset="0%" stopColor={tint} stopOpacity="0.28" />
+            <stop offset="60%" stopColor={tint} stopOpacity="0" />
+          </radialGradient>
           <radialGradient id="avatar-fill" cx="50%" cy="35%">
             <stop offset="0%" stopColor="var(--color-ink-800)" />
             <stop offset="100%" stopColor="var(--color-ink-900)" />
           </radialGradient>
         </defs>
 
+        {/*
+          A still halo behind the ring, in the season's tint. **Static on
+          purpose**: an earlier pair of pulsing rings here drew "the
+          blinking does not look good", so what gives the portrait
+          presence now is light that is simply there, plus the one-time
+          entrance below — nothing on a loop.
+        */}
+        <circle
+          cx={CENTRE}
+          cy={CENTRE}
+          r={RADIUS + 2}
+          fill="none"
+          stroke={tint}
+          strokeOpacity={0.14}
+          strokeWidth={STROKE + 10}
+        />
+
         <circle cx={CENTRE} cy={CENTRE} r={RADIUS - STROKE} fill="url(#avatar-fill)" />
+
+        {/* A rim of light across the top of the disc, so it reads as a
+            lens rather than a flat circle. */}
+        <circle cx={CENTRE} cy={CENTRE} r={RADIUS - STROKE - 1} fill="url(#avatar-rim)" />
 
         {/* The track, so an empty ring reads as "none of it yet" rather
             than as a ring that failed to draw. */}
@@ -197,11 +222,21 @@ export function AvatarPortrait({
           stroke="url(#avatar-ring)"
           strokeWidth={STROKE}
           strokeLinecap="round"
-          strokeDasharray={`${String(filled)} ${String(circumference)}`}
+          /* Dashed as one full-length stroke offset back by what is not
+             yet filled, so `.ring-draw` can start it at empty and let it
+             run round to the value. */
+          className="ring-draw"
+          strokeDasharray={`${String(circumference)} ${String(circumference)}`}
+          strokeDashoffset={circumference - filled}
           /* From the top, clockwise. A ring starting at three o'clock is
              the SVG default and reads as arbitrary. */
           transform={`rotate(-90 ${String(CENTRE)} ${String(CENTRE)})`}
-          style={{ filter: `drop-shadow(0 0 4px ${tint})` }}
+          style={
+            {
+              filter: `drop-shadow(0 0 4px ${tint})`,
+              '--ring-full': `${String(circumference)}px`,
+            } as React.CSSProperties
+          }
         />
 
         {/*
@@ -226,6 +261,7 @@ export function AvatarPortrait({
           width={figureSize}
           height={figureSize}
           viewBox="0 0 512 512"
+          className="figure-in"
         >
           <path d={figure.path} fill={figureFill} />
         </svg>
@@ -235,7 +271,7 @@ export function AvatarPortrait({
           text metrics, which do not respect the user's font settings. */}
       <span
         className={cn(
-          'bg-ink-950 text-ink-50 numeric absolute -bottom-1 left-1/2 -translate-x-1/2 rounded-full border px-2 font-semibold',
+          'bg-ink-950 text-ink-50 numeric badge-shine absolute -bottom-1 left-1/2 -translate-x-1/2 overflow-hidden rounded-full border px-2 font-semibold',
           compact ? 'text-[10px]' : 'text-xs',
           size === 'large' && 'lg:-bottom-2 lg:px-3 lg:text-base',
         )}

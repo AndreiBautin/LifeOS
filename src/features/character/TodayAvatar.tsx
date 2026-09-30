@@ -28,6 +28,7 @@ export function TodayAvatar() {
 
   return (
     <Link
+      viewTransition
       to="/character"
       aria-label="Your character sheet"
       className="tap-target flex shrink-0 items-center"

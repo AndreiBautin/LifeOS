@@ -12,6 +12,9 @@ import {
 import { useState } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
 
+import { AmbientBackdrop } from './AmbientBackdrop'
+import { useCardSpotlight } from './useCardSpotlight'
+
 import { STORAGE_KEYS } from '@/config/storage-keys'
 import { ReadFailure } from '@/features/errors/ReadFailure'
 import { UpdatePrompt } from '@/features/pwa/UpdatePrompt'
@@ -143,7 +146,7 @@ function SidebarNav({
   return (
     <nav
       aria-label="Main"
-      className="glass fixed inset-y-0 left-0 z-40 hidden w-[var(--sidebar-w)] flex-col border-r transition-[width] duration-200 lg:flex"
+      className="glass fixed inset-y-0 left-0 z-40 hidden [view-transition-name:nav-rail] w-[var(--sidebar-w)] flex-col border-r transition-[width] duration-200 lg:flex"
       style={{
         backgroundColor: 'color-mix(in oklab, var(--surface-raised) 72%, transparent)',
         borderColor: 'var(--border-subtle)',
@@ -166,6 +169,7 @@ function SidebarNav({
               name, so this is either-or rather than both-always.
             */}
             <NavLink
+              viewTransition
               to={to}
               {...(collapsed ? { 'aria-label': label } : {})}
               title={label}
@@ -237,6 +241,7 @@ export function AppShell() {
   const [collapsed, setCollapsed] = useState(() =>
     readSidebarCollapsed(STORAGE_KEYS.sidebarCollapsed),
   )
+  useCardSpotlight()
 
   return (
     <div
@@ -256,6 +261,7 @@ export function AppShell() {
         Skip to content
       </a>
 
+      <AmbientBackdrop />
       <UpdatePrompt />
       <ReadFailure />
       <SidebarNav
@@ -381,7 +387,7 @@ export function AppShell() {
       */}
       <nav
         aria-label="Main"
-        className="glass fixed inset-x-0 bottom-0 z-40 border-t lg:hidden"
+        className="glass fixed inset-x-0 bottom-0 z-40 border-t [view-transition-name:nav-bar] lg:hidden"
         style={{
           // Let more through now the blur is stronger. At 92% opaque the
           // frost had nothing to work with and the effect was invisible.
@@ -405,6 +411,7 @@ export function AppShell() {
                 corner of an eye in a gym.
               */}
               <NavLink
+                viewTransition
                 to={to}
                 className={({ isActive }) =>
                   [

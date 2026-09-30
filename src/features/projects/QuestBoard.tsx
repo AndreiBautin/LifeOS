@@ -472,11 +472,11 @@ export function QuestBoard() {
                 else in the app, so losing their old home on `/quests`
                 would have made them unreachable outright.
               */}
-              <Link to="/goals" className="text-ink-500 hover:text-ink-300 text-xs">
+              <Link viewTransition to="/goals" className="text-ink-500 hover:text-ink-300 text-xs">
                 <Waypoints size={13} className="mr-1 inline" aria-hidden />
                 Goals
               </Link>
-              <Link to="/jobs" className="text-ink-500 hover:text-ink-300 text-xs">
+              <Link viewTransition to="/jobs" className="text-ink-500 hover:text-ink-300 text-xs">
                 <Briefcase size={13} className="mr-1 inline" aria-hidden />
                 Job search
               </Link>

@@ -21,7 +21,11 @@ export function SampleNotice() {
     <div className="border-accent-500/30 bg-accent-500/5 mb-6 flex items-center gap-3 rounded-xl border px-4 py-2">
       <p className="text-ink-300 min-w-0 flex-1 text-sm">
         You&rsquo;re looking at sample data. Everything stays in this browser.{' '}
-        <Link to="/settings" className="text-accent-400 font-medium whitespace-nowrap">
+        <Link
+          viewTransition
+          to="/settings"
+          className="text-accent-400 font-medium whitespace-nowrap"
+        >
           Start fresh →
         </Link>
       </p>

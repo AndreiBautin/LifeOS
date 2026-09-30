@@ -335,11 +335,19 @@ export function JobsPage() {
         subtitle="What is out, and how far each one has got"
         action={
           <>
-            <Link to="/resume" className={buttonStyles({ variant: 'ghost', size: 'sm' })}>
+            <Link
+              viewTransition
+              to="/resume"
+              className={buttonStyles({ variant: 'ghost', size: 'sm' })}
+            >
               <FileText size={16} aria-hidden />
               Resume
             </Link>
-            <Link to="/mind" className={buttonStyles({ variant: 'ghost', size: 'sm' })}>
+            <Link
+              viewTransition
+              to="/mind"
+              className={buttonStyles({ variant: 'ghost', size: 'sm' })}
+            >
               <Brain size={16} aria-hidden />
               Mind
             </Link>

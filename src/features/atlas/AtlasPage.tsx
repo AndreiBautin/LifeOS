@@ -463,7 +463,11 @@ export function AtlasPage() {
         title="Map"
         subtitle="Places worth going, and the ground you have covered."
         action={
-          <Link to="/trips" className={buttonStyles({ variant: 'ghost', size: 'sm' })}>
+          <Link
+            viewTransition
+            to="/trips"
+            className={buttonStyles({ variant: 'ghost', size: 'sm' })}
+          >
             <CalendarDays size={16} aria-hidden />
             Trips
           </Link>
@@ -616,6 +620,7 @@ export function AtlasPage() {
         */}
         {unplaced > 0 && (
           <Link
+            viewTransition
             to="/map/inbox"
             className={cn(buttonStyles({ variant: 'outline', size: 'sm' }), 'mb-3 w-full')}
           >

@@ -32,7 +32,7 @@ function GoalCard({ standing }: { readonly standing: GoalStanding }) {
   const { goal, resolved, total } = standing
 
   return (
-    <Link to={`/goals/${goal.id}`}>
+    <Link viewTransition to={`/goals/${goal.id}`}>
       <Card className="hover:brightness-110">
         <p className="text-ink-50 font-medium">{goal.name}</p>
         {goal.aim !== undefined && goal.aim.trim() !== '' && (

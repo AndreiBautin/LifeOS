@@ -1,5 +1,6 @@
-import type { ReactNode } from 'react'
+import { useId, type ReactNode } from 'react'
 
+import { CountUp } from '@/components/shared/CountUp'
 import { Card, CardHeading } from '@/components/shared/primitives'
 import type { LifeArea } from '@/domain/game/registry'
 import { PieChart } from 'lucide-react'
@@ -217,6 +218,7 @@ function Wheel({
   readonly total: number
 }) {
   const circumference = 2 * Math.PI * RADIUS
+  const maskId = useId()
 
   /*
    * Precomputed rather than mutated inside the render map — a `let`
@@ -256,26 +258,51 @@ function Wheel({
         strokeWidth={STROKE}
       />
 
-      {segments.map((segment, index) => {
-        /* A sliver too small to carry a gap is drawn solid rather than vanishing. */
-        const drawn = segment.length > GAP * 2 ? segment.length - GAP : segment.length
+      {/*
+        **The wedges are revealed by one sweep rather than drawn one by
+        one.** A mask holding a single ring that draws itself round —
+        `.ring-draw`, the same animation the level ring uses — so every
+        wedge appears in order, clockwise from the top, without each one
+        needing its own timing worked out from the ones before it.
+      */}
+      <mask id={maskId}>
+        <circle
+          cx={CENTRE}
+          cy={CENTRE}
+          r={RADIUS}
+          fill="none"
+          stroke="white"
+          strokeWidth={STROKE + 2}
+          className="ring-draw"
+          strokeDasharray={`${String(circumference)} ${String(circumference)}`}
+          strokeDashoffset={0}
+          transform={`rotate(-90 ${String(CENTRE)} ${String(CENTRE)})`}
+          style={{ '--ring-full': `${String(circumference)}px` } as React.CSSProperties}
+        />
+      </mask>
 
-        return (
-          <circle
-            key={segment.area}
-            cx={CENTRE}
-            cy={CENTRE}
-            r={RADIUS}
-            fill="none"
-            stroke="var(--color-accent-500)"
-            strokeOpacity={opacityFor(index)}
-            strokeWidth={STROKE}
-            strokeDasharray={`${String(drawn)} ${String(circumference - drawn)}`}
-            strokeDashoffset={segment.dashoffset}
-            transform={`rotate(-90 ${String(CENTRE)} ${String(CENTRE)})`}
-          />
-        )
-      })}
+      <g mask={`url(#${maskId})`}>
+        {segments.map((segment, index) => {
+          /* A sliver too small to carry a gap is drawn solid rather than vanishing. */
+          const drawn = segment.length > GAP * 2 ? segment.length - GAP : segment.length
+
+          return (
+            <circle
+              key={segment.area}
+              cx={CENTRE}
+              cy={CENTRE}
+              r={RADIUS}
+              fill="none"
+              stroke="var(--color-accent-500)"
+              strokeOpacity={opacityFor(index)}
+              strokeWidth={STROKE}
+              strokeDasharray={`${String(drawn)} ${String(circumference - drawn)}`}
+              strokeDashoffset={segment.dashoffset}
+              transform={`rotate(-90 ${String(CENTRE)} ${String(CENTRE)})`}
+            />
+          )
+        })}
+      </g>
 
       <text
         x={CENTRE}
@@ -286,7 +313,7 @@ function Wheel({
         fontSize={20}
         fontWeight={600}
       >
-        {total.toLocaleString()}
+        <CountUp value={total} as="tspan" />
       </text>
       <text
         x={CENTRE}

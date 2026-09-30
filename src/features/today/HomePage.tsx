@@ -134,6 +134,7 @@ export function HomePage() {
                   avatarSize="large"
                   action={
                     <Link
+                      viewTransition
                       to="/settings"
                       aria-label="Settings"
                       className={buttonStyles({ variant: 'ghost', size: 'sm' })}

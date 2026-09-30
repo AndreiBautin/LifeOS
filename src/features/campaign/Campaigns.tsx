@@ -255,6 +255,7 @@ function StageRow({
         */}
         {screen !== undefined && (
           <Link
+            viewTransition
             to={screen.to}
             className="text-ink-700 hover:text-ink-500 shrink-0 text-xs whitespace-nowrap"
           >

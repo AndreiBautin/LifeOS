@@ -180,7 +180,7 @@ export function InboxPage() {
       title="Waiting for a point"
       description={`${places.length.toString()} saved by name only`}
       action={
-        <Link to="/map" className={buttonStyles({ variant: 'ghost', size: 'sm' })}>
+        <Link viewTransition to="/map" className={buttonStyles({ variant: 'ghost', size: 'sm' })}>
           The map
         </Link>
       }

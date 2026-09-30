@@ -94,7 +94,7 @@ export function MapGlance() {
         icon={<MapPin size={16} aria-hidden />}
         title="Map"
         action={
-          <Link to="/map" className={buttonStyles({ variant: 'ghost', size: 'sm' })}>
+          <Link viewTransition to="/map" className={buttonStyles({ variant: 'ghost', size: 'sm' })}>
             Open
           </Link>
         }

@@ -50,7 +50,7 @@ export function HealthBar() {
             settings link, so the longer phrase wrapped onto two lines —
             the mid-phrase break this card has now hit three times.
           */}
-          <Link to="/limits" className="text-accent-400 shrink-0 text-xs underline">
+          <Link viewTransition to="/limits" className="text-accent-400 shrink-0 text-xs underline">
             Set up
           </Link>
         </div>

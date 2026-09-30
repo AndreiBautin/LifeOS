@@ -95,7 +95,11 @@ export function NextUpgradeGlance() {
         icon={<Network size={16} aria-hidden />}
         title="Tech tree"
         action={
-          <Link to="/upgrades" className={buttonStyles({ variant: 'ghost', size: 'sm' })}>
+          <Link
+            viewTransition
+            to="/upgrades"
+            className={buttonStyles({ variant: 'ghost', size: 'sm' })}
+          >
             Open
           </Link>
         }

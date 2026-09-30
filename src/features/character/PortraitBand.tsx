@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 
 import { HealthBar } from './HealthBar'
 
+import { CountUp } from '@/components/shared/CountUp'
 import { Skeleton } from '@/components/shared/Skeleton'
 
 import { AvatarPortrait } from './AvatarPortrait'
@@ -133,7 +134,13 @@ export function PortraitBand({
                 number is missed.
               */}
               <p className="text-ink-500 numeric mt-0.5 text-sm">
-                {needed > 0 ? `${String(into)} / ${String(needed)} XP` : 'Top of the ladder'}
+                {needed > 0 ? (
+                  <>
+                    <CountUp value={into} /> / {needed.toLocaleString()} XP
+                  </>
+                ) : (
+                  'Top of the ladder'
+                )}
               </p>
 
               {/*

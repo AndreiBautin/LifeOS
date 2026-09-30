@@ -50,7 +50,11 @@ export function GoalsCard() {
       <ul className="divide-ink-800 divide-y">
         {rows.map(({ standing, next }) => (
           <li key={standing.goal.id} className="py-2 first:pt-0 last:pb-0">
-            <Link to={`/goals/${standing.goal.id}`} className="flex items-start gap-2">
+            <Link
+              viewTransition
+              to={`/goals/${standing.goal.id}`}
+              className="flex items-start gap-2"
+            >
               <Waypoints size={16} className="text-accent-400 mt-0.5 shrink-0" aria-hidden />
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">

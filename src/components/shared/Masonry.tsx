@@ -22,6 +22,9 @@ import { useCallback, useLayoutEffect, useRef, useState, type ReactNode } from '
  * Below `minColumn` × 2 of width it is a plain stack, so the phone
  * layout does not change at all.
  */
+/** Delay between one card's entrance and the next. */
+const STAGGER_MS = 70
+
 export function Masonry({
   items,
   minColumn = 360,
@@ -102,14 +105,17 @@ export function Masonry({
         return (
           <div
             key={item.key}
-            style={
-              stacked || place === undefined
+            style={{
+              /* Cards arrive one after another in reading order — see
+                   `.card` in index.css, which reads this as its delay. */
+              ...({ '--stagger': `${String(index * STAGGER_MS)}ms` } as React.CSSProperties),
+              ...(stacked || place === undefined
                 ? { paddingBottom: (layout.heights[index] ?? 0) > 0 ? gap : 0 }
                 : {
                     gridColumn: String(place.column + 1),
                     gridRow: `span ${String(place.span)}`,
-                  }
-            }
+                  }),
+            }}
           >
             <div
               ref={(node) => {

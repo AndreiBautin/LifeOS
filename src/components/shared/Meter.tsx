@@ -65,7 +65,7 @@ export function Meter({
       {...(label === undefined ? {} : { 'aria-label': label })}
     >
       <div
-        className="meter-fill h-full rounded-full"
+        className="meter-fill meter-grow h-full rounded-full"
         style={{
           width: `${String(fraction * 100)}%`,
           backgroundImage: `linear-gradient(90deg, ${from}, ${to})`,
