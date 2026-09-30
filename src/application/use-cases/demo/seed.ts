@@ -1135,7 +1135,7 @@ async function seedTraining(deps: DemoDeps): Promise<void> {
   })
 
   /*
-   * **Seventeen weeks of push, pull, legs, Monday to Saturday — the
+   * **Seventeen weeks of the A and B days, Monday to Saturday — the
    * shipped routine, generated rather than listed.** Six hand-written
    * sessions made every history screen look like the app was installed
    * last week; what a reviewer should see is somebody four months in,
@@ -1147,10 +1147,12 @@ async function seedTraining(deps: DemoDeps): Promise<void> {
    * day is not a history anybody believes.
    *
    * **Each competition lift ends where the Standards card says it is.**
-   * Five reps at the final load estimate the sample's own maxes — 300
-   * for 353, 205 for 238, 315 for 368 — so the strength chart's last
-   * point and the standard beside it are the same number. They disagreed
-   * by seventy pounds on the squat the first time this was generated.
+   * Five reps near the final load estimate the sample's own maxes — about
+   * 300 for 353, 205 for 238, 315 for 368 — so the strength chart's last
+   * point and the standard beside it agree. The `to` figures sit a step
+   * past those because each lift is trained once a week, so its latest
+   * session is a few days short of the end of the ramp. They disagreed by
+   * seventy pounds on the squat the first time this was generated.
    */
   const WEEKS = 17
   const round5 = (value: number): number => Math.round(value / 5) * 5
@@ -1158,47 +1160,56 @@ async function seedTraining(deps: DemoDeps): Promise<void> {
   const along = (from: number, to: number, through: number): number =>
     round5(from + (to - from) * through)
 
-  type Day = 'Push' | 'Pull' | 'Legs'
+  type Day = 'Push A' | 'Pull A' | 'Legs A' | 'Push B' | 'Pull B' | 'Legs B'
   /* `getDay()` is Sunday-first; Sunday is the rest day. */
   const DAYS: Readonly<Record<number, Day>> = {
-    1: 'Push',
-    2: 'Pull',
-    3: 'Legs',
-    4: 'Push',
-    5: 'Pull',
-    6: 'Legs',
+    1: 'Push A',
+    2: 'Pull A',
+    3: 'Legs A',
+    4: 'Push B',
+    5: 'Pull B',
+    6: 'Legs B',
   }
 
   const session = (day: Day, through: number, heavy: boolean): LogEntry[] => {
     const bump = Math.round(through * 3)
     const strengthSets = heavy ? 4 : 3
     switch (day) {
-      case 'Push':
+      case 'Push A':
         return [
-          lifted('bench-press', 0, 'strength', along(170, 205, through), 5, strengthSets),
-          lifted('overhead-press', 1, 'hypertrophy', along(95, 115, through), 8),
-          lifted('dips', 2, 'hypertrophy', 0, 8 + bump),
-          lifted('db-lateral-raise', 3, 'assistance', along(15, 20, through), 18),
-          lifted('skullcrusher', 4, 'assistance', along(50, 65, through), 15),
-          lifted('french-press', 5, 'assistance', along(40, 55, through), 15),
+          lifted('overhead-press', 0, 'hypertrophy', along(95, 115, through), 8),
+          lifted('dips', 1, 'hypertrophy', 0, 8 + bump),
+          lifted('skullcrusher', 2, 'assistance', along(50, 65, through), 15),
         ]
-      case 'Pull':
+      case 'Pull A':
         return [
           lifted('pendlay-row', 0, 'hypertrophy', along(135, 165, through), 8),
-          lifted('pull-up', 1, 'hypertrophy', 0, 6 + bump),
-          lifted('barbell-shrug', 2, 'assistance', along(185, 225, through), 12),
-          lifted('rear-delt-raise', 3, 'assistance', along(15, 20, through), 18),
-          lifted('ez-bar-curl', 4, 'assistance', along(50, 65, through), 15),
-          lifted('db-curl', 5, 'assistance', along(25, 35, through), 15),
+          lifted('barbell-shrug', 1, 'assistance', along(185, 225, through), 12),
+          lifted('ez-bar-curl', 2, 'assistance', along(50, 65, through), 15),
         ]
-      case 'Legs':
+      case 'Legs A':
         return [
-          lifted('low-bar-squat', 0, 'strength', along(255, 300, through), 5, strengthSets),
-          lifted('sumo-deadlift', 1, 'strength', along(265, 315, through), 5),
-          lifted('barbell-calf-raise', 2, 'assistance', along(150, 190, through), 15),
-          swung(3),
-          lifted('ab-wheel', 4, 'assistance', 0, 10 + bump),
-          lifted('hanging-leg-raise', 5, 'assistance', 0, 10 + bump),
+          lifted('low-bar-squat', 0, 'strength', along(255, 305, through), 5, strengthSets),
+          lifted('barbell-calf-raise', 1, 'assistance', along(150, 190, through), 15),
+          lifted('ab-wheel', 2, 'assistance', 0, 10 + bump),
+        ]
+      case 'Push B':
+        return [
+          lifted('bench-press', 0, 'strength', along(170, 210, through), 5, strengthSets),
+          lifted('db-lateral-raise', 1, 'assistance', along(15, 20, through), 18),
+          lifted('french-press', 2, 'assistance', along(40, 55, through), 15),
+        ]
+      case 'Pull B':
+        return [
+          lifted('pull-up', 0, 'hypertrophy', 0, 6 + bump),
+          lifted('rear-delt-raise', 1, 'assistance', along(15, 20, through), 18),
+          lifted('db-curl', 2, 'assistance', along(25, 35, through), 15),
+        ]
+      case 'Legs B':
+        return [
+          lifted('sumo-deadlift', 0, 'strength', along(265, 315, through), 5, strengthSets),
+          swung(1),
+          lifted('hanging-leg-raise', 2, 'assistance', 0, 10 + bump),
         ]
     }
   }

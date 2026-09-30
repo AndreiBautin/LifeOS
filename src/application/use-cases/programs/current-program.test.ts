@@ -158,51 +158,44 @@ describe('the shipped week', () => {
       .filter((slot) => slot.role !== 'warmup')
       .map((slot) => (slot.exercise.kind === 'specific' ? slot.exercise.exerciseId : ''))
 
-  it('runs push, pull, legs twice, Monday to Saturday', () => {
+  it('runs the A days then the B days, Monday to Saturday', () => {
     expect(week?.days.map((day) => day.label)).toEqual([
-      'Monday — Push',
-      'Tuesday — Pull',
-      'Wednesday — Legs',
-      'Thursday — Push',
-      'Friday — Pull',
-      'Saturday — Legs',
+      'Monday — Push A',
+      'Tuesday — Pull A',
+      'Wednesday — Legs A',
+      'Thursday — Push B',
+      'Friday — Pull B',
+      'Saturday — Legs B',
     ])
   })
 
   it('holds each routine exactly, in its written order', () => {
-    expect(worked(0)).toEqual([
-      'bench-press',
-      'overhead-press',
-      'dips',
-      'db-lateral-raise',
-      'skullcrusher',
-      'french-press',
-    ])
-    expect(worked(1)).toEqual([
-      'pendlay-row',
-      'pull-up',
-      'barbell-shrug',
-      'rear-delt-raise',
-      'ez-bar-curl',
-      'db-curl',
-    ])
-    expect(worked(2)).toEqual([
-      'low-bar-squat',
-      'sumo-deadlift',
-      'barbell-calf-raise',
-      'kb-swing',
-      'ab-wheel',
-      'hanging-leg-raise',
-    ])
-    expect(worked(3)).toEqual(worked(0))
-    expect(worked(5)).toEqual(worked(2))
+    expect(worked(0)).toEqual(['overhead-press', 'dips', 'skullcrusher'])
+    expect(worked(1)).toEqual(['pendlay-row', 'barbell-shrug', 'ez-bar-curl'])
+    expect(worked(2)).toEqual(['low-bar-squat', 'barbell-calf-raise', 'ab-wheel'])
+    expect(worked(3)).toEqual(['bench-press', 'db-lateral-raise', 'french-press'])
+    expect(worked(4)).toEqual(['pull-up', 'rear-delt-raise', 'db-curl'])
+    expect(worked(5)).toEqual(['sumo-deadlift', 'kb-swing', 'hanging-leg-raise'])
   })
 
-  it('runs both leg-day lifts as competition lifts, squat first', () => {
-    const strength = (week?.days[2]?.slots ?? []).filter((slot) => slot.role === 'strength')
+  /*
+   * Each pair is split across its A and B day, so the week holds every
+   * movement exactly once. A pair landing on the same day, or one side
+   * going missing, would still build a valid week — this is what notices.
+   */
+  it('trains every movement exactly once a week', () => {
+    const all = [0, 1, 2, 3, 4, 5].flatMap(worked)
+    expect(new Set(all).size).toBe(all.length)
+    expect(all).toHaveLength(18)
+  })
+
+  it('runs each competition lift once, in its competition version', () => {
+    const strength = (week?.days ?? [])
+      .flatMap((day) => day.slots)
+      .filter((slot) => slot.role === 'strength')
     expect(
       strength.map((slot) => slot.exercise.kind === 'specific' && slot.exercise.exerciseId),
-    ).toEqual(['low-bar-squat', 'sumo-deadlift'])
+    ).toEqual(['low-bar-squat', 'bench-press', 'sumo-deadlift'])
   })
 
   it('prescribes three straight sets on everything lifted', () => {

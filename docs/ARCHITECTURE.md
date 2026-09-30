@@ -113,8 +113,9 @@ reads would make every one of those a guess. That is why assembly takes
 an id generator as a parameter and `current-program.ts` passes a counter
 rather than `crypto.randomUUID`.
 
-**The shipped week is a written routine**: push, pull, legs, twice,
-Monday to Saturday (`PPL_SPLIT` in `domain/splits/rp-splits.ts`). A day
+**The shipped week is a written routine**: Push, Pull and Legs A
+Monday to Wednesday, the B days Thursday to Saturday (`PPL_SPLIT` in
+`domain/splits/rp-splits.ts`). A day
 with a `routine` is built exactly as listed — three straight sets per
 exercise, the competition lifts at the strength range — and skips the
 generator below entirely. The generator is still live for any day

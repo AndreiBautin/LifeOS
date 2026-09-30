@@ -238,41 +238,61 @@ const lift = (which: StrengthLift): RoutineEntry => ({ kind: 'lift', lift: which
 const exercise = (slug: string): RoutineEntry => ({ kind: 'exercise', slug })
 const conditioning = (slug: string): RoutineEntry => ({ kind: 'conditioning', slug })
 
-const PUSH: readonly RoutineEntry[] = [
-  lift('bench'),
+/*
+ * **Each day is half of every pair, and the pairs are the lifter's.**
+ * Asked for as _"make a Push A and Push B… most of the exercises have
+ * clear equivalent pairs — push A OHP, push B bench, same for pendlay row
+ * and pull-up, squat and deadlift."_ Each pair splits across the A and B
+ * day, so the week still holds every movement once — twice as many
+ * sessions of each kind, half as much in each.
+ *
+ * The pairs the ask did not name were matched the same way: triceps with
+ * triceps, curl with curl, core with core. What was left over went to the
+ * day it balances — the A days lean barbell, the B days lean bodyweight
+ * and dumbbell, and the swings sit beside the deadlift rather than the
+ * squat because both are hinges.
+ */
+const PUSH_A: readonly RoutineEntry[] = [
   exercise('overhead-press'),
   exercise('dips'),
-  exercise('db-lateral-raise'),
   exercise('skullcrusher'),
+]
+
+const PUSH_B: readonly RoutineEntry[] = [
+  lift('bench'),
+  exercise('db-lateral-raise'),
   exercise('french-press'),
 ]
 
-const PULL: readonly RoutineEntry[] = [
+const PULL_A: readonly RoutineEntry[] = [
   exercise('pendlay-row'),
-  exercise('pull-up'),
   exercise('barbell-shrug'),
-  exercise('rear-delt-raise'),
   exercise('ez-bar-curl'),
+]
+
+const PULL_B: readonly RoutineEntry[] = [
+  exercise('pull-up'),
+  exercise('rear-delt-raise'),
   exercise('db-curl'),
 ]
 
-const LEGS: readonly RoutineEntry[] = [
+const LEGS_A: readonly RoutineEntry[] = [
   lift('squat'),
-  lift('deadlift'),
   exercise('barbell-calf-raise'),
-  conditioning('kb-swing'),
   exercise('ab-wheel'),
+]
+
+const LEGS_B: readonly RoutineEntry[] = [
+  lift('deadlift'),
+  conditioning('kb-swing'),
   exercise('hanging-leg-raise'),
 ]
 
-const PUSH_MUSCLES: readonly MuscleGroup[] = ['chest', 'front-delts', 'side-delts', 'triceps']
-const PULL_MUSCLES: readonly MuscleGroup[] = ['upper-back', 'lats', 'traps', 'rear-delts', 'biceps']
-const LEGS_MUSCLES: readonly MuscleGroup[] = ['quads', 'glutes', 'hamstrings', 'calves', 'core']
-
 /**
- * **Push, pull, legs, twice — Monday to Saturday, Sunday off.** The
- * lifter's own routine, asked for as _"make the workout routine
- * reflective of my current split"_, and taken as written.
+ * **Push, pull, legs — A days Monday to Wednesday, B days Thursday to
+ * Saturday, Sunday off.** The lifter's own routine, asked for as _"make
+ * the workout routine reflective of my current split"_, and taken as
+ * written.
  *
  * **This reverses a rule recorded against pinning exercises to days.**
  * That rule held while the week was *derived* from per-muscle volume
@@ -285,65 +305,62 @@ const LEGS_MUSCLES: readonly MuscleGroup[] = ['quads', 'glutes', 'hamstrings', '
  *
  * What survives from the generated week is how each set is run: three
  * straight sets, double progression, the strength range on a competition
- * lift and the compound or isolation range on everything else.
- *
- * **Two competition lifts on legs day, both in their competition
- * version** — low bar, then sumo. A generated paired day would run the
- * second as its variation and alternate which leads; a written routine
- * means these two, in this order, every time.
+ * lift and the compound or isolation range on everything else. Each
+ * competition lift is in its competition version — low bar, touch-and-go
+ * bench, sumo — once a week.
  */
 export const PPL_SPLIT: RpSplit = {
-  id: 'ppl-6',
-  name: 'Push, pull, legs',
-  description: 'Monday to Saturday, Sunday off. Push, pull, legs, twice through.',
+  id: 'ppl-ab-6',
+  name: 'Push, pull, legs — A and B',
+  description: 'Monday to Saturday, Sunday off. The A days, then the B days.',
   daysPerWeek: 6,
   days: [
     {
       index: 0,
       label: 'Monday',
-      focusName: 'Push',
-      muscles: PUSH_MUSCLES,
-      routine: PUSH,
+      focusName: 'Push A',
+      muscles: ['front-delts', 'chest', 'triceps'],
+      routine: PUSH_A,
       warmUp: 'upper',
     },
     {
       index: 1,
       label: 'Tuesday',
-      focusName: 'Pull',
-      muscles: PULL_MUSCLES,
-      routine: PULL,
+      focusName: 'Pull A',
+      muscles: ['upper-back', 'traps', 'biceps'],
+      routine: PULL_A,
       warmUp: 'upper',
     },
     {
       index: 2,
       label: 'Wednesday',
-      focusName: 'Legs',
-      muscles: LEGS_MUSCLES,
-      routine: LEGS,
+      focusName: 'Legs A',
+      muscles: ['quads', 'glutes', 'calves', 'core'],
+      routine: LEGS_A,
       warmUp: 'lower',
     },
     {
       index: 3,
       label: 'Thursday',
-      focusName: 'Push',
-      muscles: PUSH_MUSCLES,
-      routine: PUSH,
+      focusName: 'Push B',
+      muscles: ['chest', 'side-delts', 'triceps'],
+      routine: PUSH_B,
       warmUp: 'upper',
     },
     {
       index: 4,
       label: 'Friday',
-      focusName: 'Pull',
-      muscles: PULL_MUSCLES,
-      routine: PULL,
+      focusName: 'Pull B',
+      muscles: ['lats', 'rear-delts', 'biceps'],
+      routine: PULL_B,
       warmUp: 'upper',
     },
     {
       index: 5,
       label: 'Saturday',
-      focusName: 'Legs',
-      muscles: LEGS_MUSCLES,
-      routine: LEGS,
+      focusName: 'Legs B',
+      muscles: ['glutes', 'hamstrings', 'core'],
+      routine: LEGS_B,
       warmUp: 'lower',
     },
   ],

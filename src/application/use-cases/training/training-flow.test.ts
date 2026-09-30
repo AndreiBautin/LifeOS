@@ -140,6 +140,24 @@ function beginProgram() {
   return services()
 }
 
+/**
+ * The first session in the week that opens on a competition lift.
+ *
+ * Skipped forward rather than assumed to be day one: which day carries
+ * which lift is the split's business, and day one is an overhead-press
+ * day now. A test about how a strength lift opens has no opinion on that.
+ */
+async function startOnAStrengthDay(deps: ReturnType<typeof beginProgram>) {
+  for (let day = 0; day < 7; day += 1) {
+    const started = await startWorkout({ athlete, program, roundingIncrement: 5 }, deps)
+    if (started.kind !== 'started') throw new Error('expected a started workout')
+    if (started.workout.entries.some((entry) => entry.role === 'strength')) return started
+    await abandonWorkout(started.workout.id, deps)
+    await skipSession(deps)
+  }
+  throw new Error('no day in the week opens on a competition lift')
+}
+
 describe('starting a session from a program', () => {
   it('resolves the day’s prescriptions into concrete numbers', async () => {
     const deps = beginProgram()
@@ -185,8 +203,7 @@ describe('starting a session from a program', () => {
    */
   it('opens a strength lift at a share of its estimated max the first time', async () => {
     const deps = beginProgram()
-    const result = await startWorkout({ athlete, program, roundingIncrement: 5 }, deps)
-    if (result.kind !== 'started') throw new Error('expected a started workout')
+    const result = await startOnAStrengthDay(deps)
 
     const strength = result.workout.entries.find((entry) => entry.role === 'strength')
     expect(strength).toBeDefined()
@@ -207,8 +224,7 @@ describe('starting a session from a program', () => {
    */
   it('carries the logged load forward rather than re-seeding from the estimate', async () => {
     const deps = beginProgram()
-    const first = await startWorkout({ athlete, program, roundingIncrement: 5 }, deps)
-    if (first.kind !== 'started') throw new Error('expected a started workout')
+    const first = await startOnAStrengthDay(deps)
 
     const index = first.workout.entries.findIndex((entry) => entry.role === 'strength')
     const entry = first.workout.entries[index]

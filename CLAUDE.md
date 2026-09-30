@@ -65,18 +65,24 @@ input required.
 
 **The week is the lifter's own routine, and that reverses the rule
 against pinning exercises to days.** Asked for as _"make the workout
-routine reflective of my current split"_: push, pull, legs, twice,
-Monday to Saturday, Sunday off — `PPL_SPLIT`, with `RpDay.routine`
-listing each session in the order it is run. The old rule ("do not
+routine reflective of my current split"_, then split into A and B days
+by the lifter's own pairs (_"push A OHP, push B bench, same for pendlay
+row and pull-up, squat and deadlift"_): Push A, Pull A, Legs A Monday
+to Wednesday, the B days Thursday to Saturday, Sunday off —
+`PPL_SPLIT`, with `RpDay.routine` listing each session in the order it
+is run. Each pair splits across its A and B day, so every movement
+appears exactly once a week; a test holds that. The old rule ("do not
 reintroduce a slug list on a day") was right while the week was derived
 from volume targets, because a pinned list outlived the targets that
 justified it. A routine the lifter wrote has nothing underneath to drift
 from. The generator is untouched, still builds any day without a
 routine, and is tested against `FULL_BODY_SPLIT`.
 
-- **Legs runs two competition lifts, both in competition version**,
-  squat then sumo. A generated paired day would run the second as its
-  variation and alternate the order; a routine does not.
+- **Each competition lift runs once a week, in competition version** —
+  squat on Legs A, bench on Push B, sumo on Legs B. Push A opens on the
+  overhead press, which is accessory work at the compound range, so
+  day one of the week carries no competition lift at all; tests that
+  need one skip forward to it rather than assuming day one.
 - **Pendlay Row is its own exercise**, and two catalogue names changed
   to the lifter's words without touching slugs: `french-press` reads
   "Overhead Triceps Extension", `rear-delt-raise` "Rear Delt Reverse
