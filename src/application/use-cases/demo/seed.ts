@@ -27,6 +27,7 @@ import type { BulletId, CompanyId, ExerciseId, RoleId, WorkoutId } from '@/domai
 import type { PlaceId } from '@/domain/atlas/place/PlaceId'
 import type { TripId } from '@/domain/atlas/trip/TripId'
 import type { LogEntry, WorkoutLog } from '@/domain/logging/workout-log'
+import { toCellId } from '@/domain/atlas/exploration/GeoCell'
 import { toMonthKey } from '@/domain/time/day'
 import type { Clock } from '@/domain/repositories/ports'
 
@@ -121,6 +122,7 @@ export async function seedDemoData(deps: DemoDeps): Promise<SeedResult> {
   await seedGoals(deps)
   await seedBuffs(deps)
   await seedMap(deps)
+  await seedWalks(deps)
   await seedSettings(deps)
   await seedTraining(deps)
   await seedMind(deps)
@@ -771,6 +773,63 @@ async function seedBuffs(deps: DemoDeps): Promise<void> {
  * so the fixture contains none that is not already on a postcard. They
  * sit close together so the map opens on a frame rather than on an ocean.
  */
+/**
+ * Three walks' worth of cleared ground, so the fog has a shape.
+ *
+ * The visited places alone clear three squares, which at any zoom that
+ * shows a city is three specks — the map opened on fog with nothing
+ * uncovered in it, which is the one screen where the feature *is* the
+ * picture. These are the ground a walk records through `reveal`, the same
+ * write the Walk button makes, traced along public paths: the length of
+ * Golden Gate Park, the Lands End trail, and the Embarcadero.
+ *
+ * Interpolated every ~80 metres so consecutive points never skip a
+ * 150-metre cell, which would leave a walk looking like a dotted line.
+ */
+async function seedWalks(deps: DemoDeps): Promise<void> {
+  const routes: readonly (readonly [number, number])[][] = [
+    [
+      [37.7715, -122.4545],
+      [37.7705, -122.465],
+      [37.77, -122.475],
+      [37.7694, -122.4862],
+      [37.769, -122.496],
+      [37.768, -122.5085],
+    ],
+    [
+      [37.7872, -122.5052],
+      [37.7881, -122.4991],
+      [37.7861, -122.4931],
+      [37.7841, -122.4881],
+    ],
+    [
+      [37.7955, -122.3937],
+      [37.8003, -122.3988],
+      [37.8062, -122.4052],
+      [37.8087, -122.4098],
+    ],
+  ]
+
+  const STEP = 0.0008
+  const cells = routes.flatMap((route) =>
+    route.slice(1).flatMap((to, index) => {
+      const from = route[index] ?? to
+      const steps = Math.max(
+        1,
+        Math.ceil(Math.max(Math.abs(to[0] - from[0]), Math.abs(to[1] - from[1])) / STEP),
+      )
+      return Array.from({ length: steps + 1 }, (_, step) =>
+        toCellId({
+          latitude: from[0] + ((to[0] - from[0]) * step) / steps,
+          longitude: from[1] + ((to[1] - from[1]) * step) / steps,
+        }),
+      )
+    }),
+  )
+
+  await deps.explored.reveal(cells)
+}
+
 async function seedMap(deps: DemoDeps): Promise<void> {
   const atlas = {
     places: deps.places,

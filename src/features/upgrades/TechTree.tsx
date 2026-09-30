@@ -365,24 +365,44 @@ export function TechTree({
                   : undefined
 
               return (
-                <path
-                  key={`${edge.from}->${edge.to}`}
-                  d={path}
-                  fill="none"
-                  stroke={tint ?? 'currentColor'}
-                  strokeWidth={edge.crossBranch ? 1 : tint === undefined ? 1.5 : 2}
-                  strokeDasharray={edge.crossBranch ? '3 3' : undefined}
-                  className={
-                    tint !== undefined
-                      ? undefined
-                      : edge.crossBranch
-                        ? 'text-ink-700'
-                        : 'text-ink-800'
-                  }
-                  style={
-                    tint === undefined ? undefined : { filter: `drop-shadow(0 0 3px ${tint})` }
-                  }
-                />
+                <g key={`${edge.from}->${edge.to}`}>
+                  <path
+                    d={path}
+                    fill="none"
+                    stroke={tint ?? 'currentColor'}
+                    strokeWidth={edge.crossBranch ? 1 : tint === undefined ? 1.5 : 2}
+                    strokeDasharray={edge.crossBranch ? '3 3' : undefined}
+                    className={
+                      tint !== undefined
+                        ? undefined
+                        : edge.crossBranch
+                          ? 'text-ink-700'
+                          : 'text-ink-800'
+                    }
+                    style={
+                      tint === undefined ? undefined : { filter: `drop-shadow(0 0 3px ${tint})` }
+                    }
+                  />
+                  {/*
+                  **Light running along a lit edge, toward what it leads
+                  to.** Only on the edges already tinted — owned or open
+                  to you — so the motion says the same thing the colour
+                  does and nothing more. It flows rather than pulses: the
+                  portrait's pulsing rings were rejected as blinking, and
+                  a dash travelling one way never changes brightness.
+                */}
+                  {tint !== undefined && (
+                    <path
+                      d={path}
+                      fill="none"
+                      stroke={tint}
+                      strokeWidth={2.5}
+                      strokeLinecap="round"
+                      className="edge-flow"
+                      style={{ filter: `drop-shadow(0 0 4px ${tint})` }}
+                    />
+                  )}
+                </g>
               )
             })}
           </svg>
@@ -467,8 +487,21 @@ function TreeNodeBox({
       onClick={() => {
         onPick(entry.upgrade.id)
       }}
-      style={style}
-      className={`tap-target absolute flex flex-col justify-center gap-0.5 px-2 py-1.5 text-center ${tone}`}
+      style={
+        {
+          ...style,
+          /* Nodes arrive root first, one depth at a time. */
+          '--node-delay': `${String(node.row * 90)}ms`,
+          /* The node you can act on carries a soft light of its own. */
+          ...(!owned && !dropped && entry.affordable
+            ? {
+                boxShadow:
+                  'inset 0 1px 0 0 var(--card-sheen), 0 0 22px -4px color-mix(in oklab, var(--color-accent-500) 55%, transparent)',
+              }
+            : {}),
+        } as React.CSSProperties
+      }
+      className={`tap-target tree-node-in absolute flex flex-col justify-center gap-0.5 px-2 py-1.5 text-center ${tone} ${locked && !owned && !dropped ? 'opacity-75' : ''}`}
     >
       <span
         className={`text-xs leading-tight font-medium break-words ${dropped ? 'line-through' : ''}`}

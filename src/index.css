@@ -981,3 +981,48 @@ html {
   animation: figure-in 500ms cubic-bezier(0.22, 1, 0.36, 1) calc(var(--line-delay, 0ms) + 1300ms)
     both;
 }
+
+/* Light travelling along a lit tech-tree edge. A short dash on a long gap,
+   moved by its offset, so a bead of light runs from parent to child. */
+@keyframes edge-flow {
+  from {
+    stroke-dashoffset: 60;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.edge-flow {
+  stroke-dasharray: 8 52;
+  opacity: 0.85;
+  animation: edge-flow 1800ms linear infinite;
+}
+
+/* Tech-tree nodes settling in, depth by depth. */
+@keyframes tree-node-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.94);
+  }
+}
+
+.tree-node-in {
+  animation: tree-node-in 480ms cubic-bezier(0.22, 1, 0.36, 1) var(--node-delay, 0ms) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .edge-flow {
+    display: none;
+  }
+}
+
+/* The map's fog, softened at every edge you have walked to — see
+   `FogLayer` in LeafletMapAdapter.tsx. */
+.fog-layer {
+  filter: blur(5px);
+}
+
+.fog-rim {
+  filter: blur(12px);
+}

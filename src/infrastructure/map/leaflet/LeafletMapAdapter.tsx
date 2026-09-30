@@ -111,18 +111,46 @@ function toRing(bounds: BoundingBox): [number, number][] {
   ]
 }
 
+/**
+ * Two copies of the same fog, and the difference between them is the
+ * whole effect.
+ *
+ * **The dark one is softened** (`.fog-layer` blurs it in index.css), so a
+ * walked square reads as ground uncovered rather than as a hole cut with
+ * scissors. **The tinted one sits underneath, blurred further**: where the
+ * dark fog thins out at a hole's edge, the accent shows through, so the
+ * frontier of what you have explored carries a faint rim of light.
+ *
+ * Still one polygon each — the holes, not a shape per cell, which is what
+ * keeps a thousand walked squares cheap. A browser that will not filter
+ * an SVG path draws the hard-edged version, which is what shipped before.
+ */
 function FogLayer({ explored }: { readonly explored: readonly BoundingBox[] }) {
+  const positions = [WORLD_RING, ...explored.map(toRing)]
   return (
-    <Polygon
-      positions={[WORLD_RING, ...explored.map(toRing)]}
-      pathOptions={{
-        stroke: false,
-        fillColor: '#0b0b0f',
-        fillOpacity: 0.82,
-        // Without this the fog would swallow every marker click underneath it.
-        interactive: false,
-      }}
-    />
+    <>
+      <Polygon
+        positions={positions}
+        pathOptions={{
+          stroke: false,
+          fillColor: '#22d3ee',
+          fillOpacity: 0.2,
+          className: 'fog-rim',
+          interactive: false,
+        }}
+      />
+      <Polygon
+        positions={positions}
+        pathOptions={{
+          stroke: false,
+          fillColor: '#0b0b0f',
+          fillOpacity: 0.84,
+          className: 'fog-layer',
+          // Without this the fog would swallow every marker click underneath it.
+          interactive: false,
+        }}
+      />
+    </>
   )
 }
 

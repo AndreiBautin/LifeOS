@@ -36,6 +36,33 @@ open. **Load sample data** is only offered on an empty app, and
 `seedDemoData` refuses anything else regardless. Two named operations,
 never one that wipes and refills.
 
+**The premium pass: what moves, and the rules that keep it honest.**
+Asked for as updates "readily apparent" to a quick reviewer, with no
+input required.
+
+- **Nothing loops near the portrait.** Pulsing rings there were rejected
+  as "blinking". Motion is one-time (ring draw-in, figure entrance, a
+  single badge shine) or one-directional and slow (ambient washes,
+  falling particles, light flowing along tech-tree edges).
+- **`.card` paints its border with background layers** (spotlight over
+  hairline, `border: transparent`). A utility adding `bg-*` image layers
+  to a card will break the border; `--spot` is a registered property
+  and must stay one or it snaps instead of easing.
+- **`CountUp` runs on `requestAnimationFrame`**, which does not fire in
+  a hidden tab — a count reading 0 in a background preview is the
+  harness, not a bug. Reduced motion shows the value directly.
+- **Every `Link` carries `viewTransition`.** `quietSkippedTransitions`
+  in `app/view-transitions.ts` swallows the `AbortError` a fast double
+  tap produces; without it every quick tab switch prints an uncaught
+  error.
+- **The activity grid is `countActs` cut by day** — `tallyActs` is load
+  plus count, both exported, so the grid cannot become a second tally.
+  Its bands are fixed XP amounts, never normalised to the busiest day.
+- **The sample history ends where the Standards card says each lift
+  is.** The generated sessions' final five-rep loads estimate the
+  sample's `estimatedMaxes`; they disagreed by seventy pounds once, side
+  by side on Train.
+
 ## Before you finish anything
 
 ```bash
