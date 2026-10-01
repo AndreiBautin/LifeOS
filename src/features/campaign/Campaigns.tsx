@@ -42,7 +42,8 @@ const LABEL = 'text-ink-500 mb-1 block text-xs tracking-wide uppercase'
 /**
  * The default arc, offered rather than assumed.
  *
- * **Two stages now: the house work, measured, and a new job, declared.**
+ * **The house work, measured, then five declared chapters.** It was two
+ * — house work and a new job — and before that the paragraph below.
  * It was three measured ones; the income and deposit stages went with the
  * finance tracking (see below). Before that it was six, of
  * which three were declared — find a house, sell this one, move — and
@@ -74,6 +75,18 @@ const MOVE_STAGES: readonly { readonly name: string; readonly requirement: Requi
    * what a declared stage is for.
    */
   { name: 'Get a new job', requirement: { kind: 'declared' } },
+  /*
+   * **The rest of the move, as placeholders.** Asked for as _"we should
+   * have placeholders for the overall full flow of completing this arc"_
+   * while the order of selling and buying is still undecided. Declared,
+   * so each is a box until a quest is linked to fill it; the timing
+   * between them is quest blockers once the order is settled, not
+   * something the arc encodes.
+   */
+  { name: 'Get mortgage-ready', requirement: { kind: 'declared' } },
+  { name: 'Sell this house', requirement: { kind: 'declared' } },
+  { name: 'Find and buy the next one', requirement: { kind: 'declared' } },
+  { name: 'Move', requirement: { kind: 'declared' } },
 ]
 
 /**
