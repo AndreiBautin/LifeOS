@@ -437,62 +437,74 @@ function ShelfPage() {
       <PageHeader title="Tech tree" subtitle="What you are saving for, and what unlocks what" />
 
       {/*
+        **Side by side from `lg`, stacked below it.** The tree ran the
+        full width with the lists underneath, so a wide window drew a
+        narrow tree in a sea of empty canvas and pushed the lists a
+        screen down — reported as _"there's probably a more efficient use
+        of space than this."_ The tree takes the left column and the lists
+        the right; on a phone nothing moves. Not sticky: the tree is often
+        taller than the window, and a sticky box taller than the window
+        hides its own bottom.
+      */}
+      <div className="space-y-4 lg:grid lg:grid-cols-2 lg:items-start lg:gap-8 lg:space-y-0">
+        {/*
         **The tree itself leads, because it is the thing that was asked
         for.** The lists below it are how a node is edited; the picture
         is how it is understood.
       */}
-      <div>
-        <CardHeading icon={<Network size={16} aria-hidden />} title="The tree" />
-        {entries.length === 0 ? (
-          <Empty title="Nothing planned">Add the first thing you are saving up for.</Empty>
-        ) : (
-          <TechTree
-            entries={entries}
-            onPick={(id) => {
-              document
-                .getElementById(`upgrade-${id}`)
-                ?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-            }}
-          />
-        )}
-      </div>
+        <div>
+          <CardHeading icon={<Network size={16} aria-hidden />} title="The tree" />
+          {entries.length === 0 ? (
+            <Empty title="Nothing planned">Add the first thing you are saving up for.</Empty>
+          ) : (
+            <TechTree
+              entries={entries}
+              onPick={(id) => {
+                document
+                  .getElementById(`upgrade-${id}`)
+                  ?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+              }}
+            />
+          )}
+        </div>
 
-      <div>
-        {/*
+        <div className="space-y-4">
+          <div>
+            {/*
           **Unlocked, not "within reach".** It was what a money pool could
           buy today, and the pool went with finance tracking. What is left
           to say is what nothing stands in the way of — no prerequisite
           still to buy.
         */}
-        <CardHeading icon={<Unlock size={16} aria-hidden />} title="Unlocked" />
-        <p className="text-ink-500 mb-2 text-sm">
-          {availableNow.length === 0
-            ? 'Everything is waiting on something else first.'
-            : `${availableNow.length.toString()} with nothing standing in the way.`}
-        </p>
+            <CardHeading icon={<Unlock size={16} aria-hidden />} title="Unlocked" />
+            <p className="text-ink-500 mb-2 text-sm">
+              {availableNow.length === 0
+                ? 'Everything is waiting on something else first.'
+                : `${availableNow.length.toString()} with nothing standing in the way.`}
+            </p>
 
-        {availableNow.length > 0 && (
-          <div className="space-y-2">
-            {availableNow.map((entry) => (
-              <EntryCard
-                key={entry.upgrade.id}
-                entry={entry}
-                others={entries.filter((one) => one.upgrade.id !== entry.upgrade.id)}
-              />
-            ))}
+            {availableNow.length > 0 && (
+              <div className="space-y-2">
+                {availableNow.map((entry) => (
+                  <EntryCard
+                    key={entry.upgrade.id}
+                    entry={entry}
+                    others={entries.filter((one) => one.upgrade.id !== entry.upgrade.id)}
+                  />
+                ))}
+              </div>
+            )}
           </div>
-        )}
-      </div>
 
-      {/*
+          {/*
         The same nodes as the diagram, as rows that can be edited — the
         picture is how the tree is read and this is how it is changed.
         It is not called "The tree" any more, because the diagram above
         is, and one screen calling two things the same name is the
         collision the Gadgets rename was made to fix.
       */}
-      <div>
-        {/*
+          <div>
+            {/*
           **Owned and dropped fold behind the eye, and the tail was the
           complaint.** Reported alongside the width: _"the long list of
           items isn't the best at the end."_ It was three stacked
@@ -505,57 +517,59 @@ function ShelfPage() {
           follow: the only control that can un-cancel a dropped upgrade
           lives on its own row.
         */}
-        <CardHeading
-          icon={<ListTree size={16} aria-hidden />}
-          title="Every node"
-          action={
-            settled.length > 0 && (
-              <Button
-                size="sm"
-                variant={showingSettled ? 'primary' : 'ghost'}
-                aria-pressed={showingSettled}
-                aria-label={`${showingSettled ? 'Hide' : 'Show'} ${String(settled.length)} owned and dropped`}
-                onClick={() => {
-                  setShowingSettled(!showingSettled)
-                }}
-              >
-                <EyeIcon open={showingSettled} />
-              </Button>
-            )
-          }
-        />
+            <CardHeading
+              icon={<ListTree size={16} aria-hidden />}
+              title="Every node"
+              action={
+                settled.length > 0 && (
+                  <Button
+                    size="sm"
+                    variant={showingSettled ? 'primary' : 'ghost'}
+                    aria-pressed={showingSettled}
+                    aria-label={`${showingSettled ? 'Hide' : 'Show'} ${String(settled.length)} owned and dropped`}
+                    onClick={() => {
+                      setShowingSettled(!showingSettled)
+                    }}
+                  >
+                    <EyeIcon open={showingSettled} />
+                  </Button>
+                )
+              }
+            />
 
-        <p className="text-ink-500 mb-2 text-sm">
-          Ordered by the priority each node inherits from the most important thing it unblocks.
-        </p>
+            <p className="text-ink-500 mb-2 text-sm">
+              Ordered by the priority each node inherits from the most important thing it unblocks.
+            </p>
 
-        <AddUpgrade candidates={entries} defaultShelf="tech" />
+            <AddUpgrade candidates={entries} defaultShelf="tech" />
 
-        {open.length === 0 ? (
-          <Empty title="Nothing planned">Add the first thing you are saving up for.</Empty>
-        ) : (
-          <div className="space-y-2">
-            {open.map((entry) => (
-              <EntryCard
-                key={entry.upgrade.id}
-                entry={entry}
-                others={entries.filter((one) => one.upgrade.id !== entry.upgrade.id)}
-              />
-            ))}
+            {open.length === 0 ? (
+              <Empty title="Nothing planned">Add the first thing you are saving up for.</Empty>
+            ) : (
+              <div className="space-y-2">
+                {open.map((entry) => (
+                  <EntryCard
+                    key={entry.upgrade.id}
+                    entry={entry}
+                    others={entries.filter((one) => one.upgrade.id !== entry.upgrade.id)}
+                  />
+                ))}
+              </div>
+            )}
+
+            {showingSettled && settled.length > 0 && (
+              <div className="border-ink-800 mt-3 space-y-2 border-t pt-3">
+                {settled.map((entry) => (
+                  <EntryCard
+                    key={entry.upgrade.id}
+                    entry={entry}
+                    others={entries.filter((one) => one.upgrade.id !== entry.upgrade.id)}
+                  />
+                ))}
+              </div>
+            )}
           </div>
-        )}
-
-        {showingSettled && settled.length > 0 && (
-          <div className="border-ink-800 mt-3 space-y-2 border-t pt-3">
-            {settled.map((entry) => (
-              <EntryCard
-                key={entry.upgrade.id}
-                entry={entry}
-                others={entries.filter((one) => one.upgrade.id !== entry.upgrade.id)}
-              />
-            ))}
-          </div>
-        )}
+        </div>
       </div>
     </div>
   )
