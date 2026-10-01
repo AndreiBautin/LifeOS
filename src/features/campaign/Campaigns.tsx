@@ -89,7 +89,7 @@ function describe(requirement: Requirement, standing: StageStanding): string {
 
   switch (requirement.kind) {
     case 'declared':
-      return standing.stage.reached.length > 0 ? '' : 'When you say so'
+      return standing.stage.reached.length > 0 ? '' : 'Not yet'
     case 'house-jobs':
       return `${String(progress?.value ?? 0)} of ${String(requirement.count)} jobs done and rooms cleared`
     case 'offers':
@@ -253,6 +253,41 @@ function StageRow({
             {screen.label} →
           </Link>
         )}
+        {/*
+          **A declared stage is marked where a measured one links**, in the
+          same right-hand slot and the same small type. It was a bordered
+          "Reached it" button on a row of its own under the bar, over a
+          caption reading "When you say so" — reported as awkward in both
+          its wording and its place. The slot is where the row already says
+          "this is where the number comes from", and for a declared stage
+          the answer is you.
+        */}
+        {declared && !noting && (
+          <span className="flex shrink-0 items-center gap-2">
+            {stage.reached.length > 0 && (
+              <button
+                type="button"
+                className="text-ink-700 hover:text-ink-500 -my-3 px-1 py-3"
+                aria-label={`Undo the last time you reached ${stage.name}`}
+                disabled={undo.isPending}
+                onClick={() => {
+                  undo.mutate({ id: campaign.campaign.id, stageId: stage.id })
+                }}
+              >
+                <Undo2 size={12} aria-hidden />
+              </button>
+            )}
+            <button
+              type="button"
+              className="text-accent-400 hover:text-accent-500 -my-3 py-3 text-xs font-medium whitespace-nowrap"
+              onClick={() => {
+                setNoting(true)
+              }}
+            >
+              {stage.reached.length === 0 ? 'Mark done' : 'Log another'}
+            </button>
+          </span>
+        )}
       </div>
 
       {/*
@@ -294,80 +329,48 @@ function StageRow({
         </ul>
       )}
 
-      {declared && (
-        <div className="mt-1.5 flex items-center gap-2">
-          {noting ? (
-            <form
-              className="flex flex-1 items-center gap-2"
-              onSubmit={(event) => {
-                event.preventDefault()
-                reach.mutate(
-                  { id: campaign.campaign.id, stageId: stage.id, note },
-                  {
-                    onSuccess: () => {
-                      setNote('')
-                      setNoting(false)
-                    },
+      {declared && noting && (
+        <div className="mt-1.5">
+          <form
+            className="flex flex-1 items-center gap-2"
+            onSubmit={(event) => {
+              event.preventDefault()
+              reach.mutate(
+                { id: campaign.campaign.id, stageId: stage.id, note },
+                {
+                  onSuccess: () => {
+                    setNote('')
+                    setNoting(false)
                   },
-                )
+                },
+              )
+            }}
+          >
+            <input
+              className={FIELD}
+              aria-label={`What happened for ${stage.name}`}
+              placeholder="Which job, which house"
+              value={note}
+              autoFocus
+              onChange={(event) => {
+                setNote(event.target.value)
+              }}
+            />
+            <Button type="submit" size="sm" variant="primary" disabled={reach.isPending}>
+              Record
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              aria-label="Cancel"
+              onClick={() => {
+                setNoting(false)
               }}
             >
-              <input
-                className={FIELD}
-                aria-label={`What happened for ${stage.name}`}
-                placeholder="Which job, which house"
-                value={note}
-                autoFocus
-                onChange={(event) => {
-                  setNote(event.target.value)
-                }}
-              />
-              <Button type="submit" size="sm" variant="primary" disabled={reach.isPending}>
-                Record
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant="ghost"
-                aria-label="Cancel"
-                onClick={() => {
-                  setNoting(false)
-                }}
-              >
-                <X size={14} aria-hidden />
-              </Button>
-            </form>
-          ) : (
-            <>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => {
-                  setNoting(true)
-                }}
-              >
-                {/*
-                  "Again" rather than "Reached" once it has happened
-                  before, because on a repeatable stage the second press
-                  is a different claim from the first.
-                */}
-                {stage.reached.length === 0 ? 'Reached it' : 'Again'}
-              </Button>
-              {stage.reached.length > 0 && (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  aria-label={`Undo the last time you reached ${stage.name}`}
-                  disabled={undo.isPending}
-                  onClick={() => {
-                    undo.mutate({ id: campaign.campaign.id, stageId: stage.id })
-                  }}
-                >
-                  <Undo2 size={14} aria-hidden />
-                </Button>
-              )}
-            </>
-          )}
+              <X size={14} aria-hidden />
+            </Button>
+          </form>
         </div>
       )}
     </li>
