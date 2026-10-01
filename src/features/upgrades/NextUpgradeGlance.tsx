@@ -4,20 +4,20 @@ import { Link } from 'react-router-dom'
 import { Card, CardHeading } from '@/components/shared/primitives'
 import { Skeleton } from '@/components/shared/Skeleton'
 import { buttonStyles } from '@/components/shared/styles'
-import type { Gate } from '@/domain/game/tree'
 import type { TreeEntry } from '@/domain/upgrades/recommendation'
-import { shelfOf, UPGRADE_SHELVES } from '@/domain/upgrades/shelf'
-import { isOpen, isOwned } from '@/domain/upgrades/upgrade'
+import { shelfOf, UPGRADE_SHELF_LABELS, UPGRADE_SHELVES } from '@/domain/upgrades/shelf'
+import { isOwned } from '@/domain/upgrades/upgrade'
 
 import { useWholeTree } from './hooks'
 
 /**
  * The tech tree, at a glance — see `BaseGlance` for why this exists.
  *
- * **The highest-priority entry still worth wanting, not the whole
- * tree.** `wholeTree` already returns every entry ranked — effective
- * priority, own priority, then by name — so "next" is just
- * the first one that is neither owned nor dropped.
+ * **What you own, branch by branch — and no "next".** It named the
+ * highest-ranked open entry under a NEXT label, reported as not making
+ * sense: a wishlist has no order you work through, so naming one item as
+ * the next thing to buy was the app inventing a sequence. Each branch
+ * says how much of it is already in hand instead.
  *
  * **No savings gauge, because nothing is saved.** It drew a thermometer
  * of the banked pool against the price, and the pool went with finance
@@ -65,7 +65,7 @@ function OwnedTree({ entries }: { readonly entries: readonly TreeEntry[] }) {
     <div
       role="img"
       aria-label={`${String(owned)} of ${String(listed.length)} upgrades owned`}
-      className="hidden w-14 shrink-0 flex-col items-center gap-1 lg:flex"
+      className="flex w-14 shrink-0 flex-col items-center gap-1"
     >
       <span className="numeric text-ink-100 text-xs leading-none font-semibold">
         {owned}/{listed.length}
@@ -124,19 +124,6 @@ function OwnedTree({ entries }: { readonly entries: readonly TreeEntry[] }) {
   )
 }
 
-/**
- * The prerequisite still to buy, said plainly — or nothing at all.
- *
- * It read "unlocked" when nothing was in the way, and the report was
- * simply _"what does this mean?"_ A word that only makes sense once you
- * know the tree's vocabulary is noise on a card meant to be glanced at;
- * the absence of a blocker needs no announcement.
- */
-function blocker(gates: readonly Gate[]): string | undefined {
-  const prerequisite = gates.find((gate) => gate.kind === 'prerequisite')
-  return prerequisite === undefined ? undefined : `Needs ${prerequisite.title} first`
-}
-
 export function NextUpgradeGlance() {
   const tree = useWholeTree()
 
@@ -149,7 +136,15 @@ export function NextUpgradeGlance() {
     )
   }
 
-  const next = tree.data.find((entry) => isOpen(entry.upgrade) && !isOwned(entry.upgrade))
+  const listed = tree.data.filter((entry) => entry.upgrade.status !== 'cancelled')
+  const branches = UPGRADE_SHELVES.map((shelf) => {
+    const on = listed.filter((entry) => shelfOf(entry.upgrade) === shelf)
+    return {
+      shelf,
+      owned: on.filter((entry) => isOwned(entry.upgrade)).length,
+      of: on.length,
+    }
+  }).filter((branch) => branch.of > 0)
 
   return (
     <Card>
@@ -169,18 +164,24 @@ export function NextUpgradeGlance() {
 
       <div className="flex items-center gap-3">
         <div className="min-w-0 flex-1">
-          {next === undefined ? (
-            <p className="text-ink-500 text-sm">Nothing left on the list.</p>
+          {branches.length === 0 ? (
+            <p className="text-ink-500 text-sm">Nothing on the list yet.</p>
           ) : (
-            <>
-              <p className="text-ink-500 text-xs font-medium tracking-wide uppercase">Next</p>
-              <p className="text-ink-50 mt-0.5 truncate text-sm font-medium">
-                {next.upgrade.title}
-              </p>
-              {blocker(next.gates) !== undefined && (
-                <p className="text-ink-500 mt-0.5 text-xs">{blocker(next.gates)}</p>
-              )}
-            </>
+            <ul className="space-y-1.5">
+              {branches.map((branch) => (
+                <li
+                  key={branch.shelf}
+                  className="flex items-baseline justify-between gap-2 text-sm"
+                >
+                  <span className="text-ink-100 truncate">
+                    {UPGRADE_SHELF_LABELS[branch.shelf]}
+                  </span>
+                  <span className="numeric text-ink-500 shrink-0 text-xs">
+                    {branch.owned}/{branch.of}
+                  </span>
+                </li>
+              ))}
+            </ul>
           )}
         </div>
 
