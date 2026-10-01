@@ -198,10 +198,10 @@ describe('the shipped week', () => {
     ).toEqual(['low-bar-squat', 'bench-press', 'sumo-deadlift'])
   })
 
-  it('prescribes three straight sets on everything lifted', () => {
+  it('prescribes five straight sets on everything lifted', () => {
     const lifted = (week?.days ?? [])
       .flatMap((day) => day.slots)
       .filter((slot) => slot.role !== 'warmup' && slot.role !== 'conditioning')
-    expect(lifted.every((slot) => slot.sets.length === 3)).toBe(true)
+    expect(lifted.every((slot) => slot.sets.length === 5)).toBe(true)
   })
 })

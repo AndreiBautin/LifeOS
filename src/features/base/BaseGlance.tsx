@@ -7,6 +7,7 @@ import { Skeleton } from '@/components/shared/Skeleton'
 import { buttonStyles } from '@/components/shared/styles'
 import { describeClear } from '@/domain/base/declutter'
 import { currentNextAction } from '@/domain/projects/priority'
+import type { Project } from '@/domain/projects/project'
 
 import { useBaseProjects } from '../projects/hooks'
 import { useHouse } from './hooks'
@@ -59,13 +60,54 @@ const ROW_LABEL = 'text-ink-500 text-xs font-medium tracking-wide uppercase'
  * a task that closes. The number leads its row and the band follows it,
  * the same number-then-word order `Declutter` uses.
  *
- * **Each row carries its own ring, in one column under Open.** With one
- * ring the card read lopsided — reported as asymmetrical. Projects' ring
- * is steps closed over steps across the open jobs: a real denominator
- * from records already kept, and one that moves on every tick where a
- * count of finished jobs would sit at nought for months. Open is fixed
- * at the ring's width so the three share one centre line.
+ * **Each row carries its own visual, in one column under Open.** With
+ * one ring the card read lopsided — reported as asymmetrical. A second
+ * ring then read as the same widget twice, so Projects draws `JobBars`.
+ * Open is fixed at the column's width so all three share a centre line.
  */
+/**
+ * One bar per open job, each filled by its own steps.
+ *
+ * A second ring under the first read as the same widget twice — and a
+ * share of steps pooled across every job hid the thing worth seeing,
+ * which is that the roof is under way and the grill is untouched. Bars
+ * side by side say how many jobs there are and how far each has got.
+ * Same 56-pixel column as the ring and Open, and `lg` and up only, like
+ * the ring. An untouched job keeps a dim stub so it still reads as a job.
+ */
+function JobBars({ jobs }: { readonly jobs: readonly Project[] }) {
+  const shown = jobs.slice(0, 10).map((job) => {
+    const done = job.actions.filter((action) => action.status === 'done').length
+    return { job, progress: job.actions.length === 0 ? 0 : done / job.actions.length }
+  })
+  const described = shown
+    .map(({ job, progress }) => `${job.name} ${String(Math.round(progress * 100))}%`)
+    .join(', ')
+
+  return (
+    <div
+      role="img"
+      aria-label={`${String(jobs.length)} open jobs: ${described}`}
+      className="hidden h-11 w-14 shrink-0 items-end justify-center gap-1 lg:flex"
+    >
+      {shown.map(({ job, progress }) => (
+        <span key={job.id} className="bg-ink-800 relative h-full w-1 overflow-hidden rounded-full">
+          <span
+            className={
+              progress === 0
+                ? 'bg-ink-600 absolute inset-x-0 bottom-0 h-1 rounded-full'
+                : 'bg-accent-500 absolute inset-x-0 bottom-0 rounded-full'
+            }
+            style={
+              progress === 0 ? undefined : { height: `${String(Math.round(progress * 100))}%` }
+            }
+          />
+        </span>
+      ))}
+    </div>
+  )
+}
+
 export function BaseGlance() {
   const house = useHouse()
   const jobs = useBaseProjects()
@@ -82,9 +124,6 @@ export function BaseGlance() {
   const open = jobs.data.filter((job) => job.status !== 'completed')
   const next = open[0]
   const step = next === undefined ? undefined : currentNextAction(next)
-  const steps = open.flatMap((job) => job.actions)
-  const stepsDone = steps.filter((action) => action.status === 'done').length
-  const stepShare = steps.length === 0 ? undefined : Math.round((stepsDone / steps.length) * 100)
 
   return (
     <Card>
@@ -144,13 +183,7 @@ export function BaseGlance() {
             </dd>
           </div>
 
-          {stepShare !== undefined && (
-            <PercentRing
-              value={stepShare}
-              good={stepShare >= 70}
-              label={`Projects: ${String(stepsDone)} of ${String(steps.length)} steps done across open jobs`}
-            />
-          )}
+          {open.length > 0 && <JobBars jobs={open} />}
         </div>
       </dl>
     </Card>

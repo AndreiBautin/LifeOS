@@ -61,7 +61,7 @@ RepTarget  = fixed | range | amrap | time
 ```
 
 The programme is **double progression**, and the whole method is two
-sentences: work in a rep range for three straight sets, and when every
+sentences: work in a rep range for five straight sets, and when every
 set reaches the top of it, put the next increment on the bar.
 
 | Prescription                     | Reads as                        |
@@ -116,7 +116,7 @@ rather than `crypto.randomUUID`.
 **The shipped week is a written routine**: Push, Pull and Legs A
 Monday to Wednesday, the B days Thursday to Saturday (`PPL_SPLIT` in
 `domain/splits/rp-splits.ts`). A day
-with a `routine` is built exactly as listed — three straight sets per
+with a `routine` is built exactly as listed — five straight sets per
 exercise, the competition lifts at the strength range — and skips the
 generator below entirely. The generator is still live for any day
 without a routine, and `FULL_BODY_SPLIT` is kept so its tests have a
@@ -187,7 +187,9 @@ Starting Wednesday's session and logging the first set of the bench:
    `topped(last, range)` asks whether every set reached the top of the
    range; if so `nextLoad` adds `stepFor(exercise)`, which is **5 lb
    upper and 10 lb lower**, derived from the movement rather than written
-   on all fifty exercises. Three sets of 5 at 185 becomes **190**.
+   on all fifty exercises. Five sets of 5 at 185 becomes **190** (topped is
+   judged against the sets that session asked for, so older three-set
+   sessions still progress).
 6. **`domain/resolution/resolve.ts`** — also pure — turns
    `working × range(3,5)` into that number, rounded by
    **`domain/units/weight.ts`** to the gym's increment. With no history

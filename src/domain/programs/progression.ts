@@ -22,8 +22,21 @@ import type { RepRange } from './prescription'
  * which is the rule `WorkoutLog` was built around.
  */
 
-/** Three, on everything. */
-export const STRAIGHT_SETS = 3
+/**
+ * Five, on everything. It was three — _"straight 3 sets on anything"_ —
+ * and moved to five on request: _"let's bump our sets up to 5 per
+ * exercise."_ The routine lists one movement per muscle per day, so the
+ * whole week's volume is this number times the list; nothing else needed
+ * to change for it to land everywhere.
+ */
+export const STRAIGHT_SETS = 5
+
+/**
+ * A deload's sets: three of the five, roughly the usual 40% cut. It was
+ * written as `STRAIGHT_SETS - 1`, which was a deload at three sets and
+ * would be barely one at five.
+ */
+export const DELOAD_SETS = 3
 
 /**
  * The competition lifts' range, and the only one stated here.

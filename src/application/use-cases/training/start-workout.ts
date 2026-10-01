@@ -171,7 +171,16 @@ async function workingLoads(
       )
 
       const range = rangeOf(previous.sets)
-      const next = range === undefined ? last?.load : nextLoad(last, range, stepFor(exercise))
+      /*
+       * Topped against the sets *that* session asked for, read off its
+       * own log. Measured against today's count instead, every session
+       * logged before the move from three sets to five could never earn
+       * an increment — three sets of five is not five sets of five, and
+       * it was never asked to be.
+       */
+      const asked = Math.max(1, previous.sets.filter((set) => !set.isWarmup).length)
+      const next =
+        range === undefined ? last?.load : nextLoad(last, range, stepFor(exercise), asked)
 
       return next === undefined ? [] : [[id, next]]
     }),

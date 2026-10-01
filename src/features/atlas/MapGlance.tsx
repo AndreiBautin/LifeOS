@@ -1,7 +1,8 @@
 import { MapPin } from 'lucide-react'
-import { lazy, Suspense, useMemo } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 
+import { useServices } from '@/app/context'
 import { ATLAS_CATEGORIES } from '@/application/use-cases/atlas/atlas'
 import { exploredBounds, formatArea } from '@/application/use-cases/atlas/exploration'
 import type { MapMarker } from '@/application/use-cases/atlas/MapAdapterProps'
@@ -35,12 +36,81 @@ const MapView = lazy(async () => {
  * same pins and the same fog, and the whole of it is a link there.
  *
  * **Centred on what you have, never on a guess.** The first saved place
- * with a point, else the middle of the ground walked. With neither there
- * is nothing of yours to draw, so the card stays the two lines of text
- * rather than showing a fallback city as if it were yours.
+ * with a point, else the middle of the ground walked, else where the
+ * device is — if it has already been allowed to say. With none of those
+ * it draws `FogPlaceholder` rather than a fallback city as if it were
+ * yours: the first version drew nothing at all there, and the report was
+ * fair — _"this still doesn't have a mini map or anything."_
  */
+/**
+ * Where the device is, but only if it has already said it may tell us.
+ *
+ * Today must never be the screen that pops a location prompt — it opens
+ * on every launch, and a permission asked for by a dashboard card is one
+ * nobody chose to give. So this checks the permission first and reads a
+ * fix only when it is already `granted`, which it is once Walk has been
+ * used on the Map.
+ */
+function usePermittedPosition(): Coordinates | undefined {
+  const { geolocation } = useServices()
+  const [position, setPosition] = useState<Coordinates | undefined>(undefined)
+
+  useEffect(() => {
+    const alive = { current: true }
+    void (async () => {
+      try {
+        const status = await navigator.permissions.query({ name: 'geolocation' })
+        if (status.state !== 'granted') return
+        const fix = await geolocation.getCurrentPosition()
+        if (alive.current && fix.ok) setPosition(fix.value)
+      } catch {
+        // No permissions API, or it refused the query: draw the fog instead.
+      }
+    })()
+    return () => {
+      alive.current = false
+    }
+  }, [geolocation])
+
+  return position
+}
+
+/**
+ * A map with nothing of yours on it yet: fog, drawn as the squares the
+ * real map clears, and the way to start clearing them. Not a tile layer
+ * of a city picked by the app — that would be a map of somewhere that is
+ * not yours wearing your card.
+ */
+function FogPlaceholder() {
+  return (
+    <Link
+      viewTransition
+      to="/map"
+      className="border-ink-800 bg-ink-900 relative mt-3 grid h-40 place-items-center overflow-hidden rounded-xl border"
+    >
+      <span
+        aria-hidden
+        className="absolute inset-0 opacity-60"
+        style={{
+          backgroundImage:
+            'linear-gradient(var(--color-ink-800) 1px, transparent 1px), linear-gradient(90deg, var(--color-ink-800) 1px, transparent 1px)',
+          backgroundSize: '16px 16px',
+        }}
+      />
+      <span className="relative flex flex-col items-center gap-1 px-4 text-center">
+        <MapPin size={18} className="text-accent-400" aria-hidden />
+        <span className="text-ink-300 text-sm">All fog so far</span>
+        <span className="text-ink-500 text-xs">
+          Save a place, or press Walk on the map to clear ground
+        </span>
+      </span>
+    </Link>
+  )
+}
+
 export function MapGlance() {
   const atlas = useAtlas()
+  const here = usePermittedPosition()
   const cells = atlas.data?.cells
   const places = atlas.data?.places
 
@@ -78,7 +148,7 @@ export function MapGlance() {
   const centre: Coordinates | undefined =
     resolved[0]?.location.coordinates ??
     (firstCell === undefined
-      ? undefined
+      ? here
       : {
           latitude: (firstCell.north + firstCell.south) / 2,
           longitude: (firstCell.east + firstCell.west) / 2,
@@ -110,6 +180,8 @@ export function MapGlance() {
             ? 'Everywhere saved has been visited.'
             : `${outstanding.toString()} places to go`}
       </p>
+
+      {centre === undefined && <FogPlaceholder />}
 
       {centre !== undefined && (
         <Link

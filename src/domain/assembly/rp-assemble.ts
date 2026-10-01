@@ -4,7 +4,7 @@ import type { Exercise } from '@/domain/exercises/exercise'
 import type { MuscleGroup } from '@/domain/exercises/taxonomy'
 import { MUSCLE_GROUP_LABELS } from '@/domain/exercises/taxonomy'
 import type { ExerciseId, IdGenerator, ProgramId } from '@/domain/ids/ids'
-import { STRAIGHT_SETS, STRENGTH_RANGE } from '@/domain/programs/progression'
+import { DELOAD_SETS, STRAIGHT_SETS, STRENGTH_RANGE } from '@/domain/programs/progression'
 import { asExerciseId, asSlotId } from '@/domain/ids/ids'
 import type { SetPrescription } from '@/domain/programs/prescription'
 import type {
@@ -708,11 +708,11 @@ function buildStrengthSlots(
   if (exercise === undefined) return { slots: [], spent: emptyVolumeMap() }
 
   /*
-   * A deload is the same movement for two sets rather than three. The
+   * A deload is the same movement for fewer sets — . The
    * range does not move: dropping to a lighter range would change what
    * the week means, where dropping a set just does less of it.
    */
-  const count = isDeload ? STRAIGHT_SETS - 1 : STRAIGHT_SETS
+  const count = isDeload ? DELOAD_SETS : STRAIGHT_SETS
 
   const sets: SetPrescription[] = Array.from({ length: count }, () => ({
     load: { kind: 'working' as const },
@@ -1655,7 +1655,7 @@ function routineSlots(
     const exercise = deps.exercises.find((candidate) => candidate.id === asExerciseId(entry.slug))
     if (exercise === undefined || excluded.has(exercise.id)) continue
 
-    const count = isDeload ? STRAIGHT_SETS - 1 : STRAIGHT_SETS
+    const count = isDeload ? DELOAD_SETS : STRAIGHT_SETS
     const sets = hypertrophySets(exercise, count)
     const range = exercise.repRange ?? (exercise.isCompound ? COMPOUND_REPS : ISOLATION_REPS)
     slots.push({

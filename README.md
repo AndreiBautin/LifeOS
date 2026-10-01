@@ -96,7 +96,7 @@ as a parameter and wired in one file,
 [`src/app/di.ts`](src/app/di.ts).
 
 **The idea the model turns on: a prescription is not a number, it is a
-rule for producing one.** "Three sets of 3–5, at whatever you last
+rule for producing one.** "Five sets of 3–5, at whatever you last
 worked at" is resolved against your own history when the session opens,
 never stored in the programme. The programme itself is derived from
 settings rather than stored — which is what makes it impossible for

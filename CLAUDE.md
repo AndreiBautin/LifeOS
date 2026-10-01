@@ -6776,6 +6776,13 @@ sets; when every set reaches the top of it, put the next increment on
 the bar. Strength runs 3–5, hypertrophy compounds 10–15, isolations
 15–30, and every slot is three straight sets at one load.
 
+**Five sets now, three on a deload.** Asked for as _"let's bump our sets
+up to 5 per exercise"_ — `STRAIGHT_SETS` and `DELOAD_SETS` in
+`progression.ts`. **`topped` is judged against the sets the previous
+session asked for, read off its own log** (`start-workout.ts`), not
+against today's count: otherwise every three-set session filed before the
+change could never earn an increment.
+
 **Nothing stores a working weight.** The load is derived from the last
 session that trained the exercise, the way the programme itself is
 derived from settings — so there is no "current weight" record to drift,

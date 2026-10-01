@@ -6,11 +6,11 @@ const did = (load: number, ...reps: number[]): Performance => ({ load, reps })
 
 describe('topped', () => {
   it('is true when every set reached the top of the range', () => {
-    expect(topped(did(225, 5, 5, 5), STRENGTH_RANGE)).toBe(true)
+    expect(topped(did(225, 5, 5, 5), STRENGTH_RANGE, 3)).toBe(true)
   })
 
   it('is false when one set fell short', () => {
-    expect(topped(did(225, 5, 5, 4), STRENGTH_RANGE)).toBe(false)
+    expect(topped(did(225, 5, 5, 4), STRENGTH_RANGE, 3)).toBe(false)
   })
 
   /*
@@ -18,7 +18,7 @@ describe('topped', () => {
    * two sets out of three would progress off work that did not happen.
    */
   it('is false when fewer sets were done than asked for', () => {
-    expect(topped(did(225, 5, 5), STRENGTH_RANGE)).toBe(false)
+    expect(topped(did(225, 5, 5), STRENGTH_RANGE, 3)).toBe(false)
   })
 
   /*
@@ -26,17 +26,17 @@ describe('topped', () => {
    * of 15 would be the app being pedantic about its own bookkeeping.
    */
   it('counts an overshoot as having earned it', () => {
-    expect(topped(did(225, 6, 5, 7), STRENGTH_RANGE)).toBe(true)
+    expect(topped(did(225, 6, 5, 7), STRENGTH_RANGE, 3)).toBe(true)
   })
 })
 
 describe('nextLoad', () => {
   it('adds the step once the range is topped', () => {
-    expect(nextLoad(did(225, 5, 5, 5), STRENGTH_RANGE, 10)).toBe(235)
+    expect(nextLoad(did(225, 5, 5, 5), STRENGTH_RANGE, 10, 3)).toBe(235)
   })
 
   it('holds the load while the reps are still climbing', () => {
-    expect(nextLoad(did(225, 5, 4, 3), STRENGTH_RANGE, 10)).toBe(225)
+    expect(nextLoad(did(225, 5, 4, 3), STRENGTH_RANGE, 10, 3)).toBe(225)
   })
 
   /*
@@ -50,8 +50,8 @@ describe('nextLoad', () => {
 
   /* Two sessions of topping it out move it twice, not once. */
   it('compounds across sessions', () => {
-    const first = nextLoad(did(225, 5, 5, 5), STRENGTH_RANGE, 10) ?? 0
-    expect(nextLoad(did(first, 5, 5, 5), STRENGTH_RANGE, 10)).toBe(245)
+    const first = nextLoad(did(225, 5, 5, 5), STRENGTH_RANGE, 10, 3) ?? 0
+    expect(nextLoad(did(first, 5, 5, 5), STRENGTH_RANGE, 10, 3)).toBe(245)
   })
 })
 
