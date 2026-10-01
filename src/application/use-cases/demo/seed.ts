@@ -581,8 +581,7 @@ async function seedArc(deps: DemoDeps): Promise<void> {
       aim: 'Out of the flat and into somewhere with a bit of outside.',
       stages: [
         { name: 'Fix up the flat', requirement: { kind: 'house-jobs', count: 8 } },
-        { name: 'Improve my income', requirement: { kind: 'salary', minorUnits: 15_000_000 } },
-        { name: 'Save the deposit', requirement: { kind: 'savings', minorUnits: 1_000_000 } },
+        { name: 'Get a new job', requirement: { kind: 'declared' } },
       ],
     },
     deps,

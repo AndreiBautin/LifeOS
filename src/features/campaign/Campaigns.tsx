@@ -43,7 +43,9 @@ const LABEL = 'text-ink-500 mb-1 block text-xs tracking-wide uppercase'
 /**
  * The default arc, offered rather than assumed.
  *
- * **Three stages, and every one of them is measured.** It was six, of
+ * **Two stages now: the house work, measured, and a new job, declared.**
+ * It was three measured ones; the income and deposit stages went with the
+ * finance tracking (see below). Before that it was six, of
  * which three were declared — find a house, sell this one, move — and
  * those went on request: _"let's just track three progress bar things."_
  * What is left is the part of a move the app can actually witness, which
@@ -64,26 +66,15 @@ const MOVE_STAGES: readonly { readonly name: string; readonly requirement: Requi
    */
   { name: 'Fix up the house', requirement: { kind: 'house-jobs', count: 8 } },
   /*
-   * **Income is measured by the salary, not by applications sent.**
-   * Asked for as _"for main quest just make the income quest tied to
-   * current income."_ It counted offers, which measures the *looking*
-   * rather than the result — and the looking left the app with the
-   * automated job search.
-   *
-   * The target is the one asked for, and it is still a figure to edit
-   * rather than one the app stands behind: the stage editor offers the
-   * Census breakpoints for your age, one tap each, which is the only
-   * income number here that anybody published.
+   * **A new job, declared — no salary and no savings tracked.** Asked
+   * for as _"no need to track finance… just make it get a new job, don't
+   * track the actual income or any savings amount either."_ Both money
+   * stages read the monthly finance reading, and the screen that recorded
+   * it is gone, so they could only ever sit at whatever was imported. A
+   * job is an event you know about the day it happens, which is exactly
+   * what a declared stage is for.
    */
-  { name: 'Improve my income', requirement: { kind: 'salary', minorUnits: 15_000_000 } },
-  /*
-   * **The deposit reads the saving fund, not net worth.** It read net
-   * worth, which is everything you own — most of it not available to put
-   * down on a house, so the stage would have completed itself on the day
-   * a pension went up. `savingsMinor` is a balance somebody sets aside
-   * and types in monthly on the Finance screen.
-   */
-  { name: 'Save the deposit', requirement: { kind: 'savings', minorUnits: 1_000_000 } },
+  { name: 'Get a new job', requirement: { kind: 'declared' } },
 ]
 
 /**
