@@ -17,7 +17,7 @@ import {
   type NewCampaign,
 } from '@/application/use-cases/campaign/campaign'
 import type { Requirement } from '@/domain/campaign/campaign'
-import type { CampaignId, StageId } from '@/domain/ids/ids'
+import type { CampaignId, ProjectId, StageId } from '@/domain/ids/ids'
 
 export const CAMPAIGNS = ['campaigns'] as const
 
@@ -119,14 +119,15 @@ export function useRenameArc() {
   )
 }
 
-/** A stage's name and requirement, in one write. See `reshapeStage`. */
+/** A stage's name, requirement and linked quests, in one write. See `reshapeStage`. */
 export function useReshapeStage() {
   return useCampaignMutation<{
     id: CampaignId
     stageId: StageId
     name: string
     requirement: Requirement
-  }>(({ id, stageId, name, requirement }, services) =>
-    reshapeStageIn(id, stageId, name, requirement, services),
+    quests?: readonly ProjectId[]
+  }>(({ id, stageId, name, requirement, quests }, services) =>
+    reshapeStageIn(id, stageId, name, requirement, services, quests),
   )
 }

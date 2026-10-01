@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { asCampaignId, asStageId } from '@/domain/ids/ids'
+import { asCampaignId, asProjectId, asStageId } from '@/domain/ids/ids'
 
 import {
   addStage,
@@ -81,6 +81,54 @@ describe('a declared stage', () => {
     expect(standingFor(campaign(stage('Move', { kind: 'declared' })), {}).stages[0]?.unproven).toBe(
       false,
     )
+  })
+})
+
+describe('a declared stage with quests attached', () => {
+  const linked: Stage = {
+    ...stage('Get a new job', { kind: 'declared' }),
+    quests: [asProjectId('portfolio'), asProjectId('gone')],
+  }
+  const evidence = {
+    quests: {
+      portfolio: { name: 'Polish the portfolio', done: 2, of: 5 },
+      other: { name: 'Unrelated', done: 9, of: 9 },
+    },
+  }
+
+  /*
+   * The work toward the stage shows on the arc as it happens — and a
+   * quest that has since been deleted simply stops counting rather than
+   * breaking the bar.
+   */
+  it('fills its bar from the linked quests steps, ignoring ones that no longer exist', () => {
+    const standing = standingFor(campaign(linked), evidence).stages[0]
+
+    expect(standing?.progress).toEqual({ value: 2, of: 5 })
+    expect(standing?.linked?.map((quest) => quest.name)).toEqual(['Polish the portfolio'])
+  })
+
+  /*
+   * Finishing the portfolio is not having the job. The stage is met only
+   * by being declared, and declaring it fills the bar whatever the
+   * quests stood at.
+   */
+  it('is met only when declared, and declaring fills the bar', () => {
+    expect(standingFor(campaign(linked), evidence).stages[0]?.met).toBe(false)
+
+    const reached = { ...linked, reached: [{ at: '2026-10-01' }] }
+    const standing = standingFor(campaign(reached), evidence).stages[0]
+    expect(standing?.met).toBe(true)
+    expect(standing?.progress).toEqual({ value: 5, of: 5 })
+  })
+
+  it('keeps its links through a rename, and drops them when it stops being declared', () => {
+    const arc = campaign(linked)
+    const renamed = reshapeStage(arc, linked.id, 'A better job', { kind: 'declared' })
+    expect(renamed.stages[0]?.quests).toEqual(linked.quests)
+
+    const measured = reshapeStage(arc, linked.id, 'A better job', { kind: 'offers', count: 1 })
+    expect(measured.stages[0]?.quests).toBeUndefined()
   })
 })
 

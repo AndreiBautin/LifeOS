@@ -3766,6 +3766,18 @@ registered in all of the places a collection has to register. The
 compiler and the guard tests found most of them, which is that machinery
 working as intended.
 
+**A declared stage can have quests attached, and its bar fills from their
+steps.** Asked for as _"the job is related to stuff like polishing the
+portfolio"_ — the arc said "Get a new job" and the quest log held the
+work that gets one, with nothing joining them. `Stage.quests` holds ids,
+read live through `Evidence.quests`; a deleted quest stops counting. **It
+is still met only when declared**, because finishing the portfolio is not
+having the job — and declaring it fills the bar. Links are picked in the
+stage editor, kept through a rename and dropped if the stage becomes
+measured. The declared stage's control is a box in its header now, ticked
+when reached and unticked to take back the latest time; the note form and
+"Log another" went with the old button.
+
 **The arc is three measured stages, and a deposit reads a fund rather than a net worth.** Asked for as _"let's remove the find a new house stage. The house deposit thing should come from a separate saving fund that we should start tracking too… let's also drop sell this house and move stages. So just tracking three progress bar things. But fix up the house should include all the diy as well as getting everything decluttered."_
 
 **The three that went were the three that were declared.** Find a house, sell this one, move — nothing in the app records any of them, so each was a tick somebody would make on the day. What is left is the part the app can witness, which is also the part that takes the years: finding a house and selling one are events rather than campaigns, and there is nothing to watch fill up in the meantime.

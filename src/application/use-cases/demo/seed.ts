@@ -554,13 +554,25 @@ async function seedFinance(deps: DemoDeps): Promise<void> {
  * The long arc, with one stage already met so the bars are not all empty.
  */
 async function seedArc(deps: DemoDeps): Promise<void> {
+  /*
+   * The portfolio quest works toward the new job, so the stage's bar
+   * shows that work rather than sitting empty until the day it happens.
+   */
+  const portfolio = (await deps.projects.all()).find(
+    (project) => project.name === 'Ship the portfolio site',
+  )
+
   await addCampaign(
     {
       name: 'Get ready to move',
       aim: 'Out of the flat and into somewhere with a bit of outside.',
       stages: [
         { name: 'Fix up the flat', requirement: { kind: 'house-jobs', count: 8 } },
-        { name: 'Get a new job', requirement: { kind: 'declared' } },
+        {
+          name: 'Get a new job',
+          requirement: { kind: 'declared' },
+          ...(portfolio === undefined ? {} : { quests: [portfolio.id] }),
+        },
       ],
     },
     deps,

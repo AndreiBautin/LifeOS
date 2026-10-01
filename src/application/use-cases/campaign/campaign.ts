@@ -23,7 +23,7 @@ import {
   type Stage,
 } from '@/domain/campaign/campaign'
 import { latest } from '@/domain/finance/reading'
-import type { CampaignId, IdGenerator, StageId } from '@/domain/ids/ids'
+import type { CampaignId, IdGenerator, ProjectId, StageId } from '@/domain/ids/ids'
 import type {
   CampaignRepository,
   Clock,
@@ -127,6 +127,21 @@ export async function gatherEvidence(deps: CampaignDeps): Promise<Evidence> {
     ...(creditScore === undefined ? {} : { creditScore }),
     ...(savingsMinor === undefined ? {} : { savingsMinor }),
     roomsCleared,
+    /*
+     * Every quest's steps, keyed by id, for a stage that links to some.
+     * All of them rather than only the linked ones, because which are
+     * linked is a fact about each arc and this is read once for all.
+     */
+    quests: Object.fromEntries(
+      projects.map((project) => [
+        project.id,
+        {
+          name: project.name,
+          done: project.actions.filter((one) => one.status === 'done').length,
+          of: project.actions.length,
+        },
+      ]),
+    ),
   }
 }
 
@@ -337,6 +352,9 @@ export async function reshapeStageIn(
   name: string,
   requirement: Requirement,
   deps: CampaignDeps,
+  quests?: readonly ProjectId[],
 ): Promise<void> {
-  await editCampaign(id, deps, (campaign) => reshapeStage(campaign, stageId, name, requirement))
+  await editCampaign(id, deps, (campaign) =>
+    reshapeStage(campaign, stageId, name, requirement, quests),
+  )
 }

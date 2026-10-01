@@ -14,10 +14,11 @@ import {
   type Requirement,
   type Stage,
 } from '@/domain/campaign/campaign'
-import type { CampaignId } from '@/domain/ids/ids'
+import type { CampaignId, ProjectId } from '@/domain/ids/ids'
 import { ageFromBirthYear, salaryReferences } from '@/domain/finance/standards'
 import { formatMinorUnits, toMinorUnits } from '@/domain/upgrades/upgrade'
 
+import { useProjects } from '../projects/hooks'
 import { useDropStage, useMoveStage, useReshapeStage } from './hooks'
 
 /**
@@ -76,6 +77,16 @@ export function StageEditor({
     return isMoney(stage.requirement.kind) ? String(current / 100) : String(current)
   })
   const [confirming, setConfirming] = useState(false)
+  const [quests, setQuests] = useState<readonly ProjectId[]>(stage.quests ?? [])
+  const projects = useProjects()
+  /*
+   * Quests that are still open, plus any already linked whatever their
+   * state — a finished quest that fed this stage stays visible so it can
+   * be unlinked rather than silently kept.
+   */
+  const linkable = (projects.data ?? []).filter(
+    (project) => project.status !== 'completed' || quests.includes(project.id),
+  )
 
   const laps = stage.reached.length
 
@@ -204,6 +215,37 @@ export function StageEditor({
       )}
 
       {/*
+        **Quests that work toward a declared stage.** Ticked here, their
+        steps fill the stage's bar on the arc — the portfolio quest under
+        "Get a new job". The stage is still met only when you say so.
+      */}
+      {kind === 'declared' && linkable.length > 0 && (
+        <div>
+          <span className={LABEL}>Quests working toward it</span>
+          <div className="flex flex-wrap gap-1.5">
+            {linkable.map((project) => {
+              const on = quests.includes(project.id)
+              return (
+                <button
+                  key={project.id}
+                  type="button"
+                  aria-pressed={on}
+                  className={buttonStyles({ variant: on ? 'primary' : 'outline', size: 'sm' })}
+                  onClick={() => {
+                    setQuests(
+                      on ? quests.filter((one) => one !== project.id) : [...quests, project.id],
+                    )
+                  }}
+                >
+                  {project.name}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/*
         Said before it is done rather than after. Turning a declared
         stage into a measured one leaves its dates inert — the reading
         decides from then on — and clearing them would be a destructive
@@ -239,7 +281,13 @@ export function StageEditor({
             const value = Number.isFinite(parsed) ? (parsed ?? 0) : 0
 
             reshape.mutate(
-              { id: campaignId, stageId: stage.id, name, requirement: requirementOf(kind, value) },
+              {
+                id: campaignId,
+                stageId: stage.id,
+                name,
+                requirement: requirementOf(kind, value),
+                quests,
+              },
               { onSuccess: onDone },
             )
           }}

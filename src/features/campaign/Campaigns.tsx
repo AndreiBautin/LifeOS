@@ -1,4 +1,4 @@
-import { Check, Flag, Pencil, Plus, Undo2, X } from 'lucide-react'
+import { Check, Flag, Pencil, Plus, X } from 'lucide-react'
 import { useState } from 'react'
 
 import type { CampaignId } from '@/domain/ids/ids'
@@ -89,7 +89,14 @@ function describe(requirement: Requirement, standing: StageStanding): string {
 
   switch (requirement.kind) {
     case 'declared':
-      return standing.stage.reached.length > 0 ? '' : 'Not yet'
+      if (standing.stage.reached.length > 0) return ''
+      /*
+       * With quests attached, the steps they have closed — the work
+       * toward the stage — named by quest so the bar is not a mystery.
+       */
+      return standing.linked !== undefined && standing.progress !== undefined
+        ? `${String(standing.progress.value)} of ${String(standing.progress.of)} steps · ${standing.linked.map((quest) => quest.name).join(', ')}`
+        : 'Not yet'
     case 'house-jobs':
       return `${String(progress?.value ?? 0)} of ${String(requirement.count)} jobs done and rooms cleared`
     case 'offers':
@@ -168,8 +175,6 @@ function StageRow({
 }) {
   const reach = useReachStage()
   const undo = useUndoStage()
-  const [noting, setNoting] = useState(false)
-  const [note, setNote] = useState('')
   const [editing, setEditing] = useState(false)
 
   const { stage, met, progress, unproven } = standing
@@ -223,7 +228,36 @@ function StageRow({
           <Pencil size={11} className="text-ink-700 shrink-0" aria-hidden />
         </button>
 
-        {met ? (
+        {declared ? (
+          <span className="flex shrink-0 items-center gap-2">
+            {!met && isNext && <Badge tone="accent">Now</Badge>}
+            {/*
+              **A box, the quest steps' own control.** It was a text link
+              reading "Mark done", then a bordered "Reached it" button
+              before that — both read as instructions rather than as a
+              state. Ticked is reached; unticking takes back the latest
+              time, the undo this row always had.
+            */}
+            <button
+              type="button"
+              aria-label={met ? `Undo reaching ${stage.name}` : `Mark ${stage.name} done`}
+              aria-pressed={met}
+              disabled={reach.isPending || undo.isPending}
+              className={[
+                'grid size-7 place-items-center rounded-md border transition-colors',
+                met
+                  ? 'border-good-500 bg-good-500/15 text-good-500'
+                  : 'border-ink-700 hover:border-accent-500',
+              ].join(' ')}
+              onClick={() => {
+                if (met) undo.mutate({ id: campaign.campaign.id, stageId: stage.id })
+                else reach.mutate({ id: campaign.campaign.id, stageId: stage.id, note: '' })
+              }}
+            >
+              {met && <Check size={14} aria-hidden />}
+            </button>
+          </span>
+        ) : met ? (
           <Check size={14} className="text-good-500 shrink-0" aria-label="Reached" />
         ) : (
           /*
@@ -252,41 +286,6 @@ function StageRow({
           >
             {screen.label} →
           </Link>
-        )}
-        {/*
-          **A declared stage is marked where a measured one links**, in the
-          same right-hand slot and the same small type. It was a bordered
-          "Reached it" button on a row of its own under the bar, over a
-          caption reading "When you say so" — reported as awkward in both
-          its wording and its place. The slot is where the row already says
-          "this is where the number comes from", and for a declared stage
-          the answer is you.
-        */}
-        {declared && !noting && (
-          <span className="flex shrink-0 items-center gap-2">
-            {stage.reached.length > 0 && (
-              <button
-                type="button"
-                className="text-ink-700 hover:text-ink-500 -my-3 px-1 py-3"
-                aria-label={`Undo the last time you reached ${stage.name}`}
-                disabled={undo.isPending}
-                onClick={() => {
-                  undo.mutate({ id: campaign.campaign.id, stageId: stage.id })
-                }}
-              >
-                <Undo2 size={12} aria-hidden />
-              </button>
-            )}
-            <button
-              type="button"
-              className="text-accent-400 hover:text-accent-500 -my-3 py-3 text-xs font-medium whitespace-nowrap"
-              onClick={() => {
-                setNoting(true)
-              }}
-            >
-              {stage.reached.length === 0 ? 'Mark done' : 'Log another'}
-            </button>
-          </span>
         )}
       </div>
 
@@ -327,51 +326,6 @@ function StageRow({
             </li>
           ))}
         </ul>
-      )}
-
-      {declared && noting && (
-        <div className="mt-1.5">
-          <form
-            className="flex flex-1 items-center gap-2"
-            onSubmit={(event) => {
-              event.preventDefault()
-              reach.mutate(
-                { id: campaign.campaign.id, stageId: stage.id, note },
-                {
-                  onSuccess: () => {
-                    setNote('')
-                    setNoting(false)
-                  },
-                },
-              )
-            }}
-          >
-            <input
-              className={FIELD}
-              aria-label={`What happened for ${stage.name}`}
-              placeholder="Which job, which house"
-              value={note}
-              autoFocus
-              onChange={(event) => {
-                setNote(event.target.value)
-              }}
-            />
-            <Button type="submit" size="sm" variant="primary" disabled={reach.isPending}>
-              Record
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              aria-label="Cancel"
-              onClick={() => {
-                setNoting(false)
-              }}
-            >
-              <X size={14} aria-hidden />
-            </Button>
-          </form>
-        </div>
       )}
     </li>
   )

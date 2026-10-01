@@ -1,4 +1,4 @@
-import type { CampaignId, StageId } from '@/domain/ids/ids'
+import type { CampaignId, ProjectId, StageId } from '@/domain/ids/ids'
 
 /**
  * A long arc across several areas — the thing a "main quest" actually
@@ -119,6 +119,21 @@ export interface Stage {
    * times is three laps; having £40,000 twice is not a thing.
    */
   readonly repeatable?: boolean
+  /**
+   * Quests that work toward this stage, by id.
+   *
+   * Asked for as _"the job is related to stuff like polishing the
+   * portfolio"_ — the arc said "Get a new job" and the quest log held the
+   * work that gets one, with nothing joining them. A declared stage with
+   * quests attached fills its bar from their steps, so the work shows on
+   * the arc as it happens; it is still **met only when you say so**,
+   * because finishing the portfolio is not the same as having the job.
+   *
+   * Ids rather than copies, read live through `Evidence.quests` — the
+   * "evidence gathered live, never copied" stance the measured stages
+   * take. A deleted quest's id simply stops matching anything.
+   */
+  readonly quests?: readonly ProjectId[]
 }
 
 export interface Campaign {
@@ -151,6 +166,22 @@ export interface Evidence {
   readonly salaryMinor?: number
   readonly savingsMinor?: number
   readonly creditScore?: number
+  /** Every quest's steps, by quest id, for the stages that link to them. */
+  readonly quests?: Readonly<Record<string, QuestProgress>>
+}
+
+export interface QuestProgress {
+  readonly name: string
+  readonly done: number
+  readonly of: number
+}
+
+/** The quests a stage links to that still exist, in the order it lists them. */
+export function linkedQuests(stage: Stage, evidence: Evidence): readonly QuestProgress[] {
+  return (stage.quests ?? []).flatMap((id) => {
+    const quest = evidence.quests?.[id]
+    return quest === undefined ? [] : [quest]
+  })
 }
 
 export interface StageStanding {
@@ -165,6 +196,8 @@ export interface StageStanding {
    * stage on a database with no finance readings has not been failed.
    */
   readonly unproven: boolean
+  /** The quests feeding a declared stage, as they stand. Absent when none. */
+  readonly linked?: readonly QuestProgress[]
 }
 
 export interface CampaignStanding {
@@ -260,6 +293,25 @@ function standingForStage(stage: Stage, evidence: Evidence): StageStanding {
      * a stage that is met looks met wherever it appears.
      */
     const said = stage.reached.length > 0
+
+    /*
+     * With quests attached the bar is their steps, and saying so fills
+     * it: having the job is the end of the stage whatever the portfolio
+     * stood at.
+     */
+    const linked = linkedQuests(stage, evidence)
+    const of = linked.reduce((sum, quest) => sum + quest.of, 0)
+    if (of > 0) {
+      const done = linked.reduce((sum, quest) => sum + quest.done, 0)
+      return {
+        stage,
+        met: said,
+        progress: { value: said ? of : done, of },
+        unproven: false,
+        linked,
+      }
+    }
+
     return { stage, met: said, progress: { value: said ? 1 : 0, of: 1 }, unproven: false }
   }
 
@@ -551,9 +603,20 @@ export function reshapeStage(
   stageId: StageId,
   name: string,
   requirement: Requirement,
+  quests?: readonly ProjectId[],
 ): Campaign {
   const trimmed = name.trim()
   if (trimmed === '') return campaign
 
-  return mapStage(campaign, stageId, (stage) => ({ ...stage, name: trimmed, requirement }))
+  return mapStage(campaign, stageId, (stage) => {
+    const { quests: _previous, ...rest } = stage
+    /*
+     * Absent leaves the links alone; an empty list clears them. Only a
+     * declared stage keeps any — a measured stage reads its own records.
+     */
+    const next = quests ?? stage.quests ?? []
+    return requirement.kind === 'declared' && next.length > 0
+      ? { ...rest, name: trimmed, requirement, quests: next }
+      : { ...rest, name: trimmed, requirement }
+  })
 }
