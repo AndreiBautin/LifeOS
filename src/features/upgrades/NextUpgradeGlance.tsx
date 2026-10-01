@@ -45,7 +45,21 @@ function OwnedTree({ entries }: { readonly entries: readonly TreeEntry[] }) {
   ).filter((leaves) => leaves.length > 0)
 
   const root = { x: TREE_WIDTH / 2, y: 4 }
-  const span = TREE_WIDTH / (branches.length + 1)
+  /*
+   * Every leaf gets an equal slot across the full width, and a branch sits
+   * over the middle of its own leaves. Spacing branches evenly instead put
+   * five Gadgets leaves into the same width as three Base ones, and they
+   * touched.
+   */
+  const slot =
+    TREE_WIDTH /
+    Math.max(
+      1,
+      branches.reduce((sum, leaves) => sum + leaves.length, 0),
+    )
+  const starts = branches.map((_, index) =>
+    branches.slice(0, index).reduce((sum, leaves) => sum + leaves.length, 0),
+  )
 
   return (
     <div
@@ -64,7 +78,8 @@ function OwnedTree({ entries }: { readonly entries: readonly TreeEntry[] }) {
         aria-hidden
       >
         {branches.map((leaves, branch) => {
-          const node = { x: span * (branch + 1), y: 17 }
+          const first = (starts[branch] ?? 0) * slot
+          const node = { x: first + (leaves.length * slot) / 2, y: 17 }
           return (
             <g key={branch}>
               <line
@@ -76,7 +91,7 @@ function OwnedTree({ entries }: { readonly entries: readonly TreeEntry[] }) {
                 strokeWidth={1}
               />
               {leaves.map((entry, index) => {
-                const x = node.x + (index - (leaves.length - 1) / 2) * 5
+                const x = first + slot * (index + 0.5)
                 const lit = isOwned(entry.upgrade)
                 return (
                   <g key={entry.upgrade.id}>
@@ -91,7 +106,7 @@ function OwnedTree({ entries }: { readonly entries: readonly TreeEntry[] }) {
                     <circle
                       cx={x}
                       cy={34}
-                      r={2.2}
+                      r={2}
                       fill={lit ? 'var(--color-accent-500)' : 'var(--color-ink-800)'}
                       stroke={lit ? 'none' : 'var(--color-ink-600)'}
                       strokeWidth={0.8}
