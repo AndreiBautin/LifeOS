@@ -1,4 +1,4 @@
-import { Swords, Sparkle, X } from 'lucide-react'
+import { Pencil, Swords, Sparkle, X } from 'lucide-react'
 
 import type { CampaignStanding, Requirement, StageStanding } from '@/domain/campaign/campaign'
 import type { HomeFilter } from '@/domain/base/base'
@@ -72,7 +72,19 @@ const STAGE_WORK: Partial<Record<Requirement['kind'], HomeFilter>> = {
  * ordered but not gated, so each chapter names what it is waiting on and
  * the step can be ticked from here.
  */
-function ArcSlot({ arc }: { readonly arc: CampaignStanding }) {
+/** The arc's own editor, opened from the card rather than drawn beside it. */
+interface ArcEditing {
+  readonly open: boolean
+  readonly toggle: () => void
+}
+
+function ArcSlot({
+  arc,
+  editing,
+}: {
+  readonly arc: CampaignStanding
+  readonly editing?: ArcEditing
+}) {
   const open = arc.stages.filter((stage) => !stage.met)
 
   return (
@@ -91,6 +103,19 @@ function ArcSlot({ arc }: { readonly arc: CampaignStanding }) {
           </p>
           <CampaignPath stages={arc.stages} nextPosition={arc.nextPosition} />
         </div>
+        {editing !== undefined && (
+          <Button
+            size="sm"
+            variant="ghost"
+            aria-pressed={editing.open}
+            aria-label={
+              editing.open ? `Stop editing ${arc.campaign.name}` : `Edit ${arc.campaign.name}`
+            }
+            onClick={editing.toggle}
+          >
+            {editing.open ? <X size={14} aria-hidden /> : <Pencil size={14} aria-hidden />}
+          </Button>
+        )}
       </div>
 
       <ul className="mt-3 space-y-2">
@@ -260,10 +285,12 @@ function Slot({
   kind,
   quest,
   arc,
+  editing,
 }: {
   readonly kind: QuestKind
   readonly quest: Project | undefined
   readonly arc?: CampaignStanding
+  readonly editing?: ArcEditing
 }) {
   const setActive = useSetActiveQuest()
   const Icon = KIND_ICON[kind]
@@ -285,7 +312,7 @@ function Slot({
      * links to where that is done. It pays nothing, like the arc itself.
      */
     if (kind === 'main' && arc?.next !== undefined) {
-      return <ArcSlot arc={arc} />
+      return <ArcSlot arc={arc} {...(editing === undefined ? {} : { editing })} />
     }
 
     /*
@@ -438,6 +465,7 @@ export function ActiveQuests({
   main,
   side,
   arc,
+  editing,
 }: {
   readonly main: Project | undefined
   readonly side: Project | undefined
@@ -449,6 +477,11 @@ export function ActiveQuests({
    * same aim shown twice. One without an arc still shows as before.
    */
   readonly arc?: CampaignStanding
+  /**
+   * Quests passes this so the arc card carries its own pencil; Today does
+   * not, because editing an arc is not something done from the day.
+   */
+  readonly editing?: ArcEditing
 }) {
   const arcLeads = arc?.next !== undefined
 
@@ -458,6 +491,7 @@ export function ActiveQuests({
         kind="main"
         quest={arcLeads ? undefined : main}
         {...(arc === undefined ? {} : { arc })}
+        {...(editing === undefined ? {} : { editing })}
       />
       <Slot kind="side" quest={side} />
     </div>

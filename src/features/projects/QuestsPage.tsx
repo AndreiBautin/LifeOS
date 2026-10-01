@@ -1,4 +1,5 @@
 import { Swords } from 'lucide-react'
+import { useState } from 'react'
 
 import { useCampaigns } from '@/features/campaign/hooks'
 
@@ -71,6 +72,7 @@ export function QuestsPage() {
    */
   const arcs = useCampaigns()
   const leadingArc = (arcs.data ?? []).find((one) => one.next !== undefined)
+  const [editingArc, setEditingArc] = useState(false)
 
   return (
     <div className="space-y-4">
@@ -84,16 +86,24 @@ export function QuestsPage() {
             main={active.data?.main}
             side={active.data?.side}
             {...(leadingArc === undefined ? {} : { arc: leadingArc })}
+            editing={{
+              open: editingArc,
+              toggle: () => {
+                setEditingArc(!editingArc)
+              },
+            }}
           />
 
           {/*
-            `Campaigns` is the arc at full size (every stage, every lap,
-            editable), which `ActiveQuests`' `ArcSlot` only ever
-            summarised. It is a fragment returning one `<Section>` per
-            arc, so several arcs stack as several sections rather than
-            one giant one.
+            `Campaigns` is the arc's editor — every stage, its target,
+            its linked quests, renaming and adding. It used to sit here
+            permanently under the arc card, reported as redundant: two
+            sections naming the same arc and its six chapters, one above
+            the other. It opens from the card's pencil now, and stands on
+            its own only when no arc is leading — nothing yet, or every
+            arc finished — since that is where one is started.
           */}
-          <Campaigns />
+          {(leadingArc === undefined || editingArc) && <Campaigns />}
         </div>
 
         <div className="space-y-6">
