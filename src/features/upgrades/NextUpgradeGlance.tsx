@@ -6,8 +6,8 @@ import { Skeleton } from '@/components/shared/Skeleton'
 import { buttonStyles } from '@/components/shared/styles'
 import type { Gate } from '@/domain/game/tree'
 import type { TreeEntry } from '@/domain/upgrades/recommendation'
+import { shelfOf, UPGRADE_SHELVES } from '@/domain/upgrades/shelf'
 import { isOpen, isOwned } from '@/domain/upgrades/upgrade'
-import { cn } from '@/lib/cn'
 
 import { useWholeTree } from './hooks'
 
@@ -16,7 +16,7 @@ import { useWholeTree } from './hooks'
  *
  * **The highest-priority entry still worth wanting, not the whole
  * tree.** `wholeTree` already returns every entry ranked — effective
- * priority, own priority, then cheapest and by name — so "next" is just
+ * priority, own priority, then by name — so "next" is just
  * the first one that is neither owned nor dropped.
  *
  * **No savings gauge, because nothing is saved.** It drew a thermometer
@@ -26,32 +26,85 @@ import { useWholeTree } from './hooks'
  * "Nothing banked" was the card describing a feature that no longer
  * exists. What is left is a reading the tree actually holds: how much of
  * the list you already own.
+ *
+ * **Drawn as a tree, because it is one.** It was a number over a grid of
+ * squares, which sat directly under Base's number over a grid of dots and
+ * read as the same widget twice. This is the screen's own shape in
+ * miniature: a trunk, a branch per shelf, a leaf per item — lit once it
+ * is owned — so the card looks like what it opens.
  */
-function OwnedGrid({ entries }: { readonly entries: readonly TreeEntry[] }) {
+const TREE_WIDTH = 56
+const TREE_HEIGHT = 40
+const LEAVES_PER_BRANCH = 5
+
+function OwnedTree({ entries }: { readonly entries: readonly TreeEntry[] }) {
   const listed = entries.filter((entry) => entry.upgrade.status !== 'cancelled')
-  const shown = listed.slice(0, 12)
   const owned = listed.filter((entry) => isOwned(entry.upgrade)).length
+  const branches = UPGRADE_SHELVES.map((shelf) =>
+    listed.filter((entry) => shelfOf(entry.upgrade) === shelf).slice(0, LEAVES_PER_BRANCH),
+  ).filter((leaves) => leaves.length > 0)
+
+  const root = { x: TREE_WIDTH / 2, y: 4 }
+  const span = TREE_WIDTH / (branches.length + 1)
 
   return (
     <div
       role="img"
       aria-label={`${String(owned)} of ${String(listed.length)} upgrades owned`}
-      className="hidden w-14 shrink-0 flex-col items-center gap-1.5 lg:flex"
+      className="hidden w-14 shrink-0 flex-col items-center gap-1 lg:flex"
     >
-      <span className="numeric text-ink-100 text-xs font-semibold">
+      <span className="numeric text-ink-100 text-xs leading-none font-semibold">
         {owned}/{listed.length}
       </span>
-      <div className="grid grid-cols-4 gap-1" aria-hidden>
-        {shown.map((entry) => (
-          <span
-            key={entry.upgrade.id}
-            className={cn(
-              'size-2.5 rounded-[3px]',
-              isOwned(entry.upgrade) ? 'bg-accent-500' : 'bg-ink-800 ring-ink-700 ring-1',
-            )}
-          />
-        ))}
-      </div>
+      <span className="text-ink-500 text-[10px] leading-none">owned</span>
+      <svg
+        width={TREE_WIDTH}
+        height={TREE_HEIGHT}
+        viewBox={`0 0 ${String(TREE_WIDTH)} ${String(TREE_HEIGHT)}`}
+        aria-hidden
+      >
+        {branches.map((leaves, branch) => {
+          const node = { x: span * (branch + 1), y: 17 }
+          return (
+            <g key={branch}>
+              <line
+                x1={root.x}
+                y1={root.y}
+                x2={node.x}
+                y2={node.y}
+                stroke="var(--color-ink-700)"
+                strokeWidth={1}
+              />
+              {leaves.map((entry, index) => {
+                const x = node.x + (index - (leaves.length - 1) / 2) * 5
+                const lit = isOwned(entry.upgrade)
+                return (
+                  <g key={entry.upgrade.id}>
+                    <line
+                      x1={node.x}
+                      y1={node.y}
+                      x2={x}
+                      y2={33}
+                      stroke="var(--color-ink-700)"
+                      strokeWidth={1}
+                    />
+                    <circle
+                      cx={x}
+                      cy={34}
+                      r={2.2}
+                      fill={lit ? 'var(--color-accent-500)' : 'var(--color-ink-800)'}
+                      stroke={lit ? 'none' : 'var(--color-ink-600)'}
+                      strokeWidth={0.8}
+                    />
+                  </g>
+                )
+              })}
+              <circle cx={node.x} cy={node.y} r={2} fill="var(--color-ink-500)" />
+            </g>
+          )
+        })}
+        <circle cx={root.x} cy={root.y} r={2.4} fill="var(--color-accent-500)" />
+      </svg>
     </div>
   )
 }
@@ -116,7 +169,7 @@ export function NextUpgradeGlance() {
           )}
         </div>
 
-        {tree.data.length > 0 && <OwnedGrid entries={tree.data} />}
+        {tree.data.length > 0 && <OwnedTree entries={tree.data} />}
       </div>
     </Card>
   )
