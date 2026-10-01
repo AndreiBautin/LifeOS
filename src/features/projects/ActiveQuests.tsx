@@ -151,7 +151,8 @@ function ChapterRow({ standing }: { readonly standing: StageStanding }) {
           projectId={fromQuest.quest.id}
           actionId={fromQuest.step.id}
           label={`${fromQuest.quest.name} · ${fromQuest.step.description}`}
-          lead={fromQuest.quest.name}
+          // A quest named for its chapter would say the heading twice.
+          {...(fromQuest.quest.name === stage.name ? {} : { lead: fromQuest.quest.name })}
           step={fromQuest.step.description}
         />
       ) : fromHome?.projectId !== undefined && fromHome.description !== undefined ? (
