@@ -54,8 +54,14 @@ export function NextAction({ recommendation }: { readonly recommendation: Recomm
           close.mutate({ id: projectId, actionId, done: true })
         }}
       >
+        {/*
+          **"Mark step done", not "Done".** A bright full-width button
+          reading only "Done" under a step reads as a status — this step
+          is done — before it reads as a thing to press. Reported as
+          exactly that misreading. The verb makes it the action it is.
+        */}
         <Check size={16} aria-hidden />
-        Done
+        Mark step done
       </Button>
     </Card>
   )

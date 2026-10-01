@@ -429,9 +429,23 @@ export function QuestBoard() {
 
   const today = useServices().clock.now()
 
+  const active = useActiveQuests()
+
   const suggested = (projects.data ?? []).find(
     (project) => project.id === recommendation.data?.projectId,
   )
+  /*
+   * **Silent when the suggestion is a quest you are already on.** The
+   * scoring knows nothing about which quests are active, so with one main
+   * quest it named that quest's own next step — the same step the Active
+   * card above already shows and can tick — and then offered "Make this
+   * my main quest" for the quest that already was. Reported as exactly
+   * that. A suggestion is worth a panel only when it says something the
+   * active quests do not.
+   */
+  const alreadyActive =
+    suggested !== undefined &&
+    (suggested.id === active.data?.main?.id || suggested.id === active.data?.side?.id)
 
   const outstanding = (projects.data ?? []).filter((project) => project.status !== 'completed')
   const oneOffs = byOutstanding(contracts(outstanding))
@@ -440,7 +454,7 @@ export function QuestBoard() {
 
   return (
     <>
-      {recommendation.data?.actionId !== undefined && (
+      {recommendation.data?.actionId !== undefined && !alreadyActive && (
         <div>
           <CardHeading icon={<Lightbulb size={16} aria-hidden />} title="Suggested" />
           <NextAction recommendation={recommendation.data} />
