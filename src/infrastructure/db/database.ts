@@ -2,7 +2,6 @@ import type { Room } from '@/domain/base/declutter'
 import type { Attempt } from '@/domain/mind/practice'
 import type { ChallengeMark } from '@/domain/challenges/challenge'
 import type { Campaign } from '@/domain/campaign/campaign'
-import type { Goal } from '@/domain/goals/goal'
 import type { DBSchema, IDBPDatabase } from 'idb'
 import { openDB } from 'idb'
 
@@ -65,7 +64,7 @@ export const DB_NAME = 'lifeos'
  * a device that already ran it will not run it again, so changing one
  * leaves two devices with different schemas and no way to tell.
  */
-export const DB_VERSION = 21
+export const DB_VERSION = 22
 
 /**
  * A workout as it is stored, which is not quite a workout as the domain
@@ -422,7 +421,8 @@ export interface LiftDB extends DBSchema {
    */
   goals: {
     key: string
-    value: Goal
+    /** Retired with the Goals feature; written by nothing. See step 22. */
+    value: RetiredRow
   }
   /** The resume, one row under a fixed key. */
   resume: {
@@ -697,6 +697,16 @@ export function openDatabase(name = DB_NAME): Promise<AppDatabase> {
         // Complex goals. Keyed by id, items inline -- the same call the
         // campaign store already makes and for the same reason.
         db.createObjectStore('goals', { keyPath: 'id' })
+      }
+
+      if (oldVersion < 22) {
+        /*
+         * Goals left the app — _"too much complexity integrating with
+         * quests"_ — so their rows go the way the friends and the house
+         * candidates did. The store stays, because removing it would mean
+         * editing the step above that creates it.
+         */
+        void transaction.objectStore('goals').clear()
       }
     },
 

@@ -8,7 +8,6 @@ import { ActiveQuests } from './ActiveQuests'
 import { QuestBoard } from './QuestBoard'
 import { useActiveQuests } from './hooks'
 import { Campaigns } from '@/features/campaign/Campaigns'
-import { GoalsCard } from '@/features/goals/GoalsCard'
 
 /**
  * `/quests` — its own page again.
@@ -86,14 +85,6 @@ export function QuestsPage() {
             side={active.data?.side}
             {...(leadingArc === undefined ? {} : { arc: leadingArc })}
           />
-
-          {/*
-            Silent unless a goal has something available to work on next
-            — see the note in `GoalsCard`. A goal is a planning surface
-            rather than a quest, so this sits beside the quests it is
-            adjacent to in spirit without pretending to be one.
-          */}
-          <GoalsCard />
 
           {/*
             `Campaigns` is the arc at full size (every stage, every lap,

@@ -37,7 +37,6 @@ export const TOMBSTONED_COLLECTIONS = [
   'attempts',
   'challenges',
   'rooms',
-  'goals',
   /*
    * 'conditions', 'dayReadings' and 'weighIns' were all here and are
    * gone with the records that needed them — 'weighIns' twice over, once

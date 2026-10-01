@@ -19,7 +19,6 @@ import type {
   RoomRepository,
   TrackGateway,
   CampaignRepository,
-  GoalRepository,
   FinanceRepository,
   ResumeRepository,
   TripRepository,
@@ -44,7 +43,6 @@ import {
   createChallengeRepository,
   createRoomRepository,
   createCampaignRepository,
-  createGoalRepository,
   createFinanceRepository,
   createResumeRepository,
   createTripRepository,
@@ -91,7 +89,6 @@ export interface AppServices {
   readonly places: PlaceRepository
   readonly finance: FinanceRepository
   readonly campaigns: CampaignRepository
-  readonly goals: GoalRepository
   readonly attempts: AttemptRepository
   readonly challenges: ChallengeRepository
   readonly rooms: RoomRepository
@@ -156,7 +153,6 @@ export async function bootstrap(): Promise<BootstrapResult> {
     places: createPlaceRepository(db, systemClock),
     finance: createFinanceRepository(db, systemClock),
     campaigns: createCampaignRepository(db, systemClock),
-    goals: createGoalRepository(db, systemClock),
     attempts: createAttemptRepository(db, systemClock),
     challenges: createChallengeRepository(db, systemClock),
     rooms: createRoomRepository(db, systemClock),

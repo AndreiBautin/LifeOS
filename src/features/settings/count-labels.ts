@@ -29,7 +29,6 @@ export const COUNT_LABELS: readonly (readonly [keyof BackupCounts, string])[] = 
   ['vices', 'buffs'],
   ['finance', 'monthly finance readings'],
   ['campaigns', 'arcs'],
-  ['goals', 'complex goals'],
   ['attempts', 'practice problems'],
   ['challenges', 'seasonal challenges'],
   ['rooms', 'rooms'],

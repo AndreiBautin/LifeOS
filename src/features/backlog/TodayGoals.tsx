@@ -22,11 +22,9 @@ import { useDailyGoals } from './hooks'
  * nothing to report. Printing "nothing due today" permanently under a
  * heading would be the one card on this screen that never goes away.
  *
- * **Titled "Working through", not "Goal".** `GoalsCard` a few rows up
- * just gained a `Goal` badge for an entirely different record — a life
- * goal, which pays no XP and has a dependency graph. Reusing the word
- * here, for a reading streak that very much does pay XP, would recreate
- * the exact ambiguity that badge exists to resolve.
+ * **Titled "Working through", not "Goal".** The app had a separate
+ * Goals feature beside this one when it was named; that is gone, and the
+ * title stays because it says what the card is about.
  *
  * **One `Card`, not two boxes.** This used to float a bold `h2` above
  * `GoalsToday`'s own separately-bordered card — reported, among the

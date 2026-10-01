@@ -200,6 +200,17 @@ That file is the only place allowed to name a concrete implementation.
 These are each enforced by a lint rule or a test. They are listed here so
 you know _why_ before you meet the error.
 
+**Goals are gone; everything below about them is history.** Dropped as
+_"it's causing too much complexity integrating with quests"_: a goal
+described the same aim the main quest and the arc already held, so the
+app had three overlapping ways to say one thing. Removed: `domain/goals`,
+`application/use-cases/goals`, `features/goals`, the repository, the
+backup collection, the tombstone entry and the demo fixture. `/goals` and
+`/goals/:id` redirect to `/quests`. **The `goals` store stays and step 22
+clears it** — the friends and house-candidate pattern, because removing a
+store means editing the step that created it. An old backup that still
+carries `goals` imports fine; the section is ignored.
+
 **Complex, multi-branch goals are `domain/goals/`, and they are neither a
 `Campaign` nor a `Project`.** Asked for as a way to hold a relocation
 honestly: several workstreams running at once — shared criteria,

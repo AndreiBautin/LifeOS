@@ -1,8 +1,6 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom'
 
 import { AtlasPage } from '@/features/atlas/AtlasPage'
-import { GoalsPage } from '@/features/goals/GoalsPage'
-import { GoalPage } from '@/features/goals/GoalPage'
 import { InboxPage } from '@/features/atlas/InboxPage'
 import { HomePage } from '@/features/today/HomePage'
 import { SharePage } from '@/features/atlas/SharePage'
@@ -47,8 +45,14 @@ export const router = createBrowserRouter(
          * while folded in; now it renders directly again.
          */
         { path: 'quests', element: <QuestsPage /> },
-        { path: 'goals', element: <GoalsPage /> },
-        { path: 'goals/:id', element: <GoalPage /> },
+        /*
+         * **Goals are gone and both paths land on Quests.** Dropped as
+         * "too much complexity integrating with quests" — a goal was a
+         * second way of describing the same aim the main quest already
+         * held. Redirects rather than deletions, the rule `/next` follows.
+         */
+        { path: 'goals', element: <Navigate to="/quests" replace /> },
+        { path: 'goals/:id', element: <Navigate to="/quests" replace /> },
         /*
          * The PWA manifest ships a "What next" shortcut pointing here.
          * Quests having its own page again is what "next" actually means.

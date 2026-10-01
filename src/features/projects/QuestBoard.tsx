@@ -9,7 +9,6 @@ import {
   Plus,
   Receipt,
   Trash2,
-  Waypoints,
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useState } from 'react'
@@ -60,10 +59,10 @@ import { NextAction, StatusBadge } from './NextAction'
  * second time here would put the main/side quest cards on the page
  * twice.
  *
- * **Goals and Job search live in this board's own heading**, not a page
- * header `/quests` never had. Both are reached from nowhere else — a tab
- * is the only unconditional route in this app, and neither has one — so
- * putting them anywhere less permanent would have made them
+ * **Job search lives in this board's own heading**, not a page
+ * header `/quests` never had. It is reached from nowhere else — a tab
+ * is the only unconditional route in this app, and it has none — so
+ * putting it anywhere less permanent would have made it
  * unreachable, the exact "capability nothing can reach" trap this
  * codebase keeps a record of falling into.
  */
@@ -481,15 +480,9 @@ export function QuestBoard() {
           action={
             <div className="flex items-center gap-3">
               {/*
-                **Goals and Job search, relocated from the page header
-                this screen never had.** Neither is reached from anywhere
-                else in the app, so losing their old home on `/quests`
-                would have made them unreachable outright.
+                **Job search, relocated from the page header this screen
+                never had.** It is reached from nowhere else in the app.
               */}
-              <Link viewTransition to="/goals" className="text-ink-500 hover:text-ink-300 text-xs">
-                <Waypoints size={13} className="mr-1 inline" aria-hidden />
-                Goals
-              </Link>
               <Link viewTransition to="/jobs" className="text-ink-500 hover:text-ink-300 text-xs">
                 <Briefcase size={13} className="mr-1 inline" aria-hidden />
                 Job search
