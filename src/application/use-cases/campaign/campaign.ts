@@ -7,6 +7,7 @@ const CLEAR_ENOUGH = 90
 const EPOCH = '1970-01-01'
 import {
   addStage,
+  linkedQuestIds,
   markReached,
   moveStage,
   removeStage,
@@ -23,6 +24,7 @@ import {
   type Stage,
 } from '@/domain/campaign/campaign'
 import { latest } from '@/domain/finance/reading'
+import { withKind } from '@/domain/projects/active'
 import type { CampaignId, IdGenerator, ProjectId, StageId } from '@/domain/ids/ids'
 import type {
   CampaignRepository,
@@ -354,7 +356,24 @@ export async function reshapeStageIn(
   deps: CampaignDeps,
   quests?: readonly ProjectId[],
 ): Promise<void> {
+  const before = linkedQuestIds(await deps.campaigns.all())
+
   await editCampaign(id, deps, (campaign) =>
     reshapeStage(campaign, stageId, name, requirement, quests),
   )
+
+  /*
+   * **Linking decides main and side.** A quest linked to any arc's
+   * chapter is main; unlinked from all of them, it goes back to side.
+   * Only quests whose linkage changed are touched, so a quest filed by
+   * hand before this rule existed keeps its kind until it is linked or
+   * unlinked. One write for all of them, like completing a project.
+   */
+  const after = linkedQuestIds(await deps.campaigns.all())
+  const changed = (await deps.projects.all()).flatMap((project) => {
+    if (after.has(project.id) && !before.has(project.id)) return [withKind(project, 'main')]
+    if (before.has(project.id) && !after.has(project.id)) return [withKind(project, 'side')]
+    return []
+  })
+  if (changed.length > 0) await deps.projects.saveMany(changed)
 }

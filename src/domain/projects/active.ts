@@ -81,3 +81,18 @@ export function standDown(projects: readonly Project[], kind: QuestKind): readon
     .filter((project) => kindOf(project) === kind && project.activatedAt !== undefined)
     .map(withoutStamp)
 }
+
+/**
+ * A quest moved to a different kind, standing down if it was active.
+ *
+ * Main is decided by whether the quest is linked to one of the arc's
+ * chapters, so linking and unlinking move a quest between kinds. It drops
+ * its activation on the way: a main quest that had been the active one
+ * would otherwise land in the side slot by its old stamp, which is the
+ * app choosing a side quest nobody chose. Unchanged kind, unchanged quest.
+ */
+export function withKind(project: Project, kind: QuestKind): Project {
+  if (kindOf(project) === kind) return project
+
+  return { ...withoutStamp(project), kind }
+}

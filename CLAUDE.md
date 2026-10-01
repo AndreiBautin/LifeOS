@@ -3778,6 +3778,24 @@ measured. The declared stage's control is a box in its header now, ticked
 when reached and unticked to take back the latest time; the note form and
 "Log another" went with the old button.
 
+**The arc is the main quest, and a quest is main because it is linked to
+a chapter.** Asked for as _"really the arc and main quest are the same
+thing"_, then _"why would job search system be a side quest then?"_ —
+it fed a chapter of the arc and the board filed it as side, because kind
+was a toggle somebody set at creation. `reshapeStageIn` now sets `kind`
+from linkage: newly linked becomes main, unlinked from every arc goes
+back to side (`withKind` drops the `activatedAt` stamp, since that is
+per kind). **Only quests whose linkage changed are touched**, so nothing
+is rewritten on read. The add form has no Main/Side toggle and the
+"make this my main quest" buttons are gone; activation survives for the
+side slot only.
+
+`ArcSlot` on Today always leads the main slot when an arc has anything
+open, with **one row per open chapter** and a tickable step in each —
+the first linked quest's next step, else the home recommendation for a
+house-jobs chapter. Showing only the earliest unmet stage hid the
+chapter actually being worked on, since the arc is ordered but not gated.
+
 **The arc is three measured stages, and a deposit reads a fund rather than a net worth.** Asked for as _"let's remove the find a new house stage. The house deposit thing should come from a separate saving fund that we should start tracking too… let's also drop sell this house and move stages. So just tracking three progress bar things. But fix up the house should include all the diy as well as getting everything decluttered."_
 
 **The three that went were the three that were declared.** Find a house, sell this one, move — nothing in the app records any of them, so each was a tick somebody would make on the day. What is left is the part the app can witness, which is also the part that takes the years: finding a house and selling one are events rather than campaigns, and there is nothing to watch fill up in the meantime.

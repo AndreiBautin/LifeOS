@@ -620,3 +620,17 @@ export function reshapeStage(
       : { ...rest, name: trimmed, requirement }
   })
 }
+
+/**
+ * Every quest linked to any stage of any arc.
+ *
+ * What makes a quest main: belonging to the arc, rather than a label
+ * somebody picked. Asked for as the rule _"a quest linked to the arc
+ * counts as main, anything else is side"_ after a quest feeding the move
+ * turned out to be filed as side.
+ */
+export function linkedQuestIds(campaigns: readonly Campaign[]): ReadonlySet<ProjectId> {
+  return new Set(
+    campaigns.flatMap((campaign) => campaign.stages.flatMap((stage) => stage.quests ?? [])),
+  )
+}

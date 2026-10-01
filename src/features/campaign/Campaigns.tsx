@@ -18,7 +18,6 @@ import {
   useUndoStage,
 } from './hooks'
 import { StageEditor } from './StageEditor'
-import { useActiveQuests } from '@/features/projects/hooks'
 
 /**
  * The long arc — the move, and anything shaped like it.
@@ -689,7 +688,6 @@ function Arc({
 
 export function Campaigns() {
   const campaigns = useCampaigns()
-  const active = useActiveQuests()
   const [adding, setAdding] = useState(false)
 
   const arcs = campaigns.data ?? []
@@ -697,12 +695,12 @@ export function Campaigns() {
   /*
    * The arc currently filling the main quest slot, or none.
    *
-   * The same two facts the slot itself uses: no main quest activated,
-   * and the first arc with something still outstanding. An arc that is
+   * The first arc with something still outstanding — the same fact the
+   * slot itself uses. The arc is the main quest whether or not a quest is
+   * activated; see `ActiveQuests`. An arc that is
    * finished has nothing to say about what you are working on now.
    */
-  const standingIn =
-    active.data?.main === undefined ? arcs.find((one) => one.next !== undefined) : undefined
+  const standingIn = arcs.find((one) => one.next !== undefined)
 
   /*
    * Nothing yet, so the app supplies a heading — the only place it does

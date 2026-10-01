@@ -15,7 +15,7 @@ import { useState } from 'react'
 
 import { useServices } from '@/app/context'
 import { kindOf } from '@/domain/projects/active'
-import { QUEST_KIND_LABELS, type QuestKind } from '@/domain/projects/project'
+import { QUEST_KIND_LABELS } from '@/domain/projects/project'
 import { board, byOutstanding, contracts } from '@/domain/projects/contract'
 import { Badge, Button, Card, CardHeading, Empty } from '@/components/shared/primitives'
 import { EyeIcon } from '@/components/shared/EyeIcon'
@@ -259,20 +259,21 @@ function ProjectCard({
             </Button>
           </form>
 
-          <Button
-            full
-            variant={isActive ? 'outline' : 'primary'}
-            className="mt-2"
-            onClick={() => {
-              setActive.mutate(
-                isActive ? { kind: kindOf(project) } : { id: project.id, kind: kindOf(project) },
-              )
-            }}
-          >
-            {isActive
-              ? `Stand down as ${QUEST_KIND_LABELS[kindOf(project)].toLowerCase()} quest`
-              : `Make this my ${QUEST_KIND_LABELS[kindOf(project)].toLowerCase()} quest`}
-          </Button>
+          {/* Main is set by linking a quest to an arc chapter, never picked
+              here — the main slot is the arc itself. Only a side quest is
+              chosen for its slot. */}
+          {kindOf(project) === 'side' && (
+            <Button
+              full
+              variant={isActive ? 'outline' : 'primary'}
+              className="mt-2"
+              onClick={() => {
+                setActive.mutate(isActive ? { kind: 'side' } : { id: project.id, kind: 'side' })
+              }}
+            >
+              {isActive ? 'Stand down as side quest' : 'Make this my side quest'}
+            </Button>
+          )}
 
           <label className="mt-3 block">
             <span className="text-ink-500 mb-1 block text-xs font-medium tracking-wide uppercase">
@@ -418,7 +419,6 @@ function Contracts({
 
 export function QuestBoard() {
   const [name, setName] = useState('')
-  const [kind, setKind] = useState<QuestKind>('side')
   const [showingFinished, setShowingFinished] = useState(false)
   const projects = useProjects()
 
@@ -457,15 +457,15 @@ export function QuestBoard() {
         <div>
           <CardHeading icon={<Lightbulb size={16} aria-hidden />} title="Suggested" />
           <NextAction recommendation={recommendation.data} />
-          {suggested !== undefined && (
+          {suggested !== undefined && kindOf(suggested) === 'side' && (
             <Button
               className="mt-2"
               full
               onClick={() => {
-                setActive.mutate({ id: suggested.id, kind: kindOf(suggested) })
+                setActive.mutate({ id: suggested.id, kind: 'side' })
               }}
             >
-              Make this my {QUEST_KIND_LABELS[kindOf(suggested)].toLowerCase()} quest
+              Make this my side quest
             </Button>
           )}
         </div>
@@ -510,7 +510,7 @@ export function QuestBoard() {
             if (name.trim() === '') return
 
             add.mutate(
-              { name, kind },
+              { name, kind: 'side' },
               {
                 onSuccess: () => {
                   setName('')
@@ -528,32 +528,9 @@ export function QuestBoard() {
               setName(event.target.value)
             }}
           />
-          <div className="flex gap-2">
-            <div className="flex flex-1 gap-1">
-              {(['side', 'main'] as const).map((option) => (
-                <button
-                  key={option}
-                  type="button"
-                  aria-label={`${QUEST_KIND_LABELS[option]} quest`}
-                  aria-pressed={kind === option}
-                  className={[
-                    'tap-target flex-1 rounded-lg border px-2 text-xs font-medium',
-                    kind === option
-                      ? 'border-accent-500 bg-accent-500/15 text-accent-400'
-                      : 'border-ink-800 text-ink-500',
-                  ].join(' ')}
-                  onClick={() => {
-                    setKind(option)
-                  }}
-                >
-                  {QUEST_KIND_LABELS[option]}
-                </button>
-              ))}
-            </div>
-            <Button type="submit" variant="primary" disabled={add.isPending}>
-              <Plus size={16} aria-hidden /> Add
-            </Button>
-          </div>
+          <Button type="submit" variant="primary" full disabled={add.isPending}>
+            <Plus size={16} aria-hidden /> Add
+          </Button>
         </form>
 
         {projects.data !== undefined && (

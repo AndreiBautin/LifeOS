@@ -2,12 +2,13 @@ import { Swords, Sparkle, X } from 'lucide-react'
 
 import type { CampaignStanding, Requirement, StageStanding } from '@/domain/campaign/campaign'
 import type { HomeFilter } from '@/domain/base/base'
+import type { ActionId, ProjectId } from '@/domain/ids/ids'
 import type { Project } from '@/domain/projects/project'
 import { QUEST_KIND_LABELS, type QuestKind } from '@/domain/projects/project'
 import { Badge, Button, Card } from '@/components/shared/primitives'
 
 import { CampaignPath } from './CampaignPath'
-import { useRecommendation, useSetActionStatus, useSetActiveQuest } from './hooks'
+import { useProjects, useRecommendation, useSetActionStatus, useSetActiveQuest } from './hooks'
 
 /**
  * The two quests you are on.
@@ -54,140 +55,153 @@ const STAGE_WORK: Partial<Record<Requirement['kind'], HomeFilter>> = {
 }
 
 /**
- * The arc, standing in for a main quest nobody has picked.
+ * The main quest: the arc, with one row per chapter still open.
  *
- * **Its own component so the recommendation can be fetched here.** The
- * hook has to run unconditionally and only this branch ever wants it, so
- * asking for it in `Slot` would mean querying on every side quest too.
+ * **The arc is the main quest now, not a stand-in for one.** Reported:
+ * _"really the arc and main quest are the same thing — the main quest
+ * involves everything for selling and moving somewhere better: new job,
+ * fix up house."_ So this slot always shows the arc when there is one,
+ * and a quest is main because it is linked to one of the arc's chapters
+ * rather than because somebody picked it.
  *
- * Reported: *"I think here it should show what the next house fix-up
- * thing would be, you know."* Right, and the two cards made the gap
- * obvious side by side — the side quest named *Access IRA*, a thing you
- * can go and do, while this one named *Fix up the house*, which is a
- * category. A slot whose whole job is "what am I on" should bottom out
- * in something actionable, and for a stage read from Base it can:
- * `recommendation` over that home already picks the next step, skipping
- * what is blocked, and it is the same engine the Suggested section runs.
- *
- * When there is nothing to name — a declared stage, a money stage, or a
- * house stage with no open jobs — it falls back to the stage, which is
- * what it always said. Absent, never invented.
+ * **Every open chapter, each with its own next step.** Showing only the
+ * earliest unmet stage hid the work going on in parallel — the house
+ * chapter would have pushed the portfolio step off the card entirely,
+ * while the portfolio was what was actually being worked on. The arc is
+ * ordered but not gated, so each chapter names what it is waiting on and
+ * the step can be ticked from here.
  */
-function ArcSlot({ arc }: { readonly arc: CampaignStanding & { next: StageStanding } }) {
-  const stage = arc.next.stage
-  const work = STAGE_WORK[stage.requirement.kind]
-  const suggestion = useRecommendation(work)
-
-  /*
-   * **The job's name leads, because the step alone says nothing.**
-   * Reported: *"it just says find the right person, but that literally
-   * applies to all the jobs."* It does — `HIRED_JOB_STEPS` opens every
-   * house job with the same three, so *Find the right person* is the
-   * next step of the porch roof, the boiler and the leaking tap
-   * identically, and naming it without the job is naming nothing.
-   *
-   * The job first and the step after, so that a truncated line keeps the
-   * half that distinguishes it: a clipped "Fix the porch roof · Find
-   * the…" is still useful, where "Find the right person · Fix the…" is
-   * the wrong way round.
-   */
-  const step =
-    suggestion.data?.actionDescription === undefined
-      ? undefined
-      : suggestion.data.projectName === undefined
-        ? suggestion.data.actionDescription
-        : `${suggestion.data.projectName} · ${suggestion.data.actionDescription}`
-
-  const Icon = KIND_ICON.main
+function ArcSlot({ arc }: { readonly arc: CampaignStanding }) {
+  const open = arc.stages.filter((stage) => !stage.met)
 
   return (
     <Card>
       <div className="flex items-start gap-2">
-        <Icon size={16} className="text-accent-400 mt-0.5 shrink-0" aria-hidden />
+        <Swords size={16} className="text-accent-400 mt-1 shrink-0" aria-hidden />
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <p className="text-ink-50 truncate font-semibold">{arc.campaign.name}</p>
-            {/*
-              **Badged _Main_, and this reverses a deliberate call.** It
-              read *Arc*, on the reasoning that a campaign is a readout
-              rather than a quest — nothing to activate, nothing to
-              close, and it pays no XP. All still true, and none of it
-              was the question: the card sits in the main quest slot,
-              under a heading saying "one main quest, one side quest", so
-              refusing to call it the main one left the screen declining
-              to name what it was plainly showing.
-
-              What keeps it honest is everything around the badge: the
-              line below counts **stages**, which is the arc's own word
-              where a quest has steps; there is no stand-down button,
-              because there is nothing to stand down; and the link says
-              *arc* outright.
-            */}
-            <Badge tone="accent">{QUEST_KIND_LABELS.main}</Badge>
+          <div className="flex items-start gap-2">
+            <p className="text-ink-50 line-clamp-2 font-semibold">{arc.campaign.name}</p>
+            <Badge tone="accent" className="mt-0.5 shrink-0">
+              {QUEST_KIND_LABELS.main}
+            </Badge>
           </div>
-
-          {/*
-            **The stage first and the step under it**, because that is
-            the order the thing actually nests: an arc holds stages and a
-            stage is met by jobs. Asked for directly — *"it should read
-            stage and then job, just flip those lines"* — and it also
-            puts the card in the same top-to-bottom order as the arc
-            itself, so somebody reading down goes arc → stage → the thing
-            to do rather than meeting the job before knowing what it is
-            for.
-
-            It stays the dimmer of the two lines. This one is context and
-            the one below is the thing you can act on, which is the
-            hierarchy the side quest's slot already draws.
-
-            The position is `nextPosition`, the index of the stage named,
-            rather than a count of what is finished: `done + 1` said
-            "stage 2 of 6" under the words "Fix up the house", which is
-            stage one.
-
-            **The word _Arc_ used to lead this line and had to go.**
-            Reported: *"'Arc · Fix up the house' reads weird — it makes
-            it seem like every stage is an arc, when you add arcs and
-            each has stages."* Exactly: a middot between two nouns reads
-            as apposition, so the label meant to mark the *card* landed
-            on the *stage* beside it and renamed it.
-
-            Nothing is lost by dropping it. **"Stage" is the arc's own
-            word** — a quest has steps and only an arc has stages — so
-            the vocabulary still separates this card from the side quest
-            below it. Those, plus the absent stand-down button, are what
-            keep the *Main* badge honest; the prefix was the one part
-            doing it by assertion rather than by construction.
-          */}
-          <p className="text-ink-600 mt-0.5 truncate text-xs">
-            {step === undefined ? 'Stage' : `${stage.name} · stage`} {arc.nextPosition ?? arc.total}{' '}
-            of {arc.total}
+          <p className="text-ink-500 numeric mt-0.5 text-xs">
+            {arc.done} of {arc.total} chapters done
           </p>
-
-          {/*
-            The concrete step where there is one, and the stage itself
-            where there is not. Either way this line answers the same
-            question the side quest's does, and reads the same way.
-          */}
-          <p className="text-ink-500 truncate text-xs">Next: {step ?? stage.name}</p>
-
-          {/*
-            The road, `lg` and up — see `CampaignPath`'s own doc for why
-            this duplicates nothing above it. `arc.total`/`arc.stages`
-            already came down with the rest of `CampaignStanding`.
-          */}
           <CampaignPath stages={arc.stages} nextPosition={arc.nextPosition} />
-
-          {/*
-            **"Open the arc →" is gone, not repointed.** It used to link
-            to `/quests`, which is now `/today` under a redirect —
-            navigating there from here would land back on this exact
-            page. `Campaigns` renders the arc at full size further down
-            this same screen now, so there is nothing left to "open".
-          */}
         </div>
       </div>
+
+      <ul className="mt-1">
+        {open.map((stage) => (
+          <ChapterRow key={stage.stage.id} standing={stage} />
+        ))}
+      </ul>
     </Card>
+  )
+}
+
+/**
+ * One open chapter and the step it is waiting on.
+ *
+ * Linked quests first — the first one with a step still open, in the
+ * order the chapter lists them. Failing that, a house or applications
+ * chapter asks the recommendation over its own home, as it always did.
+ * With nothing to name it says so rather than inventing a step.
+ */
+function ChapterRow({ standing }: { readonly standing: StageStanding }) {
+  const { stage, progress } = standing
+  const projects = useProjects()
+  const work = STAGE_WORK[stage.requirement.kind]
+  const suggestion = useRecommendation(work)
+
+  const linked = (stage.quests ?? []).flatMap((id) => {
+    const quest = (projects.data ?? []).find((one) => one.id === id)
+    return quest === undefined ? [] : [quest]
+  })
+  const fromQuest = linked
+    .map((quest) => ({ quest, step: nextStep(quest) }))
+    .find((one) => one.step !== undefined)
+
+  const fromHome =
+    fromQuest === undefined && suggestion.data?.actionId !== undefined
+      ? {
+          projectId: suggestion.data.projectId,
+          actionId: suggestion.data.actionId,
+          projectName: suggestion.data.projectName,
+          description: suggestion.data.actionDescription,
+        }
+      : undefined
+
+  return (
+    <li className="border-ink-800 border-t pt-3 first:mt-3">
+      <div className="flex items-baseline justify-between gap-2">
+        <p className="text-ink-300 truncate text-xs font-medium tracking-wide uppercase">
+          {stage.name}
+        </p>
+        {progress !== undefined && progress.of > 1 && (
+          <span className="numeric text-ink-600 shrink-0 text-xs">
+            {Math.min(progress.value, progress.of)}/{progress.of}
+          </span>
+        )}
+      </div>
+
+      {fromQuest?.step !== undefined ? (
+        <StepTick
+          projectId={fromQuest.quest.id}
+          actionId={fromQuest.step.id}
+          label={`${fromQuest.quest.name} · ${fromQuest.step.description}`}
+          lead={fromQuest.quest.name}
+          step={fromQuest.step.description}
+        />
+      ) : fromHome?.projectId !== undefined && fromHome.description !== undefined ? (
+        <StepTick
+          projectId={fromHome.projectId}
+          actionId={fromHome.actionId}
+          label={`${fromHome.projectName ?? ''} · ${fromHome.description}`}
+          {...(fromHome.projectName === undefined ? {} : { lead: fromHome.projectName })}
+          step={fromHome.description}
+        />
+      ) : (
+        <p className="text-ink-500 mt-1.5 mb-3 text-sm">Nothing to tick yet</p>
+      )}
+    </li>
+  )
+}
+
+/** A step's box and its words, the same control the quest card uses. */
+function StepTick({
+  projectId,
+  actionId,
+  label,
+  lead,
+  step,
+}: {
+  readonly projectId: ProjectId
+  readonly actionId: ActionId
+  readonly label: string
+  readonly lead?: string
+  readonly step: string
+}) {
+  const set = useSetActionStatus()
+
+  return (
+    <div className="mt-1.5 mb-3 flex items-center gap-3">
+      <button
+        type="button"
+        aria-label={`Close ${label}`}
+        aria-pressed={false}
+        disabled={set.isPending}
+        className="tap-target border-ink-700 hover:border-accent-500 grid size-9 shrink-0 place-items-center rounded-lg border transition-colors"
+        onClick={() => {
+          set.mutate({ id: projectId, actionId, done: true })
+        }}
+      />
+      <p className="min-w-0 text-sm">
+        {lead !== undefined && <span className="text-ink-500">{lead} · </span>}
+        <span className="text-ink-100">{step}</span>
+      </p>
+    </div>
   )
 }
 
@@ -220,7 +234,7 @@ function Slot({
      * links to where that is done. It pays nothing, like the arc itself.
      */
     if (kind === 'main' && arc?.next !== undefined) {
-      return <ArcSlot arc={{ ...arc, next: arc.next }} />
+      return <ArcSlot arc={arc} />
     }
 
     /*
@@ -377,15 +391,23 @@ export function ActiveQuests({
   readonly main: Project | undefined
   readonly side: Project | undefined
   /**
-   * The arc, used only when no main quest is picked. An activated quest
-   * wins: it is the thing you actually chose this week, where the arc is
-   * the direction underneath it.
+   * The arc, which **is** the main quest whenever one has something
+   * outstanding. It used to stand in only when no main quest was picked,
+   * and an activated quest won; with quests now main by being linked to
+   * the arc's chapters, a picked main quest beside the arc would be the
+   * same aim shown twice. One without an arc still shows as before.
    */
   readonly arc?: CampaignStanding
 }) {
+  const arcLeads = arc?.next !== undefined
+
   return (
     <div className="space-y-2">
-      <Slot kind="main" quest={main} {...(arc === undefined ? {} : { arc })} />
+      <Slot
+        kind="main"
+        quest={arcLeads ? undefined : main}
+        {...(arc === undefined ? {} : { arc })}
+      />
       <Slot kind="side" quest={side} />
     </div>
   )

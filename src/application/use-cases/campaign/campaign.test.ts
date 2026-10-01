@@ -7,7 +7,13 @@ import type { Room } from '@/domain/base/declutter'
 import { asProjectId, type CampaignId, type StageId } from '@/domain/ids/ids'
 import type { Project } from '@/domain/projects/project'
 
-import { addCampaign, campaignStandings, gatherEvidence, reachStage } from './campaign'
+import {
+  addCampaign,
+  campaignStandings,
+  gatherEvidence,
+  reachStage,
+  reshapeStageIn,
+} from './campaign'
 import type { CampaignDeps } from './campaign'
 
 function project(
@@ -43,12 +49,14 @@ function deps(options: {
   finance?: readonly FinanceReading[]
   rooms?: readonly Room[]
   campaigns?: Campaign[]
-}): CampaignDeps & { stored: Campaign[] } {
+}): CampaignDeps & { stored: Campaign[]; savedProjects: Project[] } {
   const stored = options.campaigns ?? []
+  const savedProjects: Project[] = []
   let counter = 0
 
   return {
     stored,
+    savedProjects,
     campaigns: {
       all: () => Promise.resolve(stored),
       byId: (id) => Promise.resolve(stored.find((one) => one.id === id)),
@@ -64,6 +72,10 @@ function deps(options: {
     },
     projects: {
       all: () => Promise.resolve(options.projects ?? []),
+      saveMany: (saved: readonly Project[]) => {
+        savedProjects.push(...saved)
+        return Promise.resolve()
+      },
     } as unknown as CampaignDeps['projects'],
     finance: {
       all: () => Promise.resolve(options.finance ?? []),
@@ -220,5 +232,73 @@ describe('the arc, end to end', () => {
     )
 
     expect(services.stored[0]?.stages).toEqual([])
+  })
+})
+
+describe('linking quests to a chapter', () => {
+  const arcWith = (quests: readonly string[]): Campaign => ({
+    id: 'move' as CampaignId,
+    name: 'Move',
+    createdAt: '2026-08-01T09:00:00',
+    stages: [
+      {
+        id: 'job' as StageId,
+        name: 'Get a new job',
+        requirement: { kind: 'declared' },
+        reached: [],
+        ...(quests.length === 0 ? {} : { quests: quests.map((one) => asProjectId(one)) }),
+      },
+    ],
+  })
+
+  /*
+   * The rule the quest kinds now follow: on the arc is main, off it is
+   * side. A quest feeding the move was once filed as side by hand, which
+   * is exactly what this stops.
+   */
+  it('makes a newly linked quest main, and an unlinked one side again', async () => {
+    const portfolio = { ...project('Portfolio', undefined, 0, 2), kind: 'side' } as Project
+    const linking = deps({ projects: [portfolio], campaigns: [arcWith([])] })
+    await reshapeStageIn(
+      'move' as CampaignId,
+      'job' as StageId,
+      'Get a new job',
+      { kind: 'declared' },
+      linking,
+      [asProjectId('Portfolio')],
+    )
+    expect(linking.savedProjects.map((one) => [one.name, one.kind])).toEqual([
+      ['Portfolio', 'main'],
+    ])
+
+    const main = { ...portfolio, kind: 'main', activatedAt: '2026-08-20T09:00:00' } as Project
+    const unlinking = deps({ projects: [main], campaigns: [arcWith(['Portfolio'])] })
+    await reshapeStageIn(
+      'move' as CampaignId,
+      'job' as StageId,
+      'Get a new job',
+      { kind: 'declared' },
+      unlinking,
+      [],
+    )
+    const [saved] = unlinking.savedProjects
+    expect(saved?.kind).toBe('side')
+    // Dropped its stamp, so it does not land in the side slot by accident.
+    expect(saved?.activatedAt).toBeUndefined()
+  })
+
+  it('leaves quests alone when the links did not change', async () => {
+    const linked = deps({
+      projects: [{ ...project('Portfolio', undefined, 0, 2), kind: 'main' }],
+      campaigns: [arcWith(['Portfolio'])],
+    })
+    await reshapeStageIn(
+      'move' as CampaignId,
+      'job' as StageId,
+      'A better job',
+      { kind: 'declared' },
+      linked,
+    )
+    expect(linked.savedProjects).toEqual([])
   })
 })
