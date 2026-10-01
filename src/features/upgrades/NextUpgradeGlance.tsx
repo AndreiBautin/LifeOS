@@ -56,10 +56,17 @@ function OwnedGrid({ entries }: { readonly entries: readonly TreeEntry[] }) {
   )
 }
 
-/** What stands between you and the upgrade: a named prerequisite, or nothing. */
-function standing(gates: readonly Gate[]): string {
+/**
+ * The prerequisite still to buy, said plainly — or nothing at all.
+ *
+ * It read "unlocked" when nothing was in the way, and the report was
+ * simply _"what does this mean?"_ A word that only makes sense once you
+ * know the tree's vocabulary is noise on a card meant to be glanced at;
+ * the absence of a blocker needs no announcement.
+ */
+function blocker(gates: readonly Gate[]): string | undefined {
   const prerequisite = gates.find((gate) => gate.kind === 'prerequisite')
-  return prerequisite === undefined ? 'unlocked' : `after ${prerequisite.title}`
+  return prerequisite === undefined ? undefined : `Needs ${prerequisite.title} first`
 }
 
 export function NextUpgradeGlance() {
@@ -103,12 +110,12 @@ export function NextUpgradeGlance() {
               <p className="text-ink-50 mt-0.5 truncate text-sm font-medium">
                 {next.upgrade.title}
               </p>
-              <p className="numeric mt-0.5 text-sm">
-                <span className="text-ink-300">
-                  {price === undefined ? 'No price yet' : formatMinorUnits(price)}
-                </span>
-                <span className="text-ink-500"> · {standing(next.gates)}</span>
+              <p className="numeric text-ink-300 mt-0.5 text-sm">
+                {price === undefined ? 'No price yet' : formatMinorUnits(price)}
               </p>
+              {blocker(next.gates) !== undefined && (
+                <p className="text-ink-500 mt-0.5 text-xs">{blocker(next.gates)}</p>
+              )}
             </>
           )}
         </div>
