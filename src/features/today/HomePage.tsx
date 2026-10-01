@@ -124,32 +124,39 @@ export function HomePage() {
         items={[
           {
             /*
-            The portrait and the two quest slots travel as one item, so
-            "who you are and what you are on" always opens the first
-            column rather than being split by the balancing.
+            The portrait and the quests used to travel as one item, so
+            "who you are and what you are on" always opened the first
+            column. Once the arc grew six chapter rows that item was by far
+            the tallest thing on the page, and a wide window showed one
+            long column beside five short ones — reported as _"sparse in
+            full screen."_ As two items the arc takes a column of its own,
+            and on a phone the order is unchanged: portrait, then quests.
           */
             key: 'you',
             node: (
-              <div className="space-y-6">
-                <SheetCard
-                  avatarSize="large"
-                  action={
-                    <Link
-                      viewTransition
-                      to="/settings"
-                      aria-label="Settings"
-                      className={buttonStyles({ variant: 'ghost', size: 'sm' })}
-                    >
-                      <Settings size={16} aria-hidden />
-                    </Link>
-                  }
-                />
-                <ActiveQuests
-                  main={active.data?.main}
-                  side={active.data?.side}
-                  {...(leadingArc === undefined ? {} : { arc: leadingArc })}
-                />
-              </div>
+              <SheetCard
+                avatarSize="large"
+                action={
+                  <Link
+                    viewTransition
+                    to="/settings"
+                    aria-label="Settings"
+                    className={buttonStyles({ variant: 'ghost', size: 'sm' })}
+                  >
+                    <Settings size={16} aria-hidden />
+                  </Link>
+                }
+              />
+            ),
+          },
+          {
+            key: 'quests',
+            node: (
+              <ActiveQuests
+                main={active.data?.main}
+                side={active.data?.side}
+                {...(leadingArc === undefined ? {} : { arc: leadingArc })}
+              />
             ),
           },
           { key: 'activity', node: <ActivityHeatmap /> },
