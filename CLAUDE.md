@@ -49,6 +49,11 @@ throttled to fifteen seconds).
 - **The token is never in `AppSettings`.** Settings travel inside the
   backup, and the backup is the file written to the repository.
   `STORAGE_KEYS.githubSync` is its only home.
+- **A throttled request is deferred, never dropped**, and a saved change
+  and a visible minute both ask for a round. Reported on first use: buffs
+  cleared on the phone never reached the desktop, because the request
+  landed inside the fifteen seconds, was discarded, and nothing asked
+  again.
 - **A file that fails its checksum is refused, not overwritten** — it is
   most likely a truncated write, and replacing it would discard whatever
   the other device had.

@@ -23,8 +23,19 @@ const APP_VERSION = import.meta.env.VITE_APP_VERSION ?? 'dev'
 const THROTTLE_MS = 15_000
 
 /**
- * Runs sync rounds: on launch, on every change of page, and whenever the
- * app comes back to the foreground.
+ * How often a visible app checks the file for the other device's changes.
+ *
+ * Page changes and coming back to the app were the only pulls, so a
+ * desktop left open on one screen never saw what the phone had just done.
+ * A minute is "soon" for one person on two devices, and only runs while
+ * the screen is actually showing — a hidden tab polls nothing.
+ */
+const VISIBLE_PULL_MS = 60_000
+
+/**
+ * Runs sync rounds: on launch, on every change of page, whenever the app
+ * comes back to the foreground, after any saved change, and once a minute
+ * while the screen is showing.
  *
  * **One round at a time.** A request that arrives mid-round is remembered
  * and run once the round finishes, rather than started beside it — two
@@ -44,7 +55,12 @@ export function useGitHubSync(): void {
     latestSettings.current = settings
   }, [settings])
 
-  const state = useRef({ running: false, again: false, lastRun: 0 })
+  const state = useRef<{
+    running: boolean
+    again: boolean
+    lastRun: number
+    trailing: ReturnType<typeof setTimeout> | undefined
+  }>({ running: false, again: false, lastRun: 0, trailing: undefined })
 
   /*
    * The round is defined inside the effect that registers it, rather than
@@ -52,12 +68,27 @@ export function useGitHubSync(): void {
    * self-referencing `useCallback` is something the compiler cannot keep.
    */
   useEffect(() => {
+    const rounds = state.current
     const run = async (force: boolean): Promise<void> => {
       const config = syncStore.get().config
       if (config === undefined) return
 
       const now = services.clock.now().getTime()
-      if (!force && now - state.current.lastRun < THROTTLE_MS) return
+      const wait = THROTTLE_MS - (now - state.current.lastRun)
+      if (!force && wait > 0) {
+        /*
+         * **Deferred, not dropped.** A request inside the window used to
+         * return and be forgotten, so a change made seconds after a round
+         * sat on this device until some later page change happened to
+         * ask again. One trailing round at the end of the window carries
+         * every request that arrived during it.
+         */
+        state.current.trailing ??= setTimeout(() => {
+          state.current.trailing = undefined
+          void run(false)
+        }, wait)
+        return
+      }
       if (state.current.running) {
         state.current.again = true
         return
@@ -101,8 +132,26 @@ export function useGitHubSync(): void {
     syncStore.onRequest((force) => {
       void run(force)
     })
+
+    /*
+     * **A saved change asks for a round.** Pushing waited for a page
+     * change, so ticking something and putting the phone down left it
+     * there. Rounds are not mutations, so this cannot feed itself.
+     */
+    const unsubscribe = client.getMutationCache().subscribe((event) => {
+      if (event.type === 'updated' && event.action.type === 'success') syncStore.request(false)
+    })
+
+    const timer = setInterval(() => {
+      if (document.visibilityState === 'visible') syncStore.request(false)
+    }, VISIBLE_PULL_MS)
+
     return () => {
       syncStore.onRequest(undefined)
+      unsubscribe()
+      clearInterval(timer)
+      if (rounds.trailing !== undefined) clearTimeout(rounds.trailing)
+      rounds.trailing = undefined
     }
   }, [services, client])
 
