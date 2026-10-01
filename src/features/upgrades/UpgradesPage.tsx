@@ -1,4 +1,4 @@
-import { Check, ListTree, Lock, Network, Plus, Trash2, Unlock, Wallet } from 'lucide-react'
+import { Check, ListTree, Lock, Network, Plus, Trash2, Wallet } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { useState } from 'react'
 
@@ -469,36 +469,16 @@ function ShelfPage() {
         </div>
 
         <div className="space-y-4">
-          <div>
-            {/*
-          **Unlocked, not "within reach".** It was what a money pool could
-          buy today, and the pool went with finance tracking. What is left
-          to say is what nothing stands in the way of — no prerequisite
-          still to buy.
-        */}
-            <CardHeading icon={<Unlock size={16} aria-hidden />} title="Unlocked" />
-            <p className="text-ink-500 mb-2 text-sm">
-              {availableNow.length === 0
-                ? 'Everything is waiting on something else first.'
-                : `${availableNow.length.toString()} with nothing standing in the way.`}
-            </p>
-
-            {availableNow.length > 0 && (
-              <div className="space-y-2">
-                {availableNow.map((entry) => (
-                  <EntryCard
-                    key={entry.upgrade.id}
-                    entry={entry}
-                    others={entries.filter((one) => one.upgrade.id !== entry.upgrade.id)}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-
           {/*
         The same nodes as the diagram, as rows that can be edited — the
         picture is how the tree is read and this is how it is changed.
+
+        **Unlocked is a badge here, not a list above it.** It was a second
+        section listing every open node with nothing in its way, each as a
+        full editor card — with no prerequisites set that was every node,
+        so the same eight cards appeared twice, one list after the other.
+        Every card already says whether it is unlocked; the count says how
+        many are.
         It is not called "The tree" any more, because the diagram above
         is, and one screen calling two things the same name is the
         collision the Gadgets rename was made to fix.
@@ -538,7 +518,9 @@ function ShelfPage() {
             />
 
             <p className="text-ink-500 mb-2 text-sm">
-              Ordered by the priority each node inherits from the most important thing it unblocks.
+              {open.length === 0
+                ? 'Nothing open.'
+                : `${String(open.length)} open · ${String(availableNow.length)} unlocked. Ordered by the priority each inherits from what it unblocks.`}
             </p>
 
             <AddUpgrade candidates={entries} defaultShelf="tech" />
