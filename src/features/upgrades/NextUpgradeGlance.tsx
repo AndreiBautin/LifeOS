@@ -6,7 +6,7 @@ import { Skeleton } from '@/components/shared/Skeleton'
 import { buttonStyles } from '@/components/shared/styles'
 import type { Gate } from '@/domain/game/tree'
 import type { TreeEntry } from '@/domain/upgrades/recommendation'
-import { formatMinorUnits, isOpen, isOwned } from '@/domain/upgrades/upgrade'
+import { isOpen, isOwned } from '@/domain/upgrades/upgrade'
 import { cn } from '@/lib/cn'
 
 import { useWholeTree } from './hooks'
@@ -82,7 +82,6 @@ export function NextUpgradeGlance() {
   }
 
   const next = tree.data.find((entry) => isOpen(entry.upgrade) && !isOwned(entry.upgrade))
-  const price = next?.upgrade.estimatedCostMinorUnits
 
   return (
     <Card>
@@ -109,9 +108,6 @@ export function NextUpgradeGlance() {
               <p className="text-ink-500 text-xs font-medium tracking-wide uppercase">Next</p>
               <p className="text-ink-50 mt-0.5 truncate text-sm font-medium">
                 {next.upgrade.title}
-              </p>
-              <p className="numeric text-ink-300 mt-0.5 text-sm">
-                {price === undefined ? 'No price yet' : formatMinorUnits(price)}
               </p>
               {blocker(next.gates) !== undefined && (
                 <p className="text-ink-500 mt-0.5 text-xs">{blocker(next.gates)}</p>

@@ -2153,6 +2153,14 @@ and dropping the link would leave a locked node with nothing explaining
 why. A dangling prerequisite degrades to a root for the same reason:
 drawn oddly is visible, drawn nowhere is not.
 
+**Prices are not shown or asked for either.** Asked for as _"we shouldn't
+track pool to spend or price anymore."_ The cost field left both add
+forms, and the price left the tree nodes, the Today card, the Base rows
+and the list totals; `wishlistTotal` went with its last caller. A tie in
+the ranking breaks by name rather than by price, since ordering by a
+number nobody can see is no reason anybody could give. `estimatedCostMinorUnits`
+stays on the record — stored rows hold it and nothing is migrated.
+
 **The pool no longer gates anything, because finance is not tracked.**
 Asked for as _"we aren't tracking how much we have saved or anything
 anymore."_ The screens pass `NO_BUDGET` (`features/upgrades/hooks.ts`)

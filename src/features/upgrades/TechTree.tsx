@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 
 import type { TreeEntry } from '@/domain/upgrades/recommendation'
 import { shelfOf, UPGRADE_SHELF_LABELS } from '@/domain/upgrades/shelf'
-import { formatMinorUnits, isOpen, isOwned } from '@/domain/upgrades/upgrade'
+import { isOpen, isOwned } from '@/domain/upgrades/upgrade'
 
 import { layoutTree, type LaidOutNode } from './tree-layout'
 
@@ -513,13 +513,7 @@ function TreeNodeBox({
         <span className="text-good-500 text-[10px]">Owned</span>
       ) : dropped ? (
         <span className="text-ink-700 text-[10px]">Dropped</span>
-      ) : (
-        <span className="numeric text-[10px] opacity-80">
-          {entry.upgrade.estimatedCostMinorUnits === undefined
-            ? '—'
-            : formatMinorUnits(entry.upgrade.estimatedCostMinorUnits)}
-        </span>
-      )}
+      ) : null}
 
       {locked && !owned && !dropped && (
         <span className="text-ink-600 flex items-center justify-center gap-1 text-[10px]">
@@ -530,7 +524,7 @@ function TreeNodeBox({
             "short" when it is really waiting on another purchase sends
             you to the wrong problem.
           */}
-          {entry.gates.some((gate) => gate.kind === 'prerequisite') ? 'Locked' : 'Short'}
+          Locked
         </span>
       )}
     </button>

@@ -4,7 +4,6 @@ import { useState } from 'react'
 
 import { Badge, Button, Card, CardHeading, Empty } from '@/components/shared/primitives'
 import { EyeIcon } from '@/components/shared/EyeIcon'
-import { wishlistTotal } from '@/domain/upgrades/wishlist'
 import {
   UPGRADE_SHELF_LABELS,
   UPGRADE_SHELVES,
@@ -17,7 +16,6 @@ import type { TreeEntry } from '@/domain/upgrades/recommendation'
 import {
   formatMinorUnits,
   isOpen,
-  toMinorUnits,
   UPGRADE_CATEGORIES,
   UPGRADE_CATEGORY_LABELS,
   UPGRADE_STATUS_LABELS,
@@ -160,8 +158,6 @@ function EntryCard({
             {recommendation.effectivePriority.toString()}
             {recommendation.unlocksTitle !== undefined &&
               ` · unlocks ${recommendation.unlocksTitle}`}
-            {upgrade.estimatedCostMinorUnits !== undefined &&
-              ` · ${formatMinorUnits(upgrade.estimatedCostMinorUnits)}`}
           </p>
 
           <GateNote gates={gates} />
@@ -276,7 +272,6 @@ function AddUpgrade({
   const [shelf, setShelf] = useState<UpgradeShelf>(defaultShelf)
   const [category, setCategory] = useState<UpgradeCategory>('other')
   const [priority, setPriority] = useState('50')
-  const [cost, setCost] = useState('')
   const [prerequisite, setPrerequisite] = useState('')
 
   return (
@@ -287,22 +282,18 @@ function AddUpgrade({
           event.preventDefault()
           if (title.trim() === '') return
 
-          const estimate = toMinorUnits(cost)
-
           add.mutate(
             {
               title,
               category,
               shelf,
               priority: Number(priority),
-              ...(estimate === undefined ? {} : { estimatedCostMinorUnits: estimate }),
               ...(prerequisite === '' ? {} : { prerequisiteId: prerequisite as UpgradeId }),
             },
             {
               onSuccess: (result) => {
                 if (result.error !== undefined) return
                 setTitle('')
-                setCost('')
                 setPrerequisite('')
               },
             },
@@ -362,19 +353,6 @@ function AddUpgrade({
               value={priority}
               onChange={(event) => {
                 setPriority(event.target.value)
-              }}
-            />
-          </label>
-
-          <label className="block">
-            <span className={LABEL}>Cost</span>
-            <input
-              className={FIELD}
-              inputMode="decimal"
-              value={cost}
-              placeholder="0.00"
-              onChange={(event) => {
-                setCost(event.target.value)
               }}
             />
           </label>
@@ -453,8 +431,6 @@ function ShelfPage() {
    * a list of things already in the house.
    */
   const settled = [...gone, ...owned]
-
-  const total = wishlistTotal(entries.map((entry) => entry.upgrade))
 
   return (
     <div className="space-y-4">
@@ -552,22 +528,6 @@ function ShelfPage() {
         <p className="text-ink-500 mb-2 text-sm">
           Ordered by the priority each node inherits from the most important thing it unblocks.
         </p>
-
-        {total.priced > 0 && (
-          <Card className="mb-3">
-            <div className="flex items-baseline justify-between gap-3">
-              <span className="text-ink-500 text-sm">The whole list</span>
-              <span className="text-ink-50 numeric text-sm font-semibold">
-                {formatMinorUnits(total.minorUnits)}
-              </span>
-            </div>
-            <p className="text-ink-700 mt-1 text-xs">
-              Across {total.priced} priced {total.priced === 1 ? 'item' : 'items'}
-              {total.unpriced > 0 &&
-                ` · ${String(total.unpriced)} with no estimate, so this is a floor rather than a total`}
-            </p>
-          </Card>
-        )}
 
         <AddUpgrade candidates={entries} defaultShelf="tech" />
 

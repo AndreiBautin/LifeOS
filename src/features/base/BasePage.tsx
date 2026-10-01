@@ -11,12 +11,11 @@ import type { Project } from '@/domain/projects/project'
 import type { Upgrade } from '@/domain/upgrades/upgrade'
 import { BASE, JOB_APPROACHES, stepsFor, type JobApproach } from '@/domain/base/base'
 import { UPGRADE_SHELF_LABELS, UPGRADE_SHELVES } from '@/domain/upgrades/shelf'
-import { dropped, owned, wanted, wishlistTotal } from '@/domain/upgrades/wishlist'
-import { formatMinorUnits, isOwned } from '@/domain/upgrades/upgrade'
+import { dropped, owned, wanted } from '@/domain/upgrades/wishlist'
 import { cn } from '@/lib/cn'
 
 import { useAddProject, useBaseProjects, useMoveProjectHome } from '../projects/hooks'
-import { useAddUpgrade, useMoveUpgradeToShelf, useUpgradeTree } from '../upgrades/hooks'
+import { NO_BUDGET, useAddUpgrade, useMoveUpgradeToShelf, useUpgradeTree } from '../upgrades/hooks'
 
 /**
  * Base: the place you live, and everything it asks of you.
@@ -98,19 +97,6 @@ function UpgradeRow({ upgrade }: { readonly upgrade: Upgrade }) {
     <li className="flex items-center justify-between gap-2">
       <span className="text-ink-300 min-w-0 flex-1 truncate text-sm">{upgrade.title}</span>
       {/*
-        The cost, where there is one, in place of the badge that used to
-        sit here. Under a heading that says "Wanted", a chip saying
-        "Wanted" is noise — and the price is the thing you actually want
-        to see beside a name you are saving for. Silent when there is no
-        estimate rather than showing a nought, because an unpriced
-        dishwasher is not a free one.
-      */}
-      {upgrade.estimatedCostMinorUnits !== undefined && !isOwned(upgrade) && (
-        <span className="text-ink-700 numeric shrink-0 text-xs">
-          {formatMinorUnits(upgrade.estimatedCostMinorUnits)}
-        </span>
-      )}
-      {/*
         Off the house shelf, and now it has to say *which* other one.
         A single "back to the tech tree" button was right while there
         were two shelves; with three it would send a pair of boots to
@@ -151,7 +137,6 @@ function UpgradeRow({ upgrade }: { readonly upgrade: Upgrade }) {
 function AddHouseUpgrade({ onDone }: { readonly onDone: () => void }) {
   const add = useAddUpgrade()
   const [title, setTitle] = useState('')
-  const [cost, setCost] = useState('')
 
   return (
     <Card className="mb-3">
@@ -161,50 +146,31 @@ function AddHouseUpgrade({ onDone }: { readonly onDone: () => void }) {
           event.preventDefault()
           if (title.trim() === '') return
 
-          const pounds = Number(cost)
-          const minor =
-            cost.trim() !== '' && Number.isFinite(pounds) && pounds > 0
-              ? Math.round(pounds * 100)
-              : undefined
-
           add.mutate(
             {
               title,
               belongsTo: BASE,
               // The house's own default, rather than the tree's "other".
               category: 'home',
-              ...(minor === undefined ? {} : { estimatedCostMinorUnits: minor }),
             },
             {
               onSuccess: (result) => {
                 if (result.error !== undefined) return
                 setTitle('')
-                setCost('')
                 onDone()
               },
             },
           )
         }}
       >
-        <input
-          className="bg-ink-850 border-ink-800 text-ink-50 placeholder:text-ink-700 tap-target w-full rounded-xl border px-3 text-sm"
-          value={title}
-          aria-label="Something the house needs"
-          placeholder="Something the house needs"
-          onChange={(event) => {
-            setTitle(event.target.value)
-          }}
-        />
-
         <div className="flex gap-2">
           <input
-            className="bg-ink-850 border-ink-800 text-ink-50 placeholder:text-ink-700 numeric tap-target min-w-0 flex-1 rounded-xl border px-3 text-sm"
-            inputMode="decimal"
-            value={cost}
-            aria-label="Roughly what it costs"
-            placeholder="Roughly what it costs"
+            className="bg-ink-850 border-ink-800 text-ink-50 placeholder:text-ink-700 tap-target min-w-0 flex-1 rounded-xl border px-3 text-sm"
+            value={title}
+            aria-label="Something the house needs"
+            placeholder="Something the house needs"
             onChange={(event) => {
-              setCost(event.target.value)
+              setTitle(event.target.value)
             }}
           />
           <Button type="submit" variant="primary" disabled={add.isPending}>
@@ -383,12 +349,11 @@ export function BasePage() {
    * anything is affordable. The Tech tree screen owns the budget control;
    * duplicating it here would be two places to set one number.
    */
-  const upgrades = useUpgradeTree(0, 'base')
+  const upgrades = useUpgradeTree(NO_BUDGET, 'base')
   const houseUpgrades = (upgrades.data ?? []).map((entry) => entry.upgrade)
   const houseWanted = wanted(houseUpgrades)
   const houseOwned = owned(houseUpgrades)
   const houseDropped = dropped(houseUpgrades)
-  const total = wishlistTotal(houseUpgrades)
 
   const restingUpgrades = [...houseOwned, ...houseDropped]
 
@@ -533,12 +498,6 @@ export function BasePage() {
                       on screen and a heading over it says nothing the card's
                       own name did not.
                     */}
-                    {total.priced > 0 && (
-                      <p className="text-ink-700 numeric mb-1.5 text-xs">
-                        {formatMinorUnits(total.minorUnits)} across {total.priced}
-                        {total.unpriced > 0 && ` · ${String(total.unpriced)} unpriced`}
-                      </p>
-                    )}
                     <ul className="space-y-1.5">
                       {houseWanted.map((upgrade) => (
                         <UpgradeRow key={upgrade.id} upgrade={upgrade} />

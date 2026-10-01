@@ -242,23 +242,13 @@ describe('the tree, with a budget', () => {
    * way down. Without this the order was whatever storage returned, and
    * Today named a random entry as the next thing to save for.
    */
-  it('breaks a priority tie by price, unpriced last, then by name', () => {
+  it('breaks a priority tie by name, whatever order storage returned', () => {
     const ranked = rankTree(
-      [
-        anUpgrade('Clock', 50, { estimatedCostMinorUnits: 12_999 }),
-        anUpgrade('Unpriced', 50),
-        anUpgrade('Bar', 50, { estimatedCostMinorUnits: 4_999 }),
-        anUpgrade('Bench', 50, { estimatedCostMinorUnits: 4_999 }),
-      ],
-      0,
+      [anUpgrade('Clock', 50), anUpgrade('Bench', 50), anUpgrade('Bar', 50)],
+      Number.MAX_SAFE_INTEGER,
     )
 
-    expect(ranked.map((entry) => entry.upgrade.title)).toEqual([
-      'Bar',
-      'Bench',
-      'Clock',
-      'Unpriced',
-    ])
+    expect(ranked.map((entry) => entry.upgrade.title)).toEqual(['Bar', 'Bench', 'Clock'])
   })
 
   it('marks what today’s money cannot reach, with the shortfall', () => {

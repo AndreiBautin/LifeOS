@@ -40,33 +40,3 @@ export function dropped(upgrades: readonly Upgrade[]): readonly Upgrade[] {
     .filter((one) => one.status === 'cancelled')
     .sort((a, b) => a.title.localeCompare(b.title))
 }
-
-export interface WishlistTotal {
-  /** The sum of the costs that exist. Integer minor units. */
-  readonly minorUnits: number
-  /** How many rows that sum is made of. */
-  readonly priced: number
-  /**
-   * How many carry no cost at all.
-   *
-   * **Named rather than folded in as zero**, which is the whole reason
-   * this is a type and not a `reduce` at the call site. A dishwasher
-   * with no estimate is not a free dishwasher, and a total that quietly
-   * treated it as one would be understated in the direction that matters
-   * — you would be saving for a figure the list cannot support.
-   */
-  readonly unpriced: number
-}
-
-export function wishlistTotal(upgrades: readonly Upgrade[]): WishlistTotal {
-  const open = upgrades.filter(isOpen)
-  const costs = open
-    .map((one) => one.estimatedCostMinorUnits)
-    .filter((one): one is number => one !== undefined)
-
-  return {
-    minorUnits: costs.reduce((sum, one) => sum + one, 0),
-    priced: costs.length,
-    unpriced: open.length - costs.length,
-  }
-}
