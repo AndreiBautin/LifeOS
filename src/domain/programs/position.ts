@@ -31,6 +31,15 @@ export interface ProgramPosition {
   readonly weekIndex: number
   readonly dayIndex: number
   readonly startedAt: string
+  /**
+   * When this position last moved, stamped by the repository on save.
+   *
+   * What lets two devices agree on where the lifter is: the sync file
+   * carries the position, and the later move wins. Optional because every
+   * position written before sync carried it has none, and an unstamped
+   * position loses to any stamped one — the rule records already follow.
+   */
+  readonly updatedAt?: string
 }
 
 export const STARTING_POSITION: Omit<ProgramPosition, 'startedAt'> = {

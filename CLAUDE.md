@@ -8285,6 +8285,15 @@ mergeable. Deriving it from history instead does not work: skipping
 advances the position and deliberately writes nothing, so the log cannot
 reconstruct it.
 
+**It syncs now, beside the backup rather than inside it.** Reported once
+the GitHub file sync existed: _"my phone still shows Push A while desktop
+shows Pull B."_ One person trains on one device at a time, so the later
+move wins: `save` stamps `updatedAt`, the sync file carries `position`
+next to the envelope (outside `data`, so the checksum and the import are
+untouched), and `isNewerPosition` decides. An unstamped position never
+wins — every position written before this has none, so the device that
+moves first after the update is the one that propagates.
+
 **Never edit an existing IndexedDB migration step.** Bump `DB_VERSION`
 and add a new guarded block. A device that already ran a step will not
 run it again, so editing one leaves two devices with different schemas

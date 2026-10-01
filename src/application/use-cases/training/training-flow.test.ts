@@ -92,7 +92,7 @@ function services() {
   return {
     db,
     exercises: createExerciseRepository(db, testClock),
-    position: createPositionRepository(db),
+    position: createPositionRepository(db, clock),
     workouts: createWorkoutRepository(db, testClock),
     ids: counterIds(),
     roundingIncrement: 5,

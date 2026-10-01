@@ -6,6 +6,8 @@ import {
   type ExportOptions,
 } from '@/infrastructure/backup/backup-service'
 import { mergeNewer, recordsFingerprint } from '@/infrastructure/backup/sync-merge'
+import type { ProgramPosition } from '@/domain/programs/position'
+import type { PositionRepository } from '@/domain/repositories/ports'
 
 import { GitHubSyncError, readFile, writeFile, type GitHubTarget } from './github-file'
 
@@ -37,9 +39,58 @@ export interface SyncRun {
 
 const ATTEMPTS = 3
 
+/**
+ * Where the lifter is travels beside the records, not inside the backup.
+ *
+ * It was device-local on purpose: one cursor two devices both advance has
+ * no correct record-level merge. That held while the phone was the only
+ * device that trained. Reported once sync existed: _"my phone still shows
+ * Push A while desktop shows Pull B."_ One person trains on one device at
+ * a time, so the **later move wins** — a session finished, skipped,
+ * reopened or a week picked by hand all stamp it, and the other device
+ * adopts it on its next round.
+ *
+ * Outside the envelope's `data` deliberately: the file import still
+ * leaves the position alone, which is what restoring an old backup should
+ * do, and the checksum covers exactly what it covered before.
+ */
+export type SyncRepositories = BackupRepositories & { readonly position?: PositionRepository }
+
+function isPosition(value: unknown): value is ProgramPosition {
+  if (typeof value !== 'object' || value === null) return false
+  const row = value as Record<string, unknown>
+  return (
+    ['cycleNumber', 'blockIndex', 'weekIndex', 'dayIndex'].every(
+      (key) => typeof row[key] === 'number' && Number.isInteger(row[key]) && row[key] >= 0,
+    ) &&
+    typeof row.startedAt === 'string' &&
+    (row.updatedAt === undefined || typeof row.updatedAt === 'string')
+  )
+}
+
+/** The position a sync file carries, read as untrusted input. */
+export function positionInFile(text: string): ProgramPosition | undefined {
+  try {
+    const parsed: unknown = JSON.parse(text)
+    const position = (parsed as { readonly position?: unknown } | null)?.position
+    return isPosition(position) ? position : undefined
+  } catch {
+    return undefined
+  }
+}
+
+/** True when `theirs` moved later than `ours`. An unstamped one never wins. */
+export function isNewerPosition(
+  theirs: ProgramPosition,
+  ours: ProgramPosition | undefined,
+): boolean {
+  if (theirs.updatedAt === undefined) return false
+  return ours === undefined || theirs.updatedAt > (ours.updatedAt ?? '')
+}
+
 export async function syncWithGitHub(
   target: GitHubTarget,
-  repositories: BackupRepositories,
+  repositories: SyncRepositories,
   options: ExportOptions,
   fetchFn: typeof fetch = fetch,
 ): Promise<SyncRun> {
@@ -50,6 +101,7 @@ export async function syncWithGitHub(
     const remote = await readFile(target, fetchFn)
 
     let remoteFingerprint: string | undefined
+    let remotePosition: ProgramPosition | undefined
     if (remote !== undefined) {
       const parsed = parseBackup(remote.text)
       if (parsed.envelope === undefined) {
@@ -68,16 +120,31 @@ export async function syncWithGitHub(
       pulled += merged.pulled
       purged += merged.purged
       remoteFingerprint = recordsFingerprint(parsed.envelope.data)
+
+      remotePosition = positionInFile(remote.text)
+      if (repositories.position !== undefined && remotePosition !== undefined) {
+        if (isNewerPosition(remotePosition, await repositories.position.get())) {
+          await repositories.position.restore(remotePosition)
+          pulled += 1
+        }
+      }
     }
 
     const local = await buildBackup(repositories, options)
-    if (remoteFingerprint === recordsFingerprint(local.data)) {
+    const localPosition = await repositories.position?.get()
+    const samePosition = (localPosition?.updatedAt ?? '') === (remotePosition?.updatedAt ?? '')
+    if (remoteFingerprint === recordsFingerprint(local.data) && samePosition) {
       return { pulled, purged, uploaded: false }
     }
 
+    const body =
+      localPosition === undefined
+        ? serialiseBackup(local)
+        : JSON.stringify({ ...local, position: localPosition }, null, 2)
+
     const outcome = await writeFile(
       target,
-      serialiseBackup(local),
+      body,
       remote?.sha,
       `LifeOS sync, ${options.now.toISOString()}`,
       fetchFn,

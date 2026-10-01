@@ -93,7 +93,10 @@ export interface ExerciseRepository {
  */
 export interface PositionRepository {
   get(): Promise<ProgramPosition | undefined>
+  /** Stamps `updatedAt`. */
   save(position: ProgramPosition): Promise<void>
+  /** Writes the position exactly as given — the other device's, from sync. */
+  restore(position: ProgramPosition): Promise<void>
   clear(): Promise<void>
 }
 

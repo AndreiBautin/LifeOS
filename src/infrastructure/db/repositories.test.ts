@@ -230,7 +230,9 @@ describe('where the lifter is', () => {
     // A single record under a fixed key, because there is exactly one
     // position and never a list of them. Modelling it as a collection is
     // what invited a program library in the first place.
-    const position = createPositionRepository(db)
+    const position = createPositionRepository(db, {
+      now: () => new Date('2026-08-01T09:00:00.000Z'),
+    })
 
     expect(await position.get()).toBeUndefined()
 
@@ -257,7 +259,9 @@ describe('where the lifter is', () => {
   })
 
   it('clears back to having none', async () => {
-    const position = createPositionRepository(db)
+    const position = createPositionRepository(db, {
+      now: () => new Date('2026-08-01T09:00:00.000Z'),
+    })
     await position.save({
       cycleNumber: 1,
       blockIndex: 0,

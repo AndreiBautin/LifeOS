@@ -161,12 +161,15 @@ export function createExerciseRepository(db: AppDatabase, clock: Clock): Exercis
  */
 const POSITION_KEY = 'current'
 
-export function createPositionRepository(db: AppDatabase): PositionRepository {
+export function createPositionRepository(db: AppDatabase, clock: Clock): PositionRepository {
   return {
     async get() {
       return db.get('position', POSITION_KEY)
     },
     async save(position: ProgramPosition) {
+      await db.put('position', stamp(position, clock), POSITION_KEY)
+    },
+    async restore(position: ProgramPosition) {
       await db.put('position', position, POSITION_KEY)
     },
     async clear() {

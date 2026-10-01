@@ -143,7 +143,7 @@ export async function bootstrap(): Promise<BootstrapResult> {
   const services: AppServices = {
     db,
     exercises: createExerciseRepository(db, systemClock),
-    position: createPositionRepository(db),
+    position: createPositionRepository(db, systemClock),
     workouts: createWorkoutRepository(db, systemClock),
     checkIns: createCheckInRepository(db, systemClock),
     items: createBacklogItemRepository(db, systemClock),

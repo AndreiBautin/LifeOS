@@ -2,7 +2,6 @@ import { deleteDB } from 'idb'
 import { afterEach, describe, expect, it } from 'vitest'
 
 import { DEFAULT_SETTINGS } from '@/domain/settings/settings'
-import type { BackupRepositories } from '@/infrastructure/backup/backup-service'
 import { closeAppDatabase, openDatabase, type AppDatabase } from '@/infrastructure/db/database'
 import {
   createAttemptRepository,
@@ -14,6 +13,7 @@ import {
   createExploredAreaRepository,
   createFinanceRepository,
   createPlaceRepository,
+  createPositionRepository,
   createProjectRepository,
   createResumeRepository,
   createReviewRepository,
@@ -27,7 +27,7 @@ import {
 import { aWorkout } from '@/test/builders/workout'
 
 import { fromBase64, toBase64, type GitHubTarget } from './github-file'
-import { syncWithGitHub } from './github-sync'
+import { isNewerPosition, syncWithGitHub, type SyncRepositories } from './github-sync'
 
 /**
  * Two devices, one repository, and the network replaced by an in-memory
@@ -81,7 +81,7 @@ const clock = { now: () => new Date('2026-09-01T09:00:00.000Z') }
 
 const opened: string[] = []
 
-async function device(name: string): Promise<BackupRepositories> {
+async function device(name: string): Promise<SyncRepositories> {
   const db: AppDatabase = await openDatabase(name)
   opened.push(name)
   return {
@@ -103,6 +103,7 @@ async function device(name: string): Promise<BackupRepositories> {
     explored: createExploredAreaRepository(db),
     vices: createViceRepository(db, clock),
     finance: createFinanceRepository(db, clock),
+    position: createPositionRepository(db, clock),
   }
 }
 
@@ -190,5 +191,54 @@ describe('syncing two devices through one file', () => {
   it('round-trips text that is not ASCII', () => {
     const text = 'Frieren: Beyond Journey’s End — 5 × 3–5'
     expect(fromBase64(toBase64(text))).toBe(text)
+  })
+})
+
+describe('where the lifter is, across two devices', () => {
+  const at = (day: number, updatedAt: string) => ({
+    cycleNumber: 1,
+    blockIndex: 0,
+    weekIndex: 5,
+    dayIndex: day,
+    startedAt: '2026-08-01T00:00:00.000Z',
+    updatedAt,
+  })
+
+  it('moves the other device to the later position', async () => {
+    const github = fakeGitHub()
+    const desktop = await device('pos-desktop')
+    await desktop.position?.restore(at(4, '2026-09-01T10:00:00.000Z'))
+    await syncWithGitHub(target, desktop, options, github.fetchFn)
+    await closeAppDatabase()
+
+    const phone = await device('pos-phone')
+    await phone.position?.restore(at(0, '2026-09-01T08:00:00.000Z'))
+    const run = await syncWithGitHub(target, phone, options, github.fetchFn)
+
+    expect((await phone.position?.get())?.dayIndex).toBe(4)
+    // Nothing new to say back, so no second commit.
+    expect(run.uploaded).toBe(false)
+    expect(github.writes()).toBe(1)
+  })
+
+  it('keeps a later local move and uploads it', async () => {
+    const github = fakeGitHub()
+    const phone = await device('pos-phone-2')
+    await phone.position?.restore(at(0, '2026-09-01T08:00:00.000Z'))
+    await syncWithGitHub(target, phone, options, github.fetchFn)
+    await closeAppDatabase()
+
+    const desktop = await device('pos-desktop-2')
+    await desktop.position?.restore(at(4, '2026-09-01T10:00:00.000Z'))
+    const run = await syncWithGitHub(target, desktop, options, github.fetchFn)
+
+    expect((await desktop.position?.get())?.dayIndex).toBe(4)
+    expect(run.uploaded).toBe(true)
+  })
+
+  it('never lets an unstamped position win', () => {
+    const { updatedAt: _ignored, ...unstamped } = at(2, 'x')
+    expect(isNewerPosition(unstamped, at(0, '2026-09-01T08:00:00.000Z'))).toBe(false)
+    expect(isNewerPosition(at(2, '2026-09-01T09:00:00.000Z'), unstamped)).toBe(true)
   })
 })

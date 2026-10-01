@@ -72,6 +72,10 @@ function build(log: WorkoutLog, position?: ProgramPosition, others: readonly Wor
       savedPosition = next
       return Promise.resolve()
     },
+    restore: (next: ProgramPosition) => {
+      savedPosition = next
+      return Promise.resolve()
+    },
     clear: () => Promise.resolve(),
   }
 
