@@ -7,7 +7,7 @@ import { QUEST_KIND_LABELS, type QuestKind } from '@/domain/projects/project'
 import { Badge, Button, Card } from '@/components/shared/primitives'
 
 import { CampaignPath } from './CampaignPath'
-import { useRecommendation, useSetActiveQuest } from './hooks'
+import { useRecommendation, useSetActionStatus, useSetActiveQuest } from './hooks'
 
 /**
  * The two quests you are on.
@@ -23,10 +23,16 @@ import { useRecommendation, useSetActiveQuest } from './hooks'
 
 const KIND_ICON = { main: Swords, side: Sparkle } as const
 
-function nextStep(quest: Project): string | undefined {
+/**
+ * The first step not yet closed, in the order the quest lists them —
+ * which is why "Pick the first project to polish" is next: it is step one
+ * and nothing has been ticked. No ranking, on purpose: a quest's steps
+ * are an order somebody wrote, and the card follows it.
+ */
+function nextStep(quest: Project): Project['actions'][number] | undefined {
   return [...quest.actions]
     .filter((action) => action.status !== 'done')
-    .sort((a, b) => a.order - b.order)[0]?.description
+    .sort((a, b) => a.order - b.order)[0]
 }
 
 /**
@@ -243,19 +249,28 @@ function Slot({
   }
 
   const step = nextStep(quest)
+  const ordered = [...quest.actions].sort((a, b) => a.order - b.order)
+  const done = ordered.filter((action) => action.status === 'done').length
 
   return (
     <Card>
       <div className="flex items-start gap-2">
-        <Icon size={16} className="text-accent-400 mt-0.5 shrink-0" aria-hidden />
+        <Icon size={16} className="text-accent-400 mt-1 shrink-0" aria-hidden />
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <p className="text-ink-50 truncate font-semibold">{quest.name}</p>
-            <Badge tone={kind === 'main' ? 'accent' : 'neutral'}>{QUEST_KIND_LABELS[kind]}</Badge>
+          {/*
+            **The name wraps rather than truncating.** "Polish three
+            portfolio proj…" was the card's whole headline cut short; a
+            quest is named once and read every day, so two lines is the
+            cheaper cost.
+          */}
+          <div className="flex items-start gap-2">
+            <p className="text-ink-50 line-clamp-2 font-semibold">{quest.name}</p>
+            <Badge tone={kind === 'main' ? 'accent' : 'neutral'} className="mt-0.5 shrink-0">
+              {QUEST_KIND_LABELS[kind]}
+            </Badge>
           </div>
-          <p className="text-ink-500 mt-0.5 text-xs">
-            {step === undefined ? 'No steps yet — add one below.' : `Next: ${step}`}
-          </p>
+
+          {ordered.length > 0 && <StepTrack steps={ordered} done={done} />}
         </div>
         <Button
           size="sm"
@@ -268,7 +283,89 @@ function Slot({
           <X size={16} aria-hidden />
         </Button>
       </div>
+
+      {step === undefined ? (
+        <p className="text-ink-500 mt-3 text-xs">
+          {ordered.length === 0 ? 'No steps yet — add one on Quests.' : 'Every step is done.'}
+        </p>
+      ) : (
+        <NextStepRow quest={quest} step={step} />
+      )}
     </Card>
+  )
+}
+
+/**
+ * One segment per step, lit for each one closed.
+ *
+ * A quest's progress is a count of steps, so it is drawn as the steps —
+ * not as a ring or a bar, which the cards around this one already use
+ * and which would say "40%" where "2 of 5" is what is true.
+ */
+function StepTrack({
+  steps,
+  done,
+}: {
+  readonly steps: readonly Project['actions'][number][]
+  readonly done: number
+}) {
+  return (
+    <div className="mt-2 flex items-center gap-2">
+      <div className="flex flex-1 gap-1" aria-hidden>
+        {steps.map((action) => (
+          <span
+            key={action.id}
+            className={
+              action.status === 'done'
+                ? 'bg-accent-500 h-1.5 flex-1 rounded-full'
+                : 'bg-ink-800 h-1.5 flex-1 rounded-full'
+            }
+          />
+        ))}
+      </div>
+      <span className="numeric text-ink-500 shrink-0 text-xs">
+        {done} of {steps.length} steps
+      </span>
+    </div>
+  )
+}
+
+/**
+ * The next step, closable from here.
+ *
+ * Reported: _"there's no way to progress this by clicking on it. I have
+ * to navigate to the quests page first to do anything, which defeats the
+ * purpose."_ It named the step and offered nothing to do with it. The box
+ * is `ActionRow`'s own — empty for outstanding, the same mutation, the
+ * same XP — so closing a step here and on Quests are one act, and the
+ * next step simply takes its place.
+ */
+function NextStepRow({
+  quest,
+  step,
+}: {
+  readonly quest: Project
+  readonly step: Project['actions'][number]
+}) {
+  const set = useSetActionStatus()
+
+  return (
+    <div className="border-ink-800 mt-3 flex items-center gap-3 border-t pt-3">
+      <button
+        type="button"
+        aria-label={`Close ${step.description}`}
+        aria-pressed={false}
+        disabled={set.isPending}
+        className="tap-target border-ink-700 hover:border-accent-500 grid size-9 shrink-0 place-items-center rounded-lg border transition-colors"
+        onClick={() => {
+          set.mutate({ id: quest.id, actionId: step.id, done: true })
+        }}
+      />
+      <div className="min-w-0 flex-1">
+        <p className="text-ink-500 text-xs font-medium tracking-wide uppercase">Next</p>
+        <p className="text-ink-100 text-sm">{step.description}</p>
+      </div>
+    </div>
   )
 }
 

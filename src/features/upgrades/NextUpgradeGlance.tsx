@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 import { Card, CardHeading } from '@/components/shared/primitives'
 import { Skeleton } from '@/components/shared/Skeleton'
 import { buttonStyles } from '@/components/shared/styles'
+import type { Gate } from '@/domain/game/tree'
 import { formatMinorUnits, isOpen, isOwned } from '@/domain/upgrades/upgrade'
 import { cn } from '@/lib/cn'
 
@@ -62,6 +63,23 @@ function SavingsGauge({ percent, label }: { readonly percent: number; readonly l
   )
 }
 
+/**
+ * What stands between you and the upgrade, in words a reader can act on.
+ *
+ * It said "Locked" or "Short" — true, and both left the question of
+ * *what* open. A prerequisite is named, a shortfall is an amount, and an
+ * upgrade with neither is simply ready.
+ */
+function standing(gates: readonly Gate[]): string {
+  const prerequisite = gates.find((gate) => gate.kind === 'prerequisite')
+  if (prerequisite !== undefined) return `after ${prerequisite.title}`
+
+  const money = gates.find((gate) => gate.kind === 'money')
+  if (money !== undefined) return `${formatMinorUnits(money.shortfallMinorUnits)} to go`
+
+  return 'ready to buy'
+}
+
 export function NextUpgradeGlance() {
   const pool = useSpendingPool()
   const tree = useWholeTree(pool.data?.availableMinor ?? 0)
@@ -98,7 +116,7 @@ export function NextUpgradeGlance() {
           <Link
             viewTransition
             to="/upgrades"
-            className={buttonStyles({ variant: 'ghost', size: 'sm' })}
+            className={`${buttonStyles({ variant: 'ghost', size: 'sm' })} w-14`}
           >
             Open
           </Link>
@@ -111,12 +129,22 @@ export function NextUpgradeGlance() {
         <div className="flex items-start gap-3">
           <div className="min-w-0 flex-1">
             <p className="text-ink-50 truncate text-sm font-medium">{next.upgrade.title}</p>
-            <p className="text-ink-500 numeric mt-0.5 text-sm">
-              {next.upgrade.estimatedCostMinorUnits === undefined
-                ? 'No estimate yet'
-                : formatMinorUnits(next.upgrade.estimatedCostMinorUnits)}
-              {next.gates.length > 0 &&
-                ` · ${next.gates.some((gate) => gate.kind === 'prerequisite') ? 'Locked' : 'Short'}`}
+            <p className="numeric mt-0.5 text-sm">
+              <span className="text-ink-300">
+                {price === undefined ? 'No price yet' : formatMinorUnits(price)}
+              </span>
+              <span className="text-ink-500"> · {standing(next.gates)}</span>
+            </p>
+            {/*
+              **Where the money comes from, said once.** A tube at 0% and
+              the word "Short" read as a broken card: nothing on it said
+              the gauge reads the banked pool, so an empty pool looked
+              like a fault rather than a month not yet recorded.
+            */}
+            <p className="text-ink-500 numeric mt-1 text-xs">
+              {pool.data.monthsBanked === 0
+                ? 'Nothing banked in the pool yet'
+                : `${formatMinorUnits(Math.max(0, pool.data.availableMinor))} in the pool`}
             </p>
           </div>
 

@@ -46,4 +46,10 @@ export interface MapAdapterProps {
    * the prop entirely means "no fog layer at all".
    */
   readonly exploredBounds?: readonly BoundingBox[]
+  /**
+   * False for a picture of the map rather than a map to use — the glance
+   * on Today, where a drag would fight the page's own scroll and the
+   * card is a link to the real one. Absent means interactive.
+   */
+  readonly interactive?: boolean
 }

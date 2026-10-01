@@ -157,7 +157,23 @@ export function rankTree(
       const byEffective = b.recommendation.effectivePriority - a.recommendation.effectivePriority
       if (byEffective !== 0) return byEffective
 
-      return b.upgrade.priority - a.upgrade.priority
+      const byOwn = b.upgrade.priority - a.upgrade.priority
+      if (byOwn !== 0) return byOwn
+
+      /*
+       * **Cheapest first, then by name, when priority cannot decide.**
+       * Every upgrade starts at priority 50, so a tree nobody has ranked
+       * tied all the way down and fell through to storage order — random
+       * ids — and Today named a $130 clock as the next thing to save for
+       * beside a $50 one, for no reason anybody could give. The cheaper
+       * one is the nearer goal on the same pool; unpriced sorts last,
+       * because there is nothing to save toward until it has a price.
+       */
+      const costA = a.upgrade.estimatedCostMinorUnits ?? Number.POSITIVE_INFINITY
+      const costB = b.upgrade.estimatedCostMinorUnits ?? Number.POSITIVE_INFINITY
+      if (costA !== costB) return costA - costB
+
+      return a.upgrade.title.localeCompare(b.upgrade.title)
     })
 }
 

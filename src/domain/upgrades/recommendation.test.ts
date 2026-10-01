@@ -237,6 +237,30 @@ describe('the tree, with a budget', () => {
     expect(ranked[1]?.affordable).toBe(true)
   })
 
+  /*
+   * Every upgrade starts at priority 50, so an unranked tree ties all the
+   * way down. Without this the order was whatever storage returned, and
+   * Today named a random entry as the next thing to save for.
+   */
+  it('breaks a priority tie by price, unpriced last, then by name', () => {
+    const ranked = rankTree(
+      [
+        anUpgrade('Clock', 50, { estimatedCostMinorUnits: 12_999 }),
+        anUpgrade('Unpriced', 50),
+        anUpgrade('Bar', 50, { estimatedCostMinorUnits: 4_999 }),
+        anUpgrade('Bench', 50, { estimatedCostMinorUnits: 4_999 }),
+      ],
+      0,
+    )
+
+    expect(ranked.map((entry) => entry.upgrade.title)).toEqual([
+      'Bar',
+      'Bench',
+      'Clock',
+      'Unpriced',
+    ])
+  })
+
   it('marks what today’s money cannot reach, with the shortfall', () => {
     const ranked = rankTree([desk, arm], 25_000)
     const deskEntry = ranked.find((entry) => entry.upgrade.id === desk.id)

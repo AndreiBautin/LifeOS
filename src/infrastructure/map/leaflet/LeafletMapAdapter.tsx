@@ -175,12 +175,20 @@ export function LeafletMapAdapter({
   onMapClick,
   userPosition,
   exploredBounds,
+  interactive = true,
 }: MapAdapterProps) {
   return (
     <MapContainer
       center={[center.latitude, center.longitude]}
       zoom={zoom}
       className="h-full w-full"
+      dragging={interactive}
+      touchZoom={interactive}
+      scrollWheelZoom={interactive}
+      doubleClickZoom={interactive}
+      boxZoom={interactive}
+      keyboard={interactive}
+      zoomControl={interactive}
     >
       <TileLayer attribution={TILE_ATTRIBUTION} url={TILE_URL} />
       {onMapClick !== undefined && <MapClickHandler onMapClick={onMapClick} />}

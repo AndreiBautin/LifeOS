@@ -326,15 +326,24 @@ function CountedLog({ vice }: { readonly vice: Vice }) {
  * set is the plan working, not a failure. Only *over* is warned about,
  * because only *over* is the thing you asked to be told about.
  */
-type BadgeTone = 'neutral' | 'good' | 'warn'
+/*
+ * **Spent and Not yet stopped sharing a chip.** Both were neutral grey,
+ * reported as reading identically despite being opposite ends: one is a
+ * potion used up for the day, the other a restorative nobody has started
+ * on. Spent takes the cool violet — a settled state, still not a
+ * warning — and Not yet goes to the outlined chip, the app's mark for
+ * something with nothing in it. Part way picks up the accent so a
+ * restorative in progress reads as moving.
+ */
+type BadgeTone = 'neutral' | 'good' | 'warn' | 'cool' | 'sub' | 'accent'
 
 const STANDING: Record<PoolStanding, { readonly label: string; readonly tone: BadgeTone }> = {
   untouched: { label: 'Untouched', tone: 'good' },
   holding: { label: 'Holding', tone: 'neutral' },
-  spent: { label: 'Spent', tone: 'neutral' },
+  spent: { label: 'Spent', tone: 'cool' },
   over: { label: 'Over', tone: 'warn' },
-  empty: { label: 'Not yet', tone: 'neutral' },
-  'part-way': { label: 'Part way', tone: 'neutral' },
+  empty: { label: 'Not yet', tone: 'sub' },
+  'part-way': { label: 'Part way', tone: 'accent' },
   full: { label: 'Reached', tone: 'good' },
 }
 
