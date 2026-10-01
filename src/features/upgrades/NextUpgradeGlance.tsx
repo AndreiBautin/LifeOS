@@ -5,86 +5,67 @@ import { Card, CardHeading } from '@/components/shared/primitives'
 import { Skeleton } from '@/components/shared/Skeleton'
 import { buttonStyles } from '@/components/shared/styles'
 import type { Gate } from '@/domain/game/tree'
+import type { TreeEntry } from '@/domain/upgrades/recommendation'
 import { formatMinorUnits, isOpen, isOwned } from '@/domain/upgrades/upgrade'
 import { cn } from '@/lib/cn'
 
-import { useSpendingPool, useWholeTree } from './hooks'
+import { useWholeTree } from './hooks'
 
 /**
  * The tech tree, at a glance — see `BaseGlance` for why this exists.
  *
  * **The highest-priority entry still worth wanting, not the whole
  * tree.** `wholeTree` already returns every entry ranked — effective
- * priority first, own priority as the tiebreak — so "next" is just the
- * first one that is neither owned nor dropped. No second ranking
- * invented for one line of text, the same call `BaseGlance` makes about
- * its own job list.
+ * priority, own priority, then cheapest and by name — so "next" is just
+ * the first one that is neither owned nor dropped.
  *
- * **Locked is said plainly rather than hidden.** A prerequisite or a
- * shortfall is exactly what the full tree would tell you first, so the
- * badge here is the same word `TechTree`'s own node draws.
- *
- * **A savings gauge, not a ring.** The first pass gave this the same
- * ring `Base`, Working-through and the map glances all got, and it read
- * back correctly: "you literally just added the same visual to all of
- * them... it should be a unique interesting visual for each." A vertical
- * fill reads as a fundraising thermometer, which is closer to what this
- * actually is — money accumulating toward one thing — than an abstract
- * percentage circle ever was. Still the same reading underneath:
- * `pool.data.availableMinor` against `next.upgrade.estimatedCostMinorUnits`
- * is the exact arithmetic already deciding whether "Short" gets printed.
- * A pool allowed to run negative clamps to an empty tube rather than a
- * nonsense negative fill.
+ * **No savings gauge, because nothing is saved.** It drew a thermometer
+ * of the banked pool against the price, and the pool went with finance
+ * tracking — reported as _"we aren't tracking how much we have saved or
+ * anything anymore, remember?"_ A tube sitting at 0% forever over
+ * "Nothing banked" was the card describing a feature that no longer
+ * exists. What is left is a reading the tree actually holds: how much of
+ * the list you already own.
  */
-function SavingsGauge({ percent, label }: { readonly percent: number; readonly label: string }) {
-  const clamped = Math.max(0, Math.min(100, percent))
-  const complete = clamped >= 100
+function OwnedGrid({ entries }: { readonly entries: readonly TreeEntry[] }) {
+  const listed = entries.filter((entry) => entry.upgrade.status !== 'cancelled')
+  const shown = listed.slice(0, 12)
+  const owned = listed.filter((entry) => isOwned(entry.upgrade)).length
 
   return (
     <div
-      className="hidden w-14 shrink-0 flex-col items-center gap-1.5 lg:flex"
       role="img"
-      aria-label={label}
+      aria-label={`${String(owned)} of ${String(listed.length)} upgrades owned`}
+      className="hidden w-14 shrink-0 flex-col items-center gap-1.5 lg:flex"
     >
-      <span className="numeric text-ink-100 text-xs font-semibold">{Math.round(clamped)}%</span>
-      <div className="bg-ink-800 relative h-14 w-3 overflow-hidden rounded-full" aria-hidden>
-        <div
-          className={cn(
-            'absolute inset-x-0 bottom-0 rounded-full transition-[height]',
-            complete ? 'bg-good-500' : 'bg-accent-500',
-          )}
-          style={{
-            height: `${String(clamped)}%`,
-            boxShadow: complete ? '0 0 6px var(--color-good-500)' : undefined,
-          }}
-        />
+      <span className="numeric text-ink-100 text-xs font-semibold">
+        {owned}/{listed.length}
+      </span>
+      <div className="grid grid-cols-4 gap-1" aria-hidden>
+        {shown.map((entry) => (
+          <span
+            key={entry.upgrade.id}
+            className={cn(
+              'size-2.5 rounded-[3px]',
+              isOwned(entry.upgrade) ? 'bg-accent-500' : 'bg-ink-800 ring-ink-700 ring-1',
+            )}
+          />
+        ))}
       </div>
     </div>
   )
 }
 
-/**
- * What stands between you and the upgrade, in words a reader can act on.
- *
- * It said "Locked" or "Short" — true, and both left the question of
- * *what* open. A prerequisite is named, a shortfall is an amount, and an
- * upgrade with neither is simply ready.
- */
+/** What stands between you and the upgrade: a named prerequisite, or nothing. */
 function standing(gates: readonly Gate[]): string {
   const prerequisite = gates.find((gate) => gate.kind === 'prerequisite')
-  if (prerequisite !== undefined) return `after ${prerequisite.title}`
-
-  const money = gates.find((gate) => gate.kind === 'money')
-  if (money !== undefined) return `${formatMinorUnits(money.shortfallMinorUnits)} to go`
-
-  return 'ready to buy'
+  return prerequisite === undefined ? 'unlocked' : `after ${prerequisite.title}`
 }
 
 export function NextUpgradeGlance() {
-  const pool = useSpendingPool()
-  const tree = useWholeTree(pool.data?.availableMinor ?? 0)
+  const tree = useWholeTree()
 
-  if (pool.data === undefined || tree.data === undefined) {
+  if (tree.data === undefined) {
     return (
       <Card>
         <Skeleton className="h-4 w-16" label="Loading the tech tree" />
@@ -95,17 +76,6 @@ export function NextUpgradeGlance() {
 
   const next = tree.data.find((entry) => isOpen(entry.upgrade) && !isOwned(entry.upgrade))
   const price = next?.upgrade.estimatedCostMinorUnits
-  /*
-   * Clamped here, not just where it is drawn — the ring's own arc always
-   * stopped at one full circle, and the label used to keep going past it
-   * regardless, announcing "1740% saved" for a pool that had long since
-   * covered the price. A pool cannot save more than 100% of anything;
-   * the rest is surplus toward whatever comes after this one.
-   */
-  const saved =
-    price === undefined || price <= 0
-      ? undefined
-      : Math.min(100, Math.max(0, (pool.data.availableMinor / price) * 100))
 
   return (
     <Card>
@@ -123,39 +93,28 @@ export function NextUpgradeGlance() {
         }
       />
 
-      {next === undefined ? (
-        <p className="text-ink-500 text-sm">Nothing left to save for.</p>
-      ) : (
-        <div className="flex items-start gap-3">
-          <div className="min-w-0 flex-1">
-            <p className="text-ink-50 truncate text-sm font-medium">{next.upgrade.title}</p>
-            <p className="numeric mt-0.5 text-sm">
-              <span className="text-ink-300">
-                {price === undefined ? 'No price yet' : formatMinorUnits(price)}
-              </span>
-              <span className="text-ink-500"> · {standing(next.gates)}</span>
-            </p>
-            {/*
-              **Where the money comes from, said once.** A tube at 0% and
-              the word "Short" read as a broken card: nothing on it said
-              the gauge reads the banked pool, so an empty pool looked
-              like a fault rather than a month not yet recorded.
-            */}
-            <p className="text-ink-500 numeric mt-1 text-xs">
-              {pool.data.monthsBanked === 0
-                ? 'Nothing banked in the pool yet'
-                : `${formatMinorUnits(Math.max(0, pool.data.availableMinor))} in the pool`}
-            </p>
-          </div>
-
-          {saved !== undefined && (
-            <SavingsGauge
-              percent={saved}
-              label={`${String(Math.round(saved))}% of the price saved toward ${next.upgrade.title}`}
-            />
+      <div className="flex items-center gap-3">
+        <div className="min-w-0 flex-1">
+          {next === undefined ? (
+            <p className="text-ink-500 text-sm">Nothing left on the list.</p>
+          ) : (
+            <>
+              <p className="text-ink-500 text-xs font-medium tracking-wide uppercase">Next</p>
+              <p className="text-ink-50 mt-0.5 truncate text-sm font-medium">
+                {next.upgrade.title}
+              </p>
+              <p className="numeric mt-0.5 text-sm">
+                <span className="text-ink-300">
+                  {price === undefined ? 'No price yet' : formatMinorUnits(price)}
+                </span>
+                <span className="text-ink-500"> · {standing(next.gates)}</span>
+              </p>
+            </>
           )}
         </div>
-      )}
+
+        {tree.data.length > 0 && <OwnedGrid entries={tree.data} />}
+      </div>
     </Card>
   )
 }

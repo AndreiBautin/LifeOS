@@ -2153,6 +2153,16 @@ and dropping the link would leave a locked node with nothing explaining
 why. A dangling prerequisite degrades to a root for the same reason:
 drawn oddly is visible, drawn nowhere is not.
 
+**The pool no longer gates anything, because finance is not tracked.**
+Asked for as _"we aren't tracking how much we have saved or anything
+anymore."_ The screens pass `NO_BUDGET` (`features/upgrades/hooks.ts`)
+to the tree, so the only gate left is a prerequisite and `affordable`
+reads as "unlocked". The pool card, the savings gauge and "beyond the
+pool" are gone; `domain/upgrades/pool.ts` and the money gate are left
+in place, untouched and unread by any screen, so bringing finance back
+is a hook change rather than a rebuild. The paragraphs below describe
+the pool as it was.
+
 **The pool replaced the device-local budget, and it is derived.**
 `domain/upgrades/pool.ts`: every surplus recorded on a finance reading,
 minus what the purchased upgrades cost. Asked for as _"at the end of the

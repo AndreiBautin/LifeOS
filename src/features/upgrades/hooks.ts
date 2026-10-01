@@ -11,7 +11,6 @@ import {
   updateUpgrade,
   upgradeTree,
   wholeTree,
-  readSpendingPool,
   type NewUpgrade,
   type UpgradeChanges,
   type UpgradeResult,
@@ -47,34 +46,22 @@ export function useShelfTree(shelf: UpgradeShelf, availableMinorUnits: number) {
 }
 
 /**
- * The whole tree and the pool it is measured against.
- *
- * One hook because the two are read together and the tree's
- * affordability depends on the pool — asking for them separately would
- * render a tree ranked against a stale zero for a frame, which reads as
- * everything being unaffordable and then flickering.
- *
- * **Recording a surplus has to invalidate this**, and it did not at
- * first: `useRecordFinance` cleared `finance` and `character` and left
- * `upgrades` alone, so banking a month's surplus would leave the tree
- * showing the old gates until something else happened to reload it. The
- * pool spans two areas, so the mutation on either side has to say so.
+ * No money gate. Finance is not tracked any more — asked for as _"we aren't
+ * tracking how much we have saved or anything anymore"_ — so there is no
+ * pool to measure a price against, and every upgrade would otherwise read
+ * as unaffordable forever. Passing an unreachable budget leaves the one
+ * gate that still means something, a prerequisite, and makes `affordable`
+ * read as "nothing stands in the way". The tree's ranking and gate logic
+ * are untouched; only what they are measured against changed.
  */
-export function useSpendingPool() {
+export const NO_BUDGET = Number.MAX_SAFE_INTEGER
+
+export function useWholeTree() {
   const services = useServices()
 
   return useQuery({
-    queryKey: [...UPGRADES, 'pool'],
-    queryFn: () => readSpendingPool(services),
-  })
-}
-
-export function useWholeTree(availableMinorUnits: number) {
-  const services = useServices()
-
-  return useQuery({
-    queryKey: [...UPGRADES, 'whole', availableMinorUnits],
-    queryFn: () => wholeTree(availableMinorUnits, services),
+    queryKey: [...UPGRADES, 'whole'],
+    queryFn: () => wholeTree(NO_BUDGET, services),
   })
 }
 

@@ -1,4 +1,4 @@
-import { Check, ListTree, Lock, Network, Plus, Trash2, Wallet } from 'lucide-react'
+import { Check, ListTree, Lock, Network, Plus, Trash2, Unlock, Wallet } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { useState } from 'react'
 
@@ -28,7 +28,6 @@ import {
   useAddUpgrade,
   useDeleteUpgrade,
   useMoveUpgradeToShelf,
-  useSpendingPool,
   useUpdateUpgrade,
   useWholeTree,
 } from './hooks'
@@ -170,7 +169,7 @@ function EntryCard({
 
         <div className="flex shrink-0 flex-col items-end gap-1.5">
           {affordable ? (
-            <Badge tone="accent">available</Badge>
+            <Badge tone="accent">unlocked</Badge>
           ) : (
             <Badge tone={owned ? 'good' : 'neutral'}>
               {UPGRADE_STATUS_LABELS[upgrade.status].toLowerCase()}
@@ -422,54 +421,6 @@ function AddUpgrade({
  * a second copy of this file is where a gate bug would outlive its fix.
  * What differs is the heading and which shelf is read.
  */
-/**
- * What there is to spend, and where it came from.
- *
- * **Read-only here on purpose.** The pool is derived from the monthly
- * surpluses, so the way to change it is to record a surplus — and that
- * belongs on the screen that already collects the month's figures. A
- * second box here would be a second answer to "how much have I got",
- * which is exactly what the device-local budget was.
- *
- * It shows the arithmetic rather than only the answer: banked, spent,
- * and what that leaves. A single number nobody can trace is the thing
- * the old budget box was.
- */
-function PoolCard() {
-  const pool = useSpendingPool()
-  const data = pool.data
-
-  if (data === undefined) return null
-
-  const over = data.availableMinor < 0
-
-  return (
-    <Card className="mb-3">
-      <div className="flex items-baseline justify-between gap-3">
-        <span className="text-ink-500 text-sm">The pool</span>
-        <span className={`numeric text-sm font-semibold ${over ? 'text-bad-500' : 'text-ink-50'}`}>
-          {formatMinorUnits(data.availableMinor)}
-        </span>
-      </div>
-
-      <p className="text-ink-700 mt-1 text-xs">
-        {data.monthsBanked === 0 ? (
-          'Nothing banked yet.'
-        ) : (
-          <>
-            {formatMinorUnits(data.bankedMinor)} banked over {data.monthsBanked}{' '}
-            {data.monthsBanked === 1 ? 'month' : 'months'} · {formatMinorUnits(data.spentMinor)}{' '}
-            spent
-            {data.unpricedPurchases > 0 &&
-              ` · ${String(data.unpricedPurchases)} bought with no cost recorded, so this reads high`}
-            {over && ' · you are over'}
-          </>
-        )}
-      </p>
-    </Card>
-  )
-}
-
 function ShelfPage() {
   /*
    * **The pool replaced the budget box**, which was a number typed into
@@ -481,10 +432,7 @@ function ShelfPage() {
   /* What the eye on "Every node" reveals — see the note beside it. */
   const [showingSettled, setShowingSettled] = useState(false)
 
-  const pool = useSpendingPool()
-  const available = pool.data?.availableMinor ?? 0
-
-  const tree = useWholeTree(available)
+  const tree = useWholeTree()
   const entries = tree.data ?? []
 
   /*
@@ -507,13 +455,6 @@ function ShelfPage() {
   const settled = [...gone, ...owned]
 
   const total = wishlistTotal(entries.map((entry) => entry.upgrade))
-  /*
-   * What the list still needs beyond what you have. Two stated numbers
-   * subtracted — the budget you typed and the costs you typed — and it
-   * says how many rows carry no price, because a shortfall that folded
-   * those in as free is understated in the direction that matters.
-   */
-  const shortfall = Math.max(0, total.minorUnits - available)
 
   return (
     <div className="space-y-4">
@@ -541,14 +482,18 @@ function ShelfPage() {
       </div>
 
       <div>
-        <CardHeading icon={<Wallet size={16} aria-hidden />} title="What you can get today" />
+        {/*
+          **Unlocked, not "within reach".** It was what a money pool could
+          buy today, and the pool went with finance tracking. What is left
+          to say is what nothing stands in the way of — no prerequisite
+          still to buy.
+        */}
+        <CardHeading icon={<Unlock size={16} aria-hidden />} title="Unlocked" />
         <p className="text-ink-500 mb-2 text-sm">
           {availableNow.length === 0
-            ? 'Nothing is within reach at this pool.'
-            : `${availableNow.length.toString()} within reach.`}
+            ? 'Everything is waiting on something else first.'
+            : `${availableNow.length.toString()} with nothing standing in the way.`}
         </p>
-
-        <PoolCard />
 
         {availableNow.length > 0 && (
           <div className="space-y-2">
@@ -620,7 +565,6 @@ function ShelfPage() {
               Across {total.priced} priced {total.priced === 1 ? 'item' : 'items'}
               {total.unpriced > 0 &&
                 ` · ${String(total.unpriced)} with no estimate, so this is a floor rather than a total`}
-              {shortfall > 0 && ` · ${formatMinorUnits(shortfall)} beyond the pool`}
             </p>
           </Card>
         )}
