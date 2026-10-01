@@ -58,6 +58,13 @@ const ROW_LABEL = 'text-ink-500 text-xs font-medium tracking-wide uppercase'
  * They are different: clutter is a level that moves both ways, a job is
  * a task that closes. The number leads its row and the band follows it,
  * the same number-then-word order `Declutter` uses.
+ *
+ * **Each row carries its own ring, in one column under Open.** With one
+ * ring the card read lopsided — reported as asymmetrical. Projects' ring
+ * is steps closed over steps across the open jobs: a real denominator
+ * from records already kept, and one that moves on every tick where a
+ * count of finished jobs would sit at nought for months. Open is fixed
+ * at the ring's width so the three share one centre line.
  */
 export function BaseGlance() {
   const house = useHouse()
@@ -72,8 +79,12 @@ export function BaseGlance() {
     )
   }
 
-  const next = jobs.data[0]
+  const open = jobs.data.filter((job) => job.status !== 'completed')
+  const next = open[0]
   const step = next === undefined ? undefined : currentNextAction(next)
+  const steps = open.flatMap((job) => job.actions)
+  const stepsDone = steps.filter((action) => action.status === 'done').length
+  const stepShare = steps.length === 0 ? undefined : Math.round((stepsDone / steps.length) * 100)
 
   return (
     <Card>
@@ -84,7 +95,7 @@ export function BaseGlance() {
           <Link
             viewTransition
             to="/base"
-            className={buttonStyles({ variant: 'ghost', size: 'sm' })}
+            className={`${buttonStyles({ variant: 'ghost', size: 'sm' })} w-14`}
           >
             Open
           </Link>
@@ -116,18 +127,30 @@ export function BaseGlance() {
           )}
         </div>
 
-        <div className="border-ink-800 mt-3 border-t pt-3">
-          <dt className={ROW_LABEL}>Projects</dt>
-          <dd className="mt-0.5 truncate text-sm">
-            {next === undefined ? (
-              <span className="text-ink-500">No open jobs</span>
-            ) : (
-              <>
-                <span className="text-ink-50 font-medium">{next.name}</span>
-                {step !== undefined && <span className="text-ink-300"> · {step.description}</span>}
-              </>
-            )}
-          </dd>
+        <div className="border-ink-800 mt-3 flex items-center gap-3 border-t pt-3">
+          <div className="min-w-0 flex-1">
+            <dt className={ROW_LABEL}>Projects</dt>
+            <dd className="mt-0.5 truncate text-sm">
+              {next === undefined ? (
+                <span className="text-ink-500">No open jobs</span>
+              ) : (
+                <>
+                  <span className="text-ink-50 font-medium">{next.name}</span>
+                  {step !== undefined && (
+                    <span className="text-ink-300"> · {step.description}</span>
+                  )}
+                </>
+              )}
+            </dd>
+          </div>
+
+          {stepShare !== undefined && (
+            <PercentRing
+              value={stepShare}
+              good={stepShare >= 70}
+              label={`Projects: ${String(stepsDone)} of ${String(steps.length)} steps done across open jobs`}
+            />
+          )}
         </div>
       </dl>
     </Card>
