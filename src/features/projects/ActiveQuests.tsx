@@ -7,6 +7,7 @@ import type { Project } from '@/domain/projects/project'
 import { QUEST_KIND_LABELS, type QuestKind } from '@/domain/projects/project'
 import { Badge, Button, Card } from '@/components/shared/primitives'
 
+import { Meter } from '@/components/shared/Meter'
 import { CampaignPath } from './CampaignPath'
 import { useProjects, useRecommendation, useSetActionStatus, useSetActiveQuest } from './hooks'
 
@@ -92,9 +93,13 @@ function ArcSlot({ arc }: { readonly arc: CampaignStanding }) {
         </div>
       </div>
 
-      <ul className="mt-1">
+      <ul className="mt-3 space-y-2">
         {open.map((stage) => (
-          <ChapterRow key={stage.stage.id} standing={stage} />
+          <ChapterRow
+            key={stage.stage.id}
+            standing={stage}
+            position={arc.stages.indexOf(stage) + 1}
+          />
         ))}
       </ul>
     </Card>
@@ -107,9 +112,19 @@ function ArcSlot({ arc }: { readonly arc: CampaignStanding }) {
  * Linked quests first — the first one with a step still open, in the
  * order the chapter lists them. Failing that, a house or applications
  * chapter asks the recommendation over its own home, as it always did.
- * With nothing to name it says so rather than inventing a step.
+ * With nothing to tick the row is not drawn at all — asked for as
+ * _"show only chapters with a step to tick"_. The arc's path above still
+ * names every chapter, so a silent one is not lost, only not asking for
+ * anything today. A blocked quest is passed over for the same reason: its
+ * step is not one you can work on yet.
  */
-function ChapterRow({ standing }: { readonly standing: StageStanding }) {
+function ChapterRow({
+  standing,
+  position,
+}: {
+  readonly standing: StageStanding
+  readonly position: number
+}) {
   const { stage, progress } = standing
   const projects = useProjects()
   const work = STAGE_WORK[stage.requirement.kind]
@@ -120,6 +135,7 @@ function ChapterRow({ standing }: { readonly standing: StageStanding }) {
     return quest === undefined ? [] : [quest]
   })
   const fromQuest = linked
+    .filter((quest) => quest.status !== 'blocked')
     .map((quest) => ({ quest, step: nextStep(quest) }))
     .find((one) => one.step !== undefined)
 
@@ -133,39 +149,73 @@ function ChapterRow({ standing }: { readonly standing: StageStanding }) {
         }
       : undefined
 
+  const tick =
+    fromQuest?.step !== undefined
+      ? {
+          projectId: fromQuest.quest.id,
+          actionId: fromQuest.step.id,
+          // A quest named for its chapter would say the heading twice.
+          lead: fromQuest.quest.name === stage.name ? undefined : fromQuest.quest.name,
+          step: fromQuest.step.description,
+        }
+      : fromHome?.projectId !== undefined && fromHome.description !== undefined
+        ? {
+            projectId: fromHome.projectId,
+            actionId: fromHome.actionId,
+            lead: fromHome.projectName,
+            step: fromHome.description,
+          }
+        : undefined
+
+  if (tick === undefined) return null
+
   return (
-    <li className="border-ink-800 border-t pt-3 first:mt-3">
-      <div className="flex items-baseline justify-between gap-2">
-        <p className="text-ink-300 truncate text-xs font-medium tracking-wide uppercase">
+    <li
+      className="border-ink-800/80 relative overflow-hidden rounded-xl border p-3 pl-4"
+      style={{
+        background:
+          'linear-gradient(180deg, color-mix(in oklab, var(--color-accent-500) 6%, transparent), transparent 70%)',
+        boxShadow: 'inset 0 1px 0 rgb(255 255 255 / 0.05)',
+      }}
+    >
+      {/* A lit rail down the left edge: the row is a chapter of one arc. */}
+      <span
+        aria-hidden
+        className="bg-accent-500 absolute inset-y-3 left-0 w-0.5 rounded-full"
+        style={{ boxShadow: '0 0 8px var(--color-accent-500)' }}
+      />
+      <div className="flex items-center gap-2">
+        <span
+          aria-hidden
+          className="numeric bg-accent-500/10 text-accent-400 ring-accent-500/25 grid size-5 shrink-0 place-items-center rounded-md text-[10px] font-semibold ring-1"
+        >
+          {position}
+        </span>
+        <p className="text-ink-300 min-w-0 flex-1 truncate text-xs font-medium tracking-wide uppercase">
           {stage.name}
         </p>
         {progress !== undefined && progress.of > 1 && (
-          <span className="numeric text-ink-600 shrink-0 text-xs">
+          <span className="numeric text-ink-500 shrink-0 text-xs">
             {Math.min(progress.value, progress.of)}/{progress.of}
           </span>
         )}
       </div>
-
-      {fromQuest?.step !== undefined ? (
-        <StepTick
-          projectId={fromQuest.quest.id}
-          actionId={fromQuest.step.id}
-          label={`${fromQuest.quest.name} · ${fromQuest.step.description}`}
-          // A quest named for its chapter would say the heading twice.
-          {...(fromQuest.quest.name === stage.name ? {} : { lead: fromQuest.quest.name })}
-          step={fromQuest.step.description}
+      {progress !== undefined && progress.of > 1 && (
+        <Meter
+          value={Math.min(progress.value, progress.of)}
+          of={progress.of}
+          height={3}
+          className="mt-2"
         />
-      ) : fromHome?.projectId !== undefined && fromHome.description !== undefined ? (
-        <StepTick
-          projectId={fromHome.projectId}
-          actionId={fromHome.actionId}
-          label={`${fromHome.projectName ?? ''} · ${fromHome.description}`}
-          {...(fromHome.projectName === undefined ? {} : { lead: fromHome.projectName })}
-          step={fromHome.description}
-        />
-      ) : (
-        <p className="text-ink-500 mt-1.5 mb-3 text-sm">Nothing to tick yet</p>
       )}
+
+      <StepTick
+        projectId={tick.projectId}
+        actionId={tick.actionId}
+        label={`${tick.lead ?? stage.name} · ${tick.step}`}
+        {...(tick.lead === undefined ? {} : { lead: tick.lead })}
+        step={tick.step}
+      />
     </li>
   )
 }
@@ -187,20 +237,20 @@ function StepTick({
   const set = useSetActionStatus()
 
   return (
-    <div className="mt-1.5 mb-3 flex items-center gap-3">
+    <div className="mt-3 flex items-center gap-3">
       <button
         type="button"
         aria-label={`Close ${label}`}
         aria-pressed={false}
         disabled={set.isPending}
-        className="tap-target border-ink-700 hover:border-accent-500 grid size-9 shrink-0 place-items-center rounded-lg border transition-colors"
+        className="tap-target border-ink-700 bg-ink-950/50 hover:border-accent-400 grid size-9 shrink-0 place-items-center rounded-lg border shadow-[inset_0_1px_2px_rgb(0_0_0/0.4)] transition-[border-color,box-shadow] hover:shadow-[0_0_12px_-3px_var(--color-accent-500)]"
         onClick={() => {
           set.mutate({ id: projectId, actionId, done: true })
         }}
       />
-      <p className="min-w-0 text-sm">
-        {lead !== undefined && <span className="text-ink-500">{lead} · </span>}
-        <span className="text-ink-100">{step}</span>
+      <p className="min-w-0 text-sm leading-snug">
+        {lead !== undefined && <span className="text-ink-500 block truncate text-xs">{lead}</span>}
+        <span className="text-ink-50 font-medium">{step}</span>
       </p>
     </div>
   )
