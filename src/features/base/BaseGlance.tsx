@@ -62,48 +62,54 @@ const ROW_LABEL = 'text-ink-500 text-xs font-medium tracking-wide uppercase'
  *
  * **Each row carries its own visual, in one column under Open.** With
  * one ring the card read lopsided — reported as asymmetrical. A second
- * ring then read as the same widget twice, so Projects draws `JobBars`.
+ * ring then read as the same widget twice, so Projects draws `JobTally`.
  * Open is fixed at the column's width so all three share a centre line.
  */
 /**
- * One bar per open job, each filled by its own steps.
+ * Jobs done out of all of them, written as a number, with a dot per job.
  *
- * A second ring under the first read as the same widget twice — and a
- * share of steps pooled across every job hid the thing worth seeing,
- * which is that the roof is under way and the grill is untouched. Bars
- * side by side say how many jobs there are and how far each has got.
- * Same 56-pixel column as the ring and Open, and `lg` and up only, like
- * the ring. An untouched job keeps a dim stub so it still reads as a job.
+ * It was a row of unlabelled bars, one per open job filled by its steps —
+ * reported, fairly, as _"not clear what this is communicating."_ Eight
+ * thin tubes mostly at zero said nothing a reader could name. The count
+ * leads now in the same place the ring prints its percentage, captioned
+ * so the number is never a mystery, and each dot is one job: filled once
+ * finished, outlined once started, dim before anything is done. Same
+ * 56-pixel column as the ring and Open, `lg` and up only, like the ring.
  */
-function JobBars({ jobs }: { readonly jobs: readonly Project[] }) {
-  const shown = jobs.slice(0, 10).map((job) => {
-    const done = job.actions.filter((action) => action.status === 'done').length
-    return { job, progress: job.actions.length === 0 ? 0 : done / job.actions.length }
+function JobTally({ jobs }: { readonly jobs: readonly Project[] }) {
+  const states = jobs.map((job) => {
+    if (job.status === 'completed') return 'done' as const
+    return job.actions.some((action) => action.status === 'done')
+      ? ('started' as const)
+      : ('untouched' as const)
   })
-  const described = shown
-    .map(({ job, progress }) => `${job.name} ${String(Math.round(progress * 100))}%`)
-    .join(', ')
+  const done = states.filter((state) => state === 'done').length
+  const started = states.filter((state) => state === 'started').length
 
   return (
     <div
       role="img"
-      aria-label={`${String(jobs.length)} open jobs: ${described}`}
-      className="hidden h-11 w-14 shrink-0 items-end justify-center gap-1 lg:flex"
+      aria-label={`${String(done)} of ${String(jobs.length)} house jobs done, ${String(started)} started`}
+      className="hidden w-14 shrink-0 flex-col items-center gap-1 lg:flex"
     >
-      {shown.map(({ job, progress }) => (
-        <span key={job.id} className="bg-ink-800 relative h-full w-1 overflow-hidden rounded-full">
+      <span className="numeric text-ink-100 text-xs leading-none font-semibold">
+        {done}/{jobs.length}
+      </span>
+      <span className="text-ink-500 text-[10px] leading-none">done</span>
+      <div className="mt-0.5 grid grid-cols-4 gap-1" aria-hidden>
+        {states.slice(0, 12).map((state, index) => (
           <span
+            key={jobs[index]?.id ?? index}
             className={
-              progress === 0
-                ? 'bg-ink-600 absolute inset-x-0 bottom-0 h-1 rounded-full'
-                : 'bg-accent-500 absolute inset-x-0 bottom-0 rounded-full'
-            }
-            style={
-              progress === 0 ? undefined : { height: `${String(Math.round(progress * 100))}%` }
+              state === 'done'
+                ? 'bg-accent-500 size-2 rounded-full'
+                : state === 'started'
+                  ? 'ring-accent-500 size-2 rounded-full ring-1'
+                  : 'bg-ink-800 size-2 rounded-full'
             }
           />
-        </span>
-      ))}
+        ))}
+      </div>
     </div>
   )
 }
@@ -183,7 +189,7 @@ export function BaseGlance() {
             </dd>
           </div>
 
-          {open.length > 0 && <JobBars jobs={open} />}
+          {jobs.data.length > 0 && <JobTally jobs={jobs.data} />}
         </div>
       </dl>
     </Card>
