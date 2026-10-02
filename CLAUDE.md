@@ -116,6 +116,16 @@ SessionPage.tsx`, from `sessionDetail`). History rows could be deleted
   finished the minute it started reads as of unknown length rather
   than "0 min"; the demo seed stamped every session that way until this
   page showed it, and now gives each 45–75 minutes.
+- **A session shows where its time went** (`sessionTimeline` in
+  `domain/logging/timeline.ts`, `SessionTimeline`), in the report and on
+  the session page: a band per exercise from its first set to its last,
+  a dot per set, durations, and rest between sets. **Rest is measured
+  between sets of one exercise only** — the gap to the next exercise is
+  changing station. Silent unless sets carry two different times, so a
+  session filed in one go draws nothing. The demo seed now stamps every
+  set (`stampTimes`: about half a minute a set, two to three of rest,
+  four between exercises) and ends the session a few minutes after the
+  last set.
 - **A "Last week" card** (`weekRecap` in `domain/logging/recap.ts`,
   `LastWeekCard`) sits under This week: seven day columns, last week
   filled and the week before as dashed ghosts, then sessions, sets and

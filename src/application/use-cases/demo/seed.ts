@@ -282,21 +282,16 @@ async function seedTraining(deps: DemoDeps): Promise<void> {
 
   for (const session of sessions) {
     const on = new Date(deps.clock.now().getTime() - session.daysBack * 86_400_000)
+    const timed = stampTimes(
+      session.entries,
+      daysAgo(deps.clock, session.daysBack),
+      session.daysBack,
+    )
     const log: WorkoutLog = {
       id: deps.ids.next() as WorkoutId,
       date: dayKeyAgo(deps.clock, session.daysBack),
       startedAt: daysAgo(deps.clock, session.daysBack),
-      /*
-       * A session lasts somewhere between three quarters of an hour and
-       * an hour and a quarter, varied by the day rather than at random
-       * so the fixture is the same every time it is built. It finished
-       * the moment it started until a past session could be opened and
-       * read "0 min".
-       */
-      completedAt: new Date(
-        Date.parse(daysAgo(deps.clock, session.daysBack)) +
-          (45 + ((session.daysBack * 7) % 31)) * 60_000,
-      ).toISOString(),
+      completedAt: timed.completedAt,
       status: 'completed',
       /*
        * **The weekday is read off the date rather than written beside
@@ -307,8 +302,41 @@ async function seedTraining(deps: DemoDeps): Promise<void> {
        * reintroduced in the label.
        */
       title: `${on.toLocaleDateString('en-US', { weekday: 'long' })} — ${session.title}`,
-      entries: session.entries,
+      entries: timed.entries,
     }
     await deps.workouts.save(log)
   }
+}
+
+/**
+ * **Every set gets the moment it was done**, so a demo session opened
+ * from the history draws a timeline rather than nothing. They were
+ * unstamped, and the session "finished" a fixed while after it began.
+ *
+ * A set takes about half a minute and is followed by two to three of
+ * rest, a warm-up row about a minute, and a change of exercise four
+ * minutes — varied by the day and the position rather than at random,
+ * so the fixture is the same every time it is built. The session ends a
+ * few minutes after its last set.
+ */
+function stampTimes(
+  entries: readonly LogEntry[],
+  startedAt: string,
+  daysBack: number,
+): { readonly entries: LogEntry[]; readonly completedAt: string } {
+  let cursor = Date.parse(startedAt) + 2 * 60_000
+  const stamped = entries.map((entry, entryIndex) => {
+    if (entryIndex > 0) cursor += 4 * 60_000
+    return {
+      ...entry,
+      sets: entry.sets.map((set, setIndex) => {
+        const rest = set.isWarmup
+          ? 60
+          : 30 + 105 + ((daysBack * 13 + entryIndex * 7 + setIndex * 11) % 60)
+        cursor += rest * 1000
+        return { ...set, completedAt: new Date(cursor).toISOString() }
+      }),
+    }
+  })
+  return { entries: stamped, completedAt: new Date(cursor + 3 * 60_000).toISOString() }
 }

@@ -8,6 +8,8 @@ import { useSettings } from '@/app/context'
 
 import { RecordChip } from './RecordChip'
 import { SessionStats } from './SessionStats'
+import { SessionTimeline } from './SessionTimeline'
+import { useExercises } from './hooks'
 
 /**
  * What happened, immediately after finishing.
@@ -215,6 +217,8 @@ export function SessionReport({ report, units, onDismiss }: Props) {
         </Card>
       )}
 
+      <TimelineCard workout={report.workout} />
+
       <Button variant="primary" size="lg" full onClick={onDismiss}>
         Done
       </Button>
@@ -248,4 +252,15 @@ function Verdict({ verdict }: { readonly verdict: 'better' | 'matched' | 'worse'
     case 'new':
       return <Badge tone="accent">first time</Badge>
   }
+}
+
+/** The timeline, with names from the library. */
+function TimelineCard({ workout }: { readonly workout: WorkoutReport['workout'] }) {
+  const exercises = useExercises()
+  return (
+    <SessionTimeline
+      workout={workout}
+      nameOf={(id) => exercises.data?.find((one) => one.id === id)?.name ?? id}
+    />
+  )
 }

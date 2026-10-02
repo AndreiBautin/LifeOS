@@ -344,7 +344,7 @@ export function SettingsPage() {
               <div className="border-bad-500/30 bg-bad-500/5 space-y-3 rounded-lg border p-3">
                 <p className="text-ink-100 text-sm font-medium">Delete everything in the app?</p>
                 <p className="text-ink-300 text-xs">
-                  Every quest, session, place and reading on this browser goes, and it cannot be
+                  Every session and exercise you added on this browser goes, and it cannot be
                   undone. Export first if you want any of it back. Your settings are kept.
                 </p>
                 <div className="flex gap-2">
