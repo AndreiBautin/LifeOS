@@ -108,7 +108,7 @@ export function PlateLoader({
       <svg
         key={`${String(load)}-${unit}`}
         viewBox={`0 0 ${String(VIEW.width)} ${String(VIEW.height)}`}
-        className="mt-1 w-full"
+        className="mx-auto mt-1 w-full max-w-md"
         aria-hidden
       >
         <defs>

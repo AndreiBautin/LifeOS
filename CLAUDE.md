@@ -116,6 +116,14 @@ SessionPage.tsx`, from `sessionDetail`). History rows could be deleted
   finished the minute it started reads as of unknown length rather
   than "0 min"; the demo seed stamped every session that way until this
   page showed it, and now gives each 45–75 minutes.
+- **On a desktop the player is a cockpit.** From `lg` the exercise card
+  keeps its phone width on the left and `SessionMap` runs down the right
+  — every exercise with a pip per working set, the current one lit, each
+  a press away — replacing the pill strip, which is `lg:hidden`. Below
+  `lg` nothing changes (checked: map `display: none`, pills shown, no
+  overflow at 375). The plate picture caps at `max-w-md` so a wide card
+  does not draw a bar the width of the window. **The home page needed
+  nothing**: `Masonry` already lays three columns under the hero at 1280.
 - **A fresh install asks three questions first** (`FirstRunSetup`, above
   the hero): units, bodyweight, and the three maxes — with **the first
   bench drawn on the plate loader as it will open**, from

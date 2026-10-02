@@ -27,6 +27,7 @@ import { useClearSet, useLogSet } from './hooks'
 import { LadderStrip } from './LadderStrip'
 import { BarSection } from './BarSection'
 import { RestTimer } from './RestTimer'
+import { SessionMap } from './SessionMap'
 import { SetRow } from './SetRow'
 import { WarmupBlock } from './WarmupBlock'
 
@@ -132,7 +133,7 @@ export function SessionPlayer({
   }
 
   return (
-    <div className="mx-auto max-w-2xl pb-28">
+    <div className="mx-auto max-w-2xl pb-28 lg:max-w-5xl">
       {/*
         **The session's own bar, pinned while the sets scroll.** The page
         used to open on the exercise name with "Exercise 6 of 8" in grey
@@ -183,7 +184,7 @@ export function SessionPlayer({
         <nav
           ref={strip}
           aria-label="Exercises"
-          className="relative -mx-1 mt-3 flex gap-1.5 overflow-x-auto px-1 pb-0.5 [scrollbar-width:none]"
+          className="relative -mx-1 mt-3 flex gap-1.5 overflow-x-auto px-1 pb-0.5 [scrollbar-width:none] lg:hidden"
         >
           {workout.entries.map((candidate, candidateIndex) => {
             const run = warmupRun(workout, candidateIndex)
@@ -223,223 +224,242 @@ export function SessionPlayer({
         </nav>
       </div>
 
-      {warmup !== undefined ? (
-        <WarmupBlock workout={workout} indices={warmup} nameOf={nameOf} />
-      ) : (
-        <section className="card p-4 lg:p-6" aria-labelledby="exercise-name">
-          <div className="mb-1 flex flex-wrap items-center gap-1.5">
-            <Badge tone={slotRoleTone(entry.role)}>{slotRoleLabel(entry.role)}</Badge>
-            {slotVariant(entry) !== '' && <Badge tone="sub">{slotVariant(entry)}</Badge>}
-            <span className="text-ink-500 ml-auto text-xs">
-              {index + 1} of {workout.entries.length}
-            </span>
-          </div>
-          <h1
-            id="exercise-name"
-            className="text-ink-50 text-2xl font-semibold tracking-tight sm:text-3xl"
-          >
-            {nameOf(entry.exerciseId)}
-          </h1>
-          {first !== undefined && (
-            <p className="text-ink-500 numeric mt-1 text-sm">
-              {entry.sets.length} {entry.sets.length === 1 ? 'set' : 'sets'} ·{' '}
-              {describePrescription(first.prescription)}
-            </p>
-          )}
-          <BarSection
-            key={index}
-            equipment={exercises.find((one) => one.id === entry.exerciseId)?.equipment}
-            load={loadToShow(entry.sets)}
-            units={units}
-            ramp={entry.role === 'strength'}
-          />
-          <LadderFor entry={entry} exercises={exercises} units={units} />
-
-          <div className="mt-4 space-y-2">
-            {entry.sets.map((set, setIndex) => (
-              <SetRow
-                key={setIndex}
-                set={set}
-                index={setIndex}
-                entryIndex={index}
-                exerciseId={entry.exerciseId}
-                workoutId={workout.id}
-                variant={entry.variant}
-                earlier={entry.sets
-                  .slice(0, setIndex)
-                  .filter((one) => !one.isWarmup && one.outcome === 'completed')
-                  .map((one) => ({ load: one.actualLoad, reps: one.actualReps }))}
-                units={units}
-                bodyweight={
-                  exercises.find((one) => one.id === entry.exerciseId)?.loadBasis === 'bodyweight'
-                }
-                isOpen={openSet === setIndex}
-                onOpen={() => {
-                  setOpenSet(setIndex)
-                }}
-                onLog={(result) => {
-                  // Spread conditionally rather than passing `undefined`
-                  // through: an absent number and a number that is explicitly
-                  // unknown are different things to the log, and only the
-                  // first is meant here.
-                  logSet.mutate(
-                    {
-                      entryIndex: index,
-                      setIndex,
-                      result: {
-                        ...(result.load !== undefined ? { load: result.load } : {}),
-                        ...(result.reps !== undefined ? { reps: result.reps } : {}),
-                        outcome: 'completed',
-                      },
-                    },
-                    {
-                      onSuccess: () => {
-                        setOpenSet(undefined)
-                        // A warm-up does not earn a rest timer.
-                        if (!set.isWarmup) setRestStartedAt(Date.now())
-                      },
-                    },
-                  )
-                }}
-                onSkip={() => {
-                  logSet.mutate(
-                    { entryIndex: index, setIndex, result: { outcome: 'skipped' } },
-                    {
-                      onSuccess: () => {
-                        setOpenSet(undefined)
-                      },
-                    },
-                  )
-                }}
-                onClear={() => {
-                  clearSet.mutate(
-                    { entryIndex: index, setIndex },
-                    {
-                      onSuccess: () => {
-                        setOpenSet(undefined)
-                      },
-                    },
-                  )
-                }}
-              />
-            ))}
-          </div>
-
-          {entry.notes !== undefined && (
-            <p className="border-ink-800 text-ink-300 mt-4 flex gap-2 border-t pt-3 text-sm">
-              <Lightbulb size={16} className="text-accent-400 mt-0.5 shrink-0" aria-hidden />
-              <span>{entry.notes}</span>
-            </p>
-          )}
-        </section>
-      )}
-
       {/*
+        From `lg` the session sits beside the exercise rather than above
+        it: the strip of pills becomes `SessionMap`, and the card keeps the
+        width it had on a phone instead of a window's worth.
+      */}
+      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_17rem] lg:items-start lg:gap-6">
+        <div className="min-w-0">
+          {warmup !== undefined ? (
+            <WarmupBlock workout={workout} indices={warmup} nameOf={nameOf} />
+          ) : (
+            <section className="card p-4 lg:p-6" aria-labelledby="exercise-name">
+              <div className="mb-1 flex flex-wrap items-center gap-1.5">
+                <Badge tone={slotRoleTone(entry.role)}>{slotRoleLabel(entry.role)}</Badge>
+                {slotVariant(entry) !== '' && <Badge tone="sub">{slotVariant(entry)}</Badge>}
+                <span className="text-ink-500 ml-auto text-xs">
+                  {index + 1} of {workout.entries.length}
+                </span>
+              </div>
+              <h1
+                id="exercise-name"
+                className="text-ink-50 text-2xl font-semibold tracking-tight sm:text-3xl"
+              >
+                {nameOf(entry.exerciseId)}
+              </h1>
+              {first !== undefined && (
+                <p className="text-ink-500 numeric mt-1 text-sm">
+                  {entry.sets.length} {entry.sets.length === 1 ? 'set' : 'sets'} ·{' '}
+                  {describePrescription(first.prescription)}
+                </p>
+              )}
+              <BarSection
+                key={index}
+                equipment={exercises.find((one) => one.id === entry.exerciseId)?.equipment}
+                load={loadToShow(entry.sets)}
+                units={units}
+                ramp={entry.role === 'strength'}
+              />
+              <LadderFor entry={entry} exercises={exercises} units={units} />
+
+              <div className="mt-4 space-y-2">
+                {entry.sets.map((set, setIndex) => (
+                  <SetRow
+                    key={setIndex}
+                    set={set}
+                    index={setIndex}
+                    entryIndex={index}
+                    exerciseId={entry.exerciseId}
+                    workoutId={workout.id}
+                    variant={entry.variant}
+                    earlier={entry.sets
+                      .slice(0, setIndex)
+                      .filter((one) => !one.isWarmup && one.outcome === 'completed')
+                      .map((one) => ({ load: one.actualLoad, reps: one.actualReps }))}
+                    units={units}
+                    bodyweight={
+                      exercises.find((one) => one.id === entry.exerciseId)?.loadBasis ===
+                      'bodyweight'
+                    }
+                    isOpen={openSet === setIndex}
+                    onOpen={() => {
+                      setOpenSet(setIndex)
+                    }}
+                    onLog={(result) => {
+                      // Spread conditionally rather than passing `undefined`
+                      // through: an absent number and a number that is explicitly
+                      // unknown are different things to the log, and only the
+                      // first is meant here.
+                      logSet.mutate(
+                        {
+                          entryIndex: index,
+                          setIndex,
+                          result: {
+                            ...(result.load !== undefined ? { load: result.load } : {}),
+                            ...(result.reps !== undefined ? { reps: result.reps } : {}),
+                            outcome: 'completed',
+                          },
+                        },
+                        {
+                          onSuccess: () => {
+                            setOpenSet(undefined)
+                            // A warm-up does not earn a rest timer.
+                            if (!set.isWarmup) setRestStartedAt(Date.now())
+                          },
+                        },
+                      )
+                    }}
+                    onSkip={() => {
+                      logSet.mutate(
+                        { entryIndex: index, setIndex, result: { outcome: 'skipped' } },
+                        {
+                          onSuccess: () => {
+                            setOpenSet(undefined)
+                          },
+                        },
+                      )
+                    }}
+                    onClear={() => {
+                      clearSet.mutate(
+                        { entryIndex: index, setIndex },
+                        {
+                          onSuccess: () => {
+                            setOpenSet(undefined)
+                          },
+                        },
+                      )
+                    }}
+                  />
+                ))}
+              </div>
+
+              {entry.notes !== undefined && (
+                <p className="border-ink-800 text-ink-300 mt-4 flex gap-2 border-t pt-3 text-sm">
+                  <Lightbulb size={16} className="text-accent-400 mt-0.5 shrink-0" aria-hidden />
+                  <span>{entry.notes}</span>
+                </p>
+              )}
+            </section>
+          )}
+
+          {/*
         **Next is named, and it lights once this exercise is done.** Paging
         was a pair of chevrons either side of the dashes; "Up next · Dips"
         says where the button goes, which is the question a lifter
         re-racking a bar is actually asking.
       */}
-      <div className="mt-5 flex items-center gap-2">
-        <Button
-          variant="outline"
-          onClick={() => {
-            go(index - 1)
-          }}
-          disabled={index === 0}
-          aria-label="Previous exercise"
-        >
-          <ChevronLeft size={18} aria-hidden />
-        </Button>
-        {next !== undefined ? (
-          <Button
-            variant={stepComplete ? 'primary' : 'outline'}
-            className="min-w-0 flex-1 justify-between"
-            onClick={() => {
-              go(index + 1)
-            }}
-            aria-label={`Next exercise: ${nameOf(next.exerciseId)}`}
-          >
-            <span className="min-w-0 truncate">
-              <span className="font-normal opacity-60">Up next · </span>
-              {nameOf(next.exerciseId)}
-            </span>
-            <ChevronRight size={18} aria-hidden />
-          </Button>
-        ) : (
-          <p className="text-ink-500 flex-1 text-center text-sm">Last exercise</p>
-        )}
-      </div>
+          <div className="mt-5 flex items-center gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                go(index - 1)
+              }}
+              disabled={index === 0}
+              aria-label="Previous exercise"
+            >
+              <ChevronLeft size={18} aria-hidden />
+            </Button>
+            {next !== undefined ? (
+              <Button
+                variant={stepComplete ? 'primary' : 'outline'}
+                className="min-w-0 flex-1 justify-between"
+                onClick={() => {
+                  go(index + 1)
+                }}
+                aria-label={`Next exercise: ${nameOf(next.exerciseId)}`}
+              >
+                <span className="min-w-0 truncate">
+                  <span className="font-normal opacity-60">Up next · </span>
+                  {nameOf(next.exerciseId)}
+                </span>
+                <ChevronRight size={18} aria-hidden />
+              </Button>
+            ) : (
+              <p className="text-ink-500 flex-1 text-center text-sm">Last exercise</p>
+            )}
+          </div>
 
-      {/*
+          {/*
         **Finishing is quiet until there is nothing left.** It was a lit,
         full-width "Finish (20 sets unlogged)" from the first set — the
         loudest control on the screen was the one that ends the session
         early. It turns primary once every set is logged or skipped.
       */}
-      <Button
-        variant={outstanding === 0 ? 'primary' : 'ghost'}
-        size={outstanding === 0 ? 'lg' : 'md'}
-        full
-        className="mt-6"
-        onClick={onFinish}
-      >
-        <CheckCircle2 size={outstanding === 0 ? 20 : 16} aria-hidden />
-        {outstanding === 0 ? 'Finish session' : `Finish early · ${String(outstanding)} sets left`}
-      </Button>
+          <Button
+            variant={outstanding === 0 ? 'primary' : 'ghost'}
+            size={outstanding === 0 ? 'lg' : 'md'}
+            full
+            className="mt-6"
+            onClick={onFinish}
+          >
+            <CheckCircle2 size={outstanding === 0 ? 20 : 16} aria-hidden />
+            {outstanding === 0
+              ? 'Finish session'
+              : `Finish early · ${String(outstanding)} sets left`}
+          </Button>
 
-      {/*
+          {/*
         The way out of a session opened by mistake. Confirmed inline
         rather than through a dialog, because the wording has to change
         with what is at stake: with nothing logged this throws away
         nothing, and with sets logged it keeps them.
       */}
-      {confirmingAbandon ? (
-        <div className="border-bad-500/40 bg-bad-500/10 mt-3 rounded-lg border p-3">
-          <p className="text-ink-50 text-sm font-medium">
-            {loggedSets === 0
-              ? 'Discard this session?'
-              : `Abandon, keeping ${String(loggedSets)} logged set${loggedSets === 1 ? '' : 's'}?`}
-          </p>
-          <p className="text-ink-300 mt-1 text-sm">
-            {loggedSets === 0
-              ? 'Nothing has been logged, so nothing is lost. The program stays on this day.'
-              : 'The sets you logged are kept and still count toward your volume. The program stays on this day, so you can run it again or skip it.'}
-          </p>
-          <div className="mt-3 flex gap-2">
+          {confirmingAbandon ? (
+            <div className="border-bad-500/40 bg-bad-500/10 mt-3 rounded-lg border p-3">
+              <p className="text-ink-50 text-sm font-medium">
+                {loggedSets === 0
+                  ? 'Discard this session?'
+                  : `Abandon, keeping ${String(loggedSets)} logged set${loggedSets === 1 ? '' : 's'}?`}
+              </p>
+              <p className="text-ink-300 mt-1 text-sm">
+                {loggedSets === 0
+                  ? 'Nothing has been logged, so nothing is lost. The program stays on this day.'
+                  : 'The sets you logged are kept and still count toward your volume. The program stays on this day, so you can run it again or skip it.'}
+              </p>
+              <div className="mt-3 flex gap-2">
+                <Button
+                  variant="danger"
+                  className="flex-1"
+                  onClick={() => {
+                    onAbandon()
+                  }}
+                >
+                  {loggedSets === 0 ? 'Discard' : 'Abandon'}
+                </Button>
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => {
+                    setConfirmingAbandon(false)
+                  }}
+                >
+                  Keep training
+                </Button>
+              </div>
+            </div>
+          ) : (
             <Button
-              variant="danger"
-              className="flex-1"
+              variant="ghost"
+              full
+              className="mt-2"
               onClick={() => {
-                onAbandon()
+                setConfirmingAbandon(true)
               }}
             >
-              {loggedSets === 0 ? 'Discard' : 'Abandon'}
+              <XCircle size={16} aria-hidden />
+              Abandon session
             </Button>
-            <Button
-              variant="outline"
-              className="flex-1"
-              onClick={() => {
-                setConfirmingAbandon(false)
-              }}
-            >
-              Keep training
-            </Button>
-          </div>
+          )}
         </div>
-      ) : (
-        <Button
-          variant="ghost"
-          full
-          className="mt-2"
-          onClick={() => {
-            setConfirmingAbandon(true)
-          }}
-        >
-          <XCircle size={16} aria-hidden />
-          Abandon session
-        </Button>
-      )}
+        <SessionMap
+          workout={workout}
+          current={index}
+          runs={(at) => warmupRun(workout, at)}
+          nameOf={nameOf}
+          onGo={go}
+        />
+      </div>
 
       {restStartedAt !== undefined && (
         <RestTimer
