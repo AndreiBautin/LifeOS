@@ -1,10 +1,12 @@
 import { Trophy } from 'lucide-react'
 
-import { useSettings } from '@/app/context'
+import { useServices, useSettings } from '@/app/context'
 import { STRENGTH_LIFT_SLUGS } from '@/domain/exercises/catalogue'
 import { asExerciseId } from '@/domain/ids/ids'
 import { strengthStandings, type LiftStanding } from '@/domain/strength/standards'
+import { projectReach } from '@/domain/strength/projection'
 import { strengthTrend, type TrendLift } from '@/domain/strength/trend'
+import { toDayKey } from '@/domain/time/day'
 import { Button, Card, CardHeading } from '@/components/shared/primitives'
 
 import { useRecentWorkouts } from './hooks'
@@ -57,6 +59,18 @@ export function StrengthStandards() {
    */
   const workouts = useRecentWorkouts(200)
   const trend = workouts.data === undefined ? undefined : strengthTrend(workouts.data)
+  /*
+   * **When the next standard arrives at this rate**, from the trend's own
+   * last twelve weeks (`projectReach`). Said only when the evidence holds
+   * it — four sessions over four weeks, a rising line, and inside a year.
+   */
+  const today = toDayKey(useServices().clock.now())
+  const reachFor = (standing: LiftStanding): string | undefined => {
+    const lift = TREND_LIFT[standing.name]
+    const target = standing.next?.load
+    if (lift === undefined || target === undefined || trend === undefined) return undefined
+    return projectReach(trend[lift], target, today)
+  }
   const measuredFor = (name: string): number | undefined => {
     const lift = TREND_LIFT[name]
     return lift === undefined ? undefined : trend?.[lift].at(-1)?.value
@@ -83,6 +97,8 @@ export function StrengthStandards() {
             standing={lift}
             colour={LIFT_COLOURS[lift.name] ?? 'var(--color-accent-400)'}
             measured={measuredFor(lift.name)}
+            reach={reachFor(lift)}
+            today={today}
             onUse={(value) => {
               const trendLift = TREND_LIFT[lift.name]
               if (trendLift === undefined) return
@@ -106,14 +122,27 @@ export function StrengthStandards() {
   )
 }
 
+/** "December", or "March 2027" once it is another year. */
+function whenOf(day: string, today: string): string {
+  const date = new Date(`${day}T00:00:00`)
+  return date.toLocaleDateString(undefined, {
+    month: 'long',
+    ...(day.slice(0, 4) === today.slice(0, 4) ? {} : { year: 'numeric' }),
+  })
+}
+
 function LiftRow({
   standing,
   colour,
   measured,
+  reach,
+  today,
   onUse,
 }: {
   readonly standing: LiftStanding
   readonly colour: string
+  readonly reach?: string | undefined
+  readonly today?: string
   readonly measured?: number | undefined
   readonly onUse?: (value: number) => void
 }) {
@@ -137,6 +166,12 @@ function LiftRow({
         </span>
       </div>
       <Band standing={standing} colour={colour} />
+      {reach !== undefined && standing.next !== undefined && today !== undefined && (
+        <p className="text-ink-500 mt-0.5 text-right text-[0.7rem]">
+          At this rate, {standing.next.multiple}× around{' '}
+          <span className="text-ink-300">{whenOf(reach, today)}</span>
+        </p>
+      )}
       {drifted && (
         <div className="border-ink-800 mt-2 flex items-center justify-between gap-3 rounded-lg border border-dashed px-3 py-1.5">
           <span className="text-ink-500 text-xs">

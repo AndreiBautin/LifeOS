@@ -116,6 +116,12 @@ SessionPage.tsx`, from `sessionDetail`). History rows could be deleted
   finished the minute it started reads as of unknown length rather
   than "0 min"; the demo seed stamped every session that way until this
   page showed it, and now gives each 45–75 minutes.
+- **The Strength card says when the next standard arrives at this rate**
+  (`projectReach` in `domain/strength/projection.ts`): least squares
+  through the trend's last twelve weeks, read forward from the fitted
+  line rather than the last point. **Silent unless the evidence holds
+  it** — four sessions over four weeks, a rising line, and inside a year;
+  a date two years out is a line drawn past the edge of the data.
 - **The main lift has a warm-up ramp** (`warmupRamp` in
   `domain/units/ramp.ts`, `BarSection`): the empty bar × 10, then 40 / 60
   / 80% at 5 / 3 / 2, each rounded **down to a load the plates to hand
