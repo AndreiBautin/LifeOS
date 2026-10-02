@@ -79,7 +79,11 @@ standards.ts`): the estimated max, its multiple of bodyweight, and the
   weight. The row's own press still opens the editor. Finish stays
   quiet ("Finish early · N sets left") until nothing is pending, and
   the rest timer is a ring with +30s rather than a second whole rest
-  period. The report opens on a `.hero-panel`.
+  period. The report opens on a `.hero-panel`. **A run of warm-up rows
+  is one step** (`WarmupBlock`): one card of tick rows, one "Warm-up"
+  pill, and Next goes past the whole run — it was five one-tap pages
+  before the first bar. Each row still logs its own sets, one write
+  after another, because a log is a read-modify-write of the workout.
 - **The Program page is a week strip and a card per day.** It was six
   sections of flat rows, a third of them warm-ups, each row carrying a
   role badge and a sub-category badge that truncated the exercise name.

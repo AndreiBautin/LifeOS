@@ -25,6 +25,7 @@ import { cn } from '@/lib/cn'
 import { useClearSet, useLogSet } from './hooks'
 import { RestTimer } from './RestTimer'
 import { SetRow } from './SetRow'
+import { WarmupBlock } from './WarmupBlock'
 
 /**
  * Working through a session, one exercise at a time.
@@ -56,7 +57,7 @@ export function SessionPlayer({
   onFinish,
   onAbandon,
 }: Props) {
-  const [index, setIndex] = useState(() => firstIncompleteIndex(workout))
+  const [index, setIndex] = useState(() => runStart(workout, firstIncompleteIndex(workout)))
   const [openSet, setOpenSet] = useState<number | undefined>(undefined)
   const [restStartedAt, setRestStartedAt] = useState<number | undefined>(undefined)
   const [confirmingAbandon, setConfirmingAbandon] = useState(false)
@@ -105,11 +106,24 @@ export function SessionPlayer({
 
   const totalSets = workout.entries.reduce((sum, candidate) => sum + candidate.sets.length, 0)
   const settled = totalSets - outstanding
-  const next = workout.entries[index + 1]
+  /*
+   * A run of warm-up rows is one step: one card, one pill, and Next goes
+   * past all of it. See `WarmupBlock`.
+   */
+  const warmup = warmupRun(workout, index)
+  const stepEnd = warmup === undefined ? index : (warmup.at(-1) ?? index)
+  const next = workout.entries[stepEnd + 1]
   const first = entry.sets[0]
+  const stepComplete =
+    warmup === undefined
+      ? isEntryComplete(entry)
+      : warmup.every((at) => {
+          const one = workout.entries[at]
+          return one === undefined || isEntryComplete(one)
+        })
 
   const go = (to: number) => {
-    setIndex(Math.max(0, Math.min(workout.entries.length - 1, to)))
+    setIndex(runStart(workout, Math.max(0, Math.min(workout.entries.length - 1, to))))
     setOpenSet(undefined)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
@@ -169,7 +183,16 @@ export function SessionPlayer({
           className="relative -mx-1 mt-3 flex gap-1.5 overflow-x-auto px-1 pb-0.5 [scrollbar-width:none]"
         >
           {workout.entries.map((candidate, candidateIndex) => {
-            const complete = isEntryComplete(candidate)
+            const run = warmupRun(workout, candidateIndex)
+            // A warm-up run is one pill, drawn at its first row.
+            if (run !== undefined && run[0] !== candidateIndex) return null
+            const complete =
+              run === undefined
+                ? isEntryComplete(candidate)
+                : run.every((at) => {
+                    const one = workout.entries[at]
+                    return one === undefined || isEntryComplete(one)
+                  })
             const current = candidateIndex === index
             return (
               <button
@@ -190,107 +213,111 @@ export function SessionPlayer({
                 )}
               >
                 {complete && !current && <Check size={12} aria-hidden />}
-                {nameOf(candidate.exerciseId)}
+                {run === undefined ? nameOf(candidate.exerciseId) : 'Warm-up'}
               </button>
             )
           })}
         </nav>
       </div>
 
-      <section className="card p-4 lg:p-6" aria-labelledby="exercise-name">
-        <div className="mb-1 flex flex-wrap items-center gap-1.5">
-          <Badge tone={slotRoleTone(entry.role)}>{slotRoleLabel(entry.role)}</Badge>
-          {slotVariant(entry) !== '' && <Badge tone="sub">{slotVariant(entry)}</Badge>}
-          <span className="text-ink-500 ml-auto text-xs">
-            {index + 1} of {workout.entries.length}
-          </span>
-        </div>
-        <h1
-          id="exercise-name"
-          className="text-ink-50 text-2xl font-semibold tracking-tight sm:text-3xl"
-        >
-          {nameOf(entry.exerciseId)}
-        </h1>
-        {first !== undefined && (
-          <p className="text-ink-500 numeric mt-1 text-sm">
-            {entry.sets.length} {entry.sets.length === 1 ? 'set' : 'sets'} ·{' '}
-            {describePrescription(first.prescription)}
-          </p>
-        )}
+      {warmup !== undefined ? (
+        <WarmupBlock workout={workout} indices={warmup} nameOf={nameOf} />
+      ) : (
+        <section className="card p-4 lg:p-6" aria-labelledby="exercise-name">
+          <div className="mb-1 flex flex-wrap items-center gap-1.5">
+            <Badge tone={slotRoleTone(entry.role)}>{slotRoleLabel(entry.role)}</Badge>
+            {slotVariant(entry) !== '' && <Badge tone="sub">{slotVariant(entry)}</Badge>}
+            <span className="text-ink-500 ml-auto text-xs">
+              {index + 1} of {workout.entries.length}
+            </span>
+          </div>
+          <h1
+            id="exercise-name"
+            className="text-ink-50 text-2xl font-semibold tracking-tight sm:text-3xl"
+          >
+            {nameOf(entry.exerciseId)}
+          </h1>
+          {first !== undefined && (
+            <p className="text-ink-500 numeric mt-1 text-sm">
+              {entry.sets.length} {entry.sets.length === 1 ? 'set' : 'sets'} ·{' '}
+              {describePrescription(first.prescription)}
+            </p>
+          )}
 
-        <div className="mt-4 space-y-2">
-          {entry.sets.map((set, setIndex) => (
-            <SetRow
-              key={setIndex}
-              set={set}
-              index={setIndex}
-              entryIndex={index}
-              exerciseId={entry.exerciseId}
-              workoutId={workout.id}
-              variant={entry.variant}
-              units={units}
-              bodyweight={
-                exercises.find((one) => one.id === entry.exerciseId)?.loadBasis === 'bodyweight'
-              }
-              isOpen={openSet === setIndex}
-              onOpen={() => {
-                setOpenSet(setIndex)
-              }}
-              onLog={(result) => {
-                // Spread conditionally rather than passing `undefined`
-                // through: an absent number and a number that is explicitly
-                // unknown are different things to the log, and only the
-                // first is meant here.
-                logSet.mutate(
-                  {
-                    entryIndex: index,
-                    setIndex,
-                    result: {
-                      ...(result.load !== undefined ? { load: result.load } : {}),
-                      ...(result.reps !== undefined ? { reps: result.reps } : {}),
-                      outcome: 'completed',
+          <div className="mt-4 space-y-2">
+            {entry.sets.map((set, setIndex) => (
+              <SetRow
+                key={setIndex}
+                set={set}
+                index={setIndex}
+                entryIndex={index}
+                exerciseId={entry.exerciseId}
+                workoutId={workout.id}
+                variant={entry.variant}
+                units={units}
+                bodyweight={
+                  exercises.find((one) => one.id === entry.exerciseId)?.loadBasis === 'bodyweight'
+                }
+                isOpen={openSet === setIndex}
+                onOpen={() => {
+                  setOpenSet(setIndex)
+                }}
+                onLog={(result) => {
+                  // Spread conditionally rather than passing `undefined`
+                  // through: an absent number and a number that is explicitly
+                  // unknown are different things to the log, and only the
+                  // first is meant here.
+                  logSet.mutate(
+                    {
+                      entryIndex: index,
+                      setIndex,
+                      result: {
+                        ...(result.load !== undefined ? { load: result.load } : {}),
+                        ...(result.reps !== undefined ? { reps: result.reps } : {}),
+                        outcome: 'completed',
+                      },
                     },
-                  },
-                  {
-                    onSuccess: () => {
-                      setOpenSet(undefined)
-                      // A warm-up does not earn a rest timer.
-                      if (!set.isWarmup) setRestStartedAt(Date.now())
+                    {
+                      onSuccess: () => {
+                        setOpenSet(undefined)
+                        // A warm-up does not earn a rest timer.
+                        if (!set.isWarmup) setRestStartedAt(Date.now())
+                      },
                     },
-                  },
-                )
-              }}
-              onSkip={() => {
-                logSet.mutate(
-                  { entryIndex: index, setIndex, result: { outcome: 'skipped' } },
-                  {
-                    onSuccess: () => {
-                      setOpenSet(undefined)
+                  )
+                }}
+                onSkip={() => {
+                  logSet.mutate(
+                    { entryIndex: index, setIndex, result: { outcome: 'skipped' } },
+                    {
+                      onSuccess: () => {
+                        setOpenSet(undefined)
+                      },
                     },
-                  },
-                )
-              }}
-              onClear={() => {
-                clearSet.mutate(
-                  { entryIndex: index, setIndex },
-                  {
-                    onSuccess: () => {
-                      setOpenSet(undefined)
+                  )
+                }}
+                onClear={() => {
+                  clearSet.mutate(
+                    { entryIndex: index, setIndex },
+                    {
+                      onSuccess: () => {
+                        setOpenSet(undefined)
+                      },
                     },
-                  },
-                )
-              }}
-            />
-          ))}
-        </div>
+                  )
+                }}
+              />
+            ))}
+          </div>
 
-        {entry.notes !== undefined && (
-          <p className="border-ink-800 text-ink-300 mt-4 flex gap-2 border-t pt-3 text-sm">
-            <Lightbulb size={16} className="text-accent-400 mt-0.5 shrink-0" aria-hidden />
-            <span>{entry.notes}</span>
-          </p>
-        )}
-      </section>
+          {entry.notes !== undefined && (
+            <p className="border-ink-800 text-ink-300 mt-4 flex gap-2 border-t pt-3 text-sm">
+              <Lightbulb size={16} className="text-accent-400 mt-0.5 shrink-0" aria-hidden />
+              <span>{entry.notes}</span>
+            </p>
+          )}
+        </section>
+      )}
 
       {/*
         **Next is named, and it lights once this exercise is done.** Paging
@@ -311,7 +338,7 @@ export function SessionPlayer({
         </Button>
         {next !== undefined ? (
           <Button
-            variant={isEntryComplete(entry) ? 'primary' : 'outline'}
+            variant={stepComplete ? 'primary' : 'outline'}
             className="min-w-0 flex-1 justify-between"
             onClick={() => {
               go(index + 1)
@@ -410,6 +437,21 @@ export function SessionPlayer({
       )}
     </div>
   )
+}
+
+/** The indices of the warm-up run `at` sits in, or undefined if it is not a warm-up. */
+function warmupRun(workout: WorkoutLog, at: number): readonly number[] | undefined {
+  const isWarmup = (i: number) => workout.entries[i]?.role === 'warmup'
+  if (!isWarmup(at)) return undefined
+  let start = at
+  while (isWarmup(start - 1)) start -= 1
+  let end = at
+  while (isWarmup(end + 1)) end += 1
+  return Array.from({ length: end - start + 1 }, (_, offset) => start + offset)
+}
+
+function runStart(workout: WorkoutLog, at: number): number {
+  return warmupRun(workout, at)?.[0] ?? at
 }
 
 function firstIncompleteIndex(workout: WorkoutLog): number {
