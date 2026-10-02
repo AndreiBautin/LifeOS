@@ -58,8 +58,7 @@ standards.ts`): the estimated max, its multiple of bodyweight, and the
   screen"_ and _"I don't like the plain LiftOS header in lieu of a
   proper hero banner"_. `HeroBanner` names the next session and owns
   Start, Skip and Open session, so the plan card is detail only;
-  `WeekCard` draws this week's accessory sets against the current
-  week's `scheduledVolume` (deloads included) as one shape. Both read
+  `WeekCard` draws this week's sets per muscle as one shape. Both read
   `useNextSession`, so they cannot name different days. **The week is
   a calendar week from Monday** (`weekSummary`), not the last seven
   days — the old bars were a rolling window read off `Date.now()` in a
@@ -97,8 +96,12 @@ standards.ts`): the estimated max, its multiple of bodyweight, and the
   were skipped — solved for the same count on every logged set and
   changed nothing. All three are deleted, and the log no longer copies
   the targets (old logs still carry the optional field). `WeekCard`
-  keeps the week-level view, relabelled **scheduled** rather than
-  target: across days it is the one place a missed session shows.
+  kept a "scheduled" ring for a while and lost it too — _"this still
+  seems tied to the target volumes"_ — and the ring counted accessory
+  sets while the shape counted every working set (bench week: chest
+  10/5). The radar now plots sets done on labelled rings every five sets, the
+  routine only choosing which muscles get a spoke; the "also worked"
+  list went with it.
 - **The calendar picks the session; the cursor is gone.** Asked for as
   _"the app knows what day it is and the workouts each map to a day so
   we should use that rather than keeping a cursor"_. The weekday picks

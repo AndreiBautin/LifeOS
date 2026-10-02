@@ -9,64 +9,52 @@ import { useWeekSummary } from './hooks'
 import { useNextSession } from './useNextSession'
 
 /**
- * This week's sets against what the routine schedules, as one shape.
+ * This week's sets by muscle, as one shape.
  *
- * **It was ten full-width bars**, reported as _"plain, clunky, and takes
- * up most of the screen"_ — one row per muscle, the width of the page,
- * under its own section heading. A radar answers the same question in a
- * card: the dashed ring is what is scheduled, the filled shape is the week so
- * far, and a muscle that is behind shows as a dent. The numbers stay on
- * every spoke, because a shape alone cannot be checked.
+ * **It plots what was done, on a fixed scale, against nothing.** It used
+ * to draw a dashed "scheduled" ring from each day's `volumeTargets` and
+ * label every spoke "done/scheduled". Asked: _"this still seems tied to
+ * the target volumes"_ — it was, and the two halves did not even count
+ * the same work: the ring was accessory sets only while the shape counted
+ * every working set, so a bench week read "chest 10/5". With five sets on
+ * every exercise a per-muscle target says nothing the routine does not.
  *
- * **"Scheduled", not "target", because that is all it is now.** The
- * numbers come from `scheduledVolume` — each exercise's set count,
- * credited to the muscle it trains — over the week the lifter is in,
- * deload included. There used to be computed per-muscle targets behind
- * them; with a written routine there is only the routine, so the card
- * says how much of the week's listed work is done, and a missed day
- * shows as a dent. It is the one place that view adds anything: within a
- * day the set rows already say it.
- *
- * Muscles worked with no target are named underneath rather than drawn —
- * a spoke with no ring has nothing to be measured against.
+ * The rings are every five sets, labelled, out to the busiest muscle's
+ * count rounded up (ten at least) — a scale with its numbers on it, so a
+ * small week reads as a small shape without the card claiming any number
+ * was owed.
+ * The spokes are the muscles the routine trains — the one thing still
+ * read from the week, and only for which muscles, never how many sets.
+ * The per-muscle "also worked" list went with the targets.
  */
 const SIZE = { width: 360, height: 300 }
 const CENTER = { x: 180, y: 150 }
-/** The scheduled ring's radius; the shape may run past it to `OVERSHOOT`. */
-const RING = 78
-const OVERSHOOT = 1.25
+const RADIUS = 92
+const STEP = 5
+const MIN_SCALE = 10
 
 export function WeekCard() {
   const summary = useWeekSummary()
   const { thisWeek } = useNextSession()
 
-  const targets = thisWeek === undefined ? {} : scheduledVolume(thisWeek)
+  const trained = thisWeek === undefined ? {} : scheduledVolume(thisWeek)
   const done = summary.data?.volume
 
   const spokes = (Object.keys(MUSCLE_GROUP_LABELS) as MuscleGroup[])
-    .filter((muscle) => (targets[muscle] ?? 0) > 0)
-    .map((muscle) => ({
-      muscle,
-      target: targets[muscle] ?? 0,
-      done: done?.[muscle] ?? 0,
-    }))
+    .filter((muscle) => (trained[muscle] ?? 0) > 0)
+    .map((muscle) => ({ muscle, done: done?.[muscle] ?? 0 }))
 
-  const untargeted = (Object.keys(MUSCLE_GROUP_LABELS) as MuscleGroup[]).filter(
-    (muscle) => (targets[muscle] ?? 0) === 0 && (done?.[muscle] ?? 0) > 0,
-  )
-
-  const totalTarget = spokes.reduce((sum, spoke) => sum + spoke.target, 0)
-  const totalDone = spokes.reduce((sum, spoke) => sum + Math.min(spoke.done, spoke.target), 0)
+  const sets = summary.data?.sets ?? 0
+  const sessions = summary.data?.sessions ?? 0
 
   return (
     <Card>
       <CardHeading icon={<Target size={16} aria-hidden />} title="This week" />
       <p className="text-ink-300 text-sm">
-        <span className="numeric text-ink-50 font-semibold">{displaySets(totalDone)}</span> of{' '}
-        <span className="numeric">{totalTarget}</span> scheduled sets
+        <span className="numeric text-ink-50 font-semibold">{sets}</span> working sets
         <span className="text-ink-500">
           {' '}
-          · {summary.data?.sessions ?? 0} session{summary.data?.sessions === 1 ? '' : 's'}
+          · {sessions} session{sessions === 1 ? '' : 's'}
         </span>
       </p>
 
@@ -74,21 +62,7 @@ export function WeekCard() {
         <Radar spokes={spokes} />
       ) : (
         <p className="text-ink-500 mt-3 text-xs">
-          The week&rsquo;s sets appear once it is planned.
-        </p>
-      )}
-
-      {untargeted.length > 0 && done !== undefined && (
-        <p className="text-ink-500 text-xs">
-          Also worked:{' '}
-          <span className="numeric text-ink-300">
-            {untargeted
-              .map(
-                (muscle) =>
-                  `${MUSCLE_GROUP_LABELS[muscle].toLowerCase()} ${displaySets(done[muscle])}`,
-              )
-              .join(' · ')}
-          </span>
+          The week&rsquo;s shape appears once it is planned.
         </p>
       )}
     </Card>
@@ -97,27 +71,27 @@ export function WeekCard() {
 
 interface Spoke {
   readonly muscle: MuscleGroup
-  readonly target: number
   readonly done: number
 }
 
 function Radar({ spokes }: { readonly spokes: readonly Spoke[] }) {
+  const most = Math.max(...spokes.map((spoke) => spoke.done))
+  const scale = Math.max(MIN_SCALE, Math.ceil(most / STEP) * STEP)
+  const rings = Array.from({ length: scale / STEP }, (_, index) => (index + 1) * STEP)
   const angleOf = (index: number) => (index / spokes.length) * Math.PI * 2 - Math.PI / 2
   const pointAt = (index: number, radius: number) => ({
     x: CENTER.x + Math.cos(angleOf(index)) * radius,
     y: CENTER.y + Math.sin(angleOf(index)) * radius,
   })
-  const ring = (fraction: number) =>
+  const ring = (sets: number) =>
     spokes
       .map((_, index) => {
-        const p = pointAt(index, RING * fraction)
+        const p = pointAt(index, (RADIUS * sets) / scale)
         return `${p.x.toFixed(1)},${p.y.toFixed(1)}`
       })
       .join(' ')
 
-  const reached = spokes.map((spoke, index) =>
-    pointAt(index, RING * Math.min(spoke.done / spoke.target, OVERSHOOT)),
-  )
+  const reached = spokes.map((spoke, index) => pointAt(index, (RADIUS * spoke.done) / scale))
   const empty = spokes.every((spoke) => spoke.done === 0)
 
   return (
@@ -126,16 +100,26 @@ function Radar({ spokes }: { readonly spokes: readonly Spoke[] }) {
       className="my-1 w-full"
       role="img"
       aria-label={spokes
-        .map(
-          (spoke) =>
-            `${MUSCLE_GROUP_LABELS[spoke.muscle]} ${displaySets(spoke.done)} of ${String(spoke.target)}`,
-        )
+        .map((spoke) => `${MUSCLE_GROUP_LABELS[spoke.muscle]} ${displaySets(spoke.done)} sets`)
         .join(', ')}
     >
-      {/* The grid: half way, and the scheduled sets, dashed and lit. */}
-      <polygon points={ring(0.5)} fill="none" stroke="var(--color-ink-800)" />
+      {rings.map((sets) => (
+        <polygon key={sets} points={ring(sets)} fill="none" stroke="var(--color-ink-800)" />
+      ))}
+      {rings.map((sets) => (
+        <text
+          key={sets}
+          x={CENTER.x + 3}
+          y={CENTER.y - (RADIUS * sets) / scale - 2}
+          fontSize="8"
+          fill="var(--color-ink-700)"
+          className="numeric"
+        >
+          {sets}
+        </text>
+      ))}
       {spokes.map((_, index) => {
-        const end = pointAt(index, RING * OVERSHOOT)
+        const end = pointAt(index, RADIUS)
         return (
           <line
             key={index}
@@ -147,12 +131,6 @@ function Radar({ spokes }: { readonly spokes: readonly Spoke[] }) {
           />
         )
       })}
-      <polygon
-        points={ring(1)}
-        fill="color-mix(in oklab, var(--color-accent-500) 5%, transparent)"
-        stroke="color-mix(in oklab, var(--color-accent-400) 55%, transparent)"
-        strokeDasharray="4 4"
-      />
 
       {!empty && (
         <polygon
@@ -166,27 +144,22 @@ function Radar({ spokes }: { readonly spokes: readonly Spoke[] }) {
         />
       )}
       {!empty &&
-        reached.map((p, index) => {
-          const spoke = spokes[index]
-          const met = spoke !== undefined && spoke.done >= spoke.target
-          return (
-            <circle
-              key={index}
-              cx={p.x}
-              cy={p.y}
-              r="3.5"
-              fill={met ? 'var(--color-good-500)' : 'var(--color-accent-400)'}
-              stroke="var(--color-ink-950)"
-              strokeWidth="1.5"
-            />
-          )
-        })}
+        reached.map((p, index) => (
+          <circle
+            key={index}
+            cx={p.x}
+            cy={p.y}
+            r="3.5"
+            fill="var(--color-accent-400)"
+            stroke="var(--color-ink-950)"
+            strokeWidth="1.5"
+          />
+        ))}
 
       {spokes.map((spoke, index) => {
-        const p = pointAt(index, RING * OVERSHOOT + 18)
+        const p = pointAt(index, RADIUS + 18)
         const cos = Math.cos(angleOf(index))
         const anchor = cos > 0.3 ? 'start' : cos < -0.3 ? 'end' : 'middle'
-        const met = spoke.done >= spoke.target
         return (
           <text key={spoke.muscle} x={p.x} y={p.y} textAnchor={anchor} fontSize="11">
             <tspan x={p.x} dy="-0.15em" fill="var(--color-ink-300)">
@@ -197,9 +170,9 @@ function Radar({ spokes }: { readonly spokes: readonly Spoke[] }) {
               dy="1.25em"
               className="numeric"
               fontWeight="600"
-              fill={met ? 'var(--color-good-500)' : 'var(--color-ink-500)'}
+              fill={spoke.done > 0 ? 'var(--color-ink-50)' : 'var(--color-ink-700)'}
             >
-              {displaySets(spoke.done)}/{spoke.target}
+              {displaySets(spoke.done)}
             </tspan>
           </text>
         )
