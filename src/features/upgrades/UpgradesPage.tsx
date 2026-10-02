@@ -1,9 +1,8 @@
-import { Check, ListTree, Lock, Network, Plus, Trash2, Wallet } from 'lucide-react'
+import { Check, Lock, Network, Plus, Trash2, Wallet, X } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 import { Badge, Button, Card, CardHeading, Empty } from '@/components/shared/primitives'
-import { EyeIcon } from '@/components/shared/EyeIcon'
 import {
   UPGRADE_SHELF_LABELS,
   UPGRADE_SHELVES,
@@ -400,160 +399,116 @@ function AddUpgrade({
  * What differs is the heading and which shelf is read.
  */
 function ShelfPage() {
-  /*
-   * **The pool replaced the budget box**, which was a number typed into
-   * `localStorage` on one device. What is affordable now comes from the
-   * surpluses recorded on the finance readings minus what the purchased
-   * upgrades cost — derived, synced, and inspectable. See
-   * `domain/upgrades/pool.ts`.
-   */
-  /* What the eye on "Every node" reveals — see the note beside it. */
-  const [showingSettled, setShowingSettled] = useState(false)
-
   const tree = useWholeTree()
   const entries = tree.data ?? []
+  const [picked, setPicked] = useState<string | undefined>(undefined)
 
-  /*
-   * `isOpen` rather than "not purchased", which is what this said and
-   * which quietly kept **cancelled** upgrades in the tree — and, if one
-   * was cheap enough, offered it under "what you can get today". A
-   * screen recommending something you had decided against.
-   */
   const open = entries.filter((entry) => isOpen(entry.upgrade))
-  const owned = entries.filter((entry) => entry.upgrade.status === 'purchased')
-  const gone = entries.filter((entry) => entry.upgrade.status === 'cancelled')
-  const availableNow = open.filter((entry) => entry.affordable)
-
-  /*
-   * Bought and decided-against together: both are settled, and both had
-   * a section of their own at the foot of the page. Dropped first —
-   * something you may yet change your mind about is worth meeting before
-   * a list of things already in the house.
-   */
-  const settled = [...gone, ...owned]
+  const unlocked = open.filter((entry) => entry.affordable)
+  /* Read live each render, so an edit in the card shows straight away. */
+  const pickedEntry = entries.find((entry) => entry.upgrade.id === picked)
 
   return (
     <div className="space-y-4">
       <PageHeader title="Tech tree" subtitle="What you are saving for, and what unlocks what" />
 
       {/*
-        **Side by side from `lg`, stacked below it.** The tree ran the
-        full width with the lists underneath, so a wide window drew a
-        narrow tree in a sea of empty canvas and pushed the lists a
-        screen down — reported as _"there's probably a more efficient use
-        of space than this."_ The tree takes the left column and the lists
-        the right; on a phone nothing moves. Not sticky: the tree is often
-        taller than the window, and a sticky box taller than the window
-        hides its own bottom.
+        **The tree is the list now; a node's card opens when you tap it.**
+        Asked for as _"having the whole list on the page is a lot — could
+        we only have the cards pop up when you click on them?"_ Every node
+        was drawn twice: once in the picture and once as a full editor
+        card below it. The tree already draws every node — owned and
+        dropped included, struck through and dimmed — so nothing became
+        unreachable when the list went, which is the check this file
+        makes before removing any control.
+
+        Side by side from `lg`: the tree on the left, adding on the right.
       */}
-      <div className="space-y-4 lg:grid lg:grid-cols-2 lg:items-start lg:gap-8 lg:space-y-0">
-        {/*
-        **The tree itself leads, because it is the thing that was asked
-        for.** The lists below it are how a node is edited; the picture
-        is how it is understood.
-      */}
+      <div className="space-y-4 lg:grid lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] lg:items-start lg:gap-8 lg:space-y-0">
         <div>
           <CardHeading icon={<Network size={16} aria-hidden />} title="The tree" />
           {entries.length === 0 ? (
             <Empty title="Nothing planned">Add the first thing you are saving up for.</Empty>
           ) : (
-            <TechTree
-              entries={entries}
-              onPick={(id) => {
-                document
-                  .getElementById(`upgrade-${id}`)
-                  ?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-              }}
-            />
+            <>
+              <p className="text-ink-500 mb-2 text-sm">
+                {`${String(open.length)} open · ${String(unlocked.length)} unlocked. Tap a node to edit it.`}
+              </p>
+              <TechTree entries={entries} onPick={setPicked} />
+            </>
           )}
         </div>
 
-        <div className="space-y-4">
-          {/*
-        The same nodes as the diagram, as rows that can be edited — the
-        picture is how the tree is read and this is how it is changed.
-
-        **Unlocked is a badge here, not a list above it.** It was a second
-        section listing every open node with nothing in its way, each as a
-        full editor card — with no prerequisites set that was every node,
-        so the same eight cards appeared twice, one list after the other.
-        Every card already says whether it is unlocked; the count says how
-        many are.
-        It is not called "The tree" any more, because the diagram above
-        is, and one screen calling two things the same name is the
-        collision the Gadgets rename was made to fix.
-      */}
-          <div>
-            {/*
-          **Owned and dropped fold behind the eye, and the tail was the
-          complaint.** Reported alongside the width: _"the long list of
-          items isn't the best at the end."_ It was three stacked
-          sections — every open node, then everything decided against,
-          then everything already bought — so a tree you had used for a
-          year ended in two lists of things there is nothing left to do
-          about.
-
-          Folded rather than dropped, the rule the other four screens
-          follow: the only control that can un-cancel a dropped upgrade
-          lives on its own row.
-        */}
-            <CardHeading
-              icon={<ListTree size={16} aria-hidden />}
-              title="Every node"
-              action={
-                settled.length > 0 && (
-                  <Button
-                    size="sm"
-                    variant={showingSettled ? 'primary' : 'ghost'}
-                    aria-pressed={showingSettled}
-                    aria-label={`${showingSettled ? 'Hide' : 'Show'} ${String(settled.length)} owned and dropped`}
-                    onClick={() => {
-                      setShowingSettled(!showingSettled)
-                    }}
-                  >
-                    <EyeIcon open={showingSettled} />
-                  </Button>
-                )
-              }
-            />
-
-            <p className="text-ink-500 mb-2 text-sm">
-              {open.length === 0
-                ? 'Nothing open.'
-                : `${String(open.length)} open · ${String(availableNow.length)} unlocked. Ordered by the priority each inherits from what it unblocks.`}
-            </p>
-
-            <AddUpgrade candidates={entries} defaultShelf="tech" />
-
-            {open.length === 0 ? (
-              <Empty title="Nothing planned">Add the first thing you are saving up for.</Empty>
-            ) : (
-              <div className="space-y-2">
-                {open.map((entry) => (
-                  <EntryCard
-                    key={entry.upgrade.id}
-                    entry={entry}
-                    others={entries.filter((one) => one.upgrade.id !== entry.upgrade.id)}
-                  />
-                ))}
-              </div>
-            )}
-
-            {showingSettled && settled.length > 0 && (
-              <div className="border-ink-800 mt-3 space-y-2 border-t pt-3">
-                {settled.map((entry) => (
-                  <EntryCard
-                    key={entry.upgrade.id}
-                    entry={entry}
-                    others={entries.filter((one) => one.upgrade.id !== entry.upgrade.id)}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
+        <div>
+          <CardHeading icon={<Plus size={16} aria-hidden />} title="Add" />
+          <AddUpgrade candidates={entries} defaultShelf="tech" />
         </div>
       </div>
+
+      {pickedEntry !== undefined && (
+        <NodeDialog
+          entry={pickedEntry}
+          others={entries.filter((one) => one.upgrade.id !== pickedEntry.upgrade.id)}
+          onClose={() => {
+            setPicked(undefined)
+          }}
+        />
+      )}
     </div>
+  )
+}
+
+/**
+ * One node's card, over the page.
+ *
+ * **A native `<dialog>` opened modally**, not a positioned div: it brings
+ * focus trapping, Escape to close and an inert page behind it from the
+ * platform, which a hand-rolled overlay gets subtly wrong. Pressing the
+ * backdrop closes it too, since that is where a thumb goes to dismiss a
+ * sheet. The blur is on the backdrop, a fixed surface — the one place
+ * this app allows `backdrop-filter`.
+ */
+function NodeDialog({
+  entry,
+  others,
+  onClose,
+}: {
+  readonly entry: TreeEntry
+  readonly others: readonly TreeEntry[]
+  readonly onClose: () => void
+}) {
+  const dialog = useRef<HTMLDialogElement>(null)
+
+  useEffect(() => {
+    const node = dialog.current
+    if (node !== null && !node.open) node.showModal()
+  }, [])
+
+  return (
+    <dialog
+      ref={dialog}
+      aria-label={entry.upgrade.title}
+      onClose={onClose}
+      onClick={(event) => {
+        if (event.target === dialog.current) dialog.current.close()
+      }}
+      className="m-auto w-[min(32rem,calc(100vw-2rem))] overflow-visible bg-transparent p-0 backdrop:bg-black/60 backdrop:backdrop-blur-sm"
+    >
+      <div className="relative">
+        <Button
+          size="sm"
+          variant="ghost"
+          aria-label="Close"
+          className="absolute -top-12 right-0"
+          onClick={() => {
+            dialog.current?.close()
+          }}
+        >
+          <X size={16} aria-hidden />
+        </Button>
+        <EntryCard entry={entry} others={others} />
+      </div>
+    </dialog>
   )
 }
 
