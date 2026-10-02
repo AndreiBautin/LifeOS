@@ -12,6 +12,7 @@ import {
   type LogEntry,
   type WorkoutLog,
 } from '@/domain/logging/workout-log'
+import { sessionRecords, type SessionRecord } from '@/domain/logging/records'
 import type { WorkoutRepository } from '@/domain/repositories/ports'
 
 /**
@@ -32,6 +33,8 @@ export interface SessionDetail {
   /** Absent for a session with no completion stamp (abandoned early). */
   readonly minutes?: number
   readonly entries: readonly EntryDetail[]
+  /** Personal records the session set, one per exercise. */
+  readonly records: readonly SessionRecord[]
 }
 
 export interface EntryDetail {
@@ -101,5 +104,14 @@ export async function sessionDetail(
     tonnage: totalTonnage(workout),
     ...(minutes === undefined ? {} : { minutes }),
     entries,
+    records: recordsIn(workout, [...histories.values()].flat()),
   }
+}
+
+/** The records this session set, against every session in its exercises' history. */
+function recordsIn(workout: WorkoutLog, history: readonly WorkoutLog[]): readonly SessionRecord[] {
+  const logs = new Map<WorkoutId, WorkoutLog>()
+  for (const log of history) logs.set(log.id, log)
+  logs.set(workout.id, workout)
+  return sessionRecords([...logs.values()]).get(workout.id) ?? []
 }

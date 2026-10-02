@@ -1,4 +1,4 @@
-import { Check, ChevronDown, ChevronRight, Minus } from 'lucide-react'
+import { Check, ChevronDown, ChevronRight, Minus, Star } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 
@@ -6,6 +6,7 @@ import { useSettings } from '@/app/context'
 import type { EntryDetail } from '@/application/use-cases/training/session-detail'
 import type { Exercise } from '@/domain/exercises/exercise'
 import { asWorkoutId } from '@/domain/ids/ids'
+import type { SessionRecord } from '@/domain/logging/records'
 import type { LoggedSet } from '@/domain/logging/workout-log'
 import { describePrescription } from '@/domain/programs/prescription'
 import { formatLoad, type WeightUnit } from '@/domain/units/weight'
@@ -15,6 +16,7 @@ import { cn } from '@/lib/cn'
 import { useExercises } from '@/features/train/hooks'
 import { SessionStats } from '@/features/train/SessionStats'
 import { splitDayLabel } from '@/features/train/useNextSession'
+import { RecordChip } from '@/features/train/RecordChip'
 import { VersusChip } from '@/features/train/VersusChip'
 
 import { useSessionDetail } from './hooks'
@@ -48,7 +50,7 @@ export function SessionPage() {
     )
   }
 
-  const { workout, sets, tonnage, minutes, entries } = detail.data
+  const { workout, sets, tonnage, minutes, entries, records } = detail.data
   const when = new Date(`${workout.date}T00:00:00`)
   const library = exercises.data ?? []
   const warmups = entries.filter(({ entry }) => entry.sets.every((set) => set.isWarmup))
@@ -91,6 +93,7 @@ export function SessionPage() {
         <ExerciseCard
           key={`${detailed.entry.exerciseId}-${String(detailed.entry.order)}`}
           detail={detailed}
+          record={records.find((one) => one.exerciseId === detailed.entry.exerciseId)}
           library={library}
           units={settings.units}
         />
@@ -156,10 +159,12 @@ function WarmupLine({
  */
 function ExerciseCard({
   detail,
+  record,
   library,
   units,
 }: {
   readonly detail: EntryDetail
+  readonly record?: SessionRecord | undefined
   readonly library: readonly Exercise[]
   readonly units: WeightUnit
 }) {
@@ -167,6 +172,16 @@ function ExerciseCard({
   const exercise = library.find((one) => one.id === entry.exerciseId)
   const bodyweight = exercise?.loadBasis === 'bodyweight'
   const sets = entry.sets.filter((set) => !set.isWarmup)
+  // The first set that matches the record is the one that set it.
+  const recordIndex =
+    record === undefined
+      ? -1
+      : sets.findIndex(
+          (set) =>
+            set.outcome === 'completed' &&
+            set.actualLoad === record.set.load &&
+            set.actualReps === record.set.reps,
+        )
 
   return (
     <Card>
@@ -186,7 +201,9 @@ function ExerciseCard({
           )}
         </div>
         <span className="shrink-0 pt-0.5">
-          {versus === undefined ? (
+          {record !== undefined ? (
+            <RecordChip kind={record.kind} />
+          ) : versus === undefined ? (
             previous === undefined && sets.some((set) => set.outcome === 'completed') ? (
               <Badge tone="accent">First time</Badge>
             ) : null
@@ -207,7 +224,16 @@ function ExerciseCard({
                 : 'border-ink-800/60 border-dashed opacity-60',
             )}
           >
-            <span className="text-ink-500 numeric w-3 text-xs">{index + 1}</span>
+            {index === recordIndex ? (
+              <Star
+                size={12}
+                fill="currentColor"
+                className="w-3 text-[oklch(0.86_0.13_85)]"
+                aria-label="Record set"
+              />
+            ) : (
+              <span className="text-ink-500 numeric w-3 text-xs">{index + 1}</span>
+            )}
             <span className="numeric text-ink-50 truncate text-sm font-semibold">
               {describeSet(set, units, bodyweight)}
             </span>

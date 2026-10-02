@@ -1,9 +1,10 @@
 import { useQuery } from '@tanstack/react-query'
-import { History, RotateCcw, Trash2 } from 'lucide-react'
-import { useState } from 'react'
+import { History, RotateCcw, Star, Trash2 } from 'lucide-react'
+import { useMemo, useState } from 'react'
 
 import { useServices, useSettings } from '@/app/context'
 import type { WorkoutId } from '@/domain/ids/ids'
+import { sessionRecords } from '@/domain/logging/records'
 import type { WorkoutLog } from '@/domain/logging/workout-log'
 import { remainingSets, totalTonnage, totalWorkingSets } from '@/domain/logging/workout-log'
 import type { WeightUnit } from '@/domain/units/weight'
@@ -69,6 +70,9 @@ export function TrainingHistory() {
     (workout) => workout.status === 'completed' || workout.status === 'abandoned',
   )
   const completed = sessions.filter((workout) => workout.status === 'completed').length
+  // Every record in the window at once, oldest first, so each session is
+  // judged against the ones before it rather than the whole list.
+  const records = useMemo(() => sessionRecords(workouts.data ?? []), [workouts.data])
   const abandoned = sessions.length - completed
 
   if (workouts.data === undefined) return null
@@ -97,6 +101,7 @@ export function TrainingHistory() {
           <li key={workout.id}>
             <SessionRow
               workout={workout}
+              records={records.get(workout.id)?.length ?? 0}
               units={settings.units}
               confirming={confirming === workout.id}
               pending={deleteWorkout.isPending}
@@ -158,6 +163,7 @@ export function TrainingHistory() {
  */
 function SessionRow({
   workout,
+  records,
   units,
   confirming,
   pending,
@@ -168,6 +174,7 @@ function SessionRow({
   canReopen,
 }: {
   readonly workout: WorkoutLog
+  readonly records: number
   readonly units: WeightUnit
   readonly confirming: boolean
   readonly pending: boolean
@@ -223,6 +230,15 @@ function SessionRow({
               interrupted one.
             */}
               {workout.status === 'abandoned' && <Badge tone="warn">Abandoned</Badge>}
+              {records > 0 && (
+                <span
+                  className="numeric inline-flex shrink-0 items-center gap-0.5 text-xs font-semibold text-[oklch(0.86_0.13_85)]"
+                  aria-label={`${String(records)} personal record${records === 1 ? '' : 's'}`}
+                >
+                  <Star size={11} fill="currentColor" aria-hidden />
+                  {records}
+                </span>
+              )}
             </p>
             <p className="text-ink-500 numeric mt-0.5 text-xs">
               {when.toLocaleDateString(undefined, { weekday: 'long' })} · {sets}{' '}

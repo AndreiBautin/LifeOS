@@ -1,4 +1,4 @@
-import { ArrowDown, ArrowUp, BarChart3, Minus, Sparkles, TrendingUp } from 'lucide-react'
+import { ArrowDown, ArrowUp, BarChart3, Minus, Sparkles, Star, TrendingUp } from 'lucide-react'
 
 import type { WorkoutReport } from '@/application/use-cases/training/finish-workout'
 import { MUSCLE_GROUP_LABELS } from '@/domain/exercises/taxonomy'
@@ -6,6 +6,7 @@ import { formatLoad, type WeightUnit } from '@/domain/units/weight'
 import { Badge, Button, Card, CardHeading } from '@/components/shared/primitives'
 import { useSettings } from '@/app/context'
 
+import { RecordChip } from './RecordChip'
 import { SessionStats } from './SessionStats'
 
 /**
@@ -141,6 +142,32 @@ export function SessionReport({ report, units, onDismiss }: Props) {
           units={units}
         />
       </section>
+
+      {/*
+        Records lead the cards: better than every time before is the
+        headline a session can have, and it is rare enough to say first.
+      */}
+      {report.records.length > 0 && (
+        <Card>
+          <CardHeading icon={<Star size={16} aria-hidden />} title="New records" />
+          <ul className="space-y-2.5">
+            {report.records.map((record) => (
+              <li key={record.exerciseId} className="flex items-center justify-between gap-3">
+                <span className="min-w-0">
+                  <span className="text-ink-100 block truncate text-sm">{record.name}</span>
+                  <span className="text-ink-500 numeric text-xs">
+                    {record.set.load === undefined || record.set.load <= 0
+                      ? 'BW'
+                      : formatLoad(record.set.load, units)}{' '}
+                    × {record.set.reps ?? '—'}
+                  </span>
+                </span>
+                <RecordChip kind={record.kind} />
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
 
       {report.progress.length > 0 && (
         <Card>

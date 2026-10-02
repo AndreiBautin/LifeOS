@@ -1,6 +1,7 @@
 import type { Exercise } from '@/domain/exercises/exercise'
 import type { ExerciseId, WorkoutId } from '@/domain/ids/ids'
 import { isProgress, previousTopSet, topSetIn, versusLast } from '@/domain/logging/versus-last'
+import { sessionRecords, type SessionRecord } from '@/domain/logging/records'
 import type { WorkoutLog } from '@/domain/logging/workout-log'
 import type { ProgramTemplate } from '@/domain/programs/program'
 import {
@@ -52,6 +53,8 @@ export interface WorkoutReport {
     readonly estimate: E1rmEstimate
   }[]
   readonly headline: string
+  /** Personal records this session set, one per exercise. */
+  readonly records: readonly (SessionRecord & { readonly name: string })[]
 }
 
 export async function finishWorkout(
@@ -134,6 +137,7 @@ async function buildReport(
     progress,
     newEstimates,
     headline: headlineFor(progress),
+    records: await recordsOf(workout, lookup, deps),
   }
 }
 
@@ -165,6 +169,27 @@ async function verdictFor(
   const versus = versusLast(current, before)
   if (versus === undefined || versus.kind === 'matched') return 'matched'
   return isProgress(versus) ? 'better' : 'worse'
+}
+
+/**
+ * The records the session set, judged against every earlier session of
+ * each exercise it holds — `sessionRecords` over that history, read for
+ * this one session.
+ */
+async function recordsOf(
+  workout: WorkoutLog,
+  lookup: (id: ExerciseId) => Exercise | undefined,
+  deps: FinishWorkoutDeps,
+): Promise<readonly (SessionRecord & { readonly name: string })[]> {
+  const ids = [...new Set(workout.entries.map((entry) => entry.exerciseId))]
+  const histories = await Promise.all(ids.map((id) => deps.workouts.forExercise(id)))
+  const logs = new Map<WorkoutId, WorkoutLog>()
+  for (const log of histories.flat()) logs.set(log.id, log)
+  logs.set(workout.id, workout)
+  return (sessionRecords([...logs.values()]).get(workout.id) ?? []).map((record) => ({
+    ...record,
+    name: lookup(record.exerciseId)?.name ?? record.exerciseId,
+  }))
 }
 
 function headlineFor(progress: readonly ExerciseProgress[]): string {

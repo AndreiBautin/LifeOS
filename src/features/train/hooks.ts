@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import type { ExerciseId, WorkoutId } from '@/domain/ids/ids'
+import { workingSets } from '@/domain/logging/workout-log'
 import {
   abandonWorkout,
   type AbandonResult,
@@ -317,5 +318,23 @@ export function useSessionPreview() {
       )
       return planned ?? null
     },
+  })
+}
+
+/**
+ * Every finished set of an exercise outside the open session — what a set
+ * logged now has to beat to be a personal record. Under `workouts`, so
+ * finishing or deleting a session refreshes it.
+ */
+export function usePriorSets(exerciseId: ExerciseId, currentWorkoutId: WorkoutId) {
+  const services = useServices()
+  return useQuery({
+    queryKey: ['workouts', 'prior-sets', exerciseId, currentWorkoutId],
+    queryFn: async () =>
+      (await services.workouts.forExercise(exerciseId))
+        .filter((log) => log.id !== currentWorkoutId && log.status === 'completed')
+        .flatMap((log) => log.entries.filter((entry) => entry.exerciseId === exerciseId))
+        .flatMap((entry) => workingSets(entry))
+        .map((set) => ({ load: set.actualLoad, reps: set.actualReps })),
   })
 }

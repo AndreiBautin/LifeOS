@@ -2,7 +2,8 @@ import { Check, Minus, SkipForward } from 'lucide-react'
 import { useState } from 'react'
 
 import type { ExerciseId, WorkoutId } from '@/domain/ids/ids'
-import { versusLast } from '@/domain/logging/versus-last'
+import { recordFor } from '@/domain/logging/records'
+import { versusLast, type Performance } from '@/domain/logging/versus-last'
 import type { LoggedSet } from '@/domain/logging/workout-log'
 import { describePrescription } from '@/domain/programs/prescription'
 import { formatLoad } from '@/domain/units/weight'
@@ -10,7 +11,8 @@ import type { WeightUnit } from '@/domain/units/weight'
 import { Badge, Button, NumberField } from '@/components/shared/primitives'
 import { cn } from '@/lib/cn'
 
-import { usePreviousSet } from './hooks'
+import { usePreviousSet, usePriorSets } from './hooks'
+import { RecordChip } from './RecordChip'
 import { VersusChip } from './VersusChip'
 
 /**
@@ -49,6 +51,12 @@ interface Props {
   readonly onLog: (result: { load?: number | undefined; reps?: number | undefined }) => void
   readonly onSkip: () => void
   readonly onClear: () => void
+  /**
+   * The sets of this exercise already done in this session, before this
+   * one — a record has to beat them too, or the third set of a session
+   * would be named a record for beating only last week.
+   */
+  readonly earlier?: readonly Performance[]
 }
 
 export function SetRow(props: Props) {
@@ -56,8 +64,16 @@ export function SetRow(props: Props) {
   const loadText = (load: number | undefined): string =>
     describeLoad(load, units, props.bodyweight === true)
   const { data: previous } = usePreviousSet(exerciseId, index, workoutId, props.variant)
+  const { data: prior } = usePriorSets(exerciseId, workoutId)
 
   const done = set.outcome === 'completed' && set.completedAt !== undefined
+  const record =
+    done && prior !== undefined && !set.isWarmup
+      ? recordFor({ load: set.actualLoad, reps: set.actualReps }, [
+          ...prior,
+          ...(props.earlier ?? []),
+        ])
+      : undefined
   const skipped = set.outcome === 'skipped'
 
   /*
@@ -156,14 +172,23 @@ export function SetRow(props: Props) {
             )}
           </span>
           <span className="ml-auto flex shrink-0 items-center gap-1.5">
-            {done && previous != null && (
-              <VersusChip
-                versus={versusLast(
-                  { load: set.actualLoad, reps: set.actualReps },
-                  { load: previous.load, reps: previous.reps },
-                )}
-                units={units}
-              />
+            {/*
+              A record outranks "ahead of last time": better than every
+              time before says more than better than once before.
+            */}
+            {done && record !== undefined ? (
+              <RecordChip kind={record} />
+            ) : (
+              done &&
+              previous != null && (
+                <VersusChip
+                  versus={versusLast(
+                    { load: set.actualLoad, reps: set.actualReps },
+                    { load: previous.load, reps: previous.reps },
+                  )}
+                  units={units}
+                />
+              )
             )}
             {set.isWarmup && <Badge>warm-up</Badge>}
             {set.prescription.reps.kind === 'amrap' && !done && <Badge tone="accent">AMRAP</Badge>}

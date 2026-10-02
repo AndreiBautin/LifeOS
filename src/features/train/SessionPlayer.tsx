@@ -260,6 +260,10 @@ export function SessionPlayer({
                 exerciseId={entry.exerciseId}
                 workoutId={workout.id}
                 variant={entry.variant}
+                earlier={entry.sets
+                  .slice(0, setIndex)
+                  .filter((one) => !one.isWarmup && one.outcome === 'completed')
+                  .map((one) => ({ load: one.actualLoad, reps: one.actualReps }))}
                 units={units}
                 bodyweight={
                   exercises.find((one) => one.id === entry.exerciseId)?.loadBasis === 'bodyweight'

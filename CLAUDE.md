@@ -116,6 +116,17 @@ SessionPage.tsx`, from `sessionDetail`). History rows could be deleted
   finished the minute it started reads as of unknown length rather
   than "0 min"; the demo seed stamped every session that way until this
   page showed it, and now gives each 45–75 minutes.
+- **Personal records** (`domain/logging/records.ts`): the heaviest bar
+  ever, or more reps than ever at a bar at least this heavy — the first
+  outranks the second, one record per exercise per session, and never the
+  first time an exercise is done. Shown in gold, not the accent: the
+  accent means "ahead of last time", gold means "ahead of every time".
+  Live on the set row (beating finished sessions _and_ this session's
+  earlier sets), as "New records" leading the report, on the session
+  page, and as a star count on history rows. **There is no
+  estimated-max record**: it was written, and its own test showed it can
+  never fire alone — beating every earlier estimate needs more reps at a
+  bar at least as heavy, which is the rep record.
 - **An exercise has a page** (`/exercise/:id`, `features/exercise/
 ExercisePage.tsx`, from `exerciseHistory` in `domain/logging/
 exercise-history.ts`), linked from its name in the session plan and
