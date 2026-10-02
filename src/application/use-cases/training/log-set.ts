@@ -72,6 +72,19 @@ export async function logSet(request: LogSetRequest, deps: LogSetDeps): Promise<
   return updated
 }
 
+/**
+ * The workout with one set's result written in — the same function the
+ * save uses, exported so the screen can show the result before the save
+ * lands and cannot show a different one.
+ */
+export function withSetResult(
+  workout: WorkoutLog,
+  request: Omit<LogSetRequest, 'workoutId'>,
+  now: Date,
+): WorkoutLog {
+  return updateSet(workout, { ...request, workoutId: workout.id }, now)
+}
+
 function updateSet(workout: WorkoutLog, request: LogSetRequest, now: Date): WorkoutLog {
   return {
     ...workout,

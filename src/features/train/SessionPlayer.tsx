@@ -241,6 +241,30 @@ export function SessionPlayer({
         it: the strip of pills becomes `SessionMap`, and the card keeps the
         width it had on a phone instead of a window's worth.
       */}
+      {/*
+        A set shows as logged the moment it is tapped (see `useLogSet`), so
+        a save that fails has already been seen to succeed. It is put back
+        and said here, plainly, rather than leaving a green row that is
+        not stored.
+      */}
+      {logSet.isError && (
+        <div
+          role="alert"
+          className="border-bad-500/40 bg-bad-500/10 mb-4 flex items-center justify-between gap-3 rounded-xl border px-3 py-2 text-sm"
+        >
+          <span className="text-ink-100">That set did not save, so it has been put back.</span>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              logSet.reset()
+            }}
+          >
+            OK
+          </Button>
+        </div>
+      )}
+
       <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_17rem] lg:items-start lg:gap-6">
         <div className="min-w-0">
           {warmup !== undefined ? (
@@ -305,34 +329,24 @@ export function SessionPlayer({
                       // through: an absent number and a number that is explicitly
                       // unknown are different things to the log, and only the
                       // first is meant here.
-                      logSet.mutate(
-                        {
-                          entryIndex: index,
-                          setIndex,
-                          result: {
-                            ...(result.load !== undefined ? { load: result.load } : {}),
-                            ...(result.reps !== undefined ? { reps: result.reps } : {}),
-                            outcome: 'completed',
-                          },
+                      // Closed and resting on the tap, not on the save:
+                      // the row is already green (see `useLogSet`).
+                      setOpenSet(undefined)
+                      // A warm-up does not earn a rest timer.
+                      if (!set.isWarmup) setRestStartedAt(Date.now())
+                      logSet.mutate({
+                        entryIndex: index,
+                        setIndex,
+                        result: {
+                          ...(result.load !== undefined ? { load: result.load } : {}),
+                          ...(result.reps !== undefined ? { reps: result.reps } : {}),
+                          outcome: 'completed',
                         },
-                        {
-                          onSuccess: () => {
-                            setOpenSet(undefined)
-                            // A warm-up does not earn a rest timer.
-                            if (!set.isWarmup) setRestStartedAt(Date.now())
-                          },
-                        },
-                      )
+                      })
                     }}
                     onSkip={() => {
-                      logSet.mutate(
-                        { entryIndex: index, setIndex, result: { outcome: 'skipped' } },
-                        {
-                          onSuccess: () => {
-                            setOpenSet(undefined)
-                          },
-                        },
-                      )
+                      setOpenSet(undefined)
+                      logSet.mutate({ entryIndex: index, setIndex, result: { outcome: 'skipped' } })
                     }}
                     onClear={() => {
                       clearSet.mutate(

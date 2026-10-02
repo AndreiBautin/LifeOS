@@ -116,6 +116,15 @@ SessionPage.tsx`, from `sessionDetail`). History rows could be deleted
   finished the minute it started reads as of unknown length rather
   than "0 min"; the demo seed stamped every session that way until this
   page showed it, and now gives each 45–75 minutes.
+- **A set shows as logged on the tap, not on the save** (`useLogSet`'s
+  `onMutate`): the result is written into the cached workout by
+  `withSetResult`, **the same function the save uses**, so the screen
+  cannot show a different result from the one stored; the editor closes
+  and the rest timer starts on the tap. A failed save restores the old
+  workout and the player says so in a `role="alert"` line — a green row
+  that is not stored is the one failure this must never hide. Measured:
+  the row reads "Logged" 16 ms after the tap. The failure path is not
+  driven on screen; it is three lines of React Query's own rollback.
 - **The set editor steps rather than types** (`Stepper`): − and + either
   side of each number, weight by the rounding increment and reps by one,
   holding a button repeats, and the field is still typeable for a big

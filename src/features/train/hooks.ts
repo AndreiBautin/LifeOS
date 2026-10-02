@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import type { ExerciseId, WorkoutId } from '@/domain/ids/ids'
+import type { WorkoutLog } from '@/domain/logging/workout-log'
 import { workingSets } from '@/domain/logging/workout-log'
 import {
   abandonWorkout,
@@ -13,6 +14,7 @@ import {
   previousSetFor,
   type PreviousSet,
   type SetResult,
+  withSetResult,
 } from '@/application/use-cases/training/log-set'
 import {
   startWorkout,
@@ -165,7 +167,27 @@ export function useLogSet(workoutId: WorkoutId | undefined) {
         },
       )
     },
-    onSuccess: () => {
+    /*
+     * **The set lands on screen before the save does.** Logging waited on
+     * IndexedDB and then a refetch before the row turned green — a beat
+     * long enough to tap twice. The result is written into the cached
+     * workout by the same function the save uses (`withSetResult`), so
+     * what shows cannot differ from what is stored; a failed save puts
+     * the old workout back, and the player says so.
+     */
+    onMutate: async (input) => {
+      await client.cancelQueries({ queryKey: keys.activeWorkout })
+      const before = client.getQueryData<WorkoutLog | null>(keys.activeWorkout)
+      if (before != null) {
+        client.setQueryData(keys.activeWorkout, withSetResult(before, input, services.clock.now()))
+      }
+      return { before }
+    },
+    onError: (error, _input, context) => {
+      logger.warn('set.log-failed', { message: error.message })
+      if (context !== undefined) client.setQueryData(keys.activeWorkout, context.before)
+    },
+    onSettled: () => {
       void client.invalidateQueries({ queryKey: keys.activeWorkout })
     },
   })
