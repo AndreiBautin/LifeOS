@@ -123,7 +123,23 @@ export function SessionPlayer({
         it had run — was something to work out. The bar answers both, and
         stays put while a long exercise scrolls.
       */}
-      <div className="bg-ink-950/90 border-ink-800/80 sticky top-0 z-20 -mx-4 mb-4 border-b px-4 pt-3 pb-3 sm:mx-0 sm:rounded-b-2xl sm:border-x">
+      {/*
+        **Pinned to the very top, with its content padded below the status
+        bar.** An installed app on a phone draws under the clock, so
+        `top: 0` alone parked the bar's title row behind it — reported as
+        the bar not sticking. Pulling the bar up over the page's own
+        safe-area padding and padding its content back down means the
+        background fills the strip behind the status bar too, so the sets
+        never scroll through it. A style rather than a bracket class,
+        because `env()` inside one is fragile across builds.
+      */}
+      <div
+        className="bg-ink-950 border-ink-800/80 sticky top-0 z-20 -mx-4 mb-4 border-b px-4 pb-3 sm:mx-0 sm:rounded-b-2xl sm:border-x"
+        style={{
+          marginTop: 'calc(-1rem - var(--safe-top))',
+          paddingTop: 'calc(0.75rem + var(--safe-top))',
+        }}
+      >
         <div className="flex items-center justify-between gap-3">
           <p className="text-ink-300 min-w-0 truncate text-sm font-medium">{workout.title}</p>
           <p className="numeric text-ink-500 flex shrink-0 items-center gap-3 text-xs">
