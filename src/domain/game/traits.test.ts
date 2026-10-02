@@ -68,24 +68,17 @@ describe('the trait selection', () => {
 
 describe('levelling a trait', () => {
   /*
-   * **The bars sum to the claimed areas, not to the level**, which is
-   * the arithmetic that replaced "splits the XP total exactly". Counting
-   * twice would still be a bug and still shows up here: the trait totals
-   * must equal the XP of the areas the traits claim, no more and no
-   * less. What they may not do any more is equal the total, and the
-   * second assertion pins that the gap is real rather than accidental.
+   * **The bars sum to the level again**, because every area has a trait.
+   * Counting twice would be a bug and shows up here as a sum above the
+   * total; an area falling out of the partition shows up as one below it.
    */
-  it('sums to the XP of the areas it claims, and falls short of the total', () => {
+  it('splits the XP total exactly', () => {
     const tally = Object.fromEntries(ALL_ACTS.map((act, index) => [act.id, index + 1]))
 
-    const claimedActs = ALL_ACTS.filter((act) => traitForArea(act.area as never) !== undefined)
-
     const total = xpFrom(tally, ALL_ACTS)
-    const claimed = xpFrom(tally, claimedActs)
     const across = traitStandings(tally, ALL_ACTS).reduce((sum, one) => sum + one.xp, 0)
 
-    expect(across).toBe(claimed)
-    expect(claimed).toBeLessThan(total)
+    expect(across).toBe(total)
   })
 
   it('counts an act under the trait its area belongs to', () => {
@@ -123,15 +116,9 @@ describe('levelling a trait', () => {
 })
 
 describe('finding an area’s trait', () => {
-  it('answers for a claimed area and is absent for an unclaimed one', () => {
+  it('answers for every area', () => {
     expect(traitForArea('training')?.id).toBe('strength')
     expect(traitForArea('cardio')?.id).toBe('stamina')
-
-    /*
-     * **Absent rather than a throw, and that is the shape the sheet
-     * needs.** Six areas have no bar now; a lookup that failed on them
-     * would make every caller branch on a state that is ordinary.
-     */
-    expect(traitForArea('finance')).toBeUndefined()
+    expect(traitForArea('mobility')?.id).toBe('mobility')
   })
 })

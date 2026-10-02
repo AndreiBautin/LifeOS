@@ -50,24 +50,8 @@ function store<T extends { id?: unknown; month?: unknown }>(key: 'id' | 'month' 
 function deps() {
   let next = 0
 
-  const parts = {
-    items: store(),
-    upgrades: store(),
-    rooms: store(),
-    finance: store('month'),
-    campaigns: store(),
-    vices: store(),
-    challenges: store(),
-    trips: store(),
-    places: store(),
-    workouts: store(),
-  }
+  const parts = { workouts: store() }
 
-  /*
-   * The fog has no id and no timestamp — it is a grow-only set of cell
-   * ids — so it cannot go through `store`. Nothing here writes to it;
-   * visited places light it through `allExploredCells`.
-   */
   /* One record rather than a collection, so it is not a `store`. */
   let settings: Record<string, unknown> = {}
   const settingsRepo = {
@@ -78,40 +62,9 @@ function deps() {
     },
   }
 
-  /** A singleton, like the settings — one document under a fixed id. */
-  let resume: Record<string, unknown> | undefined
-  const resumeRepo = {
-    get: () => Promise.resolve(resume),
-    save: (next: Record<string, unknown>) => {
-      resume = next
-      return Promise.resolve()
-    },
-    clear: () => {
-      resume = undefined
-      return Promise.resolve()
-    },
-  }
-
-  const cells = new Set<string>()
-  const explored = {
-    all: () => Promise.resolve(cells as ReadonlySet<string>),
-    reveal: (many: readonly string[]) => {
-      const before = cells.size
-      for (const cell of many) cells.add(cell)
-      return Promise.resolve(cells.size - before)
-    },
-    clear: () => {
-      cells.clear()
-      return Promise.resolve()
-    },
-    count: () => Promise.resolve(cells.size),
-  }
-
   return {
     ...parts,
-    explored,
     settings: settingsRepo,
-    resume: resumeRepo,
     read: () => settings,
     /* Deterministic, so a fixture is the same every run. */
     ids: { next: () => `demo-${String((next += 1))}` },
@@ -119,101 +72,52 @@ function deps() {
   } as unknown as DemoDeps & typeof parts & { read: () => Record<string, unknown> }
 }
 
-/** Every id in the map fixture, so a coordinate cannot hide in a comment. */
-const COORDINATE_LINES = /(latitude|longitude):\s*-?\d/g
+interface Logged {
+  date: string
+  entries: readonly { role: string; sets: readonly { outcome: string }[] }[]
+}
+
+const logsOf = (services: ReturnType<typeof deps>): Logged[] =>
+  [...services.workouts.rows.values()] as Logged[]
 
 describe('seeding the demo', () => {
-  it('fills every collection a screen reads', async () => {
+  it('fills the training history', async () => {
     const services = deps()
     const result = await seedDemoData(services)
 
     expect(result.seeded).toBe(true)
-    expect(services.items.rows.size).toBeGreaterThan(8)
-    expect(services.upgrades.rows.size).toBeGreaterThan(2)
-    expect(services.rooms.rows.size).toBeGreaterThan(3)
-    expect(services.campaigns.rows.size).toBe(1)
-    expect(services.places.rows.size).toBeGreaterThan(4)
-    expect(services.workouts.rows.size).toBeGreaterThan(2)
+    expect(services.workouts.rows.size).toBeGreaterThan(30)
   })
 
   /*
-   * **A visited place is what clears the fog**, through
-   * `allExploredCells` rather than through a fixture of its own — so a
-   * map with nothing visited demonstrates an exploration ladder reading
-   * nothing on a screen whose whole point is the ground covered.
+   * The note under Settings reads `sampleData`, and nothing else about
+   * the settings is the fixture's business — a stated training week must
+   * survive the seed.
    */
-  it('leaves some of the map already walked', async () => {
-    const services = deps()
-    await seedDemoData(services)
-
-    const places = [...services.places.rows.values()] as { dateVisited?: string }[]
-    expect(places.filter((place) => place.dateVisited !== undefined).length).toBeGreaterThan(1)
-  })
-
-  /*
-   * The demo has to show the app's own resolution refusing to guess, so
-   * one capture is deliberately name-only — the state the inbox exists
-   * for. A fixture where every place resolves has nothing to put there.
-   */
-  /*
-   * The exploration ladder reads *absent* without a region area — which
-   * is right, and shows a reader nothing. This asserts the denominator
-   * is stated, and that stating it did not take the rest of settings
-   * with it.
-   */
-  it('names a region so the exploration ladder has a denominator', async () => {
+  it('marks the sample as loaded without taking the rest of settings', async () => {
     const services = deps()
     await services.settings.save({ daysPerWeek: 3 } as never)
     await seedDemoData(services)
 
     const after = services.read()
-    expect(after.exploredRegionKm2).toBeGreaterThan(0)
+    expect(after.sampleData).toBe('loaded')
     expect(after.daysPerWeek).toBe(3)
   })
 
-  it('leaves one place without a point, for the inbox', async () => {
-    const services = deps()
-    await seedDemoData(services)
-
-    const places = [...services.places.rows.values()] as {
-      location: { coordinates?: unknown }
-    }[]
-    expect(places.some((place) => place.location.coordinates === undefined)).toBe(true)
-  })
-
   /*
-   * Stamina is paid by `hasConditioning`, which asks whether a
-   * conditioning set was *completed* rather than whether one was
-   * scheduled — so a fixture of empty slots leaves that bar reading
-   * "Nothing yet" while the records look like a full week.
+   * Stamina and Mobility are paid by whether a set on that row was
+   * *completed* rather than whether the row was scheduled — so a fixture
+   * of empty slots leaves both bars reading "Nothing yet" while the
+   * records look like four months of training.
    */
-  it('completes the conditioning it schedules', async () => {
+  it.each(['conditioning', 'warmup'])('completes the %s it schedules', async (role) => {
     const services = deps()
     await seedDemoData(services)
 
-    const logs = [...services.workouts.rows.values()] as {
-      entries: readonly { role: string; sets: readonly { outcome: string }[] }[]
-    }[]
-    const conditioning = logs.flatMap((log) =>
-      log.entries.filter((one) => one.role === 'conditioning'),
-    )
+    const rows = logsOf(services).flatMap((log) => log.entries.filter((one) => one.role === role))
 
-    expect(conditioning.length).toBeGreaterThan(0)
-    expect(conditioning.every((one) => one.sets.some((set) => set.outcome === 'completed'))).toBe(
-      true,
-    )
-  })
-
-  /*
-   * **Two points make a direction; one makes a number.** Every trend on
-   * the finance screen compares months, so a fixture with one month
-   * demonstrates nothing the screen is for.
-   */
-  it('gives the money screen more than one month to compare', async () => {
-    const services = deps()
-    await seedDemoData(services)
-
-    expect(services.finance.rows.size).toBeGreaterThanOrEqual(3)
+    expect(rows.length).toBeGreaterThan(0)
+    expect(rows.every((one) => one.sets.some((set) => set.outcome === 'completed'))).toBe(true)
   })
 
   /*
@@ -225,12 +129,12 @@ describe('seeding the demo', () => {
     const services = deps()
     await seedDemoData(services)
 
-    const before = services.items.rows.size
+    const before = services.workouts.rows.size
     const again = await seedDemoData(services)
 
     expect(again.seeded).toBe(false)
     expect(again.reason).toBe('already-has-data')
-    expect(services.items.rows.size).toBe(before)
+    expect(services.workouts.rows.size).toBe(before)
   })
 
   it('is deterministic for a given clock', async () => {
@@ -239,24 +143,22 @@ describe('seeding the demo', () => {
     await seedDemoData(first)
     await seedDemoData(second)
 
-    expect([...first.items.rows.keys()].sort()).toEqual([...second.items.rows.keys()].sort())
+    expect(logsOf(first).map((log) => log.date)).toEqual(logsOf(second).map((log) => log.date))
   })
 
   /*
    * **Dates are offsets, never absolutes.** A fixture pinned to fixed
    * timestamps rots: opened a year later it shows dead streaks and an
-   * empty "this month". Asserted by seeding at two different clocks and
-   * requiring the output to move with them.
+   * empty "this month". Asserted by seeding at a different clock and
+   * requiring the output to move with it.
    */
   it('moves with the clock rather than pinning dates', async () => {
     const later = deps()
     const shifted: Clock = { now: () => new Date('2027-03-01T12:00:00.000Z') }
     await seedDemoData({ ...later, clock: shifted })
 
-    const months = [...later.finance.rows.keys()]
-    expect(months.every((month) => month.startsWith('2027') || month.startsWith('2026-1'))).toBe(
-      true,
-    )
+    const dates = logsOf(later).map((log) => log.date)
+    expect(dates.every((date) => date >= '2026-10' && date < '2027-03-02')).toBe(true)
   })
 })
 
@@ -275,17 +177,6 @@ describe('what the fixture must not contain', () => {
 
   it('has no phone numbers', () => {
     expect(source).not.toMatch(/\+?\d[\d\s().-]{8,}\d/)
-  })
-
-  /*
-   * The scan above and the map fixture below it are in tension: a
-   * latitude is a run of digits and dots, which is most of what a phone
-   * number looks like. They coexist because a coordinate is too short —
-   * and that is asserted rather than assumed, since a fixture that
-   * silently stopped containing coordinates would pass the same way.
-   */
-  it('still carries the coordinates the map needs', () => {
-    expect(source.match(COORDINATE_LINES)?.length ?? 0).toBeGreaterThan(8)
   })
 
   it('has nothing shaped like a credential', () => {

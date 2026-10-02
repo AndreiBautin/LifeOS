@@ -9,14 +9,18 @@ marked N/A.
 LifeOS is a static bundle. It has:
 
 - **no server**, so no server-side vulnerability class exists;
-- **no API and no runtime network requests**, so no CSRF, no server-side
-  injection, no insecure CORS, no API authentication to get wrong;
-- **no accounts, sessions, cookies or tokens**, so no credential
-  handling, no session fixation, no password storage;
+- **no API of its own**, so no CSRF, no server-side injection, no
+  insecure CORS, no API authentication to get wrong;
+- **no accounts, sessions, cookies or passwords**, so no session fixation
+  and no password storage;
 - **no database engine**, so no SQL injection;
 - **no content shared between users**, because there is exactly one user
-  and no channel between users;
-- **no third-party services**, so no data reaches a vendor.
+  and no channel between users.
+
+The one outbound request is **optional sync**, to GitHub, with a token
+the lifter pastes in themselves; it is covered below. The app used to
+fetch map tiles and geocoding from OpenStreetMap as well, and that went
+with the map when the app narrowed to training.
 
 What remains is a much shorter list.
 
@@ -72,9 +76,26 @@ and a gate people learn to ignore is not a gate.
 Dependabot groups routine bumps into one weekly PR and keeps majors
 separate so they get read rather than rubber-stamped.
 
+### The sync token
+
+Sync reads and writes one backup file in a private GitHub repository the
+lifter owns, using a token they create and paste in. It is the only
+credential the app ever holds, and two rules keep it contained:
+
+- **It lives under one `localStorage` key**
+  (`STORAGE_KEYS.githubSync`) and is never part of `AppSettings`.
+  Settings travel inside the backup, and the backup is the file written
+  to the repository — a token in settings would be committed into the
+  very file it guards.
+- **It never reaches the log.** The logger takes scalars and event names,
+  and the token is neither.
+
+The demo build ships no token and cannot sync, which is the point: a
+visitor's browser has nothing to leak.
+
 ### Secrets
 
-There are none, and the repository has never contained one. `gitleaks`
+There are none in the repository, and it has never contained one. `gitleaks`
 scans the full history in CI to keep it that way.
 
 Every environment variable is `VITE_`-prefixed, which in Vite means
@@ -91,7 +112,8 @@ header is unavailable. A `<meta http-equiv>` CSP was considered and
 easy to write in a form that silently blocks the service worker, and a
 directive that looks like protection while providing little is worse than
 an acknowledged gap. The gap is small here because the app loads no
-third-party code and makes no network requests.
+third-party code and makes no network requests other than to GitHub,
+and then only when sync is turned on.
 
 ## Remaining risks, stated plainly
 
@@ -101,7 +123,7 @@ third-party code and makes no network requests.
 - **A malicious backup file** could fill storage with junk. It cannot
   execute anything — the file is data, parsed by `JSON.parse`, every
   field validated — but a lifter importing a file from someone else
-  should expect it to replace their programs, because that is what import
+  should expect it to replace their training history, because that is what import
   does.
 - **No CSP**, as above.
 - **No integrity protection against a compromised host.** If GitHub Pages

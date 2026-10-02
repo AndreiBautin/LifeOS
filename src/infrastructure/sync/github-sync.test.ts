@@ -4,21 +4,11 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { DEFAULT_SETTINGS } from '@/domain/settings/settings'
 import { closeAppDatabase, openDatabase, type AppDatabase } from '@/infrastructure/db/database'
 import {
-  createBacklogItemRepository,
-  createCampaignRepository,
-  createChallengeRepository,
   createCheckInRepository,
   createExerciseRepository,
-  createExploredAreaRepository,
-  createFinanceRepository,
-  createPlaceRepository,
   createPositionRepository,
   createReviewRepository,
-  createRoomRepository,
   createTombstoneRepository,
-  createTripRepository,
-  createUpgradeRepository,
-  createViceRepository,
   createWorkoutRepository,
 } from '@/infrastructure/db/repositories'
 import { aWorkout } from '@/test/builders/workout'
@@ -85,18 +75,8 @@ async function device(name: string): Promise<SyncRepositories> {
     exercises: createExerciseRepository(db, clock),
     workouts: createWorkoutRepository(db, clock),
     checkIns: createCheckInRepository(db, clock),
-    campaigns: createCampaignRepository(db, clock),
-    challenges: createChallengeRepository(db, clock),
-    rooms: createRoomRepository(db, clock),
     tombstones: createTombstoneRepository(db),
-    items: createBacklogItemRepository(db, clock),
-    upgrades: createUpgradeRepository(db, clock),
     review: createReviewRepository(db, clock),
-    places: createPlaceRepository(db, clock),
-    trips: createTripRepository(db, clock),
-    explored: createExploredAreaRepository(db),
-    vices: createViceRepository(db, clock),
-    finance: createFinanceRepository(db, clock),
     position: createPositionRepository(db, clock),
   }
 }

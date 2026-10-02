@@ -1,16 +1,5 @@
-import { addCampaign, reachStage } from '@/application/use-cases/campaign/campaign'
-import { addPlace, visitPlace } from '@/application/use-cases/atlas/atlas'
-import { completeChallenge, readChallenges } from '@/application/use-cases/challenges/challenges'
-import { addRoom, recordClear } from '@/application/use-cases/base/declutter'
-import { addUpgrade, updateUpgrade } from '@/application/use-cases/upgrades/upgrades'
-import { createItem } from '@/domain/backlog/item'
-import type { CategoryId } from '@/domain/atlas/category/CategoryDefinition'
 import type { ExerciseId, WorkoutId } from '@/domain/ids/ids'
-import type { PlaceId } from '@/domain/atlas/place/PlaceId'
-import type { TripId } from '@/domain/atlas/trip/TripId'
 import type { LogEntry, WorkoutLog } from '@/domain/logging/workout-log'
-import { toCellId } from '@/domain/atlas/exploration/GeoCell'
-import { toMonthKey } from '@/domain/time/day'
 import type { Clock } from '@/domain/repositories/ports'
 
 import type { DemoDeps } from './deps'
@@ -71,12 +60,6 @@ function daysAgo(clock: Clock, days: number): string {
   return new Date(clock.now().getTime() - days * 86_400_000).toISOString()
 }
 
-/** The month `back` months before the seed moment, as `YYYY-MM`. */
-function monthsAgo(clock: Clock, back: number): string {
-  const now = clock.now()
-  return toMonthKey(new Date(now.getFullYear(), now.getMonth() - back, 1))
-}
-
 /**
  * Fills empty storage with a demonstration dataset.
  *
@@ -87,603 +70,15 @@ function monthsAgo(clock: Clock, back: number): string {
  * everywhere else.
  */
 export async function seedDemoData(deps: DemoDeps): Promise<SeedResult> {
-  const [items, upgrades, arcs] = await Promise.all([
-    deps.items.count(),
-    deps.upgrades.count(),
-    deps.campaigns.all(),
-  ])
+  if ((await deps.workouts.count()) > 0) return { seeded: false, reason: 'already-has-data' }
 
-  if (items + upgrades + arcs.length > 0) return { seeded: false, reason: 'already-has-data' }
-
-  await seedCodex(deps)
-  await seedTechTree(deps)
-  await seedBase(deps)
-  await seedFinance(deps)
-  await seedArc(deps)
-  await seedBuffs(deps)
-  await seedMap(deps)
-  await seedWalks(deps)
   await seedSettings(deps)
   await seedTraining(deps)
-  await seedChallenges(deps)
 
   return { seeded: true }
 }
 
-/**
- * A reading and playing list that covers every status the screen can
- * draw, plus the two edge cases worth having on screen: one entry with
- * only the required fields, and one with a title long enough to wrap.
- */
-async function seedCodex(deps: DemoDeps): Promise<void> {
-  const make = (
-    title: string,
-    category: string,
-    over: Partial<Parameters<typeof createItem>[0]> = {},
-    daysBack = 30,
-  ) =>
-    createItem(
-      { title, category, ...over },
-      {
-        clock: { now: () => new Date(daysAgo(deps.clock, daysBack)) },
-        ids: deps.ids,
-      },
-    )
-
-  /*
-   * **Finishing is a stamp, not a status.** `tallyActs` counts
-   * `dateCompleted`, deliberately — an item reopened and finished again
-   * is one finish, not two. A fixture that only set `status: 'completed'`
-   * therefore paid no XP at all, and the landing page read Level 1 with
-   * every trait empty. Found by opening the demo build rather than by a
-   * test, which is why the parity test below now exists.
-   */
-  const finished = (item: ReturnType<typeof createItem>, daysBack: number) => ({
-    ...item,
-    dateCompleted: daysAgo(deps.clock, daysBack),
-  })
-
-  /** A run of days with something logged against them. */
-  const withProgress = (item: ReturnType<typeof createItem>, days: readonly number[]) => ({
-    ...item,
-    dailyProgress: days.map((back) => ({
-      date: daysAgo(deps.clock, back).slice(0, 10),
-      amount: 1,
-    })),
-  })
-
-  const rows = [
-    /*
-     * **The one item with a daily goal**, which is what puts a row in the
-     * Codex's Today block and on the home screen. Without one that block
-     * renders its own empty state on a screen full of books, which reads
-     * as a broken feature rather than an unused one.
-     *
-     * Every day rather than a cadence, deliberately: a Tues/Thurs goal is
-     * the more interesting case and is absent from the screen five days
-     * out of seven, so a reviewer opening on the wrong day sees nothing.
-     */
-    withProgress(
-      make(
-        'The Pragmatic Programmer',
-        'books',
-        {
-          status: 'currently-using',
-          priority: 'high',
-          dailyGoal: { amount: 20, unit: 'pages' },
-        },
-        40,
-      ),
-      [1, 2, 3, 5, 8, 10, 12, 15, 17, 19, 22, 24, 27, 29, 33, 36],
-    ),
-    make('Designing Data-Intensive Applications', 'books', { status: 'backlog' }, 25),
-    finished(make('Project Hail Mary', 'books', { status: 'completed', favorite: true }, 90), 12),
-    /*
-     * **Older finishes, each with the run of days it took**, so the
-     * activity grid has months behind it rather than a fortnight, and a
-     * reviewer scrolling the Codex sees a history rather than a queue.
-     */
-    withProgress(
-      finished(make('Piranesi', 'books', { status: 'completed' }, 90), 58),
-      [58, 60, 62, 65, 67, 70, 72, 75],
-    ),
-    withProgress(
-      finished(make('Hades', 'games', { status: 'completed', favorite: true }, 120), 84),
-      [84, 86, 89, 91, 94, 96, 99, 101, 104],
-    ),
-    withProgress(
-      finished(make('Arcane', 'tv-shows', { status: 'completed' }, 130), 108),
-      [108, 109, 111, 113, 115],
-    ),
-    withProgress(
-      make(
-        'Outer Wilds',
-        'games',
-        {
-          status: 'currently-using',
-          priority: 'high',
-          dailyGoal: { amount: 1, unit: 'expedition' },
-        },
-        20,
-      ),
-      [1, 4, 6, 9, 11, 14, 16],
-    ),
-    finished(make('Return of the Obra Dinn', 'games', { status: 'completed' }, 120), 30),
-    make('Slay the Spire', 'games', { status: 'paused' }, 60),
-    withProgress(
-      make(
-        'Frieren: Beyond Journey’s End',
-        'anime',
-        {
-          status: 'currently-using',
-          dailyGoal: { amount: 1, unit: 'episode' },
-        },
-        15,
-      ),
-      [0, 2, 3, 5, 7, 9, 12],
-    ),
-    make('The Bear', 'tv-shows', { status: 'backlog', priority: 'low' }, 10),
-    finished(make('Everything Everywhere All At Once', 'movies', { status: 'completed' }, 200), 45),
-    /* Only the required fields — the minimal record a screen must survive. */
-    make('Dune', 'movies'),
-    /* Long enough to wrap on a phone — the layout edge case — while still reading as a real article. */
-    make(
-      'How We Cut Query Latency by Ninety Percent Without Adding a Single Index',
-      'articles',
-      { status: 'backlog' },
-      5,
-    ),
-  ]
-
-  await Promise.all(rows.map((item) => deps.items.save(item)))
-}
-
 /** Two shelves, a prerequisite chain, and something already owned. */
-/**
- * Two shelves, each with more than one root and one chain running three
- * levels deep — wide and tall enough that the tree draws as an actual
- * tree rather than a couple of boxes in the corner of the page.
- *
- * **Grown from four upgrades to nine, asked for directly**: "build out
- * the tech tree more so that it fills the entire page width." The tree
- * never scales *up* to fill space it does not have content for — see
- * `TechTree`'s own doc, "a small tree is never blown up to fill a
- * desktop, which would make three upgrades look like a skill web" —
- * so the honest fix for a thin-looking tree is more real content, not a
- * different scaling rule. Base gets three independent roots (desk,
- * dishwasher, power rack) instead of one; Gadgets keeps its
- * cross-branch edge off the desk and gains a second level on it
- * (monitor arm → ultrawide monitor) plus an independent root of its
- * own (headphones).
- */
-async function seedTechTree(deps: DemoDeps): Promise<void> {
-  const desk = await addUpgrade(
-    {
-      title: 'Standing desk',
-      category: 'home',
-      shelf: 'base',
-      estimatedCostMinorUnits: 45_000,
-    },
-    deps,
-  )
-
-  const arm = await addUpgrade(
-    {
-      title: 'Monitor arm',
-      category: 'office',
-      shelf: 'tech',
-      estimatedCostMinorUnits: 12_000,
-      /* Gated on the desk, so the tree has a cross-branch edge to draw. */
-      ...(desk.upgrade === undefined ? {} : { prerequisiteId: desk.upgrade.id }),
-    },
-    deps,
-  )
-
-  await addUpgrade(
-    {
-      title: 'Ultrawide monitor',
-      category: 'technology',
-      shelf: 'tech',
-      estimatedCostMinorUnits: 70_000,
-      /* A second level on the same chain — desk -> arm -> monitor. */
-      ...(arm.upgrade === undefined ? {} : { prerequisiteId: arm.upgrade.id }),
-    },
-    deps,
-  )
-
-  const keyboard = await addUpgrade(
-    {
-      title: 'Mechanical keyboard',
-      category: 'office',
-      shelf: 'tech',
-      estimatedCostMinorUnits: 9_000,
-    },
-    deps,
-  )
-
-  /*
-   * **Every status the tree can draw, because two of them have nowhere
-   * else to appear.** Owned and dropped both fold away behind the eye,
-   * so a fixture holding only open upgrades leaves that control with
-   * nothing behind it and the screen looking like it has a dead button.
-   */
-  if (keyboard.upgrade !== undefined) {
-    await updateUpgrade(keyboard.upgrade.id, { status: 'purchased' }, deps)
-  }
-
-  await addUpgrade(
-    {
-      title: 'Noise-cancelling headphones',
-      category: 'technology',
-      shelf: 'tech',
-      estimatedCostMinorUnits: 30_000,
-    },
-    deps,
-  )
-
-  const dishwasher = await addUpgrade(
-    {
-      title: 'Dishwasher',
-      category: 'home',
-      shelf: 'base',
-      estimatedCostMinorUnits: 80_000,
-    },
-    deps,
-  )
-
-  await addUpgrade(
-    {
-      title: 'Water filter',
-      category: 'home',
-      shelf: 'base',
-      estimatedCostMinorUnits: 15_000,
-      ...(dishwasher.upgrade === undefined ? {} : { prerequisiteId: dishwasher.upgrade.id }),
-    },
-    deps,
-  )
-
-  /* Priced above the pool on purpose, for a node that reads "Short". */
-  await addUpgrade(
-    {
-      title: 'Power rack',
-      category: 'gym',
-      shelf: 'base',
-      estimatedCostMinorUnits: 350_000,
-    },
-    deps,
-  )
-
-  const dropped = await addUpgrade(
-    {
-      title: 'Espresso machine',
-      category: 'lifestyle',
-      shelf: 'base',
-      estimatedCostMinorUnits: 60_000,
-    },
-    deps,
-  )
-  if (dropped.upgrade !== undefined) {
-    await updateUpgrade(dropped.upgrade.id, { status: 'cancelled' }, deps)
-  }
-}
-
-/** Rooms with readings, so the clutter average has something to average. */
-async function seedBase(deps: DemoDeps): Promise<void> {
-  const rooms: readonly [string, number][] = [
-    ['Kitchen', 95],
-    ['Living room', 70],
-    ['Office', 45],
-    ['Garage', 20],
-  ]
-
-  /*
-   * `addRoom` reports a refusal rather than handing the room back, so the
-   * reading is applied by finding it afterwards — the same two steps the
-   * screen takes.
-   */
-  for (const [name, clear] of rooms) {
-    await addRoom(name, deps)
-    const saved = (await deps.rooms.all()).find((one) => one.name === name)
-    if (saved !== undefined) await recordClear(saved.id, clear, deps)
-  }
-
-  /* One room nobody has looked at — the absent-never-zero case. */
-  await addRoom('Loft', deps)
-}
-
-/** Three months, so every trend on the screen has two points to compare. */
-async function seedFinance(deps: DemoDeps): Promise<void> {
-  const months: readonly { back: number; net: number; credit: number; saved: number }[] = [
-    { back: 2, net: 4_100_000, credit: 712, saved: 240_000 },
-    { back: 1, net: 4_350_000, credit: 728, saved: 310_000 },
-    { back: 0, net: 4_620_000, credit: 741, saved: 385_000 },
-  ]
-
-  /*
-   * **Written through the repository rather than `recordFinance`**, which
-   * is the one place this seeder does not drive a use case. That function
-   * derives the month from the clock on purpose — a reading is a
-   * statement about *now* — so it cannot write history, and history is
-   * exactly what a trend needs. Two points make a direction; one makes a
-   * number.
-   */
-  for (const month of months) {
-    await deps.finance.save({
-      month: monthsAgo(deps.clock, month.back),
-      netWorthMinor: month.net,
-      retirementMinor: Math.round(month.net * 0.42),
-      creditScore: month.credit,
-      salaryMinor: 11_800_000,
-      savingsMinor: month.saved,
-      surplusMinor: 90_000,
-    })
-  }
-}
-
-/**
- * The long arc, with one stage already met so the bars are not all empty.
- */
-async function seedArc(deps: DemoDeps): Promise<void> {
-  /*
-   * Every chapter is a box you tick: projects are worked through in
-   * Notion now, so nothing in the app measures how far along one is.
-   */
-  await addCampaign(
-    {
-      name: 'Get ready to move',
-      aim: 'Out of the flat and into somewhere with a bit of outside.',
-      stages: [
-        { name: 'Fix up the flat', requirement: { kind: 'declared' } },
-        { name: 'Get a new job', requirement: { kind: 'declared' } },
-        { name: 'Get mortgage-ready', requirement: { kind: 'declared' } },
-        { name: 'Sell the flat', requirement: { kind: 'declared' } },
-        { name: 'Find and buy the next place', requirement: { kind: 'declared' } },
-        { name: 'Move', requirement: { kind: 'declared' } },
-      ],
-    },
-    deps,
-  )
-
-  /* One chapter already ticked, so the path is not all empty. */
-  const [arc] = await deps.campaigns.all()
-  const first = arc?.stages[0]
-  if (arc !== undefined && first !== undefined) {
-    await reachStage(arc.id, first.id, undefined, deps)
-  }
-}
-
-/**
- * Potions and restoratives, which are the two cards the landing page
- * draws under "Buffs" and the health bar.
- *
- * Written through the repository rather than a use case for the reason
- * the finance history is: the pools need *spends already on them* to
- * demonstrate anything, and spending is a thing that happens at a
- * moment rather than something a create call takes.
- */
-async function seedBuffs(deps: DemoDeps): Promise<void> {
-  const at = (daysBack: number, hour: number) => {
-    const day = new Date(deps.clock.now().getTime() - daysBack * 86_400_000)
-    day.setHours(hour, 0, 0, 0)
-    return day.toISOString()
-  }
-
-  const pools = [
-    {
-      id: deps.ids.next(),
-      name: 'Caffeine',
-      capacity: 400,
-      unit: 'mg',
-      icon: 'coffee',
-      cycle: { kind: 'calendar', period: 'day' },
-      presets: [
-        { label: 'Coffee', amount: 95 },
-        { label: 'Double espresso', amount: 130 },
-      ],
-      /* Two in today, so the pool reads part-spent rather than untouched. */
-      spent: [`${at(0, 8)}#95`, `${at(0, 11)}#130`],
-    },
-    {
-      id: deps.ids.next(),
-      name: 'Water',
-      capacity: 128,
-      unit: 'oz',
-      icon: 'droplet',
-      direction: 'target',
-      cycle: { kind: 'calendar', period: 'day' },
-      presets: [
-        { label: 'Gallon jug', amount: 128 },
-        { label: 'Bottle', amount: 32 },
-      ],
-      spent: [`${at(0, 9)}#32`, `${at(0, 13)}#32`, `${at(1, 10)}#128`],
-    },
-  ]
-
-  for (const pool of pools) {
-    await deps.vices.save(pool as unknown as Parameters<typeof deps.vices.save>[0])
-  }
-}
-
-/**
- * Somewhere to go, and somewhere already been.
- *
- * **The visited half is what lights the fog.** `allExploredCells`
- * derives cells from places carrying a `dateVisited`, so the exploration
- * ladder and the cleared area on the map need no fixture of their own —
- * and seeding `exploredCells` directly would be a second, disagreeing
- * answer to the same question.
- *
- * Every coordinate is a public landmark in one city, which is the whole
- * safety argument for this section rather than a matter of taste: an
- * address is the one field on this screen that could be somebody's home,
- * so the fixture contains none that is not already on a postcard. They
- * sit close together so the map opens on a frame rather than on an ocean.
- */
-/**
- * Three walks' worth of cleared ground, so the fog has a shape.
- *
- * The visited places alone clear three squares, which at any zoom that
- * shows a city is three specks — the map opened on fog with nothing
- * uncovered in it, which is the one screen where the feature *is* the
- * picture. These are the ground a walk records through `reveal`, the same
- * write the Walk button makes, traced along public paths: the length of
- * Golden Gate Park, the Lands End trail, and the Embarcadero.
- *
- * Interpolated every ~80 metres so consecutive points never skip a
- * 150-metre cell, which would leave a walk looking like a dotted line.
- */
-async function seedWalks(deps: DemoDeps): Promise<void> {
-  const routes: readonly (readonly [number, number])[][] = [
-    [
-      [37.7715, -122.4545],
-      [37.7705, -122.465],
-      [37.77, -122.475],
-      [37.7694, -122.4862],
-      [37.769, -122.496],
-      [37.768, -122.5085],
-    ],
-    [
-      [37.7872, -122.5052],
-      [37.7881, -122.4991],
-      [37.7861, -122.4931],
-      [37.7841, -122.4881],
-    ],
-    [
-      [37.7955, -122.3937],
-      [37.8003, -122.3988],
-      [37.8062, -122.4052],
-      [37.8087, -122.4098],
-    ],
-  ]
-
-  const STEP = 0.0008
-  const cells = routes.flatMap((route) =>
-    route.slice(1).flatMap((to, index) => {
-      const from = route[index] ?? to
-      const steps = Math.max(
-        1,
-        Math.ceil(Math.max(Math.abs(to[0] - from[0]), Math.abs(to[1] - from[1])) / STEP),
-      )
-      return Array.from({ length: steps + 1 }, (_, step) =>
-        toCellId({
-          latitude: from[0] + ((to[0] - from[0]) * step) / steps,
-          longitude: from[1] + ((to[1] - from[1]) * step) / steps,
-        }),
-      )
-    }),
-  )
-
-  await deps.explored.reveal(cells)
-}
-
-async function seedMap(deps: DemoDeps): Promise<void> {
-  const atlas = {
-    places: deps.places,
-    explored: deps.explored,
-    clock: deps.clock,
-    ids: deps.ids,
-  }
-
-  const rows = [
-    {
-      name: 'Golden Gate Park',
-      categoryId: 'outdoors' as CategoryId,
-      latitude: 37.7694,
-      longitude: -122.4862,
-      city: 'San Francisco',
-      visited: true,
-      favorite: true,
-      tags: ['walkable', 'free'],
-    },
-    {
-      name: 'Ferry Building Marketplace',
-      categoryId: 'food' as CategoryId,
-      latitude: 37.7955,
-      longitude: -122.3937,
-      city: 'San Francisco',
-      visited: true,
-      tags: ['coffee'],
-    },
-    {
-      name: 'Exploratorium',
-      categoryId: 'culture' as CategoryId,
-      latitude: 37.8017,
-      longitude: -122.3973,
-      city: 'San Francisco',
-      visited: true,
-    },
-    {
-      name: 'Lands End Trail',
-      categoryId: 'outdoors' as CategoryId,
-      latitude: 37.7809,
-      longitude: -122.5058,
-      city: 'San Francisco',
-      priority: 'high' as const,
-      tags: ['walkable'],
-    },
-    {
-      name: 'City Lights Booksellers',
-      categoryId: 'shops' as CategoryId,
-      latitude: 37.7976,
-      longitude: -122.4066,
-      city: 'San Francisco',
-      priority: 'high' as const,
-    },
-    {
-      name: 'Coit Tower',
-      categoryId: 'landmarks' as CategoryId,
-      latitude: 37.8025,
-      longitude: -122.4058,
-      city: 'San Francisco',
-      priority: 'low' as const,
-    },
-    /*
-     * **A place with no point is a supported entry, not a broken one.**
-     * It is the name-only capture the inbox exists to resolve, and
-     * without one that screen has nothing to demonstrate.
-     */
-    { name: 'That ramen place someone mentioned', categoryId: 'food' as CategoryId },
-  ]
-
-  const saved: PlaceId[] = []
-  for (const { visited, ...input } of rows) {
-    const created = await addPlace(input, atlas)
-    if (created.place === undefined) continue
-    saved.push(created.place.id)
-    if (visited === true) await visitPlace(created.place.id, atlas)
-  }
-
-  /*
-   * **A trip is a few saved places and the days you will be near them**,
-   * which is why it is seeded here rather than in a function of its own:
-   * it needs the ids the loop above just produced, and inventing them
-   * separately would file a trip against places that do not exist.
-   *
-   * One upcoming and one past, because the screen sorts on that and a
-   * fixture with only future trips leaves half of it undemonstrated.
-   */
-  const dayKey = (offset: number) => dayKeyAgo(deps.clock, -offset)
-
-  await deps.trips.save({
-    id: deps.ids.next() as TripId,
-    name: 'A weekend of walking',
-    location: 'San Francisco',
-    startDate: dayKey(12),
-    endDate: dayKey(14),
-    placeIds: saved.slice(3, 6),
-    notes: 'The coastal trail first, then books and the tower.',
-  })
-
-  await deps.trips.save({
-    id: deps.ids.next() as TripId,
-    name: 'The food one',
-    location: 'San Francisco',
-    startDate: dayKeyAgo(deps.clock, 40),
-    endDate: dayKeyAgo(deps.clock, 38),
-    placeIds: saved.slice(0, 2),
-  })
-}
-
 /**
  * The one setting the demo states, and it is a denominator.
  *
@@ -700,12 +95,12 @@ async function seedMap(deps: DemoDeps): Promise<void> {
  */
 async function seedSettings(deps: DemoDeps): Promise<void> {
   const current = await deps.settings.get()
-  /* San Francisco, near enough. */
-  await deps.settings.save({ ...current, exploredRegionKm2: 121, sampleData: 'loaded' })
+  await deps.settings.save({ ...current, sampleData: 'loaded' })
 }
 
 /**
- * Three finished sessions, so Strength and Stamina are not empty bars.
+ * Four months of sessions, so Strength, Stamina and Mobility are not
+ * empty bars.
  *
  * **This is the one part written as records rather than driven through
  * the use cases**, and it is worth saying why, because the rest of this
@@ -779,6 +174,28 @@ async function seedTraining(deps: DemoDeps): Promise<void> {
         },
         outcome: 'completed' as const,
         isWarmup: false,
+      },
+    ],
+  })
+
+  /*
+   * The warm-up entry is what pays Mobility, by the same rule: a completed
+   * set on a `warmup` row, not the row's presence.
+   */
+  const warmed = (): LogEntry => ({
+    exerciseId: 'foam-roll' as ExerciseId,
+    role: 'warmup',
+    order: 0,
+    sets: [
+      {
+        prescription: {
+          load: { kind: 'open' as const },
+          reps: { kind: 'fixed' as const, reps: 10 },
+        },
+        plannedReps: 10,
+        actualReps: 10,
+        outcome: 'completed' as const,
+        isWarmup: true,
       },
     ],
   })
@@ -871,7 +288,13 @@ async function seedTraining(deps: DemoDeps): Promise<void> {
     if ((back * 7) % 13 === 3) continue
 
     const through = 1 - back / (WEEKS * 7)
-    sessions.push({ daysBack: back, title: day, entries: session(day, through, back % 4 === 0) })
+    const work = session(day, through, back % 4 === 0)
+    /* Most sessions open on the warm-up; a few skip it, as real ones do. */
+    const entries =
+      back % 5 === 0
+        ? work
+        : [warmed(), ...work.map((entry) => ({ ...entry, order: entry.order + 1 }))]
+    sessions.push({ daysBack: back, title: day, entries })
   }
 
   for (const session of sessions) {
@@ -895,20 +318,4 @@ async function seedTraining(deps: DemoDeps): Promise<void> {
     }
     await deps.workouts.save(log)
   }
-}
-
-/**
- * One challenge ticked, so the season's pass is not at nought.
- *
- * **Read rather than named.** The catalogue is placed against the
- * season the clock is in, so a hardcoded slug would be a challenge that
- * only exists for three months of the year — the fixture would tick
- * nothing for the other nine and nothing would say why.
- */
-async function seedChallenges(deps: DemoDeps): Promise<void> {
-  const pass = await readChallenges(deps)
-  const first = pass.challenges[0]
-  if (first === undefined) return
-
-  await completeChallenge(first.id, deps)
 }

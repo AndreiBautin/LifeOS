@@ -2,124 +2,36 @@ import { Settings } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
 import { Masonry } from '@/components/shared/Masonry'
-import { Card } from '@/components/shared/primitives'
 import { buttonStyles } from '@/components/shared/styles'
-import { MapGlance } from '@/features/atlas/MapGlance'
-import { SampleNotice } from './SampleNotice'
-import { TodayGoals } from '@/features/backlog/TodayGoals'
-import { BaseGlance } from '@/features/base/BaseGlance'
-import { Campaigns } from '@/features/campaign/Campaigns'
-import { ChallengePass } from '@/features/challenges/ChallengePass'
 import { ActivityHeatmap } from '@/features/character/ActivityHeatmap'
 import { SheetCard } from '@/features/character/SheetCard'
-import { useSeasonProgress } from '@/features/character/hooks'
 import { NextSessionCard } from '@/features/train/NextSessionCard'
-import { NextUpgradeGlance } from '@/features/upgrades/NextUpgradeGlance'
-import { LimitsCard } from '@/features/vitals/LimitsCard'
+
+import { SampleNotice } from './SampleNotice'
 
 /**
- * Who you are, and what today asks of you.
+ * Who you are as a lifter, and what today's session is.
  *
- * **This merges Today and You, and it reverses a rule this file used to
- * state.** That rule was "Today is present tense, You is standing", and
- * the corollary was that within Today the order runs work first and
- * readout last — the season sat below the checkboxes precisely so that
- * "a progress bar above the checkboxes" would not make the first thing
- * you see each morning a score rather than a task.
- *
- * It was reversed deliberately, by the person using it, on the grounds
- * that *the character progression is the main thing and should be shown
- * first.* That is a legitimate call about their own app and it is
- * recorded here rather than quietly applied.
- *
- * **Quests, Finance and Train all folded in here for a while, and all
- * three un-folded again.** Each was asked for directly — condensing
- * pages that felt too sparse on a wide monitor — and each held for as
- * long as the resulting page was short enough to read without a
- * scrollbar. It stopped holding once all three were folded in at once:
- * natural content height outgrew what a typical landscape-desktop
- * window could show, and the `useFitToViewport` mechanism built to
- * avoid a scrollbar on a large monitor was shrinking the *entire page*
- * to compensate — reported as "still condensed" well after a real width
- * fix had already landed and been verified live, and only explained by
- * reading the actual DOM on the reporter's own browser through the
- * Claude-in-Chrome extension, which found a `transform: scale(0.43)`
- * centred on the block. At 2765px of natural content height against a
- * ~1200px available window, no scale exists that both avoids a
- * scrollbar and keeps the text legible.
- *
- * Given the choice — full-size text with ordinary scroll, or a
- * shrink-to-fit that reads as tiny and cramped — the explicit answer was
- * neither: split the zones back into their own screens, `/quests`,
- * `/finance`, and `TrainZone` back under `/train`, so no one page has to
- * hold this much height at once. `useFitToViewport.ts` is deleted with
- * no caller left to use it. What is left here — `SheetCard` and the
- * day's own readouts — is short enough that this page has never needed
- * scroll protection in the first place.
- *
- * **The un-fold took the daily glance off Today along with the full
- * board, and that was too much.** Reported directly: *"we completely
- * removed the today's quests stuff from you page... could we make that
- * a full today page where it has working through, similarly it has
- * today's training, quests, etc."* Right — `TodayGoals` had already
- * established the pattern this page runs on: a short daily summary
- * here, the full screen (Codex) elsewhere. Removing `ActiveQuests` and
- * the next session outline along with `QuestBoard` and the rest of
- * `TrainZone` threw the summary out with the board. `ActiveQuests` (the
- * two quest slots) and `NextSessionCard` (shared with `TrainZone`, at
- * full detail rather than a trimmed teaser — asked for that way
- * directly) are both back.
+ * **Three cards, because the app is a workout tracker now.** Asked for as
+ * _"fully lean into this simply being a gamified workout tracker"_, after
+ * every other area turned out to be done better by an app that already
+ * does it — a streaming queue, a calendar, a wishlist, Notion. The page
+ * kept its shape and lost its glances: the character sheet, the next
+ * session, and the activity grid, which between them say how you are
+ * doing, what to do next, and whether you have been doing it.
  *
  * **The cards are balanced by measured height, not assigned to columns.**
- * A hand-picked split — the portrait in one column, the readouts in a
- * grid beside it stepping 1 → 2 → 3 by breakpoint — was only ever
- * balanced at the width it was tuned for. At half a desktop screen the
- * readouts fell to one column and ran three times the portrait's height:
- * _"the second column has a lot more content than the first."_ Every
- * earlier fix here (a third column, an 1800px step in `index.css`,
- * moving the quests under the portrait) was re-tuning that split for
- * one more width. `Masonry` takes as many ~360px columns as the width
- * holds and drops each card into the shortest one, so it balances at
- * every width, and on a phone it is the same single stack as before.
- *
- * **Weight came and went within this same page's lifetime.** It sat
- * here briefly as `WeightTrend`, reintroduced this session and then
- * dropped again once a real chart made it "the massive... focal point"
- * of the page rather than the quiet log form it was meant to be. The
- * feature survives on the `weight-tracking` branch; nothing here
- * references it.
- *
- * **Base, the tech tree and the map joined the glance, closing the
- * set.** Asked for directly: *"could we add something from each
- * section to you/today like train/codex have? quests, base status,
- * next upgrade... the goal would be a solid at-a-glance dashboard with
- * the ability to drill into each section."* Train and Codex already had
- * one; Vitals and Quests too. Three sections had no presence here at
- * all, which made "each section" a promise the page did not keep.
- *
- * `BaseGlance`, `NextUpgradeGlance` and `MapGlance` are two lines each
- * — a reading and, where one exists, the next thing worth doing —
- * never the full screen, the same restraint `LimitsCard` and
- * `TodayGoals` already hold.
+ * `Masonry` takes as many ~360px columns as the width holds and drops
+ * each card into the shortest one, so it balances at every width, and on
+ * a phone it is a single stack in this order.
  */
-
 export function HomePage() {
-  const season = useSeasonProgress()
   return (
     <>
       <SampleNotice />
       <Masonry
         items={[
           {
-            /*
-            The portrait and the quests used to travel as one item, so
-            "who you are and what you are on" always opened the first
-            column. Once the arc grew six chapter rows that item was by far
-            the tallest thing on the page, and a wide window showed one
-            long column beside five short ones — reported as _"sparse in
-            full screen."_ As two items the arc takes a column of its own,
-            and on a phone the order is unchanged: portrait, then quests.
-          */
             key: 'you',
             node: (
               <SheetCard
@@ -137,33 +49,8 @@ export function HomePage() {
               />
             ),
           },
-          {
-            /*
-              The arc, as a checklist. Quests left the app for Notion —
-              _"drop quests, keep the arc as a checklist"_ — so this is the
-              one place the move is tracked, ticked chapter by chapter.
-            */
-            key: 'arc',
-            node: <Campaigns />,
-          },
-          { key: 'activity', node: <ActivityHeatmap /> },
-          { key: 'buffs', node: <LimitsCard /> },
-          { key: 'goals', node: <TodayGoals /> },
           { key: 'session', node: <NextSessionCard compact /> },
-          {
-            key: 'season',
-            node:
-              season.data === undefined ? null : (
-                <Card>
-                  <ChallengePass
-                    season={{ label: season.data.label, daysLeft: season.data.daysLeft }}
-                  />
-                </Card>
-              ),
-          },
-          { key: 'base', node: <BaseGlance /> },
-          { key: 'upgrade', node: <NextUpgradeGlance /> },
-          { key: 'map', node: <MapGlance /> },
+          { key: 'activity', node: <ActivityHeatmap /> },
         ]}
       />
     </>

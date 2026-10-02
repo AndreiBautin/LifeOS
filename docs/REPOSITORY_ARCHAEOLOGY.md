@@ -1,5 +1,7 @@
 # What came before
 
+> **Historical.** The app has since narrowed to a gamified workout tracker; see [ARCHITECTURE.md](ARCHITECTURE.md) for what it is now.
+
 LifeOS consolidates three earlier repositories. This is the record of what
 each actually was, what was worth keeping, and what was not — written
 before any code here was, so the decisions below can be checked against

@@ -12,29 +12,13 @@ import {
 } from '@/infrastructure/db/database'
 import {
   createCheckInRepository,
-  createChallengeRepository,
-  createRoomRepository,
-  createCampaignRepository,
-  createBacklogItemRepository,
-  createExploredAreaRepository,
-  createPlaceRepository,
   createReviewRepository,
   createTombstoneRepository,
-  createTripRepository,
-  createViceRepository,
-  createFinanceRepository,
-  createUpgradeRepository,
   createExerciseRepository,
   createWorkoutRepository,
 } from '@/infrastructure/db/repositories'
 import { anEntry, aPostCheckIn, aWorkout, SQUAT } from '@/test/builders/workout'
-import { createItem } from '@/domain/backlog/item'
 import { countsFor } from '@/domain/backup/envelope'
-
-const anItemDeps = {
-  clock: { now: () => new Date('2026-08-24T12:00:00.000Z') },
-  ids: { next: () => 'item-1' },
-}
 
 import {
   applyBackup,
@@ -61,18 +45,8 @@ beforeEach(async () => {
     exercises: createExerciseRepository(db, testClock),
     workouts: createWorkoutRepository(db, testClock),
     checkIns: createCheckInRepository(db, testClock),
-    campaigns: createCampaignRepository(db, testClock),
-    challenges: createChallengeRepository(db, testClock),
-    rooms: createRoomRepository(db, testClock),
     tombstones: createTombstoneRepository(db),
-    items: createBacklogItemRepository(db, testClock),
-    upgrades: createUpgradeRepository(db, testClock),
     review: createReviewRepository(db, testClock),
-    places: createPlaceRepository(db, testClock),
-    trips: createTripRepository(db, testClock),
-    explored: createExploredAreaRepository(db),
-    vices: createViceRepository(db, testClock),
-    finance: createFinanceRepository(db, testClock),
   }
 })
 
@@ -301,86 +275,33 @@ describe('the checksum', () => {
   })
 })
 
-/**
- * The absorbed areas, which for five versions of this file were not in it.
- *
- * The envelope's own contract is that a restore from one file reproduces
- * the app exactly, and the moment this hub gained a backlog, a quest log,
- * a tech tree, a circle, a review and an atlas, that stopped being true —
- * five areas of records outside the only export the app has, on a device
- * whose storage a browser can clear without asking. A partial backup is
- * worse than none, because it is trusted.
- */
-async function populateEverything(): Promise<void> {
-  await populate()
+describe('files from other versions of the app', () => {
+  /*
+   * A backup taken while the app still held the Codex, the map and the
+   * rest carries sections this build has no repository for. They are
+   * ignored rather than refused — refusing would make every backup taken
+   * before the app narrowed unreadable, including the training in it.
+   */
+  it('imports the training out of a file that also carries removed areas', async () => {
+    await populate()
+    const envelope = await buildBackup(repositories, exportOptions)
+    const wider = {
+      ...envelope.data,
+      items: [{ id: 'item-1', title: 'Dune' }],
+      exploredCells: ['gcpvj0u'],
+    }
+    const file = serialiseBackup({
+      ...envelope,
+      data: wider,
+      checksum: checksumOf(wider),
+    })
 
-  await repositories.items.save(createItem({ title: 'Dune', category: 'books' }, anItemDeps))
-  await repositories.places.save({
-    id: 'place-1',
-    name: 'Kiln',
-    categoryId: 'food',
-    status: 'wantToVisit',
-    location: { coordinates: { latitude: 51.5, longitude: -0.1 } },
-    favorite: false,
-    tags: [],
-    dateAdded: '2026-08-01T00:00:00.000Z',
-  } as never)
-  await repositories.trips.save({
-    id: 'trip-1',
-    name: 'Lisbon',
-    location: 'Portugal',
-    placeIds: [],
-  } as never)
-  await repositories.explored.reveal(['gcpvj0u' as never, 'gcpvj0v' as never])
-}
-
-describe('everything the hub holds, not only the training half', () => {
-  it('carries every collection through a round trip', async () => {
-    await populateEverything()
-
-    const file = serialiseBackup(await buildBackup(repositories, exportOptions))
     await clearAllStores(db)
     const parsed = parseBackup(file)
     if (parsed.envelope === undefined) throw new Error('the file did not parse')
     await applyBackup(parsed.envelope, repositories, 'replace')
 
-    expect(await repositories.items.all()).toHaveLength(1)
-    expect(await repositories.places.all()).toHaveLength(1)
-    expect(await repositories.trips.all()).toHaveLength(1)
-    expect((await repositories.explored.all()).size).toBe(2)
-  })
-
-  it('counts what it carried, so the number on the button is true', async () => {
-    await populateEverything()
-
-    const envelope = await buildBackup(repositories, exportOptions)
-
-    expect(envelope.counts).toMatchObject({
-      items: 1,
-      places: 1,
-      trips: 1,
-      exploredCells: 2,
-    })
-  })
-
-  /*
-   * Walked ground merges by union and never by replacement — there is no
-   * such thing as un-walking it, which is why it has no tombstone anywhere
-   * else in the hub either. An import that replaced the set would erase a
-   * morning the other device walked.
-   */
-  it('adds walked ground rather than replacing it', async () => {
-    await repositories.explored.reveal(['gcpvj0u' as never])
-    const file = serialiseBackup(await buildBackup(repositories, exportOptions))
-
-    await repositories.explored.clear()
-    await repositories.explored.reveal(['gcpuvxx' as never])
-
-    const parsed = parseBackup(file)
-    if (parsed.envelope === undefined) throw new Error('the file did not parse')
-    await applyBackup(parsed.envelope, repositories, 'merge')
-
-    expect((await repositories.explored.all()).size).toBe(2)
+    expect(await repositories.workouts.all()).toHaveLength(envelope.data.workouts.length)
   })
 
   /*
@@ -390,7 +311,7 @@ describe('everything the hub holds, not only the training half', () => {
    * taken before today becomes unreadable.
    */
   it('accepts a file written before these sections existed', async () => {
-    await populateEverything()
+    await populate()
     const envelope = await buildBackup(repositories, exportOptions)
 
     const older = {

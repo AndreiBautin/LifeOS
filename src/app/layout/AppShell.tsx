@@ -1,13 +1,4 @@
-import {
-  BookMarked,
-  ChevronLeft,
-  ChevronRight,
-  Dumbbell,
-  Home,
-  Map,
-  Network,
-  User,
-} from 'lucide-react'
+import { ChevronLeft, ChevronRight, Dumbbell, History, User } from 'lucide-react'
 import { useState } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
 
@@ -56,67 +47,28 @@ import {
  * a link on the hub is for somewhere you decide.
  */
 /**
- * Seven cells, after a round trip through eight and five.
+ * Three tabs, because the app is a workout tracker now.
  *
- * **Quests, Finance and Train all folded into Today at various points,
- * each on its own explicit ask, and all three un-folded together.** The
- * fold reasoning was sound at the time — a page with too little content
- * to fill a wide monitor without looking awkward. It stopped being sound
- * once all three were folded in *at once*: the combined page grew taller
- * than a landscape-desktop window could show without either scrolling or
- * shrinking every card to illegible size, which is what a persistent
- * "still looks cramped" report turned out to trace back to — see
- * `HomePage`'s own doc for the diagnosis. Splitting back into separate
- * screens is what keeps each one short enough to read at full size.
+ * It carried eight while it was a hub — the Codex, the map, the tech
+ * tree, Base, Finance and the rest — and every one of those went when
+ * the app narrowed: _"fully lean into this simply being a gamified
+ * workout tracker"_. What is left is the character sheet, the session,
+ * and the log of sessions. Program stays a link from Train and Settings
+ * a link from You: one is the shape of the week and one is configuration,
+ * and neither is somewhere you go between sets.
  *
- * **Finance then came off the bar again, on different grounds.** Not a
- * height problem this time — a portfolio one, reported directly: "it
- * doesn't really fit and could vibe weird to employers." This deployed
- * build is the demo build a reviewer actually opens, and a personal
- * finance tab sitting beside a training app is an odd thing for that
- * reviewer to land on. The screen and the tab are gone; the quest arc's
- * salary/savings stages still work, reading from whatever is already on
- * file rather than through a dedicated editor — see
- * `application/use-cases/finance/finance.ts`'s own doc.
- *
- * **This file's own measurement already covers eight cells**, from
- * before the first fold: 46.9 pixels each at 375 wide, nothing clips,
- * and the one real limit is a 320-wide iPhone SE 1st-gen, where
- * `8 × 44 = 352` overflows by 32 — the 44-pixel tap target is an
- * accessibility floor and does not shrink, so that width would need a
- * horizontally scrolling bar rather than a narrower cell. Seven fits
- * with more room again now that Finance is gone.
- *
- * The freed room in the bar was, for a while, deliberately left as
- * room — the screens without a tab (Limits, Vitals, Job search, Mind,
- * Houses, Resume) are a claim that none of them is used daily. Quests
- * and Train are not "used daily" in quite the same sense either, but
- * each one holds enough content on its own that folding it back into
- * Today is what caused the height problem in the first place, so the
- * room goes to un-cramming rather than staying unclaimed.
+ * Three cells at 375 are 125 pixels each, so nothing near the 44-pixel
+ * floor or the label widths that eight cells were measured against.
  */
 const NAV = [
   /*
-   * `/today` under the label "You", which is the screen/type split this
-   * app makes everywhere: Quests over `Project`, Codex over `backlog`.
-   * The route stays because a PWA shortcut is registered with the
-   * operating system at install time — an installed copy goes on asking
-   * for the path it was installed with. `/character` redirects here for
-   * the same reason.
+   * `/today` under the label "You". The route stays because a PWA
+   * shortcut is registered with the operating system at install time —
+   * an installed copy goes on asking for the path it was installed with.
    */
   { to: '/today', label: 'You', Icon: User },
   { to: '/train', label: 'Train', Icon: Dumbbell },
-  { to: '/backlog', label: 'Codex', Icon: BookMarked },
-  { to: '/map', label: 'Map', Icon: Map },
-  /*
-   * **"Tech" rather than "Tech tree"**, because the label has to fit the
-   * cell: at nine characters it measures past the 46.9 available and
-   * would wrap or clip. The screen keeps its full name; this is the
-   * abbreviation the bar can hold, the same trade "You" made for
-   * "Character".
-   */
-  { to: '/upgrades', label: 'Tech', Icon: Network },
-  { to: '/base', label: 'Base', Icon: Home },
+  { to: '/history', label: 'History', Icon: History },
 ] as const
 
 /**

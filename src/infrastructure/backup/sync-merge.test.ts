@@ -5,18 +5,8 @@ import { DEFAULT_SETTINGS } from '@/domain/settings/settings'
 import { closeAppDatabase, openDatabase, type AppDatabase } from '@/infrastructure/db/database'
 import {
   createCheckInRepository,
-  createChallengeRepository,
-  createRoomRepository,
-  createCampaignRepository,
-  createBacklogItemRepository,
-  createExploredAreaRepository,
-  createPlaceRepository,
   createReviewRepository,
   createTombstoneRepository,
-  createTripRepository,
-  createViceRepository,
-  createFinanceRepository,
-  createUpgradeRepository,
   createExerciseRepository,
   createWorkoutRepository,
 } from '@/infrastructure/db/repositories'
@@ -41,18 +31,8 @@ beforeEach(async () => {
     exercises: createExerciseRepository(db, testClock),
     workouts: createWorkoutRepository(db, testClock),
     checkIns: createCheckInRepository(db, testClock),
-    campaigns: createCampaignRepository(db, testClock),
-    challenges: createChallengeRepository(db, testClock),
-    rooms: createRoomRepository(db, testClock),
     tombstones: createTombstoneRepository(db),
-    items: createBacklogItemRepository(db, testClock),
-    upgrades: createUpgradeRepository(db, testClock),
     review: createReviewRepository(db, testClock),
-    places: createPlaceRepository(db, testClock),
-    trips: createTripRepository(db, testClock),
-    explored: createExploredAreaRepository(db),
-    vices: createViceRepository(db, testClock),
-    finance: createFinanceRepository(db, testClock),
   }
 })
 

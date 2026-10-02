@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest'
 
 import { ALL_ACTS } from '@/domain/game/registry'
 import { xpFrom } from '@/domain/game/xp'
-import type { Place } from '@/domain/atlas/place/Place'
+import type { WorkoutLog } from '@/domain/logging/workout-log'
+import { aWorkout } from '@/test/builders/workout'
 import type { Clock, ReviewRepository } from '@/domain/repositories/ports'
 import { DEFAULT_SETTINGS } from '@/domain/settings/settings'
 
@@ -17,7 +18,7 @@ import { tallyActs, type SheetDeps } from './sheet'
  * months, and that all-time equals the sum of the seasons. The second is
  * the reason an undated act counts nowhere at all.
  */
-function harness(places: Place[], now: Date) {
+function harness(workouts: WorkoutLog[], now: Date) {
   const clock: Clock = { now: () => now }
 
   const list = <T>(rows: readonly T[]) => ({
@@ -47,40 +48,16 @@ function harness(places: Place[], now: Date) {
   }
 
   return {
-    items: list([]),
-    attempts: list([]),
-    challenges: list([]),
-    projects: list([]),
-    upgrades: list([]),
-    workouts: list([]),
-    friends: list([]),
-    places: list(places),
-    dailies: list([]),
-    explored: {
-      all: () => Promise.resolve(new Set()),
-      reveal: () => Promise.resolve(0),
-      clear: () => Promise.resolve(),
-      count: () => Promise.resolve(0),
-    },
+    workouts: list(workouts),
     settings: { get: () => Promise.resolve(DEFAULT_SETTINGS), save: () => Promise.resolve() },
     review,
     clock,
   } as unknown as SheetDeps
 }
 
-/** A visited place is worth 20 XP, on the day given. */
-function visitedOn(id: string, isoDate: string): Place {
-  return {
-    id,
-    name: `Place ${id}`,
-    categoryId: 'food',
-    status: 'visited',
-    location: { coordinates: { latitude: 51.5, longitude: -0.1 } },
-    favorite: false,
-    tags: [],
-    dateAdded: '2025-01-01T00:00:00.000Z',
-    dateVisited: isoDate,
-  } as unknown as Place
+/** A finished session with nothing in it is worth 50 XP, on the day given. */
+function visitedOn(_id: string, isoDate: string): WorkoutLog {
+  return aWorkout({ date: isoDate.slice(0, 10), entries: [] })
 }
 
 const MID_WINTER = new Date('2026-01-20T12:00:00Z')
@@ -97,7 +74,7 @@ describe('what a season counts', () => {
       MID_WINTER,
     )
 
-    expect((await seasonProgressFor(deps)).xp).toBe(40)
+    expect((await seasonProgressFor(deps)).xp).toBe(100)
   })
 
   it('leaves out anything from another season', async () => {
@@ -106,7 +83,7 @@ describe('what a season counts', () => {
       MID_WINTER,
     )
 
-    expect((await seasonProgressFor(deps)).xp).toBe(20)
+    expect((await seasonProgressFor(deps)).xp).toBe(50)
   })
 
   it('breaks the season into its three months, including ones not yet begun', async () => {
@@ -115,7 +92,7 @@ describe('what a season counts', () => {
     const progress = await seasonProgressFor(deps)
 
     expect(progress.months.map((one) => one.month)).toEqual(['2025-12', '2026-01', '2026-02'])
-    expect(progress.months.map((one) => one.xp)).toEqual([20, 0, 0])
+    expect(progress.months.map((one) => one.xp)).toEqual([50, 0, 0])
   })
 
   it('names the season the way somebody would say it', async () => {
@@ -143,8 +120,8 @@ describe('the target', () => {
 
     const progress = await seasonProgressFor(deps)
 
-    expect(progress.target).toBe(40)
-    expect(progress.xp).toBe(20)
+    expect(progress.target).toBe(100)
+    expect(progress.xp).toBe(50)
   })
 
   /*
@@ -165,13 +142,13 @@ describe('all-time and the seasons agree', () => {
    * same screen would quietly disagree and nothing would say why.
    */
   it('sums the seasons to the all-time total', async () => {
-    const places = [
+    const sessions = [
       visitedOn('a', '2025-12-20T00:00:00.000Z'),
       visitedOn('b', '2026-01-05T00:00:00.000Z'),
       visitedOn('c', '2025-07-01T00:00:00.000Z'),
       visitedOn('d', '2025-10-01T00:00:00.000Z'),
     ]
-    const deps = harness(places, MID_WINTER)
+    const deps = harness(sessions, MID_WINTER)
 
     const allTime = xpFrom(await tallyActs(deps), ALL_ACTS)
     const seasons = ['2025-07', '2025-10', '2025-12', '2026-01'].map(async (month) =>
@@ -180,14 +157,7 @@ describe('all-time and the seasons agree', () => {
     const summed = (await Promise.all(seasons)).reduce((total, xp) => total + xp, 0)
 
     expect(summed).toBe(allTime)
-    expect(allTime).toBe(80)
-  })
-
-  it('excludes an act with no date from the all-time total too', async () => {
-    const undated = { ...visitedOn('a', ''), dateVisited: undefined } as unknown as Place
-    const deps = harness([undated, visitedOn('b', '2026-01-05T00:00:00.000Z')], MID_WINTER)
-
-    expect(xpFrom(await tallyActs(deps), ALL_ACTS)).toBe(20)
+    expect(allTime).toBe(200)
   })
 })
 

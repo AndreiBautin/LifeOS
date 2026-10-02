@@ -1,14 +1,6 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom'
 
-import { AtlasPage } from '@/features/atlas/AtlasPage'
-import { InboxPage } from '@/features/atlas/InboxPage'
 import { HomePage } from '@/features/today/HomePage'
-import { SharePage } from '@/features/atlas/SharePage'
-import { TripsPage } from '@/features/atlas/TripsPage'
-import { BacklogPage } from '@/features/backlog/BacklogPage'
-import { BasePage } from '@/features/base/BasePage'
-import { LimitsPage } from '@/features/limits/LimitsPage'
-import { UpgradesPage } from '@/features/upgrades/UpgradesPage'
 import { HistoryPage } from '@/features/history/HistoryPage'
 import { ProgramPage } from '@/features/program/ProgramPage'
 import { NotFoundPage } from '@/features/not-found/NotFoundPage'
@@ -36,17 +28,35 @@ export const router = createBrowserRouter(
         // first screen should be the answer to "what now".
         { index: true, element: <Navigate to="/today" replace /> },
         /*
-         * **Quests, the job search, the resume and Mind are gone**, and
-         * every path they had lands on Today. Projects are worked through
-         * in Notion now — _"drop quests, keep the arc as a checklist"_ —
-         * and the arc's checklist lives on Today. Redirects rather than
-         * deletions: a PWA shortcut is registered with the operating
-         * system at install time, and `/next` is one the manifest ships.
+         * **Everything that was not training is gone**, and every path it
+         * had lands on Today: _"fully lean into this simply being a
+         * gamified workout tracker"_. Redirects rather than deletions,
+         * because a PWA shortcut is registered with the operating system
+         * at install time and an installed copy goes on asking for the
+         * path it was installed with.
          */
-        ...['quests', 'next', 'goals', 'goals/:id', 'jobs', 'resume', 'mind'].map((path) => ({
-          path,
-          element: <Navigate to="/today" replace />,
-        })),
+        ...[
+          'quests',
+          'next',
+          'goals',
+          'goals/:id',
+          'jobs',
+          'resume',
+          'mind',
+          'backlog',
+          'upgrades',
+          'gear',
+          'base',
+          'vitals',
+          'limits',
+          'finance',
+          'map',
+          'map/share',
+          'map/inbox',
+          'trips',
+          'character',
+          'party',
+        ].map((path) => ({ path, element: <Navigate to="/today" replace /> })),
         { path: 'train', element: <TrainPage /> },
         /*
          * The Plan screen is gone and `/plan` lands on the Program page.
@@ -59,59 +69,7 @@ export const router = createBrowserRouter(
          */
         { path: 'plan', element: <Navigate to="/program" replace /> },
         { path: 'program', element: <ProgramPage /> },
-        { path: 'backlog', element: <BacklogPage /> },
-        { path: 'upgrades', element: <UpgradesPage /> },
-        /*
-         * The Gear shelf was removed for want of anything on it, and its
-         * path is kept as a redirect rather than deleted — the rule
-         * `/next` and `/character` already follow, because a PWA
-         * shortcut is registered with the operating system at install
-         * time and an installed copy goes on asking for the old path.
-         *
-         * It lands on the tech tree because that is where the records
-         * went: `shelfOf` reads a stored `gear` as `tech`, so anything
-         * filed there is on that screen rather than nowhere.
-         */
-        { path: 'gear', element: <Navigate to="/upgrades" replace /> },
-        { path: 'base', element: <BasePage /> },
-        /*
-         * Kept as a redirect rather than deleted, the rule '/next' and
-         * '/character' already follow: a PWA shortcut is registered with
-         * the operating system at install time, so an installed copy
-         * goes on asking for a path long after the app stops serving it.
-         * Upkeep is what was on this screen and is on Today now.
-         */
-        { path: 'vitals', element: <Navigate to="/today" replace /> },
-        { path: 'limits', element: <LimitsPage /> },
-        /*
-         * **Removed outright, not folded back into Today.** Reported
-         * directly: "it doesn't really fit and could vibe weird to
-         * employers" — a portfolio concern, since this deployed build is
-         * the demo build a reviewer actually opens. The nav tab and this
-         * screen are gone; the repository, the domain and the quest
-         * arc's salary/savings stages are not — see
-         * `application/use-cases/finance/finance.ts`'s own doc for what
-         * stayed and why. Kept as a redirect rather than deleted, the
-         * rule `/next` and `/character` already follow: a PWA shortcut
-         * is registered with the operating system at install time, and
-         * an installed copy goes on asking for this path.
-         */
-        { path: 'finance', element: <Navigate to="/today" replace /> },
-        { path: 'map', element: <AtlasPage /> },
-        { path: 'map/share', element: <SharePage /> },
-        { path: 'map/inbox', element: <InboxPage /> },
-        { path: 'trips', element: <TripsPage /> },
-        { path: 'character', element: <Navigate to="/today" replace /> },
         { path: 'today', element: <HomePage /> },
-        /*
-         * **`/party` is a redirect, not a deleted route.** Social is not
-         * tracked any more and the screen is gone, but a PWA shortcut is
-         * registered with the operating system at install time — an
-         * installed copy goes on asking for the path it was installed
-         * with. The rule `/next`, `/character`, `/vitals` and `/gear`
-         * all follow.
-         */
-        { path: 'party', element: <Navigate to="/today" replace /> },
         { path: 'history', element: <HistoryPage /> },
         { path: 'settings', element: <SettingsPage /> },
         { path: '*', element: <NotFoundPage /> },

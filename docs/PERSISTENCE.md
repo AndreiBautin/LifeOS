@@ -1,10 +1,11 @@
 # Where your data lives, and what can destroy it
 
-LifeOS has no server. Everything — programs, training history, settings —
-is stored in your browser, on the device you are using. That is a
-deliberate product decision, not a limitation waiting to be fixed: the
-app works on a gym basement's dead Wi-Fi, needs no account, and sends
-nothing anywhere.
+LifeOS has no server. Everything — training history, exercises,
+settings — is stored in your browser, on the device you are using. That
+is a deliberate product decision, not a limitation waiting to be fixed:
+the app works on a gym basement's dead Wi-Fi, needs no account, and
+sends nothing anywhere unless you turn on sync with a GitHub token of
+your own.
 
 It also means the durability of your training history is a property of a
 browser's storage rules rather than of a database somebody else operates.
@@ -17,18 +18,19 @@ This document is the honest account of what those rules are.
 Clearing browser data destroys the app's data, and in most browsers the
 control labelled "cookies" is really "cookies and other site data" — so
 yes, clearing cookies usually does destroy it. Nothing transfers to a new
-phone or a different browser. A backup file is the only thing that
-survives all of it, and the app will nag you to take one.
+phone or a different browser on its own. A backup file — or the copy
+sync keeps in your own GitHub repository — is the only thing that
+survives all of it, and Settings says how old your last export is.
 
 ---
 
 ## What is stored where
 
-| Store             | Holds                                                                  | Why there                                                                                                            |
-| ----------------- | ---------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| **IndexedDB**     | Exercises, programs, program runs, workout history, check-ins          | Unbounded, indexed, asynchronous. See below.                                                                         |
-| **localStorage**  | Units, rounding, estimated maxes, volume landmarks, tiers, preferences | Small, read synchronously at startup, and — crucially — a _separate_ store, so a rebuilt IndexedDB does not take it. |
-| **Cache Storage** | The app's own HTML, JavaScript, CSS and icons                          | Managed by the service worker. Versioned and swept on update. Contains nothing of yours.                             |
+| Store             | Holds                                                     | Why there                                                                                                            |
+| ----------------- | --------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| **IndexedDB**     | Exercises, workout history, check-ins, tombstones         | Unbounded, indexed, asynchronous. See below.                                                                         |
+| **localStorage**  | Units, rounding, bodyweight, estimated maxes, preferences | Small, read synchronously at startup, and — crucially — a _separate_ store, so a rebuilt IndexedDB does not take it. |
+| **Cache Storage** | The app's own HTML, JavaScript, CSS and icons             | Managed by the service worker. Versioned and swept on update. Contains nothing of yours.                             |
 
 ### Why IndexedDB and not localStorage
 
@@ -120,8 +122,10 @@ Chrome and Firefox on the same phone see entirely different databases.
 
 ### You get a new phone
 
-**Data does not transfer.** There is no account and no server to sync
-from. Export from the old device, import on the new one.
+**Data does not transfer on its own.** There is no account and no
+server of ours. Either export from the old device and import on the new
+one, or turn on sync on both: it reads, merges and writes one backup file
+in a private GitHub repository you own (`src/infrastructure/sync/`).
 
 ### The browser performs storage cleanup
 
@@ -153,9 +157,9 @@ explicit, numbered upgrade steps — a deploy never wipes it. Only Cache
 Storage is versioned and swept, and that holds nothing but the app's own
 files.
 
-Updates are offered, not applied: the service worker registers with
-`registerType: 'prompt'`, so a new version shows a banner rather than
-swapping the app out from under you three sets into a session.
+A new version applies itself when the app becomes visible and no session
+is open, and otherwise waits behind a banner — it never swaps the app out
+from under you three sets into a session.
 
 ---
 
@@ -172,15 +176,23 @@ an integrity checksum over the contents.
 
 ```json
 {
-  "magic": "lift.backup",
-  "schemaVersion": 1,
+  "magic": "lifeos.backup",
+  "schemaVersion": 3,
   "appVersion": "1.0.0",
   "exportedAt": "2026-08-24T12:00:00.000Z",
   "checksum": "a3f21c08",
-  "counts": { "workouts": 142, "programs": 3, ... },
-  "data": { "settings": {...}, "exercises": [...], "workouts": [...] }
+  "counts": { "exercises": 4, "workouts": 142, "checkIns": 0, ... },
+  "data": { "settings": {...}, "exercises": [...], "workouts": [...], "tombstones": [...] }
 }
 ```
+
+The sections are settings, exercises, workouts, check-ins, tombstones,
+and the review's metrics and months (`src/domain/backup/envelope.ts`).
+**A file written while the app also held a Codex, a map, a tech tree and
+the rest still imports**: the training in it is restored and the extra
+sections are ignored, because refusing them would make every backup
+taken before the app narrowed useless at the moment somebody reaches for
+one.
 
 Ids are stable, human-readable slugs where possible (`bench-press`, not a
 UUID), so the file stays legible and a program written on one device
@@ -214,19 +226,26 @@ Then two named operations, never one function with a flag:
 - **Replace** clears everything first and requires typing `replace` to
   confirm.
 
-### Reminders
+### How old the last backup is
 
-The app asks for a backup after **14 days**, or after **10 logged
-sessions**, whichever comes first — and immediately if you have never
-taken one. A backup feature nobody is prompted to use is worth nothing.
+Settings states it beside the export button: how many days since the
+last export, tinted once that is past **14 days** (`backupAge` in
+`domain/settings/settings.ts`), and the sentences around it read whether
+sync is on rather than assuming it is not. There used to be a reminder
+card over every screen; it came back on each launch however often it was
+answered, and it could not tell whether sync already had the data
+covered — a warning that cannot check its own premise is worse than
+none.
 
 ### What is deliberately not here
 
-- **Cloud sync.** It would mean an account, a server, and your training
-  data on someone else's disk. The absence is the product — and it was
-  tried: optional Firebase sync shipped for a while and was removed,
-  because a second copy kept in step with this one is worse than either
-  a real cloud database or none.
+- **A cloud database.** It would mean an account, a server of ours, and
+  your training data on someone else's disk. It was tried: optional
+  Firebase sync shipped for a while and was removed, because a second
+  copy kept in step with this one is worse than either a real cloud
+  database or none. What replaced it is a file — one backup in a private
+  GitHub repository the lifter owns, merged by newer `updatedAt` with
+  tombstones travelling both ways.
 - **Automatic scheduled backups.** A browser cannot write to your
   filesystem unprompted, and a backup silently held in the same origin's
   storage would die with everything else it was meant to protect.
@@ -235,9 +254,8 @@ taken one. A backup feature nobody is prompted to use is worth nothing.
   is not sensitive, and it would make the file unreadable by the text
   editor that is its main fallback.
 
-If cross-device ever becomes worth it, the right shape is **user-supplied
-storage** — exporting into a folder that iCloud or Drive already syncs —
-not a backend.
+That is **user-supplied storage**, which was always the right shape for
+cross-device here — not a backend.
 
 ---
 
@@ -256,3 +274,10 @@ Existing steps are **never edited**. A device that has already run one
 will not run it again, so changing a step leaves two devices with
 different schemas and no way to tell them apart. Every migration hop is
 covered by a test.
+
+**A retired store is cleared, never removed.** When the app narrowed to
+training, the Codex, map, tech tree, Base, buffs, finance, challenges and
+arc stores were emptied by a new step at `DB_VERSION` 24 and left in the
+schema. Removing a store means editing the step that created it, which is
+the one thing above that must never happen; clearing it in a new step
+reaches every device exactly once.

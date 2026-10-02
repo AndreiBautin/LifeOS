@@ -51,70 +51,85 @@ It is named for filling and there is deliberately **no flag** that makes
 it overwrite — the rule this codebase holds for destructive operations
 everywhere else, which is that a call site must not be able to ask for
 "fill if empty" and receive "wipe and replace". Somebody who opens the
-demo, adds a few things of their own and comes back a week later still
-has them.
+demo, logs a session of their own and comes back a week later still has
+it.
 
 That refusal is a tested property rather than a convention.
 
 ## What is in it
 
-Enough that every screen has something to draw, and no more. The shape
-of the dataset is chosen so a reviewer understands the app in about ten
-seconds per screen.
+About seventeen weeks of the shipped routine — the A and B days, Monday
+to Saturday — so a reviewer sees somebody four months into a programme
+rather than an app installed last week.
 
-| Screen        | What the fixture gives it                                                                    |
-| ------------- | -------------------------------------------------------------------------------------------- |
-| **You**       | Level 2, four trait bars with two proven, a season's challenges, four buff pools mid-day     |
-| **Train**     | Three finished sessions across a week, so history, volume and the Strength ladder all report |
-| **Codex**     | Eleven entries covering every status, two with a run of progress days                        |
-| **Map**       | Seven places, three visited — which is what clears the fog — and one with no point yet       |
-| **Base**      | Four rooms read for clutter and one never read                                               |
-| **Finance**   | Three months of readings, so every trend has two points to compare                           |
-| **Tech tree** | A prerequisite chain, something owned, something dropped, something out of reach             |
+| Screen      | What the fixture gives it                                                                 |
+| ----------- | ----------------------------------------------------------------------------------------- |
+| **You**     | Past level one, all three trait bars proven, the activity grid filled, a dismissible note |
+| **Train**   | A strength trend that climbs the way double progression climbs, and a session to start    |
+| **History** | Seventeen weeks of sessions, with roughly one in thirteen skipped                         |
 
-### The edge cases it deliberately includes
+A history with no missed day is not a history anybody believes, so a
+few are skipped on purpose; most sessions open on a warm-up and a few do
+not, for the same reason.
 
-An empty app demonstrates nothing, and so does a uniformly tidy one.
-Four states are in the fixture on purpose because they are the ones a
-screenshot never shows:
+**The warm-up and conditioning rows are logged as done**, because that
+is what pays Mobility and Stamina: `hasWarmUp` and `hasConditioning` ask
+whether the work was _done_, not whether it was scheduled. A fixture of
+slots with nothing logged against them would leave both bars empty while
+looking, from the records, like a full block of training.
 
-- **A record with only its required fields.** `Dune`, in the Codex, with
-  no priority, no progress and no dates.
-- **A value long enough to wrap.** One Codex title exists purely to prove
-  the row wraps rather than clipping at 375px.
-- **A place with no coordinates.** The name-only capture the map's inbox
-  exists to resolve — without one, that screen has nothing to
-  demonstrate.
-- **A room nobody has read.** Which is left _out_ of the house average
-  rather than counted as zero, and the screen says so.
+**Each competition lift ends where the Standards card says it is.** The
+final five-rep loads estimate the sample's own `estimatedMaxes`, so the
+strength chart's last point and the standard beside it agree. They
+disagreed by seventy pounds on the squat the first time this was
+generated.
+
+The only setting the fixture writes is `sampleData: 'loaded'`, merged
+into what is there rather than replacing it — overwriting the blob to
+set one field would make the demo silently responsible for every other
+one. That flag is what puts the dismissible note on You.
+
+### What stops it being hollowed out
+
+[`parity.test.ts`](../src/application/use-cases/demo/parity.test.ts)
+asserts what a reviewer sees on the landing page as **properties**
+rather than records: the level is past the first, every trait is proven,
+and the traits split the XP total without inventing any. Editing the
+fixture stays free; emptying a bar does not.
+
+The failure it catches is unique to having a demo. A feature works
+against real data and renders an empty box on the deployed site, nothing
+errors, the feature's own tests keep passing, and the person who notices
+is the employer.
 
 ### Dates are offsets, never absolutes
 
 Every date is computed from the moment of seeding. A fixture pinned to
-absolute timestamps rots: opened a year after it was written it shows
-dead streaks, an empty "this month" and a season that ended long ago.
+absolute timestamps rots: opened a year after it was written it shows an
+empty "this month" and a history that stopped long ago.
 
 It is still deterministic — for a given `now`, the output is
-byte-identical, ids included, which is what makes it testable.
+byte-identical, ids included, which is what makes it testable. The
+weekday in a session's title is read off its date rather than written
+beside it, because a hardcoded "Friday" is right on the day it is typed
+and wrong every day after.
 
-### One thing is written as records rather than driven
+### Written as records rather than driven
 
-Everything else in the fixture goes through the app's own use cases —
-`addProject`, `addPlace`, `recordClear` and the rest — so a fixture that
-compiles is a fixture the app could have produced, and every invariant
-those functions enforce holds in the demo too.
-
-The **workout history is the exception**, and it says so in place.
-`startWorkout` opens _today's_ programme day and `finishWorkout`
+The rule elsewhere in this codebase is that a fixture should go through
+the app's own use cases, so a fixture that compiles is one the app could
+have produced. **The workout history cannot**, and the file says so in
+place. `startWorkout` opens _today's_ programme day and `finishWorkout`
 advances the block position from wherever it currently stands, so a loop
-of start-then-finish yields three sessions all dated today with the
-programme three days further on than the history claims. There is no way
-to ask those use cases for a session that happened last week, because
-from the app's point of view there never is one.
+of start-then-finish yields sessions all dated today with the programme
+further on than the history claims. There is no way to ask those use
+cases for a session that happened last week, because from the app's
+point of view there never is one.
 
 What that gives up is bought back with the real exercise slugs, the real
-prescription shape and the real slot roles — and by the tests, which
-assert the properties the screens depend on rather than the records.
+prescription shape and the real slot roles — and by the parity test,
+which asserts the properties the screens depend on rather than the
+records.
 
 ## Running it
 
@@ -150,8 +165,6 @@ browser.
 
 Stated rather than hidden, because a reviewer will notice:
 
-- **The map's geocoder.** It reaches Nominatim, which is a live service
-  run on donations; the demo does not call it on load. Typing a name
-  into the map's search still works.
-- **Anything requiring a second device.** Moving data is export and
-  import; there is no sync.
+- **Sync.** It needs a token for the lifter's own private GitHub
+  repository, which a visitor does not have and the demo must not ship.
+  Moving data on the demo is export and import.

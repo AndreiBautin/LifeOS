@@ -89,10 +89,10 @@ export default defineConfig(({ mode }) => {
         },
 
         manifest: {
-          name: 'LifeOS — training, codex and map',
+          name: 'LifeOS — a gamified workout tracker',
           short_name: 'LifeOS',
           description:
-            'Six things worth tracking, scored by one model: what you are training, building, reading, saving up for, who you are seeing and where you have been.',
+            'Double progression, deloads that adjust themselves, and a character that levels Strength, Stamina and Mobility from the sessions you log.',
           /*
            * `id`, `start_url` and `scope` all derive from `base` and must
            * not move until the repository is renamed — changing any of
@@ -107,7 +107,7 @@ export default defineConfig(({ mode }) => {
           orientation: 'portrait',
           background_color: '#0a0a0b',
           theme_color: '#0a0a0b',
-          categories: ['health', 'fitness', 'productivity'],
+          categories: ['health', 'fitness'],
           icons: [
             { src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png' },
             { src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png' },
@@ -118,22 +118,6 @@ export default defineConfig(({ mode }) => {
               purpose: 'maskable',
             },
           ],
-          /*
-           * "Share → Lift" from a maps app. A GET target, so the share
-           * arrives as an ordinary navigation the router already handles
-           * and nothing needs a POST handler in the service worker.
-           *
-           * The three parameters are not filled in consistently by the
-           * apps that do the sharing — Android tends to put the name in
-           * `text` and the link in `url`, others put both in `text` — so
-           * the page reads all three rather than trusting one.
-           */
-          share_target: {
-            action: `${base}map/share`,
-            method: 'GET',
-            params: { title: 'title', text: 'text', url: 'url' },
-          },
-
           /*
            * The long-press menu. `Programs` used to point at `programs`,
            * which is not a route — the page is `program`, singular — so
@@ -148,7 +132,11 @@ export default defineConfig(({ mode }) => {
               url: `${base}train`,
               description: 'Jump into today’s session',
             },
-            { name: 'Codex', url: `${base}backlog`, description: 'What is due today' },
+            {
+              name: 'History',
+              url: `${base}history`,
+              description: 'Every session you have logged',
+            },
           ],
         },
 

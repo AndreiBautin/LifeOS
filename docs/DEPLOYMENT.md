@@ -31,8 +31,10 @@ can start fresh from Settings to use it as their own. See
 [DEMO_DATA.md](DEMO_DATA.md).
 
 The published build once passed a Firebase config and an account
-allowlist, which put a sign-in screen in front of the site. Sync has
-since been removed from the app entirely; if a repository variable
+allowlist, which put a sign-in screen in front of the site. Firebase has
+since been removed from the app entirely — sync is now a GitHub file the
+lifter turns on with their own token, which the demo never has — and if
+a repository variable
 named `VITE_ALLOWED_UIDS` is still configured, nothing reads it and it
 can be deleted.
 
@@ -135,7 +137,7 @@ these configured builds a working local app.
 | Symptom                               | Cause                              | Fix                                                                           |
 | ------------------------------------- | ---------------------------------- | ----------------------------------------------------------------------------- |
 | Blank page, 404s on `/assets/*`       | `VITE_BASE_PATH` missing or wrong  | It must be `/<repo>/`, with both slashes                                      |
-| Home page works, `/programs` 404s     | No SPA fallback                    | The deploy's `cp dist/index.html dist/404.html` step                          |
+| Home page works, `/program` 404s      | No SPA fallback                    | The deploy's `cp dist/index.html dist/404.html` step                          |
 | Deploy job fails with "not enabled"   | Pages source still set to a branch | Settings → Pages → Source → GitHub Actions                                    |
 | Service worker never updates          | Cached `sw.js`                     | It is served no-cache by default; check the Application tab, then hard-reload |
 | App shows an old version after deploy | The update prompt is waiting       | By design — press Reload in the banner                                        |

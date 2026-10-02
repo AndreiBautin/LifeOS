@@ -2,7 +2,7 @@ import type { BackupData, BackupEnvelope } from '@/domain/backup/envelope'
 import { checksumOf } from '@/domain/backup/checksum'
 import { indexTombstones, shouldAccept, tombstoneKey } from '@/domain/sync/tombstone'
 
-import { COLLECTIONS, COLLECTION_KEYS, restoreCells, type BackupRepositories } from './collections'
+import { COLLECTIONS, COLLECTION_KEYS, type BackupRepositories } from './collections'
 
 /**
  * Merging the other device's copy into this one, for sync.
@@ -79,8 +79,6 @@ export async function mergeNewer(
     }
   }
 
-  await restoreCells(repositories, data.exploredCells ?? [])
-
   return { pulled, purged }
 }
 
@@ -90,8 +88,8 @@ export async function mergeNewer(
  * Two devices holding the same records must produce the same value, or
  * each would see the other's file as different on every sync and upload
  * a commit that changes nothing — two devices ping-ponging a no-op
- * forever. So every collection is sorted by id, tombstones by key and
- * cells by value, and the settings are left out: they are per-device by
+ * forever. So every collection is sorted by id, and tombstones by key, and the
+ * settings are left out: they are per-device by
  * design and would otherwise differ on every comparison.
  */
 export function recordsFingerprint(data: BackupData): string {
@@ -119,6 +117,5 @@ export function recordsFingerprint(data: BackupData): string {
   return checksumOf({
     sections,
     tombstones,
-    exploredCells: [...(data.exploredCells ?? [])].sort(),
   })
 }

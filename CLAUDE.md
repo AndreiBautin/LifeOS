@@ -1,19 +1,47 @@
 # Working on LifeOS
 
-A client-only React + TypeScript PWA covering six areas — training,
-quests, a backlog, a tech tree, a circle and an atlas — scored by one
-game model. **No server of ours, and no database of ours.**
-Persistence is IndexedDB behind a repository interface. That constraint is
-the product, not a limitation — see
-[docs/PERSISTENCE.md](docs/PERSISTENCE.md).
+A client-only React + TypeScript PWA: **a gamified workout tracker.**
+Double progression, self-adjusting deloads, and a character sheet that
+levels Strength, Stamina and Mobility from the sessions you log. **No
+server of ours, and no database of ours.** Persistence is IndexedDB
+behind a repository interface; the only outbound host is GitHub, when
+sync is connected. See [docs/PERSISTENCE.md](docs/PERSISTENCE.md).
 
-The honest qualifier: the map talks to OpenStreetMap. Tiles come from
-`tile.openstreetmap.org` on every pan, and the inbox's search asks
-Nominatim to turn a name into coordinates. Both are the same third party,
-both are opt-in in the sense that they only happen on the map screens, and
-neither carries a record — but "no network calls" was never true once
-Leaflet was rendering live tiles, and claiming it made the _other_
-requests look like a bigger step than they are.
+**Everything that was not training is gone, and most of this file is
+history because of it.** Asked for as _"fully lean into this simply
+being a gamified workout tracker… it feels like the app ballooned into a
+massive set of features and wasn't really focused"_ — the Codex is a
+streaming queue and a Steam library, the map is a calendar, the tech
+tree is a wishlist, and Base is Notion. Read every paragraph below about
+the Codex/backlog, the map/atlas, the tech tree/upgrades, Base and
+clutter, buffs/limits/the health bar, finance, seasonal challenges, the
+arc/campaigns, quests, the job search, the resume or Mind as a record of
+a decision, not as a description of the code. They are kept because the
+reasoning in them is often still why a training rule is the shape it is.
+
+- **Three areas, three traits, and they partition again.** `training`
+  → Strength, `cardio` → Stamina, `mobility` → Mobility. Every act is
+  counted off the workout log in `countActs` (`character/sheet.ts`):
+  a finished session, its working sets, a completed conditioning set,
+  and a completed warm-up set (`hasWarmUp`, once per session, 20 XP —
+  six warm-up rows paying six times would make the cheapest work the
+  best paid). `UNCLAIMED_AREAS` is empty and `traits.test.ts` holds
+  that the bars sum to the level.
+- **The removed stores are retired, cleared at `DB_VERSION` 24** —
+  items, upgrades, places, trips, exploredCells, vices, finance, rooms,
+  challenges, campaigns — and out of the backup, sync and tombstone
+  tables. An old backup carrying those sections still imports; they are
+  ignored.
+- **The nav is You · Train · History.** Program hangs off Train and
+  Settings off You. Every removed path redirects to `/today`, because a
+  PWA shortcut outlives the screen it named.
+- **The demo is four months of sessions and nothing else.**
+  `parity.test.ts` holds that every trait is proven, so a fixture that
+  stopped logging warm-ups would fail rather than ship an empty Mobility
+  bar.
+- **The tech-tree concept left the game model too** — `hasTree` and
+  `domain/game/tree.ts`. The model's claim that exactly one area spends
+  had nothing left to be true of.
 
 **Firebase is gone, and every paragraph below about Firestore, sync,
 `AuthGate`, `VITE_ALLOWED_UIDS` or the emulator is history.** Asked for

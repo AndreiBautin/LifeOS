@@ -14,16 +14,17 @@ populated on open.
 
 ## The thirty-second version
 
-> It is a gamified productivity system — thirteen areas of one life
-> scored by a single model. Client-only React and TypeScript, deployed
-> as an installable PWA, and everything lives in the visitor's own
-> browser.
+> It is a gamified workout tracker. You train, and Strength, Stamina and
+> Mobility level up from what you actually did. Client-only React and
+> TypeScript, deployed as an installable PWA, and everything lives in the
+> visitor's own browser.
 >
-> The interesting part is not the features, it is that the areas are not
-> separate apps sharing a shell. Each one _declares_ what it has in a
-> registry — ladders, ratings, acts — and the character sheet, the
-> scoring and the XP are all derived from those declarations. An area
-> joins by gaining a row.
+> The interesting part is not the features, it is that the scoring is
+> declared rather than coded into screens. Each area states in a registry
+> what it has — ladders, ratings, acts — and the character sheet, the
+> traits and the XP are all derived from those declarations. It was
+> built to hold a dozen life areas and narrowed back to three, and the
+> model did not have to change to do either.
 
 If they only ask one follow-up it will be "what's a ladder", so have the
 three currencies ready. If they ask two, the second is "why not a
@@ -48,27 +49,25 @@ ladder, nothing is counted twice.
 
 **Why it matters, in one example.** A powerlifting total is a ladder
 because published bodyweight multiples exist and nothing this app does
-can move them. A credit score is a ladder because FICO publishes its
-bands. Net worth is a ladder because the Federal Reserve publishes
-percentiles by age. _How good you are at seeing your friends_ is not a
-ladder, because nobody published a figure for it — so that area never
-had one, and inventing one would have been the app asserting something
-it cannot know.
+can move them. A mile time was a ladder once and was removed: nobody was
+running one, so it sat at Untrained forever on a screen whose job is to
+show movement. Conditioning has no published standard the app can read,
+so it gets XP for being done and no ladder — inventing one would be the
+app asserting something it cannot know.
 
 **The line most trackers cross.** XP is paid for a thing you _did_ and
-never for a thing that _happened_. Sending a job application pays;
-getting the interview does not. Logging a workout pays; the number going
-up does not. Typing in your net worth pays nothing at all — that is a
-measurement, and paying for it going up is paying for an outcome.
+never for a thing that _happened_. Logging a workout pays; the number
+going up does not — that already moved a ladder. Typing in your
+bodyweight pays nothing at all: it is a measurement, and paying for it
+moving is paying for an outcome.
 
 If somebody says "isn't that just semantics", the answer is that it
 decides what the app is for. Pay for outcomes and it becomes a thing to
 optimise; pay for acts and it stays a record of what you did.
 
-**The consequence people find surprising: absent, never zero.** An area
-with nothing to say renders nothing at all. No "0%", no empty bar. A
-level nobody earned is worse than an obvious gap, and one fabricated
-reading makes the next month's trend a lie too.
+**The consequence people find surprising: absent, never zero.** A trait
+nothing has fed reads "Nothing yet" rather than a bar at nought. A level
+nobody earned is worse than an obvious gap.
 
 ---
 
@@ -91,10 +90,9 @@ somebody will ask. The honest answer:
 > Layered architecture is wrong for a CRUD form and right for a domain
 > with real rules. The test I use is whether I can name what the domain
 > layer would contain. Here it is set resolution, double progression,
-> volume accounting, merge semantics and the whole scoring model —
-> several thousand lines of logic with no I/O in it, and it is where
-> nearly all the tests live. If I couldn't name that, I'd have used
-> fewer layers.
+> week assembly and volume accounting, merge semantics and the scoring
+> model — logic with no I/O in it, and it is where nearly all the tests
+> live. If I couldn't name that, I'd have used fewer layers.
 
 **The concrete payoff**, if they want one: the entire scoring model can
 be tested by calling functions. No render, no database, no clock —
@@ -134,43 +132,32 @@ it derived deleted all four.
 
 ## A second one, if they want more
 
-**"Goals" is a genuine relocation plan — several workstreams running in
-parallel, some of it decided and most of it not, with real dependencies
-between two of them.** It is the newest feature in the app and the one
-where "which existing shape does this fit" was a real question rather
-than an obvious one.
+**Narrowing the app was a harder engineering problem than growing it.**
+It held a backlog, a map with fog of war, a tech tree, finance, quests
+and more — and became a workout tracker. Deleting the code was the easy
+part; the interesting questions were what a deletion must not break.
 
-> Two shapes already existed for "a thing with structure": `Campaign` is
-> one ordered chain of stages read live against other areas, and
-> `Project` is a flat list of homogeneous steps that pay XP when closed.
-> Neither fit. A campaign forces one chain per workstream, which throws
-> away the dependencies between them. A project's steps are all the same
-> kind of thing — actions — and a goal item is as often a fact, a
-> hypothesis, or an open question as it is something to go and do. None
-> of those is a thing anybody _does_, so closing one is not an act, and
-> paying XP for deciding where to live would cross the same act/outcome
-> line the rest of the model refuses. **A goal pays no XP** — same
-> footing as the campaign, and it does not join the registry.
+> - **Installed copies keep asking for old paths.** A PWA shortcut is
+>   registered with the operating system at install time, so every
+>   removed route redirects to `/today` rather than 404ing.
+> - **A database store cannot be removed.** Removing one means editing
+>   the migration step that created it, and a device that already ran
+>   that step will not run it again — two devices end up with different
+>   schemas and no way to tell. So a new step at `DB_VERSION` 24 clears
+>   the rows and the stores stay.
+> - **Old backups must still restore.** A file taken before the narrowing
+>   carries a dozen sections this build has no repository for. They are
+>   ignored rather than refused, and there is a test that imports the
+>   training out of one.
+> - **The traits had to become a partition again.** With a dozen areas,
+>   six belonged to no trait and the bars deliberately summed to less
+>   than the level. With three, every area has exactly one trait, and the
+>   test that once asserted the exceptions now asserts there are none.
 
-**What it reuses rather than reinvents** is the better half of the
-story: the dependency graph — cycle detection via a breadth-first walk,
-cascade-clear when an item is deleted — is the exact shape already
-solved for quest blockers, applied to a graph of six kinds of item
-instead of a graph of projects. And it is **ordered but not gated**, the
-stance the campaign already takes on its stages: a blocked item is
-_named_ blocked and nothing refuses to resolve it anyway, because a
-screen that policed the order would be deciding somebody's life for them
-rather than reporting on it.
-
-**The trade-off, if pushed:** an item can link to a real quest so
-resolution follows the actual work instead of a second checkbox — link
-"declutter the garage" to the house job doing it, and the item unblocks
-the moment the quest is marked done, with nothing written back onto the
-goal item at all. That reuse is also the honest cost: a goal's link to a
-quest is one-directional bookkeeping, so deleting the quest has to walk
-every goal to clear the dangling reference, and it does — that cascade
-is its own function precisely because the two record types live in
-different modules that must not import each other.
+The second act this added is worth a sentence: Mobility pays for a
+warm-up _done_, once a session — not per row, because six rows paying six
+times makes the cheapest part of a session the best-paid, and not for the
+slot, because every session schedules one.
 
 ---
 
@@ -182,9 +169,8 @@ There are several; pick by what they seem to care about.
 ### "A capability nothing calls"
 
 Eight times in this project I wrote a rule, exported it, tested it — and
-wired it to no screen. `proposeLandmarks`, `readinessScore`,
-`removeDaily`, `moveDailyHome`, the geocoder on the add form, the RTS
-stopping rule.
+wired it to no screen. `proposeLandmarks`, `readinessScore`, the RTS
+stopping rule among them.
 
 **The worst version prints advice about itself.** The training screen
 wrote "until RPE 8" into every set note, and the function that evaluated
@@ -202,31 +188,31 @@ app_, not by the suite:
 
 - A field silently dropped by a **conditional spread**, which defeats
   excess-property checking. Collected by the form, passed to the use
-  case, written nowhere, nothing failed to compile. Twice. Both are now
+  case, written nowhere, nothing failed to compile. Twice. Both became
   `Record<keyof …>` mapped types the compiler makes you fill in.
 - A **Tailwind colour class that does not exist** compiles to no
   declaration at all, so twenty call sites rendered near-white. Legible,
   plausible, and not the colour anybody chose. No linter has an opinion.
   It can only be caught by reading the _computed_ colour off the element.
 - **A hand-written second copy of a list that already exists** drifted
-  three separate times — twice in a sync layer since removed, once in a
-  finance history row. One of them meant twelve collections were read
-  from the server and written to it by nothing, and from both ends it
-  looked exactly like working sync.
+  three separate times in a sync layer since removed. One of them meant
+  twelve collections were read from the server and written to it by
+  nothing, and from both ends it looked exactly like working sync.
 
 The pattern, and the thing I changed: **derive the list rather than
 restate it, and make the compiler the guard** — a `Record<keyof …>`
 the compiler makes you fill in, so a field added without an entry fails
 the build.
 
-### "The demo found four bugs the suite couldn't"
+### "The demo found bugs the suite couldn't"
 
 Good if they ask about testing strategy. Building the demo fixture was
-the first time those paths were exercised together, and it turned up:
-XP reading zero because `tallyActs` counts a completion _date_ and not a
-_status_; a counted target drawing what was left rather than what was
-done; and the tech tree drawing a cancelled upgrade as the thing you can
-act on. All with a green suite.
+the first time several paths were exercised together, and it turned up
+XP reading zero because the tally counts a completion _date_ and not a
+_status_ — all with a green suite. A later fixture's strength chart
+disagreed with the Standards card beside it by seventy pounds, because
+the generated history and the sample's estimated maxes had been written
+separately.
 
 ---
 
@@ -238,28 +224,29 @@ act on. All with a green suite.
 > everything lives in IndexedDB on the device, which means there is no
 > account to breach and no database of mine holding anybody's records.
 >
-> The honest qualifier is that it is not _no network_ — the map pulls
-> tiles from OpenStreetMap and the geocoder asks Nominatim. Two outbound
-> hosts, each one a decision rather than a precedent.
+> The one outbound host is GitHub, and only if you turn sync on with a
+> token of your own.
 
-### "Didn't this used to sync?"
+### "How does it work across two devices, then?"
 
-> It did — Firestore as the source of truth behind a Google sign-in and
-> an account allowlist, with IndexedDB when nothing was configured. I
-> took it out. The public build never used it, and it was a second
-> storage path, a sign-in gate and a set of access rules to keep right
-> for nothing a visitor could see. If this needed the cloud I would make
-> a real database the one source of truth with proper accounts, not keep
-> two copies in step. Export and import move data between devices now.
+> One backup file in a private GitHub repository the lifter owns. Each
+> device reads it, merges — newer `updatedAt` wins, deletions travel as
+> tombstones — and writes back only if the records actually changed,
+> throttled to every fifteen seconds. It is turn-taking rather than live,
+> which suits one person training on one device at a time.
 >
-> The storage swap in both directions never touched `domain/`, which is
-> the part worth pointing at: the repository ports were the seam.
+> It replaced Firestore behind a Google sign-in. That worked, and it was
+> a second storage path, a sign-in gate and access rules for a public
+> demo that never used any of it. If this needed the cloud I would make a
+> real database the one source of truth with proper accounts, not keep
+> two copies in step. Neither swap touched `domain/` — the repository
+> ports were the seam.
 
 **Have the tombstone answer ready** if they push on deletion: removing a
 row leaves nothing behind, and nothing is indistinguishable from "never
-existed", so importing an older backup reads it as a record the file
+existed", so merging in an older copy reads it as a record the file
 knows about and puts it back — counted as an _addition_. A tombstone is
-what the import filters against.
+what the merge filters against.
 
 ### "How do you know the deployed demo has no real data in it?"
 
@@ -282,8 +269,8 @@ phone numbers, credential shapes and links.
 
 Pick one and mean it:
 
-> **I would have written the demo fixture much earlier.** It found four
-> real bugs in an afternoon, and every one of them was a path no test
+> **I would have written the demo fixture much earlier.** It found real
+> bugs in an afternoon, and every one of them was a path no test
 > exercised end to end. A fixture is a cheap integration test that also
 > happens to be the product demo.
 
@@ -292,6 +279,12 @@ Or:
 > **I would not have shipped rules I could not reach from a screen.** I
 > did it eight times. The habit I have now is that a rule and its control
 > land in the same change.
+
+Or, honestly:
+
+> **I would have scoped it to training from the start.** A dozen areas
+> taught me a lot about keeping a scoring model honest, and most of them
+> were better served by apps that already do that one thing well.
 
 ### "Your resume is all .NET, Azure and RAG — why show me a React app with none of that?"
 
@@ -332,15 +325,15 @@ reads better than one who says nothing is wrong.
 
 > Every card treats `data === undefined` as loading, which is also the
 > state an errored query sits in — so a failed read used to draw a
-> skeleton forever. There is a banner over the shell now that says how
-> many reads failed and offers a retry, which is one component rather
-> than eighty-nine changed call sites. Teaching each card to tell an
-> error from loading is still the thorough version.
+> skeleton forever. There is a banner over the shell now that says a
+> read failed and offers a retry, which is one component rather than
+> dozens of changed call sites. Teaching each card to tell an error from
+> loading is still the thorough version.
 >
-> Nothing travels between devices except by export and import. And the
-> service worker is only partly verified: it registers, activates and
-> controls the page on the live site, and the update banner has been seen
-> firing, but offline serving from the precache has not been driven.
+> Sync is whole-file and turn-taking, not live. And the service worker is
+> only partly verified: it registers, activates and controls the page on
+> the live site, and the update banner has been seen firing, but offline
+> serving from the precache has not been driven.
 
 ---
 
@@ -348,14 +341,16 @@ reads better than one who says nothing is wrong.
 
 |              |                                                                     |
 | ------------ | ------------------------------------------------------------------- |
-| TypeScript   | ~76,000 lines across 402 files                                      |
-| Tests        | about 1,450, in one run with no services needed                     |
-| Domain layer | 112 files, zero React and zero browser APIs                         |
+| TypeScript   | ~34,000 lines across about 200 files, after the narrowing           |
+| Tests        | about 500 cases, in one run with no services needed                 |
+| Domain layer | 84 files, zero React and zero browser APIs                          |
 | Verification | one command — typecheck, lint, format, test, build                  |
 | Gate         | pre-push hook and CI run the same command; the deploy depends on it |
 
 **Do not lead with these.** Line count is not an achievement and
-everybody knows it. They are here in case somebody asks about scale.
+everybody knows it. They are here in case somebody asks about scale —
+and the drop from more than twice that is itself a better talking point
+than the number.
 
 ---
 
@@ -378,13 +373,12 @@ everybody knows it. They are here in case somebody asks about scale.
 Being caught overstating is worse than any gap, and every one of these is
 checkable in about a minute:
 
-- **Not "no network calls".** Two outbound hosts, listed above.
+- **Not "no network calls".** GitHub, when sync is on.
 - **Not "fully tested".** Say what is deliberately untested and why —
   `docs/TESTING.md` has that section, and it is the part that reads as
   judgement rather than as a gap.
-- **Not "the fog is tested".** The parts that can be wrong on their own
-  are. Whether it clears correctly on a walk has a "done when" no suite
-  can satisfy: verified by walking, outdoors, and that is still
-  outstanding.
-- **Not "it syncs".** It did once; it does not now. Export and import
-  are the only way data leaves the browser.
+- **Not "the progression is tested end to end".** Each side of it is; no
+  single test carries a load from one session into the next through the
+  real repositories. That round trip was verified by driving the app.
+- **Not "it syncs live".** It syncs a file, in turns, on launch, page
+  change and visibility.

@@ -174,6 +174,20 @@ export function hasConditioning(log: WorkoutLog): boolean {
   )
 }
 
+/**
+ * Whether a session's warm-up was actually done — the source of Mobility.
+ *
+ * Same shape as `hasConditioning`: completed sets on a `warmup` entry,
+ * never the slot's presence, and *whether* rather than how much — six
+ * warm-up rows are one act, or the cheapest part of a session would be
+ * the best paid.
+ */
+export function hasWarmUp(log: WorkoutLog): boolean {
+  return log.entries.some(
+    (entry) => entry.role === 'warmup' && entry.sets.some((set) => set.outcome === 'completed'),
+  )
+}
+
 export function isEntryComplete(entry: LogEntry): boolean {
   return entry.sets.every((set) => set.outcome !== 'pending')
 }

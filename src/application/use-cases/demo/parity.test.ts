@@ -1,8 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { atlasView } from '@/application/use-cases/atlas/atlas'
 import { characterSheet } from '@/application/use-cases/character/sheet'
-import { shelfTree } from '@/application/use-cases/upgrades/upgrades'
 import { UNCLAIMED_AREAS } from '@/domain/game/traits'
 import type { Clock } from '@/domain/repositories/ports'
 
@@ -69,20 +67,8 @@ function store<T extends { id?: unknown; month?: unknown }>(key: 'id' | 'month' 
 function services() {
   let next = 0
   let settings: Record<string, unknown> = {}
-  const cells = new Set<string>()
 
-  const parts = {
-    items: store(),
-    upgrades: store(),
-    rooms: store(),
-    finance: store('month'),
-    campaigns: store(),
-    vices: store(),
-    places: store(),
-    workouts: store(),
-    challenges: store(),
-    trips: store(),
-  }
+  const parts = { workouts: store() }
 
   /*
    * The review spine is the one repository the sheet reads that is not a
@@ -106,19 +92,6 @@ function services() {
   return {
     ...parts,
     review,
-    explored: {
-      all: () => Promise.resolve(cells as ReadonlySet<string>),
-      reveal: (many: readonly string[]) => {
-        const before = cells.size
-        for (const cell of many) cells.add(cell)
-        return Promise.resolve(cells.size - before)
-      },
-      clear: () => {
-        cells.clear()
-        return Promise.resolve()
-      },
-      count: () => Promise.resolve(cells.size),
-    },
     settings: {
       get: () => Promise.resolve(settings),
       save: (next_: Record<string, unknown>) => {
@@ -146,16 +119,15 @@ describe('what a reviewer sees on the landing page', () => {
   })
 
   /*
-   * Not *every* trait — the sheet keeps unproven bars on purpose,
-   * because "eight bars with three empty says where the time is going".
-   * What must not happen is all of them reading "Nothing yet", which is
-   * the landing page of an app nobody has used.
+   * All three, now there are three and every one is fed by the same
+   * sessions: a demo with an empty Mobility bar would be a fixture that
+   * never logged a warm-up, which is not what four months of training
+   * looks like.
    */
-  it('has proved more than one trait', async () => {
+  it('has proved every trait', async () => {
     const sheet = await characterSheet(await seeded())
-    const proven = sheet.traits.filter((trait) => trait.xp > 0)
 
-    expect(proven.length).toBeGreaterThan(1)
+    expect(sheet.traits.every((trait) => trait.xp > 0)).toBe(true)
   })
 
   /*
@@ -172,91 +144,5 @@ describe('what a reviewer sees on the landing page', () => {
       .reduce((sum, area) => sum + area.xp, 0)
 
     expect(inTraits + unclaimed).toBe(sheet.standing.xp)
-  })
-
-  /*
-   * An area with nothing to say says nothing, which is correct
-   * behaviour and a demonstration of an empty app. Some of them must
-   * have something.
-   */
-  it('leaves fewer than half the areas silent', async () => {
-    const sheet = await characterSheet(await seeded())
-    const silent = sheet.areas.filter((area) => area.silent)
-
-    expect(silent.length).toBeLessThan(sheet.areas.length / 2)
-  })
-})
-
-describe('what a reviewer sees on the other screens', () => {
-  it('covers every status the tech tree can draw', async () => {
-    const deps = await seeded()
-    const all = await deps.upgrades.all()
-    const statuses = new Set(all.map((one) => (one as { status: string }).status))
-
-    expect(statuses.has('purchased')).toBe(true)
-    expect(statuses.has('cancelled')).toBe(true)
-    expect(all.some((one) => (one as { status: string }).status === 'idea')).toBe(true)
-  })
-
-  it('puts something on both shelves of the tree', async () => {
-    const deps = await seeded()
-
-    expect((await shelfTree('base', 0, deps)).length).toBeGreaterThan(0)
-    expect((await shelfTree('tech', 0, deps)).length).toBeGreaterThan(0)
-  })
-
-  /*
-   * The map is the screen that fails this way most quietly: places and
-   * fog are separate readings, and a fixture with places but nothing
-   * visited draws a full list over an unbroken grey sheet.
-   */
-  it('gives the map both places and cleared ground', async () => {
-    const view = await atlasView(await seeded())
-
-    expect(view.places.length).toBeGreaterThan(4)
-    expect(view.cellCount).toBeGreaterThan(0)
-  })
-
-  /*
-   * Every chapter is a box now, so the arc has to show one ticked and
-   * some still to do — a fixture with none ticked draws an empty path.
-   */
-  it('ticks one chapter of the arc and leaves the rest to do', async () => {
-    const deps = await seeded()
-    const [arc] = await deps.campaigns.all()
-    const stages =
-      (arc as { stages: readonly { reached: readonly unknown[] }[] } | undefined)?.stages ?? []
-
-    expect(stages.filter((one) => one.reached.length > 0)).toHaveLength(1)
-    expect(stages.length).toBeGreaterThan(1)
-  })
-
-  it('plans trips against places that exist', async () => {
-    const deps = await seeded()
-    const trips = (await deps.trips.all()) as readonly { placeIds: readonly string[] }[]
-    const places = new Set(
-      ((await deps.places.all()) as readonly { id: string }[]).map((p) => p.id),
-    )
-
-    expect(trips.length).toBeGreaterThan(1)
-    expect(trips.every((t) => t.placeIds.length > 0)).toBe(true)
-    expect(trips.every((t) => t.placeIds.every((id) => places.has(id)))).toBe(true)
-  })
-
-  /*
-   * Without a daily goal the Codex draws its own empty state on a screen
-   * full of books, and the home screen loses the row that ties the two
-   * together.
-   */
-  it('sets a reading goal, so the Codex has a today', async () => {
-    const deps = await seeded()
-    const items = (await deps.items.all()) as readonly { dailyGoal?: unknown }[]
-
-    expect(items.some((one) => one.dailyGoal !== undefined)).toBe(true)
-  })
-  it('gives the money screen more than one month to compare', async () => {
-    const deps = await seeded()
-
-    expect((await deps.finance.all()).length).toBeGreaterThanOrEqual(3)
   })
 })

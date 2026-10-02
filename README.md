@@ -1,22 +1,24 @@
 # LifeOS
 
-A gamified productivity system: thirteen areas of one life, in one app,
-scored by one model.
+A gamified workout tracker. Double progression that moves the bar for
+you, deloads that adjust themselves, and a character that levels
+**Strength**, **Stamina** and **Mobility** from the sessions you log.
 
 **▶ [Open the demo](https://andreibautin.github.io/LifeOS/)** — no
 sign-up, no account, nothing to install. It fills itself with generated
 data the first time you open it. Everything stays in your browser.
 
-Training, an arc of life chapters, a reading log, a house, a tech tree of
-things to save up for, money, a map with fog that clears as you walk, a
-seasonal challenge pass. Each pays into one currency and
-one character sheet.
+It was a thirteen-area life hub once — a reading log, a map, a tech tree,
+a house, money, quests. Each of those turned out to be done better by an
+app that already does it, and the one thing nothing else did was the
+lifting, so that is what this is now.
 
 ## The insight that makes it click
 
-The areas are not separate apps sharing a shell. **Each declares what it
-has — ladders, ratings, acts — in one registry, and everything else is
-derived from that.**
+**Every number on screen is declared in one registry — ladders, ratings,
+acts — and everything else is derived from that.** Strength, conditioning
+and the warm-up are three areas, each feeding one trait, and all three are
+counted off the same workout log.
 
 There are exactly three kinds of number, and mixing them up is what
 makes most trackers meaningless:
@@ -30,14 +32,12 @@ makes most trackers meaningless:
 Three rules hold between them, and they are tests rather than prose:
 
 1. **No ladder is fed by XP.** A ladder must name a published standard —
-   a powerlifting total against bodyweight multiples, a credit score
-   against FICO's own bands, net worth against the Federal Reserve's
-   percentiles. If nothing outside the app anchors it, it is not a
-   ladder. There is no published figure for how good at seeing your
-   friends you ought to be, so that area never had one.
+   a squat, bench, deadlift and total against bodyweight multiples. If
+   nothing outside the app anchors it, it is not a ladder, which is why
+   conditioning and mobility have none.
 2. **No rating is promoted to a ladder.** No measurement may be claimed
    by both.
-3. **Nothing is counted twice.** Every record pays exactly one area.
+3. **Nothing is counted twice.** Every act pays exactly one area.
 
 The consequence that surprises people: **an area with nothing to say
 says nothing.** No zeroes, no "0%", no empty progress bars — absent, and
@@ -48,11 +48,10 @@ obvious gap.
 
 XP is paid for a thing you _did_ and never for a thing that _happened_.
 
-Sending a job application pays; being given an interview does not.
-Logging a workout pays; the number going up does not. Ticking a habit
-pays; a thirty-day streak pays nothing extra. Typing in your net worth
-pays nothing at all — that is a measurement, and paying for the number
-rising would be paying for an outcome.
+Finishing a session pays, and so does each working set, the conditioning
+and the warm-up — whether they were _done_, never how heavy or how fast.
+The number on the bar going up pays nothing: that is a measurement, and
+it already has a ladder.
 
 This is the line every gamified tracker crosses, and crossing it is what
 turns them into things to optimise rather than things to use.
@@ -65,12 +64,12 @@ turns them into things to optimise rather than things to use.
 - **[`domain/assembly/rp-assemble.ts`](src/domain/assembly/rp-assemble.ts)**
   — the training week, filled to per-muscle volume targets after
   subtracting what the strength work already spent.
+- **[`domain/programs/progression.ts`](src/domain/programs/progression.ts)**
+  — double progression: work a rep range, and when every set reaches the
+  top of it, the next session's load goes up.
 - **[`domain/sync/tombstone.ts`](src/domain/sync/tombstone.ts)** — why
   a deletion is recorded rather than simply performed: without it,
   importing an older backup quietly brings deleted records back.
-- **[`features/upgrades/tree-layout.ts`](src/features/upgrades/tree-layout.ts)**
-  — pure graph layout, in the feature rather than the domain, because
-  positions are presentation.
 
 ## Architecture
 
@@ -147,15 +146,12 @@ the same envelope, checksum and tombstones that make an export safe to
 import make a sync safe to merge. The token stays in that browser's
 storage and is never in a backup or the synced file.
 
-Two third parties are reachable, both only from the map screens:
-OpenStreetMap for tiles, and Nominatim for turning a place name into
-coordinates. Neither carries a record. **Each was a decision, not a
-precedent.**
+GitHub, when you connect sync, is the only host the app talks to.
 
 ### The sample data, and starting fresh
 
-The deployed site fills itself with a made-up person on first open, so
-every screen has something to show. **Settings → Start fresh** deletes
+The deployed site fills itself with four months of a made-up lifter's
+sessions on first open, so every screen has something to show. **Settings → Start fresh** deletes
 it and leaves an empty app that is yours; **Load sample data** puts it
 back into an empty one. A banner on the home screen says which you are
 looking at until you dismiss it.
@@ -246,15 +242,10 @@ ProgramBuilder — which shared one structural flaw: **the programme and
 the workout log were the same database rows**, so editing a programme
 rewrote history. The good ideas were kept; the implementations were not.
 
-Then from five more, each now archived and pointing here:
-
-| Was                                                                | Is                                                        |
-| ------------------------------------------------------------------ | --------------------------------------------------------- |
-| [Backlogs](https://github.com/AndreiBautin/Backlogs)               | The Codex, with its daily goals and progress log          |
-| [ProjectManager](https://github.com/AndreiBautin/ProjectManager)   | Quests — scoring, blockers, and what to do next           |
-| [upgrade-planner](https://github.com/AndreiBautin/upgrade-planner) | The tech tree, gated on money and prerequisites           |
-| [Dashboard](https://github.com/AndreiBautin/Dashboard)             | Not an area — the scoring spine every area plugs into     |
-| [Map](https://github.com/AndreiBautin/Map)                         | The atlas: places, trips, and fog that clears as you walk |
+Then from five more — a backlog, a project manager, an upgrade planner, a
+dashboard and a map — which lived here as areas of a life hub until the
+app narrowed back to training. Their repositories are archived; the
+history is in this one.
 
 **This was called Lift.** The rename went all the way down — the
 database, the `localStorage` prefix and the magic string at the top of
@@ -264,12 +255,11 @@ was a deliberate factory reset taken at the only moment it was free.
 
 ## Credits
 
-The character figures and the buff icons are from
+The character figures are from
 [game-icons.net](https://game-icons.net), by **Lorc** and
 **Delapouite**, under
 [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/). They are
 committed as SVG paths — in
 [`src/features/character/figures.ts`](src/features/character/figures.ts)
-and [`src/features/limits/pool-icons.ts`](src/features/limits/pool-icons.ts)
 — rather than fetched, so the app adds no outbound host for them. The
 same credit is shown in the app at the foot of Settings.

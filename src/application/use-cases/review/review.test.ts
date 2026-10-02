@@ -1,16 +1,10 @@
 import { describe, expect, it } from 'vitest'
 
-import { createItem } from '@/domain/backlog/item'
-import type { CellId } from '@/domain/atlas/exploration/GeoCell'
-import type { Place } from '@/domain/atlas/place/Place'
 import { DEFAULT_SETTINGS } from '@/domain/settings/settings'
 import { SCORING } from '@/domain/game/registry'
-import { asExerciseId, asMetricId, asUpgradeId, type MetricId } from '@/domain/ids/ids'
-import type { Item } from '@/domain/backlog/item'
-import type { FinanceReading } from '@/domain/finance/reading'
+import { asExerciseId, asMetricId, type MetricId } from '@/domain/ids/ids'
 import type { Clock, WorkoutRepository, ReviewRepository } from '@/domain/repositories/ports'
 import type { MetricDefinition, MonthlySnapshot } from '@/domain/review/metric'
-import type { Upgrade } from '@/domain/upgrades/upgrade'
 import { aWorkout } from '@/test/builders/workout'
 
 import { measureAll } from './measure'
@@ -37,19 +31,13 @@ function harness(
   // bodyweight on file", and under `exactOptionalPropertyTypes` a Partial
   // will not carry an explicit `undefined` through.
   settingsOverride: Record<string, unknown> = {},
-  walkedCells: CellId[] = [],
 ) {
   const clock: Clock = { now: () => at }
 
-  const backlog: Item[] = []
-  const financeList: FinanceReading[] = []
-  const upgradeList: Upgrade[] = []
   const workoutList: ReturnType<typeof aWorkout>[] = []
 
   const definedMetrics = new Map<string, MetricDefinition>()
   const snapshotStore = new Map<string, MonthlySnapshot>()
-
-  const placeList: Place[] = []
 
   const stub = <T>(list: T[]) => ({
     all: () => Promise.resolve(list),
@@ -89,21 +77,7 @@ function harness(
   }
 
   const deps: ReviewDeps = {
-    items: stub(backlog),
-    finance: stub(financeList),
-    upgrades: stub(upgradeList),
     workouts: stub(workoutList) as unknown as WorkoutRepository,
-    places: stub(placeList),
-    rooms: stub([]),
-    vices: stub([]),
-    explored: {
-      all: () => Promise.resolve(new Set(walkedCells)),
-      reveal: () => Promise.resolve(0),
-      clear: () => Promise.resolve(),
-      count: () => Promise.resolve(walkedCells.length),
-    },
-    // No region by default, so the exploration ladder reads nothing —
-    // which is what every test here that predates the map expects.
     settings: {
       get: () => Promise.resolve({ ...DEFAULT_SETTINGS, ...settingsOverride }),
       save: () => Promise.resolve(),
@@ -112,20 +86,7 @@ function harness(
     clock,
   }
 
-  return {
-    deps,
-    backlog,
-    financeList,
-    upgradeList,
-    workoutList,
-    placeList,
-    snapshotStore,
-  }
-}
-
-const anItemDeps = {
-  clock: { now: () => new Date(2026, 0, 1) },
-  ids: { next: () => 'item' },
+  return { deps, workoutList, snapshotStore }
 }
 
 describe('measuring the hub', () => {
@@ -203,56 +164,16 @@ describe('measuring the hub', () => {
     expect(measured['training.squat-e1rm']).toBeDefined()
     expect(measured['training.total']).toBeUndefined()
   })
-
-  it('counts the tech tree as a share of what is owned', async () => {
-    const { deps, upgradeList } = harness()
-
-    const base: Omit<Upgrade, 'id' | 'title' | 'status'> = {
-      category: 'office',
-      priority: 50,
-      createdAt: '2026-01-01T00:00:00.000Z',
-    }
-
-    upgradeList.push(
-      { ...base, id: asUpgradeId('a'), title: 'A', status: 'purchased' },
-      { ...base, id: asUpgradeId('b'), title: 'B', status: 'idea' },
-      { ...base, id: asUpgradeId('c'), title: 'C', status: 'idea' },
-      // Cancelled is out of both halves: something decided against is not
-      // progress and is not a debt.
-      { ...base, id: asUpgradeId('d'), title: 'D', status: 'cancelled' },
-    )
-
-    expect((await measureAll(deps))['upgrades.owned-share']).toBe(33)
-  })
-
-  it('uses the backlog’s own statistic rather than a second copy of it', async () => {
-    const { deps, backlog } = harness()
-    backlog.push(createItem({ title: 'Dune', category: 'books' }, anItemDeps))
-
-    const measured = await measureAll(deps)
-
-    expect(measured['backlog.median-age-days']).toBeGreaterThan(200)
-  })
 })
 
 /**
- * Two upgrades, one bought — a measured 50% for the spine tests below.
- *
- * A builder rather than four copies, because these tests care about the
- * spine rather than about upgrades, and the fixture should not be the
- * loudest thing in them.
+ * Thirteen finished sessions this month — a measured value for the spine
+ * tests below, through `training.sessions-in-month`.
  */
-function halfBought(): Upgrade[] {
-  const base: Omit<Upgrade, 'id' | 'title' | 'status'> = {
-    category: 'office',
-    priority: 50,
-    createdAt: '2026-01-01T00:00:00.000Z',
-  }
-
-  return [
-    { ...base, id: asUpgradeId('x'), title: 'X', status: 'purchased' },
-    { ...base, id: asUpgradeId('y'), title: 'Y', status: 'idea' },
-  ]
+function thirteenSessions(): ReturnType<typeof aWorkout>[] {
+  return Array.from({ length: 13 }, (_, day) =>
+    aWorkout({ date: `2026-08-${String(day + 1).padStart(2, '0')}` }),
+  )
 }
 
 describe('the monthly review', () => {
@@ -264,18 +185,19 @@ describe('the monthly review', () => {
    * rule's tests because the example went away is how a rule stops being
    * enforced without anybody deciding to stop enforcing it.
    *
-   * The vehicle is now `upgrades.owned-share`, which is measured the
-   * same way and is already driven by this harness.
+   * The vehicle moved again when the tech tree went, to
+   * `training.sessions-in-month` — measured the same way, and the one
+   * measured rating a workout tracker has.
    */
   it('opens on measured values nobody has to type', async () => {
-    const { deps, upgradeList } = harness()
-    upgradeList.push(...halfBought())
+    const { deps, workoutList } = harness()
+    workoutList.push(...thirteenSessions())
 
     const draft = await draftReview(deps)
 
     expect(draft.month).toBe('2026-08')
     expect(draft.started).toBe(false)
-    expect(draft.measured['upgrades.owned-share']).toBe(50)
+    expect(draft.measured['training.sessions-in-month']).toBe(13)
   })
 
   /*
@@ -308,12 +230,12 @@ describe('the monthly review', () => {
    * shadow something the app counted.
    */
   it('re-reads measured values at save rather than trusting the caller', async () => {
-    const { deps, upgradeList, snapshotStore } = harness()
-    upgradeList.push(...halfBought())
+    const { deps, workoutList, snapshotStore } = harness()
+    workoutList.push(...thirteenSessions())
 
-    await saveReview({ 'upgrades.progress': 99 }, deps)
+    await saveReview({ 'training.consistency': 99 }, deps)
 
-    expect(snapshotStore.get('2026-08')?.values['upgrades.progress']).toBe(50)
+    expect(snapshotStore.get('2026-08')?.values['training.consistency']).toBe(13)
   })
 
   /*
@@ -325,14 +247,14 @@ describe('the monthly review', () => {
    * file.
    */
   it('stores a measured value under the metric that reads it, not the source', async () => {
-    const { deps, upgradeList, snapshotStore } = harness()
-    upgradeList.push(...halfBought())
+    const { deps, workoutList, snapshotStore } = harness()
+    workoutList.push(...thirteenSessions())
 
     await saveReview({}, deps)
 
     const values = snapshotStore.get('2026-08')?.values ?? {}
-    expect(values['upgrades.progress']).toBe(50)
-    expect(values['upgrades.owned-share']).toBeUndefined()
+    expect(values['training.consistency']).toBe(13)
+    expect(values['training.sessions-in-month']).toBeUndefined()
   })
 
   /*
@@ -341,22 +263,22 @@ describe('the monthly review', () => {
    * nobody having typed a number.
    */
   it('judges a measured area from two months of counting', async () => {
-    const { deps, upgradeList, snapshotStore } = harness()
-    upgradeList.push(...halfBought())
+    const { deps, workoutList, snapshotStore } = harness()
+    workoutList.push(...thirteenSessions())
 
-    // Last month a quarter of the list was bought; half of it is now.
+    // Ten sessions last month, under the twelve the rating asks for.
     snapshotStore.set('2026-07', {
       month: '2026-07',
-      values: { 'upgrades.progress': 25 },
+      values: { 'training.consistency': 10 },
       createdAt: '',
     })
     await saveReview({}, deps)
 
-    const upgrades = (await readout(deps)).areas.find((area) => area.area === 'upgrades')
+    const training = (await readout(deps)).areas.find((area) => area.area === 'training')
 
-    // 25 to 50 on an `increase` metric: counted twice, judged once.
-    expect(upgrades?.metrics[0]?.latest).toBe(50)
-    expect(upgrades?.metrics[0]?.outcome).toBe('improved')
+    // 10 to 13 against a floor of 12: counted twice, judged once.
+    expect(training?.metrics[0]?.latest).toBe(13)
+    expect(training?.metrics[0]?.outcome).toBe('improved')
   })
 
   it('carries entered values forward into the next draft of the same month', async () => {

@@ -55,29 +55,16 @@ export interface TraitDefinition {
 }
 
 /**
- * Four traits, and **they no longer partition the areas.**
+ * Three traits over three areas, and **they partition again.**
  *
- * That is the change to know about before reading anything else here.
- * Every area used to belong to exactly one trait, which made the trait
- * totals sum to the XP total exactly — rule three holding by
- * construction. Asked for: _"drop discipline, fortune and wayfaring
- * completely"_, and there is no honest home among the four survivors for
- * habits, limits, challenges, job search, finance or exploration.
- * Forcing them in would have made Craft a catch-all holding half the
- * app, which is the invented structure this file has always refused.
- *
- * **So a trait is now a selection, and the bars add up to less than the
- * level above them.** That is a real cost and it is deliberate rather
- * than accidental — which is the entire difference from the failure the
- * old guard existed to catch, where an area fell out of the partition by
- * mistake and nothing said so. `UNCLAIMED_AREAS` names the ones with no
- * bar, and `traits.test.ts` asserts that list exactly, so a *new* area
- * arriving without a trait is still a decision somebody has to make out
- * loud rather than a silence.
- *
- * What has not changed: no area feeds two traits, and nothing here
- * invents a number. A trait is still XP you already earned under a
- * different name.
+ * They stopped being one when the app held a dozen areas and three traits
+ * were dropped, leaving habits, finance and the rest with no honest home —
+ * so the bars added up to less than the level above them, deliberately.
+ * The app is a workout tracker now — asked for as _"fully lean into this
+ * simply being a gamified workout tracker. you can level up strength,
+ * stamina, and mobility"_ — and every area it has left is training of one
+ * kind or another, so each has a bar and the bars sum to the level again.
+ * `traits.test.ts` holds both halves.
  */
 export const TRAITS: readonly TraitDefinition[] = [
   { id: 'strength', label: 'Strength', areas: ['training'] },
@@ -87,39 +74,18 @@ export const TRAITS: readonly TraitDefinition[] = [
    * a session that contained conditioning actually done.
    */
   { id: 'stamina', label: 'Stamina', areas: ['cardio'] },
-  { id: 'intellect', label: 'Intelligence', areas: ['backlog'] },
-  /*
-   * **Crafting is things you built, and it used to be much wider.** It
-   * was quests, the house and the tech tree — asked for as _"it
-   * shouldn't be any dailies or housework, just the diy stuff I work on
-   * myself or Legos from my codex."_
-   *
-   * So it claims one area, and that area is split off two others rather
-   * than being a new place to log things: Lego comes out of the Codex
-   * and DIY house jobs come out of Base. Buying an upgrade and hiring a
-   * plumber are still things you did and still pay the level; they are
-   * not crafting, and they have no bar now.
-   */
-  { id: 'crafting', label: 'Crafting', areas: ['crafting'] },
+  /* The warm-up, by the same mechanism. */
+  { id: 'mobility', label: 'Mobility', areas: ['mobility'] },
 ]
 
 /**
  * The areas that pay XP into the level and into no bar.
  *
- * **Listed rather than derived, and that is the point.** It is the same
- * guard the partition used to be, one step weaker: the test asserts this
- * list matches reality exactly, so an area added without a trait fails
- * the build until somebody says which of the two it is. Deriving it
- * would make the answer always "correct" and never a decision.
+ * **Empty, and kept rather than deleted.** The test asserts this list
+ * matches reality exactly, so an area added without a trait fails the
+ * build until somebody says which of the two it is.
  */
-export const UNCLAIMED_AREAS: readonly LifeArea[] = [
-  'places',
-  'upgrades',
-  'base',
-  'vitals',
-  'finance',
-  'challenges',
-]
+export const UNCLAIMED_AREAS: readonly LifeArea[] = []
 
 /** Which trait an area feeds. Total, by the partition guard. */
 export function traitForArea(area: LifeArea): TraitDefinition | undefined {

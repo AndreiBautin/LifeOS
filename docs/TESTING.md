@@ -31,13 +31,6 @@ failed the day that default moved — a true fact about a constant it did
 not own, and nothing about the division it existed to check. It states
 both numbers now.
 
-The legacy 5/3/1 import decoder is tested against the **real export
-file** rather than a synthetic fixture. Its decoding table was derived
-from that file, so a hand-written sample would only prove the parser
-agrees with the assumptions used to write it. The file carries
-independent ground truth — the training maxes each cycle records — and
-that is what the assertions check.
-
 ## By layer
 
 | Layer             | How                                      | What it protects                                                                                                                                               |
@@ -68,6 +61,13 @@ export again — byte-identical, and unchanged across a second round trip.
 A truncated file is refused, and so is one from a newer version rather
 than being guessed at: the realistic corruption is a half-written file,
 which parses as valid JSON right up to the cut.
+
+**An old backup still restores the training.** A file written while the
+app held quests, a map and the rest carries sections this build no
+longer has; `backup-service.test.ts` → "imports the training out of a
+file that also carries removed areas" holds that they are ignored rather
+than refused, because refusing would make every backup taken before the
+narrowing useless at exactly the moment somebody reaches for one.
 
 **A deletion survives a restore.** Delete a session after a backup was
 taken, import the backup, and the session stays deleted. Without the
@@ -116,11 +116,19 @@ as sets rather than as a block of time.
 list of declared-but-uncounted acts is **empty**. Without it an act can be
 declared, awarded on screen, and counted nowhere.
 
-**The trait bars never double-count.** Every area belongs to at most one
-trait, no area belongs to two, and the trait totals plus the explicitly
-unclaimed areas sum to the XP total exactly. An area belonging to no
-trait would pay XP that appears in the character total and in no bar, and
-nothing would error.
+**Mobility and Stamina pay for work done, once a session.**
+`sheet.test.ts` → "pays the warm-up only when a warm-up set was done",
+"pays conditioning only when a conditioning set was done" and "pays the
+warm-up once a session, however many rows it has". Every session
+_schedules_ a warm-up, so counting the slot would fill a bar for work
+nobody did, and nothing on screen would look wrong.
+
+**The trait bars partition the XP.** `traits.test.ts` asserts every area
+has a trait, no area has two, and the totals split the XP total exactly.
+An area belonging to no trait would pay XP that appears in the character
+total and in no bar, and nothing would error. `UNCLAIMED_AREAS` is empty
+and the test asserts it matches reality, so an area added without a
+trait fails until somebody decides.
 
 **The demo fixture contains nothing personal.** `seed.test.ts` reads its
 own source and scans it for emails, phone numbers, credential shapes and
@@ -131,23 +139,14 @@ in while debugging and forgetting.
 refuses with `already-has-data`. A demo build opened by somebody who has
 since entered their own records must not lose them.
 
-**The demo fixture still exercises every screen.** `parity.test.ts`
-asserts obligations as _properties_ — more than one trait proved, both
-shelves of the tech tree populated, the map holding places _and_ cleared
-ground — rather than as a list of fixture titles, so editing it stays
+**The demo fixture still fills the landing page.** `parity.test.ts`
+asserts obligations as _properties_ — past the first level, every trait
+proved, the traits summing to the XP — rather than as a list of fixture
+records, so editing it stays
 free and hollowing it out does not. This is the failure unique to having
 a demo: a feature works perfectly against real data and renders an empty
 box on the deployed site, nothing errors, the feature's own tests keep
 passing, and the person who notices is the employer.
-
-**The account reaches the repositories before any child renders.**
-`AuthGate.test.tsx`, the one component test here, and it earns its place
-by failing for the right reason: move the assignment back into a
-`useEffect` and it goes red. That was a real bug — every screen mounted
-against an empty holder, every query threw, and with `retry: false` sat
-at `data === undefined`, which is the same state a card draws a skeleton
-for. The whole app came up as placeholders on a device that had signed in
-perfectly well.
 
 ## Deliberately not tested
 
@@ -156,8 +155,8 @@ Naming these is the point of the section.
 - **Component rendering, almost entirely.** The screens are thin — they
   resolve a hook and lay out what it returns. A render test would mostly
   assert that Tailwind classes are present, which is a test of the test.
-  `AuthGate` is the exception because what is under test there is the
-  _order of two things in one render_, which nothing else can express.
+  There are no component tests at all now; the one there was covered the
+  Firebase sign-in gate and went with it.
 - **A Tailwind colour class is not evidence a colour was applied.** An
   undefined token compiles to no declaration at all, so `text-ink-600`
   once left twenty call sites rendering near-white — legible, plausible,
@@ -165,11 +164,12 @@ Naming these is the point of the section.
   and it renders without error. The only way to catch it is to read the
   _computed_ colour off the element in a browser, which is what found it
   both times.
-- **The service worker.** Registration is refused in an agent's browser
-  ("An unknown error occurred when fetching the script"), so the install
-  → wait → activate path is the one piece of this app that ships on
-  reasoning and a production build. Anything changed there wants testing
-  in a real browser against `vite preview`.
+- **The service worker, offline.** Registration and activation have been
+  seen working against the live site, and the update banner firing after
+  a deploy. What is not verified is offline serving from the precache and
+  the full install → wait → skip-waiting sequence across two versions.
+  Anything changed there wants testing in a real browser against
+  `vite preview` with the network cut.
 - **The rest timer's wall-clock behaviour, and the wake lock.** Both
   depend on tab suspension, which jsdom cannot simulate. The timer's
   correctness comes from its design — derived from an absolute timestamp
@@ -180,24 +180,6 @@ Naming these is the point of the section.
   barbell bench press is a barbell bench press catches nothing. What _is_
   tested is that every exercise a programme references exists in the
   library — the failure that would render a blank row.
-- **The serialised progress chain in the backlog.** It exists because of
-  a race between two in-flight writes, and a test that fakes the timing
-  of that race is a test of the fake. It was checked by driving the
-  running app — three rapid taps landing as three.
-- **The map itself, and the fog as it clears on a walk.** Leaflet is a
-  dependency and jsdom has no layout, so what a unit test could assert
-  about `LeafletMapAdapter` is that it called a library. The parts that
-  can be wrong on their own — the geohash cells, the 100 m accuracy gate,
-  the union merge, the derivation of a visited place's ground — are all
-  tested away from the map. The rest has a "done when" no suite can
-  satisfy: **verified by walking**, on a phone, outdoors. That is still
-  outstanding, and no green suite here should be read as evidence of it.
-- **The share target as the operating system delivers it.** The parse is
-  tested hard, because that is where the interesting mistakes live — a
-  short link with no readable point, a `geo:0,0?q=` placeholder taken
-  literally. What is _not_ tested is that Android's share sheet fills
-  `title`, `text` and `url` the way this app expects. That is a claim
-  about somebody else's software.
 - **The double-progression round trip, end to end.** No single test
   carries a load from one session into the next through the real
   repositories. It was verified by driving the app — a bench opened at
@@ -208,7 +190,9 @@ Naming these is the point of the section.
 ## What the suite has repeatedly failed to catch
 
 Recorded because the pattern is more useful than any individual bug, and
-every entry was found by **driving the app** while the suite was green:
+every entry was found by **driving the app** while the suite was green.
+Several of the examples are from areas the app has since dropped; the
+patterns outlived them.
 
 - **A capability nothing calls.** `proposeLandmarks`, `readinessScore`,
   `moveDailyHome`, `removeDaily`, `renameArc`, `forgetToday`, the geocoder
@@ -220,7 +204,7 @@ every entry was found by **driving the app** while the suite was green:
   `recordFinance` lost `salaryMinor` by exactly that route: collected by
   the form, passed to the use case, written nowhere, and nothing failed to
   compile. Both are now `Record<keyof …>` mapped types the compiler makes
-  you fill in.
+  you fill in — or were, until the records they guarded left the app.
 - **A hand-written second copy of a list that already exists.** The sync
   cursor's pages, then `push`'s collection list, then the finance history
   row. Three times. The fix each time was structural — derive the list

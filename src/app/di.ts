@@ -1,52 +1,26 @@
-import type { Geolocation } from '@/domain/atlas/Geolocation'
-import type { PlaceSearchProvider } from '@/domain/atlas/PlaceSearch'
 import type { IdGenerator } from '@/domain/ids/ids'
 import type {
-  BacklogItemRepository,
-  BacklogSettingsRepository,
   CheckInRepository,
   Clock,
   ExerciseRepository,
-  ExploredAreaRepository,
-  PlaceRepository,
   PositionRepository,
   ReviewRepository,
   SettingsRepository,
   TombstoneRepository,
-  ChallengeRepository,
-  RoomRepository,
-  CampaignRepository,
-  FinanceRepository,
-  TripRepository,
-  ViceRepository,
-  UpgradeRepository,
   WorkoutRepository,
 } from '@/domain/repositories/ports'
 import { DATABASE_NAME, IS_DEMO } from '@/config/storage-keys'
 import { seedDemoData } from '@/application/use-cases/demo/seed'
 import { openDatabase, type AppDatabase } from '@/infrastructure/db/database'
 import {
-  createBacklogItemRepository,
   createCheckInRepository,
   createExerciseRepository,
-  createExploredAreaRepository,
-  createPlaceRepository,
   createPositionRepository,
   createReviewRepository,
   createTombstoneRepository,
-  createChallengeRepository,
-  createRoomRepository,
-  createCampaignRepository,
-  createFinanceRepository,
-  createTripRepository,
-  createViceRepository,
-  createUpgradeRepository,
   createWorkoutRepository,
 } from '@/infrastructure/db/repositories'
-import { createBacklogSettingsStore } from '@/infrastructure/storage/backlog-settings-store'
 import { createSettingsStore } from '@/infrastructure/storage/settings-store'
-import { createBrowserGeolocation } from '@/infrastructure/map/browser-geolocation'
-import { NominatimSearchProvider } from '@/infrastructure/map/nominatim-search'
 import { requestPersistence } from '@/infrastructure/storage/durability'
 import { logger } from '@/shared/logging/logger'
 
@@ -74,27 +48,7 @@ export interface AppServices {
   readonly position: PositionRepository
   readonly workouts: WorkoutRepository
   readonly checkIns: CheckInRepository
-  readonly items: BacklogItemRepository
-  readonly upgrades: UpgradeRepository
   readonly review: ReviewRepository
-  readonly places: PlaceRepository
-  readonly finance: FinanceRepository
-  readonly campaigns: CampaignRepository
-  readonly challenges: ChallengeRepository
-  readonly rooms: RoomRepository
-  /** Which local day the boards were last read on their own. */
-  readonly trips: TripRepository
-  readonly vices: ViceRepository
-  readonly explored: ExploredAreaRepository
-  /** The device's own position, behind a port so a test can fake it. */
-  readonly geolocation: Geolocation
-  /**
-   * Turning a typed name into a point, which is the one thing the atlas
-   * cannot work out locally. Nominatim, the same organisation whose tiles
-   * the map already draws.
-   */
-  readonly placeSearch: PlaceSearchProvider
-  readonly backlogSettings: BacklogSettingsRepository
   readonly tombstones: TombstoneRepository
   readonly settings: SettingsRepository
   readonly ids: IdGenerator
@@ -134,20 +88,7 @@ export async function bootstrap(): Promise<BootstrapResult> {
     position: createPositionRepository(db, systemClock),
     workouts: createWorkoutRepository(db, systemClock),
     checkIns: createCheckInRepository(db, systemClock),
-    items: createBacklogItemRepository(db, systemClock),
-    upgrades: createUpgradeRepository(db, systemClock),
     review: createReviewRepository(db, systemClock),
-    places: createPlaceRepository(db, systemClock),
-    finance: createFinanceRepository(db, systemClock),
-    campaigns: createCampaignRepository(db, systemClock),
-    challenges: createChallengeRepository(db, systemClock),
-    rooms: createRoomRepository(db, systemClock),
-    trips: createTripRepository(db, systemClock),
-    vices: createViceRepository(db, systemClock),
-    explored: createExploredAreaRepository(db),
-    geolocation: createBrowserGeolocation(),
-    placeSearch: new NominatimSearchProvider(),
-    backlogSettings: createBacklogSettingsStore(),
     tombstones: createTombstoneRepository(db),
     settings: createSettingsStore(),
     ids: cryptoIds,

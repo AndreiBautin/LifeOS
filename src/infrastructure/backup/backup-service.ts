@@ -19,8 +19,6 @@ import { indexTombstones, shouldAccept } from '@/domain/sync/tombstone'
 import {
   COLLECTIONS,
   COLLECTION_KEYS,
-  localCells,
-  restoreCells,
   type BackupRepositories,
   type CollectionKey,
 } from './collections'
@@ -48,23 +46,19 @@ export async function buildBackup(
   repositories: BackupRepositories,
   options: ExportOptions,
 ): Promise<BackupEnvelope> {
-  const [gathered, tombstones, cells] = await Promise.all([
+  const [gathered, tombstones] = await Promise.all([
     Promise.all(COLLECTION_KEYS.map((key) => COLLECTIONS[key].local(repositories))),
     repositories.tombstones.all(),
-    localCells(repositories),
   ])
 
   const sections = Object.fromEntries(
     COLLECTION_KEYS.map((key, index) => [key, gathered[index] ?? []]),
-  ) as unknown as Omit<BackupData, 'settings' | 'tombstones' | 'exploredCells'>
+  ) as unknown as Omit<BackupData, 'settings' | 'tombstones'>
 
   const data: BackupData = {
     ...sections,
     settings: options.settings,
     tombstones,
-    // Sorted so two exports of the same ground produce the same file,
-    // which is what makes a checksum worth having.
-    exploredCells: [...cells].sort(),
   }
 
   return {
@@ -174,15 +168,6 @@ export async function previewMerge(
     }),
   )
 
-  /*
-   * Ground merges by union, so nothing is ever updated and nothing is
-   * ever lost: a cell in the file is either new here or already walked.
-   */
-  const cells = await localCells(repositories)
-  const incoming = envelope.data.exploredCells ?? []
-  added.exploredCells = incoming.filter((cell) => !cells.has(cell as never)).length
-  unchanged.exploredCells = cells.size
-
   return { added, updated, unchanged }
 }
 
@@ -191,18 +176,8 @@ function emptyCounts(): Record<keyof BackupCounts, number> {
     exercises: 0,
     workouts: 0,
     checkIns: 0,
-    items: 0,
-    upgrades: 0,
     metrics: 0,
     reviews: 0,
-    vices: 0,
-    campaigns: 0,
-    challenges: 0,
-    rooms: 0,
-    finance: 0,
-    places: 0,
-    trips: 0,
-    exploredCells: 0,
   }
 }
 
@@ -247,15 +222,8 @@ export async function applyBackup(
     await COLLECTIONS[key].restore(repositories, accepted[key])
   }
 
-  // Union, always. Ground has no tombstone because there is no such thing
-  // as un-walking it, so an import can only ever add.
-  await restoreCells(repositories, data.exploredCells ?? [])
-
   return {
-    imported: {
-      ...countsFor({ ...data, ...toSections(accepted) }),
-      exploredCells: (data.exploredCells ?? []).length,
-    },
+    imported: countsFor({ ...data, ...toSections(accepted) }),
     // Settings are only adopted on a full replace. Merging someone else's
     // training maxes into a live setup would silently rewrite every
     // percentage the program prescribes.

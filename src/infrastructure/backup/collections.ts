@@ -1,22 +1,11 @@
 import type { BackupCounts, BackupData } from '@/domain/backup/envelope'
 import type {
-  BacklogItemRepository,
   CheckInRepository,
   ExerciseRepository,
-  ExploredAreaRepository,
-  PlaceRepository,
   ReviewRepository,
   TombstoneRepository,
-  TripRepository,
-  UpgradeRepository,
-  ViceRepository,
-  ChallengeRepository,
-  RoomRepository,
-  CampaignRepository,
-  FinanceRepository,
   WorkoutRepository,
 } from '@/domain/repositories/ports'
-import type { CellId } from '@/domain/atlas/exploration/GeoCell'
 import type { TombstonedCollection } from '@/domain/sync/tombstone'
 
 /**
@@ -40,21 +29,11 @@ export interface BackupRepositories {
   readonly workouts: WorkoutRepository
   readonly checkIns: CheckInRepository
   readonly tombstones: TombstoneRepository
-  readonly items: BacklogItemRepository
-  readonly upgrades: UpgradeRepository
   readonly review: ReviewRepository
-  readonly places: PlaceRepository
-  readonly trips: TripRepository
-  readonly vices: ViceRepository
-  readonly finance: FinanceRepository
-  readonly campaigns: CampaignRepository
-  readonly challenges: ChallengeRepository
-  readonly rooms: RoomRepository
-  readonly explored: ExploredAreaRepository
 }
 
 /** The key a collection is filed under, in the file and in the counts. */
-export type CollectionKey = Exclude<keyof BackupCounts, 'exploredCells'>
+export type CollectionKey = keyof BackupCounts
 
 interface Collection {
   /** What is on this device now. */
@@ -129,22 +108,6 @@ export const COLLECTIONS: Readonly<Record<CollectionKey, Collection>> = {
     tombstoneCollection: 'checkIns',
     purge: (r, id) => r.checkIns.purge(id as never),
   }),
-  items: define({
-    local: (r) => r.items.all(),
-    fromFile: (data) => data.items ?? [],
-    idOf: (row) => row.id,
-    restore: (r, rows) => r.items.restoreMany(rows),
-    tombstoneCollection: 'items',
-    purge: (r, id) => r.items.purge(id as never),
-  }),
-  upgrades: define({
-    local: (r) => r.upgrades.all(),
-    fromFile: (data) => data.upgrades ?? [],
-    idOf: (row) => row.id,
-    restore: (r, rows) => r.upgrades.restoreMany(rows),
-    tombstoneCollection: 'upgrades',
-    purge: (r, id) => r.upgrades.purge(id as never),
-  }),
   metrics: define({
     local: (r) => r.review.metrics(),
     fromFile: (data) => data.metrics ?? [],
@@ -162,88 +125,6 @@ export const COLLECTIONS: Readonly<Record<CollectionKey, Collection>> = {
     tombstoneCollection: 'reviews',
     purge: (r, month) => r.review.purgeSnapshot(month),
   }),
-  places: define({
-    local: (r) => r.places.all(),
-    fromFile: (data) => data.places ?? [],
-    idOf: (row) => row.id,
-    restore: (r, rows) => r.places.restoreMany(rows),
-    tombstoneCollection: 'places',
-    purge: (r, id) => r.places.purge(id as never),
-  }),
-  trips: define({
-    local: (r) => r.trips.all(),
-    fromFile: (data) => data.trips ?? [],
-    idOf: (row) => row.id,
-    restore: (r, rows) => r.trips.restoreMany(rows),
-    tombstoneCollection: 'trips',
-    purge: (r, id) => r.trips.purge(id as never),
-  }),
-  vices: define({
-    local: (r) => r.vices.all(),
-    fromFile: (data) => data.vices ?? [],
-    idOf: (row) => row.id,
-    restore: (r, rows) => r.vices.restoreMany(rows),
-    tombstoneCollection: 'vices',
-    purge: (r, id) => r.vices.purge(id as never),
-  }),
-  /*
-   * Both keyed by the day rather than by a generated id, so `idOf` reads
-   * `day`. That is not a quirk of the backup — it is the same key the
-   * store uses, and it is what makes re-importing a file idempotent
-   * instead of duplicating every morning you ever weighed yourself.
-   */
-  finance: define({
-    local: (r) => r.finance.all(),
-    fromFile: (data) => data.finance ?? [],
-    idOf: (row) => row.month,
-    restore: (r, rows) => r.finance.restoreMany(rows),
-    tombstoneCollection: 'finance',
-    purge: (r, id) => r.finance.purge(id as never),
-  }),
-  rooms: define({
-    local: (r) => r.rooms.all(),
-    fromFile: (data) => data.rooms ?? [],
-    idOf: (row) => row.id,
-    restore: (r, rows) => r.rooms.restoreMany(rows),
-    tombstoneCollection: 'rooms',
-    purge: (r, id) => r.rooms.purge(id as never),
-  }),
-  challenges: define({
-    local: (r) => r.challenges.all(),
-    fromFile: (data) => data.challenges ?? [],
-    idOf: (row) => row.id,
-    restore: (r, rows) => r.challenges.restoreMany(rows),
-    tombstoneCollection: 'challenges',
-    purge: (r, id) => r.challenges.purge(id as never),
-  }),
-  campaigns: define({
-    local: (r) => r.campaigns.all(),
-    fromFile: (data) => data.campaigns ?? [],
-    idOf: (row) => row.id,
-    restore: (r, rows) => r.campaigns.restoreMany(rows),
-    tombstoneCollection: 'campaigns',
-    purge: (r, id) => r.campaigns.purge(id as never),
-  }),
 }
 
 export const COLLECTION_KEYS = Object.keys(COLLECTIONS) as readonly CollectionKey[]
-
-/**
- * Walked ground, handled apart from the table above.
- *
- * It is a set of bare ids rather than records: no id field to read, no
- * tombstone to check, and it merges by union because there is no such
- * thing as un-walking ground. Every assumption the table makes is one this
- * breaks, which is why it is not in it.
- */
-export async function localCells(repositories: BackupRepositories): Promise<ReadonlySet<CellId>> {
-  return repositories.explored.all()
-}
-
-export async function restoreCells(
-  repositories: BackupRepositories,
-  cells: readonly string[],
-): Promise<void> {
-  if (cells.length === 0) return
-  await repositories.explored.reveal(cells as readonly CellId[])
-}

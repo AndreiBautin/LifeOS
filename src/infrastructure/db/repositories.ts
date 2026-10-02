@@ -1,49 +1,18 @@
-import type { CampaignId, RoomId } from '@/domain/ids/ids'
-import type { Room } from '@/domain/base/declutter'
-import type { ChallengeMark } from '@/domain/challenges/challenge'
-import { fromStoredCampaign, type Campaign } from '@/domain/campaign/campaign'
 import type { CheckIn } from '@/domain/autoregulation/check-in'
-import type { FinanceReading } from '@/domain/finance/reading'
-import type { Item } from '@/domain/backlog/item'
-import type { Upgrade } from '@/domain/upgrades/upgrade'
 import type { MetricDefinition, MonthlySnapshot } from '@/domain/review/metric'
-import type { Place } from '@/domain/atlas/place/Place'
-import type { PlaceId } from '@/domain/atlas/place/PlaceId'
-import type { Trip } from '@/domain/atlas/trip/Trip'
-import type { Vice } from '@/domain/vitals/charges'
-import type { TripId } from '@/domain/atlas/trip/TripId'
-import type { CellId } from '@/domain/atlas/exploration/GeoCell'
 import type { ProgramPosition } from '@/domain/programs/position'
 import { builtInExercises } from '@/domain/exercises/catalogue'
 import type { Exercise } from '@/domain/exercises/exercise'
 import { resolveLibrary } from '@/domain/exercises/library'
-import type {
-  BacklogItemId,
-  CheckInId,
-  ExerciseId,
-  MetricId,
-  UpgradeId,
-  ViceId,
-  WorkoutId,
-} from '@/domain/ids/ids'
+import type { CheckInId, ExerciseId, MetricId, WorkoutId } from '@/domain/ids/ids'
 import type { WorkoutLog } from '@/domain/logging/workout-log'
 import type {
-  BacklogItemRepository,
   CheckInRepository,
   Clock,
   ExerciseRepository,
-  FinanceRepository,
-  ChallengeRepository,
-  RoomRepository,
-  CampaignRepository,
-  ExploredAreaRepository,
-  PlaceRepository,
   PositionRepository,
   ReviewRepository,
   TombstoneRepository,
-  TripRepository,
-  UpgradeRepository,
-  ViceRepository,
   WorkoutQuery,
   WorkoutRepository,
 } from '@/domain/repositories/ports'
@@ -259,84 +228,6 @@ export function createWorkoutRepository(db: AppDatabase, clock: Clock): WorkoutR
 }
 
 /**
- * The backlog.
- *
- * `replaceAll` did not come across. It rewrote the whole collection in one
- * call, which is what localStorage forces and IndexedDB does not — and it
- * put a destructive operation and a restore behind one name, so a call
- * site asking to fill an empty store could receive a wipe. It is
- * `restoreMany` and `clear` here, and the import path is the only caller
- * of the second.
- */
-export function createBacklogItemRepository(db: AppDatabase, clock: Clock): BacklogItemRepository {
-  return {
-    async all() {
-      return db.getAll('items')
-    },
-    async byId(id: BacklogItemId) {
-      return db.get('items', id)
-    },
-    async save(item: Item) {
-      await db.put('items', stamp(item, clock))
-    },
-    async restoreMany(items: readonly Item[]) {
-      const tx = db.transaction('items', 'readwrite')
-      await Promise.all([...items.map((item) => tx.store.put(item)), tx.done])
-    },
-    async remove(id: BacklogItemId) {
-      await db.delete('items', id)
-      await bury(db, clock, 'items', id)
-    },
-    async purge(id: BacklogItemId) {
-      await db.delete('items', id)
-    },
-    async clear() {
-      await db.clear('items')
-    },
-    async count() {
-      return db.count('items')
-    },
-  }
-}
-
-/**
- * The tech tree.
- *
- * No batch write: buying something changes no other record, because what it unblocks is derived from the graph on every
- * read rather than stored on the nodes.
- */
-export function createUpgradeRepository(db: AppDatabase, clock: Clock): UpgradeRepository {
-  return {
-    async all() {
-      return db.getAll('upgrades')
-    },
-    async byId(id: UpgradeId) {
-      return db.get('upgrades', id)
-    },
-    async save(upgrade: Upgrade) {
-      await db.put('upgrades', stamp(upgrade, clock))
-    },
-    async restoreMany(upgrades: readonly Upgrade[]) {
-      const tx = db.transaction('upgrades', 'readwrite')
-      await Promise.all([...upgrades.map((upgrade) => tx.store.put(upgrade)), tx.done])
-    },
-    async remove(id: UpgradeId) {
-      await db.delete('upgrades', id)
-      await bury(db, clock, 'upgrades', id)
-    },
-    async purge(id: UpgradeId) {
-      await db.delete('upgrades', id)
-    },
-    async clear() {
-      await db.clear('upgrades')
-    },
-    async count() {
-      return db.count('upgrades')
-    },
-  }
-}
-
-/**
  * Hand-defined metrics, and the months.
  *
  * A snapshot's key is its month, which is what makes "one review per
@@ -383,141 +274,6 @@ export function createReviewRepository(db: AppDatabase, clock: Clock): ReviewRep
   }
 }
 
-export function createPlaceRepository(db: AppDatabase, clock: Clock): PlaceRepository {
-  return {
-    async all() {
-      return db.getAll('places')
-    },
-    async byId(id: PlaceId) {
-      return db.get('places', id)
-    },
-    async save(place: Place) {
-      await db.put('places', stamp(place, clock))
-    },
-    async restoreMany(places: readonly Place[]) {
-      const tx = db.transaction('places', 'readwrite')
-      await Promise.all([...places.map((place) => tx.store.put(place)), tx.done])
-    },
-    async remove(id: PlaceId) {
-      await db.delete('places', id)
-      await bury(db, clock, 'places', id)
-    },
-    async purge(id: PlaceId) {
-      await db.delete('places', id)
-    },
-    async count() {
-      return db.count('places')
-    },
-  }
-}
-
-export function createViceRepository(db: AppDatabase, clock: Clock): ViceRepository {
-  return {
-    async all() {
-      return db.getAll('vices')
-    },
-    async byId(id: ViceId) {
-      return db.get('vices', id)
-    },
-    async save(vice: Vice) {
-      await db.put('vices', stamp(vice, clock))
-    },
-    async restoreMany(vices: readonly Vice[]) {
-      const tx = db.transaction('vices', 'readwrite')
-      await Promise.all([...vices.map((vice) => tx.store.put(vice)), tx.done])
-    },
-    async remove(id: ViceId) {
-      await db.delete('vices', id)
-      await bury(db, clock, 'vices', id)
-    },
-    async purge(id: ViceId) {
-      await db.delete('vices', id)
-    },
-  }
-}
-
-export function createFinanceRepository(db: AppDatabase, clock: Clock): FinanceRepository {
-  return {
-    async all() {
-      return db.getAll('finance')
-    },
-    async save(reading: FinanceReading) {
-      await db.put('finance', stamp(reading, clock))
-    },
-    async restoreMany(readings: readonly FinanceReading[]) {
-      const tx = db.transaction('finance', 'readwrite')
-      await Promise.all([...readings.map((reading) => tx.store.put(reading)), tx.done])
-    },
-    async remove(month: string) {
-      await db.delete('finance', month)
-      await bury(db, clock, 'finance', month)
-    },
-    async purge(month: string) {
-      await db.delete('finance', month)
-    },
-  }
-}
-
-export function createTripRepository(db: AppDatabase, clock: Clock): TripRepository {
-  return {
-    async all() {
-      return db.getAll('trips')
-    },
-    async byId(id: TripId) {
-      return db.get('trips', id)
-    },
-    async save(trip: Trip) {
-      await db.put('trips', stamp(trip, clock))
-    },
-    async restoreMany(trips: readonly Trip[]) {
-      const tx = db.transaction('trips', 'readwrite')
-      await Promise.all([...trips.map((trip) => tx.store.put(trip)), tx.done])
-    },
-    async remove(id: TripId) {
-      await db.delete('trips', id)
-      await bury(db, clock, 'trips', id)
-    },
-    async purge(id: TripId) {
-      await db.delete('trips', id)
-    },
-  }
-}
-
-/**
- * Ground you have walked.
- *
- * No stamping and no tombstones, and both absences are the point. There is
- * nothing to order — a cell is either revealed or it is not, and two
- * devices merge by union — and nothing to delete, because you cannot
- * un-walk ground.
- *
- * `reveal` reports how many were genuinely new so a caller can skip a
- * write and a re-render when a reading lands in a cell already cleared,
- * which on a walk is most readings.
- */
-export function createExploredAreaRepository(db: AppDatabase): ExploredAreaRepository {
-  return {
-    async all() {
-      return new Set((await db.getAllKeys('exploredCells')) as CellId[])
-    },
-    async reveal(cells: readonly CellId[]) {
-      const known = await this.all()
-      const fresh = cells.filter((cell) => !known.has(cell))
-      if (fresh.length === 0) return 0
-
-      const tx = db.transaction('exploredCells', 'readwrite')
-      await Promise.all([...fresh.map((id) => tx.store.put({ id })), tx.done])
-      return fresh.length
-    },
-    async clear() {
-      await db.clear('exploredCells')
-    },
-    async count() {
-      return db.count('exploredCells')
-    },
-  }
-}
-
 export function createCheckInRepository(db: AppDatabase, clock: Clock): CheckInRepository {
   return {
     async byId(id: CheckInId) {
@@ -556,89 +312,6 @@ export function createCheckInRepository(db: AppDatabase, clock: Clock): CheckInR
     },
     async all() {
       return db.getAll('checkIns')
-    },
-  }
-}
-
-/**
- * The long arcs, one row each.
- *
- * Stages live inline on the campaign rather than in a store of their
- * own. A stage has no meaning apart from the arc it belongs to, nothing
- * queries them independently, and splitting them would turn every read
- * into a join and every write into a transaction — for a record that
- * holds six rows.
- */
-export function createCampaignRepository(db: AppDatabase, clock: Clock): CampaignRepository {
-  return {
-    async all() {
-      return (await db.getAll('campaigns')).map(fromStoredCampaign)
-    },
-    async byId(id: CampaignId) {
-      const stored = await db.get('campaigns', id)
-      return stored === undefined ? undefined : fromStoredCampaign(stored)
-    },
-    async save(campaign: Campaign) {
-      await db.put('campaigns', stamp(campaign, clock))
-    },
-    async restoreMany(campaigns: readonly Campaign[]) {
-      const tx = db.transaction('campaigns', 'readwrite')
-      await Promise.all([...campaigns.map((one) => tx.store.put(one)), tx.done])
-    },
-    async remove(id: CampaignId) {
-      await db.delete('campaigns', id)
-      await bury(db, clock, 'campaigns', id)
-    },
-    async purge(id: CampaignId) {
-      await db.delete('campaigns', id)
-    },
-  }
-}
-
-/** Seasonal challenge marks -- completions, removals, and your own. */
-export function createChallengeRepository(db: AppDatabase, clock: Clock): ChallengeRepository {
-  return {
-    async all() {
-      return db.getAll('challenges')
-    },
-    async save(mark: ChallengeMark) {
-      await db.put('challenges', stamp(mark, clock))
-    },
-    async restoreMany(marks: readonly ChallengeMark[]) {
-      const tx = db.transaction('challenges', 'readwrite')
-      await Promise.all([...marks.map((one) => tx.store.put(one)), tx.done])
-    },
-    async remove(id: string) {
-      await db.delete('challenges', id)
-      await bury(db, clock, 'challenges', id)
-    },
-    async purge(id: string) {
-      await db.delete('challenges', id)
-    },
-  }
-}
-
-export function createRoomRepository(db: AppDatabase, clock: Clock): RoomRepository {
-  return {
-    async all() {
-      return db.getAll('rooms')
-    },
-    async byId(id: RoomId) {
-      return db.get('rooms', id)
-    },
-    async save(room: Room) {
-      await db.put('rooms', stamp(room, clock))
-    },
-    async restoreMany(rooms: readonly Room[]) {
-      const tx = db.transaction('rooms', 'readwrite')
-      await Promise.all([...rooms.map((one) => tx.store.put(one)), tx.done])
-    },
-    async remove(id: RoomId) {
-      await db.delete('rooms', id)
-      await bury(db, clock, 'rooms', id)
-    },
-    async purge(id: RoomId) {
-      await db.delete('rooms', id)
     },
   }
 }

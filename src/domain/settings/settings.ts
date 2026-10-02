@@ -20,19 +20,6 @@ export interface AppSettings {
   readonly roundingIncrement: number
   readonly bodyweight?: number
   /**
-   * The year you were born, for the two finance ladders.
-   *
-   * **Not a birthday, and not stored as one.** Both published standards
-   * are bracketed in five-year bands, so a month and a day would be a
-   * date of birth in the database to make a reading half a percentile
-   * more accurate. See `domain/finance/standards.ts`.
-   *
-   * Absent by default and absent is a real answer: with no year the two
-   * ladders report nothing rather than guessing an age, which is the
-   * same stance `bodyweight` takes for the strength standards.
-   */
-  readonly birthYear?: number
-  /**
    * What the lifter can do for one rep, per exercise.
    *
    * The basis for every suggested load. RTS prescribes reps at an RPE
@@ -57,27 +44,6 @@ export interface AppSettings {
   readonly restTimerEnabled: boolean
   readonly keepScreenAwake: boolean
   readonly checkInsEnabled: boolean
-
-  /**
-   * The area, in square kilometres, of the region being explored.
-   *
-   * The denominator of the exploration ladder, and the only part of it the
-   * app cannot work out for itself. The ladder is justified by having a
-   * genuinely external ceiling — a named region has a boundary and you can
-   * walk all of it — so the boundary has to come from somewhere, and the
-   * only honest source is the person who knows which region they mean.
-   *
-   * Optional, and absent means the ladder reads nothing at all rather than
-   * scoring against a made-up figure. Greater London is about 1,572; a
-   * borough is nearer 40.
-   *
-   * Accepts an explicit `undefined` where the stored records do not,
-   * because clearing the box has to be expressible and these settings are
-   * JSON in localStorage — a key holding `undefined` does not survive
-   * `JSON.stringify` at all, so absent and undefined cannot be told apart
-   * on the way back in.
-   */
-  readonly exploredRegionKm2?: number | undefined
 
   readonly theme: 'system' | 'light' | 'dark'
   /**

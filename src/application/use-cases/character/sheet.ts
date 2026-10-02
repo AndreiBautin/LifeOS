@@ -1,11 +1,8 @@
 import { traitStandings, type TraitStanding } from '@/domain/game/traits'
-import { isResolved } from '@/domain/atlas/place/Place'
-import type { Item } from '@/domain/backlog/item'
 import { readLadder, type LadderReading } from '@/domain/game/ladder'
 import { ALL_ACTS, SCORING } from '@/domain/game/registry'
 import { standing, xpFrom, type XpStanding } from '@/domain/game/xp'
-import { hasConditioning, totalWorkingSets } from '@/domain/logging/workout-log'
-import type { ChallengeRepository } from '@/domain/repositories/ports'
+import { hasConditioning, hasWarmUp, totalWorkingSets } from '@/domain/logging/workout-log'
 import type { RatingOutcome } from '@/domain/game/rating'
 
 import { measureAll } from '../review/measure'
@@ -105,7 +102,7 @@ export interface CharacterSheet {
  * and widening that interface would make every evaluator and every test
  * double carry a repository none of them ask about.
  */
-export type SheetDeps = ReviewDeps & { readonly challenges: ChallengeRepository }
+export type SheetDeps = ReviewDeps
 
 /**
  * When an act happened, for the ones that can say.
@@ -152,101 +149,42 @@ export async function tallyActs(
  */
 export interface ActRecords {
   readonly workouts: Awaited<ReturnType<SheetDeps['workouts']['recent']>>
-  readonly items: readonly Item[]
-  readonly places: Awaited<ReturnType<SheetDeps['places']['all']>>
-  readonly challenges: Awaited<ReturnType<SheetDeps['challenges']['all']>>
 }
 
 export async function loadActRecords(deps: SheetDeps): Promise<ActRecords> {
-  const [workouts, items, places, challenges] = await Promise.all([
-    deps.workouts.recent(500),
-    deps.items.all(),
-    deps.places.all(),
-    deps.challenges.all(),
-  ])
-  return { workouts, items, places, challenges }
+  return { workouts: await deps.workouts.recent(500) }
 }
 
-/** The counting half of `tallyActs`, pure over records already loaded. */
+/**
+ * Every act, counted off the workout log.
+ *
+ * **One record type pays everything now.** The app is a workout tracker,
+ * so each act is a question asked of the same completed sessions: was it
+ * finished, which sets were worked, was there conditioning in it, was the
+ * warm-up done. Nothing new is logged for any of them, and nothing is
+ * counted twice — they are different acts, the way finishing a session
+ * and logging its sets always were.
+ */
 export function countActs(
   records: ActRecords,
   within: Within = ALWAYS,
 ): Readonly<Record<string, number>> {
-  const { workouts, items, places, challenges } = records
-
-  /** No date, no act — see the note above on why this holds even all-time. */
-  const dated = (date: string | undefined): boolean => date !== undefined && within(date)
-
-  /*
-   * **Lego splits off the backlog the same way.** A set is built rather
-   * than read, so it feeds Crafting — and it must leave the backlog acts
-   * entirely or one item would pay two bars.
-   */
-  const builds = items.filter((item) => item.category === 'lego')
-  const readItems = items.filter((item) => item.category !== 'lego')
-
-  const completed = workouts.filter((log) => log.status === 'completed' && within(log.date))
+  const completed = records.workouts.filter((log) => log.status === 'completed' && within(log.date))
 
   return {
     'training.session-finished': completed.length,
-    /*
-     * **One act per session that contained conditioning actually done**,
-     * counted off the same completed workouts — so nothing new is
-     * logged and nothing is counted twice: finishing the session and
-     * doing the conditioning in it are two different acts, the way
-     * finishing a session and logging its sets already are.
-     *
-     * Flat, so a twenty-minute walk and a brutal interval session are
-     * worth the same. Paying by duration or by heart rate would make the
-     * easy Zone 2 work the programme leans on the least valuable thing
-     * in it, which is the opposite of what the programme thinks.
-     */
-    'cardio.session-logged': completed.filter(hasConditioning).length,
     'training.working-set-logged': completed.reduce(
       (total, log) => total + totalWorkingSets(log),
       0,
     ),
-    // One act per item per day with progress on it. Entries are already
-    // keyed by day, so logging twice against the same item on the same
-    // afternoon is one act rather than two.
-    'backlog.progress-logged': progressDays(readItems, within),
-    // Counted from `dateCompleted` rather than from the status, so an item
-    // reopened and finished again is one finish and not two — the stamp is
-    // set once, on the first completion.
-    'backlog.item-finished': readItems.filter((item) => dated(item.dateCompleted)).length,
-    /* The same two counts over the builds, at the same rates. */
-    'crafting.build-progress': progressDays(builds, within),
-    'crafting.build-finished': builds.filter((item) => dated(item.dateCompleted)).length,
     /*
-     * **Counted from the mark, not from the catalogue.** A completion is
-     * a stamped record like every other act here, so a challenge ticked
-     * in October pays into the season it was ticked in — and a shipped
-     * challenge nobody has done has no mark and therefore costs nothing.
-     *
-     * A hidden challenge that was completed first still counts, which is
-     * deliberate: removing a challenge from the list says you do not want
-     * to see it, and it cannot unmake an afternoon you spent.
+     * Flat, so a twenty-minute walk and a brutal interval session are
+     * worth the same. Paying by duration would make the easy work the
+     * programme leans on the least valuable thing in it.
      */
-    'challenges.completed': challenges.filter((mark) => dated(mark.completedAt)).length,
-    'places.place-visited': places.filter(
-      (place) => place.status === 'visited' && isResolved(place) && dated(place.dateVisited),
-    ).length,
+    'cardio.session-logged': completed.filter(hasConditioning).length,
+    'mobility.warm-up-done': completed.filter(hasWarmUp).length,
   }
-}
-
-/**
- * Days an item had progress logged on it, within a window.
- *
- * Extracted because the backlog and the builds both count it, and two
- * copies of this reduce is where the two would drift — the defect this
- * file keeps recording under a hand-written second list.
- */
-function progressDays(items: readonly Item[], within: Within): number {
-  return items.reduce(
-    (total, item) =>
-      total + item.dailyProgress.filter((entry) => entry.amount > 0 && within(entry.date)).length,
-    0,
-  )
 }
 
 export async function characterSheet(deps: SheetDeps): Promise<CharacterSheet> {

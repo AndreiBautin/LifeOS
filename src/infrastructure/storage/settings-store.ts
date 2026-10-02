@@ -146,13 +146,6 @@ function mergeWithDefaults(parsed: unknown): AppSettings {
      * install that had one waiting in the defaults.
      */
     ...bodyweightOf(stored.bodyweight),
-    /*
-     * Dropped rather than defaulted, unlike the bodyweight above. There
-     * is no sensible year to guess and a wrong one would put somebody on
-     * a rung nothing measured — so the finance ladders stay absent until
-     * this is stated.
-     */
-    ...positiveOf('birthYear', stored.birthYear),
     // Every value is checked rather than the record being trusted whole: a
     // junk entry here becomes a suggested load on a bar.
     //
@@ -219,17 +212,6 @@ function mergeWithDefaults(parsed: unknown): AppSettings {
      * back unstamped, which would have meant they never synced at all.
      */
     /*
-     * The exploration ladder's denominator. Absent unless a real positive
-     * number was stored: a zero would divide, and absent is what tells the
-     * ladder to say nothing rather than to score against a figure nobody
-     * chose.
-     */
-    ...(typeof stored.exploredRegionKm2 === 'number' &&
-    Number.isFinite(stored.exploredRegionKm2) &&
-    stored.exploredRegionKm2 > 0
-      ? { exploredRegionKm2: stored.exploredRegionKm2 }
-      : {}),
-    /*
      * Parsed rather than spread, like every other field here — this file
      * builds its result key by key, which is what makes an unknown blob
      * safe and what has twice caught a new field vanishing on the way
@@ -256,21 +238,6 @@ function bodyweightOf(stored: unknown): { bodyweight?: number } {
   return DEFAULT_SETTINGS.bodyweight === undefined
     ? {}
     : { bodyweight: DEFAULT_SETTINGS.bodyweight }
-}
-
-/**
- * A positive number under its own key, or nothing at all.
- *
- * Built field by field like everything else in this parser: a spread of
- * the stored blob would carry whatever a future version wrote, and a key
- * holding `undefined` is a different type from an absent one under
- * `exactOptionalPropertyTypes`.
- */
-function positiveOf<K extends string>(key: K, stored: unknown): Partial<Record<K, number>> {
-  if (typeof stored === 'number' && Number.isFinite(stored) && stored > 0) {
-    return { [key]: stored } as Record<K, number>
-  }
-  return {}
 }
 
 function hasEntries(value: unknown): value is Record<string, unknown> {

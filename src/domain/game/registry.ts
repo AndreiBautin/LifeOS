@@ -3,8 +3,6 @@ import { STRENGTH_LIFT_SLUGS } from '@/domain/exercises/catalogue'
 import { STRENGTH_STANDARDS, TOTAL_STANDARDS } from './character'
 import type { Ladder } from './ladder'
 import type { Rating } from './rating'
-import { CHALLENGE_XP } from '@/domain/challenges/challenge'
-import { CREDIT_BANDS } from '@/domain/finance/reading'
 import { TRAINING_ACTS, type ActDefinition } from './xp'
 
 /**
@@ -22,18 +20,7 @@ import { TRAINING_ACTS, type ActDefinition } from './xp'
  * domains, and the shape each one's numbers take when they do.
  */
 
-export const LIFE_AREAS = [
-  'training',
-  'cardio',
-  'crafting',
-  'backlog',
-  'upgrades',
-  'places',
-  'base',
-  'vitals',
-  'finance',
-  'challenges',
-] as const
+export const LIFE_AREAS = ['training', 'cardio', 'mobility'] as const
 
 export type LifeArea = (typeof LIFE_AREAS)[number]
 
@@ -45,8 +32,6 @@ export interface AreaScoring {
   readonly ladders: readonly Ladder[]
   readonly ratings: readonly Rating[]
   readonly acts: readonly ActDefinition[]
-  /** True for the one area that spends rather than measures. */
-  readonly hasTree: boolean
 }
 
 const STRENGTH_ANCHOR = 'ExRx and Symmetric Strength, as multiples of bodyweight'
@@ -111,7 +96,6 @@ export const SCORING: readonly AreaScoring[] = [
       },
     ],
     acts: TRAINING_ACTS,
-    hasTree: false,
   },
   {
     /*
@@ -152,376 +136,30 @@ export const SCORING: readonly AreaScoring[] = [
         points: 30,
       },
     ],
-    hasTree: false,
   },
   {
     /*
-     * **Things you built, and only things you built.** Craft used to be
-     * quests, the house and the tech tree; asked for as _"it shouldn't be
-     * any dailies or housework, just the diy stuff I work on myself or
-     * Legos from my codex."_
+     * **Mobility is the warm-up, done.** Asked for when the app narrowed
+     * to a workout tracker: _"you can level up strength, stamina, and
+     * mobility."_ Every session already opens on warm-up rows — foam
+     * rolling and drills, one row per thing you do — so the evidence was
+     * being logged all along and paid nothing.
      *
-     * One source, split off records that already exist rather than newly
-     * logged: **Lego in the Codex.** A set is built rather than consumed,
-     * which is why it feeds this instead of Intellect. `tallyActs` takes
-     * those items *out* of the backlog acts, so no item pays twice. DIY
-     * house jobs used to pay here too, and left with the quests.
+     * Its own area for the reason conditioning is: a trait claims areas,
+     * and an area feeds exactly one trait, so warm-ups could not stay in
+     * `training` and show under a second bar.
+     *
+     * **Per session, not per row.** Six warm-up rows paying six times
+     * would make the cheapest part of a session the best-paid, so it
+     * fires once on a finished session with at least one warm-up row
+     * actually done — the shape `cardio.session-logged` already has.
      */
-    area: 'crafting',
-    name: 'Crafting',
-    phase: 14,
+    area: 'mobility',
+    name: 'Mobility',
+    phase: 15,
     ladders: [],
     ratings: [],
-    acts: [
-      /*
-       * The same rates the areas these are split from use, so moving a
-       * record between them never changes what it is worth. A build day
-       * is a backlog progress day (10), a finished set is a finished
-       * item (40).
-       */
-      {
-        id: 'crafting.build-progress',
-        area: 'crafting',
-        label: 'Built some of it',
-        points: 5,
-      },
-      { id: 'crafting.build-finished', area: 'crafting', label: 'Finished a build', points: 40 },
-    ],
-    hasTree: false,
-  },
-  {
-    area: 'backlog',
-    name: 'Backlog',
-    phase: 1,
-    ladders: [],
-    ratings: [
-      {
-        id: 'backlog.age',
-        source: 'backlog.median-age-days',
-        name: 'Backlog age',
-        unit: 'days',
-        direction: 'decrease',
-        cadence: 'monthly',
-      },
-    ],
-    acts: [
-      {
-        id: 'backlog.progress-logged',
-        area: 'backlog',
-        label: 'Logged progress on something',
-        points: 5,
-      },
-      { id: 'backlog.item-finished', area: 'backlog', label: 'Finished something', points: 40 },
-    ],
-    hasTree: false,
-  },
-  {
-    /*
-     * The one area with a tree and no acts.
-     *
-     * Buying a node is not paid for in XP, and neither is it paid *with*
-     * XP — the node is what the tree is for, and awarding points for
-     * reaching it would count the same thing twice in the direction that
-     * matters least. The gates are money and physical prerequisites, both
-     * of which are real outside the app.
-     */
-    area: 'upgrades',
-    name: 'Upgrades',
-    phase: 3,
-    ladders: [],
-    ratings: [
-      {
-        id: 'upgrades.progress',
-        source: 'upgrades.owned-share',
-        name: 'Purchase progress',
-        unit: 'share of planned',
-        direction: 'increase',
-        cadence: 'monthly',
-      },
-    ],
-    acts: [],
-    hasTree: true,
-  },
-  {
-    area: 'base',
-    name: 'Base',
-    phase: 10,
-    /*
-     * No ladder, for the reason the dailies give: nobody publishes how
-     * well-maintained a house ought to be, and a threshold invented here
-     * would be a scale this app can move — the one thing the model
-     * refuses everywhere.
-     *
-     * The tempting substitute is a count of outstanding jobs. That is an
-     * inventory rather than a standard: a house with four open jobs is
-     * not worse than one with two, it is bigger, older, or more honestly
-     * recorded.
-     */
-    ladders: [],
-    /*
-     * **The house, not its chores.** Reported: *"base should be more
-     * about declutter and projects status vs recurring tasks."* It read
-     * `Chores kept`, a share of expected days — which is the *dailies*
-     * rating with a different name over it, because a chore is a
-     * recurring task that happens to be filed here. Base is about the
-     * state of the place and the work outstanding on it, and both were
-     * already recorded and neither was reported.
-     *
-     * The chores still pay `base.chore-kept` and still show in the day's
-     * list. What changed is what the *month* says about this area.
-     */
-    ratings: [
-      {
-        /*
-         * A level that moves both ways, which is why the direction is
-         * `increase` rather than a threshold. There is no published
-         * figure for how cleared a house ought to be — inventing one
-         * would be the scale this model refuses — so what is judged is
-         * whether it went the right way, the same footing the weight
-         * phase used to sit on.
-         */
-        id: 'base.clear',
-        source: 'base.clear',
-        name: 'Clear',
-        unit: '% clear',
-        direction: 'increase',
-        cadence: 'monthly',
-      },
-    ],
-    /*
-     * **No acts now.** House jobs paid `base.action-closed` and chores
-     * paid `base.chore-kept`; both record types left the app. Base
-     * measures the clutter and pays nothing, the footing Finance stands on.
-     */
-    acts: [],
-    /*
-     * False, and this is the interesting one.
-     *
-     * Base shows house upgrades and the tech tree shows the rest, but
-     * that is a question of *which screen a row appears on* — an upgrade
-     * to a dishwasher and an upgrade to a barbell are the same record with
-     * the same gates, money and a prerequisite. The model's claim is that
-     * exactly one area spends rather than measures, and splitting a tree
-     * across two screens does not make a second spender.
-     *
-     * `registry.test.ts` → "has exactly one tree" is what holds that, and
-     * it caught this the first time it was written the other way.
-     */
-    hasTree: false,
-  },
-  {
-    /*
-     * The id stays `vitals` and the name no longer does.
-     *
-     * An area id is an **address** — it is written into `belongsTo` on
-     * every upkeep habit ever filed — so renaming it would orphan those
-     * records rather than relabel them. The name is a label, and the
-     * screen it named has gone: what is left under this id is the body's
-     * upkeep and the body's limits, which is what it is called now.
-     */
-    area: 'vitals',
-    name: 'Upkeep',
-    phase: 11,
-    /*
-     * No ladder. Nobody publishes how much coffee a person ought to
-     * drink or how often they ought to floss, and a threshold invented
-     * here would be exactly the scale this model refuses everywhere.
-     *
-     * Bodyweight used to be the tempting case, and the argument against
-     * it is kept because it is the general one: BMI and body-fat
-     * brackets are published and every one of them is a claim about
-     * *health* rather than about the thing measured — a lifter
-     * deliberately at 15% on a bulk is not worse at anything than the
-     * same lifter at 10%. It is moot now; the weight series is gone, and
-     * `vitals.phase-held` went with it because a rating whose source
-     * nothing produces reads as absent forever.
-     */
-    ladders: [],
-    ratings: [
-      {
-        id: 'vitals.within-limits',
-        source: 'vitals.days-within-limits',
-        name: 'Kept inside the limits',
-        unit: '% of days',
-        direction: 'stay-above',
-        cadence: 'monthly',
-        threshold: 80,
-      },
-    ],
-    /*
-     * **Back to no acts, and it is the same line drawn twice.**
-     *
-     * This list was empty, on the reasoning that every candidate fell on
-     * the wrong side of the act/outcome line: *not* drinking is an
-     * outcome, so paying for it is the streak mistake in a new costume,
-     * and the only genuine act was spending a charge, where paying XP
-     * for logging a beer is perverse.
-     *
-     * Brushing your teeth was none of those — a thing you did, an act in
-     * exactly the sense a kept daily is one — so `vitals.upkeep-kept`
-     * was added and this note said the rule had been applied rather than
-     * bent. All of that is still true, and it is now true of
-     * `dailies.completed` instead: upkeep is a `group` label rather than
-     * a home, so a kept habit pays the same fifteen points under the one
-     * name it always deserved. **The act was a second name for one
-     * thing, and it went with the home that justified it.**
-     *
-     * What is left here is the limits, which measure and never pay. An
-     * area that measures without paying is not an incomplete area.
-     */
-    acts: [],
-    hasTree: false,
-  },
-  {
-    area: 'places',
-    name: 'Places',
-    phase: 5,
-    /*
-     * The weakest anchor in the system, and worth saying so.
-     *
-     * The *ceiling* is genuinely external — a named region has a boundary
-     * and you can walk all of it — but nobody publishes what share of a
-     * city counts as "Advanced". The rungs below the top are chosen, which
-     * makes this the one ladder whose middle is softer than the strength
-     * standards. It is still a ladder rather than a rating because the top
-     * is real and reachable; if that ever stops being true, it becomes a
-     * rating and loses its levels.
-     */
-    ladders: [
-      {
-        id: 'places.coverage',
-        source: 'places.explored-share',
-        name: 'Exploration',
-        unit: 'share of region',
-        anchor: 'the region you set in Settings — 1.0 is all of it, walked',
-        thresholds: [0.02, 0.1, 0.25, 0.5, 0.85],
-      },
-    ],
-    ratings: [],
-    acts: [
-      { id: 'places.place-visited', area: 'places', label: 'Marked a place visited', points: 20 },
-    ],
-    hasTree: false,
-  },
-  {
-    area: 'finance',
-    name: 'Finance',
-    phase: 7,
-    /*
-     * **Three ladders, and two of them reverse what this note used to
-     * say.** It read: a ladder must name an external standard, FICO
-     * publishes its bands, and net worth has no such figure — there is
-     * no published amount at which somebody has finished having money,
-     * so levelling it would invent a scale the app can move.
-     *
-     * The first half stands. The conclusion did not survive being
-     * asked for: _"net worth and savings should be displayed too, look
-     * up reasonable standards for a 32 year old."_ **"No finish line"
-     * is not "no external standard"** — a powerlifting ladder has no
-     * finish line either, and its levels come from where a lifter sits
-     * among lifters. The Federal Reserve publishes exactly that for
-     * household net worth, and Fidelity publishes a retirement
-     * benchmark by age. Neither is a figure this app can move.
-     *
-     * `domain/finance/standards.ts` holds both tables, why they are two
-     * different kinds of standard, and what they cost.
-     *
-     * **The two ratings that used to be here are gone**, rather than
-     * sitting beside the ladders. Rule two forbids one measurement being
-     * claimed as both, and the sources differed only in wording.
-     */
-    ladders: [
-      {
-        id: 'finance.credit',
-        source: 'finance.credit-score',
-        name: 'Credit',
-        unit: 'FICO',
-        anchor: 'the published FICO bands — fair at 580, exceptional at 800',
-        thresholds: [...CREDIT_BANDS],
-      },
-      /*
-       * **The thresholds are the published breakpoints themselves**,
-       * which is what keeps this honest: the reading is interpolated
-       * between four points of a curve, and every place a *level*
-       * changes is one of those four points rather than a number chosen
-       * here.
-       */
-      {
-        id: 'finance.net-worth',
-        source: 'finance.net-worth-percentile',
-        name: 'Net worth',
-        unit: 'percentile for your age',
-        anchor:
-          'The 2022 Federal Reserve Survey of Consumer Finances — households your age, quarter by quarter',
-        thresholds: [0, 25, 50, 75, 90],
-      },
-      /*
-       * One is exactly on track, so **Advanced is the benchmark met**
-       * rather than beaten. The rungs below it are the app's banding of
-       * a published target and are named as such on the screen; the
-       * target itself is Fidelity's.
-       */
-      {
-        id: 'finance.retirement',
-        source: 'finance.retirement-share',
-        name: 'Retirement',
-        unit: '× the benchmark for your age',
-        anchor: "Fidelity's savings benchmark — 1× salary by 30, 3× by 40, 10× by 67",
-        thresholds: [0, 0.25, 0.5, 1, 1.5],
-      },
-    ],
-    ratings: [],
-    /*
-     * **No acts, deliberately, and this area is the clearest case for
-     * it.** XP is paid for things you did. Typing your net worth in is a
-     * *measurement* — the app already refuses to pay for standing on a
-     * scale for exactly this reason — and paying for the number going up
-     * would be paying for an outcome, which is the line the job search
-     * draws and the streak mistake in its oldest costume.
-     *
-     * An area that measures without paying is not an incomplete area.
-     * Vitals ran that way for most of its life.
-     */
-    acts: [],
-    hasTree: false,
-  },
-  {
-    /*
-     * **Seasonal challenges, and the one area whose content the app
-     * ships.** Everything else here counts records somebody made; this
-     * counts a list that arrives in the bundle and can then be edited.
-     * That is defensible only because a shipped challenge is an
-     * *offer* — removable, and joined by any number of your own — rather
-     * than the app asserting what your year contains.
-     *
-     * **No ladder, and no rating.** There is no published figure for how
-     * many seasonal things a person ought to do, and the pass is not a
-     * ladder either: it is a count against the challenges that exist,
-     * which is a real denominator rather than an external standard. The
-     * distinction matters — a ladder says where you stand in the world,
-     * and this says how much of a list you have got through.
-     */
-    area: 'challenges',
-    name: 'Challenges',
-    phase: 12,
-    ladders: [],
-    ratings: [],
-    /*
-     * **Flat, and on the right side of the act/outcome line.** Carving a
-     * pumpkin is a thing you decided to do and then did. Difficulty
-     * deliberately does not scale it, the rule the practice log already
-     * holds: paying more for a harder challenge turns a record of a
-     * season into a thing to optimise.
-     */
-    acts: [
-      {
-        id: 'challenges.completed',
-        area: 'challenges',
-        label: 'Finished a seasonal challenge',
-        points: CHALLENGE_XP,
-      },
-    ],
-    hasTree: false,
+    acts: [{ id: 'mobility.warm-up-done', area: 'mobility', label: 'Did the warm-up', points: 20 }],
   },
 ]
 

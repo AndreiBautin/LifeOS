@@ -1,29 +1,6 @@
-import { getGoalsStats } from '@/domain/backlog/goals-stats'
-import { houseStanding } from '@/domain/base/declutter'
-import { latest } from '@/domain/finance/reading'
-import { shiftDay } from '@/domain/time/day'
-import {
-  ageFromBirthYear,
-  netWorthPercentile,
-  retirementAgainstBenchmark,
-} from '@/domain/finance/standards'
 import { STRENGTH_LIFT_SLUGS } from '@/domain/exercises/catalogue'
 import { asExerciseId } from '@/domain/ids/ids'
-import type {
-  BacklogItemRepository,
-  Clock,
-  ExploredAreaRepository,
-  PlaceRepository,
-  RoomRepository,
-  SettingsRepository,
-  UpgradeRepository,
-  ViceRepository,
-  FinanceRepository,
-  WorkoutRepository,
-} from '@/domain/repositories/ports'
-import { isOwned, isOpen } from '@/domain/upgrades/upgrade'
-import { amountSpentOn } from '@/domain/vitals/charges'
-import { atlasView } from '@/application/use-cases/atlas/atlas'
+import type { Clock, SettingsRepository, WorkoutRepository } from '@/domain/repositories/ports'
 
 /**
  * Reading this month's numbers out of the hub's own data.
@@ -39,15 +16,8 @@ import { atlasView } from '@/application/use-cases/atlas/atlas'
  */
 
 export interface MeasureDeps {
-  readonly items: BacklogItemRepository
-  readonly upgrades: UpgradeRepository
   readonly workouts: WorkoutRepository
-  readonly places: PlaceRepository
-  readonly explored: ExploredAreaRepository
   readonly settings: SettingsRepository
-  readonly rooms: RoomRepository
-  readonly vices: ViceRepository
-  readonly finance: FinanceRepository
   readonly clock: Clock
 }
 
@@ -62,25 +32,6 @@ export interface MeasureDeps {
 export async function measureAll(deps: MeasureDeps): Promise<Readonly<Record<string, number>>> {
   const now = deps.clock.now()
   const measured: Record<string, number> = {}
-
-  const items = await deps.items.all()
-  if (items.length > 0) {
-    // The backlog's own statistic, not a second implementation of it.
-    measured['backlog.median-age-days'] = getGoalsStats(items, now).averageBacklogAgeDays
-  }
-
-  /*
-   * Purchase progress is the share of what was planned that is now owned.
-   * Cancelled entries are out of both halves — something you decided
-   * against is not progress and is not a debt either.
-   */
-  const upgrades = await deps.upgrades.all()
-  const counted = upgrades.filter((upgrade) => isOwned(upgrade) || isOpen(upgrade))
-  if (counted.length > 0) {
-    measured['upgrades.owned-share'] = Math.round(
-      (100 * counted.filter(isOwned).length) / counted.length,
-    )
-  }
 
   const workouts = await deps.workouts.all()
   const thisMonth = workouts.filter(
@@ -104,130 +55,6 @@ export async function measureAll(deps: MeasureDeps): Promise<Readonly<Record<str
    * score quarterly and their net worth monthly has months where one is
    * present and the other is not. Absent, never zero: a month nobody
    * looked is not a month the number was nothing.
-   */
-  const finance = await deps.finance.all()
-  const score = latest(finance, 'creditScore')
-  if (score !== undefined) measured['finance.credit-score'] = score
-
-  /*
-   * **The money figures are read live, like the credit score, and not
-   * for the month.** A ladder must not depend on whether a screen was
-   * opened: the two below used to be monthly *ratings*, where a series
-   * is the whole point, and as ladders what matters is the most recent
-   * statement whenever it was taken.
-   *
-   * Both are absent without a birth year, and retirement is absent
-   * without an income too. `domain/finance/standards.ts` says why an
-   * age has to be stated rather than assumed.
-   */
-  const money = await deps.settings.get()
-  const netWorth = latest(finance, 'netWorthMinor')
-  const retirement = latest(finance, 'retirementMinor')
-  /*
-   * The salary is a tracked reading rather than a settings field, so the
-   * benchmark follows a raise the month it is recorded. It briefly lived
-   * in settings and that was one number in two places.
-   */
-  const salary = latest(finance, 'salaryMinor')
-
-  if (money.birthYear !== undefined) {
-    const age = ageFromBirthYear(money.birthYear, now)
-
-    if (netWorth !== undefined) {
-      const percentile = netWorthPercentile(netWorth, age)
-      if (percentile !== undefined) measured['finance.net-worth-percentile'] = percentile
-    }
-
-    if (retirement !== undefined) {
-      const share = retirementAgainstBenchmark(retirement, salary, age)
-      if (share !== undefined) measured['finance.retirement-share'] = share
-    }
-  }
-
-  const month = toMonth(now)
-
-  /*
-   * **Base is measured on the house, not on its chores.** Reported:
-   * *"base should be more about declutter and projects status vs
-   * recurring tasks."* Right — a chore is a recurring task that happens
-   * to be filed to Base, and reading Base's month as "did you keep your
-   * chores" made it a second dailies rating under another name. What
-   * Base is actually about is the state of the place and the work
-   * outstanding on it, and both are already recorded.
-   *
-   * `base.chore-share-in-month` is gone with the rating it fed. Nothing
-   * else read it, and a source nothing declares is dead weight the
-   * spine would go on computing every month.
-   */
-
-  /*
-   * How clear the house is, averaged over the rooms that have a reading.
-   *
-   * A **level**, not a count of jobs — clutter moves both ways over
-   * months, which is the whole reason a room carries a series of
-   * readings rather than a checklist. Absent until something has been
-   * read, so a house nobody has looked at reports nothing rather than
-   * nought: `houseStanding` leaves unread rooms out for exactly that
-   * reason, and folding them in as zero would make *adding a room* read
-   * as the house getting worse.
-   */
-  const house = houseStanding(await deps.rooms.all(), `${month}-01`)
-  if (house.clear !== undefined) measured['base.clear'] = house.clear
-
-  /*
-   * The share of days this month that stayed inside every pool.
-   *
-   * Counted across the pools together rather than one rating per vice,
-   * because the rating is about the habit of staying inside a budget and
-   * not about coffee specifically — and a rating per pool would mean the
-   * registry grew a row every time somebody added one, which a registry
-   * of *declared* metrics cannot do.
-   *
-   * A day is over the limit if any pool spent more than its capacity on
-   * that day. That is a per-day reading rather than the cooldown window
-   * the bar uses, and the difference is deliberate: the bar answers "can
-   * I have one now", which is a question about the last twelve hours,
-   * and the month answers "how often did I go past what I meant to",
-   * which is a question about days.
-   */
-  const vices = (await deps.vices.all()).filter((vice) => vice.retiredAt === undefined)
-
-  if (vices.length > 0) {
-    const daysSoFar = Number(toDay(now).slice(8, 10))
-    let within = 0
-
-    for (let back = 0; back < daysSoFar; back += 1) {
-      const day = shiftDay(toDay(now), -back)
-      if (day.slice(0, 7) !== month) break
-
-      /*
-       * `amountSpentOn` rather than counting entries, and it fixes two
-       * things at once. Entries were compared by their *UTC* date prefix
-       * against a local day key, so an evening drink counted towards
-       * tomorrow — and a row was treated as one unit, which meant a
-       * 400 mg caffeine limit needed four hundred separate coffees
-       * before this rating noticed anything.
-       */
-      const overAny = vices.some((vice) => amountSpentOn(vice, day) > vice.capacity)
-
-      if (!overAny) within += 1
-    }
-
-    measured['vitals.days-within-limits'] = Math.round((100 * within) / Math.max(1, daysSoFar))
-  }
-
-  /*
-   * The strength ladders, as **multiples of bodyweight** rather than as
-   * loads.
-   *
-   * The source ids say `e1rm`, but the number placed on the ladder is a
-   * ratio, because the thresholds are ratios — every published standard is
-   * expressed that way, and it is the whole reason "Advanced" here means
-   * what a coach means by it. Feeding pounds to a ladder whose rungs are
-   * 0.75 and 1.25 would put everyone at Elite.
-   *
-   * No bodyweight means no reading at all, for the same reason: the
-   * standards are not expressible without it.
    */
   const strength = await deps.settings.get()
   const bodyweight = strength.bodyweight
@@ -254,28 +81,6 @@ export async function measureAll(deps: MeasureDeps): Promise<Readonly<Record<str
     }
   }
 
-  /*
-   * The exploration ladder's denominator is the one number the app cannot
-   * work out for itself — see `exploredRegionKm2`. Without it there is no
-   * share to report, and an absent reading is exactly what the spine
-   * expects: no region set means the ladder says nothing, rather than
-   * scoring somebody against a figure nobody chose.
-   */
-  const region = strength.exploredRegionKm2
-  if (region !== undefined && region > 0) {
-    const view = await atlasView({
-      places: deps.places,
-      explored: deps.explored,
-      clock: deps.clock,
-      // `atlasView` reads; nothing here creates a place, so no id is ever
-      // asked for.
-      ids: { next: () => '' },
-    })
-    // Capped: walking more ground than the region you named means the
-    // region was named too small, not that you are 140 per cent explored.
-    measured['places.explored-share'] = Math.min(1, view.areaKm2 / region)
-  }
-
   return measured
 }
 
@@ -283,8 +88,4 @@ function toMonth(date: Date): string {
   return `${date.getFullYear().toString().padStart(4, '0')}-${(date.getMonth() + 1)
     .toString()
     .padStart(2, '0')}`
-}
-
-function toDay(date: Date): string {
-  return `${toMonth(date)}-${date.getDate().toString().padStart(2, '0')}`
 }

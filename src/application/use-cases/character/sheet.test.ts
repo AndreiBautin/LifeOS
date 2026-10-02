@@ -1,11 +1,11 @@
-import type { ChallengeMark } from '@/domain/challenges/challenge'
 import { describe, expect, it } from 'vitest'
 
 import { ALL_ACTS, SCORING } from '@/domain/game/registry'
-import type { Place } from '@/domain/atlas/place/Place'
-import type { Item } from '@/domain/backlog/item'
+import type { WorkoutLog } from '@/domain/logging/workout-log'
 import type { Clock, ReviewRepository } from '@/domain/repositories/ports'
 import { DEFAULT_SETTINGS, type AppSettings } from '@/domain/settings/settings'
+
+import { anEntry, aSet, aWorkout } from '@/test/builders/workout'
 
 import { characterSheet, tallyActs, type SheetDeps } from './sheet'
 
@@ -18,9 +18,7 @@ import { characterSheet, tallyActs, type SheetDeps } from './sheet'
  */
 function harness(
   seed: {
-    readonly places?: Place[]
-    readonly items?: Item[]
-    readonly challenges?: ChallengeMark[]
+    readonly workouts?: WorkoutLog[]
     readonly settings?: Partial<AppSettings>
   } = {},
 ) {
@@ -53,22 +51,7 @@ function harness(
   }
 
   return {
-    items: list(seed.items ?? []),
-    challenges: list(seed.challenges ?? []),
-    upgrades: list([]),
-    workouts: list([]),
-    friends: list([]),
-    places: list(seed.places ?? []),
-    dailies: list([]),
-    rooms: list([]),
-    vices: list([]),
-    finance: list([]),
-    explored: {
-      all: () => Promise.resolve(new Set()),
-      reveal: () => Promise.resolve(0),
-      clear: () => Promise.resolve(),
-      count: () => Promise.resolve(0),
-    },
+    workouts: list(seed.workouts ?? []),
     settings: {
       get: () => Promise.resolve({ ...DEFAULT_SETTINGS, ...seed.settings }),
       save: () => Promise.resolve(),
@@ -78,18 +61,11 @@ function harness(
   } as unknown as SheetDeps
 }
 
-function aVisitedPlace(id: string): Place {
-  return {
-    id,
-    name: `Place ${id}`,
-    categoryId: 'food',
-    status: 'visited',
-    location: { coordinates: { latitude: 51.5, longitude: -0.1 } },
-    favorite: false,
-    tags: [],
-    dateAdded: '2026-08-01T00:00:00.000Z',
-    dateVisited: '2026-08-10T00:00:00.000Z',
-  } as unknown as Place
+/** A finished session holding one entry of the given role, its set done or not. */
+function aSessionWith(role: 'warmup' | 'conditioning', done: boolean): WorkoutLog {
+  return aWorkout({
+    entries: [anEntry({ role, sets: [aSet({ outcome: done ? 'completed' : 'pending' })] })],
+  })
 }
 
 describe('what an area says when it has nothing to say', () => {
@@ -115,20 +91,12 @@ describe('what an area says when it has nothing to say', () => {
     expect(sheet.areas.find((area) => area.area === 'training')?.silent).toBe(false)
   })
 
-  it('leaves a ladder with no measurement unread rather than at zero', async () => {
-    const sheet = await characterSheet(harness())
-    const places = sheet.areas.find((area) => area.area === 'places')
-
-    expect(places?.ladders[0]?.reading).toBeUndefined()
-    expect(places?.ladders[0]?.value).toBeUndefined()
-  })
-
   it('stops being silent as soon as one act has happened', async () => {
-    const sheet = await characterSheet(harness({ places: [aVisitedPlace('a')] }))
-    const places = sheet.areas.find((area) => area.area === 'places')
+    const sheet = await characterSheet(harness({ workouts: [aSessionWith('warmup', true)] }))
+    const mobility = sheet.areas.find((area) => area.area === 'mobility')
 
-    expect(places?.silent).toBe(false)
-    expect(places?.xp).toBe(20)
+    expect(mobility?.silent).toBe(false)
+    expect(mobility?.xp).toBe(20)
   })
 })
 
@@ -146,23 +114,40 @@ describe('the areas on the sheet', () => {
 })
 
 describe('counting acts', () => {
-  it('counts a visited place once', async () => {
-    const tally = await tallyActs(harness({ places: [aVisitedPlace('a'), aVisitedPlace('b')] }))
+  /*
+   * Mobility and Stamina both ask whether the work was *done*, not
+   * whether it was scheduled: every session of the programme carries a
+   * warm-up and most carry conditioning, so counting the rows would pay
+   * both bars on every lifting day whatever happened.
+   */
+  it('pays the warm-up only when a warm-up set was done', async () => {
+    const tally = await tallyActs(
+      harness({ workouts: [aSessionWith('warmup', true), aSessionWith('warmup', false)] }),
+    )
 
-    expect(tally['places.place-visited']).toBe(2)
+    expect(tally['mobility.warm-up-done']).toBe(1)
+    expect(tally['training.session-finished']).toBe(2)
   })
 
-  /*
-   * A place saved by name and marked visited has no point on the map, and
-   * "somewhere I have been" that the map cannot show is not evidence of
-   * having been anywhere. Counting it would let a pasted list of twelve
-   * names become 240 XP without leaving the house.
-   */
-  it('does not count a visited place that was never placed', async () => {
-    const unplaced = { ...aVisitedPlace('a'), location: {} } as unknown as Place
-    const tally = await tallyActs(harness({ places: [unplaced] }))
+  it('pays conditioning only when a conditioning set was done', async () => {
+    const tally = await tallyActs(
+      harness({
+        workouts: [aSessionWith('conditioning', true), aSessionWith('conditioning', false)],
+      }),
+    )
 
-    expect(tally['places.place-visited']).toBe(0)
+    expect(tally['cardio.session-logged']).toBe(1)
+  })
+
+  /* Six warm-up rows are one act, or the cheapest work would pay most. */
+  it('pays the warm-up once a session, however many rows it has', async () => {
+    const session = aWorkout({
+      entries: [1, 2, 3].map((order) =>
+        anEntry({ role: 'warmup', order, sets: [aSet({ outcome: 'completed' })] }),
+      ),
+    })
+
+    expect((await tallyActs(harness({ workouts: [session] })))['mobility.warm-up-done']).toBe(1)
   })
 
   /*
@@ -183,53 +168,5 @@ describe('counting acts', () => {
      * exception this test carried can go with it.
      */
     expect(uncounted).toEqual([])
-  })
-})
-
-describe('the exploration ladder on the sheet', () => {
-  it('reads a level once a region has been named and ground walked', async () => {
-    const deps = harness({ settings: { exploredRegionKm2: 1 } })
-    const sheet = await characterSheet(deps)
-    const places = sheet.areas.find((area) => area.area === 'places')
-
-    // No ground walked, so the share is a true zero rather than absent —
-    // and zero is a reading, which puts it on the bottom rung.
-    expect(places?.ladders[0]?.value).toBe(0)
-    expect(places?.ladders[0]?.reading?.level).toBe('Untrained')
-  })
-})
-
-/**
- * Crafting is split off two other areas, so the thing worth testing is
- * that nothing pays twice — rule three, at the one place it is easiest
- * to break.
- */
-describe('what feeds Crafting', () => {
-  const build = (category: string) =>
-    ({
-      id: 'b1',
-      title: 'Millennium Falcon',
-      category,
-      status: 'active',
-      dailyProgress: [{ date: '2026-08-10', amount: 3 }],
-      dateCompleted: '2026-08-12',
-    }) as unknown as Item
-
-  const xpOf = (sheet: Awaited<ReturnType<typeof characterSheet>>, area: string) =>
-    sheet.areas.find((one) => one.area === area)?.xp ?? 0
-
-  it('pays a Lego build into Crafting and not into the Codex', async () => {
-    const sheet = await characterSheet(harness({ items: [build('lego')] }))
-
-    // A progress day at 5 and a finish at 40, the backlog's own rates.
-    expect(xpOf(sheet, 'crafting')).toBe(45)
-    expect(xpOf(sheet, 'backlog')).toBe(0)
-  })
-
-  it('leaves every other category paying the Codex', async () => {
-    const sheet = await characterSheet(harness({ items: [build('books')] }))
-
-    expect(xpOf(sheet, 'backlog')).toBe(45)
-    expect(xpOf(sheet, 'crafting')).toBe(0)
   })
 })

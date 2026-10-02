@@ -16,33 +16,6 @@ const PREFIX = import.meta.env.VITE_DEMO_MODE === 'true' ? 'lifeos.demo' : 'life
 
 export const STORAGE_KEYS = {
   settings: `${PREFIX}.settings`,
-  /**
-   * The backlog's own preferences — default sort, default category.
-   *
-   * Its own key rather than a field on `settings`, because they are two
-   * records about two different things and a single blob would mean a
-   * muscle tier and a list's sort order sharing a change stamp.
-   */
-  backlogSettings: `${PREFIX}.backlog-settings`,
-  /**
-   * What there is to spend on upgrades right now.
-   *
-   * Device-local and never synced — see
-   * `infrastructure/storage/upgrade-budget-store.ts` for why.
-   */
-  upgradeBudget: `${PREFIX}.upgrade-budget`,
-  /**
-   * The local day the boards were last read automatically.
-   *
-   * Device-local and never synced, deliberately. A marker that travelled
-   * would have the phone skip its morning sweep because the laptop ran
-   * one an hour ago, leaving the phone with nothing to show and no way
-   * to explain why. Two devices reading a board each is the cheaper
-   * mistake.
-   */
-  jobSweptOn: `${PREFIX}.job-swept-on`,
-  /** This morning's digest, and the day it was read. Same rules. */
-  digestReadOn: `${PREFIX}.digest-read-on`,
   /** Set once the install prompt has been dismissed, so it is not nagged. */
   installPromptDismissed: `${PREFIX}.install-dismissed`,
   /** Set once the storage-durability explanation has been acknowledged. */

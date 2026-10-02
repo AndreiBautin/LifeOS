@@ -21,10 +21,6 @@ describe('the registry covers the plan', () => {
       expect(area.phase, area.area).toBeGreaterThanOrEqual(0)
     }
   })
-
-  it('has exactly one tree', () => {
-    expect(SCORING.filter((area) => area.hasTree).map((area) => area.area)).toEqual(['upgrades'])
-  })
 })
 
 describe('rule one — no ladder is fed by XP', () => {
@@ -138,7 +134,7 @@ describe('looking an act up to acknowledge it', () => {
    * looking authoritative.
    */
   it('returns the registry’s own label and points', () => {
-    const sent = actById('backlog.item-finished')
+    const sent = actById('mobility.warm-up-done')
 
     expect(sent?.points).toBeGreaterThan(0)
     expect(sent?.label).toBeDefined()

@@ -1,15 +1,20 @@
 # Architecture
 
-A client-only React + TypeScript PWA. **No server of ours and no
-database of ours** — records live in IndexedDB in the visitor's own
-browser, behind a repository interface.
+A client-only React + TypeScript PWA: a gamified workout tracker. **No
+server of ours and no database of ours** — records live in IndexedDB in
+the visitor's own browser, behind a repository interface.
 
-That qualifier matters and is stated up front rather than buried: this
-document used to open "no network calls at runtime", which was never
-true once Leaflet was rendering live tiles. Two third parties are
-reachable, both only from the map screens — OpenStreetMap for tiles and
-Nominatim for turning a name into coordinates. **Each was a decision,
-not a precedent.**
+The one outbound host is GitHub, and only when the lifter has turned
+sync on with a token of their own. The app used to talk to OpenStreetMap
+as well, for map tiles and geocoding; the map went when the app narrowed
+to training, and the host went with it. **Each host was a decision, not
+a precedent.**
+
+Three screens are tabs — **You** (`/today`), **Train** and **History** —
+with Program a link from Train and Settings a link from You. Every route
+a removed area once had redirects to `/today` (`src/app/router.tsx`),
+because an installed PWA goes on asking for the paths it was installed
+with.
 
 ## The layers
 
@@ -25,7 +30,7 @@ build with a message explaining why — not by convention.
                            │
    ┌───────────────────────▼───────────────────────────┐
    │  application/                                     │  use-cases
-   │  start a workout, log a set, finish, score a life │
+   │  start a workout, log a set, finish, score it     │
    └───────────────────────┬───────────────────────────┘
                            │
    ┌───────────────────────▼───────────────────────────┐
@@ -169,9 +174,9 @@ instead.**
 
 ## A request, traced end to end
 
-Starting Wednesday's session and logging the first set of the bench:
+Starting Thursday's session (Push B) and logging the first set of the bench:
 
-1. **`features/train/TrainPage.tsx`** renders the next day and calls
+1. **`features/train/TrainZone.tsx`** (on Train) or **`NextSessionCard.tsx`** (on You) renders the next day and calls
    `useStartWorkout()`.
 2. **`features/train/hooks.ts`** resolves `AppServices` from context and
    calls the use-case.
@@ -206,7 +211,9 @@ Starting Wednesday's session and logging the first set of the bench:
     `actualReps` and `completedAt` beside the planned values.
 11. On finish, **`finish-workout.ts`** computes the report, then advances
     the position by one day — _on completion, not on the calendar_, so a
-    missed Wednesday costs nothing.
+    missed Thursday costs nothing. The next read of the character sheet
+    counts the session, its working sets, and — if a warm-up or
+    conditioning row was done — the Mobility and Stamina acts.
 
 Step 5 is the whole redesign, and no single test exercises it end to end:
 a bench opened at 200 from a 238 estimate, three sets of five were
@@ -221,8 +228,8 @@ position are `localStorage`.
 
 **Optional sync is a backup file in a private GitHub repository.**
 `infrastructure/sync/github-sync.ts` runs one round: read the file
-(`github-file.ts`), merge it with `mergeNewer` — newer `updatedAt` wins,
-tombstones travel both ways, walked ground unions — and write back only
+(`github-file.ts`), merge it with `mergeNewer` (`infrastructure/backup/sync-merge.ts`) —
+newer `updatedAt` wins and tombstones travel both ways — and write back only
 when `recordsFingerprint` says the records differ. A refused write means
 the other device got there first, so the round starts again from a fresh
 read. `features/sync/useGitHubSync.ts` runs rounds on launch, page
@@ -275,11 +282,17 @@ The XP tally is **derived from the records**, never stored as a counter.
 A counter cannot survive two devices — both increment it,
 last-write-wins throws one away — and cannot survive a restore either.
 
-**Traits are a projection of that same XP, not a fourth currency.** Each
-area belongs to at most one trait, so the bars can never double-count.
-Six areas belong to none, listed exactly in `UNCLAIMED_AREAS` — so an
-area added tomorrow with no trait still fails the build until somebody
-says which it is.
+There are three areas — training, conditioning (`cardio`) and mobility —
+and four acts: a finished session and a logged working set pay training,
+a finished session with completed conditioning pays conditioning, and a
+finished session with a completed warm-up pays mobility.
+`countActs` in `sheet.ts` is the one place they are counted.
+
+**Traits are a projection of that same XP, not a fourth currency.**
+Strength, Stamina and Mobility each claim exactly one area, so the bars
+partition the XP and sum to the level above them. `UNCLAIMED_AREAS` is
+empty and kept, so an area added tomorrow with no trait still fails the
+build until somebody says which it is.
 
 **The rating half of the model is dormant.** The monthly review screen
 was removed and it was the only thing that filed a month, so `readout`
@@ -291,31 +304,6 @@ An area with no measurement, no recorded rating and no acts is
 **silent** and renders nothing at all. `insufficient-data` counts as
 silence: it is the absence of a judgement, not a bad one.
 
-## The atlas, and the one boundary that differs
-
-Places, trips and the fog live in `domain/atlas/`, the only domain here
-that returns `Result<T, E>` where everything else throws. That was
-deliberate on absorption: rewriting fifteen thousand lines to match would
-have been a large change with no behavioural payoff, so `Result` stays
-inside `domain/atlas/` and is unwrapped once, at
-`application/use-cases/atlas/atlas.ts`. Everything above sees
-`{ error }` — the shape the quest log and the tech tree already use.
-
-Ground is stored as geohash cells at precision 7 (~153 m). A visited
-place's ground is **derived** from the place rather than stored beside
-it, so editing or un-visiting one stays correct with no second copy to
-drift. `revealCell` refuses any fix worse than 100 m, because fog cleared
-by a bad reading cannot be put back.
-
-Searching by name asks **Nominatim**, which is rate-limited to one
-request a second and run on donations: the query debounces at 500 ms, the
-adapter enforces the floor again, and results cache for five minutes.
-
-The exploration ladder divides walked area by the area of the region
-being explored — and nothing in the app knows which region is meant, so
-that number is typed into settings. Until it is, the ladder reads
-**absent** rather than zero.
-
 ## The demo build
 
 `VITE_DEMO_MODE=true` moves the database name and every storage key to a
@@ -323,10 +311,12 @@ that number is typed into settings. Until it is, the ladder reads
 only into empty storage. It is what deploys. See
 [DEMO_DATA.md](DEMO_DATA.md).
 
-The seeder lives in `application/use-cases/demo/` and drives the app's
-own use cases rather than writing records, so a fixture that compiles is
-a fixture the app could have produced. The workout history is the one
-exception, and it says why in place.
+The seeder lives in `application/use-cases/demo/`: seventeen weeks of
+sessions and one settings flag. The sessions are written as records
+rather than driven through `startWorkout` and `finishWorkout`, which can
+only ever produce a session dated today — the file says why in place,
+and `parity.test.ts` holds the fixture to the properties the landing
+page depends on.
 
 ## Technology, and why
 

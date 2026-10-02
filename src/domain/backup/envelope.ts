@@ -1,14 +1,5 @@
-import type { Place } from '@/domain/atlas/place/Place'
-import type { Trip } from '@/domain/atlas/trip/Trip'
-import type { Room } from '@/domain/base/declutter'
-import type { ChallengeMark } from '@/domain/challenges/challenge'
-import type { Campaign } from '@/domain/campaign/campaign'
-import type { Vice } from '@/domain/vitals/charges'
 import type { CheckIn } from '@/domain/autoregulation/check-in'
-import type { FinanceReading } from '@/domain/finance/reading'
-import type { Item } from '@/domain/backlog/item'
 import type { MetricDefinition, MonthlySnapshot } from '@/domain/review/metric'
-import type { Upgrade } from '@/domain/upgrades/upgrade'
 import type { Exercise } from '@/domain/exercises/exercise'
 import type { WorkoutLog } from '@/domain/logging/workout-log'
 import type { AppSettings } from '@/domain/settings/settings'
@@ -84,19 +75,8 @@ export interface BackupCounts {
   readonly exercises: number
   readonly workouts: number
   readonly checkIns: number
-  readonly items: number
-  readonly upgrades: number
   readonly metrics: number
   readonly reviews: number
-  readonly places: number
-  readonly trips: number
-  readonly vices: number
-  readonly finance: number
-  readonly campaigns: number
-  readonly challenges: number
-  readonly rooms: number
-  /** Geohash cells of walked ground. Counted, though it is a set of ids. */
-  readonly exploredCells: number
 }
 
 export interface BackupData {
@@ -112,36 +92,13 @@ export interface BackupData {
   readonly tombstones?: readonly Tombstone[]
 
   /*
-   * The absorbed areas. All optional on read: a version 1 or 2 file
+   * The review's metrics, optional on read: a version 1 or 2 file
    * predates them and a missing section means "none", never "delete what
-   * is here".
+   * is here". A file written while the app held the Codex, the map and the
+   * rest still carries those sections, and they are ignored.
    */
-  readonly items?: readonly Item[]
-  readonly upgrades?: readonly Upgrade[]
   readonly metrics?: readonly MetricDefinition[]
   readonly reviews?: readonly MonthlySnapshot[]
-  readonly places?: readonly Place[]
-  readonly trips?: readonly Trip[]
-  /**
-   * Optional, like everything added after the first envelope shipped.
-   *
-   * A file written before these existed carries no key, and the reader
-   * has to treat that as *no records* rather than as an error — which is
-   * the whole reason these are optional and the older fields are not.
-   */
-  readonly vices?: readonly Vice[]
-  readonly finance?: readonly FinanceReading[]
-  readonly campaigns?: readonly Campaign[]
-  readonly challenges?: readonly ChallengeMark[]
-  readonly rooms?: readonly Room[]
-  /**
-   * Walked ground, as bare cell ids.
-   *
-   * A set rather than records, and it merges by union on the way back in
-   * — the same reason it has no tombstone anywhere else in the hub. There
-   * is no such thing as un-walking ground.
-   */
-  readonly exploredCells?: readonly string[]
 }
 
 export function countsFor(data: BackupData): BackupCounts {
@@ -149,18 +106,8 @@ export function countsFor(data: BackupData): BackupCounts {
     exercises: data.exercises.length,
     workouts: data.workouts.length,
     checkIns: data.checkIns.length,
-    items: data.items?.length ?? 0,
-    upgrades: data.upgrades?.length ?? 0,
     metrics: data.metrics?.length ?? 0,
     reviews: data.reviews?.length ?? 0,
-    places: data.places?.length ?? 0,
-    trips: data.trips?.length ?? 0,
-    vices: data.vices?.length ?? 0,
-    finance: data.finance?.length ?? 0,
-    campaigns: data.campaigns?.length ?? 0,
-    challenges: data.challenges?.length ?? 0,
-    rooms: data.rooms?.length ?? 0,
-    exploredCells: data.exploredCells?.length ?? 0,
   }
 }
 
@@ -169,18 +116,8 @@ export const BACKUP_COUNT_KEYS = [
   'exercises',
   'workouts',
   'checkIns',
-  'items',
-  'upgrades',
   'metrics',
   'reviews',
-  'places',
-  'trips',
-  'vices',
-  'finance',
-  'campaigns',
-  'challenges',
-  'rooms',
-  'exploredCells',
 ] as const satisfies readonly (keyof BackupCounts)[]
 
 /* -------------------------------------------------------------------- */

@@ -1,17 +1,8 @@
-import type { Room } from '@/domain/base/declutter'
-import type { ChallengeMark } from '@/domain/challenges/challenge'
-import type { Campaign } from '@/domain/campaign/campaign'
 import type { DBSchema, IDBPDatabase } from 'idb'
 import { openDB } from 'idb'
 
 import type { CheckIn } from '@/domain/autoregulation/check-in'
-import type { FinanceReading } from '@/domain/finance/reading'
-import type { Item } from '@/domain/backlog/item'
-import type { Upgrade } from '@/domain/upgrades/upgrade'
 import type { MetricDefinition, MonthlySnapshot } from '@/domain/review/metric'
-import type { Place } from '@/domain/atlas/place/Place'
-import type { Trip } from '@/domain/atlas/trip/Trip'
-import type { Vice } from '@/domain/vitals/charges'
 import type { Tombstone } from '@/domain/sync/tombstone'
 import type { Exercise } from '@/domain/exercises/exercise'
 import type { WorkoutLog } from '@/domain/logging/workout-log'
@@ -61,7 +52,7 @@ export const DB_NAME = 'lifeos'
  * a device that already ran it will not run it again, so changing one
  * leaves two devices with different schemas and no way to tell.
  */
-export const DB_VERSION = 23
+export const DB_VERSION = 24
 
 /**
  * A workout as it is stored, which is not quite a workout as the domain
@@ -123,6 +114,12 @@ interface RetiredDayRow {
 /** A row of a retired store keyed by id rather than by day. */
 interface RetiredRow {
   readonly id: string
+  readonly [field: string]: unknown
+}
+
+/** A row of a retired store keyed by month. */
+interface RetiredMonthRow {
+  readonly month: string
   readonly [field: string]: unknown
 }
 
@@ -202,7 +199,7 @@ export interface LiftDB extends DBSchema {
    */
   items: {
     key: string
-    value: Item
+    value: RetiredRow
     indexes: { 'by-status': string; 'by-category': string; 'by-added': string }
   }
   /**
@@ -234,7 +231,7 @@ export interface LiftDB extends DBSchema {
    */
   upgrades: {
     key: string
-    value: Upgrade
+    value: RetiredRow
     indexes: { 'by-status': string }
   }
   /**
@@ -282,12 +279,12 @@ export interface LiftDB extends DBSchema {
   /** Places worth going to, visited or not. */
   places: {
     key: string
-    value: Place
+    value: RetiredRow
     indexes: { 'by-status': string; 'by-category': string }
   }
   trips: {
     key: string
-    value: Trip
+    value: RetiredRow
   }
   /**
    * Habits, and the days they were done.
@@ -327,7 +324,7 @@ export interface LiftDB extends DBSchema {
    */
   vices: {
     key: string
-    value: Vice
+    value: RetiredRow
   }
   /**
    * Retired a second time. It held one bodyweight reading a day, was
@@ -372,7 +369,7 @@ export interface LiftDB extends DBSchema {
   /** Rooms, and how clear each has been over time. */
   rooms: {
     key: string
-    value: Room
+    value: RetiredRow
   }
   /**
    * Retired: houses being considered.
@@ -404,12 +401,12 @@ export interface LiftDB extends DBSchema {
    */
   challenges: {
     key: string
-    value: ChallengeMark
+    value: RetiredRow
   }
   /** The long arcs -- the move, and anything shaped like it. */
   campaigns: {
     key: string
-    value: Campaign
+    value: RetiredRow
   }
   /**
    * Complex goals -- several parallel workstreams of facts, hypotheses,
@@ -432,7 +429,7 @@ export interface LiftDB extends DBSchema {
   /** The money figures, one row a month. */
   finance: {
     key: string
-    value: FinanceReading
+    value: RetiredMonthRow
   }
   /**
    * **A retired store, declared here and written by nothing.**
@@ -720,6 +717,31 @@ export function openDatabase(name = DB_NAME): Promise<AppDatabase> {
         void transaction.objectStore('projects').clear()
         void transaction.objectStore('attempts').clear()
         void transaction.objectStore('resume').clear()
+      }
+
+      if (oldVersion < 24) {
+        /*
+         * Everything that was not training left the app — the Codex, the
+         * map, the tech tree, Base, the buffs, the challenges and the arc:
+         * _"fully lean into this simply being a gamified workout
+         * tracker"_. Each is handled better by an app that already does
+         * it. The rows go the way the quests did; the stores stay, because
+         * removing them would mean editing the steps that create them.
+         */
+        for (const name of [
+          'items',
+          'upgrades',
+          'places',
+          'trips',
+          'exploredCells',
+          'vices',
+          'finance',
+          'rooms',
+          'challenges',
+          'campaigns',
+        ] as const) {
+          void transaction.objectStore(name).clear()
+        }
       }
     },
 

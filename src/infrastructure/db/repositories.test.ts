@@ -1,7 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { deleteDB } from 'idb'
 
-import { createItem } from '@/domain/backlog/item'
 import { builtInExercises } from '@/domain/exercises/catalogue'
 import type { Exercise } from '@/domain/exercises/exercise'
 import { asExerciseId } from '@/domain/ids/ids'
@@ -9,7 +8,6 @@ import { anEntry, aWorkout, BENCH, SQUAT } from '@/test/builders/workout'
 
 import { closeAppDatabase, openDatabase, type AppDatabase } from './database'
 import {
-  createBacklogItemRepository,
   createExerciseRepository,
   createPositionRepository,
   createTombstoneRepository,
@@ -283,62 +281,26 @@ function anExercise(overrides: Partial<Exercise>): Exercise {
   return { ...base, ...overrides }
 }
 
-describe('the backlog store', () => {
-  const anItem = (title: string) =>
-    createItem(
-      { title, category: 'books' },
-      {
-        clock: { now: () => new Date('2026-08-01T09:00:00.000Z') },
-        ids: { next: () => title.toLowerCase().replaceAll(' ', '-') },
-      },
-    )
-
+describe('deleting', () => {
   /*
-   * The stamp is written here and nowhere else — the domain deliberately
-   * leaves it undefined. If this stops holding, every sync comparison
-   * involving a backlog item silently becomes "no stamp", which loses to
-   * any tombstone.
+   * Two names because they are two operations: `remove` is a deletion
+   * somebody made and records it, so an older backup cannot bring the
+   * record back; `purge` is the receiving half of a sync, applying a
+   * deletion already recorded elsewhere.
    */
-  it('stamps on save and not on restore', async () => {
-    const items = createBacklogItemRepository(db, testClock)
-    const item = anItem('Dune')
-
-    await items.save(item)
-    expect((await items.byId(item.id))?.updatedAt).toBe('2026-08-25T09:00:00.000Z')
-
-    await items.restoreMany([{ ...item, updatedAt: '2026-01-01T00:00:00.000Z' }])
-    expect((await items.byId(item.id))?.updatedAt).toBe('2026-01-01T00:00:00.000Z')
-  })
-
   it('records a tombstone on remove and none on purge', async () => {
-    const items = createBacklogItemRepository(db, testClock)
+    const workouts = createWorkoutRepository(db, testClock)
     const tombstones = createTombstoneRepository(db)
 
-    const removed = anItem('Words of Radiance')
-    const purged = anItem('Oathbringer')
-    await items.save(removed)
-    await items.save(purged)
+    const removed = aWorkout({ notes: 'removed' })
+    const purged = aWorkout({ notes: 'purged' })
+    await workouts.save(removed)
+    await workouts.save(purged)
 
-    await items.remove(removed.id)
-    await items.purge(purged.id)
+    await workouts.remove(removed.id)
+    await workouts.purge(purged.id)
 
-    expect(await items.count()).toBe(0)
+    expect(await workouts.all()).toHaveLength(0)
     expect((await tombstones.all()).map((one) => one.id)).toEqual([removed.id])
-  })
-
-  /*
-   * `clear` says what it does. Backlogs had one method — `replaceAll` —
-   * that wiped the collection and wrote a new one, so a caller asking to
-   * fill an empty store could receive a wipe of a full one.
-   */
-  it('separates emptying the store from writing into it', async () => {
-    const items = createBacklogItemRepository(db, testClock)
-
-    await items.save(anItem('Dune'))
-    await items.restoreMany([anItem('Elantris')])
-    expect(await items.count()).toBe(2)
-
-    await items.clear()
-    expect(await items.count()).toBe(0)
   })
 })

@@ -37,19 +37,15 @@ export function useSampleData() {
   const loadSample = useMutation({
     mutationFn: async () => {
       const result = await seedDemoData(services)
-      /*
-       * The seed writes settings through the repository, which the
-       * in-memory copy behind `useSettings` has not seen — so the two
-       * fields it sets are carried across, or the next `update` anywhere
-       * would write the stale copy back over them.
-       */
-      const stored = await services.settings.get()
-      return { result, stored }
+      return result
     },
-    onSuccess: ({ result, stored }) => {
-      if (result.seeded) {
-        update({ exploredRegionKm2: stored.exploredRegionKm2, sampleData: 'loaded' })
-      }
+    onSuccess: (result) => {
+      /*
+       * The seed writes `sampleData` through the repository, which the
+       * in-memory copy behind `useSettings` has not seen — so it is set
+       * here too, or the next `update` anywhere would write it back.
+       */
+      if (result.seeded) update({ sampleData: 'loaded' })
       logger.info('sample.load', { seeded: result.seeded, reason: result.reason ?? 'none' })
       void client.invalidateQueries()
     },
