@@ -510,6 +510,12 @@ function NodeDialog({
       onClick={(event) => {
         if (event.target === dialog.current) close()
       }}
+      onCancel={(event) => {
+        // Escape. Handled here because the close event that follows it is
+        // queued, and a hidden tab was seen holding it back.
+        event.preventDefault()
+        close()
+      }}
       className="m-auto w-[min(32rem,calc(100vw-2rem))] overflow-visible bg-transparent p-0 backdrop:bg-black/60 backdrop:backdrop-blur-sm"
     >
       <div className="relative">
