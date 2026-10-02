@@ -1,5 +1,3 @@
-import type { ProgramTemplate } from '@/domain/programs/program'
-
 /**
  * Where the lifter is in their program — and the only thing about a
  * program that is stored.
@@ -32,6 +30,17 @@ export interface ProgramPosition {
   readonly dayIndex: number
   readonly startedAt: string
   /**
+   * The Monday the block began, as a day key — the one thing the calendar
+   * needs stored. Which day it is comes from the date and which week of
+   * the block from whole weeks since this; see `programs/schedule.ts`.
+   *
+   * Absent on every position written while the program was a cursor, and
+   * read from the week that cursor pointed at; see `blockStartOf`. The
+   * index fields stay, because that reading needs them and the sync file
+   * already carries them.
+   */
+  readonly blockStartedOn?: string
+  /**
    * When this position last moved, stamped by the repository on save.
    *
    * What lets two devices agree on where the lifter is: the sync file
@@ -47,70 +56,4 @@ export const STARTING_POSITION: Omit<ProgramPosition, 'startedAt'> = {
   blockIndex: 0,
   weekIndex: 0,
   dayIndex: 0,
-}
-
-export type AdvanceResult =
-  | { readonly kind: 'moved'; readonly position: ProgramPosition }
-  /** The block finished and repeats, so the cycle number went up. */
-  | { readonly kind: 'cycled'; readonly position: ProgramPosition }
-  /** The position does not exist in this program — nothing is changed. */
-  | { readonly kind: 'invalid' }
-
-/**
- * Where the program goes next.
- *
- * A program is a queue, not a calendar. Both source apps derived the
- * current day from days elapsed since the start date, so the first missed
- * Tuesday put them permanently out of step with no way back except
- * editing the start date. Here nothing moves until something happens —
- * finishing a session, or explicitly skipping one.
- *
- * Pure, and separate from the reason it is being advanced, so finishing
- * and skipping cannot drift apart. They differ in what they record, never
- * in where they leave the lifter.
- */
-export function nextPosition(program: ProgramTemplate, current: ProgramPosition): AdvanceResult {
-  const block = program.blocks[current.blockIndex]
-  if (block === undefined) return { kind: 'invalid' }
-
-  const week = block.weeks[current.weekIndex]
-  if (week === undefined) return { kind: 'invalid' }
-
-  const nextDay = current.dayIndex + 1
-  if (nextDay < week.days.length) {
-    return { kind: 'moved', position: { ...current, dayIndex: nextDay } }
-  }
-
-  const nextWeek = current.weekIndex + 1
-  if (nextWeek < block.weeks.length) {
-    return { kind: 'moved', position: { ...current, weekIndex: nextWeek, dayIndex: 0 } }
-  }
-
-  const nextBlock = current.blockIndex + 1
-  if (nextBlock < program.blocks.length) {
-    return {
-      kind: 'moved',
-      position: { ...current, blockIndex: nextBlock, weekIndex: 0, dayIndex: 0 },
-    }
-  }
-
-  /*
-   * The whole program is done, so it starts again with the cycle number
-   * up by one.
-   *
-   * There is no "finished" state any more. A block that ends used to
-   * complete its run and leave the lifter on a screen saying so, with a
-   * library to go and pick from — and there is no library now. Training
-   * continues; the deload is what marks the boundary.
-   */
-  return {
-    kind: 'cycled',
-    position: {
-      ...current,
-      cycleNumber: current.cycleNumber + 1,
-      blockIndex: 0,
-      weekIndex: 0,
-      dayIndex: 0,
-    },
-  }
 }

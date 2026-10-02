@@ -17,7 +17,6 @@ import { DEFAULT_SETTINGS } from '@/domain/settings/settings'
 import { abandonWorkout } from './abandon-workout'
 import { finishWorkout } from './finish-workout'
 import { logSet } from './log-set'
-import { skipSession } from './skip-session'
 import { startWorkout } from './start-workout'
 
 /** Fixed, so a stamped updatedAt is reproducible. */
@@ -117,19 +116,6 @@ afterEach(async () => {
 })
 
 /**
- * The days in one week of the derived program.
- *
- * Read rather than counted, so a test about rolling into the next week
- * follows the split instead of pinning it. Three of these broke on the
- * move from five days to four, all saying the same thing in a literal.
- */
-function trainingDays(): readonly unknown[] {
-  const days = program.blocks[0]?.weeks[0]?.days
-  if (days === undefined) throw new Error('the derived program has no first week')
-  return days
-}
-
-/**
  * There is nothing to begin.
  *
  * The program is derived from settings, so a lifter simply has one. The
@@ -140,12 +126,18 @@ function beginProgram() {
   return services()
 }
 
+/** Moves the clock on a day — the only thing that changes which session is offered. */
+function nextDay() {
+  currentTime = new Date(currentTime.getTime() + 86_400_000)
+}
+
 /**
  * The first session in the week that opens on a competition lift.
  *
- * Skipped forward rather than assumed to be day one: which day carries
- * which lift is the split's business, and day one is an overhead-press
- * day now. A test about how a strength lift opens has no opinion on that.
+ * Walked forward a day at a time rather than assumed to be Monday: which
+ * day carries which lift is the split's business, and Monday is an
+ * overhead-press day. A test about how a strength lift opens has no
+ * opinion on that.
  */
 async function startOnAStrengthDay(deps: ReturnType<typeof beginProgram>) {
   for (let day = 0; day < 7; day += 1) {
@@ -153,7 +145,7 @@ async function startOnAStrengthDay(deps: ReturnType<typeof beginProgram>) {
     if (started.kind !== 'started') throw new Error('expected a started workout')
     if (started.workout.entries.some((entry) => entry.role === 'strength')) return started
     await abandonWorkout(started.workout.id, deps)
-    await skipSession(deps)
+    nextDay()
   }
   throw new Error('no day in the week opens on a competition lift')
 }
@@ -246,13 +238,13 @@ describe('starting a session from a program', () => {
     await finishWorkout(first.workout.id, deps)
 
     /*
-     * Skipped forward until the same lift comes round again rather than a
+     * Walked forward until the same lift comes round again rather than a
      * fixed number of days: which day carries which lift is the split's
      * business and this test has no opinion on it.
      */
     let again
     for (let day = 0; day < 10 && again === undefined; day += 1) {
-      await skipSession(deps)
+      nextDay()
       const next = await startWorkout({ athlete, program, roundingIncrement: 5 }, deps)
       if (next.kind !== 'started') throw new Error('expected a started workout')
 
@@ -386,53 +378,54 @@ describe('logging', () => {
   })
 })
 
-describe('finishing a session', () => {
-  it('advances the program by one day', async () => {
+describe('the calendar decides the session', () => {
+  // 2026-08-24, where the clock starts, is a Monday.
+  it('opens the session today is scheduled for', async () => {
+    const started = await startWorkout({ athlete, program, roundingIncrement: 5 }, beginProgram())
+    if (started.kind !== 'started') throw new Error('expected a started workout')
+    expect(started.workout.title).toBe('Monday — Push A')
+  })
+
+  it('offers tomorrow’s session once today’s is finished', async () => {
+    const deps = beginProgram()
+    const today = await startWorkout({ athlete, program, roundingIncrement: 5 }, deps)
+    if (today.kind !== 'started') throw new Error('expected a started workout')
+    await finishWorkout(today.workout.id, deps)
+
+    const early = await startWorkout({ athlete, program, roundingIncrement: 5 }, deps)
+    if (early.kind !== 'started') throw new Error('expected a started workout')
+    expect(early.workout.title).toBe('Tuesday — Pull A')
+  })
+
+  /*
+   * The reason the cursor went. Missing Tuesday used to hold Pull A over
+   * to Wednesday and slide every later day one place out of the routine.
+   */
+  it('does not hold a missed day over', async () => {
+    const deps = beginProgram()
+    nextDay()
+    nextDay()
+
+    const started = await startWorkout({ athlete, program, roundingIncrement: 5 }, deps)
+    if (started.kind !== 'started') throw new Error('expected a started workout')
+    expect(started.workout.title).toBe('Wednesday — Legs A')
+  })
+
+  it('moves nothing when a session is finished', async () => {
     const deps = beginProgram()
     const started = await startWorkout({ athlete, program, roundingIncrement: 5 }, deps)
     if (started.kind !== 'started') throw new Error('expected a started workout')
-
-    expect((await deps.position.get())?.dayIndex).toBe(0)
+    const before = await deps.position.get()
 
     currentTime = new Date('2026-08-24T10:15:00.000Z')
     await finishWorkout(started.workout.id, deps)
 
-    const instance = await deps.position.get()
-    expect(instance?.dayIndex).toBe(1)
-    expect(instance?.weekIndex).toBe(0)
+    expect((await deps.position.get())?.blockStartedOn).toBe(before?.blockStartedOn)
+    expect(before?.blockStartedOn).toBe('2026-08-24')
   })
+})
 
-  it('rolls into the next week after the last day', async () => {
-    const deps = beginProgram()
-
-    // Four training days in this split, so four finished sessions should
-    // land on week 2 day 1. Read from the program rather than counted, so
-    // this follows the split instead of pinning it.
-    for (const _day of trainingDays()) {
-      const started = await startWorkout({ athlete, program, roundingIncrement: 5 }, deps)
-      if (started.kind !== 'started') throw new Error('expected a started workout')
-      await finishWorkout(started.workout.id, deps)
-    }
-
-    const instance = await deps.position.get()
-    expect(instance?.weekIndex).toBe(1)
-    expect(instance?.dayIndex).toBe(0)
-  })
-
-  it('advances on completion rather than on the calendar', async () => {
-    // Both source apps derived the current day from elapsed time, so a
-    // missed Tuesday put the program permanently out of step. A program
-    // here is a queue.
-    const deps = beginProgram()
-    const started = await startWorkout({ athlete, program, roundingIncrement: 5 }, deps)
-    if (started.kind !== 'started') throw new Error('expected a started workout')
-
-    currentTime = new Date('2026-09-30T18:00:00.000Z')
-    await finishWorkout(started.workout.id, deps)
-
-    expect((await deps.position.get())?.dayIndex).toBe(1)
-  })
-
+describe('finishing a session', () => {
   it('reports volume by muscle and progress against last time', async () => {
     const deps = beginProgram()
     const started = await startWorkout({ athlete, program, roundingIncrement: 5 }, deps)
@@ -491,56 +484,6 @@ describe('finishing a session', () => {
   })
 })
 
-describe('skipping a session', () => {
-  it('moves the program on without writing a workout', async () => {
-    // A day trained elsewhere, or simply missed. Logging an empty session
-    // would advance the program *and* put a workout with no sets into the
-    // history, where it counts as a training day and drags every
-    // frequency and volume figure down.
-    const deps = beginProgram()
-
-    const result = await skipSession(deps)
-
-    expect(result.kind).toBe('skipped')
-    expect((await deps.position.get())?.dayIndex).toBe(1)
-    expect(await deps.workouts.count()).toBe(0)
-  })
-
-  it('rolls into the next week like finishing does', async () => {
-    const deps = beginProgram()
-    // Read from the program rather than counted, so this follows the
-    // split instead of pinning it.
-    for (const _day of trainingDays()) await skipSession(deps)
-
-    const instance = await deps.position.get()
-    expect(instance?.weekIndex).toBe(1)
-    expect(instance?.dayIndex).toBe(0)
-  })
-
-  it('refuses while a session is open', async () => {
-    // Skipping past an in-progress workout would strand it: still open,
-    // but attached to a day the program has already moved off.
-    const deps = beginProgram()
-    const started = await startWorkout({ athlete, program, roundingIncrement: 5 }, deps)
-    if (started.kind !== 'started') throw new Error('expected a started workout')
-
-    const result = await skipSession(deps)
-
-    expect(result.kind).toBe('session-in-progress')
-    expect((await deps.position.get())?.dayIndex).toBe(0)
-  })
-
-  it('skips from the beginning when nothing has been trained yet', async () => {
-    // A week that starts on a Wednesday. There is no stored position and
-    // no program to be missing, so this lands on day two rather than
-    // reporting a state that cannot occur under a derived program.
-    const deps = services()
-
-    expect((await skipSession(deps)).kind).toBe('skipped')
-    expect((await deps.position.get())?.dayIndex).toBe(1)
-  })
-})
-
 describe('abandoning a session', () => {
   it('discards a session nothing was logged against', () => {
     // Opened by accident. The record describes an event that did not
@@ -586,16 +529,18 @@ describe('abandoning a session', () => {
     expect((await deps.workouts.byId(started.workout.id))?.status).toBe('abandoned')
   })
 
-  it('leaves the program on the same day either way', async () => {
-    // The day was not finished. Advancing would silently cost the lifter
-    // a session out of the block.
+  it('leaves today’s session on offer', async () => {
+    // The day was not finished, so it is still the day's session — an
+    // abandoned log does not count as today's being done.
     const deps = beginProgram()
     const started = await startWorkout({ athlete, program, roundingIncrement: 5 }, deps)
     if (started.kind !== 'started') throw new Error('expected a started workout')
 
     await abandonWorkout(started.workout.id, deps)
 
-    expect((await deps.position.get())?.dayIndex).toBe(0)
+    const again = await startWorkout({ athlete, program, roundingIncrement: 5 }, deps)
+    if (again.kind !== 'started') throw new Error('expected a started workout')
+    expect(again.workout.title).toBe(started.workout.title)
   })
 
   it('frees the lifter to start the session again', async () => {

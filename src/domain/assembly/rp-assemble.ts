@@ -1797,7 +1797,7 @@ function describeDay(
   slots: readonly Slot[],
   library: readonly Exercise[],
   targets: Record<MuscleGroup, number>,
-): { readonly label: string; readonly focus?: string } {
+): { readonly label: string; readonly focus?: string; readonly weekday?: number } {
   const lookup = (id: ExerciseId): Exercise | undefined =>
     library.find((exercise) => exercise.id === id)
 
@@ -1937,6 +1937,7 @@ function describeDay(
 
   return {
     label: `${splitDay.label} — ${splitDay.focusName}`,
+    ...(splitDay.weekday !== undefined ? { weekday: splitDay.weekday } : {}),
     ...(focus !== '' ? { focus } : {}),
   }
 }

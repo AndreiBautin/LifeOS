@@ -106,7 +106,10 @@ in rather than looked up here.
 
 The programme is **derived, never stored**. `deriveProgram(settings,
 library)` in `application/use-cases/programs/current-program.ts` returns
-a `ProgramTemplate`; only the _position_ in it persists.
+a `ProgramTemplate`. Which day of it is today comes from the calendar
+(`domain/programs/schedule.ts`): the weekday picks the session and whole
+weeks since the block's Monday pick the week. That Monday is the only
+thing stored.
 
 Storing the programme produced the same bug four times — a change
 reaching the code and not the copy on the device — and each fix patched
@@ -183,9 +186,11 @@ Starting Thursday's session (Push B) and logging the first set of the bench:
    `useStartWorkout()`.
 2. **`features/train/hooks.ts`** resolves `AppServices` from context and
    calls the use-case.
-3. **`application/use-cases/training/start-workout.ts`** reads the stored
-   position, clamps it inside the derived programme (`clampPosition` —
-   the programme can get shorter under a lifter), and finds the day.
+3. **`application/use-cases/training/start-workout.ts`** asks
+   `scheduleFor` (`application/use-cases/programs/schedule.ts`) which
+   session the calendar holds: today's until it is done, otherwise the
+   next one. The weekday picks the day; whole weeks since the block's
+   Monday pick the week.
 4. It then builds `working` from history: for each exercise in _this
    day only_, `workingLoads` asks
    `deps.workouts.forExercise(id, …)` and `lastPerformance` reads the
@@ -212,9 +217,9 @@ Starting Thursday's session (Push B) and logging the first set of the bench:
 9. The lifter taps the set. **`SetRow.tsx`** opens prefilled with 190 × 5.
 10. **`application/use-cases/training/log-set.ts`** writes `actualLoad`,
     `actualReps` and `completedAt` beside the planned values.
-11. On finish, **`finish-workout.ts`** computes the report, then advances
-    the position by one day — _on completion, not on the calendar_, so a
-    missed Thursday costs nothing. The next read of the training grid
+11. On finish, **`finish-workout.ts`** computes the report and moves
+    nothing — tomorrow is tomorrow's session because of the date, not
+    because this one finished. The next read of the training grid
     (`application/use-cases/training/activity.ts`) counts its working
     sets on the day it was filed.
 

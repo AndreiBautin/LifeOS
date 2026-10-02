@@ -9,13 +9,7 @@ import {
   totalWorkingSets,
   workingSets,
 } from '@/domain/logging/workout-log'
-import type {
-  Clock,
-  ExerciseRepository,
-  PositionRepository,
-  WorkoutRepository,
-} from '@/domain/repositories/ports'
-import { nextPosition } from '@/domain/programs/position'
+import type { Clock, ExerciseRepository, WorkoutRepository } from '@/domain/repositories/ports'
 import type { E1rmEstimate } from '@/domain/strength/one-rep-max'
 import { displaySets, trainedMuscles } from '@/domain/volume/accounting'
 import type { MuscleGroup } from '@/domain/exercises/taxonomy'
@@ -32,7 +26,6 @@ import type { MuscleGroup } from '@/domain/exercises/taxonomy'
 
 export interface FinishWorkoutDeps {
   readonly workouts: WorkoutRepository
-  readonly position: PositionRepository
   readonly exercises: ExerciseRepository
   /** The program, derived by the caller from the lifter's settings. */
   readonly program: ProgramTemplate
@@ -75,32 +68,17 @@ export async function finishWorkout(
   }
 
   await deps.workouts.save(completed)
-  await advancePosition(completed, deps)
 
   return buildReport(completed, await deps.exercises.all(), deps)
 }
 
-/**
- * Moves the program on by one day.
- *
- * Advancing on *completion* rather than on the calendar is deliberate.
- * LiftTracker keyed sessions to weekdays and StrengthFlow computed the
- * current day from days-elapsed since the program started, so both drifted
- * permanently out of step the first time a lifter missed a Tuesday. A
- * program here is a queue, not a calendar.
+/*
+ * **Finishing moves nothing.** It used to advance a stored cursor by one
+ * day — the program was a queue, so the next session was whatever came
+ * after the last one finished. The calendar decides now: tomorrow is
+ * tomorrow's session whether today's was finished, abandoned or never
+ * started. See `domain/programs/schedule.ts`.
  */
-async function advancePosition(workout: WorkoutLog, deps: FinishWorkoutDeps): Promise<void> {
-  // A freestyle session is not part of the program and moves nothing.
-  if (workout.position === undefined) return
-
-  const current = await deps.position.get()
-  if (current === undefined) return
-
-  const result = nextPosition(deps.program, current)
-  if (result.kind === 'invalid') return
-
-  await deps.position.save(result.position)
-}
 
 async function buildReport(
   workout: WorkoutLog,

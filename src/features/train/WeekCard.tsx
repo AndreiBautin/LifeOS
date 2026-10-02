@@ -33,9 +33,9 @@ const OVERSHOOT = 1.25
 
 export function WeekCard() {
   const summary = useWeekSummary()
-  const { week } = useNextSession()
+  const { thisWeek } = useNextSession()
 
-  const targets = week === undefined ? {} : scheduledVolume(week)
+  const targets = thisWeek === undefined ? {} : scheduledVolume(thisWeek)
   const done = summary.data?.volume
 
   const spokes = (Object.keys(MUSCLE_GROUP_LABELS) as MuscleGroup[])

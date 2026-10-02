@@ -10,7 +10,7 @@ import type {
   WorkoutRepository,
 } from '@/domain/repositories/ports'
 import type { ProgramPosition } from '@/domain/programs/position'
-import { clampPosition, dayAt } from '@/application/use-cases/programs/current-program'
+import { scheduleFor } from '@/application/use-cases/programs/schedule'
 import { STARTING_POSITION } from '@/domain/programs/position'
 import type { AthleteState } from '@/domain/resolution/resolve'
 import { resolveSets } from '@/domain/resolution/resolve'
@@ -67,18 +67,35 @@ export async function startWorkout(
     return { kind: 'started', workout }
   }
 
-  const stored = await deps.position.get()
-  const position = stored ?? { ...STARTING_POSITION, startedAt: deps.clock.now().toISOString() }
-
-  // The program can change shape underneath a position — five days a week
-  // becoming three — so the position is pulled back inside it first.
-  const safe = clampPosition(request.program, position)
-  const day = dayAt(request.program, safe)
-  if (day === undefined) {
+  /*
+   * **The calendar decides the day.** Today's session until it is done,
+   * then the next one the week holds — so starting on a rest day, or
+   * after today's is filed, opens tomorrow's early rather than nothing.
+   * See `domain/programs/schedule.ts`.
+   */
+  const schedule = await scheduleFor(request.program, deps)
+  const scheduled = schedule.next
+  if (scheduled === undefined) {
     return { kind: 'program-finished', message: 'This program has no scheduled days.' }
   }
+  const day = scheduled.day
 
-  if (stored === undefined) await deps.position.save(safe)
+  /*
+   * The block's Monday is written down the first time it is needed, so a
+   * device reading a cursor-era position settles on one answer rather
+   * than re-deriving it from a stamp that later saves would move.
+   */
+  const stored = await deps.position.get()
+  if (stored?.blockStartedOn === undefined) {
+    await deps.position.save({
+      ...(stored ?? { ...STARTING_POSITION, startedAt: deps.clock.now().toISOString() }),
+      cycleNumber: scheduled.cycleNumber,
+      blockIndex: scheduled.blockIndex,
+      weekIndex: scheduled.weekIndex,
+      dayIndex: scheduled.dayIndex,
+      blockStartedOn: schedule.blockStartedOn,
+    })
+  }
 
   const library = await deps.exercises.all()
 
@@ -98,7 +115,7 @@ export async function startWorkout(
     athlete: { ...request.athlete, working },
   }
 
-  const workout = buildFromDay(day, safe, withHistory, library, deps)
+  const workout = buildFromDay(day, scheduled, withHistory, library, deps)
   await deps.workouts.save(workout)
 
   return { kind: 'started', workout }
@@ -206,7 +223,7 @@ function rangeOf(sets: readonly LoggedSet[]): RepRange | undefined {
 
 function buildFromDay(
   day: ProgramDay,
-  position: ProgramPosition,
+  position: Pick<ProgramPosition, 'cycleNumber' | 'blockIndex' | 'weekIndex' | 'dayIndex'>,
   request: StartWorkoutRequest,
   library: readonly Exercise[],
   deps: StartWorkoutDeps,

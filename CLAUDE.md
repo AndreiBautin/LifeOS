@@ -77,6 +77,24 @@ standards.ts`): the estimated max, its multiple of bodyweight, and the
   quiet ("Finish early · N sets left") until nothing is pending, the
   day's targets are pips, and the rest timer is a ring with +30s rather
   than a second whole rest period. The report opens on a `.hero-panel`.
+- **The calendar picks the session; the cursor is gone.** Asked for as
+  _"the app knows what day it is and the workouts each map to a day so
+  we should use that rather than keeping a cursor"_. The weekday picks
+  the day (`RpDay.weekday`, copied onto `ProgramDay`), whole weeks since
+  `ProgramPosition.blockStartedOn` pick the week and cycle
+  (`domain/programs/schedule.ts`, `scheduleFor`). **This reverses the
+  "a program is a queue, not a calendar" rule** below — right while a
+  day was a slot in a generated week, wrong once the week became the
+  lifter's own routine by weekday. Finishing moves nothing, reopening
+  rewinds nothing, Skip is deleted (a missed day just passes), and
+  `jumpToWeek` writes a new block Monday. Today's session is offered
+  until a completed log for it exists today; after that, and on a rest
+  day, the next scheduled one is offered as "Start it early". **A
+  cursor-era position is read, not migrated**: `blockStartOf` takes the
+  week it pointed at on the day it last moved, so the switch kept the
+  lifter in week six; `startWorkout` then writes the Monday down. The
+  cursor was also the one record with no correct merge — it is what
+  read Push A on a phone and Pull B on a desktop.
 - **The seasons survive only as the backdrop's tint**
   (`domain/time/season.ts`). Nothing is scored against one.
 - **The demo is four months of sessions and nothing else**; its guard is

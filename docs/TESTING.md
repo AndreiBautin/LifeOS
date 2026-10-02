@@ -33,11 +33,11 @@ each lift as a multiple of bodyweight" states both numbers.
 
 ## By layer
 
-| Layer             | How                                      | What it protects                                                                                                                                               |
-| ----------------- | ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `domain/`         | Pure unit tests, table-driven            | The programming itself: rep ranges, load steps, rounding, volume arithmetic, strength standards, merge semantics                                               |
-| `application/`    | Against a real (fake-indexeddb) database | Behaviours spanning layers: history becoming a suggested load, a logged set landing in the log rather than the programme, advancing on completion or on a skip |
-| `infrastructure/` | Against a real (fake-indexeddb) database | Schema, indexes, migrations, export/import round-trip                                                                                                          |
+| Layer             | How                                      | What it protects                                                                                                                                                                            |
+| ----------------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `domain/`         | Pure unit tests, table-driven            | The programming itself: rep ranges, load steps, rounding, volume arithmetic, strength standards, merge semantics                                                                            |
+| `application/`    | Against a real (fake-indexeddb) database | Behaviours spanning layers: history becoming a suggested load, a logged set landing in the log rather than the programme, the calendar choosing the session, and a missed day not held over |
+| `infrastructure/` | Against a real (fake-indexeddb) database | Schema, indexes, migrations, export/import round-trip                                                                                                                                       |
 
 Application tests use a real database rather than mocks on purpose. The
 bugs worth catching there are integration bugs; a mocked repository would

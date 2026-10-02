@@ -17,7 +17,8 @@ import { attributeWeek, type MuscleAttribution } from '@/domain/volume/attributi
 import type { MuscleGroup } from '@/domain/exercises/taxonomy'
 import { Badge, Button, Card, Section } from '@/components/shared/primitives'
 
-import { useExercises, useJumpToWeek, usePosition, useProgram } from '@/features/train/hooks'
+import { useExercises, useJumpToWeek, useProgram } from '@/features/train/hooks'
+import { useNextSession } from '@/features/train/useNextSession'
 
 /**
  * The whole block, laid out, with the numbers it would actually give you.
@@ -35,7 +36,7 @@ import { useExercises, useJumpToWeek, usePosition, useProgram } from '@/features
 export function ProgramPage() {
   const { settings, athlete } = useSettings()
   const program = useProgram()
-  const position = usePosition()
+  const { thisWeek } = useNextSession()
   const exercises = useExercises()
   const jumpToWeek = useJumpToWeek()
 
@@ -45,18 +46,11 @@ export function ProgramPage() {
   const weeks = block?.weeks ?? []
 
   /*
-   * The week the lifter is on, whether or not one has been recorded yet.
-   *
-   * A position is only written once a session is started, skipped or
-   * jumped to, so a fresh install has none — and gating on
-   * `position.data` being present meant the jump control was hidden from
-   * exactly the person who needs it. Someone arriving three weeks into a
-   * block, on a device that has never opened a session, had no way to say
-   * so: no dot on any tab, and no "start from here" however far they
-   * browsed. Week one by default is the right *reading* of an absent
-   * position; it must not also be an unchangeable one.
+   * The week the calendar puts today in — whole weeks since the block's
+   * Monday, so it reads correctly on a device that has never opened a
+   * session. Choosing another writes a new Monday; see `jumpToWeek`.
    */
-  const currentWeek = position.data?.weekIndex ?? 0
+  const currentWeek = thisWeek === undefined ? 0 : Math.max(0, weeks.indexOf(thisWeek))
 
   /*
    * **One week is drawn, and it is the working one.**

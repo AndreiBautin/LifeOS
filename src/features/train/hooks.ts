@@ -13,7 +13,6 @@ import {
   type PreviousSet,
   type SetResult,
 } from '@/application/use-cases/training/log-set'
-import { skipSession, type SkipResult } from '@/application/use-cases/training/skip-session'
 import {
   startWorkout,
   type StartWorkoutResult,
@@ -23,6 +22,7 @@ import type { ProgramTemplate } from '@/domain/programs/program'
 import { useServices, useSettings } from '@/app/context'
 import { activityFor } from '@/application/use-cases/training/activity'
 import { weekSummary } from '@/application/use-cases/training/week'
+import { scheduleFor } from '@/application/use-cases/programs/schedule'
 import { logger } from '@/shared/logging/logger'
 
 /**
@@ -50,15 +50,6 @@ export function useProgram() {
     queryKey: ['program', settings],
     queryFn: async () => deriveProgram(settings, await services.exercises.all()),
     staleTime: Infinity,
-  })
-}
-
-export function usePosition() {
-  const services = useServices()
-
-  return useQuery({
-    queryKey: ['position'],
-    queryFn: () => services.position.get().then((position) => position ?? null),
   })
 }
 
@@ -94,6 +85,25 @@ export function useExercises() {
 export function useActivity() {
   const services = useServices()
   return useQuery({ queryKey: ['workouts', 'activity'], queryFn: () => activityFor(services) })
+}
+
+/**
+ * Which session today holds, and what to offer next — the calendar's
+ * answer, read from the date. Keyed under `workouts`, because finishing a
+ * session is what turns "today's" into "tomorrow's".
+ */
+export function useSchedule() {
+  const services = useServices()
+  const program = useProgram()
+
+  return useQuery({
+    queryKey: ['workouts', 'schedule', program.data?.id, program.dataUpdatedAt],
+    queryFn: () => {
+      if (program.data === undefined) throw new Error('The program is still loading.')
+      return scheduleFor(program.data, services)
+    },
+    enabled: program.data !== undefined,
+  })
 }
 
 /** This calendar week so far, and the weekly streak. Keyed under `workouts` like the grid. */
@@ -229,30 +239,6 @@ export function useAbandonWorkout() {
 }
 
 /**
- * Moves past a session without logging one.
- *
- * Deliberately writes nothing to the history: a skipped day did not
- * happen, and an empty workout in the log would count as a training day
- * against every frequency and volume figure.
- */
-export function useSkipSession() {
-  const services = useServices()
-  const program = useProgram()
-  const client = useQueryClient()
-
-  return useMutation<SkipResult>({
-    mutationFn: () => {
-      if (program.data === undefined) throw new Error('The program is still loading.')
-      return skipSession({ ...services, program: program.data })
-    },
-    onSuccess: (result) => {
-      logger.info('session.skip', { outcome: result.kind })
-      void client.invalidateQueries({ queryKey: ['position'] })
-    },
-  })
-}
-
-/**
  * What was done on this set the last time this lift was trained.
  *
  * Rendered as the input's placeholder, so beating last week is the path
@@ -304,6 +290,7 @@ export function useJumpToWeek() {
       jumpToWeek(program, weekIndex, services),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['position'] })
+      void queryClient.invalidateQueries({ queryKey: ['workouts'] })
       void queryClient.invalidateQueries({ queryKey: keys.activeWorkout })
     },
   })

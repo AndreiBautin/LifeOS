@@ -1,7 +1,7 @@
 import type { WorkoutId } from '@/domain/ids/ids'
 import type { WorkoutLog } from '@/domain/logging/workout-log'
 import { remainingSets } from '@/domain/logging/workout-log'
-import type { PositionRepository, WorkoutRepository } from '@/domain/repositories/ports'
+import type { WorkoutRepository } from '@/domain/repositories/ports'
 
 /**
  * Picking a session back up after finishing it by mistake.
@@ -18,24 +18,14 @@ import type { PositionRepository, WorkoutRepository } from '@/domain/repositorie
  * erases the sets that were genuinely performed to undo the one tap that
  * was not.
  *
- * **This one does move the program**, which is the interesting difference
- * from deleting. `deleteWorkout` deliberately refuses to — removing a
- * record is a claim about the record and says nothing about where the
- * lifter is in their block. Reopening is the opposite claim: the session
- * is still running, so the position that finishing advanced past is
- * wrong, and leaving it forward would have the lifter finish today's
- * session a second time and land two days on.
- *
- * The position is **restored from the log rather than computed
- * backwards**. A `WorkoutLog` records where it sat, so there is a right
- * answer to read; inverting `nextPosition` would mean reimplementing
- * cycle and week wrapping in reverse, and a subtly wrong inverse is the
- * kind of bug that only appears on the last day of a block.
+ * **It moves nothing in the program.** It used to restore a stored cursor
+ * to the reopened session's day, because finishing had advanced past it.
+ * The calendar decides the day now and finishing advances nothing, so
+ * reopening is only what it says: the record goes back to running.
  */
 
 export interface ReopenWorkoutDeps {
   readonly workouts: WorkoutRepository
-  readonly position: PositionRepository
 }
 
 export type ReopenWorkoutResult =
@@ -75,12 +65,11 @@ export async function reopenWorkout(
   /*
    * Nothing filed after it.
    *
-   * Rolling the position back to a session with a later one already in
-   * the history would have the lifter repeat days they have since
-   * trained, and the second pass would file logs out of order. Refused
-   * rather than resolved: the honest recovery there is a freestyle
-   * session for the missing sets, which costs a row in the history and
-   * loses nothing.
+   * Reopening a session with a later one already in the history would
+   * put a running session behind a finished one and file its sets out of
+   * order. Refused rather than resolved: the honest recovery there is a
+   * session from scratch for the missing sets, which costs a row in the
+   * history and loses nothing.
    */
   const [latest] = await deps.workouts.recent(1)
   if (latest !== undefined && latest.id !== workout.id) return { kind: 'not-the-latest' }
@@ -95,16 +84,6 @@ export async function reopenWorkout(
   const reopened: WorkoutLog = { ...rest, status: 'in-progress' }
 
   await deps.workouts.save(reopened)
-
-  // A freestyle session moved nothing on the way in, so it moves nothing
-  // on the way back.
-  if (workout.position !== undefined) {
-    const current = await deps.position.get()
-    await deps.position.save({
-      ...workout.position,
-      startedAt: current?.startedAt ?? workout.startedAt,
-    })
-  }
 
   return { kind: 'reopened', workout: reopened }
 }

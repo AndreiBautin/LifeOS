@@ -103,10 +103,8 @@ and wrong every day after.
 The rule elsewhere in this codebase is that a fixture should go through
 the app's own use cases, so a fixture that compiles is one the app could
 have produced. **The workout history cannot**, and the file says so in
-place. `startWorkout` opens _today's_ programme day and `finishWorkout`
-advances the block position from wherever it currently stands, so a loop
-of start-then-finish yields sessions all dated today with the programme
-further on than the history claims. There is no way to ask those use
+place. `startWorkout` opens the session the calendar holds _today_, so a
+loop of start-then-finish yields sessions all dated today. There is no way to ask those use
 cases for a session that happened last week, because from the app's
 point of view there never is one.
 

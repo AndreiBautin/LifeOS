@@ -73,8 +73,9 @@ two survived.
 
 Here:
 
-- The **programme is derived, never stored**. Only your _position_ in it
-  persists.
+- The **programme is derived, never stored**, and **the calendar picks
+  the day**: the weekday chooses the session and weeks since the block's
+  Monday choose the week. That Monday is the only thing persisted.
 - A **`WorkoutLog` describes itself** — it embeds the prescription,
   planned load and planned reps of every set.
 

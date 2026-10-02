@@ -33,8 +33,8 @@ were the same database rows.
   — double progression: work a rep range, and when every set reaches the
   top of it, the next session's load goes up.
 - **[`application/use-cases/programs/current-program.ts`](src/application/use-cases/programs/current-program.ts)**
-  — the programme, derived on every read. Only your position in it is
-  stored.
+  — the programme, derived on every read. Which day of it is today comes
+  from the calendar ([`domain/programs/schedule.ts`](src/domain/programs/schedule.ts)).
 - **[`domain/resolution/resolve.ts`](src/domain/resolution/resolve.ts)**
   — a prescription turned into a number, with no I/O and no clock.
 - **[`domain/sync/tombstone.ts`](src/domain/sync/tombstone.ts)** — why

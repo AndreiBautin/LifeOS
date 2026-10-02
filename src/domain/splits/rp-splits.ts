@@ -17,6 +17,14 @@ import type { MuscleGroup } from '@/domain/exercises/taxonomy'
 export interface RpDay {
   readonly index: number
   /**
+   * The weekday this day is run on, Sunday-indexed like `Date.getDay()`.
+   *
+   * What the calendar reads to decide which session a date holds — see
+   * `domain/programs/schedule.ts`. Stated on a routine written by
+   * weekday; a generated split leaves it out and is laid out from Monday.
+   */
+  readonly weekday?: number
+  /**
    * The day's name only — "Monday", "Full body".
    *
    * What the day *contains* is appended when the block is assembled,
@@ -320,6 +328,7 @@ export const PPL_SPLIT: RpSplit = {
     {
       index: 0,
       label: 'Monday',
+      weekday: 1,
       focusName: 'Push A',
       muscles: ['front-delts', 'chest', 'triceps'],
       routine: PUSH_A,
@@ -328,6 +337,7 @@ export const PPL_SPLIT: RpSplit = {
     {
       index: 1,
       label: 'Tuesday',
+      weekday: 2,
       focusName: 'Pull A',
       muscles: ['upper-back', 'traps', 'biceps'],
       routine: PULL_A,
@@ -336,6 +346,7 @@ export const PPL_SPLIT: RpSplit = {
     {
       index: 2,
       label: 'Wednesday',
+      weekday: 3,
       focusName: 'Legs A',
       muscles: ['quads', 'glutes', 'core'],
       routine: LEGS_A,
@@ -344,6 +355,7 @@ export const PPL_SPLIT: RpSplit = {
     {
       index: 3,
       label: 'Thursday',
+      weekday: 4,
       focusName: 'Push B',
       muscles: ['chest', 'side-delts', 'triceps'],
       routine: PUSH_B,
@@ -352,6 +364,7 @@ export const PPL_SPLIT: RpSplit = {
     {
       index: 4,
       label: 'Friday',
+      weekday: 5,
       focusName: 'Pull B',
       muscles: ['lats', 'rear-delts', 'biceps'],
       routine: PULL_B,
@@ -360,6 +373,7 @@ export const PPL_SPLIT: RpSplit = {
     {
       index: 5,
       label: 'Saturday',
+      weekday: 6,
       focusName: 'Legs B',
       muscles: ['glutes', 'hamstrings', 'calves', 'core'],
       routine: LEGS_B,

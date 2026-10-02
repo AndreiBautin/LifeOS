@@ -1,4 +1,4 @@
-import { Dumbbell, Play, Plus, Settings, SkipForward } from 'lucide-react'
+import { CheckCircle2, Dumbbell, Play, Plus, Settings } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 
@@ -6,7 +6,7 @@ import { useServices, useSettings } from '@/app/context'
 import { Badge, Button } from '@/components/shared/primitives'
 import { buttonStyles } from '@/components/shared/styles'
 import { strengthStandings } from '@/domain/strength/standards'
-import { useSkipSession, useStartWorkout, useWeekSummary } from '@/features/train/hooks'
+import { useStartWorkout, useWeekSummary } from '@/features/train/hooks'
 import { splitDayLabel, useNextSession } from '@/features/train/useNextSession'
 
 /**
@@ -27,10 +27,9 @@ import { splitDayLabel, useNextSession } from '@/features/train/useNextSession'
 export function HeroBanner() {
   const { clock } = useServices()
   const { settings } = useSettings()
-  const { day, week, program } = useNextSession()
+  const { day, week, program, when, doneToday, restDay } = useNextSession()
   const summary = useWeekSummary()
   const startWorkout = useStartWorkout()
-  const skipSession = useSkipSession()
 
   const { total } = strengthStandings({
     estimatedMaxes: settings.estimatedMaxes,
@@ -85,10 +84,28 @@ export function HeroBanner() {
       <div className="grid gap-6 lg:grid-cols-[1fr_auto] lg:items-end">
         <div className="min-w-0">
           <p className="text-accent-400 flex flex-wrap items-center gap-x-2 text-xs font-semibold tracking-[0.14em] uppercase">
-            <span>Up next</span>
-            {label?.weekday !== undefined && (
-              <span className="text-ink-500 tracking-normal normal-case">· {label.weekday}</span>
+            {/*
+              **The day is the date's.** "Today" while today's session is
+              there to do; once it is filed, or on a rest day, the hero
+              says so and names when the next one falls, because the
+              calendar — not a queue — is what decides it.
+            */}
+            {doneToday && (
+              <span className="text-good-500 flex items-center gap-1 tracking-normal normal-case">
+                <CheckCircle2 size={14} aria-hidden />
+                Today’s done ·
+              </span>
             )}
+            {restDay && !doneToday && (
+              <span className="text-ink-300 tracking-normal normal-case">Rest day ·</span>
+            )}
+            <span>
+              {when === 'today'
+                ? 'Today'
+                : when === 'tomorrow'
+                  ? 'Tomorrow'
+                  : (label?.weekday ?? 'Up next')}
+            </span>
             {week?.label !== undefined && (
               <span className="text-ink-500 tracking-normal normal-case">· {week.label}</span>
             )}
@@ -115,18 +132,7 @@ export function HeroBanner() {
               }}
             >
               <Play size={20} aria-hidden />
-              Start session
-            </Button>
-            <Button
-              variant="ghost"
-              className="flex-1 sm:flex-none"
-              disabled={day === undefined || skipSession.isPending}
-              onClick={() => {
-                skipSession.mutate()
-              }}
-            >
-              <SkipForward size={16} aria-hidden />
-              {skipSession.isPending ? 'Skipping…' : 'Skip'}
+              {when === 'today' || when === undefined ? 'Start session' : 'Start it early'}
             </Button>
             <Button
               variant="ghost"

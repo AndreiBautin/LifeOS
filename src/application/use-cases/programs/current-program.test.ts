@@ -2,10 +2,10 @@ import { describe, expect, it } from 'vitest'
 
 import { builtInExercises } from '@/domain/exercises/catalogue'
 import { asExerciseId } from '@/domain/ids/ids'
-import { nextPosition, STARTING_POSITION } from '@/domain/programs/position'
+import { STARTING_POSITION } from '@/domain/programs/position'
 import { DEFAULT_SETTINGS } from '@/domain/settings/settings'
 
-import { clampPosition, dayAt, deriveProgram } from './current-program'
+import { clampPosition, deriveProgram } from './current-program'
 
 /**
  * Deriving the program instead of storing it.
@@ -79,7 +79,9 @@ describe('a position inside a program that changed shape', () => {
     const clamped = clampPosition(week, pastTheEnd)
 
     expect(clamped.dayIndex).toBe(lastDay)
-    expect(dayAt(week, clamped)).toBeDefined()
+    expect(
+      week.blocks[clamped.blockIndex]?.weeks[clamped.weekIndex]?.days[clamped.dayIndex],
+    ).toBeDefined()
   })
 
   it('clamps rather than resetting to week one', () => {
@@ -102,55 +104,6 @@ describe('a position inside a program that changed shape', () => {
   })
 })
 
-describe('advancing', () => {
-  const program = deriveProgram(DEFAULT_SETTINGS, library)
-
-  it('moves a day at a time, then a week', () => {
-    let position = start
-    const week = program.blocks[0]?.weeks[0]
-    if (week === undefined) throw new Error('expected a week')
-
-    for (let day = 1; day < week.days.length; day += 1) {
-      const result = nextPosition(program, position)
-      if (result.kind !== 'moved') throw new Error('expected to move')
-      position = result.position
-      expect(position.dayIndex).toBe(day)
-    }
-
-    const rollover = nextPosition(program, position)
-    if (rollover.kind !== 'moved') throw new Error('expected to move')
-    expect(rollover.position.weekIndex).toBe(1)
-    expect(rollover.position.dayIndex).toBe(0)
-  })
-
-  it('starts the block again rather than finishing', () => {
-    // There is no "program finished" state. A block that ends used to
-    // leave the lifter on a screen saying so, with a library to go and
-    // pick from — and there is no library. Training continues.
-    const block = program.blocks[0]
-    if (block === undefined) throw new Error('expected a block')
-
-    const lastWeek = block.weeks.length - 1
-    const lastDay = (block.weeks[lastWeek]?.days.length ?? 1) - 1
-    const atEnd = { ...start, weekIndex: lastWeek, dayIndex: lastDay }
-
-    const result = nextPosition(program, atEnd)
-
-    expect(result.kind).toBe('cycled')
-    if (result.kind !== 'cycled') throw new Error('expected to cycle')
-    expect(result.position.cycleNumber).toBe(2)
-    expect(result.position.weekIndex).toBe(0)
-    expect(result.position.dayIndex).toBe(0)
-  })
-})
-
-/**
- * The week the app ships is the lifter's own routine, taken as written.
- *
- * Asserted exercise by exercise because the failure worth catching is
- * quiet: a generated fill swapping one movement for another, or two lines
- * trading places, would still build a perfectly valid week.
- */
 describe('the shipped week', () => {
   const week = deriveProgram(DEFAULT_SETTINGS, library).blocks[0]?.weeks[0]
   const worked = (index: number): readonly string[] =>

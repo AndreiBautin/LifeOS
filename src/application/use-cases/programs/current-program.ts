@@ -1,8 +1,11 @@
+import { blockStartFor, slotOn } from '@/domain/programs/schedule'
+import { toDayKey } from '@/domain/time/day'
+import { blockStartOf } from './schedule'
 import { assembleRpProgram, defaultRpRecipe, type RpRecipe } from '@/domain/assembly/rp-assemble'
 import type { Exercise } from '@/domain/exercises/exercise'
 import type { IdGenerator } from '@/domain/ids/ids'
 import { asProgramId } from '@/domain/ids/ids'
-import type { ProgramDay, ProgramTemplate, ProgramWeek } from '@/domain/programs/program'
+import type { ProgramTemplate } from '@/domain/programs/program'
 import type { ProgramPosition } from '@/domain/programs/position'
 import { STARTING_POSITION } from '@/domain/programs/position'
 import type { Clock, PositionRepository } from '@/domain/repositories/ports'
@@ -92,19 +95,6 @@ export function deriveProgram(
   })
 }
 
-/** The week a position points at, or undefined if it points nowhere. */
-export function weekAt(
-  program: ProgramTemplate,
-  position: ProgramPosition,
-): ProgramWeek | undefined {
-  return program.blocks[position.blockIndex]?.weeks[position.weekIndex]
-}
-
-/** The day a position points at, or undefined if it points nowhere. */
-export function dayAt(program: ProgramTemplate, position: ProgramPosition): ProgramDay | undefined {
-  return weekAt(program, position)?.days[position.dayIndex]
-}
-
 /**
  * Pulls a position back inside a program that has changed shape.
  *
@@ -139,18 +129,14 @@ export interface JumpToWeekDeps {
 }
 
 /**
- * Moves the lifter to the start of a given week.
+ * Says which week of the block this is.
  *
- * The position only advances by finishing or skipping a session, which is
- * right — it is a record of what happened, not a calendar. But it leaves
- * no way to say "I am three weeks into this block already", and a lifter
- * arriving mid-block otherwise has to skip fifteen sessions to line the
- * app up with their training. That is fifteen chances to mis-tap, and the
- * app would be counting the block from the wrong place until they did.
- *
- * Lands on day one of the week rather than preserving the day, because
- * the reason to reach for this is "start me here", and a jump that put
- * them on Thursday of week three would need explaining.
+ * The day comes from the calendar, and so does the week — counted from
+ * the Monday the block began. This is how a lifter tells the app where
+ * that was: arriving mid-block, coming back from a break, or taking the
+ * deload a week early. It writes one date, the block's Monday, chosen so
+ * that this week is the week asked for; nothing else moves, and the day
+ * is still today's.
  */
 export async function jumpToWeek(
   program: ProgramTemplate,
@@ -158,14 +144,22 @@ export async function jumpToWeek(
   deps: JumpToWeekDeps,
 ): Promise<ProgramPosition> {
   const current = await deps.position.get()
+  const today = toDayKey(deps.clock.now())
+  const here = slotOn(program, blockStartOf(program, current, today), today)
 
-  const moved = clampPosition(program, {
-    cycleNumber: current?.cycleNumber ?? STARTING_POSITION.cycleNumber,
-    blockIndex: current?.blockIndex ?? STARTING_POSITION.blockIndex,
+  const slot = {
+    cycleNumber: here?.cycleNumber ?? STARTING_POSITION.cycleNumber,
+    blockIndex: here?.blockIndex ?? STARTING_POSITION.blockIndex,
     weekIndex,
-    dayIndex: 0,
-    startedAt: current?.startedAt ?? deps.clock.now().toISOString(),
-  })
+  }
+  const moved: ProgramPosition = {
+    ...clampPosition(program, {
+      ...slot,
+      dayIndex: 0,
+      startedAt: current?.startedAt ?? deps.clock.now().toISOString(),
+    }),
+    blockStartedOn: blockStartFor(program, slot, today),
+  }
 
   await deps.position.save(moved)
   return moved

@@ -258,6 +258,8 @@ export interface Slot {
  */
 export interface ProgramDay {
   readonly index: number
+  /** The weekday it is run on, Sunday-indexed; see `programs/schedule.ts`. */
+  readonly weekday?: number
   /** The day's name: the weekday and what it is built around. */
   readonly label: string
   /**
