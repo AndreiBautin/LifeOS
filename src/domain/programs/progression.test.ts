@@ -109,35 +109,28 @@ describe('lastPerformance', () => {
 })
 
 describe('plannedRepsFor', () => {
-  const range = { low: 5, high: 10 }
-  const last: Performance = { load: 115, reps: [8, 7, 7, 6, 5] }
+  const range = { low: 5, high: 30 }
 
-  it('aims one rep past each set of last time, at the same load', () => {
-    expect([0, 1, 2, 3, 4].map((set) => plannedRepsFor(last, range, false, set))).toEqual([
-      9, 8, 8, 7, 6,
-    ])
+  /*
+   * One target for every set. Per-set targets turned 16, 16, 16, 15, 15
+   * into 17, 17, 17, 16, 16 — five numbers for one weight.
+   */
+  it('plans one past the weakest set, the same on every set', () => {
+    expect(plannedRepsFor({ load: 25, reps: [16, 16, 16, 15, 15] }, range, false)).toBe(16)
+    expect(plannedRepsFor({ load: 25, reps: [16, 16, 16, 16, 16] }, range, false)).toBe(17)
   })
 
-  it('holds a set already at the top rather than planning past the range', () => {
-    const atTop: Performance = { load: 115, reps: [10, 10, 9, 8, 8] }
-    expect(plannedRepsFor(atTop, range, false, 0)).toBe(10)
-    expect(plannedRepsFor(atTop, range, false, 2)).toBe(10)
+  it('does not plan past the top of the range', () => {
+    expect(plannedRepsFor({ load: 25, reps: [30, 30, 29] }, range, false)).toBe(30)
   })
 
   it('starts back at the bottom once the load has gone up', () => {
-    const topped: Performance = { load: 115, reps: [10, 10, 10, 10, 10] }
-    expect(plannedRepsFor(topped, range, true, 0)).toBe(5)
-    expect(plannedRepsFor(topped, range, true, 4)).toBe(5)
+    expect(plannedRepsFor({ load: 25, reps: [30, 30, 30, 30, 30] }, range, true)).toBe(5)
   })
 
   it('plans the bottom when last time fell short of it, or there is no last time', () => {
-    expect(plannedRepsFor({ load: 115, reps: [3] }, range, false, 0)).toBe(5)
-    expect(plannedRepsFor(undefined, range, false, 0)).toBe(5)
-  })
-
-  it('aims past the last logged set for a set the previous session did not have', () => {
-    const threeSets: Performance = { load: 115, reps: [8, 8, 7] }
-    expect(plannedRepsFor(threeSets, range, false, 4)).toBe(8)
+    expect(plannedRepsFor({ load: 25, reps: [3] }, range, false)).toBe(5)
+    expect(plannedRepsFor(undefined, range, false)).toBe(5)
   })
 })
 

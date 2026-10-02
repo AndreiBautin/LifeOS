@@ -6974,14 +6974,15 @@ the bar. Strength runs 3–5, hypertrophy compounds 10–15, isolations
 **The planned reps aim to beat last time.** Asked for as _"make the
 planned reps aim to beat last time, unless it falls outside of the rep
 range, in which case up the weight and start back up at the bottom"_.
-`plannedRepsFor` plans each working set one rep past the same set last
-session at the same load, capped at the top of the range; once every set
-topped and the load went up, every set goes back to the bottom. It
-planned the bottom of the range on every set, every session — "115 × 5"
-beside "Last 115 × 8" — so the number that drives the method was left to
-memory. **A set at the top holds rather than raising the load alone**:
-straight sets share one weight, so the increment still waits for all of
-them, which is `topped` unchanged.
+`plannedRepsFor` gives **one target for every set: one past the weakest
+set last session**, at the same load, capped at the top of the range;
+once every set topped and the load went up, back to the bottom. It
+planned the bottom of the range every session — "115 × 5" beside "Last
+115 × 8" — and then, for one release, a target per set (16, 16, 16, 15,
+15 became 17, 17, 17, 16, 16), corrected as _"it should always just be a
+straight rep target across all sets. 5x16 then 5x17"_. The weakest set
+is the count the exercise has not yet held on every set, so it is the
+one to beat.
 
 **Five sets now, three on a deload.** Asked for as _"let's bump our sets
 up to 5 per exercise"_ — `STRAIGHT_SETS` and `DELOAD_SETS` in

@@ -319,7 +319,7 @@ describe('starting a session from a program', () => {
     expect(sets.map((set) => set.plannedReps)).toEqual(sets.map(() => 13))
   })
 
-  it('plans one more rep than last time on each set while the load holds', async () => {
+  it('plans one straight target, one past the weakest set, while the load holds', async () => {
     const deps = beginProgram()
     const first = await startWorkout({ athlete, program, roundingIncrement: 5 }, deps)
     if (first.kind !== 'started') throw new Error('expected a started workout')
@@ -355,8 +355,9 @@ describe('starting a session from a program', () => {
     if (range?.kind !== 'range') throw new Error('expected a rep range')
 
     expect(sets.map((set) => set.plannedLoad)).toEqual(sets.map(() => 50))
+    // 8, 7, 7, 6, 5 has not held six reps on every set: six on all five.
     expect(sets.map((set) => set.plannedReps)).toEqual(
-      done.slice(0, sets.length).map((reps) => Math.min(range.high, Math.max(range.low, reps + 1))),
+      sets.map(() => Math.min(range.high, Math.max(range.low, Math.min(...done) + 1))),
     )
   })
 

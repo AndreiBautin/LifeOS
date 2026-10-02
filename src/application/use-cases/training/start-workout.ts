@@ -288,17 +288,16 @@ function buildFromDay(
     })
 
     /*
-     * **The reps aim to beat last time.** Each working set plans one
-     * more than the same set managed last session, at the same load,
-     * capped at the top of the range — and back to the bottom once the
-     * load has gone up. See `plannedRepsFor`.
+     * **One rep target for every set, aimed past last time**: one more
+     * than the weakest set managed, at the same load, capped at the top
+     * of the range — and back to the bottom once the load has gone up.
+     * See `plannedRepsFor`.
      */
     const lastTime = history[exerciseId]
-    let working = 0
     const sets: LoggedSet[] = resolved.map((set) => {
       const reps =
         !set.isWarmup && set.reps.kind === 'range'
-          ? plannedRepsFor(lastTime?.last, set.reps, lastTime?.bumped ?? false, working++)
+          ? plannedRepsFor(lastTime?.last, set.reps, lastTime?.bumped ?? false)
           : plannedReps(set.reps)
       return {
         prescription: set.prescription,

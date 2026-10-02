@@ -135,39 +135,35 @@ export function lastPerformance(
 }
 
 /**
- * The reps to aim for on one set: one more than last time, at the same
- * load.
+ * The one rep target for every set of an exercise: one more than the
+ * weakest set last time, at the same load.
  *
- * Asked for as _"make the planned reps aim to beat last time, unless it
- * falls outside of the rep range, in which case up the weight and start
- * back up at the bottom of the rep range"_. It planned the bottom of the
- * range on every set, every session — 115 × 5 beside "Last 115 × 8" —
- * so the number on the row was a floor nobody needed telling about, and
- * the target that actually drives double progression was left to memory.
+ * **Straight sets, a straight target.** Asked for as _"it should always
+ * just be a straight rep target across all sets. 5x16 then 5x17"_. It
+ * planned per set — one past each set's own last result — which gave
+ * 17, 17, 17, 16, 16 after a 16, 16, 16, 15, 15 session: five numbers for
+ * one weight, where the method is one number to hit on every set.
+ *
+ * **One past the weakest set**, because that is the rep count the whole
+ * exercise has not yet held. Five sets of sixteen with the last two at
+ * fifteen is a session that has not done 5 × 16, so 5 × 16 is next; once
+ * it has, 5 × 17.
  *
  * - **The load went up** (`bumped`, every set topped last time): back to
- *   the bottom of the range, the other half of the same rule.
- * - **A set already at the top holds there.** Straight sets share one
- *   load, so one set reaching the top cannot raise the weight on its own;
- *   it waits for the others.
- * - **Below the range last time** plans the bottom: the range is the
- *   prescription, and aiming under it would be planning a miss.
- * - **No history, or fewer sets logged than asked**: the bottom, or the
- *   last set that was logged, so a fifth set added since a three-set
- *   session aims to beat that session's third.
+ *   the bottom of the range.
+ * - **Capped at the top**: the target cannot pass the range; reaching it
+ *   on every set is what raises the load.
+ * - **Below the range, or no history**: the bottom of the range.
  */
 export function plannedRepsFor(
   last: Performance | undefined,
   range: RepRange,
   bumped: boolean,
-  setIndex: number,
 ): number {
-  if (last === undefined || bumped) return range.low
+  if (last === undefined || bumped || last.reps.length === 0) return range.low
 
-  const previous = last.reps[setIndex] ?? last.reps[last.reps.length - 1]
-  if (previous === undefined) return range.low
-
-  return Math.min(range.high, Math.max(range.low, previous + 1))
+  const weakest = Math.min(...last.reps)
+  return Math.min(range.high, Math.max(range.low, weakest + 1))
 }
 
 /**
