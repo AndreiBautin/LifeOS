@@ -23,6 +23,7 @@ import { useKeepAwake } from '@/shared/hooks/useKeepAwake'
 import { cn } from '@/lib/cn'
 
 import { useClearSet, useLogSet } from './hooks'
+import { PlateLoader } from './PlateLoader'
 import { RestTimer } from './RestTimer'
 import { SetRow } from './SetRow'
 import { WarmupBlock } from './WarmupBlock'
@@ -243,6 +244,11 @@ export function SessionPlayer({
               {describePrescription(first.prescription)}
             </p>
           )}
+          <BarFor
+            equipment={exercises.find((one) => one.id === entry.exerciseId)?.equipment}
+            load={loadToShow(entry.sets)}
+            units={units}
+          />
 
           <div className="mt-4 space-y-2">
             {entry.sets.map((set, setIndex) => (
@@ -452,6 +458,33 @@ function warmupRun(workout: WorkoutLog, at: number): readonly number[] | undefin
 
 function runStart(workout: WorkoutLog, at: number): number {
   return warmupRun(workout, at)?.[0] ?? at
+}
+
+/**
+ * The weight the bar should hold now: the next pending set's planned load,
+ * or, once every set is settled, the last one actually lifted — so the
+ * picture still answers "what is on the bar" while you strip it.
+ */
+function loadToShow(sets: WorkoutLog['entries'][number]['sets']): number | undefined {
+  const pending = sets.find((set) => set.outcome === 'pending' && !set.isWarmup)
+  if (pending !== undefined) return pending.plannedLoad
+  return [...sets].reverse().find((set) => set.actualLoad !== undefined)?.actualLoad
+}
+
+/** The plate loader, for the two kinds of bar a plate goes on. */
+function BarFor({
+  equipment,
+  load,
+  units,
+}: {
+  readonly equipment: Exercise['equipment'] | undefined
+  readonly load: number | undefined
+  readonly units: WeightUnit
+}) {
+  if (load === undefined) return null
+  if (equipment === 'barbell') return <PlateLoader load={load} unit={units} />
+  if (equipment === 'ez-bar') return <PlateLoader load={load} unit={units} kind="ez-bar" />
+  return null
 }
 
 function firstIncompleteIndex(workout: WorkoutLog): number {

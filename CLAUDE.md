@@ -84,6 +84,13 @@ standards.ts`): the estimated max, its multiple of bodyweight, and the
   pill, and Next goes past the whole run — it was five one-tap pages
   before the first bar. Each row still logs its own sets, one write
   after another, because a log is a read-modify-write of the workout.
+- **A barbell or EZ-bar step draws the bar loaded** (`PlateLoader`,
+  from `platesFor` in `domain/units/plates.ts`): the next pending set's
+  planned load, plates per side in competition colours, sliding on in
+  loading order whenever the weight changes. Greedy from a standard
+  gym's plates, and **a load the plates cannot make shows its leftover**
+  rather than rounding — a picture of 225 beside a logged 227 is a
+  different bar. Bar weights are 45/20 and 25/10 for the EZ bar.
 - **The Program page is a week strip and a card per day.** It was six
   sections of flat rows, a third of them warm-ups, each row carrying a
   role badge and a sub-category badge that truncated the exercise name.

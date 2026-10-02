@@ -882,3 +882,34 @@ html {
 .hero-plate {
   animation: plate-in 1600ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
+
+/*
+ * The plate loader: each plate slides along the sleeve from its outer end
+ * and seats against the one before, in loading order (`--plate-delay`).
+ */
+@keyframes plate-slide-left {
+  from {
+    opacity: 0;
+    transform: translateX(-60px);
+  }
+}
+
+@keyframes plate-slide-right {
+  from {
+    opacity: 0;
+    transform: translateX(60px);
+  }
+}
+
+.plate-on-left,
+.plate-on-right {
+  animation: 520ms cubic-bezier(0.22, 1.2, 0.36, 1) var(--plate-delay, 0ms) both;
+}
+
+.plate-on-left {
+  animation-name: plate-slide-left;
+}
+
+.plate-on-right {
+  animation-name: plate-slide-right;
+}
