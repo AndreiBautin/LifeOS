@@ -47,8 +47,9 @@ import { SampleNotice } from './SampleNotice'
  * **The cards are balanced by measured height, not assigned to columns.**
  * `Masonry` takes as many ~360px columns as the width holds and drops
  * each card into the shortest one; on a phone it is a single stack in
- * this order. The history runs full width underneath, because a list of
- * sessions is the one thing here that reads better wide than tall.
+ * this order. The history is one of the cards: it ran full width
+ * underneath on the reasoning that a list reads better wide, and on a
+ * monitor that made it a stack of empty stripes.
  */
 export function HomePage() {
   const { settings } = useSettings()
@@ -108,9 +109,9 @@ export function HomePage() {
           { key: 'standards', node: <StrengthStandards /> },
           { key: 'trend', node: <StrengthTrendCard /> },
           { key: 'activity', node: <ActivityHeatmap /> },
+          { key: 'history', node: <TrainingHistory /> },
         ]}
       />
-      <TrainingHistory />
     </div>
   )
 }
