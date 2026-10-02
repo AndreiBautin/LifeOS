@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  ladderState,
   lastPerformance,
   nextLoad,
   plannedRepsFor,
@@ -155,5 +156,44 @@ describe('lastPerformance on a bodyweight exercise', () => {
 
   it('still ignores unloaded sets on a loaded exercise', () => {
     expect(lastPerformance([{ reps: 9 }])).toBeUndefined()
+  })
+})
+
+describe('the ladder, live', () => {
+  const range = { low: 5, high: 10 }
+  const set = (reps: number | undefined, done = reps !== undefined) => ({ reps, done })
+
+  it('is open before a set is done, and on track while every set tops', () => {
+    expect(ladderState([set(undefined), set(undefined)], range)).toEqual({ kind: 'open', sets: 2 })
+    expect(ladderState([set(10), set(undefined)], range)).toEqual({ kind: 'on-track', left: 1 })
+  })
+
+  it('is earned once every set reaches the top, and overshooting counts', () => {
+    expect(ladderState([set(10), set(12)], range)).toEqual({ kind: 'earned' })
+  })
+
+  /*
+   * One short set loses the bump for the session. Saying "on track" after
+   * it would promise an increment the next session will not give.
+   */
+  it('is missed from the first set below its own plan, whatever follows', () => {
+    const planned = (reps: number) => ({ reps, done: true, planned: 9 })
+    expect(ladderState([planned(9), planned(8), planned(10)], range)).toEqual({
+      kind: 'missed',
+      set: 2,
+      reps: 8,
+    })
+  })
+
+  /*
+   * The plan aims one past last time, not at the top. A set that does
+   * the plan short of the top is building toward the bump, not a miss —
+   * calling it one would read the prescription as a failure.
+   */
+  it('is building when the plan was met short of the top', () => {
+    expect(ladderState([{ reps: 9, done: true, planned: 9 }, set(undefined)], range)).toEqual({
+      kind: 'building',
+      reps: 9,
+    })
   })
 })

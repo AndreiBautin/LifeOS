@@ -116,6 +116,15 @@ SessionPage.tsx`, from `sessionDetail`). History rows could be deleted
   finished the minute it started reads as of unknown length rather
   than "0 min"; the demo seed stamped every session that way until this
   page showed it, and now gives each 45–75 minutes.
+- **The player draws the ladder** (`LadderStrip`, from `ladderState` in
+  `progression.ts`): a column per working set filled to the reps done
+  against a dashed line at the top of the range, planned sets as ghosts,
+  and one sentence on whether this session earns the next load. **Short
+  of the top is not short of the plan**: the plan aims one past last
+  time, so 4 in a 3–5 range done as planned is `building`, drawn in a
+  soft accent — the first version called it a miss in grey, reading the
+  prescription itself as a failure. Only a set below its own plan is
+  `missed`.
 - **Personal records** (`domain/logging/records.ts`): the heaviest bar
   ever, or more reps than ever at a bar at least this heavy — the first
   outranks the second, one record per exercise per session, and never the

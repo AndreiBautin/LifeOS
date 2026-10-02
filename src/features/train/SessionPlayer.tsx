@@ -16,6 +16,7 @@ import type { ExerciseId } from '@/domain/ids/ids'
 import type { WorkoutLog } from '@/domain/logging/workout-log'
 import { isEntryComplete, remainingSets, totalWorkingSets } from '@/domain/logging/workout-log'
 import { describePrescription } from '@/domain/programs/prescription'
+import { stepFor } from '@/domain/programs/progression'
 import { slotRoleLabel, slotRoleTone, slotVariant } from '@/domain/programs/program'
 import { formatLoad, type WeightUnit } from '@/domain/units/weight'
 import { Badge, Button, Card } from '@/components/shared/primitives'
@@ -23,6 +24,7 @@ import { useKeepAwake } from '@/shared/hooks/useKeepAwake'
 import { cn } from '@/lib/cn'
 
 import { useClearSet, useLogSet } from './hooks'
+import { LadderStrip } from './LadderStrip'
 import { PlateLoader } from './PlateLoader'
 import { RestTimer } from './RestTimer'
 import { SetRow } from './SetRow'
@@ -249,6 +251,7 @@ export function SessionPlayer({
             load={loadToShow(entry.sets)}
             units={units}
           />
+          <LadderFor entry={entry} exercises={exercises} units={units} />
 
           <div className="mt-4 space-y-2">
             {entry.sets.map((set, setIndex) => (
@@ -513,6 +516,33 @@ function loadToShow(sets: WorkoutLog['entries'][number]['sets']): number | undef
   const pending = sets.find((set) => set.outcome === 'pending' && !set.isWarmup)
   if (pending !== undefined) return pending.plannedLoad
   return [...sets].reverse().find((set) => set.actualLoad !== undefined)?.actualLoad
+}
+
+/**
+ * The progression ladder, for an exercise worked in a rep range — not a
+ * timed block or a warm-up, where there is no top of a range to reach.
+ */
+function LadderFor({
+  entry,
+  exercises,
+  units,
+}: {
+  readonly entry: WorkoutLog['entries'][number]
+  readonly exercises: readonly Exercise[]
+  readonly units: WeightUnit
+}) {
+  const reps = entry.sets.find((set) => !set.isWarmup)?.prescription.reps
+  const exercise = exercises.find((one) => one.id === entry.exerciseId)
+  if (reps?.kind !== 'range' || exercise === undefined) return null
+  return (
+    <LadderStrip
+      sets={entry.sets}
+      range={{ low: reps.low, high: reps.high }}
+      step={stepFor(exercise)}
+      units={units}
+      bodyweight={exercise.loadBasis === 'bodyweight'}
+    />
+  )
 }
 
 /** The plate loader, for the two kinds of bar a plate goes on. */

@@ -907,6 +907,20 @@ html {
   animation: rest-done 1600ms ease-in-out both;
 }
 
+/* The ladder lights once when the session earns the next load. */
+@keyframes ladder-earned {
+  from {
+    box-shadow: 0 0 0 0 color-mix(in oklab, var(--color-accent-400) 55%, transparent);
+  }
+  to {
+    box-shadow: 0 0 0 10px transparent;
+  }
+}
+
+.ladder-earned {
+  animation: ladder-earned 900ms ease-out 1;
+}
+
 /* The report's "you moved about…" line arrives as the counts settle. */
 @keyframes heft-rise {
   from {

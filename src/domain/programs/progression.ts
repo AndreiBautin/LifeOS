@@ -202,3 +202,50 @@ export function stepFor(exercise: {
     ? LOWER_STEP
     : UPPER_STEP
 }
+
+/**
+ * Where a session stands on the double-progression ladder, set by set.
+ *
+ * The rule is "every set at the top of the range earns the next load",
+ * and until now the only place it was written was a note under the sets.
+ * This reads it live: whether the bump is still possible, already earned,
+ * or gone for this session — **gone the moment one set falls short**,
+ * because `topped` asks for every set, and saying "on track" after a
+ * short set would promise an increment the next session will not give.
+ */
+export type LadderState =
+  | { readonly kind: 'open'; readonly sets: number }
+  | { readonly kind: 'on-track'; readonly left: number }
+  | { readonly kind: 'earned' }
+  | { readonly kind: 'building'; readonly reps: number }
+  | { readonly kind: 'missed'; readonly set: number; readonly reps: number }
+
+export function ladderState(
+  sets: readonly {
+    readonly reps?: number | undefined
+    readonly done: boolean
+    /** What the plan asked of this set; the bar a short set is judged against. */
+    readonly planned?: number | undefined
+  }[],
+  range: RepRange,
+): LadderState {
+  /*
+   * **Short of the top is not the same as short of the plan.** The plan
+   * aims one rep past last time, so a session at 4 in a 3–5 range is
+   * doing exactly what it was asked and is building toward the bump, not
+   * missing it. Only a set below its own plan is a miss.
+   */
+  const missed = sets.findIndex(
+    (set) =>
+      set.done && set.reps !== undefined && set.planned !== undefined && set.reps < set.planned,
+  )
+  if (missed >= 0) return { kind: 'missed', set: missed + 1, reps: sets[missed]?.reps ?? 0 }
+
+  const short = sets.find((set) => set.done && set.reps !== undefined && set.reps < range.high)
+  if (short !== undefined) return { kind: 'building', reps: short.reps ?? 0 }
+
+  const done = sets.filter((set) => set.done).length
+  if (done === 0) return { kind: 'open', sets: sets.length }
+  if (done === sets.length) return { kind: 'earned' }
+  return { kind: 'on-track', left: sets.length - done }
+}
