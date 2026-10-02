@@ -2,12 +2,11 @@ import { ArrowDown, ArrowUp, BarChart3, Minus, Sparkles, TrendingUp } from 'luci
 
 import type { WorkoutReport } from '@/application/use-cases/training/finish-workout'
 import { MUSCLE_GROUP_LABELS } from '@/domain/exercises/taxonomy'
-import { describeHeft, heftOf } from '@/domain/units/heft'
 import { formatLoad, type WeightUnit } from '@/domain/units/weight'
 import { Badge, Button, Card, CardHeading } from '@/components/shared/primitives'
 import { useSettings } from '@/app/context'
 
-import { useCountUp } from './useCountUp'
+import { SessionStats } from './SessionStats'
 
 /**
  * What happened, immediately after finishing.
@@ -135,12 +134,12 @@ export function SessionReport({ report, units, onDismiss }: Props) {
         </h1>
         <p className="text-ink-300 mt-2 text-sm">{report.headline}</p>
 
-        <dl className="border-ink-800/80 mt-5 grid grid-cols-3 gap-px overflow-hidden rounded-2xl border bg-[color-mix(in_oklab,var(--color-ink-800)_70%,transparent)]">
-          <Stat label="Sets" value={report.workingSets} />
-          <Stat label="Volume" value={Math.round(report.tonnage)} suffix={` ${units}`} />
-          <Stat label="Duration" value={report.durationMinutes} suffix=" min" />
-        </dl>
-        <HeftLine tonnage={report.tonnage} units={units} />
+        <SessionStats
+          sets={report.workingSets}
+          tonnage={report.tonnage}
+          minutes={report.durationMinutes}
+          units={units}
+        />
       </section>
 
       {report.progress.length > 0 && (
@@ -192,45 +191,6 @@ export function SessionReport({ report, units, onDismiss }: Props) {
       <Button variant="primary" size="lg" full onClick={onDismiss}>
         Done
       </Button>
-    </div>
-  )
-}
-
-/**
- * The volume as something you could picture, under the numbers. Silent
- * for a session lighter than a grand piano, where a comparison would be
- * a fraction of an object.
- */
-function HeftLine({ tonnage, units }: { readonly tonnage: number; readonly units: WeightUnit }) {
-  const comparison = heftOf(tonnage, units)
-  if (comparison === undefined) return null
-  return (
-    <p className="heft-line text-ink-300 mt-3 text-sm">
-      You moved about{' '}
-      <span className="text-accent-400 font-semibold">{describeHeft(comparison)}</span>.
-    </p>
-  )
-}
-
-/** Counts up once as the report opens; the figure is the record, the motion is not. */
-function Stat({
-  label,
-  value,
-  suffix,
-}: {
-  readonly label: string
-  readonly value: number
-  readonly suffix?: string
-}) {
-  const shown = Math.round(useCountUp(value))
-  return (
-    <div className="bg-ink-950/60 px-3 py-3">
-      <dt className="text-ink-500 text-[0.7rem] font-medium tracking-wide uppercase">{label}</dt>
-      <dd className="numeric text-ink-50 mt-1 text-xl font-semibold">
-        <span aria-hidden>{shown.toLocaleString()}</span>
-        <span className="sr-only">{value.toLocaleString()}</span>
-        {suffix !== undefined && <span className="text-ink-500 text-sm font-normal">{suffix}</span>}
-      </dd>
     </div>
   )
 }

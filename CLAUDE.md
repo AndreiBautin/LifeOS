@@ -106,6 +106,19 @@ standards.ts`): the estimated max, its multiple of bodyweight, and the
   one. The hero stats count up once (`useCountUp`); reduced motion shows
   the figure directly, and a screen reader gets the number, not the
   animation.
+- **A past session opens** (`/session/:id`, `features/history/
+SessionPage.tsx`, from `sessionDetail`). History rows could be deleted
+  and reopened and never read. It shows the report's own numbers
+  (`SessionStats`, shared) and every exercise judged against **the
+  session before it** — `previousTopSet` filters by start time, so a
+  session opened in December compares with November, not with today.
+  The report's verdict uses the same two helpers. A session that
+  finished the minute it started reads as of unknown length rather
+  than "0 min"; the demo seed stamped every session that way until this
+  page showed it, and now gives each 45–75 minutes.
+- **The date and name of a history row are the link**, not the whole
+  row: reopen and delete are buttons, and a button inside an anchor is
+  invalid markup that swallows the tap.
 - **The Program strip ticks off the week.** `weekSummary.doneTitles`
   names the sessions finished this calendar week, and a chip whose day
   label is among them gets a check. **By title, not by weekday** — Monday's

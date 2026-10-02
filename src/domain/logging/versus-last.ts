@@ -1,3 +1,7 @@
+import type { ExerciseId } from '@/domain/ids/ids'
+import { workingSets, type WorkoutLog } from '@/domain/logging/workout-log'
+import { sameVersion } from '@/domain/splits/rp-splits'
+
 /**
  * How a logged set compares with the same set last time.
  *
@@ -57,6 +61,41 @@ export function topSet(sets: readonly Performance[]): Performance | undefined {
       if (load !== bestLoad) return load > bestLoad ? set : best
       return (set.reps ?? 0) > (best.reps ?? 0) ? set : best
     }, undefined)
+}
+
+/** The top set one session did of an exercise, in the given version. */
+export function topSetIn(
+  log: WorkoutLog,
+  exerciseId: ExerciseId,
+  variant: string | undefined,
+): Performance | undefined {
+  return topSet(
+    log.entries
+      .filter((entry) => entry.exerciseId === exerciseId && sameVersion(entry.variant, variant))
+      .flatMap((entry) => workingSets(entry))
+      .map((set) => ({ load: set.actualLoad, reps: set.actualReps })),
+  )
+}
+
+/**
+ * The top set of the last finished session **before** `current` that did
+ * the exercise — before by start time, so a session looked at months
+ * later is compared with the one that preceded it, not with today's.
+ */
+export function previousTopSet(
+  history: readonly WorkoutLog[],
+  current: WorkoutLog,
+  exerciseId: ExerciseId,
+  variant: string | undefined,
+): Performance | undefined {
+  return history
+    .filter(
+      (log) =>
+        log.id !== current.id && log.status === 'completed' && log.startedAt < current.startedAt,
+    )
+    .toSorted((a, b) => b.startedAt.localeCompare(a.startedAt))
+    .map((log) => topSetIn(log, exerciseId, variant))
+    .find((set) => set !== undefined)
 }
 
 /** Progress is the two kinds the method counts as moving forward. */

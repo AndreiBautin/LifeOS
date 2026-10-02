@@ -10,6 +10,7 @@ import type { WeightUnit } from '@/domain/units/weight'
 import { Badge, Button, Card, CardHeading, Empty } from '@/components/shared/primitives'
 import { splitDayLabel } from '@/features/train/useNextSession'
 import { cn } from '@/lib/cn'
+import { Link } from 'react-router-dom'
 
 import { useDeleteWorkout, useReopenWorkout } from './hooks'
 
@@ -190,34 +191,46 @@ function SessionRow({
       )}
     >
       <div className="flex items-center gap-3">
-        <div
-          className="border-ink-800 bg-ink-900/70 flex w-12 shrink-0 flex-col items-center rounded-lg border py-1.5"
-          aria-hidden
+        {/*
+          The date and the name open the session; the two icon buttons
+          beside them stay buttons. A row-wide link would put reopen and
+          delete inside an anchor, which is invalid and swallows their taps.
+        */}
+        <Link
+          viewTransition
+          to={`/session/${workout.id}`}
+          aria-label={`Open ${described}`}
+          className="flex min-w-0 flex-1 items-center gap-3"
         >
-          <span className="text-ink-500 text-[0.65rem] font-semibold tracking-wider uppercase">
-            {when.toLocaleDateString(undefined, { month: 'short' })}
-          </span>
-          <span className="numeric text-ink-50 text-lg leading-none font-semibold">
-            {when.getDate()}
-          </span>
-        </div>
+          <div
+            className="border-ink-800 bg-ink-900/70 flex w-12 shrink-0 flex-col items-center rounded-lg border py-1.5"
+            aria-hidden
+          >
+            <span className="text-ink-500 text-[0.65rem] font-semibold tracking-wider uppercase">
+              {when.toLocaleDateString(undefined, { month: 'short' })}
+            </span>
+            <span className="numeric text-ink-50 text-lg leading-none font-semibold">
+              {when.getDate()}
+            </span>
+          </div>
 
-        <div className="min-w-0 flex-1">
-          <p className="text-ink-50 flex items-center gap-2 truncate text-sm font-medium">
-            <span className="truncate">{name}</span>
-            {/*
+          <div className="min-w-0 flex-1">
+            <p className="text-ink-50 flex items-center gap-2 truncate text-sm font-medium">
+              <span className="truncate">{name}</span>
+              {/*
               Said in a word rather than left to the set count: a two-set
               squat day otherwise reads as a bad session rather than an
               interrupted one.
             */}
-            {workout.status === 'abandoned' && <Badge tone="warn">Abandoned</Badge>}
-          </p>
-          <p className="text-ink-500 numeric mt-0.5 text-xs">
-            {when.toLocaleDateString(undefined, { weekday: 'long' })} · {sets}{' '}
-            {sets === 1 ? 'set' : 'sets'} · {Math.round(totalTonnage(workout)).toLocaleString()}{' '}
-            {units}
-          </p>
-        </div>
+              {workout.status === 'abandoned' && <Badge tone="warn">Abandoned</Badge>}
+            </p>
+            <p className="text-ink-500 numeric mt-0.5 text-xs">
+              {when.toLocaleDateString(undefined, { weekday: 'long' })} · {sets}{' '}
+              {sets === 1 ? 'set' : 'sets'} · {Math.round(totalTonnage(workout)).toLocaleString()}{' '}
+              {units}
+            </p>
+          </div>
+        </Link>
 
         <div className="flex shrink-0 items-center">
           {/*

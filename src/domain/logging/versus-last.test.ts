@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest'
 
-import { isProgress, topSet, versusLast } from './versus-last'
+import { asExerciseId } from '@/domain/ids/ids'
+import { anEntry, aSet, aWorkout } from '@/test/builders/workout'
+
+import { isProgress, previousTopSet, topSet, versusLast } from './versus-last'
 
 describe('a set against last time', () => {
   it('counts a heavier bar as progress whatever the reps did', () => {
@@ -56,5 +59,42 @@ describe('a set against last time', () => {
 
   it('has nothing to say without reps on both sides', () => {
     expect(versusLast({ load: 100 }, { load: 100, reps: 5 })).toBeUndefined()
+  })
+})
+
+describe('last time, for a session in the past', () => {
+  const bench = asExerciseId('bench-press')
+  const session = (startedAt: string, load: number, reps: number, variant?: string) =>
+    aWorkout({
+      date: startedAt.slice(0, 10),
+      startedAt,
+      entries: [
+        anEntry({
+          exerciseId: bench,
+          ...(variant === undefined ? {} : { variant }),
+          sets: [aSet({ actualLoad: load, actualReps: reps, outcome: 'completed' })],
+        }),
+      ],
+    })
+
+  /*
+   * A session opened months later is judged against the one before it.
+   * Reading the newest session instead would compare August with today.
+   */
+  it('reads the session before it, not the newest one', () => {
+    const june = session('2026-06-01T09:00:00Z', 200, 5)
+    const july = session('2026-07-01T09:00:00Z', 205, 5)
+    const today = session('2026-10-01T09:00:00Z', 230, 3)
+    expect(previousTopSet([today, july, june], july, bench, undefined)).toEqual({
+      load: 200,
+      reps: 5,
+    })
+  })
+
+  it('keeps two versions of one exercise apart', () => {
+    const heavy = session('2026-06-01T09:00:00Z', 200, 12, 'Heavy')
+    const light = session('2026-06-03T09:00:00Z', 140, 25, 'Light')
+    const now = session('2026-06-08T09:00:00Z', 205, 12, 'Heavy')
+    expect(previousTopSet([light, heavy], now, bench, 'Heavy')).toEqual({ load: 200, reps: 12 })
   })
 })

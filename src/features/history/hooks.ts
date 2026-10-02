@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { useServices } from '@/app/context'
 import {
@@ -9,6 +9,7 @@ import {
   reopenWorkout,
   type ReopenWorkoutResult,
 } from '@/application/use-cases/training/reopen-workout'
+import { sessionDetail } from '@/application/use-cases/training/session-detail'
 import type { WorkoutId } from '@/domain/ids/ids'
 import { logger } from '@/shared/logging/logger'
 
@@ -55,5 +56,14 @@ export function useReopenWorkout() {
       void client.invalidateQueries({ queryKey: ['workouts'] })
       void client.invalidateQueries({ queryKey: ['position'] })
     },
+  })
+}
+
+/** One past session, read in full. Under `workouts`, so a delete refreshes it. */
+export function useSessionDetail(id: WorkoutId) {
+  const services = useServices()
+  return useQuery({
+    queryKey: ['workouts', 'detail', id],
+    queryFn: () => sessionDetail(id, services).then((detail) => detail ?? null),
   })
 }

@@ -286,7 +286,17 @@ async function seedTraining(deps: DemoDeps): Promise<void> {
       id: deps.ids.next() as WorkoutId,
       date: dayKeyAgo(deps.clock, session.daysBack),
       startedAt: daysAgo(deps.clock, session.daysBack),
-      completedAt: daysAgo(deps.clock, session.daysBack),
+      /*
+       * A session lasts somewhere between three quarters of an hour and
+       * an hour and a quarter, varied by the day rather than at random
+       * so the fixture is the same every time it is built. It finished
+       * the moment it started until a past session could be opened and
+       * read "0 min".
+       */
+      completedAt: new Date(
+        Date.parse(daysAgo(deps.clock, session.daysBack)) +
+          (45 + ((session.daysBack * 7) % 31)) * 60_000,
+      ).toISOString(),
       status: 'completed',
       /*
        * **The weekday is read off the date rather than written beside

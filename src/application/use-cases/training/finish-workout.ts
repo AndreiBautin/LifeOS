@@ -1,8 +1,7 @@
 import type { Exercise } from '@/domain/exercises/exercise'
 import type { ExerciseId, WorkoutId } from '@/domain/ids/ids'
-import { isProgress, topSet, versusLast } from '@/domain/logging/versus-last'
+import { isProgress, previousTopSet, topSetIn, versusLast } from '@/domain/logging/versus-last'
 import type { WorkoutLog } from '@/domain/logging/workout-log'
-import { sameVersion } from '@/domain/splits/rp-splits'
 import type { ProgramTemplate } from '@/domain/programs/program'
 import {
   estimateFromWorkout,
@@ -156,22 +155,11 @@ async function verdictFor(
   variant: string | undefined,
   deps: FinishWorkoutDeps,
 ): Promise<ExerciseProgress['verdict']> {
-  const top = (log: WorkoutLog) =>
-    topSet(
-      log.entries
-        .filter((entry) => entry.exerciseId === exerciseId && sameVersion(entry.variant, variant))
-        .flatMap((entry) => workingSets(entry))
-        .map((set) => ({ load: set.actualLoad, reps: set.actualReps })),
-    )
-
-  const current = top(workout)
+  const current = topSetIn(workout, exerciseId, variant)
   if (current === undefined) return 'new'
 
   const history = await deps.workouts.forExercise(exerciseId, 10)
-  const before = history
-    .filter((candidate) => candidate.id !== workout.id && candidate.status === 'completed')
-    .map(top)
-    .find((set) => set !== undefined)
+  const before = previousTopSet(history, workout, exerciseId, variant)
   if (before === undefined) return 'new'
 
   const versus = versusLast(current, before)
