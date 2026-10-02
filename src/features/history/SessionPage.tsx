@@ -90,9 +90,10 @@ export function SessionPage() {
 
       {warmups.length > 0 && <WarmupLine entries={warmups} library={library} />}
 
-      {working.map((detailed) => (
+      {working.map((detailed, at) => (
         <ExerciseCard
-          key={`${detailed.entry.exerciseId}-${String(detailed.entry.order)}`}
+          // A swap can split a slot into two entries sharing one order.
+          key={`${detailed.entry.exerciseId}-${String(detailed.entry.order)}-${String(at)}`}
           detail={detailed}
           record={records.find((one) => one.exerciseId === detailed.entry.exerciseId)}
           library={library}

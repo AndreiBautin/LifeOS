@@ -236,82 +236,20 @@ async function workingLoads(
        */
       const variant = day.slots.find((slot) => resolveExercise(slot, library) === id)?.variant
       const history = await deps.workouts.forExercise(id, 10)
-      /*
-       * **Last time is a time it was done.** An abandoned session keeps
-       * its log, with every exercise it never reached still pending — and
-       * read as last time, that empty entry forgot the load behind it, so
-       * walking away from a session reset the bar on everything after the
-       * point you stopped. Found by previewing the plan, not by a test.
-       */
-      const sameExercise = history.flatMap((workout) =>
-        workout.entries.filter(
-          (entry) =>
-            entry.exerciseId === id &&
-            entry.sets.some((set) => !set.isWarmup && set.outcome === 'completed'),
-        ),
-      )
-      const previous =
-        sameExercise.find((entry) => entry.variant === variant) ??
-        sameExercise.find((entry) => sameVersion(entry.variant, variant))
       if (exercise === undefined) return []
-      if (previous === undefined) {
+      const plan = planFromHistory({
+        exercise,
+        variant,
+        range: rangeToday(day, id, library),
+        history,
+        ...(request.resets !== undefined ? { resets: request.resets } : {}),
+      })
+      if (plan === undefined) {
         const seeded = strengthIds.has(id) ? seededLoad(id, request) : undefined
         return seeded === undefined ? [] : [[id, seeded, undefined]]
       }
-
-      const last = lastPerformance(
-        previous.sets
-          .filter((set) => !set.isWarmup && set.outcome === 'completed')
-          .map((set) => ({
-            ...(set.actualLoad === undefined ? {} : { load: set.actualLoad }),
-            ...(set.actualReps === undefined ? {} : { reps: set.actualReps }),
-          })),
-        { bodyweight: exercise.loadBasis === 'bodyweight' },
-      )
-
-      /*
-       * **Topped against today's range, not the one last time was logged
-       * under.** They differ when a range changes — dips went from 5–10 to
-       * 5–30 — and judged by the old one, twelve dips read as topped and
-       * the next session put a belt on at five reps, the opposite of what
-       * widening the range asked for. The previous log's range is the
-       * fallback for an exercise today's day no longer prescribes a range
-       * for.
-       */
-      const range = rangeToday(day, id, library) ?? rangeOf(previous.sets)
-      /*
-       * Topped against the sets *that* session asked for, read off its
-       * own log. Measured against today's count instead, every session
-       * logged before the move from three sets to five could never earn
-       * an increment — three sets of five is not five sets of five, and
-       * it was never asked to be.
-       */
-      const asked = Math.max(1, previous.sets.filter((set) => !set.isWarmup).length)
-      const next =
-        range === undefined ? last?.load : nextLoad(last, range, stepFor(exercise), asked)
-
-      /*
-       * **An accepted reset wins until it has been lifted.** It opens the
-       * next session at the lower bar with the reps back at the bottom of
-       * the range (`bumped`), and stops applying the moment a session of
-       * this exercise is logged after the day it was accepted — from then
-       * on the log carries the climb, as it always does.
-       */
-      const reset = request.resets?.[resetKey(id, versionOf(variant))]
-      const latest = history.find((log) =>
-        log.entries.some(
-          (entry) =>
-            entry.exerciseId === id &&
-            sameVersion(entry.variant, variant) &&
-            entry.sets.some((set) => !set.isWarmup && set.outcome === 'completed'),
-        ),
-      )?.startedAt
-      if (reset !== undefined && resetPending(reset, latest)) {
-        return [[id, reset.load, last === undefined ? undefined : { last, bumped: true }]]
-      }
-
-      if (next === undefined) return []
-      return [[id, next, last === undefined ? undefined : { last, bumped: next > last.load }]]
+      if (plan.load === undefined) return []
+      return [[id, plan.load, plan.lastTime]]
     }),
   )
 
@@ -336,7 +274,7 @@ function rangeToday(
 }
 
 /** What an exercise did last time, and whether its load has gone up since. */
-interface LastTime {
+export interface LastTime {
   readonly last: Performance
   readonly bumped: boolean
 }
@@ -349,7 +287,7 @@ interface LastTime {
  * snapshot unnecessary. A session logged before ranges existed simply
  * holds the load rather than progressing it.
  */
-function rangeOf(sets: readonly LoggedSet[]): RepRange | undefined {
+export function rangeOf(sets: readonly LoggedSet[]): RepRange | undefined {
   const working = sets.find((set) => !set.isWarmup && set.prescription.reps.kind === 'range')
   const reps = working?.prescription.reps
 
@@ -496,4 +434,95 @@ function seededLoad(id: ExerciseId, request: StartWorkoutRequest): number | unde
 /** A day version — Heavy, Light — or nothing for an exercise with one. */
 function versionOf(variant: string | undefined): string | undefined {
   return variant !== undefined && DAY_VERSIONS.includes(variant) ? variant : undefined
+}
+
+/**
+ * Where an exercise goes next, read off its own history: the load the
+ * next session plans and what it is beating. Undefined when the exercise
+ * has never been done, so the caller decides what an empty history opens
+ * at (a strength slot seeds from its estimate; nothing else does).
+ *
+ * **One implementation for Start and for a swap.** An exercise swapped in
+ * mid-session plans the same bar Start would have given it on a day it
+ * was scheduled — two copies of this would drift the first time either
+ * learned something, which is what the reset and the version rule both
+ * had to be taught here.
+ */
+export function planFromHistory(args: {
+  readonly exercise: Exercise
+  readonly variant: string | undefined
+  /** Today's range for it; absent falls back to the range last time ran in. */
+  readonly range: RepRange | undefined
+  /** Recent sessions containing the exercise, newest first. */
+  readonly history: readonly WorkoutLog[]
+  readonly resets?: LoadResets
+}): { readonly load: number | undefined; readonly lastTime: LastTime | undefined } | undefined {
+  const { exercise, variant, history } = args
+  const id = exercise.id
+  /*
+   * **Last time is a time it was done.** An abandoned session keeps
+   * its log, with every exercise it never reached still pending — and
+   * read as last time, that empty entry forgot the load behind it, so
+   * walking away from a session reset the bar on everything after the
+   * point you stopped. Found by previewing the plan, not by a test.
+   */
+  const done = (entry: LogEntry): boolean =>
+    entry.exerciseId === id &&
+    entry.sets.some((set) => !set.isWarmup && set.outcome === 'completed')
+  const sameExercise = history.flatMap((workout) => workout.entries.filter(done))
+  const previous =
+    sameExercise.find((entry) => entry.variant === variant) ??
+    sameExercise.find((entry) => sameVersion(entry.variant, variant))
+  if (previous === undefined) return undefined
+
+  const last = lastPerformance(
+    previous.sets
+      .filter((set) => !set.isWarmup && set.outcome === 'completed')
+      .map((set) => ({
+        ...(set.actualLoad === undefined ? {} : { load: set.actualLoad }),
+        ...(set.actualReps === undefined ? {} : { reps: set.actualReps }),
+      })),
+    { bodyweight: exercise.loadBasis === 'bodyweight' },
+  )
+
+  /*
+   * **Topped against today's range, not the one last time was logged
+   * under.** They differ when a range changes — dips went from 5–10 to
+   * 5–30 — and judged by the old one, twelve dips read as topped and
+   * the next session put a belt on at five reps, the opposite of what
+   * widening the range asked for. The previous log's range is the
+   * fallback for an exercise today's day no longer prescribes a range
+   * for.
+   */
+  const range = args.range ?? rangeOf(previous.sets)
+  /*
+   * Topped against the sets *that* session asked for, read off its
+   * own log. Measured against today's count instead, every session
+   * logged before the move from three sets to five could never earn
+   * an increment — three sets of five is not five sets of five, and
+   * it was never asked to be.
+   */
+  const asked = Math.max(1, previous.sets.filter((set) => !set.isWarmup).length)
+  const next = range === undefined ? last?.load : nextLoad(last, range, stepFor(exercise), asked)
+
+  /*
+   * **An accepted reset wins until it has been lifted.** It opens the
+   * next session at the lower bar with the reps back at the bottom of
+   * the range (`bumped`), and stops applying the moment a session of
+   * this exercise is started after it was accepted — from then on the
+   * log carries the climb, as it always does.
+   */
+  const reset = args.resets?.[resetKey(id, versionOf(variant))]
+  const latest = history.find((log) =>
+    log.entries.some((entry) => done(entry) && sameVersion(entry.variant, variant)),
+  )?.startedAt
+  if (reset !== undefined && resetPending(reset, latest)) {
+    return { load: reset.load, lastTime: last === undefined ? undefined : { last, bumped: true } }
+  }
+
+  return {
+    load: next,
+    lastTime:
+      last === undefined || next === undefined ? undefined : { last, bumped: next > last.load },
+  }
 }

@@ -1,4 +1,5 @@
 import {
+  ArrowLeftRight,
   Check,
   TrendingDown,
   CheckCircle2,
@@ -27,7 +28,8 @@ import { Badge, Button, Card } from '@/components/shared/primitives'
 import { useKeepAwake } from '@/shared/hooks/useKeepAwake'
 import { cn } from '@/lib/cn'
 
-import { useClearSet, useExerciseHistory, useLogSet } from './hooks'
+import { useClearSet, useExerciseHistory, useLogSet, useSwapExercise } from './hooks'
+import { SwapPanel } from './SwapPanel'
 import { LadderStrip } from './LadderStrip'
 import { BarSection } from './BarSection'
 import { RestTimer } from './RestTimer'
@@ -82,6 +84,10 @@ export function SessionPlayer({
   const [confirmingAbandon, setConfirmingAbandon] = useState(false)
 
   const logSet = useLogSet(workout.id)
+  const swap = useSwapExercise(workout.id)
+  /* Open per exercise: paging on closes it rather than offering the next one's. */
+  const [swappingAt, setSwappingAt] = useState<number | undefined>(undefined)
+  const swapping = swappingAt === index
   const strip = useRef<HTMLElement>(null)
 
   /*
@@ -281,6 +287,19 @@ export function SessionPlayer({
                 <span className="text-ink-500 ml-auto text-xs">
                   {index + 1} of {workout.entries.length}
                 </span>
+                {entry.sets.some((set) => set.outcome === 'pending') && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    aria-expanded={swapping}
+                    onClick={() => {
+                      setSwappingAt(swapping ? undefined : index)
+                    }}
+                  >
+                    <ArrowLeftRight size={14} aria-hidden />
+                    {swapping ? 'Keep' : 'Swap'}
+                  </Button>
+                )}
               </div>
               <h1
                 id="exercise-name"
@@ -288,10 +307,43 @@ export function SessionPlayer({
               >
                 {nameOf(entry.exerciseId)}
               </h1>
+              {entry.substitutedFor !== undefined && (
+                <p className="text-ink-500 text-xs">In place of {nameOf(entry.substitutedFor)}</p>
+              )}
               {first !== undefined && (
                 <p className="text-ink-500 numeric mt-1 text-sm">
                   {entry.sets.length} {entry.sets.length === 1 ? 'set' : 'sets'} ·{' '}
                   {describePrescription(first.prescription)}
+                </p>
+              )}
+              {swapping && (
+                <SwapPanel
+                  entry={entry}
+                  current={exercises.find((one) => one.id === entry.exerciseId)}
+                  units={units}
+                  busy={swap.isPending}
+                  onPick={(exercise) => {
+                    swap.mutate(
+                      { entryIndex: index, exerciseId: exercise.id },
+                      {
+                        onSuccess: (updated) => {
+                          setSwappingAt(undefined)
+                          setOpenSet(undefined)
+                          /*
+                           * Started, the rest moved to a new entry just after;
+                           * swapped back, it rejoined the one before. Follow it.
+                           */
+                          const moved = updated.entries.length - workout.entries.length
+                          if (moved !== 0) setIndex(index + moved)
+                        },
+                      },
+                    )
+                  }}
+                />
+              )}
+              {swap.isError && (
+                <p role="alert" className="text-warn-500 mt-2 text-sm">
+                  Could not swap: {swap.error.message}
                 </p>
               )}
               <BarSection

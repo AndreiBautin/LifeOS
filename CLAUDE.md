@@ -116,6 +116,19 @@ SessionPage.tsx`, from `sessionDetail`). History rows could be deleted
   finished the minute it started reads as of unknown length rather
   than "0 min"; the demo seed stamped every session that way until this
   page showed it, and now gives each 45–75 minutes.
+- **An exercise can be swapped mid-session** (`swap-exercise.ts`,
+  `SwapPanel`). The entry is filed under what was **done**, with
+  `substitutedFor` naming the programmed one, and the swapped exercise
+  plans from **its own history** through `planFromHistory` — the
+  function Start uses, extracted rather than copied, so a reset or the
+  version rule reaches both. No history opens with no weight; no ratio
+  to the original is guessed. **Sets already done stay put**: swapping
+  after two sets splits the slot, and swapping back rejoins it rather
+  than leaving rows twice in a row. Offered: same primary muscle, the
+  same movement first, and never lifting for conditioning — the first
+  draft offered a squat the foam roller, which also names the quads.
+  "Last" in the list excludes the open session, because the swap plans
+  from before it.
 - **A stall is named, and a reset is offered** (`domain/programs/
 stall.ts`). Three sessions in a row that did not beat **the best top set
   before them** — against the best, not the session before, because

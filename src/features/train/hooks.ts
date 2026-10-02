@@ -28,6 +28,8 @@ import { activityFor } from '@/application/use-cases/training/activity'
 import { weekSummary } from '@/application/use-cases/training/week'
 import { scheduleFor } from '@/application/use-cases/programs/schedule'
 import { previewWorkout } from '@/application/use-cases/training/start-workout'
+import { swapExercise, swapOptions } from '@/application/use-cases/training/swap-exercise'
+import type { LogEntry } from '@/domain/logging/workout-log'
 import { logger } from '@/shared/logging/logger'
 
 /**
@@ -191,6 +193,43 @@ export function useLogSet(workoutId: WorkoutId | undefined) {
     },
     onSettled: () => {
       void client.invalidateQueries({ queryKey: keys.activeWorkout })
+    },
+  })
+}
+
+/** Alternatives to the current exercise, with what each did last time. */
+export function useSwapOptions(entry: LogEntry | undefined, enabled: boolean) {
+  const services = useServices()
+  return useQuery({
+    queryKey: ['workouts', 'swap-options', entry?.exerciseId, entry?.substitutedFor],
+    queryFn: () => (entry === undefined ? [] : swapOptions(entry, services)),
+    enabled: enabled && entry !== undefined,
+  })
+}
+
+export function useSwapExercise(workoutId: WorkoutId | undefined) {
+  const services = useServices()
+  const { settings } = useSettings()
+  const client = useQueryClient()
+
+  return useMutation({
+    mutationFn: (input: { entryIndex: number; exerciseId: ExerciseId }) => {
+      if (workoutId === undefined) throw new Error('No workout is open.')
+      return swapExercise(
+        {
+          workoutId,
+          ...input,
+          ...(settings.loadResets !== undefined ? { resets: settings.loadResets } : {}),
+        },
+        services,
+      )
+    },
+    onSuccess: (updated) => {
+      client.setQueryData(keys.activeWorkout, updated)
+      void client.invalidateQueries({ queryKey: keys.activeWorkout })
+    },
+    onError: (error) => {
+      logger.warn('exercise.swap-failed', { message: error.message })
     },
   })
 }
