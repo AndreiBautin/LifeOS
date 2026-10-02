@@ -116,6 +116,13 @@ SessionPage.tsx`, from `sessionDetail`). History rows could be deleted
   finished the minute it started reads as of unknown length rather
   than "0 min"; the demo seed stamped every session that way until this
   page showed it, and now gives each 45–75 minutes.
+- **The set editor steps rather than types** (`Stepper`): − and + either
+  side of each number, weight by the rounding increment and reps by one,
+  holding a button repeats, and the field is still typeable for a big
+  jump. A press lands **on the step's grid in the direction pressed**
+  (`stepValue` in `domain/units/step.ts`, tested) — 317 goes to 320 or
+  315, never 322 — and an empty field steps from its placeholder, last
+  time's number. The number ticks on each press and not on opening.
 - **The Program page's "Sets per muscle" is a muscle × day grid**
   (`MuscleWeekGrid`). It was a list of "8 / 8": every muscle against a
   target that is the routine itself, so every row agreed with itself —

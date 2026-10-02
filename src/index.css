@@ -907,6 +907,28 @@ html {
   animation: rest-done 1600ms ease-in-out both;
 }
 
+/*
+ * A stepped number ticks: two identical animations, swapped each press,
+ * so the browser replays it rather than treating it as already run.
+ * Opening the editor plays nothing: no class until the first press.
+ */
+@keyframes stepper-tick-a {
+  50% {
+    transform: scale(1.12);
+  }
+}
+@keyframes stepper-tick-b {
+  50% {
+    transform: scale(1.12);
+  }
+}
+.stepper-tick-a {
+  animation: stepper-tick-a 180ms ease-out;
+}
+.stepper-tick-b {
+  animation: stepper-tick-b 180ms ease-out;
+}
+
 /* A set row shows once that it can be swiped. */
 @keyframes swipe-peek {
   0%,

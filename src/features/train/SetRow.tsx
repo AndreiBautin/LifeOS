@@ -8,10 +8,12 @@ import type { LoggedSet } from '@/domain/logging/workout-log'
 import { describePrescription } from '@/domain/programs/prescription'
 import { formatLoad } from '@/domain/units/weight'
 import type { WeightUnit } from '@/domain/units/weight'
-import { Badge, Button, NumberField } from '@/components/shared/primitives'
+import { Badge, Button } from '@/components/shared/primitives'
+import { useSettings } from '@/app/context'
 import { cn } from '@/lib/cn'
 
 import { usePreviousSet, usePriorSets } from './hooks'
+import { Stepper } from './Stepper'
 import { RecordChip } from './RecordChip'
 import { SwipeRow } from './SwipeRow'
 import { VersusChip } from './VersusChip'
@@ -267,6 +269,7 @@ function SetEditorPanel({
     String(set.actualLoad ?? set.plannedLoad ?? previousLoad ?? ''),
   )
   const [reps, setReps] = useState(() => String(set.actualReps ?? set.plannedReps ?? ''))
+  const { settings } = useSettings()
 
   const done = set.outcome === 'completed' && set.completedAt !== undefined
 
@@ -306,22 +309,20 @@ function SetEditorPanel({
       </div>
 
       <div className="grid grid-cols-2 gap-2">
-        <NumberField
+        <Stepper
           label={bodyweight === true ? `Added ${units}` : units}
           id={`load-${String(entryIndex)}-${String(index)}`}
           value={load}
-          onChange={(event) => {
-            setLoad(event.target.value)
-          }}
+          onChange={setLoad}
+          step={settings.roundingIncrement}
           hint={previousLoad === undefined ? undefined : String(previousLoad)}
         />
-        <NumberField
+        <Stepper
           label="Reps"
           id={`reps-${String(entryIndex)}-${String(index)}`}
           value={reps}
-          onChange={(event) => {
-            setReps(event.target.value)
-          }}
+          onChange={setReps}
+          step={1}
           hint={previousReps === undefined ? undefined : String(previousReps)}
         />
       </div>
