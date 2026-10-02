@@ -883,6 +883,30 @@ html {
   animation: plate-in 1600ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
+/*
+ * Rest complete: the timer card breathes out once in the good colour.
+ * Two beats then still — a signal, not a siren.
+ */
+@keyframes rest-done {
+  0%,
+  100% {
+    box-shadow: 0 -12px 40px -12px rgb(0 0 0 / 80%);
+  }
+  25%,
+  75% {
+    box-shadow:
+      0 0 0 1px color-mix(in oklab, var(--color-good-500) 70%, transparent),
+      0 0 36px -4px color-mix(in oklab, var(--color-good-500) 55%, transparent);
+  }
+  50% {
+    box-shadow: 0 -12px 40px -12px rgb(0 0 0 / 80%);
+  }
+}
+
+.rest-done {
+  animation: rest-done 1600ms ease-in-out both;
+}
+
 /* The report's "you moved about…" line arrives as the counts settle. */
 @keyframes heft-rise {
   from {

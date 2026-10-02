@@ -17,7 +17,7 @@ import type { WorkoutLog } from '@/domain/logging/workout-log'
 import { isEntryComplete, remainingSets, totalWorkingSets } from '@/domain/logging/workout-log'
 import { describePrescription } from '@/domain/programs/prescription'
 import { slotRoleLabel, slotRoleTone, slotVariant } from '@/domain/programs/program'
-import type { WeightUnit } from '@/domain/units/weight'
+import { formatLoad, type WeightUnit } from '@/domain/units/weight'
 import { Badge, Button, Card } from '@/components/shared/primitives'
 import { useKeepAwake } from '@/shared/hooks/useKeepAwake'
 import { cn } from '@/lib/cn'
@@ -436,6 +436,7 @@ export function SessionPlayer({
         <RestTimer
           seconds={restSeconds}
           startedAt={restStartedAt}
+          next={nextUp(workout, index, nameOf, exercises, units)}
           onDismiss={() => {
             setRestStartedAt(undefined)
           }}
@@ -443,6 +444,45 @@ export function SessionPlayer({
       )}
     </div>
   )
+}
+
+/**
+ * The set the rest is leading up to, in the words the row will use: on
+ * this exercise it is "Set 3", past it the exercise's name — with the
+ * planned load and reps, so the bar can be loaded while the clock runs.
+ */
+function nextUp(
+  workout: WorkoutLog,
+  from: number,
+  nameOf: (id: ExerciseId) => string,
+  exercises: readonly Exercise[],
+  units: WeightUnit,
+): { readonly title: string; readonly detail: string } | undefined {
+  for (let at = from; at < workout.entries.length; at += 1) {
+    const entry = workout.entries[at]
+    if (entry === undefined) continue
+    const setIndex = entry.sets.findIndex((set) => set.outcome === 'pending')
+    const set = entry.sets[setIndex]
+    if (set === undefined) continue
+    const bodyweight =
+      exercises.find((one) => one.id === entry.exerciseId)?.loadBasis === 'bodyweight'
+    const load =
+      set.plannedLoad === undefined
+        ? undefined
+        : bodyweight
+          ? set.plannedLoad > 0
+            ? `BW + ${formatLoad(set.plannedLoad, units)}`
+            : 'BW'
+          : formatLoad(set.plannedLoad, units)
+    return {
+      title: at === from ? `Set ${String(setIndex + 1)}` : nameOf(entry.exerciseId),
+      detail:
+        load === undefined || set.plannedReps === undefined
+          ? describePrescription(set.prescription)
+          : `${load} × ${String(set.plannedReps)}`,
+    }
+  }
+  return undefined
 }
 
 /** The indices of the warm-up run `at` sits in, or undefined if it is not a warm-up. */

@@ -106,6 +106,13 @@ standards.ts`): the estimated max, its multiple of bodyweight, and the
   one. The hero stats count up once (`useCountUp`); reduced motion shows
   the figure directly, and a screen reader gets the number, not the
   animation.
+- **The rest timer says what the rest is for**: an "Up next" line with
+  the next pending set's planned load and reps (`nextUp` in
+  `SessionPlayer`), so the bar is loaded while the clock runs. When the
+  rest ends the card glows twice in the good colour and, where the
+  platform allows (Android, not iOS), buzzes — once, on the change. It
+  is the one card with `backdrop-filter`, which is allowed because it is
+  fixed; text behind it was reading through the old 95% fill.
 - **The Program page is a week strip and a card per day.** It was six
   sections of flat rows, a third of them warm-ups, each row carrying a
   role badge and a sub-category badge that truncated the exercise name.
