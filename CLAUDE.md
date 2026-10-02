@@ -116,6 +116,15 @@ SessionPage.tsx`, from `sessionDetail`). History rows could be deleted
   finished the minute it started reads as of unknown length rather
   than "0 min"; the demo seed stamped every session that way until this
   page showed it, and now gives each 45–75 minutes.
+- **The Program page's "Sets per muscle" is a muscle × day grid**
+  (`MuscleWeekGrid`). It was a list of "8 / 8": every muscle against a
+  target that is the routine itself, so every row agreed with itself —
+  reported as looking bad "for the same reason as the others", the
+  reason the radar lost its target ring. The grid answers what the
+  routine decides: how much each muscle gets and on which days, a cell
+  lit brighter for more sets, the week's total at the end. Each day is
+  `attributeWeek` over that day alone, so a cell and its row cannot
+  disagree; a row still opens on the exercises behind it.
 - **A set row swipes** (`SwipeRow`): right logs it as planned (the same
   `logPlanned` the check runs), left skips; the row reveals the action as
   it moves and commits past a third of its width. Pointer events with

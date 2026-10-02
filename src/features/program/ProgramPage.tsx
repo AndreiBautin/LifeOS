@@ -7,13 +7,12 @@ import { cn } from '@/lib/cn'
 import type { Exercise } from '@/domain/exercises/exercise'
 import type { ExerciseId } from '@/domain/ids/ids'
 import type { ProgramDay, Slot } from '@/domain/programs/program'
-import { inSections, scheduledVolume } from '@/domain/programs/program'
+import { inSections } from '@/domain/programs/program'
 import { describeReps } from '@/domain/programs/prescription'
 import { resolveSets } from '@/domain/resolution/resolve'
-import { attributeWeek, type MuscleAttribution } from '@/domain/volume/attribution'
-import type { MuscleGroup } from '@/domain/exercises/taxonomy'
-import { Badge, Button, Card, CardHeading } from '@/components/shared/primitives'
+import { Badge, Card, CardHeading } from '@/components/shared/primitives'
 
+import { MuscleWeekGrid } from './MuscleWeekGrid'
 import { useExercises, useJumpToWeek, useProgram, useWeekSummary } from '@/features/train/hooks'
 import { splitDayLabel, useNextSession } from '@/features/train/useNextSession'
 
@@ -46,8 +45,6 @@ export function ProgramPage() {
    * accent ring whether done or not.
    */
   const done = new Set(useWeekSummary().data?.doneTitles ?? [])
-
-  const [openMuscle, setOpenMuscle] = useState<string | undefined>(undefined)
 
   const block = program.data?.blocks[0]
   const weeks = block?.weeks ?? []
@@ -91,11 +88,6 @@ export function ProgramPage() {
   const library = exercises.data ?? []
   const lookup = (id: ExerciseId): Exercise | undefined =>
     library.find((exercise) => exercise.id === id)
-
-  // What the routine actually schedules — see `scheduledVolume`.
-  const scheduled = week === undefined ? {} : scheduledVolume(week)
-  const targetOf = (muscle: MuscleGroup): number => scheduled[muscle] ?? 0
-  const attribution = week === undefined ? [] : attributeWeek(week, lookup)
 
   if (program.data === undefined || week === undefined) {
     return (
@@ -247,27 +239,7 @@ export function ProgramPage() {
 
       <Card className="mt-4">
         <CardHeading icon={<BarChart3 size={16} aria-hidden />} title="Sets per muscle" />
-        <p className="text-ink-500 mb-3 text-xs">
-          Accessory sets this week, each counted once for the muscle it is programmed for. Tap a
-          muscle to see what feeds it.
-        </p>
-
-        <ul className="space-y-1">
-          {attribution
-            .filter((entry) => entry.total > 0 || targetOf(entry.muscle) > 0)
-            .sort((a, b) => b.total - a.total)
-            .map((entry) => (
-              <AttributionRow
-                key={entry.muscle}
-                entry={entry}
-                target={targetOf(entry.muscle)}
-                isOpen={openMuscle === entry.muscle}
-                onToggle={() => {
-                  setOpenMuscle(openMuscle === entry.muscle ? undefined : entry.muscle)
-                }}
-              />
-            ))}
-        </ul>
+        <MuscleWeekGrid week={week} lookup={lookup} />
       </Card>
     </div>
   )
@@ -469,65 +441,6 @@ function SlotRow({
           (slot.exercise.kind === 'query' ? slot.exercise.label : 'Unknown exercise')}
       </span>
       <span className="text-ink-500 numeric shrink-0 text-right text-xs">{line}</span>
-    </li>
-  )
-}
-
-function AttributionRow({
-  entry,
-  target,
-  isOpen,
-  onToggle,
-}: {
-  readonly entry: MuscleAttribution
-  readonly target: number
-  readonly isOpen: boolean
-  readonly onToggle: () => void
-}) {
-  /*
-   * Over target is worth showing, not only under — a slot sized to a
-   * remainder can round up past the ask, and a screen that only
-   * colours shortfalls makes that invisible.
-   */
-  const short = target > 0 && entry.total < target - 0.5
-  const over = target > 0 && entry.total > target + 0.5
-
-  return (
-    <li>
-      <Button variant="ghost" full onClick={onToggle} className="justify-between px-2">
-        <span className="text-ink-300 text-sm">{entry.label}</span>
-        <span className="numeric text-sm">
-          <span className={short ? 'text-warn-500' : over ? 'text-good-500' : 'text-ink-50'}>
-            {entry.total}
-          </span>
-          <span className="text-ink-500"> / {target}</span>
-        </span>
-      </Button>
-
-      {isOpen && (
-        <ul className="border-ink-800 mt-1 mb-2 ml-2 space-y-1 border-l pl-3">
-          {entry.contributions.map((contribution) => (
-            <li
-              key={`${contribution.exerciseId}-${contribution.role}`}
-              className="flex items-baseline justify-between gap-3 text-xs"
-            >
-              <span className="text-ink-300 min-w-0 truncate">
-                {contribution.name}
-                {contribution.kind === 'secondary' && (
-                  <span className="text-ink-500"> — indirect</span>
-                )}
-              </span>
-              <span className="numeric text-ink-500 shrink-0">
-                {contribution.sets} set{contribution.sets === 1 ? '' : 's'} →{' '}
-                <span className="text-ink-100">{contribution.counted}</span>
-              </span>
-            </li>
-          ))}
-          {entry.contributions.length === 0 && (
-            <li className="text-ink-500 text-xs">Nothing trains this muscle in this week.</li>
-          )}
-        </ul>
-      )}
     </li>
   )
 }
