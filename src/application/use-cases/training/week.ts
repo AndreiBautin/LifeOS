@@ -1,7 +1,7 @@
 import type { ExerciseId } from '@/domain/ids/ids'
 import { loggedVolume, totalWorkingSets } from '@/domain/logging/workout-log'
 import type { Clock, ExerciseRepository, WorkoutRepository } from '@/domain/repositories/ports'
-import { parseDay, shiftDay, toDayKey } from '@/domain/time/day'
+import { mondayOf, shiftDay, toDayKey } from '@/domain/time/day'
 import { sumVolume, type VolumeMap } from '@/domain/volume/accounting'
 
 /**
@@ -46,11 +46,8 @@ export interface WeekDeps {
   readonly clock: Clock
 }
 
-/** The Monday of the week a day key falls in. */
-export function mondayOf(day: string): string {
-  // `getUTCDay` because `parseDay` builds midnight UTC; Sunday is six back.
-  return shiftDay(day, -((parseDay(day).getUTCDay() + 6) % 7))
-}
+/** Re-exported where the week was first computed; the rule lives in `domain/time/day`. */
+export { mondayOf }
 
 export async function weekSummary(deps: WeekDeps): Promise<WeekSummary> {
   const today = toDayKey(deps.clock.now())

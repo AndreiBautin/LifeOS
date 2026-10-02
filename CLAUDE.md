@@ -116,6 +116,14 @@ SessionPage.tsx`, from `sessionDetail`). History rows could be deleted
   finished the minute it started reads as of unknown length rather
   than "0 min"; the demo seed stamped every session that way until this
   page showed it, and now gives each 45–75 minutes.
+- **A "Last week" card** (`weekRecap` in `domain/logging/recap.ts`,
+  `LastWeekCard`) sits under This week: seven day columns, last week
+  filled and the week before as dashed ghosts, then sessions, sets and
+  volume with their change, and how many exercises moved up and records
+  were set — by the same `versusLast` / `sessionRecords` rules as every
+  other screen. Changes are quiet ink either way: a lighter week is often
+  the plan. `mondayOf` lives in `domain/time/day.ts` now; `week.ts`
+  re-exports it.
 - **The Strength card says when the next standard arrives at this rate**
   (`projectReach` in `domain/strength/projection.ts`): least squares
   through the trend's last twelve weeks, read forward from the fitted

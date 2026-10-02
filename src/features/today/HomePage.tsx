@@ -11,6 +11,7 @@ import {
   useFinishWorkout,
 } from '@/features/train/hooks'
 import { ActivityHeatmap } from '@/features/train/ActivityHeatmap'
+import { LastWeekCard } from '@/features/train/LastWeekCard'
 import { NextSessionCard } from '@/features/train/NextSessionCard'
 import { SessionPlayer } from '@/features/train/SessionPlayer'
 import { SessionReport } from '@/features/train/SessionReport'
@@ -106,6 +107,7 @@ export function HomePage() {
         items={[
           { key: 'session', node: <NextSessionCard /> },
           { key: 'week', node: <WeekCard /> },
+          { key: 'last-week', node: <LastWeekCard /> },
           { key: 'standards', node: <StrengthStandards /> },
           { key: 'trend', node: <StrengthTrendCard /> },
           { key: 'activity', node: <ActivityHeatmap /> },

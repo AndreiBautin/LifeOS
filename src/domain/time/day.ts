@@ -119,3 +119,12 @@ export function shiftDay(key: string, days: number): string {
 export function localDayOf(stamp: string): string {
   return stamp.length <= 10 ? stamp : toDayKey(new Date(stamp))
 }
+
+/**
+ * The Monday of the week a day key falls in — Sunday belongs to the week
+ * before it, so a weekly allowance or a training week holds the weekend
+ * together. `getUTCDay` because `parseDay` builds midnight UTC.
+ */
+export function mondayOf(day: string): string {
+  return shiftDay(day, -((parseDay(day).getUTCDay() + 6) % 7))
+}

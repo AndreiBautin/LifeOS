@@ -907,6 +907,18 @@ html {
   animation: rest-done 1600ms ease-in-out both;
 }
 
+/* The recap's day columns rise once, left to right. */
+@keyframes bar-rise {
+  from {
+    transform: scaleY(0);
+  }
+}
+
+.bar-rise {
+  transform-origin: bottom;
+  animation: bar-rise 600ms cubic-bezier(0.22, 1, 0.36, 1) var(--bar-delay, 0ms) both;
+}
+
 /* The ladder lights once when the session earns the next load. */
 @keyframes ladder-earned {
   from {
