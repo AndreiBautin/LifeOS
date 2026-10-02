@@ -1,9 +1,14 @@
 import { Cloud, RefreshCw, Unplug } from 'lucide-react'
 import { useId, useState, useSyncExternalStore } from 'react'
 
-import { useServices } from '@/app/context'
+import { useServices, useSettings } from '@/app/context'
 import { Button, Card, Section } from '@/components/shared/primitives'
-import { DEFAULT_SYNC_PATH } from '@/infrastructure/storage/github-sync-store'
+import { holdsSampleData } from '@/domain/settings/settings'
+import { useSampleData } from '@/features/backup/useSampleData'
+import {
+  DEFAULT_SYNC_PATH,
+  type GitHubSyncConfig,
+} from '@/infrastructure/storage/github-sync-store'
 
 import { syncStore } from './sync-store'
 
@@ -33,7 +38,32 @@ export function SyncSection() {
   const [token, setToken] = useState('')
   const ids = { owner: useId(), repo: useId(), path: useId(), token: useId() }
 
-  const canConnect = owner.trim() !== '' && repo.trim() !== '' && token.trim() !== ''
+  const { settings } = useSettings()
+  const sample = useSampleData()
+  const sampleHere = holdsSampleData(settings)
+
+  const canConnect =
+    owner.trim() !== '' && repo.trim() !== '' && token.trim() !== '' && !sample.startFresh.isPending
+
+  /*
+   * **The sample is cleared before the first round, never after.** Sync
+   * merges by record and cannot tell a generated session from a real one,
+   * so once the sample has gone up it is in every device's history. A
+   * fresh install of the demo build fills itself, which made this the
+   * ordinary path for anyone adding a second device rather than an edge
+   * case.
+   */
+  const connect = (config: GitHubSyncConfig) => {
+    if (!sampleHere) {
+      syncStore.connect(config)
+      return
+    }
+    sample.startFresh.mutate(undefined, {
+      onSuccess: () => {
+        syncStore.connect(config)
+      },
+    })
+  }
 
   return (
     <Section
@@ -106,12 +136,19 @@ export function SyncSection() {
               />
             </label>
 
+            {sampleHere && (
+              <p className="text-warn-500 text-xs" role="note">
+                This device holds the sample data. Connecting deletes it first so it never reaches
+                your sync file — anything you logged on top of it goes too.
+              </p>
+            )}
+
             <Button
               variant="primary"
               full
               disabled={!canConnect}
               onClick={() => {
-                syncStore.connect({
+                connect({
                   owner: owner.trim(),
                   repo: repo.trim(),
                   path: path.trim() === '' ? DEFAULT_SYNC_PATH : path.trim(),
@@ -121,7 +158,7 @@ export function SyncSection() {
               }}
             >
               <Cloud size={16} aria-hidden />
-              Connect and sync
+              {sampleHere ? 'Clear sample and connect' : 'Connect and sync'}
             </Button>
           </>
         ) : (

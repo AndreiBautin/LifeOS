@@ -15,6 +15,20 @@ import type { WeightUnit } from '@/domain/units/weight'
 export const SAMPLE_DATA_STATES = ['loaded', 'kept', 'cleared'] as const
 export type SampleDataState = (typeof SAMPLE_DATA_STATES)[number]
 
+/**
+ * Whether this device's records include the generated sample.
+ *
+ * **Sync must never carry the sample.** A fresh install of the demo build
+ * fills itself, and connecting it to a real sync file merged ninety-four
+ * made-up sessions into a lifter's history — the merge cannot tell a
+ * sample record from a real one, so the only safe moment to separate them
+ * is before the device first syncs. `kept` counts too: dismissing the
+ * note hides it, and the records are still the sample.
+ */
+export function holdsSampleData(settings: { readonly sampleData?: SampleDataState }): boolean {
+  return settings.sampleData === 'loaded' || settings.sampleData === 'kept'
+}
+
 export interface AppSettings {
   readonly units: WeightUnit
   readonly roundingIncrement: number

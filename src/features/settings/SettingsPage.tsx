@@ -316,7 +316,17 @@ export function SettingsPage() {
             first, because it is the one control here that cannot be undone.
           */}
           <div className="border-ink-800 space-y-2 border-t pt-4">
-            {empty.data === true ? (
+            {/*
+              **No sample on a synced device.** The next round would upload
+              it into the real history, and sync cannot tell it apart
+              afterwards — the same reason connecting clears it first.
+            */}
+            {empty.data === true && syncing ? (
+              <p className="text-ink-500 text-xs">
+                Sample data is unavailable while this device syncs — it would be uploaded into your
+                history. Disconnect sync first to try it.
+              </p>
+            ) : empty.data === true ? (
               <>
                 <Button
                   variant="outline"

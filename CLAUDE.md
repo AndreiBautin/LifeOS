@@ -101,6 +101,16 @@ throttled to fifteen seconds).
 - **A file that fails its checksum is refused, not overwritten** — it is
   most likely a truncated write, and replacing it would discard whatever
   the other device had.
+- **Sync never carries the sample.** The deployed build is the demo
+  build, so a phone re-added to the home screen after the `/LiftOS/`
+  rename filled itself with generated sessions, connected, and merged
+  ninety-four of them into the real file. The merge cannot tell sample
+  from real, so the separation happens before the first round:
+  connecting a device where `holdsSampleData` is true clears it first
+  (with a warning on screen), and **Load sample data** is withheld while
+  a device syncs. The file was repaired by hand with tombstones for the
+  ninety-four ids, which is also the fix if it ever happens again — a
+  tombstone newer than the record purges it on every device.
 
 **Quests, house jobs, the job search, the resume and Mind are gone;
 every paragraph below about `Project`, quest kinds, contracts, blockers,
