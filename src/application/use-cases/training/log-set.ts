@@ -2,6 +2,7 @@ import type { ExerciseId, WorkoutId } from '@/domain/ids/ids'
 import type { LoggedSet, SetOutcome, WorkoutLog } from '@/domain/logging/workout-log'
 import { comparePerformance } from '@/domain/logging/workout-log'
 import type { Clock, WorkoutRepository } from '@/domain/repositories/ports'
+import { sameVersion } from '@/domain/splits/rp-splits'
 
 /**
  * Recording one set, and finding the number to suggest for the next.
@@ -184,18 +185,30 @@ export async function previousSetFor(
    */
   variant?: string,
 ): Promise<PreviousSet | undefined> {
-  const history = await deps.workouts.forExercise(exerciseId, 10)
+  const history = (await deps.workouts.forExercise(exerciseId, 10)).filter(
+    (workout) => workout.id !== currentWorkoutId,
+  )
 
-  for (const workout of history) {
-    if (workout.id === currentWorkoutId) continue
+  /*
+   * The same variant anywhere in recent history first, then the newest
+   * entry that is not another version of the exercise (`sameVersion`).
+   * Walking workouts newest-first and taking whatever each held showed
+   * the heavy calf raise as the light one's last time — the version that
+   * happened to be logged most recently rather than the one being done.
+   */
+  const entries = history.flatMap((workout) =>
+    workout.entries
+      .filter((candidate) => candidate.exerciseId === exerciseId)
+      .map((entry) => ({ workout, entry })),
+  )
+  const ordered = [
+    ...entries.filter(({ entry }) => entry.variant === variant),
+    ...entries.filter(
+      ({ entry }) => entry.variant !== variant && sameVersion(entry.variant, variant),
+    ),
+  ]
 
-    const matching = workout.entries.filter((candidate) => candidate.exerciseId === exerciseId)
-
-    // Falls back to the first entry when nothing matches — a workout
-    // logged before entries carried a variant has only one anyway.
-    const entry = matching.find((candidate) => candidate.variant === variant) ?? matching[0]
-    if (entry === undefined) continue
-
+  for (const { workout, entry } of ordered) {
     const performed = entry.sets.filter((set) => !set.isWarmup && set.outcome === 'completed')
     const set = performed[setIndex]
     if (set?.actualLoad === undefined && set?.actualReps === undefined) continue

@@ -23,6 +23,7 @@ import {
 } from '@/domain/programs/progression'
 import type { RepRange } from '@/domain/programs/prescription'
 import { matchesQuery } from '@/domain/exercises/exercise'
+import { sameVersion } from '@/domain/splits/rp-splits'
 
 /**
  * Turning the next scheduled day into a workout that can be logged.
@@ -179,8 +180,25 @@ async function workingLoads(
   const entries = await Promise.all(
     ids.map(async (id): Promise<readonly [ExerciseId, number, LastTime | undefined][]> => {
       const exercise = library.find((one) => one.id === id)
-      const history = await deps.workouts.forExercise(id, 1)
-      const previous = history[0]?.entries.find((entry) => entry.exerciseId === id)
+      /*
+       * **Last time is the same version of the exercise, where there are
+       * two.** The calf raise runs 10–20 on one leg day and 20–30 on the
+       * other, told apart by the slot's `variant`; reading whichever was
+       * logged last would plan Friday's light sets from Tuesday's heavy
+       * ones. Failing a match, the newest entry that is not the *other*
+       * version is used (`sameVersion`) — every exercise with one version,
+       * and every log written before the split gave the calf raise two.
+       * A heavy log is never read as the light one's last time, even
+       * before the light one has any history of its own.
+       */
+      const variant = day.slots.find((slot) => resolveExercise(slot, library) === id)?.variant
+      const history = await deps.workouts.forExercise(id, 10)
+      const sameExercise = history.flatMap((workout) =>
+        workout.entries.filter((entry) => entry.exerciseId === id),
+      )
+      const previous =
+        sameExercise.find((entry) => entry.variant === variant) ??
+        sameExercise.find((entry) => sameVersion(entry.variant, variant))
       if (exercise === undefined) return []
       if (previous === undefined) {
         const seeded = strengthIds.has(id) ? firstSessionLoad(id, request) : undefined

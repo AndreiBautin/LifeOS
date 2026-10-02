@@ -23,20 +23,21 @@ import type { RepRange } from './prescription'
  */
 
 /**
- * Five, on everything. It was three — _"straight 3 sets on anything"_ —
- * and moved to five on request: _"let's bump our sets up to 5 per
- * exercise."_ The routine lists one movement per muscle per day, so the
- * whole week's volume is this number times the list; nothing else needed
- * to change for it to land everywhere.
+ * Four, on everything. It was three — _"straight 3 sets on anything"_ —
+ * then five — _"let's bump our sets up to 5 per exercise"_ — and is four
+ * since every day became four exercises: _"since its four exercises now,
+ * lets make it four sets per instead of 5."_ The routine lists one
+ * movement per muscle per day, so the whole week's volume is this number
+ * times the list; nothing else needs to change for it to land everywhere.
  */
-export const STRAIGHT_SETS = 5
+export const STRAIGHT_SETS = 4
 
 /**
- * A deload's sets: three of the five, roughly the usual 40% cut. It was
- * written as `STRAIGHT_SETS - 1`, which was a deload at three sets and
- * would be barely one at five.
+ * A deload's sets: half of the four. It was written as
+ * `STRAIGHT_SETS - 1` once, which is barely a deload at five and none
+ * at all at four, so it is its own number.
  */
-export const DELOAD_SETS = 3
+export const DELOAD_SETS = 2
 
 /**
  * The competition lifts' range, and the only one stated here.

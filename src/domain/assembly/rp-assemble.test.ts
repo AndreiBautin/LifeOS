@@ -68,7 +68,7 @@ function build(overrides: Partial<RpRecipe> = {}): ProgramTemplate {
     now: new Date('2026-08-24T00:00:00Z'),
     /*
      * The generator's own week. The shipped split is a written routine
-     * now (`PPL_SPLIT`), which bypasses everything these tests are about;
+     * now (`ULPPL_SPLIT`), which bypasses everything these tests are about;
      * the full-body split is what still exercises the fill.
      */
     split: FULL_BODY_SPLIT,

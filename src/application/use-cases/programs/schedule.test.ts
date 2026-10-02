@@ -20,33 +20,33 @@ const BLOCK = '2026-01-05'
 
 describe('the day comes from the date', () => {
   it.each([
-    ['2026-01-05', 'Monday — Push A'],
-    ['2026-01-06', 'Tuesday — Pull A'],
-    ['2026-01-07', 'Wednesday — Legs A'],
-    ['2026-01-08', 'Thursday — Push B'],
-    ['2026-01-09', 'Friday — Pull B'],
-    ['2026-01-10', 'Saturday — Legs B'],
+    ['2026-01-05', 'Monday — Upper'],
+    ['2026-01-06', 'Tuesday — Legs A'],
+    ['2026-01-07', 'Wednesday — Push'],
+    ['2026-01-08', 'Thursday — Pull'],
+    ['2026-01-09', 'Friday — Legs B'],
   ])('%s is %s', (on, label) => {
     expect(sessionOn(program, BLOCK, on)?.day.label).toBe(label)
   })
 
-  it('has nothing on a Sunday', () => {
+  it('has nothing on the weekend', () => {
+    expect(sessionOn(program, BLOCK, '2026-01-10')).toBeUndefined()
     expect(sessionOn(program, BLOCK, '2026-01-11')).toBeUndefined()
   })
 
   /*
-   * The whole point of the change. A queue held Pull A over to the
+   * The whole point of the change. A queue held Legs A over to the
    * Wednesday when the Tuesday was missed, and every day after it slid
    * one place later than the routine says.
    */
-  it('does not hold a missed day over: Wednesday is Legs A whatever Tuesday did', () => {
-    expect(sessionOn(program, BLOCK, '2026-01-14')?.day.label).toBe('Wednesday — Legs A')
+  it('does not hold a missed day over: Wednesday is Push whatever Tuesday did', () => {
+    expect(sessionOn(program, BLOCK, '2026-01-14')?.day.label).toBe('Wednesday — Push')
   })
 
   it('offers Monday’s session from a Sunday', () => {
     const next = sessionFrom(program, BLOCK, '2026-01-11')
     expect(next?.on).toBe('2026-01-12')
-    expect(next?.day.label).toBe('Monday — Push A')
+    expect(next?.day.label).toBe('Monday — Upper')
   })
 })
 
@@ -101,7 +101,7 @@ describe('reading a position written by the cursor', () => {
     const started = blockStartOf(program, cursor, '2026-10-02')
     expect(started).toBe('2026-08-24')
     expect(slotOn(program, started, '2026-10-02')?.weekIndex).toBe(5)
-    expect(sessionOn(program, started, '2026-10-02')?.day.label).toBe('Friday — Pull B')
+    expect(sessionOn(program, started, '2026-10-02')?.day.label).toBe('Friday — Legs B')
   })
 
   it('prefers a stated block start over the cursor fields', () => {
@@ -145,7 +145,7 @@ describe('the schedule for today', () => {
   it('offers today’s session until it is done', async () => {
     const schedule = await scheduleFor(program, deps([], TUESDAY, stored))
     expect(schedule.doneToday).toBe(false)
-    expect(schedule.next?.day.label).toBe('Tuesday — Pull A')
+    expect(schedule.next?.day.label).toBe('Tuesday — Legs A')
     expect(schedule.next?.on).toBe('2026-01-06')
   })
 
@@ -157,12 +157,12 @@ describe('the schedule for today', () => {
     })
     const schedule = await scheduleFor(program, deps([finished], TUESDAY, stored))
     expect(schedule.doneToday).toBe(true)
-    expect(schedule.next?.day.label).toBe('Wednesday — Legs A')
+    expect(schedule.next?.day.label).toBe('Wednesday — Push')
   })
 
   /*
    * An open session from scratch on a Tuesday is not the Tuesday session,
-   * so it must not mark the day done and hide Pull A.
+   * so it must not mark the day done and hide Legs A.
    */
   it('does not count a session from scratch as today’s', async () => {
     const freestyle = aWorkout({ date: '2026-01-06', status: 'completed' })

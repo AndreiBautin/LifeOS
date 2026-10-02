@@ -134,7 +134,7 @@ async function seedTraining(deps: DemoDeps): Promise<void> {
      * is the realistic reason totals actually differ session to
      * session.
      */
-    setCount = 3,
+    setCount = 4,
   ): LogEntry => ({
     exerciseId: slug as ExerciseId,
     role,
@@ -154,26 +154,10 @@ async function seedTraining(deps: DemoDeps): Promise<void> {
   })
 
   /*
-   * Conditioning and warm-up rows are logged as *completed*: a fixture of
-   * slots with nothing done against them would read as a history of
-   * sessions walked away from halfway.
+   * Warm-up rows are logged as *completed*: a fixture of slots with
+   * nothing done against them would read as a history of sessions walked
+   * away from halfway.
    */
-  const swung = (order: number): LogEntry => ({
-    exerciseId: 'kb-swing' as ExerciseId,
-    role: 'conditioning',
-    order,
-    sets: [
-      {
-        prescription: {
-          load: { kind: 'open' as const },
-          reps: { kind: 'time' as const, seconds: 900 },
-        },
-        outcome: 'completed' as const,
-        isWarmup: false,
-      },
-    ],
-  })
-
   const warmed = (): LogEntry => ({
     exerciseId: 'foam-roll' as ExerciseId,
     role: 'warmup',
@@ -193,8 +177,8 @@ async function seedTraining(deps: DemoDeps): Promise<void> {
   })
 
   /*
-   * **Seventeen weeks of the A and B days, Monday to Saturday — the
-   * shipped routine, generated rather than listed.** Six hand-written
+   * **Seventeen weeks of upper, legs, push, pull, legs, Monday to Friday —
+   * the shipped routine, generated rather than listed.** Six hand-written
    * sessions made every history screen look like the app was installed
    * last week; what a reviewer should see is somebody four months in,
    * with the loads climbing the way double progression climbs them.
@@ -218,56 +202,63 @@ async function seedTraining(deps: DemoDeps): Promise<void> {
   const along = (from: number, to: number, through: number): number =>
     round5(from + (to - from) * through)
 
-  type Day = 'Push A' | 'Pull A' | 'Legs A' | 'Push B' | 'Pull B' | 'Legs B'
-  /* `getDay()` is Sunday-first; Sunday is the rest day. */
+  type Day = 'Upper' | 'Legs A' | 'Push' | 'Pull' | 'Legs B'
+  /* `getDay()` is Sunday-first; the weekend is off. */
   const DAYS: Readonly<Record<number, Day>> = {
-    1: 'Push A',
-    2: 'Pull A',
-    3: 'Legs A',
-    4: 'Push B',
-    5: 'Pull B',
-    6: 'Legs B',
+    1: 'Upper',
+    2: 'Legs A',
+    3: 'Push',
+    4: 'Pull',
+    5: 'Legs B',
   }
+
+  /* The calf raise is two versions of one exercise, told apart by variant. */
+  const version = (entry: LogEntry, variant: string): LogEntry => ({ ...entry, variant })
 
   const session = (day: Day, through: number, heavy: boolean): LogEntry[] => {
     const bump = Math.round(through * 3)
     const strengthSets = heavy ? 4 : 3
     switch (day) {
-      case 'Push A':
+      case 'Upper':
         return [
-          lifted('overhead-press', 0, 'hypertrophy', along(95, 115, through), 8),
-          lifted('dips', 1, 'hypertrophy', 0, 8 + bump),
-          lifted('skullcrusher', 2, 'assistance', along(50, 65, through), 15),
-        ]
-      case 'Pull A':
-        return [
-          lifted('pendlay-row', 0, 'hypertrophy', along(135, 165, through), 8),
-          lifted('barbell-shrug', 1, 'assistance', along(185, 225, through), 12),
-          lifted('ez-bar-curl', 2, 'assistance', along(50, 65, through), 15),
+          lifted('bench-press', 0, 'strength', along(170, 210, through), 5, strengthSets),
+          lifted('pendlay-row', 1, 'hypertrophy', along(135, 165, through), 8),
+          lifted('db-lateral-raise', 2, 'assistance', along(15, 20, through), 18),
+          lifted('barbell-shrug', 3, 'assistance', along(185, 225, through), 18),
         ]
       case 'Legs A':
         return [
           lifted('low-bar-squat', 0, 'strength', along(255, 305, through), 5, strengthSets),
-          swung(1),
-          lifted('ab-wheel', 2, 'assistance', 0, 10 + bump),
+          lifted('romanian-deadlift', 1, 'hypertrophy', along(135, 185, through), 8),
+          version(
+            lifted('barbell-calf-raise', 2, 'assistance', along(170, 210, through), 15),
+            'Heavy',
+          ),
+          lifted('ab-wheel', 3, 'assistance', 0, 10 + bump),
         ]
-      case 'Push B':
+      case 'Push':
         return [
-          lifted('bench-press', 0, 'strength', along(170, 210, through), 5, strengthSets),
-          lifted('db-lateral-raise', 1, 'assistance', along(15, 20, through), 18),
-          lifted('french-press', 2, 'assistance', along(40, 55, through), 15),
+          lifted('overhead-press', 0, 'hypertrophy', along(95, 115, through), 8),
+          lifted('dips', 1, 'hypertrophy', 0, 8 + bump),
+          lifted('skullcrusher', 2, 'assistance', along(50, 65, through), 18),
+          lifted('french-press', 3, 'assistance', along(40, 55, through), 18),
         ]
-      case 'Pull B':
+      case 'Pull':
         return [
           lifted('pull-up', 0, 'hypertrophy', 0, 6 + bump),
           lifted('rear-delt-raise', 1, 'assistance', along(15, 20, through), 18),
-          lifted('db-curl', 2, 'assistance', along(25, 35, through), 15),
+          lifted('ez-bar-curl', 2, 'assistance', along(50, 65, through), 18),
+          lifted('db-curl', 3, 'assistance', along(25, 35, through), 18),
         ]
       case 'Legs B':
         return [
           lifted('sumo-deadlift', 0, 'strength', along(265, 315, through), 5, strengthSets),
-          lifted('barbell-calf-raise', 1, 'assistance', along(150, 190, through), 15),
-          lifted('hanging-leg-raise', 2, 'assistance', 0, 10 + bump),
+          lifted('front-squat', 1, 'hypertrophy', along(135, 175, through), 6),
+          version(
+            lifted('barbell-calf-raise', 2, 'assistance', along(120, 150, through), 25),
+            'Light',
+          ),
+          lifted('hanging-leg-raise', 3, 'assistance', 0, 10 + bump),
         ]
     }
   }

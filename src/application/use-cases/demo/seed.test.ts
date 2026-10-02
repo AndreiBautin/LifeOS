@@ -107,9 +107,10 @@ describe('seeding the demo', () => {
   /*
    * A fixture of scheduled rows with nothing done against them would read
    * as four months of sessions walked away from halfway, so the warm-up
-   * and the conditioning are logged as completed.
+   * is logged as completed. (Conditioning was checked here too, until the
+   * week stopped scheduling any.)
    */
-  it.each(['conditioning', 'warmup'])('completes the %s it schedules', async (role) => {
+  it.each(['warmup'])('completes the %s it schedules', async (role) => {
     const services = deps()
     await seedDemoData(services)
 

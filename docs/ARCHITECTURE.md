@@ -69,7 +69,7 @@ RepTarget  = fixed | range | amrap | time
 ```
 
 The programme is **double progression**, and the whole method is two
-sentences: work in a rep range for five straight sets, and when every
+sentences: work in a rep range for four straight sets, and when every
 set reaches the top of it, put the next increment on the bar.
 
 | Prescription                     | Reads as                        |
@@ -124,10 +124,10 @@ reads would make every one of those a guess. That is why assembly takes
 an id generator as a parameter and `current-program.ts` passes a counter
 rather than `crypto.randomUUID`.
 
-**The shipped week is a written routine**: Push, Pull and Legs A
-Monday to Wednesday, the B days Thursday to Saturday (`PPL_SPLIT` in
+**The shipped week is a written routine**: upper, legs A, push, pull,
+legs B, Monday to Friday (`ULPPL_SPLIT` in
 `domain/splits/rp-splits.ts`). A day
-with a `routine` is built exactly as listed — five straight sets per
+with a `routine` is built exactly as listed — four straight sets per
 exercise, the competition lifts at the strength range — and skips the
 generator below entirely. The generator is still live for any day
 without a routine, and `FULL_BODY_SPLIT` is kept so its tests have a

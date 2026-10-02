@@ -16,7 +16,7 @@ import { useNextSession } from './useNextSession'
  * label every spoke "done/scheduled". Asked: _"this still seems tied to
  * the target volumes"_ — it was, and the two halves did not even count
  * the same work: the ring was accessory sets only while the shape counted
- * every working set, so a bench week read "chest 10/5". With five sets on
+ * every working set, so a bench week read "chest 10/5". With four sets on
  * every exercise a per-muscle target says nothing the routine does not.
  *
  * The rings are every five sets, labelled, out to the busiest muscle's

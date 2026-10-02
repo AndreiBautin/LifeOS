@@ -57,7 +57,7 @@ function whenOf(on: string, today: string): 'today' | 'tomorrow' | 'later' {
 }
 
 /**
- * "Monday — Push A" as its two halves.
+ * "Monday — Upper" as its two halves.
  *
  * The routine names each day by the weekday it is run on and what it
  * trains; the hero leads with the second and files the first beside the

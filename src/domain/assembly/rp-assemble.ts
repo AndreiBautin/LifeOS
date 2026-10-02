@@ -6,7 +6,7 @@ import { MUSCLE_GROUP_LABELS } from '@/domain/exercises/taxonomy'
 import type { ExerciseId, IdGenerator, ProgramId } from '@/domain/ids/ids'
 import { DELOAD_SETS, STRAIGHT_SETS, STRENGTH_RANGE } from '@/domain/programs/progression'
 import { asExerciseId, asSlotId } from '@/domain/ids/ids'
-import type { SetPrescription } from '@/domain/programs/prescription'
+import type { RepRange, SetPrescription } from '@/domain/programs/prescription'
 import type {
   ProgramDay,
   ProgramSettings,
@@ -412,7 +412,7 @@ function buildWeek(
     }
 
     /*
-     * **A written routine is built as written** — see `PPL_SPLIT`. No
+     * **A written routine is built as written** — see `ULPPL_SPLIT`. No
      * fill, no picker and no reordering: the list is the lifter's
      * decision, in the order they run it. What it shares with the
      * generated path is everything about how a set is prescribed.
@@ -1379,9 +1379,11 @@ function daysAvailableFor(muscle: MuscleGroup, split: RpSplit): number {
  * session from what was actually logged, so the template says what to do
  * and the session says what to lift. See `domain/programs/progression.ts`.
  */
-function hypertrophySets(exercise: Exercise, count: number): readonly SetPrescription[] {
-  const range = exercise.repRange ?? (exercise.isCompound ? COMPOUND_REPS : ISOLATION_REPS)
-
+function hypertrophySets(
+  exercise: Exercise,
+  count: number,
+  range: RepRange = exercise.repRange ?? (exercise.isCompound ? COMPOUND_REPS : ISOLATION_REPS),
+): readonly SetPrescription[] {
   return Array.from({ length: count }, () => ({
     load: { kind: 'working' as const },
     reps: { kind: 'range' as const, low: range.low, high: range.high },
@@ -1656,12 +1658,14 @@ function routineSlots(
     if (exercise === undefined || excluded.has(exercise.id)) continue
 
     const count = isDeload ? DELOAD_SETS : STRAIGHT_SETS
-    const sets = hypertrophySets(exercise, count)
-    const range = exercise.repRange ?? (exercise.isCompound ? COMPOUND_REPS : ISOLATION_REPS)
+    // The routine's own range wins over the exercise's — see `RoutineEntry`.
+    const range =
+      entry.reps ?? exercise.repRange ?? (exercise.isCompound ? COMPOUND_REPS : ISOLATION_REPS)
+    const sets = hypertrophySets(exercise, count, range)
     slots.push({
       id: asSlotId(deps.ids.next()),
       role: exercise.isCompound ? 'hypertrophy' : 'assistance',
-      variant: exercise.isCompound ? 'Compound' : 'Isolation',
+      variant: entry.variant ?? (exercise.isCompound ? 'Compound' : 'Isolation'),
       exercise: { kind: 'specific', exerciseId: exercise.id },
       sets,
       restSeconds: exercise.defaultRestSeconds ?? 120,

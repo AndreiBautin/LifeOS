@@ -121,11 +121,12 @@ describe('attributing a week', () => {
   })
 
   it('reports nothing for a muscle only the lifts and conditioning touch', () => {
-    // Quads are squatted heavily every lower day and have no hypertrophy
-    // slot, so their hypertrophy volume is zero and the breakdown says so.
-    const quads = attribution.find((entry) => entry.muscle === 'quads')
+    // The glutes are worked by the squat and the sumo deadlift and have no
+    // accessory of their own, so their hypertrophy volume is zero and the
+    // breakdown says so. (It was the quads until the front squat arrived.)
+    const glutes = attribution.find((entry) => entry.muscle === 'glutes')
 
-    expect(quads?.total).toBe(0)
+    expect(glutes?.total).toBe(0)
   })
 
   it('orders the largest contributor first', () => {

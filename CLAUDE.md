@@ -250,6 +250,33 @@ input required.
   sample's `estimatedMaxes`; they disagreed by seventy pounds once, side
   by side on Train.
 
+**The week is upper, legs, push, pull, legs — Monday to Friday.**
+`ULPPL_SPLIT`, asked for as _"switch from pplppl to ulppl mon-fri"_ with
+both leg days written by the lifter (squat, RDL, calf raise, ab wheel;
+sumo, front squat, calf raise, hanging leg raise) and the rest
+rearranged from the existing exercises, nothing added. Four exercises a
+day, four sets each. Every movement appears once a week except the
+barbell calf raise; the swings and the treadmill walk left the week and
+stay in the catalogue. Two placement rules came from the lifter and a
+test holds both: **lateral raises are not on the overhead-press day**
+(the press already trains the side delts, so the raise on Upper makes
+it twice a week), and **shrugs are not the day before deadlifts** (the
+traps hold every pull). The price is the arms on one day each — both
+triceps movements on Push, both curls on Pull.
+
+- **One exercise can be two versions in a week.** A `RoutineEntry`
+  exercise may carry its own `reps` and `variant`: the calf raise is
+  `Heavy` 10–20 on Legs A and `Light` 20–30 on Legs B. **History is
+  read per version** — `workingLoads` and `previousSetFor` match the
+  variant first, then fall back to any log that is not the _other_
+  version (`sameVersion`, `DAY_VERSIONS`). Read by exercise alone,
+  Friday's light sets were planned from Tuesday's heavy ones; and with
+  a plain newest-first fallback, the light version's first session read
+  the heavy log as its last time. `training-flow.test.ts` → "plans each
+  calf raise from its own last time" fails without the rule.
+- The paragraphs below about Push A and the A/B pairs describe the week
+  this replaced.
+
 **The week is the lifter's own routine, and that reverses the rule
 against pinning exercises to days.** Asked for as _"make the workout
 routine reflective of my current split"_, then split into A and B days
@@ -7010,8 +7037,9 @@ straight rep target across all sets. 5x16 then 5x17"_. The weakest set
 is the count the exercise has not yet held on every set, so it is the
 one to beat.
 
-**Five sets now, three on a deload.** Asked for as _"let's bump our sets
-up to 5 per exercise"_ — `STRAIGHT_SETS` and `DELOAD_SETS` in
+**Four sets now, two on a deload.** It went to five on _"let's bump our
+sets up to 5 per exercise"_ and back to four with the ULPPL week, when
+every day became four exercises — `STRAIGHT_SETS` and `DELOAD_SETS` in
 `progression.ts`. **`topped` is judged against the sets the previous
 session asked for, read off its own log** (`start-workout.ts`), not
 against today's count: otherwise every three-set session filed before the
