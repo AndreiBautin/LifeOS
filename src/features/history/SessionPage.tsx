@@ -1,6 +1,6 @@
 import { Check, ChevronDown, ChevronRight, Minus } from 'lucide-react'
 import { useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 
 import { useSettings } from '@/app/context'
 import type { EntryDetail } from '@/application/use-cases/training/session-detail'
@@ -173,7 +173,13 @@ function ExerciseCard({
       <div className="mb-3 flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h2 className="text-ink-50 truncate text-base font-semibold">
-            {exercise?.name ?? entry.exerciseId}
+            <Link
+              viewTransition
+              to={`/exercise/${entry.exerciseId}`}
+              className="hover:text-accent-400 transition-colors"
+            >
+              {exercise?.name ?? entry.exerciseId}
+            </Link>
           </h2>
           {entry.variant !== undefined && (
             <p className="text-ink-500 mt-0.5 text-xs">{entry.variant}</p>

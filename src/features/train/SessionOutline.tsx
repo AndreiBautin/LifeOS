@@ -1,5 +1,6 @@
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 
 import type { Exercise } from '@/domain/exercises/exercise'
 import type { ProgramDay } from '@/domain/programs/program'
@@ -167,7 +168,17 @@ export function SessionOutline({
                     key={slot.id}
                     className="text-ink-100 flex items-baseline justify-between gap-3 py-1.5 text-sm"
                   >
-                    <span className="truncate">{nameOf(slot)}</span>
+                    {slot.exercise.kind === 'specific' ? (
+                      <Link
+                        viewTransition
+                        to={`/exercise/${slot.exercise.exerciseId}`}
+                        className="hover:text-accent-400 truncate transition-colors"
+                      >
+                        {nameOf(slot)}
+                      </Link>
+                    ) : (
+                      <span className="truncate">{nameOf(slot)}</span>
+                    )}
                     <PlannedFigure slot={slot} planned={planned} library={library} units={units} />
                   </li>
                 ))}

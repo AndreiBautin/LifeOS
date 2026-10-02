@@ -116,6 +116,19 @@ SessionPage.tsx`, from `sessionDetail`). History rows could be deleted
   finished the minute it started reads as of unknown length rather
   than "0 min"; the demo seed stamped every session that way until this
   page showed it, and now gives each 45–75 minutes.
+- **An exercise has a page** (`/exercise/:id`, `features/exercise/
+ExercisePage.tsx`, from `exerciseHistory` in `domain/logging/
+exercise-history.ts`), linked from its name in the session plan and
+  in a past session. Its visual is a **staircase**: top-set load per
+  session, evenly spaced, with the reps under each step lit where they
+  earned the next load — double progression drawn as what it is, and a
+  different shape from the smooth strength chart. A bodyweight movement
+  with no added load staircases its reps instead.
+- **Only a day version splits an exercise's history.** An entry's
+  `variant` is usually its sub-category (Compound, Working); grouping on
+  it raw would split one exercise across meaningless series. Heavy and
+  Light (`DAY_VERSIONS`) are kept apart because they progress apart;
+  everything else is one series.
 - **The date and name of a history row are the link**, not the whole
   row: reopen and delete are buttons, and a button inside an anchor is
   invalid markup that swallows the tap.

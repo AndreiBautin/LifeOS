@@ -3,6 +3,7 @@ import { createBrowserRouter, Navigate } from 'react-router-dom'
 import { HomePage } from '@/features/today/HomePage'
 import { ProgramPage } from '@/features/program/ProgramPage'
 import { SessionPage } from '@/features/history/SessionPage'
+import { ExercisePage } from '@/features/exercise/ExercisePage'
 import { NotFoundPage } from '@/features/not-found/NotFoundPage'
 import { SettingsPage } from '@/features/settings/SettingsPage'
 
@@ -71,6 +72,7 @@ export const router = createBrowserRouter(
         { path: 'plan', element: <Navigate to="/program" replace /> },
         { path: 'program', element: <ProgramPage /> },
         { path: 'session/:id', element: <SessionPage /> },
+        { path: 'exercise/:id', element: <ExercisePage /> },
         { path: 'today', element: <HomePage /> },
         { path: 'settings', element: <SettingsPage /> },
         { path: '*', element: <NotFoundPage /> },
