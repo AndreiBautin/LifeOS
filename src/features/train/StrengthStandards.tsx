@@ -1,11 +1,9 @@
-import { Plus, Trophy } from 'lucide-react'
+import { Trophy } from 'lucide-react'
 
 import { useSettings } from '@/app/context'
 import { strengthStandings, type LiftStanding } from '@/domain/strength/standards'
-import { Button, Card, CardHeading } from '@/components/shared/primitives'
+import { Card, CardHeading } from '@/components/shared/primitives'
 import { cn } from '@/lib/cn'
-
-import { useStartWorkout } from './hooks'
 
 /**
  * Where each lift stands against the published bodyweight standards, as
@@ -73,35 +71,5 @@ function StandardRow({
         </p>
       )}
     </li>
-  )
-}
-
-/**
- * A session with no programme day behind it — for the day that does not
- * fit the routine. Like starting the planned one, it does not navigate:
- * the page becomes the player once the workout exists.
- */
-export function LogFromScratch() {
-  const startWorkout = useStartWorkout()
-
-  return (
-    <Button
-      variant="outline"
-      full
-      disabled={startWorkout.isPending}
-      onClick={() => {
-        startWorkout.mutate(
-          { freestyleTitle: 'Open session' },
-          {
-            onSuccess: () => {
-              window.scrollTo({ top: 0 })
-            },
-          },
-        )
-      }}
-    >
-      <Plus size={18} aria-hidden />
-      Log a session from scratch
-    </Button>
   )
 }

@@ -48,9 +48,6 @@ export function VolumeTargets({ day }: { day: ProgramDay }) {
             .join(' · ')}
         </span>
       </p>
-      <p className="text-ink-600 mt-1 text-xs">
-        Set counts move with the session — skip a set and the accessories grow to cover it.
-      </p>
     </div>
   )
 }

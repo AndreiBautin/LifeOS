@@ -3,33 +3,23 @@ import { RotateCcw, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 
 import { useServices, useSettings } from '@/app/context'
-import type { Exercise } from '@/domain/exercises/exercise'
-import { scheduledVolume } from '@/domain/programs/program'
-import { useProgram } from '@/features/train/hooks'
-import { MUSCLE_GROUP_LABELS, type MuscleGroup } from '@/domain/exercises/taxonomy'
-import type { ExerciseId, WorkoutId } from '@/domain/ids/ids'
+import type { WorkoutId } from '@/domain/ids/ids'
 import type { WorkoutLog } from '@/domain/logging/workout-log'
-import {
-  loggedVolume,
-  remainingSets,
-  totalTonnage,
-  totalWorkingSets,
-} from '@/domain/logging/workout-log'
+import { remainingSets, totalTonnage, totalWorkingSets } from '@/domain/logging/workout-log'
 import type { WeightUnit } from '@/domain/units/weight'
 import { formatLoad } from '@/domain/units/weight'
-import { displaySets, sumVolume, type VolumeMap } from '@/domain/volume/accounting'
 import { Badge, Button, Card, Empty, Section } from '@/components/shared/primitives'
 
 import { useDeleteWorkout, useReopenWorkout } from './hooks'
 
 /**
- * Training history, and the weekly volume that comes out of it.
+ * Every session logged, newest first, with the ways to take one back.
  *
- * The volume chart is StrengthFlow's best analytic idea, corrected in one
- * important way: it is counted in *hard sets*, by the same rules the
- * planner uses, rather than in reps on an axis labelled volume. That is
- * what makes it comparable to the landmarks, which is the only reason to
- * show it.
+ * **One card with divided rows, not a card per session.** Each row was a
+ * full card of its own, so on a monitor eight sessions were eight
+ * full-width slabs — the heaviest thing on a page whose job is the next
+ * session. The weekly volume that used to open this section is the
+ * radar in `WeekCard` now.
  */
 /** How many sessions show before "Show all", newest first. */
 const RECENT = 8
@@ -59,12 +49,6 @@ export function TrainingHistory() {
     queryKey: ['workouts', 'recent', 500],
     queryFn: () => services.workouts.recent(500),
   })
-  const exercises = useQuery({ queryKey: ['exercises'], queryFn: () => services.exercises.all() })
-  const program = useProgram()
-
-  const library = exercises.data ?? []
-  const lookup = (id: ExerciseId): Exercise | undefined =>
-    library.find((exercise) => exercise.id === id)
 
   const completed = (workouts.data ?? []).filter((workout) => workout.status === 'completed')
 
@@ -92,57 +76,8 @@ export function TrainingHistory() {
 
   const abandoned = (workouts.data ?? []).filter((workout) => workout.status === 'abandoned')
 
-  const thisWeek = sessions.filter((workout) => isWithinDays(workout.date, 7))
-
-  const programWeek = program.data?.blocks[0]?.weeks[0]
-  const scheduled = programWeek === undefined ? {} : scheduledVolume(programWeek)
-
-  const weekVolume: VolumeMap | undefined =
-    thisWeek.length > 0
-      ? sumVolume(thisWeek.map((workout) => loggedVolume(workout, lookup)))
-      : undefined
-
   return (
     <div>
-      {weekVolume !== undefined && (
-        <Section title="This week" description="Working sets against each muscle’s weekly target">
-          <Card>
-            <ul className="space-y-2">
-              {(Object.keys(weekVolume) as MuscleGroup[])
-                .filter((muscle) => weekVolume[muscle] > 0)
-                .sort((a, b) => weekVolume[b] - weekVolume[a])
-                .map((muscle) => {
-                  /*
-                    The target is what the routine schedules for the
-                    muscle in a working week — `scheduledVolume` over the
-                    derived program — rather than the old per-muscle
-                    constants, which the written routine no longer
-                    consults.
-                  */
-                  const target = scheduled[muscle] ?? 0
-                  const done = weekVolume[muscle]
-                  return (
-                    <li key={muscle}>
-                      <div className="mb-1 flex justify-between text-sm">
-                        <span className="text-ink-300">{MUSCLE_GROUP_LABELS[muscle]}</span>
-                        <span className="numeric text-ink-500 text-xs">
-                          {displaySets(done)}
-                          {target > 0 ? ` / ${String(target)}` : null}
-                        </span>
-                      </div>
-                      <VolumeBar done={done} target={target} />
-                    </li>
-                  )
-                })}
-            </ul>
-            <p className="text-ink-500 mt-3 text-xs">
-              Accessory sets only — the competition lifts are counted apart, and a muscle with no
-              target lives on what those lifts already pay it.
-            </p>
-          </Card>
-        </Section>
-      )}
-
       {/*
         Counted separately, because they are different claims. A finished
         session is one you completed; an abandoned one is work that
@@ -167,44 +102,46 @@ export function TrainingHistory() {
             <p>Finish a session and it will appear here.</p>
           </Empty>
         ) : (
-          <ul className="space-y-2">
-            {(showAll ? sessions : sessions.slice(0, RECENT)).map((workout) => (
-              <li key={workout.id}>
-                <SessionRow
-                  workout={workout}
-                  units={settings.units}
-                  confirming={confirming === workout.id}
-                  pending={deleteWorkout.isPending}
-                  onAskDelete={() => {
-                    setConfirming(workout.id)
-                  }}
-                  onCancel={() => {
-                    setConfirming(undefined)
-                  }}
-                  onConfirm={() => {
-                    deleteWorkout.mutate(workout.id, {
-                      onSuccess: () => {
-                        setConfirming(undefined)
-                      },
-                    })
-                  }}
-                  // Only the newest session can be reopened — rolling the
-                  // program back past a session already trained would
-                  // have the lifter repeat days and file logs out of
-                  // order. The use-case refuses it too; this stops the
-                  // button appearing where it would.
-                  canReopen={workout.id === sessions[0]?.id}
-                  onReopen={() => {
-                    reopenWorkout.mutate(workout.id, {
-                      onSuccess: (result) => {
-                        if (result.kind === 'reopened') window.scrollTo({ top: 0 })
-                      },
-                    })
-                  }}
-                />
-              </li>
-            ))}
-          </ul>
+          <Card className="p-0 lg:p-0">
+            <ul className="divide-ink-800 divide-y">
+              {(showAll ? sessions : sessions.slice(0, RECENT)).map((workout) => (
+                <li key={workout.id}>
+                  <SessionRow
+                    workout={workout}
+                    units={settings.units}
+                    confirming={confirming === workout.id}
+                    pending={deleteWorkout.isPending}
+                    onAskDelete={() => {
+                      setConfirming(workout.id)
+                    }}
+                    onCancel={() => {
+                      setConfirming(undefined)
+                    }}
+                    onConfirm={() => {
+                      deleteWorkout.mutate(workout.id, {
+                        onSuccess: () => {
+                          setConfirming(undefined)
+                        },
+                      })
+                    }}
+                    // Only the newest session can be reopened — rolling the
+                    // program back past a session already trained would
+                    // have the lifter repeat days and file logs out of
+                    // order. The use-case refuses it too; this stops the
+                    // button appearing where it would.
+                    canReopen={workout.id === sessions[0]?.id}
+                    onReopen={() => {
+                      reopenWorkout.mutate(workout.id, {
+                        onSuccess: (result) => {
+                          if (result.kind === 'reopened') window.scrollTo({ top: 0 })
+                        },
+                      })
+                    }}
+                  />
+                </li>
+              ))}
+            </ul>
+          </Card>
         )}
         {!showAll && sessions.length > RECENT && (
           <Button
@@ -263,7 +200,7 @@ function SessionRow({
   const unfinished = remainingSets(workout)
 
   return (
-    <Card className="p-3">
+    <div className="px-4 py-3 lg:px-6">
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
           <p className="text-ink-50 truncate text-sm font-medium">{workout.title}</p>
@@ -337,56 +274,8 @@ function SessionRow({
           </div>
         </div>
       )}
-    </Card>
-  )
-}
-
-/**
- * A bar showing where the week's volume sits inside the landmark band.
- *
- * Deliberately not a chart library. One `div` with three coloured zones
- * communicates "under, in, or over" faster than a plotted series, and it
- * is the only question a lifter asks of this number.
- */
-/**
- * What was done against what was asked.
- *
- * This drew a *band* — MEV to MAV shaded, MRV as the scale — because a
- * target used to be a point inside a range and landing anywhere in that
- * range was the goal. There is no band now: there is a number, and the
- * only questions are whether you reached it and how far past you went.
- *
- * A muscle with no target still gets a bar, because the sets were
- * genuinely performed and hiding them would make the week look emptier
- * than it was. It simply has nothing to be measured against.
- */
-function VolumeBar({ done, target }: { readonly done: number; readonly target: number }) {
-  const scale = Math.max(target, done) || 1
-  const pct = (value: number): number => Math.min(100, (value / scale) * 100)
-
-  const tone = target <= 0 ? 'bg-ink-700' : done < target ? 'bg-warn-500' : 'bg-good-500'
-
-  return (
-    <div className="bg-ink-850 relative h-2 overflow-hidden rounded-full">
-      {target > 0 && (
-        <div
-          className="bg-ink-800 absolute inset-y-0"
-          style={{ left: `${String(pct(target))}%`, right: 0 }}
-          aria-hidden
-        />
-      )}
-      <div
-        className={`${tone} absolute inset-y-0 left-0`}
-        style={{ width: `${String(pct(done))}%` }}
-      />
     </div>
   )
-}
-
-function isWithinDays(isoDate: string, days: number): boolean {
-  const then = new Date(`${isoDate}T00:00:00`).getTime()
-  const cutoff = Date.now() - days * 24 * 60 * 60 * 1000
-  return then >= cutoff
 }
 
 function formatDate(isoDate: string): string {

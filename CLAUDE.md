@@ -53,6 +53,18 @@ standards.ts`): the estimated max, its multiple of bodyweight, and the
   `/train`, `/history` and every removed path redirect to `/today`,
   because a PWA shortcut outlives the screen it named. The history list
   shows the newest eight and folds the rest.
+- **The page opens on a hero, and the week is a radar.** Asked for as
+  _"the 'this week' graph is plain, clunky, and takes up most of the
+  screen"_ and _"I don't like the plain LiftOS header in lieu of a
+  proper hero banner"_. `HeroBanner` names the next session and owns
+  Start, Skip and Open session, so the plan card is detail only;
+  `WeekCard` draws this week's accessory sets against the current
+  week's `scheduledVolume` (deloads included) as one shape. Both read
+  `useNextSession`, so they cannot name different days. **The week is
+  a calendar week from Monday** (`weekSummary`), not the last seven
+  days — the old bars were a rolling window read off `Date.now()` in a
+  component. The streak counts weeks with a finished session and does
+  not break on a week that has not had its session yet.
 - **The seasons survive only as the backdrop's tint**
   (`domain/time/season.ts`). Nothing is scored against one.
 - **The demo is four months of sessions and nothing else**; its guard is

@@ -1,11 +1,8 @@
-import { Settings } from 'lucide-react'
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
 
 import type { WorkoutReport } from '@/application/use-cases/training/finish-workout'
 import { useSettings } from '@/app/context'
 import { Masonry } from '@/components/shared/Masonry'
-import { buttonStyles } from '@/components/shared/styles'
 import { TrainingHistory } from '@/features/history/TrainingHistory'
 import {
   useAbandonWorkout,
@@ -17,9 +14,11 @@ import { ActivityHeatmap } from '@/features/train/ActivityHeatmap'
 import { NextSessionCard } from '@/features/train/NextSessionCard'
 import { SessionPlayer } from '@/features/train/SessionPlayer'
 import { SessionReport } from '@/features/train/SessionReport'
-import { LogFromScratch, StrengthStandards } from '@/features/train/StrengthStandards'
+import { StrengthStandards } from '@/features/train/StrengthStandards'
 import { StrengthTrendCard } from '@/features/train/StrengthTrendCard'
+import { WeekCard } from '@/features/train/WeekCard'
 
+import { HeroBanner } from './HeroBanner'
 import { SampleNotice } from './SampleNotice'
 
 /**
@@ -32,10 +31,10 @@ import { SampleNotice } from './SampleNotice'
  * Settings are the only other screens, each a link from here with a way
  * back.
  *
- * **No character sheet.** The page used to open on a portrait, a level
- * and trait bars; the game went — _"drop the gamification aspect and
- * keep it to a workout tracker"_ — and the page opens on its name and the
- * next session instead, which is what somebody opening it wants.
+ * **It opens on the hero**, which names the next session and starts it.
+ * It was a portrait and a level while the app was a game, then a bare
+ * "LiftOS" over a gear — and in both the session you came to start sat
+ * a card's height down. See `HeroBanner`.
  *
  * **The takeover is the rule that survived every arrangement.** An
  * unfinished workout is the only thing that matters until it is
@@ -101,26 +100,16 @@ export function HomePage() {
   return (
     <div className="space-y-6">
       <SampleNotice />
-      <header className="flex items-center justify-between gap-3">
-        <h1 className="text-ink-50 text-2xl font-semibold tracking-tight">LiftOS</h1>
-        <Link
-          viewTransition
-          to="/settings"
-          aria-label="Settings"
-          className={buttonStyles({ variant: 'ghost', size: 'sm' })}
-        >
-          <Settings size={18} aria-hidden />
-        </Link>
-      </header>
+      <HeroBanner />
       <Masonry
         items={[
           { key: 'session', node: <NextSessionCard /> },
+          { key: 'week', node: <WeekCard /> },
           { key: 'standards', node: <StrengthStandards /> },
           { key: 'trend', node: <StrengthTrendCard /> },
           { key: 'activity', node: <ActivityHeatmap /> },
         ]}
       />
-      <LogFromScratch />
       <TrainingHistory />
     </div>
   )

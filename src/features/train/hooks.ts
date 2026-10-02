@@ -22,6 +22,7 @@ import { deriveProgram, jumpToWeek } from '@/application/use-cases/programs/curr
 import type { ProgramTemplate } from '@/domain/programs/program'
 import { useServices, useSettings } from '@/app/context'
 import { activityFor } from '@/application/use-cases/training/activity'
+import { weekSummary } from '@/application/use-cases/training/week'
 import { logger } from '@/shared/logging/logger'
 
 /**
@@ -93,6 +94,12 @@ export function useExercises() {
 export function useActivity() {
   const services = useServices()
   return useQuery({ queryKey: ['workouts', 'activity'], queryFn: () => activityFor(services) })
+}
+
+/** This calendar week so far, and the weekly streak. Keyed under `workouts` like the grid. */
+export function useWeekSummary() {
+  const services = useServices()
+  return useQuery({ queryKey: ['workouts', 'week'], queryFn: () => weekSummary(services) })
 }
 
 export function useRecentWorkouts(limit = 20) {
