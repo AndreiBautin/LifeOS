@@ -1,7 +1,6 @@
 import type { CheckIn } from '@/domain/autoregulation/check-in'
-import type { MetricDefinition, MonthlySnapshot } from '@/domain/review/metric'
 import type { Exercise } from '@/domain/exercises/exercise'
-import type { CheckInId, ExerciseId, MetricId, WorkoutId } from '@/domain/ids/ids'
+import type { CheckInId, ExerciseId, WorkoutId } from '@/domain/ids/ids'
 import type { WorkoutLog } from '@/domain/logging/workout-log'
 import type { ProgramPosition } from '@/domain/programs/position'
 import type { AppSettings } from '@/domain/settings/settings'
@@ -156,32 +155,6 @@ export interface CheckInRepository {
    */
   purge(id: CheckInId): Promise<void>
   all(): Promise<readonly CheckIn[]>
-}
-
-/**
- * Metrics defined by hand, and the months they were recorded in.
- *
- * Only the hand-defined ones are stored: the measured ones are derived
- * from `domain/game/registry.ts` on every read, for the same reason the
- * training program is derived — a stored copy of a declaration can only
- * ever be a stale one.
- *
- * A snapshot is keyed by its month, which is the invariant the whole
- * record turns on: one review per month, and re-entering a value fixes the
- * one already there.
- */
-export interface ReviewRepository {
-  metrics(): Promise<readonly MetricDefinition[]>
-  saveMetric(metric: MetricDefinition): Promise<void>
-  removeMetric(id: MetricId): Promise<void>
-  restoreMetrics(metrics: readonly MetricDefinition[]): Promise<void>
-
-  snapshots(): Promise<readonly MonthlySnapshot[]>
-  snapshot(month: string): Promise<MonthlySnapshot | undefined>
-  saveSnapshot(snapshot: MonthlySnapshot): Promise<void>
-  restoreSnapshots(snapshots: readonly MonthlySnapshot[]): Promise<void>
-  removeSnapshot(month: string): Promise<void>
-  purgeSnapshot(month: string): Promise<void>
 }
 
 /** Places worth going to. */

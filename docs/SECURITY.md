@@ -6,7 +6,7 @@ Most of a web security checklist does not apply here, and saying which
 parts are _structurally absent_ is more useful than a list of items
 marked N/A.
 
-LifeOS is a static bundle. It has:
+LiftOS is a static bundle. It has:
 
 - **no server**, so no server-side vulnerability class exists;
 - **no API of its own**, so no CSRF, no server-side injection, no

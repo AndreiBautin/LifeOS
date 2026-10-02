@@ -2,7 +2,6 @@ import type { BackupCounts, BackupData } from '@/domain/backup/envelope'
 import type {
   CheckInRepository,
   ExerciseRepository,
-  ReviewRepository,
   TombstoneRepository,
   WorkoutRepository,
 } from '@/domain/repositories/ports'
@@ -29,7 +28,6 @@ export interface BackupRepositories {
   readonly workouts: WorkoutRepository
   readonly checkIns: CheckInRepository
   readonly tombstones: TombstoneRepository
-  readonly review: ReviewRepository
 }
 
 /** The key a collection is filed under, in the file and in the counts. */
@@ -107,23 +105,6 @@ export const COLLECTIONS: Readonly<Record<CollectionKey, Collection>> = {
     restore: (r, rows) => r.checkIns.restoreMany(rows),
     tombstoneCollection: 'checkIns',
     purge: (r, id) => r.checkIns.purge(id as never),
-  }),
-  metrics: define({
-    local: (r) => r.review.metrics(),
-    fromFile: (data) => data.metrics ?? [],
-    idOf: (row) => row.id,
-    restore: (r, rows) => r.review.restoreMetrics(rows),
-    // Metric definitions are retired rather than deleted, so nothing files
-    // a tombstone against them.
-  }),
-  reviews: define({
-    local: (r) => r.review.snapshots(),
-    fromFile: (data) => data.reviews ?? [],
-    // A snapshot is one month, and the month is its identity.
-    idOf: (row) => row.month,
-    restore: (r, rows) => r.review.restoreSnapshots(rows),
-    tombstoneCollection: 'reviews',
-    purge: (r, month) => r.review.purgeSnapshot(month),
   }),
 }
 

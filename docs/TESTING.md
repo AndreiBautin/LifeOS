@@ -24,18 +24,18 @@ prescription of every set the assembler emits. Writing the numbers out
 means a change to either the rule or the arithmetic shows up as a diff in
 the expected values, which is the whole point.
 
-**A test about a ratio must state its own numerator.**
-`review.test.ts` → "measures strength as a multiple of bodyweight" once
-read the squat off `DEFAULT_SETTINGS` and asserted the quotient, so it
-failed the day that default moved — a true fact about a constant it did
-not own, and nothing about the division it existed to check. It states
-both numbers now.
+**A test about a ratio must state its own numerator.** A test of
+strength as a multiple of bodyweight once read the squat off
+`DEFAULT_SETTINGS` and asserted the quotient, so it failed the day that
+default moved — a true fact about a constant it did not own, and nothing
+about the division it existed to check. `standards.test.ts` → "states
+each lift as a multiple of bodyweight" states both numbers.
 
 ## By layer
 
 | Layer             | How                                      | What it protects                                                                                                                                               |
 | ----------------- | ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `domain/`         | Pure unit tests, table-driven            | The programming itself: rep ranges, load steps, rounding, volume arithmetic, the scoring rules, merge semantics                                                |
+| `domain/`         | Pure unit tests, table-driven            | The programming itself: rep ranges, load steps, rounding, volume arithmetic, strength standards, merge semantics                                               |
 | `application/`    | Against a real (fake-indexeddb) database | Behaviours spanning layers: history becoming a suggested load, a logged set landing in the log rather than the programme, advancing on completion or on a skip |
 | `infrastructure/` | Against a real (fake-indexeddb) database | Schema, indexes, migrations, export/import round-trip                                                                                                          |
 
@@ -112,23 +112,14 @@ kettlebell swings once arrived as sixty glute sets a week against a
 target of zero, and it only became absurd once the swings were prescribed
 as sets rather than as a block of time.
 
-**Every declared act is actually counted.** `sheet.test.ts` asserts the
-list of declared-but-uncounted acts is **empty**. Without it an act can be
-declared, awarded on screen, and counted nowhere.
+**The training grid counts finished work only.** `activity.test.ts`
+→ "leaves out sessions that were not finished". An abandoned session with
+sets logged is a real record, and drawing it on the grid would show a
+day of training that was never completed.
 
-**Mobility and Stamina pay for work done, once a session.**
-`sheet.test.ts` → "pays the warm-up only when a warm-up set was done",
-"pays conditioning only when a conditioning set was done" and "pays the
-warm-up once a session, however many rows it has". Every session
-_schedules_ a warm-up, so counting the slot would fill a bar for work
-nobody did, and nothing on screen would look wrong.
-
-**The trait bars partition the XP.** `traits.test.ts` asserts every area
-has a trait, no area has two, and the totals split the XP total exactly.
-An area belonging to no trait would pay XP that appears in the character
-total and in no bar, and nothing would error. `UNCLAIMED_AREAS` is empty
-and the test asserts it matches reality, so an area added without a
-trait fails until somebody decides.
+**The total's standards are summed, never typed.** `standards.test.ts`
+→ "sums the total standards from the three lifts". Written out by hand
+they once disagreed with all three lifts they were the sum of.
 
 **The demo fixture contains nothing personal.** `seed.test.ts` reads its
 own source and scans it for emails, phone numbers, credential shapes and
@@ -138,15 +129,6 @@ in while debugging and forgetting.
 **Seeding cannot overwrite.** Seed, seed again, and the second call
 refuses with `already-has-data`. A demo build opened by somebody who has
 since entered their own records must not lose them.
-
-**The demo fixture still fills the landing page.** `parity.test.ts`
-asserts obligations as _properties_ — past the first level, every trait
-proved, the traits summing to the XP — rather than as a list of fixture
-records, so editing it stays
-free and hollowing it out does not. This is the failure unique to having
-a demo: a feature works perfectly against real data and renders an empty
-box on the deployed site, nothing errors, the feature's own tests keep
-passing, and the person who notices is the employer.
 
 ## Deliberately not tested
 

@@ -1,8 +1,10 @@
 # What came before
 
-> **Historical.** The app has since narrowed to a gamified workout tracker; see [ARCHITECTURE.md](ARCHITECTURE.md) for what it is now.
+> **Historical.** The app has since been a life hub, narrowed back to a
+> plain workout tracker, and been renamed LiftOS; see
+> [ARCHITECTURE.md](ARCHITECTURE.md) for what it is now.
 
-LifeOS consolidates three earlier repositories. This is the record of what
+LiftOS consolidates three earlier repositories. This is the record of what
 each actually was, what was worth keeping, and what was not — written
 before any code here was, so the decisions below can be checked against
 the evidence rather than taken on trust.
@@ -123,7 +125,7 @@ replaced them, and those are the parts that survive:
   the prescription _is_ a load.
 - `MuscleGroup.WeeklyVolume`: a per-muscle weekly set target. The embryo
   of MEV/MAV/MRV.
-- A finer muscle taxonomy, splitting the deltoid heads out. LifeOS splits
+- A finer muscle taxonomy, splitting the deltoid heads out. LiftOS splits
   both the delts _and_ the posterior chain, because volume landmarks are
   per-muscle and hamstrings and glutes do not share a recovery budget.
 

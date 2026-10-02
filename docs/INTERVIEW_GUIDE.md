@@ -7,67 +7,26 @@ the useful version of every answer below is the one you can defend when
 somebody pushes back on it, which means the _reasoning_ is the thing to
 carry rather than the sentences.
 
-**▶ [The demo](https://andreibautin.github.io/LifeOS/)** · no sign-up,
+**▶ [The demo](https://andreibautin.github.io/LiftOS/)** · no sign-up,
 populated on open.
 
 ---
 
 ## The thirty-second version
 
-> It is a gamified workout tracker. You train, and Strength, Stamina and
-> Mobility level up from what you actually did. Client-only React and
-> TypeScript, deployed as an installable PWA, and everything lives in the
-> visitor's own browser.
+> It is a workout tracker. It builds the week, tells you what to load
+> from what you lifted last time, and moves the bar up when you have
+> earned it. Client-only React and TypeScript, deployed as an
+> installable PWA, and everything lives in the visitor's own browser.
 >
-> The interesting part is not the features, it is that the scoring is
-> declared rather than coded into screens. Each area states in a registry
-> what it has — ladders, ratings, acts — and the character sheet, the
-> traits and the XP are all derived from those declarations. It was
-> built to hold a dozen life areas and narrowed back to three, and the
-> model did not have to change to do either.
+> The interesting part is that a prescription is not a number — it is a
+> rule resolved against your own history when the session opens — and
+> the programme is derived from settings rather than stored, so editing
+> it can never rewrite what you already logged.
 
-If they only ask one follow-up it will be "what's a ladder", so have the
-three currencies ready. If they ask two, the second is "why not a
-backend".
-
----
-
-## The three currencies
-
-This is the strongest thing in the project and the answer to "tell me
-about a design decision you're proud of".
-
-|            |                                                        |
-| ---------- | ------------------------------------------------------ |
-| **Ladder** | Where you stand against a standard **outside the app** |
-| **Rating** | A monthly judgement about a **direction**              |
-| **XP**     | Paid for **showing up**, never for it having worked    |
-
-Three rules hold between them, and they are **tests, not documentation**
-(`registry.test.ts`): no ladder is fed by XP, no rating is promoted to a
-ladder, nothing is counted twice.
-
-**Why it matters, in one example.** A powerlifting total is a ladder
-because published bodyweight multiples exist and nothing this app does
-can move them. A mile time was a ladder once and was removed: nobody was
-running one, so it sat at Untrained forever on a screen whose job is to
-show movement. Conditioning has no published standard the app can read,
-so it gets XP for being done and no ladder — inventing one would be the
-app asserting something it cannot know.
-
-**The line most trackers cross.** XP is paid for a thing you _did_ and
-never for a thing that _happened_. Logging a workout pays; the number
-going up does not — that already moved a ladder. Typing in your
-bodyweight pays nothing at all: it is a measurement, and paying for it
-moving is paying for an outcome.
-
-If somebody says "isn't that just semantics", the answer is that it
-decides what the app is for. Pay for outcomes and it becomes a thing to
-optimise; pay for acts and it stays a record of what you did.
-
-**The consequence people find surprising: absent, never zero.** A trait
-nothing has fed reads "Nothing yet" rather than a bar at nought. A level
-nobody earned is worse than an obvious gap.
+If they only ask one follow-up it will be "what does derived mean", so
+have the programme-versus-log story ready. If they ask two, the second
+is "why not a backend".
 
 ---
 
@@ -90,12 +49,12 @@ somebody will ask. The honest answer:
 > Layered architecture is wrong for a CRUD form and right for a domain
 > with real rules. The test I use is whether I can name what the domain
 > layer would contain. Here it is set resolution, double progression,
-> week assembly and volume accounting, merge semantics and the scoring
-> model — logic with no I/O in it, and it is where nearly all the tests
+> week assembly and volume accounting, merge semantics and the strength
+> standards — logic with no I/O in it, and it is where nearly all the tests
 > live. If I couldn't name that, I'd have used fewer layers.
 
-**The concrete payoff**, if they want one: the entire scoring model can
-be tested by calling functions. No render, no database, no clock —
+**The concrete payoff**, if they want one: the whole of the programming
+can be tested by calling functions. No render, no database, no clock —
 `domain/` takes the clock and the id generator as parameters, so a test
 can hold time still.
 
@@ -134,8 +93,8 @@ it derived deleted all four.
 
 **Narrowing the app was a harder engineering problem than growing it.**
 It held a backlog, a map with fog of war, a tech tree, finance, quests
-and more — and became a workout tracker. Deleting the code was the easy
-part; the interesting questions were what a deletion must not break.
+and a game layer of XP, levels and traits — and became a workout
+tracker. Deleting the code was the easy part; the interesting questions were what a deletion must not break.
 
 > - **Installed copies keep asking for old paths.** A PWA shortcut is
 >   registered with the operating system at install time, so every
@@ -144,20 +103,12 @@ part; the interesting questions were what a deletion must not break.
 >   the migration step that created it, and a device that already ran
 >   that step will not run it again — two devices end up with different
 >   schemas and no way to tell. So a new step at `DB_VERSION` 24 clears
->   the rows and the stores stay.
+>   the rows and the stores stay, and another at 25 did the same for the
+>   monthly review's stores when the game layer went.
 > - **Old backups must still restore.** A file taken before the narrowing
 >   carries a dozen sections this build has no repository for. They are
 >   ignored rather than refused, and there is a test that imports the
 >   training out of one.
-> - **The traits had to become a partition again.** With a dozen areas,
->   six belonged to no trait and the bars deliberately summed to less
->   than the level. With three, every area has exactly one trait, and the
->   test that once asserted the exceptions now asserts there are none.
-
-The second act this added is worth a sentence: Mobility pays for a
-warm-up _done_, once a session — not per row, because six rows paying six
-times makes the cheapest part of a session the best-paid, and not for the
-slot, because every session schedules one.
 
 ---
 
@@ -208,8 +159,9 @@ the build.
 
 Good if they ask about testing strategy. Building the demo fixture was
 the first time several paths were exercised together, and it turned up
-XP reading zero because the tally counts a completion _date_ and not a
-_status_ — all with a green suite. A later fixture's strength chart
+— back when the app still had XP — a level reading zero because the
+tally counted a completion _date_ and not a _status_, all with a green
+suite. A later fixture's strength chart
 disagreed with the Standards card beside it by seventy pounds, because
 the generated history and the sample's estimated maxes had been written
 separately.
@@ -283,8 +235,9 @@ Or:
 Or, honestly:
 
 > **I would have scoped it to training from the start.** A dozen areas
-> taught me a lot about keeping a scoring model honest, and most of them
-> were better served by apps that already do that one thing well.
+> and a game layer taught me a lot about keeping numbers honest, and
+> most of them were better served by apps that already do that one thing
+> well.
 
 ### "Your resume is all .NET, Azure and RAG — why show me a React app with none of that?"
 
@@ -341,9 +294,9 @@ reads better than one who says nothing is wrong.
 
 |              |                                                                     |
 | ------------ | ------------------------------------------------------------------- |
-| TypeScript   | ~34,000 lines across about 200 files, after the narrowing           |
-| Tests        | about 500 cases, in one run with no services needed                 |
-| Domain layer | 84 files, zero React and zero browser APIs                          |
+| TypeScript   | ~27,000 lines across about 150 files, after the narrowing           |
+| Tests        | about 360 cases in 37 files, one run with no services needed        |
+| Domain layer | zero React and zero browser APIs, checked by lint                   |
 | Verification | one command — typecheck, lint, format, test, build                  |
 | Gate         | pre-push hook and CI run the same command; the deploy depends on it |
 
@@ -357,8 +310,11 @@ than the number.
 ## What to show, in order
 
 1. **The demo**, on a phone if you have one — it is a PWA and installs.
-2. **`domain/game/registry.ts`** — the whole model, declared in one file.
-3. **`registry.test.ts`** — the three rules, as tests.
+2. **`domain/programs/progression.ts`** — double progression in two
+   sentences of code: work a rep range, and when every set reaches the
+   top of it, the next session's load goes up.
+3. **`application/use-cases/programs/current-program.ts`** — the
+   programme, derived from settings on every read and never stored.
 4. **`docs/ARCHITECTURE.md`** — one request traced end to end, naming
    real files.
 5. **`CLAUDE.md`** — if they are the kind of person who will like it.

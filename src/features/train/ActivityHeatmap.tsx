@@ -1,30 +1,26 @@
-import { CalendarDays, Flame } from 'lucide-react'
+import { CalendarDays } from 'lucide-react'
 
 import { Card, CardHeading } from '@/components/shared/primitives'
 import { Skeleton } from '@/components/shared/Skeleton'
-import type { ActivityDay } from '@/application/use-cases/character/activity'
+import type { ActivityDay } from '@/application/use-cases/training/activity'
 import { parseDay } from '@/domain/time/day'
 import { cn } from '@/lib/cn'
 
 import { useActivity } from './hooks'
 
 /**
- * Every day of the last four months, lit by the XP it earned.
+ * Every day of the last four months, lit by the working sets done on it.
  *
- * **The bands are fixed amounts of XP, never a share of the busiest
- * day.** Normalising to the tallest cell is the default every heatmap
- * library ships and it lies the way `BarSeries`' note describes: a quiet
- * month would look exactly as vivid as a full one. Fifty points is about
- * one kept goal or one set of steps; two hundred is a real session. Those
- * are this app's own prices, stated once, here.
- *
- * It answers "is this used" at a glance, which is the question a first
- * look at the app is really asking.
+ * **The bands are fixed set counts, never a share of the busiest day.**
+ * Normalising to the tallest cell is the default every heatmap library
+ * ships and it lies the way `BarSeries`' note describes: a quiet month
+ * would look exactly as vivid as a full one. Ten sets is a short session,
+ * twenty a full one and thirty a long one.
  */
-const BANDS = [1, 50, 100, 200] as const
+const BANDS = [1, 10, 20, 30] as const
 
-function bandOf(xp: number): number {
-  return BANDS.filter((threshold) => xp >= threshold).length
+function bandOf(sets: number): number {
+  return BANDS.filter((threshold) => sets >= threshold).length
 }
 
 const BAND_FILL = [
@@ -44,7 +40,9 @@ function describe(day: ActivityDay): string {
     day: 'numeric',
     timeZone: 'UTC',
   })
-  return day.xp > 0 ? `${date} · ${day.xp.toLocaleString()} XP` : `${date} · nothing logged`
+  return day.sets > 0
+    ? `${date} · ${String(day.sets)} working ${day.sets === 1 ? 'set' : 'sets'}`
+    : `${date} · nothing logged`
 }
 
 function monthOf(day: string): string {
@@ -62,28 +60,17 @@ export function ActivityHeatmap() {
     )
   }
 
-  const { weeks, activeDays, totalXp, streak } = activity.data
+  const { weeks, sessions, sets } = activity.data
   const columns = `1.75rem repeat(${String(weeks.length)}, minmax(0, 1fr))`
-  const summary = `${String(activeDays)} active days and ${totalXp.toLocaleString()} XP in the last ${String(weeks.length)} weeks`
+  const summary = `${String(sessions)} sessions and ${sets.toLocaleString()} working sets in the last ${String(weeks.length)} weeks`
 
   return (
     <Card>
-      <CardHeading
-        icon={<CalendarDays size={14} aria-hidden />}
-        title="Activity"
-        action={
-          streak > 1 ? (
-            <span className="text-warn-500 flex items-center gap-1 text-xs font-medium">
-              <Flame size={14} aria-hidden />
-              {streak}-day streak
-            </span>
-          ) : undefined
-        }
-      />
+      <CardHeading icon={<CalendarDays size={14} aria-hidden />} title="Training" />
 
       <p className="text-ink-300 numeric mb-3 text-sm">
-        <span className="text-ink-50 font-semibold">{activeDays}</span> active days ·{' '}
-        <span className="text-ink-50 font-semibold">{totalXp.toLocaleString()}</span> XP in{' '}
+        <span className="text-ink-50 font-semibold">{sessions}</span> sessions ·{' '}
+        <span className="text-ink-50 font-semibold">{sets.toLocaleString()}</span> working sets in{' '}
         {weeks.length} weeks
       </p>
 
@@ -136,7 +123,7 @@ export function ActivityHeatmap() {
                 className={cn('heat-cell aspect-square rounded-[3px]', day.future && 'opacity-0')}
                 style={
                   {
-                    backgroundColor: BAND_FILL[bandOf(day.xp)],
+                    backgroundColor: BAND_FILL[bandOf(day.sets)],
                     '--cell-delay': `${String(column * 22)}ms`,
                   } as React.CSSProperties
                 }

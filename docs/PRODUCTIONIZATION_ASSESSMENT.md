@@ -2,8 +2,10 @@
 
 > **Historical.** This records the app as it was assessed. Firebase sync,
 > the account gate and the Firestore rules it discusses have since been
-> removed, and the app has since narrowed to a gamified workout tracker.
-> See [ARCHITECTURE.md](ARCHITECTURE.md).
+> removed, the app has since narrowed to a plain workout tracker with no
+> game layer, and it is now called LiftOS. The test counts, the parity
+> test and the game model it mentions are gone with it. See
+> [ARCHITECTURE.md](ARCHITECTURE.md).
 
 Written before any change, against `daa98e8`. Baseline: **1,382 tests in
 117 files, all passing**; `pnpm verify` green; 387 source files; a

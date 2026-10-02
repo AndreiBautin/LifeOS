@@ -95,7 +95,8 @@ retries, because Pages propagation is not instant.
 2. **Settings → Pages → Source → GitHub Actions.** (Not "Deploy from a
    branch".) This is the one manual step; the workflow cannot enable it.
 3. Push to `main`. The site appears at
-   `https://<user>.github.io/<repo>/`.
+   `https://<user>.github.io/<repo>/` — for this repository,
+   <https://andreibautin.github.io/LiftOS/>.
 
 ### Branch protection, with the caveats that are usually got wrong
 

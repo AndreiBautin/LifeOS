@@ -1,5 +1,5 @@
 import { useServices } from '@/app/context'
-import { seasonOf, type Season } from '@/domain/game/season'
+import { seasonOf, type Season } from '@/domain/time/season'
 
 /**
  * The slow light behind every screen, tinted by the season you are in.
@@ -50,7 +50,7 @@ const PARTICLES = Array.from({ length: PARTICLE_COUNT }, (_, index) => {
 
 export function AmbientBackdrop() {
   const { clock } = useServices()
-  const { season } = seasonOf(clock.now())
+  const season = seasonOf(clock.now())
   const [first, second, third] = WASHES[season]
 
   return (

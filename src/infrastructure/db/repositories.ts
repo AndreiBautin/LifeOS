@@ -1,17 +1,15 @@
 import type { CheckIn } from '@/domain/autoregulation/check-in'
-import type { MetricDefinition, MonthlySnapshot } from '@/domain/review/metric'
 import type { ProgramPosition } from '@/domain/programs/position'
 import { builtInExercises } from '@/domain/exercises/catalogue'
 import type { Exercise } from '@/domain/exercises/exercise'
 import { resolveLibrary } from '@/domain/exercises/library'
-import type { CheckInId, ExerciseId, MetricId, WorkoutId } from '@/domain/ids/ids'
+import type { CheckInId, ExerciseId, WorkoutId } from '@/domain/ids/ids'
 import type { WorkoutLog } from '@/domain/logging/workout-log'
 import type {
   CheckInRepository,
   Clock,
   ExerciseRepository,
   PositionRepository,
-  ReviewRepository,
   TombstoneRepository,
   WorkoutQuery,
   WorkoutRepository,
@@ -223,53 +221,6 @@ export function createWorkoutRepository(db: AppDatabase, clock: Clock): WorkoutR
 
     async all() {
       return (await db.getAll('workouts')).map(fromStored)
-    },
-  }
-}
-
-/**
- * Hand-defined metrics, and the months.
- *
- * A snapshot's key is its month, which is what makes "one review per
- * month" structural rather than a rule somebody has to check. Its
- * tombstone is keyed on the month for the same reason — there is no other
- * identity to delete.
- */
-export function createReviewRepository(db: AppDatabase, clock: Clock): ReviewRepository {
-  return {
-    async metrics() {
-      return db.getAll('metrics')
-    },
-    async saveMetric(metric: MetricDefinition) {
-      await db.put('metrics', stamp(metric, clock))
-    },
-    async removeMetric(id: MetricId) {
-      await db.delete('metrics', id)
-    },
-    async restoreMetrics(metrics: readonly MetricDefinition[]) {
-      const tx = db.transaction('metrics', 'readwrite')
-      await Promise.all([...metrics.map((metric) => tx.store.put(metric)), tx.done])
-    },
-
-    async snapshots() {
-      return db.getAll('reviews')
-    },
-    async snapshot(month: string) {
-      return db.get('reviews', month)
-    },
-    async saveSnapshot(snapshot: MonthlySnapshot) {
-      await db.put('reviews', stamp(snapshot, clock))
-    },
-    async restoreSnapshots(snapshots: readonly MonthlySnapshot[]) {
-      const tx = db.transaction('reviews', 'readwrite')
-      await Promise.all([...snapshots.map((snapshot) => tx.store.put(snapshot)), tx.done])
-    },
-    async removeSnapshot(month: string) {
-      await db.delete('reviews', month)
-      await bury(db, clock, 'reviews', month)
-    },
-    async purgeSnapshot(month: string) {
-      await db.delete('reviews', month)
     },
   }
 }

@@ -62,21 +62,17 @@ About seventeen weeks of the shipped routine — the A and B days, Monday
 to Saturday — so a reviewer sees somebody four months into a programme
 rather than an app installed last week.
 
-| Screen      | What the fixture gives it                                                                 |
-| ----------- | ----------------------------------------------------------------------------------------- |
-| **You**     | Past level one, all three trait bars proven, the activity grid filled, a dismissible note |
-| **Train**   | A strength trend that climbs the way double progression climbs, and a session to start    |
-| **History** | Seventeen weeks of sessions, with roughly one in thirteen skipped                         |
+| Card                   | What the fixture gives it                                                       |
+| ---------------------- | ------------------------------------------------------------------------------- |
+| **Next session**       | A session to start, with loads carried from the history                         |
+| **Strength standards** | Each competition lift's estimated max against bodyweight                        |
+| **Strength trend**     | A line that climbs the way double progression climbs                            |
+| **Training grid**      | Seventeen weeks of working sets, with gaps where sessions were skipped          |
+| **History**            | Seventeen weeks of sessions, roughly one in thirteen skipped, and a note on top |
 
 A history with no missed day is not a history anybody believes, so a
 few are skipped on purpose; most sessions open on a warm-up and a few do
 not, for the same reason.
-
-**The warm-up and conditioning rows are logged as done**, because that
-is what pays Mobility and Stamina: `hasWarmUp` and `hasConditioning` ask
-whether the work was _done_, not whether it was scheduled. A fixture of
-slots with nothing logged against them would leave both bars empty while
-looking, from the records, like a full block of training.
 
 **Each competition lift ends where the Standards card says it is.** The
 final five-rep loads estimate the sample's own `estimatedMaxes`, so the
@@ -87,20 +83,8 @@ generated.
 The only setting the fixture writes is `sampleData: 'loaded'`, merged
 into what is there rather than replacing it — overwriting the blob to
 set one field would make the demo silently responsible for every other
-one. That flag is what puts the dismissible note on You.
-
-### What stops it being hollowed out
-
-[`parity.test.ts`](../src/application/use-cases/demo/parity.test.ts)
-asserts what a reviewer sees on the landing page as **properties**
-rather than records: the level is past the first, every trait is proven,
-and the traits split the XP total without inventing any. Editing the
-fixture stays free; emptying a bar does not.
-
-The failure it catches is unique to having a demo. A feature works
-against real data and renders an empty box on the deployed site, nothing
-errors, the feature's own tests keep passing, and the person who notices
-is the employer.
+one. That flag is what puts the dismissible note at the top of the
+page.
 
 ### Dates are offsets, never absolutes
 
@@ -127,9 +111,7 @@ cases for a session that happened last week, because from the app's
 point of view there never is one.
 
 What that gives up is bought back with the real exercise slugs, the real
-prescription shape and the real slot roles — and by the parity test,
-which asserts the properties the screens depend on rather than the
-records.
+prescription shape and the real slot roles.
 
 ## Running it
 

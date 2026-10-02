@@ -1,9 +1,9 @@
 ---
 name: ship
-description: Finish a change in LifeOS by getting it onto the phone — verify, commit, push to main, watch the Pages deploy, and report the live URL and commit sha so the update banner can be trusted. Use at the end of any change to this repository that alters what the app does or shows, and whenever the user asks to ship, deploy, publish, push, or says they want to see something on their phone.
+description: Finish a change in LiftOS by getting it onto the phone — verify, commit, push to main, watch the Pages deploy, and report the live URL and commit sha so the update banner can be trusted. Use at the end of any change to this repository that alters what the app does or shows, and whenever the user asks to ship, deploy, publish, push, or says they want to see something on their phone.
 ---
 
-# Shipping a change in LifeOS
+# Shipping a change in LiftOS
 
 A change that is green on this machine has reached nobody. The app lives
 on a phone, and the only route there is `main` → the Pages deploy → the
@@ -54,7 +54,7 @@ Stop and ask when:
    greps for the app shell and the manifest, so a green run means the
    site answered rather than that an upload succeeded.
 
-6. **Report the sha and the URL.** <https://andreibautin.github.io/LifeOS/>
+6. **Report the sha and the URL.** <https://andreibautin.github.io/LiftOS/>
    and the first seven characters of the commit. Settings shows the sha
    of the running build, so those two numbers are how the user tells "it
    did not update" from "the deploy never happened".

@@ -5,7 +5,6 @@ import { DEFAULT_SETTINGS } from '@/domain/settings/settings'
 import { closeAppDatabase, openDatabase, type AppDatabase } from '@/infrastructure/db/database'
 import {
   createCheckInRepository,
-  createReviewRepository,
   createTombstoneRepository,
   createExerciseRepository,
   createWorkoutRepository,
@@ -32,7 +31,6 @@ beforeEach(async () => {
     workouts: createWorkoutRepository(db, testClock),
     checkIns: createCheckInRepository(db, testClock),
     tombstones: createTombstoneRepository(db),
-    review: createReviewRepository(db, testClock),
   }
 })
 

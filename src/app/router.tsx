@@ -27,8 +27,8 @@ export const router = createBrowserRouter(
         { index: true, element: <Navigate to="/today" replace /> },
         /*
          * **Everything that was not training is gone**, and every path it
-         * had lands on Today: _"fully lean into this simply being a
-         * gamified workout tracker"_. Redirects rather than deletions,
+         * had lands on Today: _"keep it to a workout tracker"_.
+         * Redirects rather than deletions,
          * because a PWA shortcut is registered with the operating system
          * at install time and an installed copy goes on asking for the
          * path it was installed with.

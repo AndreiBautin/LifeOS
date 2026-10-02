@@ -19,6 +19,4 @@ export const COUNT_LABELS: readonly (readonly [keyof BackupCounts, string])[] = 
   ['workouts', 'workouts'],
   ['exercises', 'exercises'],
   ['checkIns', 'check-ins'],
-  ['reviews', 'monthly reviews'],
-  ['metrics', 'tracked metrics'],
 ]

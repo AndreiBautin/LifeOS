@@ -1,6 +1,6 @@
 # Where your data lives, and what can destroy it
 
-LifeOS has no server. Everything — training history, exercises,
+LiftOS has no server. Everything — training history, exercises,
 settings — is stored in your browser, on the device you are using. That
 is a deliberate product decision, not a limitation waiting to be fixed:
 the app works on a gym basement's dead Wi-Fi, needs no account, and
@@ -135,7 +135,7 @@ Browser storage is "best-effort" by default: under disk pressure the
 browser evicts least-recently-used origins. Calling
 [`navigator.storage.persist()`](https://developer.mozilla.org/docs/Web/API/StorageManager/persist)
 promotes the origin to **persistent**, which exempts it from that
-automatic eviction. LifeOS requests it at every startup
+automatic eviction. LiftOS requests it at every startup
 (`src/infrastructure/storage/durability.ts`).
 
 | Browser  | Behaviour                                                                                        |
@@ -186,13 +186,13 @@ an integrity checksum over the contents.
 }
 ```
 
-The sections are settings, exercises, workouts, check-ins, tombstones,
-and the review's metrics and months (`src/domain/backup/envelope.ts`).
-**A file written while the app also held a Codex, a map, a tech tree and
-the rest still imports**: the training in it is restored and the extra
-sections are ignored, because refusing them would make every backup
-taken before the app narrowed useless at the moment somebody reaches for
-one.
+The sections are settings, exercises, workouts, check-ins and tombstones
+(`src/domain/backup/envelope.ts`). An export is saved as
+`liftos-backup-….json`. **A file written while the app also held a
+Codex, a map, a tech tree, a monthly review and the rest still imports**:
+the training in it is restored and the extra sections are ignored,
+because refusing them would make every backup taken before the app
+narrowed useless at the moment somebody reaches for one.
 
 Ids are stable, human-readable slugs where possible (`bench-press`, not a
 UUID), so the file stays legible and a program written on one device
@@ -278,6 +278,19 @@ covered by a test.
 **A retired store is cleared, never removed.** When the app narrowed to
 training, the Codex, map, tech tree, Base, buffs, finance, challenges and
 arc stores were emptied by a new step at `DB_VERSION` 24 and left in the
-schema. Removing a store means editing the step that created it, which is
+schema; the monthly review's `metrics` and `reviews` stores followed at
+`DB_VERSION` 25, when the game went. Removing a store means editing the step that created it, which is
 the one thing above that must never happen; clearing it in a new step
 reaches every device exactly once.
+
+## Addresses that still say lifeos
+
+The app is called LiftOS, and its storage still says `lifeos`: the
+IndexedDB database `lifeos`, the `localStorage` prefix `lifeos` (or
+`lifeos.demo` in the demo build), the `lifeos.backup` magic string at
+the top of every backup, and the `lifeos-sync.json` file sync keeps in
+GitHub. **Those are addresses, not labels.** Renaming one opens a fresh,
+empty store beside the old rather than migrating anything, so a rename
+of the product left them alone on purpose. Only the exported file's
+_name_ changed, to `liftos-backup-….json`, because nothing reads it
+back by name.

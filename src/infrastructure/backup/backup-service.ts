@@ -79,7 +79,7 @@ export function serialiseBackup(envelope: BackupEnvelope): string {
 
 export function backupFilename(now: Date): string {
   const stamp = now.toISOString().slice(0, 19).replace(/[:T]/g, '-')
-  return `lifeos-backup-${stamp}.json`
+  return `liftos-backup-${stamp}.json`
 }
 
 /* -------------------------------------------------------------------- */
@@ -176,8 +176,6 @@ function emptyCounts(): Record<keyof BackupCounts, number> {
     exercises: 0,
     workouts: 0,
     checkIns: 0,
-    metrics: 0,
-    reviews: 0,
   }
 }
 

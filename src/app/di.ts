@@ -4,7 +4,6 @@ import type {
   Clock,
   ExerciseRepository,
   PositionRepository,
-  ReviewRepository,
   SettingsRepository,
   TombstoneRepository,
   WorkoutRepository,
@@ -16,7 +15,6 @@ import {
   createCheckInRepository,
   createExerciseRepository,
   createPositionRepository,
-  createReviewRepository,
   createTombstoneRepository,
   createWorkoutRepository,
 } from '@/infrastructure/db/repositories'
@@ -48,7 +46,6 @@ export interface AppServices {
   readonly position: PositionRepository
   readonly workouts: WorkoutRepository
   readonly checkIns: CheckInRepository
-  readonly review: ReviewRepository
   readonly tombstones: TombstoneRepository
   readonly settings: SettingsRepository
   readonly ids: IdGenerator
@@ -88,7 +85,6 @@ export async function bootstrap(): Promise<BootstrapResult> {
     position: createPositionRepository(db, systemClock),
     workouts: createWorkoutRepository(db, systemClock),
     checkIns: createCheckInRepository(db, systemClock),
-    review: createReviewRepository(db, systemClock),
     tombstones: createTombstoneRepository(db),
     settings: createSettingsStore(),
     ids: cryptoIds,

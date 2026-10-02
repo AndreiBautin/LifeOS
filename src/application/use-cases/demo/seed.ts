@@ -99,8 +99,8 @@ async function seedSettings(deps: DemoDeps): Promise<void> {
 }
 
 /**
- * Four months of sessions, so Strength, Stamina and Mobility are not
- * empty bars.
+ * Four months of sessions, so the history, the trend and the training
+ * grid all have something to show.
  *
  * **This is the one part written as records rather than driven through
  * the use cases**, and it is worth saying why, because the rest of this
@@ -113,9 +113,7 @@ async function seedSettings(deps: DemoDeps): Promise<void> {
  *
  * What that gives up is the guarantee that the fixture can only hold
  * states the app could produce. It is bought back with the real exercise
- * slugs, the real `SetPrescription` shape and the real roles — and by
- * the parity test, which renders the screens rather than trusting the
- * records.
+ * slugs, the real `SetPrescription` shape and the real roles.
  */
 async function seedTraining(deps: DemoDeps): Promise<void> {
   const lifted = (
@@ -156,11 +154,9 @@ async function seedTraining(deps: DemoDeps): Promise<void> {
   })
 
   /*
-   * The conditioning entry is what pays Stamina, and only because a set
-   * on it is completed: `hasConditioning` asks whether the work was
-   * *done* rather than whether it was scheduled. A fixture of slots with
-   * nothing logged against them would leave that bar empty while looking,
-   * from the record, like a full week of training.
+   * Conditioning and warm-up rows are logged as *completed*: a fixture of
+   * slots with nothing done against them would read as a history of
+   * sessions walked away from halfway.
    */
   const swung = (order: number): LogEntry => ({
     exerciseId: 'kb-swing' as ExerciseId,
@@ -178,10 +174,6 @@ async function seedTraining(deps: DemoDeps): Promise<void> {
     ],
   })
 
-  /*
-   * The warm-up entry is what pays Mobility, by the same rule: a completed
-   * set on a `warmup` row, not the row's presence.
-   */
   const warmed = (): LogEntry => ({
     exerciseId: 'foam-roll' as ExerciseId,
     role: 'warmup',

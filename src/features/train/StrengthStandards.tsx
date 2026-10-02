@@ -1,72 +1,78 @@
 import { Plus, Trophy } from 'lucide-react'
 
-import { useServices, useSettings } from '@/app/context'
-import { useQuery } from '@tanstack/react-query'
-import { buildCharacter } from '@/domain/game/character'
-import { totalWorkingSets } from '@/domain/logging/workout-log'
-import { AttributeRow } from '@/features/character/CharacterParts'
-import { MainLifts } from '@/features/character/MainLifts'
+import { useSettings } from '@/app/context'
+import { strengthStandings, type LiftStanding } from '@/domain/strength/standards'
 import { Button, Card, CardHeading } from '@/components/shared/primitives'
+import { cn } from '@/lib/cn'
 
 import { useStartWorkout } from './hooks'
 
 /**
- * Where each lift stands against the published bodyweight standards.
+ * Where each lift stands against the published bodyweight standards, as
+ * plain numbers: the estimated max, the multiple of bodyweight, and the
+ * next standard with the load that would reach it.
  *
- * It was one half of Train's own screen; the app is one page now and this
- * is a card on it. The rows lead and the lift radar takes the column
- * `lg` frees beside them.
+ * **No badges and no bars.** It drew a rank per lift — Untrained to Elite
+ * — with a meter to the next one, as part of a character sheet. The ranks
+ * went with the rest of the game; what was always a measurement stayed.
  */
 export function StrengthStandards() {
-  const services = useServices()
   const { settings } = useSettings()
 
-  const workouts = useQuery({
-    queryKey: ['workouts', 'all-for-character'],
-    queryFn: () => services.workouts.recent(500),
-  })
-
-  const completed = (workouts.data ?? []).filter((log) => log.status === 'completed')
-
-  const character = buildCharacter({
+  const { lifts, total } = strengthStandings({
     estimatedMaxes: settings.estimatedMaxes,
     ...(settings.bodyweight !== undefined ? { bodyweight: settings.bodyweight } : {}),
-    sessions: completed.length,
-    workingSets: completed.reduce((total, log) => total + totalWorkingSets(log), 0),
   })
 
   return (
     <Card>
-      <CardHeading icon={<Trophy size={16} aria-hidden />} title="Standards" />
-      {/*
-        **`MainLifts` moved here from `SheetCard`.** Reported: "the
-        squat bench deadlift graphic should probably be grouped in the
-        training section." It was never a reading of the character
-        sheet's own XP the way the portrait, season and traits are —
-        it is a strength standard, the same three lifts these rows
-        already draw, so drawing it a second time on a different screen
-        was the odd one out there. Same "freed width" slot the radar
-        has used since it was built: the rows lead, and the radar takes
-        the column `lg` and up frees beside them.
-      */}
-      {/*
-        `minmax(0, 1fr)`, not `1fr`: a bare `1fr` will not shrink below
-        its rows' min-content, so at ~1280px the fixed radar column pushed
-        the card past the page edge and the page scrolled sideways. The
-        radar's column shrinks too rather than holding 256px.
-      */}
-      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,16rem)] lg:items-start lg:gap-6">
-        <div className="space-y-3">
-          <AttributeRow attribute={character.totalAttribute} emphasis />
-          {character.lifts.map((lift) => (
-            <AttributeRow key={lift.name} attribute={lift} />
-          ))}
-        </div>
-        <div className="hidden min-w-0 lg:block">
-          <MainLifts />
-        </div>
-      </div>
+      <CardHeading icon={<Trophy size={16} aria-hidden />} title="Strength" />
+      <ul className="space-y-3">
+        <StandardRow standing={total} emphasis />
+        {lifts.map((lift) => (
+          <StandardRow key={lift.name} standing={lift} />
+        ))}
+      </ul>
+      {settings.bodyweight === undefined && (
+        <p className="text-ink-500 mt-3 text-xs">
+          Set your bodyweight in Settings — the standards are multiples of it.
+        </p>
+      )}
     </Card>
+  )
+}
+
+function StandardRow({
+  standing,
+  emphasis,
+}: {
+  readonly standing: LiftStanding
+  readonly emphasis?: boolean
+}) {
+  return (
+    <li>
+      <div className="flex items-baseline justify-between gap-2">
+        <span
+          className={cn(
+            'text-sm',
+            emphasis === true ? 'text-ink-50 font-semibold' : 'text-ink-300 font-medium',
+          )}
+        >
+          {standing.name}
+        </span>
+        <span className="numeric text-ink-50 text-sm font-semibold">
+          {standing.max === undefined ? '—' : `${String(Math.round(standing.max))} lb`}
+          {standing.multiple !== undefined && (
+            <span className="text-ink-500 font-normal"> · {standing.multiple.toFixed(2)}×</span>
+          )}
+        </span>
+      </div>
+      {standing.next !== undefined && (
+        <p className="text-ink-500 numeric mt-0.5 text-xs">
+          Next standard {standing.next.multiple}× bodyweight · {standing.next.load} lb
+        </p>
+      )}
+    </li>
   )
 }
 

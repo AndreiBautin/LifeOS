@@ -1,72 +1,42 @@
-# LifeOS
+# LiftOS
 
-A gamified workout tracker. Double progression that moves the bar for
-you, deloads that adjust themselves, and a character that levels
-**Strength**, **Stamina** and **Mobility** from the sessions you log.
+A workout tracker. It builds the week, tells you what to put on the bar
+from what you lifted last time, and moves the bar up when every set
+reaches the top of its range. One page: the next session, where each
+lift stands against bodyweight standards, the strength trend, a grid of
+the work you have done, and the history.
 
-**▶ [Open the demo](https://andreibautin.github.io/LifeOS/)** — no
+**▶ [Open the demo](https://andreibautin.github.io/LiftOS/)** — no
 sign-up, no account, nothing to install. It fills itself with generated
 data the first time you open it. Everything stays in your browser.
 
 It was a thirteen-area life hub once — a reading log, a map, a tech tree,
-a house, money, quests. Each of those turned out to be done better by an
-app that already does it, and the one thing nothing else did was the
-lifting, so that is what this is now.
+a house, money, quests — with XP, levels and traits on top. Each of
+those turned out to be done better by an app that already does it, and
+the one thing nothing else did was the lifting, so that is what this is
+now.
 
 ## The insight that makes it click
 
-**Every number on screen is declared in one registry — ladders, ratings,
-acts — and everything else is derived from that.** Strength, conditioning
-and the warm-up are three areas, each feeding one trait, and all three are
-counted off the same workout log.
-
-There are exactly three kinds of number, and mixing them up is what
-makes most trackers meaningless:
-
-|            |                                                                     |
-| ---------- | ------------------------------------------------------------------- |
-| **Ladder** | Where you stand against a standard **outside the app**              |
-| **Rating** | A monthly judgement about a **direction** — is this getting better? |
-| **XP**     | Paid for **showing up**, and never for it having worked             |
-
-Three rules hold between them, and they are tests rather than prose:
-
-1. **No ladder is fed by XP.** A ladder must name a published standard —
-   a squat, bench, deadlift and total against bodyweight multiples. If
-   nothing outside the app anchors it, it is not a ladder, which is why
-   conditioning and mobility have none.
-2. **No rating is promoted to a ladder.** No measurement may be claimed
-   by both.
-3. **Nothing is counted twice.** Every act pays exactly one area.
-
-The consequence that surprises people: **an area with nothing to say
-says nothing.** No zeroes, no "0%", no empty progress bars — absent, and
-the screen is honest about it. A level nobody earned is worse than an
-obvious gap.
-
-### Acts, not outcomes
-
-XP is paid for a thing you _did_ and never for a thing that _happened_.
-
-Finishing a session pays, and so does each working set, the conditioning
-and the warm-up — whether they were _done_, never how heavy or how fast.
-The number on the bar going up pays nothing: that is a measurement, and
-it already has a ladder.
-
-This is the line every gamified tracker crosses, and crossing it is what
-turns them into things to optimise rather than things to use.
+**A prescription is not a number, it is a rule for producing one.**
+"Five sets of 3–5, at whatever you last worked at" is resolved against
+your own history when the session opens, never written into the
+programme. And the programme itself is **derived from settings rather
+than stored** — so there is no copy of it to edit, and editing it can
+never rewrite what you already logged. That was the structural flaw in
+all three apps this replaces, where the programme and the workout log
+were the same database rows.
 
 ## What is worth looking at in the code
 
-- **[`domain/game/registry.ts`](src/domain/game/registry.ts)** — the
-  whole model, declared. An area joins the character sheet by gaining a
-  row here.
-- **[`domain/assembly/rp-assemble.ts`](src/domain/assembly/rp-assemble.ts)**
-  — the training week, filled to per-muscle volume targets after
-  subtracting what the strength work already spent.
 - **[`domain/programs/progression.ts`](src/domain/programs/progression.ts)**
   — double progression: work a rep range, and when every set reaches the
   top of it, the next session's load goes up.
+- **[`application/use-cases/programs/current-program.ts`](src/application/use-cases/programs/current-program.ts)**
+  — the programme, derived on every read. Only your position in it is
+  stored.
+- **[`domain/resolution/resolve.ts`](src/domain/resolution/resolve.ts)**
+  — a prescription turned into a number, with no I/O and no clock.
 - **[`domain/sync/tombstone.ts`](src/domain/sync/tombstone.ts)** — why
   a deletion is recorded rather than simply performed: without it,
   importing an older backup quietly brings deleted records back.
@@ -89,18 +59,10 @@ features/  →  application/  →  domain/  ←  infrastructure/
 | `features/`       | anything           | —                                                 |
 
 `domain/` is pure — no React, no browser, no libraries — so set
-resolution, volume accounting and the scoring model are all plain
-functions that can be tested by calling them. Anything concrete is taken
-as a parameter and wired in one file,
+resolution, double progression, volume accounting and the strength
+standards are all plain functions that can be tested by calling them.
+Anything concrete is taken as a parameter and wired in one file,
 [`src/app/di.ts`](src/app/di.ts).
-
-**The idea the model turns on: a prescription is not a number, it is a
-rule for producing one.** "Five sets of 3–5, at whatever you last
-worked at" is resolved against your own history when the session opens,
-never stored in the programme. The programme itself is derived from
-settings rather than stored — which is what makes it impossible for
-editing a programme to rewrite history, the structural flaw in all three
-apps this replaces.
 
 See **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** for one request
 traced end to end, naming real files.
@@ -198,8 +160,9 @@ declares `display: standalone`, so an install is a real application
 window; a wrapper would add a second thing to build, sign and update in
 exchange for nothing this does not already do.
 
-The layout widens at 1024px and again at 1280px, so a wide window is not
-a phone layout stranded in the middle of a monitor.
+From 1024px the page drops its phone-width cap and the cards flow into
+as many columns as the window holds, so a wide window is not a phone
+layout stranded in the middle of a monitor.
 
 ## Tech, and why
 
@@ -216,14 +179,13 @@ a phone layout stranded in the middle of a monitor.
 - **Vitest + fake-indexeddb** so tests exercise real database semantics,
   migrations included.
 
-Roughly **1,480 tests** across 122 files, run on every push.
+Roughly **360 tests** across 37 files, run on every push.
 
 ## Documentation
 
 |                                                                         |                                                             |
 | ----------------------------------------------------------------------- | ----------------------------------------------------------- |
 | [ARCHITECTURE.md](docs/ARCHITECTURE.md)                                 | Layers, the prescription model, a request traced end to end |
-| [GAME_MODEL.md](docs/GAME_MODEL.md)                                     | The three currencies and the three rules, in full           |
 | [DEMO_DATA.md](docs/DEMO_DATA.md)                                       | What the deployed fixture contains, and what keeps it safe  |
 | [PERSISTENCE.md](docs/PERSISTENCE.md)                                   | Where data lives and what destroys it                       |
 | [SECURITY.md](docs/SECURITY.md)                                         | Threat model for an app with no server                      |
@@ -247,19 +209,10 @@ dashboard and a map — which lived here as areas of a life hub until the
 app narrowed back to training. Their repositories are archived; the
 history is in this one.
 
-**This was called Lift.** The rename went all the way down — the
-database, the `localStorage` prefix and the magic string at the top of
-every backup file. Those are _addresses_, not labels: renaming one opens
-a fresh empty one beside the old rather than migrating anything, so it
-was a deliberate factory reset taken at the only moment it was free.
-
-## Credits
-
-The character figures are from
-[game-icons.net](https://game-icons.net), by **Lorc** and
-**Delapouite**, under
-[CC BY 3.0](https://creativecommons.org/licenses/by/3.0/). They are
-committed as SVG paths — in
-[`src/features/character/figures.ts`](src/features/character/figures.ts)
-— rather than fetched, so the app adds no outbound host for them. The
-same credit is shown in the app at the foot of Settings.
+**This was called Lift, then LifeOS.** The first rename went all the way
+down — the database, the `localStorage` prefix and the magic string at
+the top of every backup file — as a deliberate factory reset taken at
+the only moment it was free. The second, to LiftOS, did not: those
+names still say `lifeos`, because they are _addresses_, not labels, and
+renaming one opens a fresh empty store beside the old rather than
+migrating anything. Only exported files are named `liftos-backup-…`.

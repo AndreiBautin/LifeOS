@@ -272,7 +272,7 @@
      Three things do that and none of them is expensive: a vertical
      gradient so the surface is not uniform, an inset hairline along the
      top so it catches light, and a shadow beneath so it sits above the
-     page. No `backdrop-filter` — see `.glass`; this is the surface that
+     page. No `backdrop-filter`: this is the surface that
      scrolls, and it is the one place blur must not go. */
   .card {
     /* Where the pointer is over this card, and how lit that spot is.
@@ -374,52 +374,6 @@
     animation: card-in 560ms cubic-bezier(0.16, 1, 0.3, 1) var(--stagger, 0ms) both;
   }
 
-  /* A ring drawing itself round to its value. The element carries its
-     real `stroke-dashoffset`; this only supplies where it starts —
-     `--ring-full`, the whole circumference, which is an empty ring. */
-  @keyframes ring-draw {
-    from {
-      stroke-dashoffset: var(--ring-full);
-    }
-  }
-
-  .ring-draw {
-    animation: ring-draw 1200ms cubic-bezier(0.22, 1, 0.36, 1) calc(var(--stagger, 0ms) + 180ms)
-      both;
-  }
-
-  /* A bar filling from its left edge. `transform` rather than `width`,
-     so the compositor does it without laying the card out again. */
-  @keyframes meter-grow {
-    from {
-      transform: scaleX(0);
-    }
-  }
-
-  .meter-grow {
-    transform-origin: left center;
-    animation: meter-grow 1000ms cubic-bezier(0.22, 1, 0.36, 1) calc(var(--stagger, 0ms) + 220ms)
-      both;
-  }
-
-  /*
-   * A row answers being pointed at, the same "cheap motion, real
-   * pointer only" rule `.card`'s hover lift already follows. Rows inside
-   * a card are the app's densest interactive surface — a quest, a
-   * challenge, a goal — and a flat background gave none of them any
-   * feedback before the tap itself landed.
-   */
-  @media (hover: hover) {
-    .row-hover {
-      transition: background-color 160ms ease-out;
-      border-radius: 0.625rem;
-    }
-
-    .row-hover:hover {
-      background-color: color-mix(in oklab, var(--text-primary) 5%, transparent);
-    }
-  }
-
   /*
    * A control built out of the same three things a card is.
    *
@@ -493,20 +447,6 @@
     font-variant-numeric: tabular-nums;
   }
 
-  /* A bar or a column growing into place.
-
-     Not gated here: the `prefers-reduced-motion: reduce` block above
-     already collapses every transition in the app to 0.01ms, so one rule
-     covers everything and there is no per-component gate to forget. The
-     easing is decelerating on purpose — a bar that arrives and settles
-     reads as a value being reported, where a linear one reads as
-     something still loading. */
-  .meter-fill {
-    transition:
-      width 520ms cubic-bezier(0.16, 1, 0.3, 1),
-      height 520ms cubic-bezier(0.16, 1, 0.3, 1);
-  }
-
   /* Press feedback, and it is deliberately tiny.
 
      This app is used one-handed between sets, so the job of the effect is
@@ -519,20 +459,6 @@
 
   .tap-target:active {
     transform: scale(0.96);
-  }
-
-  /* Frosted, and only where the blur is paid once.
-
-     `backdrop-filter` is among the most expensive things a mobile browser
-     can be asked for, and it costs most on a surface that moves — every
-     scrolled frame re-samples what is behind it. The navigation is fixed
-     and composited once, so it is the one place in the app where this is
-     nearly free. **It does not belong on cards**, which is where it would
-     be asked for next and where a gym app would pay for it every frame of
-     every list. */
-  .glass {
-    backdrop-filter: blur(14px) saturate(140%);
-    -webkit-backdrop-filter: blur(14px) saturate(140%);
   }
 }
 
@@ -548,47 +474,6 @@
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border-width: 0;
-}
-
-/* The act acknowledgement, rising as it fades.
-
-   Movement only — the toast's lifetime is a timer in `XpAwardProvider`,
-   so the reduced-motion block collapsing this to 0.01ms leaves a badge
-   that simply appears and leaves rather than one that flashes. */
-@keyframes xp-award-in {
-  from {
-    opacity: 0;
-    transform: translateY(10px) scale(0.94);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-.xp-award {
-  animation: xp-award-in 260ms cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-/*
- * A slow wash behind the sheet card, `lg` only, tied to the large-avatar
- * context.
- *
- * **Reuses the body's own `--glow-accent` token** rather than inventing a
- * second gradient recipe — the same wash that already sits fixed behind
- * every screen, confined to the one card that earns it, instead of a new
- * colour the palette has not chosen.
- *
- * **Static, not animated — this used to pulse, and a second animated
- * effect right beside it (two breathing rings around the avatar) drew a
- * direct complaint: "the blinking does not look good."** The rings are
- * gone outright and this one lost its `@keyframes` rather than being
- * re-tuned to a gentler pulse — two independent animated elements in one
- * corner of the screen is the failure mode, not the specific timing of
- * either one, so the fix is one of them not moving at all.
- */
-.sheet-glow {
-  opacity: 0.75;
 }
 
 /* A placeholder with a shape, for the moment before data arrives.
@@ -835,41 +720,12 @@ html {
   }
 }
 
-/* The portrait's figure arriving: a small rise and settle, once. */
+/* A small rise and settle, once — the trend line's end marker arriving. */
 @keyframes figure-in {
   from {
     opacity: 0;
     transform: translateY(6%) scale(0.9);
   }
-}
-
-.figure-in {
-  transform-box: fill-box;
-  transform-origin: center bottom;
-  animation: figure-in 700ms cubic-bezier(0.22, 1, 0.36, 1) 250ms both;
-}
-
-/* One pass of light across the level badge, timed to land as the ring
-   finishes drawing. Once — a shine that repeated would be the blinking
-   this portrait has already been asked to stop. */
-@keyframes badge-shine {
-  from {
-    transform: translateX(-120%) skewX(-20deg);
-  }
-  to {
-    transform: translateX(220%) skewX(-20deg);
-  }
-}
-
-.badge-shine::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  width: 60%;
-  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 45%), transparent);
-  transform: translateX(-120%);
-  animation: badge-shine 900ms ease-out 1300ms both;
-  pointer-events: none;
 }
 
 /*
@@ -980,49 +836,4 @@ html {
   transform-origin: center;
   animation: figure-in 500ms cubic-bezier(0.22, 1, 0.36, 1) calc(var(--line-delay, 0ms) + 1300ms)
     both;
-}
-
-/* Light travelling along a lit tech-tree edge. A short dash on a long gap,
-   moved by its offset, so a bead of light runs from parent to child. */
-@keyframes edge-flow {
-  from {
-    stroke-dashoffset: 60;
-  }
-  to {
-    stroke-dashoffset: 0;
-  }
-}
-
-.edge-flow {
-  stroke-dasharray: 8 52;
-  opacity: 0.85;
-  animation: edge-flow 1800ms linear infinite;
-}
-
-/* Tech-tree nodes settling in, depth by depth. */
-@keyframes tree-node-in {
-  from {
-    opacity: 0;
-    transform: translateY(6px) scale(0.94);
-  }
-}
-
-.tree-node-in {
-  animation: tree-node-in 480ms cubic-bezier(0.22, 1, 0.36, 1) var(--node-delay, 0ms) both;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .edge-flow {
-    display: none;
-  }
-}
-
-/* The map's fog, softened at every edge you have walked to — see
-   `FogLayer` in LeafletMapAdapter.tsx. */
-.fog-layer {
-  filter: blur(5px);
-}
-
-.fog-rim {
-  filter: blur(12px);
 }

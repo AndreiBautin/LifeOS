@@ -1,6 +1,6 @@
 # Architecture
 
-A client-only React + TypeScript PWA: a gamified workout tracker. **No
+LiftOS is a client-only React + TypeScript PWA: a workout tracker. **No
 server of ours and no database of ours** — records live in IndexedDB in
 the visitor's own browser, behind a repository interface.
 
@@ -11,10 +11,11 @@ to training, and the host went with it. **Each host was a decision, not
 a precedent.**
 
 The app is **one page with no navigation** (`features/today/HomePage.tsx`):
-the character sheet, the next session, the standards, the trend, the
-activity grid and the history, top to bottom — or the session player
-while a workout is open. Program and Settings are links from it, each
-with a Back link. Every route a removed screen once had redirects to `/today` (`src/app/router.tsx`),
+the next session, the strength standards, the strength trend, the
+training grid, then "Log a session from scratch" and the history, top to
+bottom — or the session player while a workout is open. Program and
+Settings are links from it, each with a Back link. Every route a removed
+screen once had redirects to `/today` (`src/app/router.tsx`),
 because an installed PWA goes on asking for the paths it was installed
 with.
 
@@ -32,13 +33,13 @@ build with a message explaining why — not by convention.
                            │
    ┌───────────────────────▼───────────────────────────┐
    │  application/                                     │  use-cases
-   │  start a workout, log a set, finish, score it     │
+   │  start a workout, log a set, finish, the grid      │
    └───────────────────────┬───────────────────────────┘
                            │
    ┌───────────────────────▼───────────────────────────┐
    │  domain/                          ◄───────────────┼── infrastructure/
    │  pure. no React, no browser, no libraries         │   IndexedDB, storage,
-   │  prescriptions, resolution, progression, scoring  │   backup, settings
+   │  prescriptions, resolution, progression, standards│   backup, settings
    └───────────────────────────────────────────────────┘
 ```
 
@@ -213,9 +214,9 @@ Starting Thursday's session (Push B) and logging the first set of the bench:
     `actualReps` and `completedAt` beside the planned values.
 11. On finish, **`finish-workout.ts`** computes the report, then advances
     the position by one day — _on completion, not on the calendar_, so a
-    missed Thursday costs nothing. The next read of the character sheet
-    counts the session, its working sets, and — if a warm-up or
-    conditioning row was done — the Mobility and Stamina acts.
+    missed Thursday costs nothing. The next read of the training grid
+    (`application/use-cases/training/activity.ts`) counts its working
+    sets on the day it was filed.
 
 Step 5 is the whole redesign, and no single test exercises it end to end:
 a bench opened at 200 from a 238 estimate, three sets of five were
@@ -260,51 +261,28 @@ merging in an older backup reads it as a record the file knows about and
 puts it back. `repositories.remove` writes a tombstone for that reason,
 and the backup import filters incoming records through them.
 
-## The scoring spine
+## What the home page reads
 
-`domain/game/registry.ts` declares what each area has — ladders, ratings,
-acts — and `application/use-cases/character/sheet.ts` turns those
-declarations into one readout, restating nothing. **An area appears on
-the character sheet by gaining a row in the registry.**
+Everything on the page is derived from the workout log and the settings;
+nothing is a stored total.
 
-The three currencies read from three different places, and that is the
-whole point of having three:
+- **Strength standards** (`domain/strength/standards.ts`) — each
+  competition lift's estimated max, what multiple of bodyweight it is,
+  and the next published multiple above it with the load that would
+  reach it. The thresholds are fixed and external; there are no named
+  ranks.
+- **The training grid** (`application/use-cases/training/activity.ts`,
+  drawn by `features/train/ActivityHeatmap.tsx`) — working sets per day
+  over eighteen Monday-first weeks, counted off finished sessions only.
+  A set count rather than a session count, so a heavy day and a short
+  one do not draw the same.
 
-| Currency   | Read from        | Why not the others                                                             |
-| ---------- | ---------------- | ------------------------------------------------------------------------------ |
-| **Ladder** | live measurement | Anchored externally; its answer must not depend on whether a review was opened |
-| **Rating** | a recorded month | A judgement about a direction, which needs two points in time                  |
-| **XP**     | a tally of acts  | Paid for doing, never for it having worked — an outcome already moved a ladder |
-
-Three rules hold between them, and they are **tests rather than prose**
-(`registry.test.ts`): no ladder is fed by XP, no rating is promoted to a
-ladder, and nothing is counted twice.
-
-The XP tally is **derived from the records**, never stored as a counter.
-A counter cannot survive two devices — both increment it,
-last-write-wins throws one away — and cannot survive a restore either.
-
-There are three areas — training, conditioning (`cardio`) and mobility —
-and four acts: a finished session and a logged working set pay training,
-a finished session with completed conditioning pays conditioning, and a
-finished session with a completed warm-up pays mobility.
-`countActs` in `sheet.ts` is the one place they are counted.
-
-**Traits are a projection of that same XP, not a fourth currency.**
-Strength, Stamina and Mobility each claim exactly one area, so the bars
-partition the XP and sum to the level above them. `UNCLAIMED_AREAS` is
-empty and kept, so an area added tomorrow with no trait still fails the
-build until somebody says which it is.
-
-**The rating half of the model is dormant.** The monthly review screen
-was removed and it was the only thing that filed a month, so `readout`
-still reads whatever was filed before and nothing new arrives. If ratings
-are wanted back, **the missing piece is a screen rather than a rule**.
-`measureAll` is live and must stay — the sheet's ladders read it.
-
-An area with no measurement, no recorded rating and no acts is
-**silent** and renders nothing at all. `insufficient-data` counts as
-silence: it is the absence of a judgement, not a bad one.
+**There was a game on top of this once** — XP, levels, traits, a
+character portrait and a monthly review — and it went when the app
+became a plain workout tracker. The review's `metrics` and `reviews`
+IndexedDB stores are retired and cleared at `DB_VERSION` 25 rather than
+removed, because removing a store means editing the migration step that
+created it. The history is in git.
 
 ## The demo build
 
@@ -316,9 +294,7 @@ only into empty storage. It is what deploys. See
 The seeder lives in `application/use-cases/demo/`: seventeen weeks of
 sessions and one settings flag. The sessions are written as records
 rather than driven through `startWorkout` and `finishWorkout`, which can
-only ever produce a session dated today — the file says why in place,
-and `parity.test.ts` holds the fixture to the properties the landing
-page depends on.
+only ever produce a session dated today — the file says why in place.
 
 ## Technology, and why
 

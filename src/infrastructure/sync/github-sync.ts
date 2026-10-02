@@ -146,7 +146,7 @@ export async function syncWithGitHub(
       target,
       body,
       remote?.sha,
-      `LifeOS sync, ${options.now.toISOString()}`,
+      `LiftOS sync, ${options.now.toISOString()}`,
       fetchFn,
     )
     if (outcome === 'written') return { pulled, purged, uploaded: true }

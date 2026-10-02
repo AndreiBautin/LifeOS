@@ -12,7 +12,6 @@ import {
 } from '@/infrastructure/db/database'
 import {
   createCheckInRepository,
-  createReviewRepository,
   createTombstoneRepository,
   createExerciseRepository,
   createWorkoutRepository,
@@ -46,7 +45,6 @@ beforeEach(async () => {
     workouts: createWorkoutRepository(db, testClock),
     checkIns: createCheckInRepository(db, testClock),
     tombstones: createTombstoneRepository(db),
-    review: createReviewRepository(db, testClock),
   }
 })
 
@@ -112,7 +110,7 @@ describe('export and import round-trip', () => {
   })
 
   it('names the file by the moment it was taken', () => {
-    expect(backupFilename(NOW)).toBe('lifeos-backup-2026-08-24-12-00-00.json')
+    expect(backupFilename(NOW)).toBe('liftos-backup-2026-08-24-12-00-00.json')
   })
 })
 

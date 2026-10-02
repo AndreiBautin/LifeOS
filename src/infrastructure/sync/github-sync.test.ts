@@ -7,7 +7,6 @@ import {
   createCheckInRepository,
   createExerciseRepository,
   createPositionRepository,
-  createReviewRepository,
   createTombstoneRepository,
   createWorkoutRepository,
 } from '@/infrastructure/db/repositories'
@@ -76,7 +75,6 @@ async function device(name: string): Promise<SyncRepositories> {
     workouts: createWorkoutRepository(db, clock),
     checkIns: createCheckInRepository(db, clock),
     tombstones: createTombstoneRepository(db),
-    review: createReviewRepository(db, clock),
     position: createPositionRepository(db, clock),
   }
 }

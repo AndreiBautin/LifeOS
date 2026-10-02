@@ -105,10 +105,9 @@ describe('seeding the demo', () => {
   })
 
   /*
-   * Stamina and Mobility are paid by whether a set on that row was
-   * *completed* rather than whether the row was scheduled — so a fixture
-   * of empty slots leaves both bars reading "Nothing yet" while the
-   * records look like four months of training.
+   * A fixture of scheduled rows with nothing done against them would read
+   * as four months of sessions walked away from halfway, so the warm-up
+   * and the conditioning are logged as completed.
    */
   it.each(['conditioning', 'warmup'])('completes the %s it schedules', async (role) => {
     const services = deps()

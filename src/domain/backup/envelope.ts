@@ -1,5 +1,4 @@
 import type { CheckIn } from '@/domain/autoregulation/check-in'
-import type { MetricDefinition, MonthlySnapshot } from '@/domain/review/metric'
 import type { Exercise } from '@/domain/exercises/exercise'
 import type { WorkoutLog } from '@/domain/logging/workout-log'
 import type { AppSettings } from '@/domain/settings/settings'
@@ -75,8 +74,6 @@ export interface BackupCounts {
   readonly exercises: number
   readonly workouts: number
   readonly checkIns: number
-  readonly metrics: number
-  readonly reviews: number
 }
 
 export interface BackupData {
@@ -90,15 +87,6 @@ export interface BackupData {
    * Optional on read for version 1 files. Always written.
    */
   readonly tombstones?: readonly Tombstone[]
-
-  /*
-   * The review's metrics, optional on read: a version 1 or 2 file
-   * predates them and a missing section means "none", never "delete what
-   * is here". A file written while the app held the Codex, the map and the
-   * rest still carries those sections, and they are ignored.
-   */
-  readonly metrics?: readonly MetricDefinition[]
-  readonly reviews?: readonly MonthlySnapshot[]
 }
 
 export function countsFor(data: BackupData): BackupCounts {
@@ -106,8 +94,6 @@ export function countsFor(data: BackupData): BackupCounts {
     exercises: data.exercises.length,
     workouts: data.workouts.length,
     checkIns: data.checkIns.length,
-    metrics: data.metrics?.length ?? 0,
-    reviews: data.reviews?.length ?? 0,
   }
 }
 
@@ -116,8 +102,6 @@ export const BACKUP_COUNT_KEYS = [
   'exercises',
   'workouts',
   'checkIns',
-  'metrics',
-  'reviews',
 ] as const satisfies readonly (keyof BackupCounts)[]
 
 /* -------------------------------------------------------------------- */

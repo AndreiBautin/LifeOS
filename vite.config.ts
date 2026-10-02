@@ -89,10 +89,10 @@ export default defineConfig(({ mode }) => {
         },
 
         manifest: {
-          name: 'LifeOS — a gamified workout tracker',
-          short_name: 'LifeOS',
+          name: 'LiftOS — a workout tracker',
+          short_name: 'LiftOS',
           description:
-            'Double progression, deloads that adjust themselves, and a character that levels Strength, Stamina and Mobility from the sessions you log.',
+            'A workout tracker: double progression that moves the bar for you, and deloads that adjust themselves.',
           /*
            * `id`, `start_url` and `scope` all derive from `base` and must
            * not move until the repository is renamed — changing any of

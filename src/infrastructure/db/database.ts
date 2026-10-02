@@ -2,7 +2,6 @@ import type { DBSchema, IDBPDatabase } from 'idb'
 import { openDB } from 'idb'
 
 import type { CheckIn } from '@/domain/autoregulation/check-in'
-import type { MetricDefinition, MonthlySnapshot } from '@/domain/review/metric'
 import type { Tombstone } from '@/domain/sync/tombstone'
 import type { Exercise } from '@/domain/exercises/exercise'
 import type { WorkoutLog } from '@/domain/logging/workout-log'
@@ -52,7 +51,7 @@ export const DB_NAME = 'lifeos'
  * a device that already ran it will not run it again, so changing one
  * leaves two devices with different schemas and no way to tell.
  */
-export const DB_VERSION = 24
+export const DB_VERSION = 25
 
 /**
  * A workout as it is stored, which is not quite a workout as the domain
@@ -263,7 +262,7 @@ export interface LiftDB extends DBSchema {
    */
   metrics: {
     key: string
-    value: MetricDefinition
+    value: RetiredRow
   }
   /**
    * One record per month, keyed by the month.
@@ -274,7 +273,7 @@ export interface LiftDB extends DBSchema {
    */
   reviews: {
     key: string
-    value: MonthlySnapshot
+    value: RetiredMonthRow
   }
   /** Places worth going to, visited or not. */
   places: {
@@ -742,6 +741,17 @@ export function openDatabase(name = DB_NAME): Promise<AppDatabase> {
         ] as const) {
           void transaction.objectStore(name).clear()
         }
+      }
+
+      if (oldVersion < 25) {
+        /*
+         * The monthly review went with the rest of the game model — its
+         * metrics were ratings of areas, and the app no longer scores
+         * anything. Cleared the way the areas were; the stores stay,
+         * because removing them would mean editing the step that made them.
+         */
+        void transaction.objectStore('metrics').clear()
+        void transaction.objectStore('reviews').clear()
       }
     },
 

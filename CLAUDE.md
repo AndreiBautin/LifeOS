@@ -1,51 +1,63 @@
-# Working on LifeOS
+# Working on LiftOS
 
-A client-only React + TypeScript PWA: **a gamified workout tracker.**
-Double progression, self-adjusting deloads, and a character sheet that
-levels Strength, Stamina and Mobility from the sessions you log. **No
+A client-only React + TypeScript PWA: **a workout tracker.** A derived
+programme, double progression that moves the bar for you, self-adjusting
+deloads, a session player, history and plain strength standards. **No
 server of ours, and no database of ours.** Persistence is IndexedDB
 behind a repository interface; the only outbound host is GitHub, when
 sync is connected. See [docs/PERSISTENCE.md](docs/PERSISTENCE.md).
 
-**Everything that was not training is gone, and most of this file is
-history because of it.** Asked for as _"fully lean into this simply
-being a gamified workout tracker… it feels like the app ballooned into a
-massive set of features and wasn't really focused"_ — the Codex is a
-streaming queue and a Steam library, the map is a calendar, the tech
-tree is a wishlist, and Base is Notion. Read every paragraph below about
-the Codex/backlog, the map/atlas, the tech tree/upgrades, Base and
-clutter, buffs/limits/the health bar, finance, seasonal challenges, the
-arc/campaigns, quests, the job search, the resume or Mind as a record of
-a decision, not as a description of the code. They are kept because the
-reasoning in them is often still why a training rule is the shape it is.
+**It was called LifeOS, and before that Lift.** Renamed with the repo,
+so the site is `/LiftOS/` — asked for as _"rebrand it since it's liftos
+now not lifeos"_. **The storage addresses were deliberately not
+renamed**: the IndexedDB name `lifeos`, the `lifeos` / `lifeos.demo`
+key prefix, `BACKUP_MAGIC` `lifeos.backup` and the sync file
+`lifeos-sync.json`. An address is not a label — renaming one opens a
+fresh empty store beside the old rather than migrating anything, which
+would have wiped every device. The labels moved: the title, manifest,
+build line, sync commit message and the export filename
+(`liftos-backup-…`). The origin did not change, so data survives the
+URL moving; an installed copy has to be re-added from the new URL.
 
-- **Three areas, three traits, and they partition again.** `training`
-  → Strength, `cardio` → Stamina, `mobility` → Mobility. Every act is
-  counted off the workout log in `countActs` (`character/sheet.ts`):
-  a finished session, its working sets, a completed conditioning set,
-  and a completed warm-up set (`hasWarmUp`, once per session, 20 XP —
-  six warm-up rows paying six times would make the cheapest work the
-  best paid). `UNCLAIMED_AREAS` is empty and `traits.test.ts` holds
-  that the bars sum to the level.
-- **The removed stores are retired, cleared at `DB_VERSION` 24** —
-  items, upgrades, places, trips, exploredCells, vices, finance, rooms,
-  challenges, campaigns — and out of the backup, sync and tombstone
-  tables. An old backup carrying those sections still imports; they are
-  ignored.
+**There is no gamification, and most of this file is history because of
+it.** Two cuts, asked for in turn: _"fully lean into this simply being a
+gamified workout tracker"_ removed every area that was not training,
+then _"let's actually go ahead and drop the gamification aspect and keep
+it to a workout tracker"_ removed the game itself. Read every paragraph
+below about XP, levels, traits, the character sheet, the avatar,
+ladders, ratings, the monthly review, seasons as scoring, the Codex, the
+map, the tech tree, Base, buffs, finance, challenges, the arc, quests,
+the job search, the resume or Mind as a record of a decision rather than
+a description of the code. They are kept because the reasoning in them
+is often still why a training rule is the shape it is.
+
+- **Gone with the game:** `domain/game`, `domain/review`, the
+  character and review use cases, `features/character`, the XP toast,
+  and the `metrics` and `reviews` stores (cleared at `DB_VERSION` 25,
+  out of backup, sync and tombstones). The other retired stores were
+  cleared at 24.
+- **Strength standards are plain numbers** (`domain/strength/
+standards.ts`): the estimated max, its multiple of bodyweight, and the
+  next published multiple with the load that reaches it, rounded up to
+  five. No rank names and no bars — the multiples are external and
+  fixed, which is the only reason they are worth showing.
+- **The training grid counts working sets per day**
+  (`application/use-cases/training/activity.ts`), finished sessions
+  only, with fixed bands (1, 10, 20, 30) rather than a share of the
+  busiest day. It was the XP tally cut by day; the work was always the
+  honest quantity underneath.
 - **One page, no navigation.** Asked for as _"lets just condense this
-  into one page without a navbar"_. `HomePage` is the session player while
-  a workout is open and the whole app otherwise; Program and Settings are
-  links from it and `PageHeader` gives both a Back link. `/train`,
-  `/history` and every removed path redirect to `/today`, because a PWA
-  shortcut outlives the screen it named. The history list shows the
-  newest eight and folds the rest, because it now shares a page.
-- **The demo is four months of sessions and nothing else.**
-  `parity.test.ts` holds that every trait is proven, so a fixture that
-  stopped logging warm-ups would fail rather than ship an empty Mobility
-  bar.
-- **The tech-tree concept left the game model too** — `hasTree` and
-  `domain/game/tree.ts`. The model's claim that exactly one area spends
-  had nothing left to be true of.
+  into one page without a navbar"_. `HomePage` is the session player
+  while a workout is open and the whole app otherwise; Program and
+  Settings are links from it and `PageHeader` gives both a Back link.
+  `/train`, `/history` and every removed path redirect to `/today`,
+  because a PWA shortcut outlives the screen it named. The history list
+  shows the newest eight and folds the rest.
+- **The seasons survive only as the backdrop's tint**
+  (`domain/time/season.ts`). Nothing is scored against one.
+- **The demo is four months of sessions and nothing else**; its guard is
+  `seed.test.ts`, which holds that warm-up and conditioning rows are
+  completed and that the seed refuses non-empty storage.
 
 **Firebase is gone, and every paragraph below about Firestore, sync,
 `AuthGate`, `VITE_ALLOWED_UIDS` or the emulator is history.** Asked for

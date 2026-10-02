@@ -27,7 +27,6 @@ export const TOMBSTONED_COLLECTIONS = [
   'checkIns',
   'items',
   'upgrades',
-  'reviews',
   'places',
   'trips',
   'vices',
