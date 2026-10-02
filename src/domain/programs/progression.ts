@@ -125,6 +125,42 @@ export function lastPerformance(
 }
 
 /**
+ * The reps to aim for on one set: one more than last time, at the same
+ * load.
+ *
+ * Asked for as _"make the planned reps aim to beat last time, unless it
+ * falls outside of the rep range, in which case up the weight and start
+ * back up at the bottom of the rep range"_. It planned the bottom of the
+ * range on every set, every session — 115 × 5 beside "Last 115 × 8" —
+ * so the number on the row was a floor nobody needed telling about, and
+ * the target that actually drives double progression was left to memory.
+ *
+ * - **The load went up** (`bumped`, every set topped last time): back to
+ *   the bottom of the range, the other half of the same rule.
+ * - **A set already at the top holds there.** Straight sets share one
+ *   load, so one set reaching the top cannot raise the weight on its own;
+ *   it waits for the others.
+ * - **Below the range last time** plans the bottom: the range is the
+ *   prescription, and aiming under it would be planning a miss.
+ * - **No history, or fewer sets logged than asked**: the bottom, or the
+ *   last set that was logged, so a fifth set added since a three-set
+ *   session aims to beat that session's third.
+ */
+export function plannedRepsFor(
+  last: Performance | undefined,
+  range: RepRange,
+  bumped: boolean,
+  setIndex: number,
+): number {
+  if (last === undefined || bumped) return range.low
+
+  const previous = last.reps[setIndex] ?? last.reps[last.reps.length - 1]
+  if (previous === undefined) return range.low
+
+  return Math.min(range.high, Math.max(range.low, previous + 1))
+}
+
+/**
  * How much goes on when the range is topped.
  *
  * **Five on upper, ten on lower**, which is the split asked for and the

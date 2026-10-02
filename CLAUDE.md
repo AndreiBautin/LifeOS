@@ -6959,6 +6959,18 @@ sets; when every set reaches the top of it, put the next increment on
 the bar. Strength runs 3–5, hypertrophy compounds 10–15, isolations
 15–30, and every slot is three straight sets at one load.
 
+**The planned reps aim to beat last time.** Asked for as _"make the
+planned reps aim to beat last time, unless it falls outside of the rep
+range, in which case up the weight and start back up at the bottom"_.
+`plannedRepsFor` plans each working set one rep past the same set last
+session at the same load, capped at the top of the range; once every set
+topped and the load went up, every set goes back to the bottom. It
+planned the bottom of the range on every set, every session — "115 × 5"
+beside "Last 115 × 8" — so the number that drives the method was left to
+memory. **A set at the top holds rather than raising the load alone**:
+straight sets share one weight, so the increment still waits for all of
+them, which is `topped` unchanged.
+
 **Five sets now, three on a deload.** Asked for as _"let's bump our sets
 up to 5 per exercise"_ — `STRAIGHT_SETS` and `DELOAD_SETS` in
 `progression.ts`. **`topped` is judged against the sets the previous

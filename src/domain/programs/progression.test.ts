@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest'
 
-import { lastPerformance, nextLoad, STRENGTH_RANGE, topped, type Performance } from './progression'
+import {
+  lastPerformance,
+  nextLoad,
+  plannedRepsFor,
+  STRENGTH_RANGE,
+  topped,
+  type Performance,
+} from './progression'
 
 const did = (load: number, ...reps: number[]): Performance => ({ load, reps })
 
@@ -98,5 +105,38 @@ describe('lastPerformance', () => {
       load: 225,
       reps: [5],
     })
+  })
+})
+
+describe('plannedRepsFor', () => {
+  const range = { low: 5, high: 10 }
+  const last: Performance = { load: 115, reps: [8, 7, 7, 6, 5] }
+
+  it('aims one rep past each set of last time, at the same load', () => {
+    expect([0, 1, 2, 3, 4].map((set) => plannedRepsFor(last, range, false, set))).toEqual([
+      9, 8, 8, 7, 6,
+    ])
+  })
+
+  it('holds a set already at the top rather than planning past the range', () => {
+    const atTop: Performance = { load: 115, reps: [10, 10, 9, 8, 8] }
+    expect(plannedRepsFor(atTop, range, false, 0)).toBe(10)
+    expect(plannedRepsFor(atTop, range, false, 2)).toBe(10)
+  })
+
+  it('starts back at the bottom once the load has gone up', () => {
+    const topped: Performance = { load: 115, reps: [10, 10, 10, 10, 10] }
+    expect(plannedRepsFor(topped, range, true, 0)).toBe(5)
+    expect(plannedRepsFor(topped, range, true, 4)).toBe(5)
+  })
+
+  it('plans the bottom when last time fell short of it, or there is no last time', () => {
+    expect(plannedRepsFor({ load: 115, reps: [3] }, range, false, 0)).toBe(5)
+    expect(plannedRepsFor(undefined, range, false, 0)).toBe(5)
+  })
+
+  it('aims past the last logged set for a set the previous session did not have', () => {
+    const threeSets: Performance = { load: 115, reps: [8, 8, 7] }
+    expect(plannedRepsFor(threeSets, range, false, 4)).toBe(8)
   })
 })

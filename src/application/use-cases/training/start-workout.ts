@@ -14,7 +14,13 @@ import { scheduleFor } from '@/application/use-cases/programs/schedule'
 import { STARTING_POSITION } from '@/domain/programs/position'
 import type { AthleteState } from '@/domain/resolution/resolve'
 import { resolveSets } from '@/domain/resolution/resolve'
-import { lastPerformance, nextLoad, stepFor } from '@/domain/programs/progression'
+import {
+  lastPerformance,
+  nextLoad,
+  plannedRepsFor,
+  stepFor,
+  type Performance,
+} from '@/domain/programs/progression'
 import type { RepRange } from '@/domain/programs/prescription'
 import { matchesQuery } from '@/domain/exercises/exercise'
 
@@ -109,13 +115,13 @@ export async function startWorkout(
    * Only the exercises this session actually contains are looked up:
    * the whole catalogue would be fifty queries for a six-exercise day.
    */
-  const working = await workingLoads(day, library, request, deps)
+  const { working, history } = await workingLoads(day, library, request, deps)
   const withHistory: StartWorkoutRequest = {
     ...request,
     athlete: { ...request.athlete, working },
   }
 
-  const workout = buildFromDay(day, scheduled, withHistory, library, deps)
+  const workout = buildFromDay(day, scheduled, withHistory, library, deps, history)
   await deps.workouts.save(workout)
 
   return { kind: 'started', workout }
@@ -159,7 +165,10 @@ async function workingLoads(
   library: readonly Exercise[],
   request: StartWorkoutRequest,
   deps: StartWorkoutDeps,
-): Promise<Readonly<Partial<Record<ExerciseId, number>>>> {
+): Promise<{
+  readonly working: Readonly<Partial<Record<ExerciseId, number>>>
+  readonly history: Readonly<Partial<Record<ExerciseId, LastTime>>>
+}> {
   const ids = [...new Set(day.slots.flatMap((slot) => resolveExercise(slot, library) ?? []))]
   const strengthIds = new Set(
     day.slots
@@ -168,14 +177,14 @@ async function workingLoads(
   )
 
   const entries = await Promise.all(
-    ids.map(async (id): Promise<readonly [ExerciseId, number][]> => {
+    ids.map(async (id): Promise<readonly [ExerciseId, number, LastTime | undefined][]> => {
       const exercise = library.find((one) => one.id === id)
       const history = await deps.workouts.forExercise(id, 1)
       const previous = history[0]?.entries.find((entry) => entry.exerciseId === id)
       if (exercise === undefined) return []
       if (previous === undefined) {
         const seeded = strengthIds.has(id) ? firstSessionLoad(id, request) : undefined
-        return seeded === undefined ? [] : [[id, seeded]]
+        return seeded === undefined ? [] : [[id, seeded, undefined]]
       }
 
       const last = lastPerformance(
@@ -199,11 +208,24 @@ async function workingLoads(
       const next =
         range === undefined ? last?.load : nextLoad(last, range, stepFor(exercise), asked)
 
-      return next === undefined ? [] : [[id, next]]
+      if (next === undefined) return []
+      return [[id, next, last === undefined ? undefined : { last, bumped: next > last.load }]]
     }),
   )
 
-  return Object.fromEntries(entries.flat())
+  const found = entries.flat()
+  return {
+    working: Object.fromEntries(found.map(([id, load]) => [id, load])),
+    history: Object.fromEntries(
+      found.flatMap(([id, , lastTime]) => (lastTime === undefined ? [] : [[id, lastTime]])),
+    ),
+  }
+}
+
+/** What an exercise did last time, and whether its load has gone up since. */
+interface LastTime {
+  readonly last: Performance
+  readonly bumped: boolean
 }
 
 /**
@@ -227,6 +249,7 @@ function buildFromDay(
   request: StartWorkoutRequest,
   library: readonly Exercise[],
   deps: StartWorkoutDeps,
+  history: Readonly<Partial<Record<ExerciseId, LastTime>>> = {},
 ): WorkoutLog {
   const now = deps.clock.now()
 
@@ -243,8 +266,19 @@ function buildFromDay(
       roundingIncrement: request.roundingIncrement,
     })
 
+    /*
+     * **The reps aim to beat last time.** Each working set plans one
+     * more than the same set managed last session, at the same load,
+     * capped at the top of the range — and back to the bottom once the
+     * load has gone up. See `plannedRepsFor`.
+     */
+    const lastTime = history[exerciseId]
+    let working = 0
     const sets: LoggedSet[] = resolved.map((set) => {
-      const reps = plannedReps(set.reps)
+      const reps =
+        !set.isWarmup && set.reps.kind === 'range'
+          ? plannedRepsFor(lastTime?.last, set.reps, lastTime?.bumped ?? false, working++)
+          : plannedReps(set.reps)
       return {
         prescription: set.prescription,
         ...(set.load !== undefined ? { plannedLoad: set.load } : {}),

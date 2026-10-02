@@ -16,6 +16,7 @@ import { DEFAULT_SETTINGS } from '@/domain/settings/settings'
 
 import { abandonWorkout } from './abandon-workout'
 import { finishWorkout } from './finish-workout'
+import { STRENGTH_RANGE } from '@/domain/programs/progression'
 import { logSet } from './log-set'
 import { startWorkout } from './start-workout'
 
@@ -262,6 +263,59 @@ describe('starting a session from a program', () => {
     const planned = again?.sets.find((set) => !set.isWarmup)?.plannedLoad
     expect(planned).toBeGreaterThan(100)
     expect(planned).toBeLessThanOrEqual(110)
+
+    // The load went up, so the reps start again at the bottom of the range.
+    expect(again?.sets.filter((set) => !set.isWarmup).map((set) => set.plannedReps)).toEqual(
+      again?.sets.filter((set) => !set.isWarmup).map(() => STRENGTH_RANGE.low),
+    )
+  })
+
+  /*
+   * The other half of double progression, and the part the plan used to
+   * leave to memory: below the top of the range the load holds and each
+   * set aims one rep past what it managed last time. It planned the
+   * bottom of the range on every set, beside a "Last" line that said
+   * more.
+   */
+  it('plans one more rep than last time on each set while the load holds', async () => {
+    const deps = beginProgram()
+    const first = await startWorkout({ athlete, program, roundingIncrement: 5 }, deps)
+    if (first.kind !== 'started') throw new Error('expected a started workout')
+
+    const index = first.workout.entries.findIndex((entry) => isAccessory(entry.exerciseId))
+    const entry = first.workout.entries[index]
+    if (entry === undefined) throw new Error('expected an accessory')
+
+    const done = [8, 7, 7, 6, 5]
+    let working = 0
+    for (const [setIndex, set] of entry.sets.entries()) {
+      if (set.isWarmup) continue
+      await logSet(
+        {
+          workoutId: first.workout.id,
+          entryIndex: index,
+          setIndex,
+          result: { load: 50, reps: done[working++] ?? 5, outcome: 'completed' },
+        },
+        deps,
+      )
+    }
+    await finishWorkout(first.workout.id, deps)
+
+    // The same day next week.
+    for (let day = 0; day < 7; day += 1) nextDay()
+    const again = await startWorkout({ athlete, program, roundingIncrement: 5 }, deps)
+    if (again.kind !== 'started') throw new Error('expected a started workout')
+
+    const next = again.workout.entries.find((one) => one.exerciseId === entry.exerciseId)
+    const sets = next?.sets.filter((set) => !set.isWarmup) ?? []
+    const range = sets[0]?.prescription.reps
+    if (range?.kind !== 'range') throw new Error('expected a rep range')
+
+    expect(sets.map((set) => set.plannedLoad)).toEqual(sets.map(() => 50))
+    expect(sets.map((set) => set.plannedReps)).toEqual(
+      done.slice(0, sets.length).map((reps) => Math.min(range.high, Math.max(range.low, reps + 1))),
+    )
   })
 
   it('resumes an unfinished session rather than starting a second', async () => {
