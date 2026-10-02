@@ -32,9 +32,13 @@ reasoning in them is often still why a training rule is the shape it is.
   challenges, campaigns — and out of the backup, sync and tombstone
   tables. An old backup carrying those sections still imports; they are
   ignored.
-- **The nav is You · Train · History.** Program hangs off Train and
-  Settings off You. Every removed path redirects to `/today`, because a
-  PWA shortcut outlives the screen it named.
+- **One page, no navigation.** Asked for as _"lets just condense this
+  into one page without a navbar"_. `HomePage` is the session player while
+  a workout is open and the whole app otherwise; Program and Settings are
+  links from it and `PageHeader` gives both a Back link. `/train`,
+  `/history` and every removed path redirect to `/today`, because a PWA
+  shortcut outlives the screen it named. The history list shows the
+  newest eight and folds the rest, because it now shares a page.
 - **The demo is four months of sessions and nothing else.**
   `parity.test.ts` holds that every trait is proven, so a fixture that
   stopped logging warm-ups would fail rather than ship an empty Mobility

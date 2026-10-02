@@ -119,24 +119,11 @@ export default defineConfig(({ mode }) => {
             },
           ],
           /*
-           * The long-press menu. `Programs` used to point at `programs`,
-           * which is not a route — the page is `program`, singular — so
-           * the shortcut landed on Not Found. Fixed here rather than by
-           * adding a second route, because the route name is right and the
-           * link was wrong.
+           * The long-press menu, one entry now: the app is one page, so
+           * every shortcut it used to carry would land in the same place.
            */
           shortcuts: [
-            { name: 'Today', url: `${base}today`, description: 'Where you stand and what is next' },
-            {
-              name: 'Start workout',
-              url: `${base}train`,
-              description: 'Jump into today’s session',
-            },
-            {
-              name: 'History',
-              url: `${base}history`,
-              description: 'Every session you have logged',
-            },
+            { name: 'Program', url: `${base}program`, description: 'The week, day by day' },
           ],
         },
 

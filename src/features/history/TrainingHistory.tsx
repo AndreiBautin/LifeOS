@@ -1,8 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
-import { PageHeader } from '@/components/shared/PageHeader'
 import { RotateCcw, Trash2 } from 'lucide-react'
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 
 import { useServices, useSettings } from '@/app/context'
 import type { Exercise } from '@/domain/exercises/exercise'
@@ -33,12 +31,15 @@ import { useDeleteWorkout, useReopenWorkout } from './hooks'
  * what makes it comparable to the landmarks, which is the only reason to
  * show it.
  */
-export function HistoryPage() {
+/** How many sessions show before "Show all", newest first. */
+const RECENT = 8
+
+export function TrainingHistory() {
   const services = useServices()
   const { settings } = useSettings()
   const deleteWorkout = useDeleteWorkout()
   const reopenWorkout = useReopenWorkout()
-  const navigate = useNavigate()
+  const [showAll, setShowAll] = useState(false)
 
   /*
    * Which row is asking to be confirmed, if any.
@@ -103,23 +104,6 @@ export function HistoryPage() {
 
   return (
     <div>
-      {/*
-        Counted separately, because they are different claims. A finished
-        session is one you completed; an abandoned one is work that
-        happened inside a session you walked away from. Adding them into a
-        single total would overstate the first, and leaving the second out
-        entirely is what made this screen look empty.
-      */}
-      <PageHeader
-        title="History"
-        subtitle={
-          <>
-            {completed.length} session{completed.length === 1 ? '' : 's'} logged
-            {abandoned.length > 0 && ` · ${String(abandoned.length)} abandoned`}
-          </>
-        }
-      />
-
       {weekVolume !== undefined && (
         <Section title="This week" description="Working sets against each muscle’s weekly target">
           <Card>
@@ -159,7 +143,21 @@ export function HistoryPage() {
         </Section>
       )}
 
-      <Section title="Sessions">
+      {/*
+        Counted separately, because they are different claims. A finished
+        session is one you completed; an abandoned one is work that
+        happened inside a session you walked away from. Adding them into a
+        single total would overstate the first.
+
+        **Capped, because this list now shares a page.** It was a screen of
+        its own, where a long list was the point; on the one page it would
+        bury everything below it after a few months of training. The
+        newest few show and the rest are one press away.
+      */}
+      <Section
+        title="Sessions"
+        description={`${String(completed.length)} logged${abandoned.length > 0 ? ` · ${String(abandoned.length)} abandoned` : ''}`}
+      >
         {workouts.data === undefined ? (
           <Card>
             <p className="text-ink-500 text-sm">Loading…</p>
@@ -170,7 +168,7 @@ export function HistoryPage() {
           </Empty>
         ) : (
           <ul className="space-y-2">
-            {sessions.map((workout) => (
+            {(showAll ? sessions : sessions.slice(0, RECENT)).map((workout) => (
               <li key={workout.id}>
                 <SessionRow
                   workout={workout}
@@ -199,7 +197,7 @@ export function HistoryPage() {
                   onReopen={() => {
                     reopenWorkout.mutate(workout.id, {
                       onSuccess: (result) => {
-                        if (result.kind === 'reopened') void navigate('/train')
+                        if (result.kind === 'reopened') window.scrollTo({ top: 0 })
                       },
                     })
                   }}
@@ -207,6 +205,18 @@ export function HistoryPage() {
               </li>
             ))}
           </ul>
+        )}
+        {!showAll && sessions.length > RECENT && (
+          <Button
+            variant="ghost"
+            full
+            className="mt-2"
+            onClick={() => {
+              setShowAll(true)
+            }}
+          >
+            Show all {sessions.length}
+          </Button>
         )}
       </Section>
     </div>

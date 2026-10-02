@@ -1,4 +1,6 @@
+import { ChevronLeft } from 'lucide-react'
 import type { ReactNode } from 'react'
+import { Link } from 'react-router-dom'
 
 /**
  * The top of every screen, treated once instead of seventeen times.
@@ -7,6 +9,13 @@ import type { ReactNode } from 'react'
  * was the smaller half of the problem: a heading and a grey line is what
  * a settings pane looks like, so every screen in the app opened the same
  * way a form does.
+ *
+ * **Every header carries a way back, because there is no navigation.**
+ * The app is one page; the only screens with a header are the ones a
+ * link on that page leads to — Program and Settings — so a back link is
+ * true of every caller rather than an option one of them sets. It goes to
+ * the page rather than `history.back()`, which would leave the app when
+ * the screen was opened directly.
  *
  * It briefly carried a lit accent rule above the title, and that is gone
  * again. **A mark that means nothing has to at least read as structure,
@@ -52,6 +61,14 @@ export function PageHeader({
 }) {
   return (
     <header className="mb-6">
+      <Link
+        viewTransition
+        to="/today"
+        className="text-ink-500 hover:text-ink-300 tap-target -ml-1 mb-1 inline-flex items-center gap-1 text-sm"
+      >
+        <ChevronLeft size={16} aria-hidden />
+        Back
+      </Link>
       <div className="flex items-end justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
           {leading}

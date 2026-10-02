@@ -10,9 +10,11 @@ as well, for map tiles and geocoding; the map went when the app narrowed
 to training, and the host went with it. **Each host was a decision, not
 a precedent.**
 
-Three screens are tabs — **You** (`/today`), **Train** and **History** —
-with Program a link from Train and Settings a link from You. Every route
-a removed area once had redirects to `/today` (`src/app/router.tsx`),
+The app is **one page with no navigation** (`features/today/HomePage.tsx`):
+the character sheet, the next session, the standards, the trend, the
+activity grid and the history, top to bottom — or the session player
+while a workout is open. Program and Settings are links from it, each
+with a Back link. Every route a removed screen once had redirects to `/today` (`src/app/router.tsx`),
 because an installed PWA goes on asking for the paths it was installed
 with.
 
@@ -176,7 +178,7 @@ instead.**
 
 Starting Thursday's session (Push B) and logging the first set of the bench:
 
-1. **`features/train/TrainZone.tsx`** (on Train) or **`NextSessionCard.tsx`** (on You) renders the next day and calls
+1. **`features/train/NextSessionCard.tsx`**, on the one page, renders the next day and calls
    `useStartWorkout()`.
 2. **`features/train/hooks.ts`** resolves `AppServices` from context and
    calls the use-case.

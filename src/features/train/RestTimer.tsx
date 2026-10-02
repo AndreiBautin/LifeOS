@@ -68,35 +68,16 @@ export function RestTimer({ startedAt, seconds, onDismiss }: Props) {
 
   return (
     <div
+      className="border-ink-800 bg-ink-900 fixed inset-x-0 bottom-0 z-30 mx-auto max-w-2xl rounded-t-2xl border-t px-4 py-3"
       /*
-       * `lg:left-[var(--sidebar-w)]` reads the same custom property
-       * `AppShell.tsx` sets on the shell for its own collapsible rail:
-       * the bar carries its own background, so it has to actually move
-       * clear of the rail rather than gain invisible padding the way
-       * the page's own content does — and reading the variable rather
-       * than a bare `56` is what keeps it in step when the rail
-       * collapses, with no separate prop to wire through.
+       * Pinned to the bottom edge and padded past the home indicator.
+       * It sat on top of a navigation bar until the app became one page;
+       * with no bar the timer is the bottom of the screen, and the safe
+       * area is the only thing it has to clear. A style rather than an
+       * arbitrary Tailwind value, because `env()` inside a bracket class
+       * is fragile across builds and this must not resolve to zero.
        */
-      className="border-ink-800 bg-ink-900 fixed inset-x-0 lg:left-[var(--sidebar-w)] z-30 mx-auto max-w-2xl lg:max-w-none rounded-t-2xl border-t px-4 py-3 transition-[left] duration-200"
-      /*
-       * Sits on top of the navigation, and the navigation is taller than
-       * it looks.
-       *
-       * `AppShell` pins the nav to `bottom-0` and pads it by
-       * `env(safe-area-inset-bottom)`, so its real height is the 4rem of
-       * buttons *plus* the home indicator — about 34px more on a phone
-       * that has one. A plain `bottom-16` clears only the 4rem, which
-       * left the timer's bottom third behind a nav that also outranks it
-       * on z-index: the pause, undo and Done controls were cut in half on
-       * the device and perfectly fine in a desktop browser, which is why
-       * it survived.
-       *
-       * Written as a style rather than an arbitrary Tailwind value
-       * because `env()` inside a bracket class is fragile across builds,
-       * and this is the one measurement that must not silently resolve
-       * to zero.
-       */
-      style={{ bottom: 'calc(4rem + var(--safe-bottom))' }}
+      style={{ paddingBottom: 'calc(0.75rem + var(--safe-bottom))' }}
       role="status"
       aria-live="polite"
     >

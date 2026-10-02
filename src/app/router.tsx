@@ -1,11 +1,9 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom'
 
 import { HomePage } from '@/features/today/HomePage'
-import { HistoryPage } from '@/features/history/HistoryPage'
 import { ProgramPage } from '@/features/program/ProgramPage'
 import { NotFoundPage } from '@/features/not-found/NotFoundPage'
 import { SettingsPage } from '@/features/settings/SettingsPage'
-import { TrainPage } from '@/features/train/TrainPage'
 
 import { AppShell } from './layout/AppShell'
 import { RouteError } from './RouteError'
@@ -56,8 +54,10 @@ export const router = createBrowserRouter(
           'trips',
           'character',
           'party',
+          // The app became one page and these two tabs became sections of it.
+          'train',
+          'history',
         ].map((path) => ({ path, element: <Navigate to="/today" replace /> })),
-        { path: 'train', element: <TrainPage /> },
         /*
          * The Plan screen is gone and `/plan` lands on the Program page.
          * It explained how each muscle's weekly volume was arrived at,
@@ -70,7 +70,6 @@ export const router = createBrowserRouter(
         { path: 'plan', element: <Navigate to="/program" replace /> },
         { path: 'program', element: <ProgramPage /> },
         { path: 'today', element: <HomePage /> },
-        { path: 'history', element: <HistoryPage /> },
         { path: 'settings', element: <SettingsPage /> },
         { path: '*', element: <NotFoundPage /> },
       ],
