@@ -44,7 +44,7 @@ interface Props {
 }
 
 export function SetRow(props: Props) {
-  const { set, index, exerciseId, workoutId, units, isOpen, onOpen } = props
+  const { set, index, exerciseId, workoutId, units, isOpen, onOpen, onLog } = props
   const { data: previous } = usePreviousSet(exerciseId, index, workoutId, props.variant)
 
   const done = set.outcome === 'completed' && set.completedAt !== undefined
@@ -76,59 +76,97 @@ export function SetRow(props: Props) {
       ? describePrescription(set.prescription)
       : `${formatLoad(set.plannedLoad, units)} × ${set.prescription.reps.kind === 'amrap' ? `${String(set.prescription.reps.minimum)}+` : String(set.plannedReps ?? '')}`
 
+  /*
+   * **One tap logs the set as planned.** The row's own press opens the
+   * editor, which was the only way in — so a set done exactly as written
+   * cost two taps and a scroll to a button. The check does it in one,
+   * with the planned numbers; anything else is still the editor.
+   *
+   * Offered only where the plan holds a number to log, or where there is
+   * nothing to type: a warm-up, a block of time. An open slot with no
+   * history has no load to confirm, and logging it blank would file a set
+   * with no weight.
+   */
+  const quick =
+    !done &&
+    !skipped &&
+    (set.plannedLoad !== undefined || set.isWarmup || set.prescription.reps.kind === 'time')
+
+  const headline = done
+    ? summary
+    : set.plannedLoad !== undefined
+      ? plannedSummary
+      : describePrescription(set.prescription, repsOverride)
+
+  const detail = done
+    ? (set.prescription.label ?? 'Logged')
+    : skipped
+      ? 'Skipped'
+      : previous?.load !== undefined
+        ? `Last ${formatLoad(previous.load, units)} × ${String(previous.reps ?? '—')}`
+        : (set.prescription.label ??
+          (set.plannedLoad === undefined && !quick ? 'Tap to enter' : undefined))
+
   if (!isOpen) {
     return (
-      <button
-        type="button"
-        onClick={onOpen}
-        aria-label={`Set ${String(index + 1)}, ${summary}. ${done ? 'Logged' : skipped ? 'Skipped' : 'Tap to log'}.`}
+      <div
         className={cn(
-          'tap-target flex w-full items-center justify-between gap-3 rounded-xl border px-3 py-2.5 text-left transition-colors',
+          'flex items-stretch overflow-hidden rounded-xl border transition-colors',
           done && 'border-good-500/30 bg-good-500/10',
           skipped && 'border-ink-800 bg-ink-850 opacity-60',
           !done && !skipped && 'border-ink-800 bg-ink-850 hover:border-ink-700',
         )}
       >
-        <span className="flex items-center gap-2.5">
+        <button
+          type="button"
+          onClick={onOpen}
+          aria-label={`Set ${String(index + 1)}, ${headline}. ${done ? 'Logged' : skipped ? 'Skipped' : 'Edit'}.`}
+          className="tap-target flex min-w-0 flex-1 items-center gap-3 px-3 py-2.5 text-left"
+        >
           <span
             className={cn(
-              'flex size-6 shrink-0 items-center justify-center rounded-md text-xs font-semibold',
+              'flex size-7 shrink-0 items-center justify-center rounded-lg text-xs font-semibold',
               done ? 'bg-good-500 text-black' : 'bg-ink-800 text-ink-300',
             )}
             aria-hidden
           >
-            {done ? <Check size={14} /> : skipped ? <Minus size={14} /> : index + 1}
+            {done ? <Check size={15} /> : skipped ? <Minus size={14} /> : index + 1}
           </span>
-          <span className="flex flex-col">
+          <span className="flex min-w-0 flex-col">
             <span
               className={cn(
-                'numeric text-sm font-semibold',
-                done ? 'text-good-500' : 'text-ink-100',
+                'numeric truncate text-base font-semibold',
+                done ? 'text-good-500' : 'text-ink-50',
               )}
             >
-              {skipped ? 'Skipped' : summary}
+              {skipped ? describePrescription(set.prescription, repsOverride) : headline}
             </span>
-            {/*
-              "Top set" and "Back-off" are the same exercise at the same
-              rack but are not interchangeable — the top set is the reading
-              everything after it is loaded from.
-            */}
-            {set.prescription.label !== undefined && (
-              <span className="text-ink-500 text-[11px] leading-tight">
-                {set.prescription.label}
-              </span>
+            {detail !== undefined && (
+              <span className="text-ink-500 numeric truncate text-xs">{detail}</span>
             )}
           </span>
-        </span>
+          <span className="ml-auto flex shrink-0 items-center gap-1.5">
+            {set.isWarmup && <Badge>warm-up</Badge>}
+            {set.prescription.reps.kind === 'amrap' && !done && <Badge tone="accent">AMRAP</Badge>}
+          </span>
+        </button>
 
-        <span className="flex items-center gap-2">
-          {set.isWarmup && <Badge>warm-up</Badge>}
-          {set.prescription.reps.kind === 'amrap' && !done && <Badge tone="accent">AMRAP</Badge>}
-          {!done && !skipped && set.plannedLoad !== undefined && (
-            <span className="text-ink-500 numeric text-xs">{plannedSummary}</span>
-          )}
-        </span>
-      </button>
+        {quick && (
+          <button
+            type="button"
+            onClick={() => {
+              onLog({
+                ...(set.plannedLoad !== undefined ? { load: set.plannedLoad } : {}),
+                ...(set.plannedReps !== undefined ? { reps: set.plannedReps } : {}),
+              })
+            }}
+            aria-label={`Log set ${String(index + 1)} as planned${set.plannedLoad === undefined ? '' : `: ${plannedSummary}`}`}
+            className="border-ink-800 text-ink-300 hover:text-accent-400 hover:bg-accent-500/10 flex w-14 shrink-0 items-center justify-center border-l transition-colors"
+          >
+            <Check size={20} aria-hidden />
+          </button>
+        )}
+      </div>
     )
   }
 

@@ -65,6 +65,18 @@ standards.ts`): the estimated max, its multiple of bodyweight, and the
   days — the old bars were a rolling window read off `Date.now()` in a
   component. The streak counts weeks with a finished session and does
   not break on a week that has not had its session yet.
+- **The session player got the same pass.** A sticky session bar
+  (sets settled, elapsed time from `workout.startedAt` through the
+  clock port, and a strip of exercises by name that follows the current
+  one) replaced "Exercise 6 of 8" and a row of unlabelled dashes. **A
+  set row leads with the planned load**, last time underneath, and a
+  check button **logs it as planned in one tap** — offered only when
+  the plan holds a number to log, or there is nothing to type (a
+  warm-up, a block of time), so an open slot cannot be filed with no
+  weight. The row's own press still opens the editor. Finish stays
+  quiet ("Finish early · N sets left") until nothing is pending, the
+  day's targets are pips, and the rest timer is a ring with +30s rather
+  than a second whole rest period. The report opens on a `.hero-panel`.
 - **The seasons survive only as the backdrop's tint**
   (`domain/time/season.ts`). Nothing is scored against one.
 - **The demo is four months of sessions and nothing else**; its guard is

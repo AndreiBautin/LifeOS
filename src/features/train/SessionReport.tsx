@@ -1,9 +1,9 @@
-import { ArrowDown, ArrowUp, Minus, Sparkles } from 'lucide-react'
+import { ArrowDown, ArrowUp, BarChart3, Minus, Sparkles, TrendingUp } from 'lucide-react'
 
 import type { WorkoutReport } from '@/application/use-cases/training/finish-workout'
 import { MUSCLE_GROUP_LABELS } from '@/domain/exercises/taxonomy'
 import { formatLoad, type WeightUnit } from '@/domain/units/weight'
-import { Badge, Button, Card, Section } from '@/components/shared/primitives'
+import { Badge, Button, Card, CardHeading } from '@/components/shared/primitives'
 import { useSettings } from '@/app/context'
 
 /**
@@ -109,72 +109,84 @@ function ApplyEstimates({ progress }: { readonly progress: WorkoutReport['progre
   )
 }
 
+/*
+ * **The report opens the way the home page does: on a hero.** The end of
+ * a session is the one moment worth marking, and it read as a settings
+ * pane — a bare heading, three loose stat boxes and two sections under lit
+ * rules. The hero carries the headline and the numbers; what follows is
+ * cards, the same as everywhere else in the app.
+ */
 export function SessionReport({ report, units, onDismiss }: Props) {
   return (
-    <div>
-      <header className="mb-6">
-        <p className="text-accent-400 flex items-center gap-1.5 text-xs font-medium tracking-wide uppercase">
+    <div className="mx-auto max-w-2xl space-y-4 pb-8">
+      <section className="hero-panel p-5 sm:p-6" aria-labelledby="report-title">
+        <p className="text-accent-400 flex items-center gap-1.5 text-xs font-semibold tracking-[0.14em] uppercase">
           <Sparkles size={14} aria-hidden />
           Session complete
         </p>
-        <h1 className="text-ink-50 mt-1 text-2xl font-semibold tracking-tight">
+        <h1
+          id="report-title"
+          className="text-ink-50 mt-2 text-3xl font-semibold tracking-tight sm:text-4xl"
+        >
           {report.workout.title}
         </h1>
-        <p className="text-ink-300 mt-2">{report.headline}</p>
-      </header>
+        <p className="text-ink-300 mt-2 text-sm">{report.headline}</p>
 
-      <div className="mb-8 grid grid-cols-3 gap-2">
-        <Stat label="Working sets" value={String(report.workingSets)} />
-        <Stat label="Tonnage" value={formatLoad(report.tonnage, units)} />
-        <Stat label="Duration" value={`${String(report.durationMinutes)} min`} />
-      </div>
-
-      {report.volumeByMuscle.length > 0 && (
-        <Section
-          title="Volume"
-          description="Working sets, counted whole and only for the muscle each was programmed for"
-        >
-          <Card>
-            <ul className="space-y-1.5">
-              {report.volumeByMuscle.map(({ muscle, sets }) => (
-                <li key={muscle} className="flex justify-between text-sm">
-                  <span className="text-ink-300">{MUSCLE_GROUP_LABELS[muscle]}</span>
-                  <span className="numeric text-ink-100 font-medium">{sets}</span>
-                </li>
-              ))}
-            </ul>
-          </Card>
-        </Section>
-      )}
+        <dl className="border-ink-800/80 mt-5 grid grid-cols-3 gap-px overflow-hidden rounded-2xl border bg-[color-mix(in_oklab,var(--color-ink-800)_70%,transparent)]">
+          <Stat label="Sets" value={String(report.workingSets)} />
+          <Stat
+            label="Volume"
+            value={Math.round(report.tonnage).toLocaleString()}
+            suffix={` ${units}`}
+          />
+          <Stat label="Duration" value={String(report.durationMinutes)} suffix=" min" />
+        </dl>
+      </section>
 
       {report.progress.length > 0 && (
-        <Section title="Against last time">
-          <Card>
-            <ul className="space-y-2.5">
-              {report.progress.map((entry) => (
-                <li key={entry.exerciseId} className="flex items-center justify-between gap-3">
-                  <span className="text-ink-100 truncate text-sm">{entry.name}</span>
-                  <span className="flex shrink-0 items-center gap-2">
-                    {entry.estimate !== undefined && (
-                      <span className="text-ink-500 numeric text-xs">
-                        e1RM {formatLoad(entry.estimate.value, units)}
-                        {!entry.estimate.isReliable && '*'}
-                      </span>
-                    )}
-                    <Verdict verdict={entry.verdict} />
-                  </span>
-                </li>
-              ))}
-            </ul>
-            {report.progress.some((entry) => entry.estimate?.isReliable === false) && (
-              <p className="text-ink-500 mt-3 text-xs">
-                * Estimated from a high-rep set, where the formulas lose accuracy.
-              </p>
-            )}
+        <Card>
+          <CardHeading icon={<TrendingUp size={16} aria-hidden />} title="Against last time" />
+          <ul className="space-y-2.5">
+            {report.progress.map((entry) => (
+              <li key={entry.exerciseId} className="flex items-center justify-between gap-3">
+                <span className="text-ink-100 truncate text-sm">{entry.name}</span>
+                <span className="flex shrink-0 items-center gap-2">
+                  {entry.estimate !== undefined && (
+                    <span className="text-ink-500 numeric text-xs">
+                      e1RM {formatLoad(Math.round(entry.estimate.value), units)}
+                      {!entry.estimate.isReliable && '*'}
+                    </span>
+                  )}
+                  <Verdict verdict={entry.verdict} />
+                </span>
+              </li>
+            ))}
+          </ul>
+          {report.progress.some((entry) => entry.estimate?.isReliable === false) && (
+            <p className="text-ink-500 mt-3 text-xs">
+              * Estimated from a high-rep set, where the formulas lose accuracy.
+            </p>
+          )}
 
-            <ApplyEstimates progress={report.progress} />
-          </Card>
-        </Section>
+          <ApplyEstimates progress={report.progress} />
+        </Card>
+      )}
+
+      {report.volumeByMuscle.length > 0 && (
+        <Card>
+          <CardHeading icon={<BarChart3 size={16} aria-hidden />} title="Sets by muscle" />
+          <ul className="grid grid-cols-2 gap-x-6 gap-y-1.5">
+            {report.volumeByMuscle.map(({ muscle, sets }) => (
+              <li key={muscle} className="flex justify-between text-sm">
+                <span className="text-ink-300">{MUSCLE_GROUP_LABELS[muscle]}</span>
+                <span className="numeric text-ink-100 font-medium">{sets}</span>
+              </li>
+            ))}
+          </ul>
+          <p className="text-ink-500 mt-3 text-xs">
+            Counted whole, and only for the muscle each exercise is programmed for.
+          </p>
+        </Card>
       )}
 
       <Button variant="primary" size="lg" full onClick={onDismiss}>
@@ -184,12 +196,23 @@ export function SessionReport({ report, units, onDismiss }: Props) {
   )
 }
 
-function Stat({ label, value }: { readonly label: string; readonly value: string }) {
+function Stat({
+  label,
+  value,
+  suffix,
+}: {
+  readonly label: string
+  readonly value: string
+  readonly suffix?: string
+}) {
   return (
-    <Card className="p-3 text-center">
-      <p className="numeric text-ink-50 text-xl font-semibold">{value}</p>
-      <p className="text-ink-500 mt-0.5 text-xs">{label}</p>
-    </Card>
+    <div className="bg-ink-950/60 px-3 py-3">
+      <dt className="text-ink-500 text-[0.7rem] font-medium tracking-wide uppercase">{label}</dt>
+      <dd className="numeric text-ink-50 mt-1 text-xl font-semibold">
+        {value}
+        {suffix !== undefined && <span className="text-ink-500 text-sm font-normal">{suffix}</span>}
+      </dd>
+    </div>
   )
 }
 
