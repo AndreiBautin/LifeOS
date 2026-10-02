@@ -14,17 +14,10 @@ import { useServices } from '@/app/context'
 import type { Exercise } from '@/domain/exercises/exercise'
 import type { ExerciseId } from '@/domain/ids/ids'
 import type { WorkoutLog } from '@/domain/logging/workout-log'
-import {
-  isEntryComplete,
-  loggedVolume,
-  remainingSets,
-  totalWorkingSets,
-} from '@/domain/logging/workout-log'
+import { isEntryComplete, remainingSets, totalWorkingSets } from '@/domain/logging/workout-log'
 import { describePrescription } from '@/domain/programs/prescription'
 import { slotRoleLabel, slotRoleTone, slotVariant } from '@/domain/programs/program'
-import { MUSCLE_GROUP_LABELS } from '@/domain/exercises/taxonomy'
 import type { WeightUnit } from '@/domain/units/weight'
-import { sessionProgress } from '@/domain/volume/session-target'
 import { Badge, Button, Card } from '@/components/shared/primitives'
 import { useKeepAwake } from '@/shared/hooks/useKeepAwake'
 import { cn } from '@/lib/cn'
@@ -283,8 +276,6 @@ export function SessionPlayer({
         )}
       </section>
 
-      <VolumeTally workout={workout} exercises={exercises} />
-
       {/*
         **Next is named, and it lights once this exercise is done.** Paging
         was a pair of chevrons either side of the dashes; "Up next · Dips"
@@ -408,83 +399,6 @@ export function SessionPlayer({
 function firstIncompleteIndex(workout: WorkoutLog): number {
   const found = workout.entries.findIndex((entry) => !isEntryComplete(entry))
   return found === -1 ? 0 : found
-}
-
-/**
- * How much of the day's target has been done, as one pip per set.
- *
- * The plan cannot know in advance whether every set will be done, so the
- * session says where it stands and the lifter decides — two more sets of
- * dips, or not, but knowingly. Counted by `loggedVolume`, which is what
- * the planner uses on the other side of the comparison; a tally measured
- * by different rules from the target beside it would be worse than none.
- *
- * **Pips, not bars.** It was three thin progress bars the width of the
- * screen — the shape the weekly volume was replaced for. A target here is
- * a handful of sets, and a row of five pips with two lit is countable at
- * a glance where a bar two-fifths full is an estimate.
- */
-function VolumeTally({
-  workout,
-  exercises,
-}: {
-  readonly workout: WorkoutLog
-  readonly exercises: readonly Exercise[]
-}) {
-  const targets = workout.volumeTargets
-  if (targets === undefined) return null
-
-  const done = loggedVolume(workout, (id) => exercises.find((exercise) => exercise.id === id))
-  const rows = sessionProgress(targets, done)
-  if (rows.length === 0) return null
-
-  const met = rows.every((row) => row.remaining === 0)
-
-  return (
-    <div className="card mt-4 p-4 lg:p-6">
-      <p className="text-ink-500 mb-3 text-xs font-medium tracking-wide uppercase">
-        {met ? 'Every target hit' : 'Today’s targets'}
-      </p>
-      <ul className="grid gap-x-6 gap-y-2.5 sm:grid-cols-2">
-        {rows.map((row) => {
-          const pips = Math.max(row.target, Math.ceil(row.done))
-          const reached = row.remaining === 0
-          return (
-            <li key={row.muscle} className="flex items-center justify-between gap-3">
-              <span className="text-ink-300 text-sm">{MUSCLE_GROUP_LABELS[row.muscle]}</span>
-              <span className="flex items-center gap-2">
-                <span className="flex gap-1" aria-hidden>
-                  {Array.from({ length: pips }, (_, pip) => (
-                    <span
-                      key={pip}
-                      className={cn(
-                        'size-2.5 rounded-full',
-                        pip < Math.floor(row.done)
-                          ? reached
-                            ? 'bg-good-500'
-                            : 'bg-accent-400'
-                          : pip < row.done
-                            ? 'bg-accent-400/50'
-                            : 'bg-ink-800',
-                      )}
-                    />
-                  ))}
-                </span>
-                <span
-                  className={cn(
-                    'numeric w-9 text-right text-xs',
-                    reached ? 'text-good-500' : 'text-ink-500',
-                  )}
-                >
-                  {row.done}/{row.target}
-                </span>
-              </span>
-            </li>
-          )
-        })}
-      </ul>
-    </div>
-  )
 }
 
 /**

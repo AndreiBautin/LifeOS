@@ -342,7 +342,6 @@ function buildFromDay(
     ...(request.athlete.bodyweight !== undefined ? { bodyweight: request.athlete.bodyweight } : {}),
     // Frozen here rather than read back off the program, so a tally the
     // lifter is measuring against cannot move under them mid-session.
-    ...(day.volumeTargets !== undefined ? { volumeTargets: day.volumeTargets } : {}),
   }
 }
 

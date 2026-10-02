@@ -9,25 +9,30 @@ import { useWeekSummary } from './hooks'
 import { useNextSession } from './useNextSession'
 
 /**
- * This week's accessory sets against the week's targets, as one shape.
+ * This week's sets against what the routine schedules, as one shape.
  *
  * **It was ten full-width bars**, reported as _"plain, clunky, and takes
  * up most of the screen"_ — one row per muscle, the width of the page,
  * under its own section heading. A radar answers the same question in a
- * card: the dashed ring is the target, the filled shape is the week so
+ * card: the dashed ring is what is scheduled, the filled shape is the week so
  * far, and a muscle that is behind shows as a dent. The numbers stay on
  * every spoke, because a shape alone cannot be checked.
  *
- * **Against this week's plan, deload included.** The targets come from
- * `scheduledVolume` over the week the lifter is actually in, so a light
- * week is judged against a light week's numbers.
+ * **"Scheduled", not "target", because that is all it is now.** The
+ * numbers come from `scheduledVolume` — each exercise's set count,
+ * credited to the muscle it trains — over the week the lifter is in,
+ * deload included. There used to be computed per-muscle targets behind
+ * them; with a written routine there is only the routine, so the card
+ * says how much of the week's listed work is done, and a missed day
+ * shows as a dent. It is the one place that view adds anything: within a
+ * day the set rows already say it.
  *
  * Muscles worked with no target are named underneath rather than drawn —
  * a spoke with no ring has nothing to be measured against.
  */
 const SIZE = { width: 360, height: 300 }
 const CENTER = { x: 180, y: 150 }
-/** The target ring's radius; the shape may run past it to `OVERSHOOT`. */
+/** The scheduled ring's radius; the shape may run past it to `OVERSHOOT`. */
 const RING = 78
 const OVERSHOOT = 1.25
 
@@ -58,7 +63,7 @@ export function WeekCard() {
       <CardHeading icon={<Target size={16} aria-hidden />} title="This week" />
       <p className="text-ink-300 text-sm">
         <span className="numeric text-ink-50 font-semibold">{displaySets(totalDone)}</span> of{' '}
-        <span className="numeric">{totalTarget}</span> target sets
+        <span className="numeric">{totalTarget}</span> scheduled sets
         <span className="text-ink-500">
           {' '}
           · {summary.data?.sessions ?? 0} session{summary.data?.sessions === 1 ? '' : 's'}
@@ -69,7 +74,7 @@ export function WeekCard() {
         <Radar spokes={spokes} />
       ) : (
         <p className="text-ink-500 mt-3 text-xs">
-          The week&rsquo;s targets appear once it is planned.
+          The week&rsquo;s sets appear once it is planned.
         </p>
       )}
 
@@ -127,7 +132,7 @@ function Radar({ spokes }: { readonly spokes: readonly Spoke[] }) {
         )
         .join(', ')}
     >
-      {/* The grid: half way, and the target itself, dashed and lit. */}
+      {/* The grid: half way, and the scheduled sets, dashed and lit. */}
       <polygon points={ring(0.5)} fill="none" stroke="var(--color-ink-800)" />
       {spokes.map((_, index) => {
         const end = pointAt(index, RING * OVERSHOOT)

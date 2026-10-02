@@ -5,7 +5,7 @@ import { Badge, Card, CardHeading, Empty } from '@/components/shared/primitives'
 import { buttonStyles } from '@/components/shared/styles'
 
 import { useExercises } from './hooks'
-import { SessionOutline, VolumeTargets } from './SessionOutline'
+import { SessionOutline } from './SessionOutline'
 import { useNextSession } from './useNextSession'
 
 /**
@@ -55,8 +55,6 @@ export function NextSessionCard() {
       )}
 
       <SessionOutline day={day} library={exercises.data ?? []} />
-
-      <VolumeTargets day={day} />
     </Card>
   )
 }

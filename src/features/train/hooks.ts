@@ -150,7 +150,6 @@ export function useStartWorkout() {
 export function useLogSet(workoutId: WorkoutId | undefined) {
   const services = useServices()
   const { settings } = useSettings()
-  const exercises = useExercises()
   const client = useQueryClient()
 
   return useMutation({
@@ -161,7 +160,6 @@ export function useLogSet(workoutId: WorkoutId | undefined) {
         {
           ...services,
           roundingIncrement: settings.roundingIncrement,
-          exerciseFor: (id: ExerciseId) => exercises.data?.find((exercise) => exercise.id === id),
         },
       )
     },
@@ -174,7 +172,6 @@ export function useLogSet(workoutId: WorkoutId | undefined) {
 export function useClearSet(workoutId: WorkoutId | undefined) {
   const services = useServices()
   const { settings } = useSettings()
-  const exercises = useExercises()
   const client = useQueryClient()
 
   return useMutation({
@@ -185,7 +182,6 @@ export function useClearSet(workoutId: WorkoutId | undefined) {
         {
           ...services,
           roundingIncrement: settings.roundingIncrement,
-          exerciseFor: (id: ExerciseId) => exercises.data?.find((exercise) => exercise.id === id),
         },
       )
     },

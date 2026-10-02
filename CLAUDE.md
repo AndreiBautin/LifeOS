@@ -74,9 +74,21 @@ standards.ts`): the estimated max, its multiple of bodyweight, and the
   the plan holds a number to log, or there is nothing to type (a
   warm-up, a block of time), so an open slot cannot be filed with no
   weight. The row's own press still opens the editor. Finish stays
-  quiet ("Finish early · N sets left") until nothing is pending, the
-  day's targets are pips, and the rest timer is a ring with +30s rather
-  than a second whole rest period. The report opens on a `.hero-panel`.
+  quiet ("Finish early · N sets left") until nothing is pending, and
+  the rest timer is a ring with +30s rather than a second whole rest
+  period. The report opens on a `.hero-panel`.
+- **Volume targets are gone from the day; only the week keeps a
+  view.** Asked: _"I feel like that might be outdated since we just use
+  a flat volume across the board now"_. It was: a day's
+  `volumeTargets` are the written routine's own set counts credited to
+  each exercise's muscle, so "Aiming for lats 5" on the plan card and
+  the player's per-muscle pips repeated the set rows, and
+  `replanAccessoryVolume` — built to grow accessories when RTS back-offs
+  were skipped — solved for the same count on every logged set and
+  changed nothing. All three are deleted, and the log no longer copies
+  the targets (old logs still carry the optional field). `WeekCard`
+  keeps the week-level view, relabelled **scheduled** rather than
+  target: across days it is the one place a missed session shows.
 - **The calendar picks the session; the cursor is gone.** Asked for as
   _"the app knows what day it is and the workouts each map to a day so
   we should use that rather than keeping a cursor"_. The weekday picks

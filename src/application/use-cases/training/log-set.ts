@@ -1,8 +1,6 @@
-import type { Exercise } from '@/domain/exercises/exercise'
 import type { ExerciseId, WorkoutId } from '@/domain/ids/ids'
 import type { LoggedSet, SetOutcome, WorkoutLog } from '@/domain/logging/workout-log'
 import { comparePerformance } from '@/domain/logging/workout-log'
-import { replanAccessoryVolume } from '@/domain/volume/replan-accessories'
 import type { Clock, WorkoutRepository } from '@/domain/repositories/ports'
 
 /**
@@ -24,12 +22,6 @@ export interface LogSetDeps {
    * the new bar weight has to land on plates the lifter owns.
    */
   readonly roundingIncrement: number
-  /**
-   * Needed because resizing the accessory work has to know what each
-   * exercise trains. Taken as a function rather than a repository so the
-   * use-case stays synchronous once the workout is loaded.
-   */
-  readonly exerciseFor: (id: ExerciseId) => Exercise | undefined
 }
 
 /**
@@ -66,15 +58,14 @@ export async function logSet(request: LogSetRequest, deps: LogSetDeps): Promise<
    * next session lifts is decided by what this one logged, and that is
    * read when the session starts rather than rewritten as it runs.
    */
-  const logged = updateSet(workout, request, deps.clock.now())
-
   /*
-   * One re-plan left, where there were two. The other rewrote the load on
-   * pending back-offs and went with them; this one rewrites the *number*
-   * of pending accessory sets, which is a volume decision and has
-   * nothing to do with how the load is chosen.
+   * **Nothing is re-planned as the session runs.** The accessory re-plan
+   * grew or shrank an exercise to meet its muscle's day target when RTS
+   * back-offs were skipped. With one exercise per muscle per day and the
+   * target being that exercise's own set count, it solved for the same
+   * number on every set and changed nothing — so it went.
    */
-  const updated = replanAccessoryVolume(logged, (id) => deps.exerciseFor(id))
+  const updated = updateSet(workout, request, deps.clock.now())
 
   await deps.workouts.save(updated)
   return updated
