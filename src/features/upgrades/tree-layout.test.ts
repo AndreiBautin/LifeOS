@@ -163,3 +163,35 @@ describe('layoutTree', () => {
     expect(layout.nodes.length).toBeGreaterThan(0)
   })
 })
+
+describe('groups in the tree', () => {
+  const grouped = (id: string, group: string, prerequisiteId?: string): LayoutInput => ({
+    ...node(id, 'tech', prerequisiteId),
+    group,
+  })
+
+  it('draws a group as a node between the branch and its members', () => {
+    const layout = layoutTree([
+      grouped('airpods', 'Apple'),
+      grouped('ipad', 'apple'),
+      node('lamp', 'tech'),
+    ])
+    const group = layout.nodes.find((one) => one.kind === 'group')
+
+    expect(group?.label).toBe('Apple')
+    expect(group?.row).toBe(1)
+    expect(at(layout, 'airpods')?.row).toBe(2)
+    expect(at(layout, 'ipad')?.row).toBe(2)
+    expect(at(layout, 'lamp')?.row).toBe(1)
+    // One group however the name is cased.
+    expect(layout.nodes.filter((one) => one.kind === 'group')).toHaveLength(1)
+    expect(layout.edges).toContainEqual({ from: group?.id, to: 'airpods', crossBranch: false })
+  })
+
+  it('leaves a node under its own prerequisite rather than its group', () => {
+    const layout = layoutTree([node('desk', 'tech'), grouped('arm', 'Gear', 'desk')])
+
+    expect(layout.nodes.some((one) => one.kind === 'group')).toBe(false)
+    expect(at(layout, 'arm')?.row).toBe(2)
+  })
+})

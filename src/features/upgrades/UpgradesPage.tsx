@@ -240,12 +240,73 @@ function EntryCard({
 
       <PrerequisitePicker entry={entry} others={others} />
 
+      <GroupField key={upgrade.id} entry={entry} others={others} />
+
       {error !== undefined && (
         <p role="alert" className="text-bad-500 mt-2 text-sm">
           {error}
         </p>
       )}
     </Card>
+  )
+}
+
+/**
+ * Which group a node is drawn under — Apple, Divoom, Gym.
+ *
+ * Saved on leaving the field or on Enter, and offered the groups already
+ * used on the same branch so two spellings of one brand do not become two
+ * nodes. Blank ungroups it.
+ */
+function GroupField({
+  entry,
+  others,
+}: {
+  readonly entry: TreeEntry
+  readonly others: readonly TreeEntry[]
+}) {
+  const update = useUpdateUpgrade()
+  const { upgrade } = entry
+  const [value, setValue] = useState(upgrade.group ?? '')
+  const listId = `groups-${upgrade.id}`
+  const known = [
+    ...new Set(
+      others
+        .filter((one) => shelfOf(one.upgrade) === shelfOf(upgrade))
+        .map((one) => one.upgrade.group?.trim() ?? '')
+        .filter((name) => name !== ''),
+    ),
+  ]
+
+  const save = (): void => {
+    if (value.trim() === (upgrade.group ?? '')) return
+    update.mutate({ id: upgrade.id, changes: { group: value } })
+  }
+
+  return (
+    <label className="mt-3 block">
+      <span className="text-ink-500 mb-1 block text-xs font-medium tracking-wide uppercase">
+        Group
+      </span>
+      <input
+        className={FIELD}
+        value={value}
+        list={listId}
+        placeholder="None — e.g. Apple"
+        onChange={(event) => {
+          setValue(event.target.value)
+        }}
+        onBlur={save}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter') save()
+        }}
+      />
+      <datalist id={listId}>
+        {known.map((name) => (
+          <option key={name} value={name} />
+        ))}
+      </datalist>
+    </label>
   )
 }
 

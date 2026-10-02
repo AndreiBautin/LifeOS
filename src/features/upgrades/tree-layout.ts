@@ -66,9 +66,11 @@ export interface LayoutInput {
   readonly prerequisiteId?: string | undefined
   /** Higher sorts leftward, so the tree reads most-wanted first. */
   readonly priority: number
+  /** Siblings sharing one are drawn under a node of that name. */
+  readonly group?: string | undefined
 }
 
-export type NodeKind = 'branch' | 'upgrade'
+export type NodeKind = 'branch' | 'group' | 'upgrade'
 
 export interface LaidOutNode {
   /** `shelf:<shelf>`, or the upgrade's own id. */
@@ -132,9 +134,36 @@ export const branchId = (shelf: UpgradeShelf): string => `shelf:${shelf}`
  * actually needs of its own.
  */
 export function layoutTree(
-  upgrades: readonly LayoutInput[],
+  input: readonly LayoutInput[],
   shelves: readonly UpgradeShelf[] = UPGRADE_SHELVES,
 ): TreeLayout {
+  /*
+   * **Groups become nodes of their own, then the tree is laid out as
+   * before.** An upgrade with a group and no same-branch prerequisite is
+   * re-parented onto a synthetic node named for the group, so "Apple"
+   * sits between Gadgets and both Apple items. One nested under a real
+   * prerequisite stays there: a gate is a stronger statement than a
+   * label, and moving it would hide why it is locked.
+   */
+  const original = new Map(input.map((one) => [one.id, one]))
+  const groups = new Map<string, LayoutInput>()
+  const regrouped = input.map((one) => {
+    const name = one.group?.trim() ?? ''
+    if (name === '') return one
+    const parent = one.prerequisiteId === undefined ? undefined : original.get(one.prerequisiteId)
+    if (parent?.shelf === one.shelf) return one
+    const id = `group:${one.shelf}:${name.toLowerCase()}`
+    const seen = groups.get(id)
+    groups.set(id, {
+      id,
+      title: seen?.title ?? name,
+      shelf: one.shelf,
+      priority: Math.max(seen?.priority ?? 0, one.priority),
+    })
+    return { ...one, prerequisiteId: id }
+  })
+  const upgrades = [...regrouped, ...groups.values()]
+
   const byId = new Map(upgrades.map((one) => [one.id, one]))
   const nodes: LaidOutNode[] = []
   const edges: LaidOutEdge[] = []
@@ -178,15 +207,19 @@ export function layoutTree(
     }
 
     deepestRow = Math.max(deepestRow, row)
-    nodes.push({
-      id: one.id,
-      kind: 'upgrade',
-      label: one.title,
-      col,
-      row,
-      shelf: one.shelf,
-      upgradeId: one.id,
-    })
+    nodes.push(
+      groups.has(one.id)
+        ? { id: one.id, kind: 'group', label: one.title, col, row }
+        : {
+            id: one.id,
+            kind: 'upgrade',
+            label: one.title,
+            col,
+            row,
+            shelf: one.shelf,
+            upgradeId: one.id,
+          },
+    )
 
     for (const kid of kids) edges.push({ from: one.id, to: kid.id, crossBranch: false })
 
@@ -229,7 +262,7 @@ export function layoutTree(
   }
 
   /* Cross-branch prerequisites, drawn as their own edges — see `crossBranch`. */
-  for (const one of upgrades) {
+  for (const one of input) {
     if (one.prerequisiteId === undefined) continue
     const parent = byId.get(one.prerequisiteId)
     if (parent === undefined || parent.shelf === one.shelf) continue

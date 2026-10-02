@@ -122,6 +122,17 @@ export interface Upgrade {
   readonly notes?: string
   readonly productLink?: string
   readonly prerequisiteId?: UpgradeId
+  /**
+   * A label gathering siblings under one node in the drawn tree — Apple,
+   * Divoom, Gym. Asked for as _"there's two apple items and two divoom
+   * items — maybe those get grouped like a real tech tree?"_
+   *
+   * **A label, not a gate.** A prerequisite says one thing must come
+   * before another and locks it until then; a group says nothing about
+   * order, so grouping two things never locks either. Free text, matched
+   * case-insensitively, and absent means ungrouped.
+   */
+  readonly group?: string
   readonly purchasedAt?: string
   readonly actualCostMinorUnits?: number
   readonly createdAt: string

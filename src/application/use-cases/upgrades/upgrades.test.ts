@@ -262,3 +262,22 @@ describe('the tree with a budget', () => {
     expect(armEntry?.affordable).toBe(true)
   })
 })
+
+describe('grouping an upgrade', () => {
+  it('sets, trims and clears a group without touching anything else', async () => {
+    const { deps, upgrades } = harness()
+    const desk = await required(addUpgrade({ title: 'Desk' }, deps))
+    const arm = await required(addUpgrade({ title: 'Arm', prerequisiteId: desk.id }, deps))
+
+    await updateUpgrade(arm.id, { group: '  Apple  ' }, deps)
+    expect((await upgrades.byId(arm.id))?.group).toBe('Apple')
+    expect((await upgrades.byId(arm.id))?.prerequisiteId).toBe(desk.id)
+
+    // Another change leaves the group alone.
+    await updateUpgrade(arm.id, { priority: 80 }, deps)
+    expect((await upgrades.byId(arm.id))?.group).toBe('Apple')
+
+    await updateUpgrade(arm.id, { group: '' }, deps)
+    expect((await upgrades.byId(arm.id))?.group).toBeUndefined()
+  })
+})

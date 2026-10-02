@@ -138,6 +138,8 @@ export interface UpgradeChanges {
   readonly productLink?: string
   /** `null` detaches from the tree; absent leaves the parent alone. */
   readonly prerequisiteId?: UpgradeId | null
+  /** A blank string or `null` ungroups; absent leaves the group alone. */
+  readonly group?: string | null
 }
 
 export async function updateUpgrade(
@@ -161,7 +163,13 @@ export async function updateUpgrade(
 
   const buying = changes.status === 'purchased' && existing.status !== 'purchased'
 
-  const { prerequisiteId: _prerequisiteId, estimatedCostMinorUnits: _estimate, ...rest } = existing
+  const {
+    prerequisiteId: _prerequisiteId,
+    estimatedCostMinorUnits: _estimate,
+    group: _group,
+    ...rest
+  } = existing
+  const group = changes.group === undefined ? existing.group : (changes.group ?? '').trim()
 
   const updated: Upgrade = {
     ...rest,
@@ -181,6 +189,7 @@ export async function updateUpgrade(
           estimatedCostMinorUnits:
             changes.estimatedCostMinorUnits ?? existing.estimatedCostMinorUnits,
         }),
+    ...(group === undefined || group === '' ? {} : { group }),
     ...(buying ? { purchasedAt: deps.clock.now().toISOString() } : {}),
   }
 

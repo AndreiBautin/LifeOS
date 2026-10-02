@@ -163,6 +163,7 @@ export function TechTree({
       title: entry.upgrade.title,
       shelf: shelfOf(entry.upgrade),
       priority: entry.upgrade.priority,
+      group: entry.upgrade.group,
       ...(entry.upgrade.prerequisiteId === undefined
         ? {}
         : { prerequisiteId: entry.upgrade.prerequisiteId }),
@@ -444,6 +445,26 @@ function TreeNodeBox({
         style={{ ...style, minHeight: 44, height: 44, top: y(node.col) - 22 }}
       >
         {node.shelf === undefined ? node.label : UPGRADE_SHELF_LABELS[node.shelf]}
+      </div>
+    )
+  }
+
+  /* A group gathers siblings; it is a heading in the tree, not a thing to buy. */
+  if (node.kind === 'group') {
+    return (
+      <div
+        className="control-surface rounded-lg [--control-tint:var(--color-accent-600)] text-ink-100 tree-node-in absolute grid place-items-center px-2 text-center text-xs font-semibold"
+        style={
+          {
+            ...style,
+            minHeight: 36,
+            height: 36,
+            top: y(node.col) - 18,
+            '--node-delay': `${String(node.row * 90)}ms`,
+          } as React.CSSProperties
+        }
+      >
+        {node.label}
       </div>
     )
   }
