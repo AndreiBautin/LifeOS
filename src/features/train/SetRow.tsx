@@ -1,7 +1,8 @@
-import { Check, Minus, SkipForward } from 'lucide-react'
+import { ArrowUp, Check, Minus, SkipForward } from 'lucide-react'
 import { useState } from 'react'
 
 import type { ExerciseId, WorkoutId } from '@/domain/ids/ids'
+import { isProgress, versusLast, type Versus } from '@/domain/logging/versus-last'
 import type { LoggedSet } from '@/domain/logging/workout-log'
 import { describePrescription } from '@/domain/programs/prescription'
 import { formatLoad } from '@/domain/units/weight'
@@ -154,6 +155,15 @@ export function SetRow(props: Props) {
             )}
           </span>
           <span className="ml-auto flex shrink-0 items-center gap-1.5">
+            {done && previous != null && (
+              <VersusChip
+                versus={versusLast(
+                  { load: set.actualLoad, reps: set.actualReps },
+                  { load: previous.load, reps: previous.reps },
+                )}
+                units={units}
+              />
+            )}
             {set.isWarmup && <Badge>warm-up</Badge>}
             {set.prescription.reps.kind === 'amrap' && !done && <Badge tone="accent">AMRAP</Badge>}
           </span>
@@ -190,6 +200,51 @@ export function SetRow(props: Props) {
    * rules now say so. The remount is the idiomatic reset.
    */
   return <SetEditorPanel {...props} previousLoad={previous?.load} previousReps={previous?.reps} />
+}
+
+/**
+ * What a filed set did against last time, on the row itself.
+ *
+ * Progress is lit and shines once as it appears; holding steady and
+ * slipping back are stated in the row's quiet ink, because a set that
+ * missed is information, not a failure to be flagged in red mid-session.
+ */
+function VersusChip({
+  versus,
+  units,
+}: {
+  readonly versus: Versus | undefined
+  readonly units: WeightUnit
+}) {
+  if (versus === undefined) return null
+  const text = describeVersus(versus, units)
+  if (!isProgress(versus)) {
+    return <span className="text-ink-500 numeric text-xs whitespace-nowrap">{text}</span>
+  }
+  return (
+    <span
+      className="beat-shine bg-accent-500/15 text-accent-400 numeric relative inline-flex items-center gap-1 overflow-hidden rounded-full px-2 py-0.5 text-xs font-semibold whitespace-nowrap"
+      aria-label={`${text} on last time`}
+    >
+      <ArrowUp size={12} aria-hidden />
+      {text}
+    </span>
+  )
+}
+
+function describeVersus(versus: Versus, units: WeightUnit): string {
+  switch (versus.kind) {
+    case 'heavier':
+      return `+${String(versus.by)} ${units}`
+    case 'more-reps':
+      return `+${String(versus.by)} ${versus.by === 1 ? 'rep' : 'reps'}`
+    case 'matched':
+      return 'Matched'
+    case 'fewer-reps':
+      return `−${String(versus.by)} ${versus.by === 1 ? 'rep' : 'reps'}`
+    case 'lighter':
+      return `−${String(versus.by)} ${units}`
+  }
 }
 
 interface EditorProps extends Props {

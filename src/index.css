@@ -884,6 +884,40 @@ html {
 }
 
 /*
+ * A set that beat last time: the chip pops in and one band of light
+ * crosses it. Once, on mount — never looped.
+ */
+@keyframes beat-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+}
+
+@keyframes beat-sweep {
+  from {
+    transform: translateX(-120%) skewX(-20deg);
+  }
+  to {
+    transform: translateX(220%) skewX(-20deg);
+  }
+}
+
+.beat-shine {
+  animation: beat-pop 380ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+.beat-shine::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  width: 45%;
+  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.45), transparent);
+  animation: beat-sweep 900ms ease-out 260ms both;
+  pointer-events: none;
+}
+
+/*
  * The plate loader: each plate slides along the sleeve from its outer end
  * and seats against the one before, in loading order (`--plate-delay`).
  */
