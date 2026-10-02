@@ -1,6 +1,6 @@
 import { Check, Lock, Network, Plus, Trash2, Wallet, X } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 
 import { Badge, Button, Card, CardHeading, Empty } from '@/components/shared/primitives'
 import {
@@ -252,6 +252,7 @@ function EntryCard({
 function AddUpgrade({
   candidates,
   defaultShelf,
+  onAdded,
 }: {
   readonly candidates: readonly TreeEntry[]
   /**
@@ -264,6 +265,8 @@ function AddUpgrade({
    * was given its own add form to avoid.
    */
   readonly defaultShelf: UpgradeShelf
+  /** Called once a node has been added, so a dialog holding the form can close. */
+  readonly onAdded?: () => void
 }) {
   const add = useAddUpgrade()
 
@@ -274,7 +277,7 @@ function AddUpgrade({
   const [prerequisite, setPrerequisite] = useState('')
 
   return (
-    <Card className="mb-3">
+    <Card>
       <form
         className="space-y-3"
         onSubmit={(event) => {
@@ -294,6 +297,7 @@ function AddUpgrade({
                 if (result.error !== undefined) return
                 setTitle('')
                 setPrerequisite('')
+                onAdded?.()
               },
             },
           )
@@ -405,6 +409,10 @@ function ShelfPage() {
   const closePicked = useCallback(() => {
     setPicked(undefined)
   }, [])
+  const [adding, setAdding] = useState(false)
+  const closeAdding = useCallback(() => {
+    setAdding(false)
+  }, [])
 
   const open = entries.filter((entry) => isOpen(entry.upgrade))
   const unlocked = open.filter((entry) => entry.affordable)
@@ -413,54 +421,68 @@ function ShelfPage() {
 
   return (
     <div className="space-y-4">
-      <PageHeader title="Tech tree" subtitle="What you are saving for, and what unlocks what" />
+      <PageHeader
+        title="Tech tree"
+        subtitle="What you are saving for, and what unlocks what"
+        action={
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              setAdding(true)
+            }}
+          >
+            <Plus size={14} aria-hidden />
+            Add
+          </Button>
+        }
+      />
 
       {/*
-        **The tree is the list now; a node's card opens when you tap it.**
-        Asked for as _"having the whole list on the page is a lot — could
-        we only have the cards pop up when you click on them?"_ Every node
-        was drawn twice: once in the picture and once as a full editor
-        card below it. The tree already draws every node — owned and
-        dropped included, struck through and dimmed — so nothing became
-        unreachable when the list went, which is the check this file
-        makes before removing any control.
-
-        Side by side from `lg`: the tree on the left, adding on the right.
+        **The tree is the whole page; everything else opens from it.**
+        Asked for in two steps — _"could we only have the cards pop up when
+        you click on them?"_, then _"I don't want the add card there
+        either, it should only appear if you select add."_ Every node was
+        drawn twice, in the picture and as a full editor card below it, and
+        the add form sat open beside the tree permanently. A node's card
+        opens when it is tapped and the form opens from Add in the header.
+        Nothing became unreachable: the tree draws every node, owned and
+        dropped included.
       */}
-      <div className="space-y-4 lg:grid lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] lg:items-start lg:gap-8 lg:space-y-0">
-        <div>
-          <CardHeading icon={<Network size={16} aria-hidden />} title="The tree" />
-          {entries.length === 0 ? (
-            <Empty title="Nothing planned">Add the first thing you are saving up for.</Empty>
-          ) : (
-            <>
-              <p className="text-ink-500 mb-2 text-sm">
-                {`${String(open.length)} open · ${String(unlocked.length)} unlocked. Tap a node to edit it.`}
-              </p>
-              <TechTree entries={entries} onPick={setPicked} />
-            </>
-          )}
-        </div>
-
-        <div>
-          <CardHeading icon={<Plus size={16} aria-hidden />} title="Add" />
-          <AddUpgrade candidates={entries} defaultShelf="tech" />
-        </div>
+      <div>
+        <CardHeading icon={<Network size={16} aria-hidden />} title="The tree" />
+        {entries.length === 0 ? (
+          <Empty title="Nothing planned">Add the first thing you are saving up for.</Empty>
+        ) : (
+          <>
+            <p className="text-ink-500 mb-2 text-sm">
+              {`${String(open.length)} open · ${String(unlocked.length)} unlocked. Tap a node to edit it.`}
+            </p>
+            <TechTree entries={entries} onPick={setPicked} />
+          </>
+        )}
       </div>
 
+      {adding && (
+        <Sheet label="Add to the tree" onClose={closeAdding}>
+          <AddUpgrade candidates={entries} defaultShelf="tech" onAdded={closeAdding} />
+        </Sheet>
+      )}
+
       {pickedEntry !== undefined && (
-        <NodeDialog
-          entry={pickedEntry}
-          others={entries.filter((one) => one.upgrade.id !== pickedEntry.upgrade.id)}
-          onClose={closePicked}
-        />
+        <Sheet label={pickedEntry.upgrade.title} onClose={closePicked}>
+          <EntryCard
+            entry={pickedEntry}
+            others={entries.filter((one) => one.upgrade.id !== pickedEntry.upgrade.id)}
+          />
+        </Sheet>
       )}
     </div>
   )
 }
 
 /**
- * One node's card, over the page.
+ * A card over the page — a node's editor, or the add form.
  *
  * **A native `<dialog>` opened modally**, not a positioned div: it brings
  * focus trapping, Escape to close and an inert page behind it from the
@@ -469,14 +491,14 @@ function ShelfPage() {
  * sheet. The blur is on the backdrop, a fixed surface — the one place
  * this app allows `backdrop-filter`.
  */
-function NodeDialog({
-  entry,
-  others,
+function Sheet({
+  label,
   onClose,
+  children,
 }: {
-  readonly entry: TreeEntry
-  readonly others: readonly TreeEntry[]
+  readonly label: string
   readonly onClose: () => void
+  readonly children: ReactNode
 }) {
   const dialog = useRef<HTMLDialogElement>(null)
 
@@ -506,7 +528,7 @@ function NodeDialog({
   return (
     <dialog
       ref={dialog}
-      aria-label={entry.upgrade.title}
+      aria-label={label}
       onClick={(event) => {
         if (event.target === dialog.current) close()
       }}
@@ -528,7 +550,7 @@ function NodeDialog({
         >
           <X size={16} aria-hidden />
         </Button>
-        <EntryCard entry={entry} others={others} />
+        {children}
       </div>
     </dialog>
   )
