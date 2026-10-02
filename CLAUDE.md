@@ -39,8 +39,12 @@ is often still why a training rule is the shape it is.
 - **Strength standards are plain numbers** (`domain/strength/
 standards.ts`): the estimated max, its multiple of bodyweight, and the
   next published multiple with the load that reaches it, rounded up to
-  five. No rank names and no bars — the multiples are external and
-  fixed, which is the only reason they are worth showing.
+  five. No rank names — the multiples are external and fixed, which is
+  the only reason they are worth showing. **Each lift has a bar again**,
+  running from the standard `reached` to the `next` one, in the colour
+  the strength-over-time chart gives that lift: a bar between two
+  published multiples measures against a scale the app cannot move,
+  which a bar to the game's next rank did not.
 - **The training grid counts working sets per day**
   (`application/use-cases/training/activity.ts`), finished sessions
   only, with fixed bands (1, 10, 20, 30) rather than a share of the

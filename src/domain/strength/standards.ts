@@ -51,6 +51,12 @@ export interface LiftStanding {
   readonly multiple?: number
   /** The next published multiple above this one, and the load it takes. */
   readonly next?: { readonly multiple: number; readonly load: number }
+  /**
+   * The published multiple at or below this one — where the band toward
+   * `next` starts, so a screen can say how far through it the lift is.
+   * Nought below the first standard. Absent without a multiple.
+   */
+  readonly reached?: number
 }
 
 export interface StandardsInputs {
@@ -74,11 +80,13 @@ function standing(
 
   const multiple = max / bodyweight
   const above = thresholds.find((threshold) => threshold > multiple)
+  const reached = thresholds.filter((threshold) => threshold <= multiple).at(-1) ?? 0
 
   return {
     name,
     max,
     multiple,
+    reached,
     ...(above === undefined ? {} : { next: { multiple: above, load: loadFor(above, bodyweight) } }),
   }
 }

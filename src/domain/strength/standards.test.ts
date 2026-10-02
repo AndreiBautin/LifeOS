@@ -35,6 +35,17 @@ describe('strength against the published standards', () => {
     expect(lifts[0]?.next?.load).toBe(415)
   })
 
+  /*
+   * The band a lift sits in runs from the standard it has reached to the
+   * next — what a progress bar needs, and nought before the first one.
+   */
+  it('names the standard already reached', () => {
+    const { lifts } = strengthStandings({ estimatedMaxes: maxes(350, 50), bodyweight: 200 })
+
+    expect(lifts[0]?.reached).toBe(1.5)
+    expect(lifts[1]?.reached).toBe(0)
+  })
+
   it('names no next standard past the top one', () => {
     const { lifts } = strengthStandings({ estimatedMaxes: maxes(600), bodyweight: 200 })
 
