@@ -13,6 +13,7 @@ import { Badge, Button, Card, Section } from '@/components/shared/primitives'
 import { useBackup } from '@/features/backup/useBackup'
 import { useSampleData } from '@/features/backup/useSampleData'
 import { SyncSection } from '@/features/sync/SyncSection'
+import { PLATES, platesToHand } from '@/domain/units/plates'
 import { syncStore } from '@/features/sync/sync-store'
 import { MaxesEditor } from './MaxesEditor'
 import {
@@ -91,6 +92,8 @@ export function SettingsPage() {
               update({ roundingIncrement })
             }}
           />
+
+          <PlateSetting />
 
           <NumberSetting
             label="Bodyweight"
@@ -563,5 +566,49 @@ function Toggle({
         <span className="bg-ink-500 absolute top-1 left-1 size-[1.125rem] rounded-full shadow transition-transform" />
       </span>
     </label>
+  )
+}
+
+/**
+ * Which plates the gym has, so the plate loader and the warm-up ramp only
+ * ever ask for a bar that can be built. Every plate starts on; turning
+ * one off is the home gym with no 35s. The last one cannot be turned off
+ * — a gym with no plates loads nothing, and `platesToHand` would read it
+ * as the standard set anyway.
+ */
+function PlateSetting() {
+  const { settings, update } = useSettings()
+  const toHand = platesToHand(settings.plates, settings.units)
+
+  return (
+    <div>
+      <p className="text-ink-300 text-sm">Plates you have</p>
+      <div className="mt-2 flex flex-wrap gap-1.5" role="group" aria-label="Plates you have">
+        {PLATES[settings.units].map((plate) => {
+          const has = toHand.includes(plate)
+          const last = has && toHand.length === 1
+          return (
+            <Button
+              key={plate}
+              size="sm"
+              variant={has ? 'primary' : 'outline'}
+              aria-pressed={has}
+              disabled={last}
+              className="numeric min-w-12"
+              onClick={() => {
+                update({
+                  plates: has ? toHand.filter((one) => one !== plate) : [...toHand, plate],
+                })
+              }}
+            >
+              {plate}
+            </Button>
+          )
+        })}
+      </div>
+      <p className="text-ink-500 mt-1.5 text-xs">
+        The plate loader and the warm-up ramp only use these.
+      </p>
+    </div>
   )
 }

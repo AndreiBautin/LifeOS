@@ -183,6 +183,19 @@ function mergeWithDefaults(parsed: unknown): AppSettings {
      * build still holds the old values under their old names, so
      * reinstating any of them is a line here rather than a migration.
      */
+    /*
+     * Numbers only; whether each is a plate in the current unit is
+     * `platesToHand`'s question, asked where the plates are used, so a
+     * list kept from the other unit survives a switch back.
+     */
+    ...(Array.isArray(stored.plates)
+      ? {
+          plates: stored.plates.filter(
+            (plate): plate is number =>
+              typeof plate === 'number' && Number.isFinite(plate) && plate > 0,
+          ),
+        }
+      : {}),
     e1rmFormula:
       stored.e1rmFormula === 'epley' ||
       stored.e1rmFormula === 'brzycki' ||

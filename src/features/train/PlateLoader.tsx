@@ -55,12 +55,15 @@ export function PlateLoader({
   load,
   unit,
   kind = 'barbell',
+  available,
 }: {
   readonly load: number
   readonly unit: WeightUnit
   readonly kind?: BarKind
+  /** The plates to hand; the standard set when absent. */
+  readonly available?: readonly number[]
 }) {
-  const loading = platesFor(load, unit, kind)
+  const loading = platesFor(load, unit, kind, available)
   if (loading === undefined) return null
 
   const rank = (plate: number) => Math.max(0, PLATES[unit].indexOf(plate))

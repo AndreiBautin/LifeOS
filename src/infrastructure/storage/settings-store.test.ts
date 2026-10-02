@@ -3,6 +3,8 @@ import { beforeEach, describe, expect, it } from 'vitest'
 
 import { DEFAULT_SETTINGS } from '@/domain/settings/settings'
 
+import { STORAGE_KEYS } from '@/config/storage-keys'
+
 import { readSettings, writeSettings } from './settings-store'
 
 /**
@@ -73,5 +75,32 @@ describe('stamping settings on write', () => {
     writeSettings({ ...DEFAULT_SETTINGS, theme: 'dark' }, storage, at('2026-08-26T09:00:00.000Z'))
 
     expect(readSettings(storage).settings.updatedAt).toBe('2026-08-26T09:00:00.000Z')
+  })
+})
+
+describe('the plates to hand', () => {
+  /*
+   * The parse builds field by field, so a new setting left out of it is
+   * written and silently dropped on the way back in — the trap that has
+   * caught two fields here already.
+   */
+  it('survives a write and a read, with junk dropped', () => {
+    writeSettings(
+      { ...DEFAULT_SETTINGS, plates: [45, 25, 10] },
+      storage,
+      at('2026-08-26T09:00:00Z'),
+    )
+    expect(readSettings(storage).settings.plates).toEqual([45, 25, 10])
+
+    storage.setItem(
+      STORAGE_KEYS.settings,
+      JSON.stringify({ ...DEFAULT_SETTINGS, plates: [45, 'x', -5, 10] }),
+    )
+    expect(readSettings(storage).settings.plates).toEqual([45, 10])
+  })
+
+  it('is absent when never set', () => {
+    writeSettings(DEFAULT_SETTINGS, storage, at('2026-08-26T09:00:00Z'))
+    expect(readSettings(storage).settings.plates).toBeUndefined()
   })
 })

@@ -25,7 +25,7 @@ import { cn } from '@/lib/cn'
 
 import { useClearSet, useLogSet } from './hooks'
 import { LadderStrip } from './LadderStrip'
-import { PlateLoader } from './PlateLoader'
+import { BarSection } from './BarSection'
 import { RestTimer } from './RestTimer'
 import { SetRow } from './SetRow'
 import { WarmupBlock } from './WarmupBlock'
@@ -246,10 +246,12 @@ export function SessionPlayer({
               {describePrescription(first.prescription)}
             </p>
           )}
-          <BarFor
+          <BarSection
+            key={index}
             equipment={exercises.find((one) => one.id === entry.exerciseId)?.equipment}
             load={loadToShow(entry.sets)}
             units={units}
+            ramp={entry.role === 'strength'}
           />
           <LadderFor entry={entry} exercises={exercises} units={units} />
 
@@ -543,22 +545,6 @@ function LadderFor({
       bodyweight={exercise.loadBasis === 'bodyweight'}
     />
   )
-}
-
-/** The plate loader, for the two kinds of bar a plate goes on. */
-function BarFor({
-  equipment,
-  load,
-  units,
-}: {
-  readonly equipment: Exercise['equipment'] | undefined
-  readonly load: number | undefined
-  readonly units: WeightUnit
-}) {
-  if (load === undefined) return null
-  if (equipment === 'barbell') return <PlateLoader load={load} unit={units} />
-  if (equipment === 'ez-bar') return <PlateLoader load={load} unit={units} kind="ez-bar" />
-  return null
 }
 
 function firstIncompleteIndex(workout: WorkoutLog): number {

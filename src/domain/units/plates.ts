@@ -48,6 +48,11 @@ export function platesFor(
   load: number,
   unit: WeightUnit,
   kind: BarKind = 'barbell',
+  /**
+   * The plates actually to hand — a home gym with no 35s, say. Defaults to
+   * the standard set; whatever is passed is read heaviest first.
+   */
+  available: readonly number[] = PLATES[unit],
 ): Loading | undefined {
   const bar = BAR_WEIGHT[kind][unit]
   if (!Number.isFinite(load) || load < bar) return undefined
@@ -56,7 +61,7 @@ export function platesFor(
   let side = Math.round(((load - bar) / 2) * 100)
   const perSide: number[] = []
 
-  for (const plate of PLATES[unit]) {
+  for (const plate of [...available].sort((a, b) => b - a)) {
     const step = Math.round(plate * 100)
     while (side >= step) {
       perSide.push(plate)
@@ -65,4 +70,19 @@ export function platesFor(
   }
 
   return { bar, perSide, leftover: side / 100 }
+}
+
+/**
+ * The plates a stored list says are to hand, read back for a unit.
+ *
+ * A list saved under the other unit names plates that do not exist here,
+ * and an empty list cannot load a bar at all — both read as the standard
+ * set rather than as a gym with nothing in it.
+ */
+export function platesToHand(
+  stored: readonly number[] | undefined,
+  unit: WeightUnit,
+): readonly number[] {
+  const known = (stored ?? []).filter((plate) => PLATES[unit].includes(plate))
+  return known.length === 0 ? PLATES[unit] : PLATES[unit].filter((plate) => known.includes(plate))
 }

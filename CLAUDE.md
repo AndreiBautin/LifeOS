@@ -116,6 +116,19 @@ SessionPage.tsx`, from `sessionDetail`). History rows could be deleted
   finished the minute it started reads as of unknown length rather
   than "0 min"; the demo seed stamped every session that way until this
   page showed it, and now gives each 45–75 minutes.
+- **The main lift has a warm-up ramp** (`warmupRamp` in
+  `domain/units/ramp.ts`, `BarSection`): the empty bar × 10, then 40 / 60
+  / 80% at 5 / 3 / 2, each rounded **down to a load the plates to hand
+  make exactly**, with a step that lands on the one before or against
+  the working load dropped. Tapping a step loads it on the plate picture;
+  "Work" goes back. Accessories get no ramp — a light working load is
+  its own warm-up.
+- **The plates to hand are a setting** (`settings.plates`, Settings →
+  Units). Absent means the standard set; `platesToHand` drops anything
+  that is not a plate in the current unit and reads an empty list as the
+  standard set, so a unit switch cannot leave a gym with nothing. It is
+  in the parse, with a round-trip test — the field-by-field parse has
+  silently dropped two settings before.
 - **The player draws the ladder** (`LadderStrip`, from `ladderState` in
   `progression.ts`): a column per working set filled to the reps done
   against a dashed line at the top of the range, planned sets as ghosts,

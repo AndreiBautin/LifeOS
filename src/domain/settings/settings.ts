@@ -54,6 +54,14 @@ export interface AppSettings {
    */
   readonly excludedExercises: readonly ExerciseId[]
 
+  /**
+   * The plates to hand, when not the standard set — a home gym with no
+   * 35s, say. Absent means the standard set; read back through
+   * `platesToHand`, which drops anything that is not a plate in the
+   * current unit, so switching units cannot leave a gym with no plates.
+   */
+  readonly plates?: readonly number[]
+
   readonly e1rmFormula: E1rmFormula
   readonly restTimerEnabled: boolean
   readonly keepScreenAwake: boolean
