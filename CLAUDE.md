@@ -116,6 +116,16 @@ SessionPage.tsx`, from `sessionDetail`). History rows could be deleted
   finished the minute it started reads as of unknown length rather
   than "0 min"; the demo seed stamped every session that way until this
   page showed it, and now gives each 45–75 minutes.
+- **A fresh install asks three questions first** (`FirstRunSetup`, above
+  the hero): units, bodyweight, and the three maxes — with **the first
+  bench drawn on the plate loader as it will open**, from
+  `firstSessionLoad` (85%, now in `progression.ts` and shared with
+  Start, so the setup cannot promise a different bar). Shown only with
+  nothing logged and no sample; `settings.setupDone` (in the parse, with
+  a round-trip test) ends it for good, and Skip keeps the defaults. Its
+  number fields keep their own text and save only a valid number —
+  written straight to settings, clearing a field to retype it left the
+  old digit behind.
 - **A session shows where its time went** (`sessionTimeline` in
   `domain/logging/timeline.ts`, `SessionTimeline`), in the report and on
   the session page: a band per exercise from its first set to its last,

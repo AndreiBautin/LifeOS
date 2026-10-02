@@ -93,6 +93,12 @@ export interface AppSettings {
    * demo build refilling an empty database on the next open.
    */
   readonly sampleData?: SampleDataState
+  /**
+   * The first-run setup has been finished or skipped. Absent on every
+   * device that predates it, which is why the setup also asks whether
+   * anything has been logged: somebody with a history is past it.
+   */
+  readonly setupDone?: boolean
   readonly schemaVersion: number
 }
 

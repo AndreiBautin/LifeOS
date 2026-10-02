@@ -104,3 +104,10 @@ describe('the plates to hand', () => {
     expect(readSettings(storage).settings.plates).toBeUndefined()
   })
 })
+
+describe('the first-run setup', () => {
+  it('stays done across a write and a read', () => {
+    writeSettings({ ...DEFAULT_SETTINGS, setupDone: true }, storage, at('2026-08-26T09:00:00Z'))
+    expect(readSettings(storage).settings.setupDone).toBe(true)
+  })
+})

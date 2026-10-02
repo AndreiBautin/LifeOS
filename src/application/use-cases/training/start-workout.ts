@@ -15,11 +15,12 @@ import { STARTING_POSITION } from '@/domain/programs/position'
 import type { AthleteState } from '@/domain/resolution/resolve'
 import { resolveSets } from '@/domain/resolution/resolve'
 import {
+  firstSessionLoad,
   lastPerformance,
   nextLoad,
+  type Performance,
   plannedRepsFor,
   stepFor,
-  type Performance,
 } from '@/domain/programs/progression'
 import type { RepRange } from '@/domain/programs/prescription'
 import { matchesQuery } from '@/domain/exercises/exercise'
@@ -251,7 +252,7 @@ async function workingLoads(
         sameExercise.find((entry) => sameVersion(entry.variant, variant))
       if (exercise === undefined) return []
       if (previous === undefined) {
-        const seeded = strengthIds.has(id) ? firstSessionLoad(id, request) : undefined
+        const seeded = strengthIds.has(id) ? seededLoad(id, request) : undefined
         return seeded === undefined ? [] : [[id, seeded, undefined]]
       }
 
@@ -464,10 +465,7 @@ export function workoutIdOf(log: WorkoutLog): WorkoutId {
  * share is always read against the strength range. Absent for anything
  * with no estimate.
  */
-const FIRST_SESSION_SHARE = 0.85
-
-function firstSessionLoad(id: ExerciseId, request: StartWorkoutRequest): number | undefined {
+function seededLoad(id: ExerciseId, request: StartWorkoutRequest): number | undefined {
   const basis = request.athlete.estimatedMaxes[id]
-  if (basis === undefined) return undefined
-  return basis * FIRST_SESSION_SHARE
+  return basis === undefined ? undefined : firstSessionLoad(basis)
 }

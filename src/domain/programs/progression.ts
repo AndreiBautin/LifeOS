@@ -249,3 +249,17 @@ export function ladderState(
   if (done === sets.length) return { kind: 'earned' }
   return { kind: 'on-track', left: sets.length - done }
 }
+
+/**
+ * Where a strength lift opens when it has never been logged: 85% of the
+ * estimated max, about a five-rep load. Conservative on purpose — the
+ * first set of a first session is the worst moment to be handed an
+ * optimistic number — and only ever read against the strength range.
+ * Shared by Start and the first-run setup's preview, so the number the
+ * setup promises is the number the session opens on.
+ */
+export const FIRST_SESSION_SHARE = 0.85
+
+export function firstSessionLoad(max: number): number {
+  return max * FIRST_SESSION_SHARE
+}

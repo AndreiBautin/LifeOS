@@ -232,6 +232,7 @@ function mergeWithDefaults(parsed: unknown): AppSettings {
     ...(typeof stored.updatedAt === 'string' ? { updatedAt: stored.updatedAt } : {}),
     ...(typeof stored.lastExportAt === 'string' ? { lastExportAt: stored.lastExportAt } : {}),
     ...sampleDataOf(stored.sampleData),
+    ...(stored.setupDone === true ? { setupDone: true } : {}),
     schemaVersion: SETTINGS_SCHEMA_VERSION,
   }
 }

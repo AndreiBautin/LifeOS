@@ -19,6 +19,7 @@ import { StrengthStandards } from '@/features/train/StrengthStandards'
 import { StrengthTrendCard } from '@/features/train/StrengthTrendCard'
 import { WeekCard } from '@/features/train/WeekCard'
 
+import { FirstRunSetup } from './FirstRunSetup'
 import { HeroBanner } from './HeroBanner'
 import { SampleNotice } from './SampleNotice'
 
@@ -102,6 +103,7 @@ export function HomePage() {
   return (
     <div className="space-y-6">
       <SampleNotice />
+      <FirstRunSetup />
       <HeroBanner />
       <Masonry
         items={[
