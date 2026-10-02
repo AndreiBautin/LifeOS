@@ -1,6 +1,6 @@
 import { Check, Lock, Network, Plus, Trash2, Wallet, X } from 'lucide-react'
 import { PageHeader } from '@/components/shared/PageHeader'
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { Badge, Button, Card, CardHeading, Empty } from '@/components/shared/primitives'
 import {
@@ -402,6 +402,9 @@ function ShelfPage() {
   const tree = useWholeTree()
   const entries = tree.data ?? []
   const [picked, setPicked] = useState<string | undefined>(undefined)
+  const closePicked = useCallback(() => {
+    setPicked(undefined)
+  }, [])
 
   const open = entries.filter((entry) => isOpen(entry.upgrade))
   const unlocked = open.filter((entry) => entry.affordable)
@@ -449,9 +452,7 @@ function ShelfPage() {
         <NodeDialog
           entry={pickedEntry}
           others={entries.filter((one) => one.upgrade.id !== pickedEntry.upgrade.id)}
-          onClose={() => {
-            setPicked(undefined)
-          }}
+          onClose={closePicked}
         />
       )}
     </div>
@@ -479,18 +480,35 @@ function NodeDialog({
 }) {
   const dialog = useRef<HTMLDialogElement>(null)
 
+  /*
+   * **Closing goes through the page's state, not only the element.**
+   * Relying on React's `onClose` alone left the element shut but still
+   * mounted when the event did not arrive — and then tapping the same
+   * node again set the same id, re-rendered nothing, and never reopened.
+   * Every way out (the button, the backdrop, Escape via the native
+   * `close` event) now ends in `onClose`, which unmounts the dialog.
+   */
   useEffect(() => {
     const node = dialog.current
-    if (node !== null && !node.open) node.showModal()
-  }, [])
+    if (node === null) return
+    if (!node.open) node.showModal()
+    node.addEventListener('close', onClose)
+    return () => {
+      node.removeEventListener('close', onClose)
+    }
+  }, [onClose])
+
+  const close = (): void => {
+    dialog.current?.close()
+    onClose()
+  }
 
   return (
     <dialog
       ref={dialog}
       aria-label={entry.upgrade.title}
-      onClose={onClose}
       onClick={(event) => {
-        if (event.target === dialog.current) dialog.current.close()
+        if (event.target === dialog.current) close()
       }}
       className="m-auto w-[min(32rem,calc(100vw-2rem))] overflow-visible bg-transparent p-0 backdrop:bg-black/60 backdrop:backdrop-blur-sm"
     >
@@ -500,9 +518,7 @@ function NodeDialog({
           variant="ghost"
           aria-label="Close"
           className="absolute -top-12 right-0"
-          onClick={() => {
-            dialog.current?.close()
-          }}
+          onClick={close}
         >
           <X size={16} aria-hidden />
         </Button>
