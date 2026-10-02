@@ -3,8 +3,9 @@ import { Link } from 'react-router-dom'
 
 import { Badge, Card, CardHeading, Empty } from '@/components/shared/primitives'
 import { buttonStyles } from '@/components/shared/styles'
+import { useSettings } from '@/app/context'
 
-import { useExercises } from './hooks'
+import { useExercises, useSessionPreview } from './hooks'
 import { SessionOutline } from './SessionOutline'
 import { useNextSession } from './useNextSession'
 
@@ -22,6 +23,8 @@ import { useNextSession } from './useNextSession'
 export function NextSessionCard() {
   const { day, week, here } = useNextSession()
   const exercises = useExercises()
+  const preview = useSessionPreview()
+  const { settings } = useSettings()
 
   if (day === undefined) {
     return (
@@ -58,7 +61,12 @@ export function NextSessionCard() {
         </div>
       )}
 
-      <SessionOutline day={day} library={exercises.data ?? []} />
+      <SessionOutline
+        day={day}
+        library={exercises.data ?? []}
+        planned={preview.data ?? undefined}
+        units={settings.units}
+      />
     </Card>
   )
 }

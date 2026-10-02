@@ -6,6 +6,8 @@ import type { ProgramDay } from '@/domain/programs/program'
 import { inSections } from '@/domain/programs/program'
 import type { SetPrescription } from '@/domain/programs/prescription'
 import { describeReps } from '@/domain/programs/prescription'
+import type { WorkoutLog } from '@/domain/logging/workout-log'
+import { formatLoad, type WeightUnit } from '@/domain/units/weight'
 
 /**
  * The next-session preview, split out of `TrainPage` when its at-a-glance
@@ -80,9 +82,17 @@ function countedSets(sets: readonly SetPrescription[]): number {
 export function SessionOutline({
   day,
   library,
+  planned,
+  units = 'lb',
 }: {
   readonly day: ProgramDay
   readonly library: readonly Exercise[]
+  /**
+   * The session as Start would open it, when it is known: the row then
+   * leads with today's bar and the rep target rather than the range.
+   */
+  readonly planned?: WorkoutLog | undefined
+  readonly units?: WeightUnit
 }) {
   /*
    * The warm-up folds and nothing else does.
@@ -158,9 +168,7 @@ export function SessionOutline({
                     className="text-ink-100 flex items-baseline justify-between gap-3 py-1.5 text-sm"
                   >
                     <span className="truncate">{nameOf(slot)}</span>
-                    <span className="text-ink-500 numeric shrink-0 text-xs">
-                      {describeSlot(slot.sets)}
-                    </span>
+                    <PlannedFigure slot={slot} planned={planned} library={library} units={units} />
                   </li>
                 ))}
               </ul>
@@ -169,5 +177,54 @@ export function SessionOutline({
         )
       })}
     </div>
+  )
+}
+
+/**
+ * **Today's bar, not the rule that produces it.** "4 × 3–5" describes
+ * every bench session there will ever be; "215 lb · 4 × 3" is this one.
+ * The load leads in full ink because it is what gets put on the bar; the
+ * count and rep target follow in the quiet ink the range used to be.
+ *
+ * Falls back to the range for a slot with nothing planned — no history
+ * and no estimate, a block of time, a warm-up — which is the honest
+ * answer there, and for every row while the preview loads.
+ */
+function PlannedFigure({
+  slot,
+  planned,
+  library,
+  units,
+}: {
+  readonly slot: ProgramDay['slots'][number]
+  readonly planned: WorkoutLog | undefined
+  readonly library: readonly Exercise[]
+  readonly units: WeightUnit
+}) {
+  const entry = planned?.entries.find((one) => one.slotId === slot.id)
+  const working = entry?.sets.filter((set) => !set.isWarmup) ?? []
+  const first = working[0]
+  const load = first?.plannedLoad
+  const reps = first?.plannedReps
+
+  if (entry === undefined || first === undefined || load === undefined || reps === undefined) {
+    return <span className="text-ink-500 numeric shrink-0 text-xs">{describeSlot(slot.sets)}</span>
+  }
+
+  const bodyweight =
+    library.find((exercise) => exercise.id === entry.exerciseId)?.loadBasis === 'bodyweight'
+  const bar = bodyweight
+    ? load > 0
+      ? `BW + ${formatLoad(load, units)}`
+      : 'BW'
+    : formatLoad(load, units)
+
+  return (
+    <span className="numeric flex shrink-0 items-baseline gap-1.5 text-xs">
+      <span className="text-ink-50 text-sm font-semibold">{bar}</span>
+      <span className="text-ink-500">
+        {String(working.length)} × {String(reps)}
+      </span>
+    </span>
   )
 }

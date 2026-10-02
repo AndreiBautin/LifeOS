@@ -19,7 +19,7 @@ import { abandonWorkout } from './abandon-workout'
 import { finishWorkout } from './finish-workout'
 import { STRENGTH_RANGE } from '@/domain/programs/progression'
 import { logSet } from './log-set'
-import { startWorkout } from './start-workout'
+import { previewWorkout, startWorkout } from './start-workout'
 
 /** Fixed, so a stamped updatedAt is reproducible. */
 const testClock = { now: () => new Date('2026-08-25T09:00:00.000Z') }
@@ -712,5 +712,84 @@ describe('the built-in exercise library', () => {
     for (const slug of Object.values(STRENGTH_LIFT_SLUGS)) {
       expect(library.has(slug), `${slug} is missing from the catalogue`).toBe(true)
     }
+  })
+})
+
+describe('previewing the next session', () => {
+  /*
+   * The home page shows the loads before the session is opened. If the
+   * preview planned differently from Start, the plan card would promise
+   * one bar and the session would hand over another.
+   */
+  it('plans exactly what starting it opens, and saves nothing', async () => {
+    const deps = beginProgram()
+    const request = { athlete, program, roundingIncrement: 5 }
+
+    const preview = await previewWorkout(request, deps)
+    expect(await deps.workouts.inProgress()).toBeUndefined()
+    expect(await deps.position.get()).toBeUndefined()
+
+    const started = await startWorkout(request, deps)
+    if (started.kind !== 'started') throw new Error('expected a started workout')
+
+    const plan = (entries: readonly LogEntry[]) =>
+      entries.map((entry) => ({
+        exerciseId: entry.exerciseId,
+        sets: entry.sets.map((set) => [set.plannedLoad, set.plannedReps]),
+      }))
+    expect(preview).toBeDefined()
+    expect(plan(preview?.entries ?? [])).toEqual(plan(started.workout.entries))
+  })
+})
+
+describe('walking away from a session', () => {
+  /*
+   * An abandoned session keeps its log, with the exercises it never
+   * reached still pending. Read as "last time", that empty entry made the
+   * next session forget the load behind it.
+   */
+  it('does not let an exercise never reached reset its load', async () => {
+    const deps = beginProgram()
+    const request = { athlete, program, roundingIncrement: 5 }
+
+    const first = await startWorkout(request, deps)
+    if (first.kind !== 'started') throw new Error('expected a started workout')
+    const accessory = first.workout.entries.findIndex((entry) => isAccessory(entry.exerciseId))
+    const sets = first.workout.entries[accessory]?.sets.length ?? 0
+    for (let setIndex = 0; setIndex < sets; setIndex += 1) {
+      await logSet(
+        {
+          workoutId: first.workout.id,
+          entryIndex: accessory,
+          setIndex,
+          result: { load: 100, reps: 16, outcome: 'completed' },
+        },
+        deps,
+      )
+    }
+    await finishWorkout(first.workout.id, deps)
+
+    // A week on: one set of something else, then walk away.
+    currentTime = new Date('2026-09-02T09:00:00.000Z')
+    const second = await startWorkout(request, deps)
+    if (second.kind !== 'started') throw new Error('expected a started workout')
+    const other = second.workout.entries.findIndex(
+      (entry, index) => index !== accessory && entry.sets.some((set) => !set.isWarmup),
+    )
+    await logSet(
+      {
+        workoutId: second.workout.id,
+        entryIndex: other,
+        setIndex: 0,
+        result: { load: 50, reps: 10, outcome: 'completed' },
+      },
+      deps,
+    )
+    await abandonWorkout(second.workout.id, deps)
+
+    currentTime = new Date('2026-09-09T09:00:00.000Z')
+    const third = await startWorkout(request, deps)
+    if (third.kind !== 'started') throw new Error('expected a started workout')
+    expect(third.workout.entries[accessory]?.sets[0]?.plannedLoad).toBe(100)
   })
 })

@@ -23,6 +23,7 @@ import { useServices, useSettings } from '@/app/context'
 import { activityFor } from '@/application/use-cases/training/activity'
 import { weekSummary } from '@/application/use-cases/training/week'
 import { scheduleFor } from '@/application/use-cases/programs/schedule'
+import { previewWorkout } from '@/application/use-cases/training/start-workout'
 import { logger } from '@/shared/logging/logger'
 
 /**
@@ -288,6 +289,33 @@ export function useJumpToWeek() {
       void queryClient.invalidateQueries({ queryKey: ['position'] })
       void queryClient.invalidateQueries({ queryKey: ['workouts'] })
       void queryClient.invalidateQueries({ queryKey: keys.activeWorkout })
+    },
+  })
+}
+
+/**
+ * The session Start would open, planned now for the home page's outline.
+ *
+ * Keyed under `workouts` so every mutation that files, deletes or
+ * abandons a session — which is what moves a planned load — refreshes
+ * it too; the athlete and the rounding are in the key because they move
+ * it as well.
+ */
+export function useSessionPreview() {
+  const services = useServices()
+  const { athlete, settings } = useSettings()
+  const program = useProgram()
+
+  return useQuery({
+    queryKey: ['workouts', 'preview', settings.roundingIncrement, athlete],
+    enabled: program.data !== undefined,
+    queryFn: async () => {
+      if (program.data === undefined) return null
+      const planned = await previewWorkout(
+        { athlete, program: program.data, roundingIncrement: settings.roundingIncrement },
+        services,
+      )
+      return planned ?? null
     },
   })
 }

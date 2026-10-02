@@ -106,6 +106,16 @@ standards.ts`): the estimated max, its multiple of bodyweight, and the
   one. The hero stats count up once (`useCountUp`); reduced motion shows
   the figure directly, and a screen reader gets the number, not the
   animation.
+- **The home page's plan shows today's bar**, "215 lb · 4 × 3", rather
+  than the rule "4 × 3–5". `previewWorkout` in `start-workout.ts` is
+  Start's own build run early and saved nowhere, so the preview and the
+  session cannot plan different numbers — `training-flow.test.ts` holds
+  them equal. Keyed under `workouts`, so filing a session refreshes it.
+- **Last time is a time it was done.** `workingLoads` skips entries with
+  no performed set: an abandoned session keeps every exercise it never
+  reached as pending, and reading that as last time reset the planned
+  load on all of them. Found by previewing the plan; a test now fails
+  without the filter.
 - **The rest timer says what the rest is for**: an "Up next" line with
   the next pending set's planned load and reps (`nextUp` in
   `SessionPlayer`), so the bar is loaded while the clock runs. When the

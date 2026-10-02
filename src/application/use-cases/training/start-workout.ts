@@ -128,6 +128,45 @@ export async function startWorkout(
   return { kind: 'started', workout }
 }
 
+/**
+ * The session Start would open, built and **not saved**.
+ *
+ * The home page's plan showed "4 × 3–5" beside the bench when the app
+ * already knew the bar would be 215 for triples — it is the same history
+ * read the same way, just at the moment the session is opened. This is
+ * that build, run early: one function, so the preview and the session
+ * cannot plan different numbers.
+ *
+ * Read-only by construction. It writes no position (Start writes the
+ * block's Monday the first time it is needed), saves nothing, and
+ * stamps its ids from a constant — it is never stored, so an id here
+ * would be a promise nothing keeps.
+ */
+export async function previewWorkout(
+  request: Omit<StartWorkoutRequest, 'freestyleTitle'>,
+  deps: Omit<StartWorkoutDeps, 'ids'>,
+): Promise<WorkoutLog | undefined> {
+  const schedule = await scheduleFor(request.program, deps)
+  const scheduled = schedule.next
+  if (scheduled === undefined) return undefined
+
+  const library = await deps.exercises.all()
+  const { working, history } = await workingLoads(scheduled.day, library, request, {
+    ...deps,
+    ids: PREVIEW_IDS,
+  })
+  return buildFromDay(
+    scheduled.day,
+    scheduled,
+    { ...request, athlete: { ...request.athlete, working } },
+    library,
+    { ...deps, ids: PREVIEW_IDS },
+    history,
+  )
+}
+
+const PREVIEW_IDS = { next: () => 'preview' }
+
 function emptyWorkout(title: string, deps: StartWorkoutDeps): WorkoutLog {
   const now = deps.clock.now()
   return {
@@ -193,8 +232,19 @@ async function workingLoads(
        */
       const variant = day.slots.find((slot) => resolveExercise(slot, library) === id)?.variant
       const history = await deps.workouts.forExercise(id, 10)
+      /*
+       * **Last time is a time it was done.** An abandoned session keeps
+       * its log, with every exercise it never reached still pending — and
+       * read as last time, that empty entry forgot the load behind it, so
+       * walking away from a session reset the bar on everything after the
+       * point you stopped. Found by previewing the plan, not by a test.
+       */
       const sameExercise = history.flatMap((workout) =>
-        workout.entries.filter((entry) => entry.exerciseId === id),
+        workout.entries.filter(
+          (entry) =>
+            entry.exerciseId === id &&
+            entry.sets.some((set) => !set.isWarmup && set.outcome === 'completed'),
+        ),
       )
       const previous =
         sameExercise.find((entry) => entry.variant === variant) ??
