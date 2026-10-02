@@ -116,3 +116,22 @@ describe('the first-run setup', () => {
     expect(readSettings(storage).settings.swipeLearned).toBe(true)
   })
 })
+
+describe('accepted resets', () => {
+  it('survive a write and a read, with malformed ones dropped', () => {
+    storage.setItem(
+      STORAGE_KEYS.settings,
+      JSON.stringify({
+        ...DEFAULT_SETTINGS,
+        loadResets: {
+          'bench-press': { load: 200, at: '2026-09-01T10:00:00.000Z' },
+          squat: { load: -5, at: '2026-09-01T10:00:00.000Z' },
+          deadlift: { load: 300, at: 'yesterday' },
+        },
+      }),
+    )
+    expect(readSettings(storage).settings.loadResets).toEqual({
+      'bench-press': { load: 200, at: '2026-09-01T10:00:00.000Z' },
+    })
+  })
+})

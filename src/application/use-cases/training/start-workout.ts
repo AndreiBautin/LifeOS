@@ -14,6 +14,7 @@ import { scheduleFor } from '@/application/use-cases/programs/schedule'
 import { STARTING_POSITION } from '@/domain/programs/position'
 import type { AthleteState } from '@/domain/resolution/resolve'
 import { resolveSets } from '@/domain/resolution/resolve'
+import { resetKey, resetPending, type LoadResets } from '@/domain/programs/stall'
 import {
   firstSessionLoad,
   lastPerformance,
@@ -24,7 +25,7 @@ import {
 } from '@/domain/programs/progression'
 import type { RepRange } from '@/domain/programs/prescription'
 import { matchesQuery } from '@/domain/exercises/exercise'
-import { sameVersion } from '@/domain/splits/rp-splits'
+import { DAY_VERSIONS, sameVersion } from '@/domain/splits/rp-splits'
 
 /**
  * Turning the next scheduled day into a workout that can be logged.
@@ -51,6 +52,8 @@ export interface StartWorkoutRequest {
   readonly program: ProgramTemplate
   /** Omit to start the active program's next day. */
   readonly freestyleTitle?: string
+  /** Resets accepted for stalled exercises; see `domain/programs/stall`. */
+  readonly resets?: LoadResets
 }
 
 export type StartWorkoutResult =
@@ -287,6 +290,26 @@ async function workingLoads(
       const next =
         range === undefined ? last?.load : nextLoad(last, range, stepFor(exercise), asked)
 
+      /*
+       * **An accepted reset wins until it has been lifted.** It opens the
+       * next session at the lower bar with the reps back at the bottom of
+       * the range (`bumped`), and stops applying the moment a session of
+       * this exercise is logged after the day it was accepted — from then
+       * on the log carries the climb, as it always does.
+       */
+      const reset = request.resets?.[resetKey(id, versionOf(variant))]
+      const latest = history.find((log) =>
+        log.entries.some(
+          (entry) =>
+            entry.exerciseId === id &&
+            sameVersion(entry.variant, variant) &&
+            entry.sets.some((set) => !set.isWarmup && set.outcome === 'completed'),
+        ),
+      )?.startedAt
+      if (reset !== undefined && resetPending(reset, latest)) {
+        return [[id, reset.load, last === undefined ? undefined : { last, bumped: true }]]
+      }
+
       if (next === undefined) return []
       return [[id, next, last === undefined ? undefined : { last, bumped: next > last.load }]]
     }),
@@ -468,4 +491,9 @@ export function workoutIdOf(log: WorkoutLog): WorkoutId {
 function seededLoad(id: ExerciseId, request: StartWorkoutRequest): number | undefined {
   const basis = request.athlete.estimatedMaxes[id]
   return basis === undefined ? undefined : firstSessionLoad(basis)
+}
+
+/** A day version — Heavy, Light — or nothing for an exercise with one. */
+function versionOf(variant: string | undefined): string | undefined {
+  return variant !== undefined && DAY_VERSIONS.includes(variant) ? variant : undefined
 }

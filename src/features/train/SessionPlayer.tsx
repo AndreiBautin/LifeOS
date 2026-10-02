@@ -1,5 +1,6 @@
 import {
   Check,
+  TrendingDown,
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
@@ -8,6 +9,7 @@ import {
   XCircle,
 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 
 import { useServices, useSettings } from '@/app/context'
 
@@ -17,13 +19,15 @@ import type { WorkoutLog } from '@/domain/logging/workout-log'
 import { isEntryComplete, remainingSets, totalWorkingSets } from '@/domain/logging/workout-log'
 import { describePrescription } from '@/domain/programs/prescription'
 import { stepFor } from '@/domain/programs/progression'
+import { isStalled, sessionsWithoutProgress } from '@/domain/programs/stall'
+import { DAY_VERSIONS } from '@/domain/splits/rp-splits'
 import { slotRoleLabel, slotRoleTone, slotVariant } from '@/domain/programs/program'
 import { formatLoad, type WeightUnit } from '@/domain/units/weight'
 import { Badge, Button, Card } from '@/components/shared/primitives'
 import { useKeepAwake } from '@/shared/hooks/useKeepAwake'
 import { cn } from '@/lib/cn'
 
-import { useClearSet, useLogSet } from './hooks'
+import { useClearSet, useExerciseHistory, useLogSet } from './hooks'
 import { LadderStrip } from './LadderStrip'
 import { BarSection } from './BarSection'
 import { RestTimer } from './RestTimer'
@@ -585,13 +589,47 @@ function LadderFor({
   const exercise = exercises.find((one) => one.id === entry.exerciseId)
   if (reps?.kind !== 'range' || exercise === undefined) return null
   return (
-    <LadderStrip
-      sets={entry.sets}
-      range={{ low: reps.low, high: reps.high }}
-      step={stepFor(exercise)}
-      units={units}
-      bodyweight={exercise.loadBasis === 'bodyweight'}
-    />
+    <>
+      <LadderStrip
+        sets={entry.sets}
+        range={{ low: reps.low, high: reps.high }}
+        step={stepFor(exercise)}
+        units={units}
+        bodyweight={exercise.loadBasis === 'bodyweight'}
+      />
+      <StallHint exerciseId={entry.exerciseId} variant={entry.variant} />
+    </>
+  )
+}
+
+/**
+ * A stalled exercise, named where it is being done, with the way to its
+ * options. The offer itself lives on the exercise page, beside the
+ * history that justifies it; mid-set is no place to make that decision.
+ */
+function StallHint({
+  exerciseId,
+  variant,
+}: {
+  readonly exerciseId: WorkoutLog['entries'][number]['exerciseId']
+  readonly variant: string | undefined
+}) {
+  const history = useExerciseHistory(exerciseId)
+  const version = variant !== undefined && DAY_VERSIONS.includes(variant) ? variant : undefined
+  const series = history.data?.find((one) => one.variant === version)
+  if (series === undefined) return null
+  const tops = series.sessions.map((session) => session.top)
+  if (!isStalled(tops)) return null
+  return (
+    <Link
+      viewTransition
+      to={`/exercise/${exerciseId}`}
+      className="text-warn-500 hover:text-warn-500/80 mt-2 flex items-center gap-1.5 text-xs font-medium"
+    >
+      <TrendingDown size={13} aria-hidden />
+      Stalled for {sessionsWithoutProgress(tops)} sessions — see options
+      <ChevronRight size={13} aria-hidden />
+    </Link>
   )
 }
 

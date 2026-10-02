@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import type { ExerciseId, WorkoutId } from '@/domain/ids/ids'
 import type { WorkoutLog } from '@/domain/logging/workout-log'
+import { exerciseHistory } from '@/domain/logging/exercise-history'
 import { workingSets } from '@/domain/logging/workout-log'
 import {
   abandonWorkout,
@@ -137,6 +138,7 @@ export function useStartWorkout() {
           athlete,
           program: program.data,
           roundingIncrement: settings.roundingIncrement,
+          ...(settings.loadResets !== undefined ? { resets: settings.loadResets } : {}),
           ...(options?.freestyleTitle !== undefined
             ? { freestyleTitle: options.freestyleTitle }
             : {}),
@@ -330,12 +332,17 @@ export function useSessionPreview() {
   const program = useProgram()
 
   return useQuery({
-    queryKey: ['workouts', 'preview', settings.roundingIncrement, athlete],
+    queryKey: ['workouts', 'preview', settings.roundingIncrement, athlete, settings.loadResets],
     enabled: program.data !== undefined,
     queryFn: async () => {
       if (program.data === undefined) return null
       const planned = await previewWorkout(
-        { athlete, program: program.data, roundingIncrement: settings.roundingIncrement },
+        {
+          athlete,
+          program: program.data,
+          roundingIncrement: settings.roundingIncrement,
+          ...(settings.loadResets !== undefined ? { resets: settings.loadResets } : {}),
+        },
         services,
       )
       return planned ?? null
@@ -358,5 +365,15 @@ export function usePriorSets(exerciseId: ExerciseId, currentWorkoutId: WorkoutId
         .flatMap((log) => log.entries.filter((entry) => entry.exerciseId === exerciseId))
         .flatMap((entry) => workingSets(entry))
         .map((set) => ({ load: set.actualLoad, reps: set.actualReps })),
+  })
+}
+
+/** One exercise across its sessions, by version — the exercise page's own read. */
+export function useExerciseHistory(exerciseId: ExerciseId) {
+  const services = useServices()
+  return useQuery({
+    queryKey: ['workouts', 'exercise', exerciseId],
+    queryFn: async () =>
+      exerciseHistory(await services.workouts.forExercise(exerciseId), exerciseId),
   })
 }

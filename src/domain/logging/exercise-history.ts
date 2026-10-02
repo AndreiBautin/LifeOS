@@ -20,6 +20,7 @@ import { bestEstimate } from '@/domain/strength/one-rep-max'
 export interface ExerciseSession {
   readonly workoutId: WorkoutId
   readonly date: string
+  readonly startedAt: string
   readonly title: string
   readonly top: Performance
   /** Every working set done, in order. */
@@ -74,6 +75,7 @@ export function exerciseHistory(
       list.push({
         workoutId: log.id,
         date: log.date,
+        startedAt: log.startedAt,
         title: log.title,
         top,
         sets,

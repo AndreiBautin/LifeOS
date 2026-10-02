@@ -793,3 +793,64 @@ describe('walking away from a session', () => {
     expect(third.workout.entries[accessory]?.sets[0]?.plannedLoad).toBe(100)
   })
 })
+
+describe('a reset after a stall', () => {
+  /*
+   * An accepted reset opens the next session at the lower bar, and stops
+   * the moment a session of the exercise has been logged after it — or
+   * it would hold the bar down forever.
+   */
+  it('opens the next session at the reset bar, then gives way to the log', async () => {
+    const deps = beginProgram()
+    const request = { athlete, program, roundingIncrement: 5 }
+
+    const first = await startWorkout(request, deps)
+    if (first.kind !== 'started') throw new Error('expected a started workout')
+    const accessory = first.workout.entries.findIndex((entry) => isAccessory(entry.exerciseId))
+    const id = first.workout.entries[accessory]?.exerciseId ?? asExerciseId('')
+    const sets = first.workout.entries[accessory]?.sets.length ?? 0
+    for (let setIndex = 0; setIndex < sets; setIndex += 1) {
+      await logSet(
+        {
+          workoutId: first.workout.id,
+          entryIndex: accessory,
+          setIndex,
+          result: { load: 100, reps: 16, outcome: 'completed' },
+        },
+        deps,
+      )
+    }
+    await finishWorkout(first.workout.id, deps)
+
+    /*
+     * Accepted the same day as that session, after it: compared by day
+     * this read as already lifted, so a reset pressed after training
+     * never applied.
+     */
+    const resets = { [id]: { load: 90, at: '2026-08-26T18:00:00.000Z' } }
+    currentTime = new Date('2026-09-02T09:00:00.000Z')
+    const second = await startWorkout({ ...request, resets }, deps)
+    if (second.kind !== 'started') throw new Error('expected a started workout')
+    expect(second.workout.entries[accessory]?.sets[0]?.plannedLoad).toBe(90)
+
+    for (let setIndex = 0; setIndex < sets; setIndex += 1) {
+      await logSet(
+        {
+          workoutId: second.workout.id,
+          entryIndex: accessory,
+          setIndex,
+          result: { load: 90, reps: 16, outcome: 'completed' },
+        },
+        deps,
+      )
+    }
+    await finishWorkout(second.workout.id, deps)
+
+    // Logged after the reset: the log is the source again.
+    currentTime = new Date('2026-09-09T09:00:00.000Z')
+    const third = await startWorkout({ ...request, resets }, deps)
+    if (third.kind !== 'started') throw new Error('expected a started workout')
+    expect(third.workout.entries[accessory]?.sets[0]?.plannedLoad).toBe(90)
+    expect(third.workout.entries[accessory]?.sets[0]?.plannedReps).toBe(17)
+  })
+})

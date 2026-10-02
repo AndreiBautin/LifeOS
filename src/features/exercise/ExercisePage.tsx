@@ -1,20 +1,17 @@
-import { useQuery } from '@tanstack/react-query'
 import { History } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 
-import { useServices, useSettings } from '@/app/context'
+import { useSettings } from '@/app/context'
 import { asExerciseId } from '@/domain/ids/ids'
-import {
-  exerciseHistory,
-  type ExerciseSeries,
-  type ExerciseSession,
-} from '@/domain/logging/exercise-history'
+import type { ExerciseSeries, ExerciseSession } from '@/domain/logging/exercise-history'
 import type { Performance } from '@/domain/logging/versus-last'
 import { formatLoad, type WeightUnit } from '@/domain/units/weight'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { Button, Card, CardHeading } from '@/components/shared/primitives'
-import { useExercises } from '@/features/train/hooks'
+import { useExerciseHistory, useExercises } from '@/features/train/hooks'
+
+import { StallCard } from './StallCard'
 import { splitDayLabel } from '@/features/train/useNextSession'
 
 /**
@@ -27,16 +24,11 @@ import { splitDayLabel } from '@/features/train/useNextSession'
 export function ExercisePage() {
   const { id = '' } = useParams()
   const exerciseId = asExerciseId(id)
-  const services = useServices()
   const { settings } = useSettings()
   const exercises = useExercises()
   const exercise = exercises.data?.find((one) => one.id === exerciseId)
 
-  const history = useQuery({
-    queryKey: ['workouts', 'exercise', exerciseId],
-    queryFn: async () =>
-      exerciseHistory(await services.workouts.forExercise(exerciseId), exerciseId),
-  })
+  const history = useExerciseHistory(exerciseId)
 
   const [chosen, setChosen] = useState<string | undefined>(undefined)
   const series = history.data ?? []
@@ -99,6 +91,8 @@ export function ExercisePage() {
           })}
         </div>
       )}
+
+      <StallCard exerciseId={exerciseId} series={shown} bodyweight={bodyweight} />
 
       <section className="hero-panel p-5 sm:p-6" aria-label="Progress">
         <dl className="grid grid-cols-3 gap-3">

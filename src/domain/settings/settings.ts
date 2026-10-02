@@ -1,6 +1,7 @@
 import { asExerciseId, type ExerciseId } from '@/domain/ids/ids'
 import type { E1rmFormula } from '@/domain/strength/one-rep-max'
 import type { WeightUnit } from '@/domain/units/weight'
+import type { LoadResets } from '@/domain/programs/stall'
 
 /**
  * Everything about the lifter that is not a program or a workout.
@@ -101,6 +102,11 @@ export interface AppSettings {
   readonly setupDone?: boolean
   /** A set has been swiped, so the rows stop showing that they can be. */
   readonly swipeLearned?: boolean
+  /**
+   * Resets accepted for stalled exercises, by `resetKey`. Each holds until
+   * a session of the exercise is logged after the day it was accepted.
+   */
+  readonly loadResets?: LoadResets
   readonly schemaVersion: number
 }
 

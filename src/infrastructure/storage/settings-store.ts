@@ -234,6 +234,7 @@ function mergeWithDefaults(parsed: unknown): AppSettings {
     ...sampleDataOf(stored.sampleData),
     ...(stored.setupDone === true ? { setupDone: true } : {}),
     ...(stored.swipeLearned === true ? { swipeLearned: true } : {}),
+    ...loadResetsOf(stored.loadResets),
     schemaVersion: SETTINGS_SCHEMA_VERSION,
   }
 }
@@ -289,4 +290,24 @@ export function createSettingsStore(
       return Promise.resolve()
     },
   }
+}
+
+/**
+ * Accepted resets, each checked: a load that is not a positive number or
+ * a time that does not parse would plan a bar nobody chose.
+ */
+function loadResetsOf(value: unknown): Pick<AppSettings, 'loadResets'> {
+  if (typeof value !== 'object' || value === null) return {}
+  const kept = Object.entries(value as Record<string, unknown>).flatMap(([key, reset]) => {
+    if (typeof reset !== 'object' || reset === null) return []
+    const { load, at } = reset as Record<string, unknown>
+    return typeof load === 'number' &&
+      Number.isFinite(load) &&
+      load > 0 &&
+      typeof at === 'string' &&
+      Number.isFinite(Date.parse(at))
+      ? [[key, { load, at }] as const]
+      : []
+  })
+  return kept.length === 0 ? {} : { loadResets: Object.fromEntries(kept) }
 }

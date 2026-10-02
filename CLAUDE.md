@@ -116,6 +116,20 @@ SessionPage.tsx`, from `sessionDetail`). History rows could be deleted
   finished the minute it started reads as of unknown length rather
   than "0 min"; the demo seed stamped every session that way until this
   page showed it, and now gives each 45–75 minutes.
+- **A stall is named, and a reset is offered** (`domain/programs/
+stall.ts`). Three sessions in a row that did not beat **the best top set
+  before them** — against the best, not the session before, because
+  reps bouncing 6, 5, 6 beat the session before on every rebound and
+  never stalled; a lighter bar starts a new climb, or every session after
+  a reset would read as stalled at once. The exercise page carries the
+  card (`StallCard`) with "Reset to N" at 90% rounded down; the player
+  names it under the ladder and links there. Accepting writes
+  `settings.loadResets[resetKey(id, version)] = { load, at }`, which
+  Start honours (`workingLoads`) until a session of the exercise
+  **starts after `at`** — an instant, not a day: compared by day, a reset
+  pressed after training read as already lifted and never applied. Found
+  by pressing it in the preview; `training-flow.test.ts` now holds the
+  same-day case.
 - **A set shows as logged on the tap, not on the save** (`useLogSet`'s
   `onMutate`): the result is written into the cached workout by
   `withSetResult`, **the same function the save uses**, so the screen
