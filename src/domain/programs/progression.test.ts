@@ -140,3 +140,27 @@ describe('plannedRepsFor', () => {
     expect(plannedRepsFor(threeSets, range, false, 4)).toBe(8)
   })
 })
+
+describe('lastPerformance on a bodyweight exercise', () => {
+  /*
+   * Pull-ups and dips are logged with reps and no load. Requiring a load
+   * read a month of them as no history, and the session planned nothing.
+   */
+  it('reads a set with no load as the body alone', () => {
+    expect(lastPerformance([{ reps: 9 }, { reps: 9 }, { reps: 8 }], { bodyweight: true })).toEqual({
+      load: 0,
+      reps: [9, 9, 8],
+    })
+  })
+
+  it('progresses from belt sets when some were weighted', () => {
+    expect(lastPerformance([{ load: 10, reps: 6 }, { reps: 12 }], { bodyweight: true })).toEqual({
+      load: 10,
+      reps: [6],
+    })
+  })
+
+  it('still ignores unloaded sets on a loaded exercise', () => {
+    expect(lastPerformance([{ reps: 9 }])).toBeUndefined()
+  })
+})

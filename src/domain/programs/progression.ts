@@ -112,11 +112,21 @@ export function nextLoad(
  */
 export function lastPerformance(
   sets: readonly { readonly load?: number; readonly reps?: number }[],
+  options: { readonly bodyweight?: boolean } = {},
 ): Performance | undefined {
-  const worked = sets.filter(
-    (set): set is { load: number; reps: number } =>
-      set.load !== undefined && set.load > 0 && set.reps !== undefined && set.reps > 0,
-  )
+  /*
+   * **A bodyweight set has reps and no load, and still counts.** Pull-ups
+   * and dips are logged with no weight, so requiring one read a month of
+   * them as no history at all — the session planned nothing and showed
+   * the bare range. For a bodyweight exercise a missing load is the body
+   * alone, nought added; a belt's plates are the load.
+   */
+  const worked = sets.flatMap((set) => {
+    const load = set.load ?? (options.bodyweight === true ? 0 : undefined)
+    if (load === undefined || set.reps === undefined || set.reps <= 0) return []
+    if (load <= 0 && options.bodyweight !== true) return []
+    return [{ load, reps: set.reps }]
+  })
   if (worked.length === 0) return undefined
 
   const load = Math.max(...worked.map((set) => set.load))

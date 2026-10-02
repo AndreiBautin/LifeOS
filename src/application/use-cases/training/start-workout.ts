@@ -194,9 +194,19 @@ async function workingLoads(
             ...(set.actualLoad === undefined ? {} : { load: set.actualLoad }),
             ...(set.actualReps === undefined ? {} : { reps: set.actualReps }),
           })),
+        { bodyweight: exercise.loadBasis === 'bodyweight' },
       )
 
-      const range = rangeOf(previous.sets)
+      /*
+       * **Topped against today's range, not the one last time was logged
+       * under.** They differ when a range changes — dips went from 5–10 to
+       * 5–30 — and judged by the old one, twelve dips read as topped and
+       * the next session put a belt on at five reps, the opposite of what
+       * widening the range asked for. The previous log's range is the
+       * fallback for an exercise today's day no longer prescribes a range
+       * for.
+       */
+      const range = rangeToday(day, id, library) ?? rangeOf(previous.sets)
       /*
        * Topped against the sets *that* session asked for, read off its
        * own log. Measured against today's count instead, every session
@@ -220,6 +230,17 @@ async function workingLoads(
       found.flatMap(([id, , lastTime]) => (lastTime === undefined ? [] : [[id, lastTime]])),
     ),
   }
+}
+
+/** The rep range today's day prescribes for an exercise, if any. */
+function rangeToday(
+  day: ProgramDay,
+  id: ExerciseId,
+  library: readonly Exercise[],
+): RepRange | undefined {
+  const slot = day.slots.find((one) => resolveExercise(one, library) === id)
+  const reps = slot?.sets.find((set) => set.isWarmup !== true)?.reps
+  return reps?.kind === 'range' ? { low: reps.low, high: reps.high } : undefined
 }
 
 /** What an exercise did last time, and whether its load has gone up since. */

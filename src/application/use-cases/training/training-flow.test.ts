@@ -277,6 +277,48 @@ describe('starting a session from a program', () => {
    * bottom of the range on every set, beside a "Last" line that said
    * more.
    */
+  /*
+   * Dips are bodyweight and run 5–30. Logged with no load, twelve reps on
+   * every set: under the compound range that read as topped and put a
+   * belt on at five reps; under no-load-means-no-history it planned
+   * nothing at all. Both were reported from the same session.
+   */
+  it('plans a bodyweight lift from reps alone, against today’s range', async () => {
+    const deps = beginProgram()
+    const first = await startWorkout({ athlete, program, roundingIncrement: 5 }, deps)
+    if (first.kind !== 'started') throw new Error('expected a started workout')
+
+    const index = first.workout.entries.findIndex((entry) => entry.exerciseId === 'dips')
+    const entry = first.workout.entries[index]
+    if (entry === undefined) throw new Error('expected dips on Monday')
+
+    for (const [setIndex, set] of entry.sets.entries()) {
+      if (set.isWarmup) continue
+      await logSet(
+        {
+          workoutId: first.workout.id,
+          entryIndex: index,
+          setIndex,
+          result: { reps: 12, outcome: 'completed' },
+        },
+        deps,
+      )
+    }
+    await finishWorkout(first.workout.id, deps)
+
+    for (let day = 0; day < 7; day += 1) nextDay()
+    const again = await startWorkout({ athlete, program, roundingIncrement: 5 }, deps)
+    if (again.kind !== 'started') throw new Error('expected a started workout')
+
+    const sets =
+      again.workout.entries
+        .find((one) => one.exerciseId === 'dips')
+        ?.sets.filter((set) => !set.isWarmup) ?? []
+    expect(sets[0]?.prescription.reps).toMatchObject({ kind: 'range', low: 5, high: 30 })
+    expect(sets.map((set) => set.plannedLoad)).toEqual(sets.map(() => 0))
+    expect(sets.map((set) => set.plannedReps)).toEqual(sets.map(() => 13))
+  })
+
   it('plans one more rep than last time on each set while the load holds', async () => {
     const deps = beginProgram()
     const first = await startWorkout({ athlete, program, roundingIncrement: 5 }, deps)

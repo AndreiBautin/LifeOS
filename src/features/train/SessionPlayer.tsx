@@ -220,6 +220,9 @@ export function SessionPlayer({
               workoutId={workout.id}
               variant={entry.variant}
               units={units}
+              bodyweight={
+                exercises.find((one) => one.id === entry.exerciseId)?.loadBasis === 'bodyweight'
+              }
               isOpen={openSet === setIndex}
               onOpen={() => {
                 setOpenSet(setIndex)

@@ -7996,8 +7996,15 @@ nothing and goes live again the moment two patterns share a muscle. The
 two forearm tests that were its only coverage went with the exercises,
 and are in the git history.
 
-**`repRange` now has no entries**, the feet-elevated push-up having been
-its only one. The field stays as the escape hatch it was written to be.
+**`repRange` has two entries: pull-ups and dips run 5–30.** Asked for
+as _"pull-ups and dips are actually done 5-30"_ — on a bodyweight
+compound the reps are the progression until a belt is needed, and the
+compound 5–10 asked for added weight at eleven dips. **A bodyweight set
+logged with no load is the body alone** (`lastPerformance` with
+`bodyweight`): requiring a load read a month of pull-ups as no history,
+and the session planned the bare range. **`topped` is judged against
+today's range** (`rangeToday` in `start-workout.ts`), not the range last
+time was logged under, or widening a range bumps the load on the spot.
 
 **Two rep ranges, chosen by the movement, and one exception.** Compounds
 run 5–10 and isolations 15–30 — `COMPOUND_REPS` and `ISOLATION_REPS` in
@@ -8007,8 +8014,8 @@ could account for and which drifted as the catalogue grew.
 
 `repRange` is that field back with a much narrower remit — **an exception
 for a movement the rule gets wrong, not a place to tune every exercise.**
-There are no entries left: the feet-elevated push-up was the only one and
-it went with the catalogue cuts. The field stays as the escape hatch it
+Pull-ups and dips are the entries now (see above); the feet-elevated
+push-up was the first and went with the catalogue cuts. The field stays as the escape hatch it
 was written to be — **an exception for a movement the rule gets wrong,
 not a place to tune every exercise.** **If a third or fourth entry
 appears, the rule is what needs changing.**

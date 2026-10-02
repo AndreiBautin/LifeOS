@@ -325,6 +325,12 @@ const ENTRIES: readonly CatalogueEntry[] = [
     sfr: 3,
     systemicCost: 0.3,
     loadBasis: 'bodyweight',
+    /*
+     * 5–30, the lifter's own range for the two bodyweight compounds:
+     * reps are the progression until a belt is needed, and a compound's
+     * 5–10 would ask for added weight at eleven dips.
+     */
+    repRange: { low: 5, high: 30 },
     defaultRestSeconds: REST,
   },
 
@@ -341,6 +347,8 @@ const ENTRIES: readonly CatalogueEntry[] = [
     sfr: 3,
     systemicCost: 0.3,
     loadBasis: 'bodyweight',
+    // See dips: reps carry the progression until a belt is needed.
+    repRange: { low: 5, high: 30 },
     defaultRestSeconds: REST,
     notes: 'The width builder. Tier 2 priority — worth the systemic cost.',
   },

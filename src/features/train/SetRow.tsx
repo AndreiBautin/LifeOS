@@ -36,6 +36,12 @@ interface Props {
   /** The entry sub-category, so a back-off compares against back-offs. */
   readonly variant?: string | undefined
   readonly units: WeightUnit
+  /**
+   * The exercise is bodyweight: a load is what is *added*, and none means
+   * the body alone. Read as "BW" rather than "0 lb", and logged with no
+   * load, the way every bodyweight set in the history already is.
+   */
+  readonly bodyweight?: boolean
   readonly isOpen: boolean
   readonly onOpen: () => void
   readonly onLog: (result: { load?: number | undefined; reps?: number | undefined }) => void
@@ -45,6 +51,8 @@ interface Props {
 
 export function SetRow(props: Props) {
   const { set, index, exerciseId, workoutId, units, isOpen, onOpen, onLog } = props
+  const loadText = (load: number | undefined): string =>
+    describeLoad(load, units, props.bodyweight === true)
   const { data: previous } = usePreviousSet(exerciseId, index, workoutId, props.variant)
 
   const done = set.outcome === 'completed' && set.completedAt !== undefined
@@ -66,7 +74,7 @@ export function SetRow(props: Props) {
       : undefined
 
   const summary = done
-    ? `${set.actualLoad === undefined ? '—' : formatLoad(set.actualLoad, units)} × ${String(set.actualReps ?? '—')}${
+    ? `${loadText(set.actualLoad)} × ${String(set.actualReps ?? '—')}${
         set.actualRpe === undefined ? '' : ` @ ${String(set.actualRpe)}`
       }`
     : describePrescription(set.prescription, repsOverride)
@@ -74,7 +82,7 @@ export function SetRow(props: Props) {
   const plannedSummary =
     set.plannedLoad === undefined
       ? describePrescription(set.prescription)
-      : `${formatLoad(set.plannedLoad, units)} × ${set.prescription.reps.kind === 'amrap' ? `${String(set.prescription.reps.minimum)}+` : String(set.plannedReps ?? '')}`
+      : `${loadText(set.plannedLoad)} × ${set.prescription.reps.kind === 'amrap' ? `${String(set.prescription.reps.minimum)}+` : String(set.plannedReps ?? '')}`
 
   /*
    * **One tap logs the set as planned.** The row's own press opens the
@@ -102,8 +110,8 @@ export function SetRow(props: Props) {
     ? (set.prescription.label ?? 'Logged')
     : skipped
       ? 'Skipped'
-      : previous?.load !== undefined
-        ? `Last ${formatLoad(previous.load, units)} × ${String(previous.reps ?? '—')}`
+      : previous != null && (previous.load !== undefined || props.bodyweight === true)
+        ? `Last ${loadText(previous.load)} × ${String(previous.reps ?? '—')}`
         : (set.prescription.label ??
           (set.plannedLoad === undefined && !quick ? 'Tap to enter' : undefined))
 
@@ -156,7 +164,10 @@ export function SetRow(props: Props) {
             type="button"
             onClick={() => {
               onLog({
-                ...(set.plannedLoad !== undefined ? { load: set.plannedLoad } : {}),
+                ...(set.plannedLoad !== undefined &&
+                !(props.bodyweight === true && set.plannedLoad === 0)
+                  ? { load: set.plannedLoad }
+                  : {}),
                 ...(set.plannedReps !== undefined ? { reps: set.plannedReps } : {}),
               })
             }}
@@ -191,6 +202,7 @@ function SetEditorPanel({
   index,
   entryIndex,
   units,
+  bodyweight,
   onLog,
   onSkip,
   onClear,
@@ -234,16 +246,17 @@ function SetEditorPanel({
           {set.prescription.label ?? `Set ${String(index + 1)}`}
           <span className="text-ink-500"> · {describePrescription(set.prescription)}</span>
         </p>
-        {previousLoad !== undefined && (
+        {(previousLoad !== undefined || (bodyweight === true && previousReps !== undefined)) && (
           <p className="text-ink-500 numeric text-xs">
-            Last: {formatLoad(previousLoad, units)} × {String(previousReps ?? '—')}
+            Last: {describeLoad(previousLoad, units, bodyweight === true)} ×{' '}
+            {String(previousReps ?? '—')}
           </p>
         )}
       </div>
 
       <div className="grid grid-cols-2 gap-2">
         <NumberField
-          label={units}
+          label={bodyweight === true ? `Added ${units}` : units}
           id={`load-${String(entryIndex)}-${String(index)}`}
           value={load}
           onChange={(event) => {
@@ -267,7 +280,10 @@ function SetEditorPanel({
           variant="primary"
           full
           onClick={() => {
-            const loadValue = asNumber(load)
+            const typed = asNumber(load)
+            // Nothing added to a bodyweight set is the body alone: logged
+            // with no load, as the rest of its history is.
+            const loadValue = bodyweight === true && typed === 0 ? undefined : typed
             const repsValue = asNumber(reps)
             onLog({
               ...(loadValue !== undefined ? { load: loadValue } : {}),
@@ -289,4 +305,14 @@ function SetEditorPanel({
       </div>
     </div>
   )
+}
+
+/**
+ * A load as a lifter reads it. On a bodyweight exercise the number is what
+ * a belt adds, so none reads "BW" and five reads "BW + 5 lb" rather than
+ * "0 lb" and "5 lb" — the second of which looks like a five-pound pull-up.
+ */
+function describeLoad(load: number | undefined, units: WeightUnit, bodyweight: boolean): string {
+  if (bodyweight) return load === undefined || load <= 0 ? 'BW' : `BW + ${formatLoad(load, units)}`
+  return load === undefined ? '—' : formatLoad(load, units)
 }
