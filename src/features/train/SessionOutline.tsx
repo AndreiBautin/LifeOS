@@ -103,14 +103,16 @@ export function SessionOutline({
   }
 
   return (
-    <div className="mb-4 space-y-3">
+    <div className="space-y-3">
       {inSections(day.slots).map((section, index) => {
         const folds = section.title === 'Warm-up'
         const open = !folds || warmupOpen
         const count = `${String(section.slots.length)} ${section.slots.length === 1 ? 'movement' : 'movements'}`
 
         const title = (
-          <span className="text-ink-700 text-xs tracking-wide uppercase">{section.title}</span>
+          <span className="text-ink-700 text-[0.7rem] font-semibold tracking-[0.12em] uppercase">
+            {section.title}
+          </span>
         )
 
         return (
@@ -129,13 +131,13 @@ export function SessionOutline({
               <button
                 type="button"
                 aria-expanded={open}
-                className="tap-target flex w-full items-center justify-between gap-2 text-left"
+                className="tap-target border-ink-800 bg-ink-900/50 text-ink-500 hover:text-ink-300 flex w-full items-center justify-between gap-2 rounded-lg border px-3 text-left"
                 onClick={() => {
                   setWarmupOpen(!warmupOpen)
                 }}
               >
                 {title}
-                <span className="text-ink-700 flex items-center gap-1 text-xs">
+                <span className="flex items-center gap-1 text-xs">
                   {count}
                   {open ? (
                     <ChevronDown size={14} aria-hidden />
@@ -149,11 +151,16 @@ export function SessionOutline({
             )}
 
             {open && (
-              <ul className="mt-1.5 space-y-1.5">
+              <ul className="divide-ink-800/70 mt-1 divide-y">
                 {section.slots.map((slot) => (
-                  <li key={slot.id} className="text-ink-300 flex justify-between gap-3 text-sm">
+                  <li
+                    key={slot.id}
+                    className="text-ink-100 flex items-baseline justify-between gap-3 py-1.5 text-sm"
+                  >
                     <span className="truncate">{nameOf(slot)}</span>
-                    <span className="text-ink-500 numeric shrink-0">{describeSlot(slot.sets)}</span>
+                    <span className="text-ink-500 numeric shrink-0 text-xs">
+                      {describeSlot(slot.sets)}
+                    </span>
                   </li>
                 ))}
               </ul>

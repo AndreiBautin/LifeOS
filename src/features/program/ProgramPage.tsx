@@ -1,24 +1,21 @@
+import { BarChart3, ChevronDown, ChevronRight } from 'lucide-react'
 import { useState } from 'react'
 import { PageHeader } from '@/components/shared/PageHeader'
 
-import { useSettings } from '@/app/context'
+import { useServices, useSettings } from '@/app/context'
+import { cn } from '@/lib/cn'
 import type { Exercise } from '@/domain/exercises/exercise'
 import type { ExerciseId } from '@/domain/ids/ids'
-import type { Slot } from '@/domain/programs/program'
-import {
-  scheduledVolume,
-  slotRoleLabel,
-  slotRoleTone,
-  slotVariant,
-} from '@/domain/programs/program'
+import type { ProgramDay, Slot } from '@/domain/programs/program'
+import { inSections, scheduledVolume } from '@/domain/programs/program'
 import { describeReps } from '@/domain/programs/prescription'
 import { resolveSets } from '@/domain/resolution/resolve'
 import { attributeWeek, type MuscleAttribution } from '@/domain/volume/attribution'
 import type { MuscleGroup } from '@/domain/exercises/taxonomy'
-import { Badge, Button, Card, Section } from '@/components/shared/primitives'
+import { Badge, Button, Card, CardHeading } from '@/components/shared/primitives'
 
 import { useExercises, useJumpToWeek, useProgram } from '@/features/train/hooks'
-import { useNextSession } from '@/features/train/useNextSession'
+import { splitDayLabel, useNextSession } from '@/features/train/useNextSession'
 
 /**
  * The whole block, laid out, with the numbers it would actually give you.
@@ -35,6 +32,8 @@ import { useNextSession } from '@/features/train/useNextSession'
  */
 export function ProgramPage() {
   const { settings, athlete } = useSettings()
+  const { clock } = useServices()
+  const todayWeekday = clock.now().getDay()
   const program = useProgram()
   const { thisWeek } = useNextSession()
   const exercises = useExercises()
@@ -158,59 +157,211 @@ export function ProgramPage() {
         }
       />
 
-      {week.days.map((day) => (
-        <Section
-          key={day.index}
-          title={day.label}
-          {...(day.focus ? { description: day.focus } : {})}
+      {/*
+        **A strip of the week, then a card per day.** The page was six
+        sections of flat rows, a third of them warm-ups and every row
+        carrying two badges — on a phone it scrolled for a long time
+        before saying anything, and the badges truncated the names they
+        sat beside. The strip answers "what is on which day" at a glance
+        and jumps to it; each card groups its rows the way the session
+        plan does, so the heading says what kind of work a row is and the
+        row can spend its width on the name and the numbers.
+      */}
+      <nav aria-label="Days" className="mb-5">
+        <ol
+          className="grid gap-1.5 sm:gap-2"
+          style={{ gridTemplateColumns: `repeat(${String(week.days.length)}, minmax(0, 1fr))` }}
         >
-          <Card className="space-y-2">
-            {day.slots.map((slot) => (
-              <SlotRow
-                key={slot.id}
-                slot={slot}
-                exercise={
-                  slot.exercise.kind === 'specific' ? lookup(slot.exercise.exerciseId) : undefined
-                }
-                athlete={athlete}
-                roundingIncrement={settings.roundingIncrement}
+          {week.days.map((day) => {
+            const label = splitDayLabel(day.label)
+            const isToday = day.weekday === todayWeekday
+            return (
+              <li key={day.index} className="min-w-0">
+                <a
+                  href={`#day-${String(day.index)}`}
+                  aria-current={isToday ? 'date' : undefined}
+                  className={cn(
+                    'tap-target flex flex-col items-center rounded-xl border px-1 py-2 text-center transition-colors',
+                    isToday
+                      ? 'border-accent-500/60 bg-accent-500/10 text-ink-50'
+                      : 'border-ink-800 bg-ink-900/60 text-ink-300 hover:border-ink-700',
+                  )}
+                  onClick={(event) => {
+                    event.preventDefault()
+                    document
+                      .getElementById(`day-${String(day.index)}`)
+                      ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                  }}
+                >
+                  <span
+                    className={cn(
+                      'text-[0.65rem] font-semibold tracking-[0.12em] uppercase',
+                      isToday ? 'text-accent-400' : 'text-ink-500',
+                    )}
+                  >
+                    {(label.weekday ?? '').slice(0, 3) || `Day ${String(day.index + 1)}`}
+                  </span>
+                  <span className="w-full truncate text-xs font-medium sm:text-sm">
+                    {label.name}
+                  </span>
+                </a>
+              </li>
+            )
+          })}
+        </ol>
+      </nav>
+
+      <div className="space-y-4 lg:grid lg:grid-cols-2 lg:items-start lg:gap-4 lg:space-y-0">
+        {week.days.map((day) => (
+          <DayCard
+            key={day.index}
+            day={day}
+            isToday={day.weekday === todayWeekday}
+            lookup={lookup}
+            athlete={athlete}
+            roundingIncrement={settings.roundingIncrement}
+          />
+        ))}
+      </div>
+
+      <Card className="mt-4">
+        <CardHeading icon={<BarChart3 size={16} aria-hidden />} title="Sets per muscle" />
+        <p className="text-ink-500 mb-3 text-xs">
+          Accessory sets this week, each counted once for the muscle it is programmed for. Tap a
+          muscle to see what feeds it.
+        </p>
+
+        <ul className="space-y-1">
+          {attribution
+            .filter((entry) => entry.total > 0 || targetOf(entry.muscle) > 0)
+            .sort((a, b) => b.total - a.total)
+            .map((entry) => (
+              <AttributionRow
+                key={entry.muscle}
+                entry={entry}
+                target={targetOf(entry.muscle)}
+                isOpen={openMuscle === entry.muscle}
+                onToggle={() => {
+                  setOpenMuscle(openMuscle === entry.muscle ? undefined : entry.muscle)
+                }}
               />
             ))}
-          </Card>
-        </Section>
-      ))}
-
-      <Section
-        title="Where the volume comes from"
-        description="Every set counted toward each muscle this week, and what produced it"
-      >
-        <Card>
-          <p className="text-ink-500 mb-3 text-xs">
-            Hypertrophy work only, and a set counts once for the muscle it is programmed for. The
-            competition lifting and the conditioning are not counted here — they are training, not
-            volume toward these numbers — and a bench press is chest rather than part triceps, so
-            the triceps get their own slot instead of credit for the pressing.
-          </p>
-
-          <ul className="space-y-1">
-            {attribution
-              .filter((entry) => entry.total > 0 || targetOf(entry.muscle) > 0)
-              .sort((a, b) => b.total - a.total)
-              .map((entry) => (
-                <AttributionRow
-                  key={entry.muscle}
-                  entry={entry}
-                  target={targetOf(entry.muscle)}
-                  isOpen={openMuscle === entry.muscle}
-                  onToggle={() => {
-                    setOpenMuscle(openMuscle === entry.muscle ? undefined : entry.muscle)
-                  }}
-                />
-              ))}
-          </ul>
-        </Card>
-      </Section>
+        </ul>
+      </Card>
     </div>
+  )
+}
+
+/**
+ * One day of the week: its name, what it trains, and the session in the
+ * parts it is run in.
+ *
+ * The warm-up folds, for the reason it folds on the session plan: it is
+ * the same every time and asks for no decision, and it was a third of
+ * every day on this page. Today's card is lit, so the week reads against
+ * the calendar rather than as a list.
+ */
+function DayCard({
+  day,
+  isToday,
+  lookup,
+  athlete,
+  roundingIncrement,
+}: {
+  readonly day: ProgramDay
+  readonly isToday: boolean
+  readonly lookup: (id: ExerciseId) => Exercise | undefined
+  readonly athlete: Parameters<typeof resolveSets>[1]['athlete']
+  readonly roundingIncrement: number
+}) {
+  const [warmupOpen, setWarmupOpen] = useState(false)
+  const label = splitDayLabel(day.label)
+  const working = day.slots.filter((slot) => slot.role !== 'warmup').length
+
+  return (
+    <Card
+      id={`day-${String(day.index)}`}
+      className={cn('scroll-mt-4', isToday && 'ring-accent-500/60 ring-1')}
+    >
+      <header className="mb-3 flex items-start gap-3">
+        <span
+          className={cn(
+            'flex size-11 shrink-0 items-center justify-center rounded-xl border text-[0.65rem] font-semibold tracking-wider uppercase',
+            isToday
+              ? 'border-accent-500/50 bg-accent-500/15 text-accent-400'
+              : 'border-ink-800 bg-ink-900 text-ink-500',
+          )}
+          aria-hidden
+        >
+          {(label.weekday ?? '').slice(0, 3) || String(day.index + 1)}
+        </span>
+        <div className="min-w-0 flex-1">
+          <h2 className="text-ink-50 flex flex-wrap items-center gap-2 text-base font-semibold">
+            <span className="sr-only">{label.weekday} — </span>
+            {label.name}
+            {isToday && <Badge tone="accent">Today</Badge>}
+          </h2>
+          {day.focus !== undefined && day.focus !== '' && (
+            <p className="text-ink-500 mt-0.5 text-xs">{day.focus}</p>
+          )}
+        </div>
+        <span className="text-ink-500 numeric shrink-0 pt-0.5 text-xs">
+          {working} {working === 1 ? 'exercise' : 'exercises'}
+        </span>
+      </header>
+
+      <div className="space-y-3">
+        {inSections(day.slots).map((section, index) => {
+          const folds = section.title === 'Warm-up'
+          const open = !folds || warmupOpen
+          return (
+            <div key={`${section.title}-${String(index)}`}>
+              {folds ? (
+                <button
+                  type="button"
+                  aria-expanded={open}
+                  className="tap-target border-ink-800 bg-ink-900/50 text-ink-500 hover:text-ink-300 flex w-full items-center justify-between gap-2 rounded-lg border px-3 text-left text-xs"
+                  onClick={() => {
+                    setWarmupOpen(!warmupOpen)
+                  }}
+                >
+                  <span className="tracking-wide uppercase">Warm-up</span>
+                  <span className="flex items-center gap-1">
+                    {section.slots.length} movements
+                    {open ? (
+                      <ChevronDown size={14} aria-hidden />
+                    ) : (
+                      <ChevronRight size={14} aria-hidden />
+                    )}
+                  </span>
+                </button>
+              ) : (
+                <h3 className="text-ink-700 text-[0.7rem] font-semibold tracking-[0.12em] uppercase">
+                  {section.title}
+                </h3>
+              )}
+              {open && (
+                <ul className="divide-ink-800/70 mt-1 divide-y">
+                  {section.slots.map((slot) => (
+                    <SlotRow
+                      key={slot.id}
+                      slot={slot}
+                      exercise={
+                        slot.exercise.kind === 'specific'
+                          ? lookup(slot.exercise.exerciseId)
+                          : undefined
+                      }
+                      athlete={athlete}
+                      roundingIncrement={roundingIncrement}
+                    />
+                  ))}
+                </ul>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </Card>
   )
 }
 
@@ -291,23 +442,13 @@ function SlotRow({
           .join('  ·  ')
 
   return (
-    <div className="border-ink-800 flex items-start justify-between gap-3 border-b pb-2 last:border-0 last:pb-0">
-      <div className="min-w-0">
-        <p className="text-ink-50 truncate text-sm font-medium">
-          {exercise?.name ??
-            (slot.exercise.kind === 'query' ? slot.exercise.label : 'Unknown exercise')}
-        </p>
-        <p className="text-ink-500 numeric mt-0.5 text-xs">{line}</p>
-      </div>
-      {/*
-        Bucket first, sub-category second. Compound and isolation are two
-        ways of doing hypertrophy, not two kinds of work.
-      */}
-      <span className="flex shrink-0 items-center gap-1.5">
-        <Badge tone={slotRoleTone(slot.role)}>{slotRoleLabel(slot.role)}</Badge>
-        {slotVariant(slot) !== '' && <Badge tone="sub">{slotVariant(slot)}</Badge>}
+    <li className="flex items-baseline justify-between gap-3 py-1.5">
+      <span className="text-ink-100 min-w-0 text-sm">
+        {exercise?.name ??
+          (slot.exercise.kind === 'query' ? slot.exercise.label : 'Unknown exercise')}
       </span>
-    </div>
+      <span className="text-ink-500 numeric shrink-0 text-right text-xs">{line}</span>
+    </li>
   )
 }
 

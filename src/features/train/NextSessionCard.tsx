@@ -47,10 +47,14 @@ export function NextSessionCard() {
           </Link>
         }
       />
-      {(week?.isDeload === true || here !== undefined) && (
+      {/*
+        A chip only when it says something: the deload, or a cycle past the
+        first. "cycle 1" on its own was a badge describing the default.
+      */}
+      {(week?.isDeload === true || (here?.cycleNumber ?? 1) > 1) && (
         <div className="mb-3 flex flex-wrap gap-1.5">
           {week?.isDeload === true && <Badge tone="warn">deload</Badge>}
-          <Badge>cycle {here?.cycleNumber ?? 1}</Badge>
+          {(here?.cycleNumber ?? 1) > 1 && <Badge>cycle {here?.cycleNumber}</Badge>}
         </div>
       )}
 

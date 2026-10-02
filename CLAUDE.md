@@ -77,6 +77,16 @@ standards.ts`): the estimated max, its multiple of bodyweight, and the
   quiet ("Finish early · N sets left") until nothing is pending, and
   the rest timer is a ring with +30s rather than a second whole rest
   period. The report opens on a `.hero-panel`.
+- **The Program page is a week strip and a card per day.** It was six
+  sections of flat rows, a third of them warm-ups, each row carrying a
+  role badge and a sub-category badge that truncated the exercise name.
+  Rows are grouped by `inSections` like the session plan, so the heading
+  says what kind of work a row is and the badges are gone; the warm-up
+  folds; today's card and chip are lit from the clock's weekday; the
+  strip is a grid sized to the days so it never scrolls sideways. Two
+  columns from `lg`. Settings toggles are a styled switch over a real
+  checkbox (`role="switch"`), because the native box was the one
+  system-blue control on the screen.
 - **Volume targets are gone from the day; only the week keeps a
   view.** Asked: _"I feel like that might be outdated since we just use
   a flat volume across the board now"_. It was: a day's

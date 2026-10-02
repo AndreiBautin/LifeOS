@@ -240,7 +240,7 @@ function SessionRow({
               type="button"
               onClick={onAskDelete}
               aria-label={`Delete ${described}`}
-              className="tap-target text-ink-600 hover:text-bad-500 flex items-center justify-center rounded-lg transition-colors"
+              className="tap-target text-ink-700 hover:text-bad-500 flex items-center justify-center rounded-lg transition-colors"
             >
               <Trash2 size={15} aria-hidden />
             </button>
