@@ -1,6 +1,8 @@
 import type { Exercise } from '@/domain/exercises/exercise'
 import type { ExerciseId, WorkoutId } from '@/domain/ids/ids'
+import { isProgress, topSet, versusLast } from '@/domain/logging/versus-last'
 import type { WorkoutLog } from '@/domain/logging/workout-log'
+import { sameVersion } from '@/domain/splits/rp-splits'
 import type { ProgramTemplate } from '@/domain/programs/program'
 import {
   estimateFromWorkout,
@@ -108,7 +110,7 @@ async function buildReport(
     progress.push({
       exerciseId: entry.exerciseId,
       name: exercise?.name ?? entry.exerciseId,
-      verdict: await verdictFor(workout, entry.exerciseId, deps),
+      verdict: await verdictFor(workout, entry.exerciseId, entry.variant, deps),
       ...(estimate !== undefined ? { estimate } : {}),
     })
   }
@@ -136,34 +138,45 @@ async function buildReport(
   }
 }
 
+/*
+ * **The verdict is the set rows' rule, applied to each session's top set.**
+ * It scored the best single set by load × reps, so 320 × 3 lost to last
+ * week's 310 × 5 — a heavier bar, which is exactly what double
+ * progression asks for, reported as "came in under last time" directly
+ * beneath rows saying "+10 lb". Two answers to one question on adjacent
+ * screens. `versusLast` reads load first and reps at the same load, and
+ * so does this now.
+ *
+ * Last time is the same *version* of the exercise (`sameVersion`), so a
+ * light calf raise is not judged against the heavy one.
+ */
 async function verdictFor(
   workout: WorkoutLog,
   exerciseId: ExerciseId,
+  variant: string | undefined,
   deps: FinishWorkoutDeps,
 ): Promise<ExerciseProgress['verdict']> {
-  const history = await deps.workouts.forExercise(exerciseId, 5)
-  const previous = history.find(
-    (candidate) => candidate.id !== workout.id && candidate.status === 'completed',
-  )
-  if (previous === undefined) return 'new'
+  const top = (log: WorkoutLog) =>
+    topSet(
+      log.entries
+        .filter((entry) => entry.exerciseId === exerciseId && sameVersion(entry.variant, variant))
+        .flatMap((entry) => workingSets(entry))
+        .map((set) => ({ load: set.actualLoad, reps: set.actualReps })),
+    )
 
-  const best = (log: WorkoutLog): number => {
-    const sets = log.entries
-      .filter((entry) => entry.exerciseId === exerciseId)
-      .flatMap((entry) => workingSets(entry))
+  const current = top(workout)
+  if (current === undefined) return 'new'
 
-    return sets.reduce((max, set) => {
-      const volume = (set.actualLoad ?? 0) * (set.actualReps ?? 0)
-      return Math.max(max, volume)
-    }, 0)
-  }
+  const history = await deps.workouts.forExercise(exerciseId, 10)
+  const before = history
+    .filter((candidate) => candidate.id !== workout.id && candidate.status === 'completed')
+    .map(top)
+    .find((set) => set !== undefined)
+  if (before === undefined) return 'new'
 
-  const current = best(workout)
-  const before = best(previous)
-
-  if (current > before) return 'better'
-  if (current < before) return 'worse'
-  return 'matched'
+  const versus = versusLast(current, before)
+  if (versus === undefined || versus.kind === 'matched') return 'matched'
+  return isProgress(versus) ? 'better' : 'worse'
 }
 
 function headlineFor(progress: readonly ExerciseProgress[]): string {

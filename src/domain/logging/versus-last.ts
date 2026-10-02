@@ -42,6 +42,23 @@ export function versusLast(now: Performance, last: Performance): Versus | undefi
   return { kind: 'matched' }
 }
 
+/**
+ * A session's top set for one exercise: the heaviest bar, and the most
+ * reps at it. The same order `versusLast` reads, so the session report
+ * and the set rows answer "did it beat last time" by one rule.
+ */
+export function topSet(sets: readonly Performance[]): Performance | undefined {
+  return sets
+    .filter((set) => set.reps !== undefined)
+    .reduce<Performance | undefined>((best, set) => {
+      if (best === undefined) return set
+      const load = set.load ?? 0
+      const bestLoad = best.load ?? 0
+      if (load !== bestLoad) return load > bestLoad ? set : best
+      return (set.reps ?? 0) > (best.reps ?? 0) ? set : best
+    }, undefined)
+}
+
 /** Progress is the two kinds the method counts as moving forward. */
 export function isProgress(versus: Versus): boolean {
   return versus.kind === 'heavier' || versus.kind === 'more-reps'

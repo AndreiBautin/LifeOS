@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { isProgress, versusLast } from './versus-last'
+import { isProgress, topSet, versusLast } from './versus-last'
 
 describe('a set against last time', () => {
   it('counts a heavier bar as progress whatever the reps did', () => {
@@ -40,6 +40,18 @@ describe('a set against last time', () => {
       kind: 'heavier',
       by: 1.25,
     })
+  })
+
+  it('takes the heaviest bar as the top set, then the most reps at it', () => {
+    expect(
+      topSet([
+        { load: 310, reps: 5 },
+        { load: 320, reps: 2 },
+        { load: 320, reps: 3 },
+        { load: 330 },
+      ]),
+    ).toEqual({ load: 320, reps: 3 })
+    expect(topSet([])).toBeUndefined()
   })
 
   it('has nothing to say without reps on both sides', () => {

@@ -96,7 +96,16 @@ standards.ts`): the estimated max, its multiple of bodyweight, and the
   same bar, and a lighter bar is reported as lighter rather than turned
   into a win through an estimated max. Progress is a lit chip that pops
   and shines once; matched or slipped back is quiet ink, never red
-  mid-session.
+  mid-session. **The session report's up/down verdict reads the same
+  rule** on each session's `topSet` — it scored best load × reps, so
+  320 × 3 read as "came in under" last week's 310 × 5 directly below
+  rows saying "+10 lb". One question, one rule.
+- **The report puts the volume in pictures** (`heftOf` in
+  `domain/units/heft.ts`): the heaviest reference object the total
+  covers — "about 1.2 family cars" — so the count is never a fraction of
+  one. The hero stats count up once (`useCountUp`); reduced motion shows
+  the figure directly, and a screen reader gets the number, not the
+  animation.
 - **The Program page is a week strip and a card per day.** It was six
   sections of flat rows, a third of them warm-ups, each row carrying a
   role badge and a sub-category badge that truncated the exercise name.

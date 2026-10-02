@@ -883,6 +883,18 @@ html {
   animation: plate-in 1600ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
+/* The report's "you moved about…" line arrives as the counts settle. */
+@keyframes heft-rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+.heft-line {
+  animation: heft-rise 500ms ease-out 750ms both;
+}
+
 /*
  * A set that beat last time: the chip pops in and one band of light
  * crosses it. Once, on mount — never looped.
