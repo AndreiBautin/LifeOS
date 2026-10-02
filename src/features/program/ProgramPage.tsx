@@ -1,4 +1,4 @@
-import { BarChart3, ChevronDown, ChevronRight } from 'lucide-react'
+import { BarChart3, Check, ChevronDown, ChevronRight } from 'lucide-react'
 import { useState } from 'react'
 import { PageHeader } from '@/components/shared/PageHeader'
 
@@ -14,7 +14,7 @@ import { attributeWeek, type MuscleAttribution } from '@/domain/volume/attributi
 import type { MuscleGroup } from '@/domain/exercises/taxonomy'
 import { Badge, Button, Card, CardHeading } from '@/components/shared/primitives'
 
-import { useExercises, useJumpToWeek, useProgram } from '@/features/train/hooks'
+import { useExercises, useJumpToWeek, useProgram, useWeekSummary } from '@/features/train/hooks'
 import { splitDayLabel, useNextSession } from '@/features/train/useNextSession'
 
 /**
@@ -38,6 +38,14 @@ export function ProgramPage() {
   const { thisWeek } = useNextSession()
   const exercises = useExercises()
   const jumpToWeek = useJumpToWeek()
+  /*
+   * **The strip ticks off the days this week has had.** It said what is
+   * on which day and nothing about where the week stands, so on a
+   * Thursday the five chips looked the same as on a Monday. A finished
+   * day is filled in the good colour with a check; today keeps its
+   * accent ring whether done or not.
+   */
+  const done = new Set(useWeekSummary().data?.doneTitles ?? [])
 
   const [openMuscle, setOpenMuscle] = useState<string | undefined>(undefined)
 
@@ -175,6 +183,7 @@ export function ProgramPage() {
           {week.days.map((day) => {
             const label = splitDayLabel(day.label)
             const isToday = day.weekday === todayWeekday
+            const isDone = done.has(day.label)
             return (
               <li key={day.index} className="min-w-0">
                 <a
@@ -182,9 +191,12 @@ export function ProgramPage() {
                   aria-current={isToday ? 'date' : undefined}
                   className={cn(
                     'tap-target flex flex-col items-center rounded-xl border px-1 py-2 text-center transition-colors',
+                    'relative',
                     isToday
                       ? 'border-accent-500/60 bg-accent-500/10 text-ink-50'
-                      : 'border-ink-800 bg-ink-900/60 text-ink-300 hover:border-ink-700',
+                      : isDone
+                        ? 'border-good-500/30 bg-good-500/10 text-ink-100'
+                        : 'border-ink-800 bg-ink-900/60 text-ink-300 hover:border-ink-700',
                   )}
                   onClick={(event) => {
                     event.preventDefault()
@@ -193,10 +205,19 @@ export function ProgramPage() {
                       ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
                   }}
                 >
+                  {isDone && (
+                    <span
+                      className="bg-good-500 absolute -top-1.5 -right-1.5 flex size-4 items-center justify-center rounded-full text-black"
+                      aria-hidden
+                    >
+                      <Check size={11} strokeWidth={3} />
+                    </span>
+                  )}
+                  {isDone && <span className="sr-only">Done this week: </span>}
                   <span
                     className={cn(
                       'text-[0.65rem] font-semibold tracking-[0.12em] uppercase',
-                      isToday ? 'text-accent-400' : 'text-ink-500',
+                      isToday ? 'text-accent-400' : isDone ? 'text-good-500' : 'text-ink-500',
                     )}
                   >
                     {(label.weekday ?? '').slice(0, 3) || `Day ${String(day.index + 1)}`}

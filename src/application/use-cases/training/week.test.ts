@@ -63,6 +63,27 @@ describe('the week so far', () => {
   })
 })
 
+describe('which days are done', () => {
+  it('names the sessions finished this week, abandoned ones and last week left out', async () => {
+    const titled = (day: string, title: string, status: WorkoutLog['status'] = 'completed') => ({
+      ...trained(day, 3, status),
+      title,
+    })
+    const week = await weekSummary(
+      harness(
+        [
+          titled('2026-01-16', 'Friday — Legs B'),
+          titled('2026-01-19', 'Monday — Upper'),
+          titled('2026-01-20', 'Tuesday — Legs A', 'abandoned'),
+        ],
+        WEDNESDAY,
+      ),
+    )
+
+    expect(week.doneTitles).toEqual(['Monday — Upper'])
+  })
+})
+
 describe('the streak', () => {
   it('counts consecutive weeks that had a session', async () => {
     const week = await weekSummary(

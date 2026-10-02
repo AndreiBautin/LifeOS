@@ -31,6 +31,13 @@ export interface WeekSummary {
    * run that the week has not had a chance to continue yet.
    */
   readonly streakWeeks: number
+  /**
+   * Titles of the sessions finished this week, so the Program page can
+   * tick a day off. By title rather than by the weekday it was done on:
+   * Monday's session started early on a Friday ticks Monday, which is
+   * the day it was, not the day the calendar happened to say.
+   */
+  readonly doneTitles: readonly string[]
 }
 
 export interface WeekDeps {
@@ -69,5 +76,6 @@ export async function weekSummary(deps: WeekDeps): Promise<WeekSummary> {
     sets: thisWeek.reduce((total, log) => total + totalWorkingSets(log), 0),
     volume: sumVolume(thisWeek.map((log) => loggedVolume(log, lookup))),
     streakWeeks,
+    doneTitles: [...new Set(thisWeek.map((log) => log.title))],
   }
 }

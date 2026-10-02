@@ -106,6 +106,12 @@ standards.ts`): the estimated max, its multiple of bodyweight, and the
   one. The hero stats count up once (`useCountUp`); reduced motion shows
   the figure directly, and a screen reader gets the number, not the
   animation.
+- **The Program strip ticks off the week.** `weekSummary.doneTitles`
+  names the sessions finished this calendar week, and a chip whose day
+  label is among them gets a check. **By title, not by weekday** — Monday's
+  session started early on Friday ticks Monday. Sessions logged under the
+  old PPL titles tick nothing, which is correct: those days no longer
+  exist.
 - **The Strength card names the gap to what sessions measure.** The card
   is the estimated max kept in Settings (what every first-session load
   is planned from); the chart under it is what sessions measure, and
