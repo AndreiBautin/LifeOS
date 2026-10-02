@@ -57,7 +57,6 @@ export interface AppSettings {
   readonly e1rmFormula: E1rmFormula
   readonly restTimerEnabled: boolean
   readonly keepScreenAwake: boolean
-  readonly checkInsEnabled: boolean
 
   readonly theme: 'system' | 'light' | 'dark'
   /**
@@ -151,7 +150,6 @@ export const DEFAULT_SETTINGS: AppSettings = {
   e1rmFormula: 'epley',
   restTimerEnabled: true,
   keepScreenAwake: true,
-  checkInsEnabled: true,
   theme: 'system',
   schemaVersion: SETTINGS_SCHEMA_VERSION,
 }

@@ -137,13 +137,6 @@ export function SettingsPage() {
               update({ keepScreenAwake })
             }}
           />
-          <Toggle
-            label="Ask how recovery feels before and after"
-            checked={settings.checkInsEnabled}
-            onChange={(checkInsEnabled) => {
-              update({ checkInsEnabled })
-            }}
-          />
         </Card>
       </Section>
 

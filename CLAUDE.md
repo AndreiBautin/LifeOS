@@ -85,7 +85,12 @@ standards.ts`): the estimated max, its multiple of bodyweight, and the
   strip is a grid sized to the days so it never scrolls sideways. Two
   columns from `lg`. Settings toggles are a styled switch over a real
   checkbox (`role="switch"`), because the native box was the one
-  system-blue control on the screen.
+  system-blue control on the screen. **"Ask how recovery feels before
+  and after" is gone** — asked _"is it even acting anymore"_: nothing
+  read `checkInsEnabled` and no screen ever asked for a check-in. The
+  field left `AppSettings` and the parse, so a stored blob's copy falls
+  out on read; the `checkIns` store and its backup collection stay for
+  the history they hold.
 - **Volume targets are gone from the day; only the week keeps a
   view.** Asked: _"I feel like that might be outdated since we just use
   a flat volume across the board now"_. It was: a day's
