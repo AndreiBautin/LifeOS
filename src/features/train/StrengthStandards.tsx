@@ -1,8 +1,13 @@
 import { Trophy } from 'lucide-react'
 
 import { useSettings } from '@/app/context'
+import { STRENGTH_LIFT_SLUGS } from '@/domain/exercises/catalogue'
+import { asExerciseId } from '@/domain/ids/ids'
 import { strengthStandings, type LiftStanding } from '@/domain/strength/standards'
-import { Card, CardHeading } from '@/components/shared/primitives'
+import { strengthTrend, type TrendLift } from '@/domain/strength/trend'
+import { Button, Card, CardHeading } from '@/components/shared/primitives'
+
+import { useRecentWorkouts } from './hooks'
 
 /**
  * Where each lift stands against the published bodyweight standards: the
@@ -25,8 +30,37 @@ const LIFT_COLOURS: Readonly<Record<string, string>> = {
   Deadlift: 'var(--color-warn-500)',
 }
 
+/** The card's row names, as the trend names the same lifts. */
+const TREND_LIFT: Readonly<Record<string, TrendLift>> = {
+  Squat: 'squat',
+  'Bench press': 'bench',
+  Deadlift: 'deadlift',
+}
+
+/**
+ * Below this the two figures are the same number rounded twice, and an
+ * offer to swap one for the other would be noise on every row.
+ */
+const DRIFT = 5
+
 export function StrengthStandards() {
-  const { settings } = useSettings()
+  const { settings, update } = useSettings()
+  /*
+   * **The card and the chart beneath it read two different numbers**, and
+   * nothing said so: the card is the estimated max you keep in Settings,
+   * which every suggested load is planned from; the chart is what your
+   * sessions measure. Squat 353 above a chart ending at 356 read as a bug.
+   * Where they part by more than rounding, the row names the measured
+   * figure and offers it — **offered, never applied**, the stance the
+   * session report's own "use this estimate" takes, because the stored
+   * max moves every first-session load and must move only when asked.
+   */
+  const workouts = useRecentWorkouts(200)
+  const trend = workouts.data === undefined ? undefined : strengthTrend(workouts.data)
+  const measuredFor = (name: string): number | undefined => {
+    const lift = TREND_LIFT[name]
+    return lift === undefined ? undefined : trend?.[lift].at(-1)?.value
+  }
 
   const { lifts, total } = strengthStandings({
     estimatedMaxes: settings.estimatedMaxes,
@@ -48,6 +82,17 @@ export function StrengthStandards() {
             key={lift.name}
             standing={lift}
             colour={LIFT_COLOURS[lift.name] ?? 'var(--color-accent-400)'}
+            measured={measuredFor(lift.name)}
+            onUse={(value) => {
+              const trendLift = TREND_LIFT[lift.name]
+              if (trendLift === undefined) return
+              update({
+                estimatedMaxes: {
+                  ...settings.estimatedMaxes,
+                  [asExerciseId(STRENGTH_LIFT_SLUGS[trendLift])]: value,
+                },
+              })
+            }}
           />
         ))}
       </ul>
@@ -64,10 +109,19 @@ export function StrengthStandards() {
 function LiftRow({
   standing,
   colour,
+  measured,
+  onUse,
 }: {
   readonly standing: LiftStanding
   readonly colour: string
+  readonly measured?: number | undefined
+  readonly onUse?: (value: number) => void
 }) {
+  const drifted =
+    measured !== undefined &&
+    onUse !== undefined &&
+    (standing.max === undefined || Math.abs(measured - standing.max) >= DRIFT)
+
   return (
     <li>
       <div className="flex items-baseline justify-between gap-2">
@@ -83,6 +137,24 @@ function LiftRow({
         </span>
       </div>
       <Band standing={standing} colour={colour} />
+      {drifted && (
+        <div className="border-ink-800 mt-2 flex items-center justify-between gap-3 rounded-lg border border-dashed px-3 py-1.5">
+          <span className="text-ink-500 text-xs">
+            Your sessions measure{' '}
+            <span className="numeric text-ink-100 font-semibold">{measured} lb</span>
+          </span>
+          <Button
+            variant="ghost"
+            size="sm"
+            aria-label={`Use ${String(measured)} lb as your ${standing.name.toLowerCase()} max`}
+            onClick={() => {
+              onUse(measured)
+            }}
+          >
+            Use it
+          </Button>
+        </div>
+      )}
     </li>
   )
 }

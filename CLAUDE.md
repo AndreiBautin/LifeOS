@@ -106,6 +106,12 @@ standards.ts`): the estimated max, its multiple of bodyweight, and the
   one. The hero stats count up once (`useCountUp`); reduced motion shows
   the figure directly, and a screen reader gets the number, not the
   animation.
+- **The Strength card names the gap to what sessions measure.** The card
+  is the estimated max kept in Settings (what every first-session load
+  is planned from); the chart under it is what sessions measure, and
+  "Squat 353" above a line ending at 356 read as a bug. Where the two
+  part by `DRIFT` (5) or more, the row says "Your sessions measure 245
+  lb" with **Use it** — offered, never applied, like the report's own.
 - **The strength chart scrubs.** Hover or drag across it and a crosshair
   snaps to the nearest session, ringing each lift's line, while the three
   figures above read that day instead of today. Pointer events with
