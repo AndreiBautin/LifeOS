@@ -8,10 +8,6 @@ import { TripsPage } from '@/features/atlas/TripsPage'
 import { BacklogPage } from '@/features/backlog/BacklogPage'
 import { BasePage } from '@/features/base/BasePage'
 import { LimitsPage } from '@/features/limits/LimitsPage'
-import { MindPage } from '@/features/mind/MindPage'
-import { JobsPage } from '@/features/jobs/JobsPage'
-import { QuestsPage } from '@/features/projects/QuestsPage'
-import { ResumePage } from '@/features/resume/ResumePage'
 import { UpgradesPage } from '@/features/upgrades/UpgradesPage'
 import { HistoryPage } from '@/features/history/HistoryPage'
 import { ProgramPage } from '@/features/program/ProgramPage'
@@ -40,24 +36,17 @@ export const router = createBrowserRouter(
         // first screen should be the answer to "what now".
         { index: true, element: <Navigate to="/today" replace /> },
         /*
-         * **Quests un-folded from Today back onto its own page** — see
-         * `QuestsPage`'s own doc. It had briefly redirected to `/today`
-         * while folded in; now it renders directly again.
+         * **Quests, the job search, the resume and Mind are gone**, and
+         * every path they had lands on Today. Projects are worked through
+         * in Notion now — _"drop quests, keep the arc as a checklist"_ —
+         * and the arc's checklist lives on Today. Redirects rather than
+         * deletions: a PWA shortcut is registered with the operating
+         * system at install time, and `/next` is one the manifest ships.
          */
-        { path: 'quests', element: <QuestsPage /> },
-        /*
-         * **Goals are gone and both paths land on Quests.** Dropped as
-         * "too much complexity integrating with quests" — a goal was a
-         * second way of describing the same aim the main quest already
-         * held. Redirects rather than deletions, the rule `/next` follows.
-         */
-        { path: 'goals', element: <Navigate to="/quests" replace /> },
-        { path: 'goals/:id', element: <Navigate to="/quests" replace /> },
-        /*
-         * The PWA manifest ships a "What next" shortcut pointing here.
-         * Quests having its own page again is what "next" actually means.
-         */
-        { path: 'next', element: <Navigate to="/quests" replace /> },
+        ...['quests', 'next', 'goals', 'goals/:id', 'jobs', 'resume', 'mind'].map((path) => ({
+          path,
+          element: <Navigate to="/today" replace />,
+        })),
         { path: 'train', element: <TrainPage /> },
         /*
          * The Plan screen is gone and `/plan` lands on the Program page.
@@ -94,8 +83,6 @@ export const router = createBrowserRouter(
          */
         { path: 'vitals', element: <Navigate to="/today" replace /> },
         { path: 'limits', element: <LimitsPage /> },
-        { path: 'mind', element: <MindPage /> },
-        { path: 'jobs', element: <JobsPage /> },
         /*
          * **Removed outright, not folded back into Today.** Reported
          * directly: "it doesn't really fit and could vibe weird to
@@ -110,7 +97,6 @@ export const router = createBrowserRouter(
          * an installed copy goes on asking for this path.
          */
         { path: 'finance', element: <Navigate to="/today" replace /> },
-        { path: 'resume', element: <ResumePage /> },
         { path: 'map', element: <AtlasPage /> },
         { path: 'map/share', element: <SharePage /> },
         { path: 'map/inbox', element: <InboxPage /> },

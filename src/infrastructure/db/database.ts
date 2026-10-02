@@ -1,5 +1,4 @@
 import type { Room } from '@/domain/base/declutter'
-import type { Attempt } from '@/domain/mind/practice'
 import type { ChallengeMark } from '@/domain/challenges/challenge'
 import type { Campaign } from '@/domain/campaign/campaign'
 import type { DBSchema, IDBPDatabase } from 'idb'
@@ -7,9 +6,7 @@ import { openDB } from 'idb'
 
 import type { CheckIn } from '@/domain/autoregulation/check-in'
 import type { FinanceReading } from '@/domain/finance/reading'
-import type { Resume } from '@/domain/resume/resume'
 import type { Item } from '@/domain/backlog/item'
-import type { Project } from '@/domain/projects/project'
 import type { Upgrade } from '@/domain/upgrades/upgrade'
 import type { MetricDefinition, MonthlySnapshot } from '@/domain/review/metric'
 import type { Place } from '@/domain/atlas/place/Place'
@@ -64,7 +61,7 @@ export const DB_NAME = 'lifeos'
  * a device that already ran it will not run it again, so changing one
  * leaves two devices with different schemas and no way to tell.
  */
-export const DB_VERSION = 22
+export const DB_VERSION = 23
 
 /**
  * A workout as it is stored, which is not quite a workout as the domain
@@ -222,7 +219,8 @@ export interface LiftDB extends DBSchema {
    */
   projects: {
     key: string
-    value: Project
+    /** Retired with the quests and house jobs; written by nothing. See step 23. */
+    value: RetiredRow
     indexes: { 'by-status': string }
   }
   /**
@@ -393,7 +391,8 @@ export interface LiftDB extends DBSchema {
   /** Problems practised, one row each. */
   attempts: {
     key: string
-    value: Attempt
+    /** Retired with Mind; written by nothing. See step 23. */
+    value: RetiredRow
   }
   /**
    * What the person has said about a seasonal challenge.
@@ -427,7 +426,8 @@ export interface LiftDB extends DBSchema {
   /** The resume, one row under a fixed key. */
   resume: {
     key: string
-    value: Resume
+    /** Retired with the job search; written by nothing. See step 23. */
+    value: Readonly<Record<string, unknown>>
   }
   /** The money figures, one row a month. */
   finance: {
@@ -707,6 +707,19 @@ export function openDatabase(name = DB_NAME): Promise<AppDatabase> {
          * editing the step above that creates it.
          */
         void transaction.objectStore('goals').clear()
+      }
+
+      if (oldVersion < 23) {
+        /*
+         * Quests, house jobs, the job search, the resume and the practice
+         * log left the app — projects are worked through in Notion now:
+         * _"drop quests, keep the arc as a checklist"_. Their rows go the
+         * way the goals did; the stores stay, because removing them would
+         * mean editing the steps that create them.
+         */
+        void transaction.objectStore('projects').clear()
+        void transaction.objectStore('attempts').clear()
+        void transaction.objectStore('resume').clear()
       }
     },
 

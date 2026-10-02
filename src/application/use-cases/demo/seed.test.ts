@@ -52,13 +52,11 @@ function deps() {
 
   const parts = {
     items: store(),
-    projects: store(),
     upgrades: store(),
     rooms: store(),
     finance: store('month'),
     campaigns: store(),
     vices: store(),
-    attempts: store(),
     challenges: store(),
     trips: store(),
     places: store(),
@@ -131,7 +129,6 @@ describe('seeding the demo', () => {
 
     expect(result.seeded).toBe(true)
     expect(services.items.rows.size).toBeGreaterThan(8)
-    expect(services.projects.rows.size).toBeGreaterThan(2)
     expect(services.upgrades.rows.size).toBeGreaterThan(2)
     expect(services.rooms.rows.size).toBeGreaterThan(3)
     expect(services.campaigns.rows.size).toBe(1)

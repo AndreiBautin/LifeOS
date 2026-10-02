@@ -27,14 +27,11 @@ export const LIFE_AREAS = [
   'cardio',
   'crafting',
   'backlog',
-  'projects',
   'upgrades',
   'places',
-  'jobs',
   'base',
   'vitals',
   'finance',
-  'mind',
   'challenges',
 ] as const
 
@@ -164,18 +161,11 @@ export const SCORING: readonly AreaScoring[] = [
      * any dailies or housework, just the diy stuff I work on myself or
      * Legos from my codex."_
      *
-     * Two sources, both split off records that already exist rather than
-     * newly logged:
-     *
-     * - **Lego in the Codex.** A set is built rather than consumed,
-     *   which is why it feeds this instead of Intellect. `tallyActs`
-     *   takes those items *out* of the backlog acts, so no item pays
-     *   twice — the same split `belongsTo` already makes for a chore.
-     * - **House jobs done yourself.** A DIY job's closed steps pay here
-     *   and not `base.action-closed`, by the same rule.
-     *
-     * A hired job still pays Base. Getting a plumber in is a thing you
-     * did and worth the points; it is not crafting.
+     * One source, split off records that already exist rather than newly
+     * logged: **Lego in the Codex.** A set is built rather than consumed,
+     * which is why it feeds this instead of Intellect. `tallyActs` takes
+     * those items *out* of the backlog acts, so no item pays twice. DIY
+     * house jobs used to pay here too, and left with the quests.
      */
     area: 'crafting',
     name: 'Crafting',
@@ -187,7 +177,7 @@ export const SCORING: readonly AreaScoring[] = [
        * The same rates the areas these are split from use, so moving a
        * record between them never changes what it is worth. A build day
        * is a backlog progress day (10), a finished set is a finished
-       * item (40), and a DIY step is a house step (20).
+       * item (40).
        */
       {
         id: 'crafting.build-progress',
@@ -196,12 +186,6 @@ export const SCORING: readonly AreaScoring[] = [
         points: 5,
       },
       { id: 'crafting.build-finished', area: 'crafting', label: 'Finished a build', points: 40 },
-      {
-        id: 'crafting.diy-step-closed',
-        area: 'crafting',
-        label: 'Did a bit of it yourself',
-        points: 20,
-      },
     ],
     hasTree: false,
   },
@@ -228,47 +212,6 @@ export const SCORING: readonly AreaScoring[] = [
         points: 5,
       },
       { id: 'backlog.item-finished', area: 'backlog', label: 'Finished something', points: 40 },
-    ],
-    hasTree: false,
-  },
-  {
-    area: 'projects',
-    name: 'Projects',
-    phase: 2,
-    ladders: [],
-    ratings: [
-      {
-        id: 'projects.throughput',
-        source: 'projects.actions-closed-in-month',
-        name: 'Throughput',
-        unit: 'actions',
-        direction: 'increase',
-        cadence: 'monthly',
-      },
-    ],
-    /*
-     * Split by quest kind, and paid from the kind recorded **on the
-     * action** rather than the one on the quest today.
-     *
-     * The kind is a label somebody can change, so reading it live would
-     * mean promoting a side quest silently repriced every action already
-     * closed against it — and demoting one would make XP go *down*. A
-     * closed action carries `completedAsKind`, which is a fact about the
-     * moment and cannot be edited by relabelling.
-     */
-    acts: [
-      {
-        id: 'projects.main-action-closed',
-        area: 'projects',
-        label: 'Closed a main quest step',
-        points: 40,
-      },
-      {
-        id: 'projects.side-action-closed',
-        area: 'projects',
-        label: 'Closed a side quest step',
-        points: 20,
-      },
     ],
     hasTree: false,
   },
@@ -344,40 +287,13 @@ export const SCORING: readonly AreaScoring[] = [
         direction: 'increase',
         cadence: 'monthly',
       },
-      {
-        /*
-         * Steps closed on house jobs, which is the Base half of
-         * `projects.throughput` — countable here precisely because that
-         * one is own-area only, so a house job's steps land in exactly
-         * one of the two.
-         *
-         * Steps rather than jobs finished, because a house job is rarely
-         * finished in the month it was opened and a rating that only
-         * moved on completion would read flat through every month of
-         * real work.
-         */
-        id: 'base.jobs',
-        source: 'base.job-steps-in-month',
-        name: 'House jobs',
-        unit: 'steps',
-        direction: 'increase',
-        cadence: 'monthly',
-      },
     ],
     /*
-     * Every one of these is a *record type that already pays* — a chore
-     * is a daily, a house job is a project — so the tally routes each
-     * record to exactly one area by `belongsTo`. Rule three is that
-     * nothing is counted twice, and a Base chore paying both
-     * `dailies.completed` and `base.chore-kept` would be the clearest
-     * possible breach of it.
-     *
-     * Points match their counterparts on purpose. Fixing a tap is not
-     * worth more or less than a step on any other quest, and pricing it
-     * differently would be an opinion about house work smuggled into the
-     * currency.
+     * **No acts now.** House jobs paid `base.action-closed` and chores
+     * paid `base.chore-kept`; both record types left the app. Base
+     * measures the clutter and pays nothing, the footing Finance stands on.
      */
-    acts: [{ id: 'base.action-closed', area: 'base', label: 'Step on a house job', points: 20 }],
+    acts: [],
     /*
      * False, and this is the interesting one.
      *
@@ -485,38 +401,6 @@ export const SCORING: readonly AreaScoring[] = [
     acts: [
       { id: 'places.place-visited', area: 'places', label: 'Marked a place visited', points: 20 },
     ],
-    hasTree: false,
-  },
-  {
-    area: 'jobs',
-    name: 'Job search',
-    phase: 6,
-    /*
-     * A campaign has stages and an end, which is not the same as having a
-     * ceiling: there is no such thing as being maximally good at looking
-     * for work. Nothing here gets a level.
-     */
-    ladders: [],
-    ratings: [
-      {
-        id: 'jobs.applications',
-        source: 'jobs.applications-in-week',
-        name: 'Applications sent',
-        unit: 'applications',
-        direction: 'stay-above',
-        cadence: 'weekly',
-        threshold: 5,
-      },
-      {
-        id: 'jobs.progression',
-        source: 'jobs.stage-advances-in-month',
-        name: 'Stage progression',
-        unit: 'advances',
-        direction: 'increase',
-        cadence: 'monthly',
-      },
-    ],
-    acts: [{ id: 'jobs.application-sent', area: 'jobs', label: 'Sent an application', points: 30 }],
     hasTree: false,
   },
   {
@@ -636,56 +520,6 @@ export const SCORING: readonly AreaScoring[] = [
         label: 'Finished a seasonal challenge',
         points: CHALLENGE_XP,
       },
-    ],
-    hasTree: false,
-  },
-  {
-    area: 'mind',
-    name: 'Mind',
-    phase: 8,
-    /*
-     * **No ladder, and this is the one where a count is most tempting.**
-     * LeetCode publishes how many problems exist and every practice site
-     * shows a total solved, so a "1,200 problems" ceiling looks like an
-     * external standard. It is not one: it is a count of that site's
-     * catalogue, which grows, and nothing about having solved half of it
-     * says you are halfway to anything. A ladder must name a standard
-     * somebody outside the app anchored — bodyweight multiples, FICO
-     * bands — and there is no published table of what makes a practised
-     * engineer.
-     */
-    ladders: [],
-    ratings: [
-      {
-        id: 'mind.throughput',
-        source: 'mind.problems-solved-in-month',
-        name: 'Problems solved',
-        unit: 'problems',
-        direction: 'increase',
-        cadence: 'monthly',
-      },
-      {
-        /*
-         * Days practised, not problems solved, and the pair is the
-         * point: six problems in one Sunday and six spread over six days
-         * are very different months, and one number cannot say which
-         * happened.
-         */
-        id: 'mind.consistency',
-        source: 'mind.days-practised-in-month',
-        name: 'Days practised',
-        unit: 'days',
-        direction: 'increase',
-        cadence: 'monthly',
-      },
-    ],
-    acts: [
-      { id: 'mind.problem-solved', area: 'mind', label: 'Solved a problem', points: 20 },
-      /*
-       * The same fifteen points every kept habit is worth, under a fifth
-       * name. `tallyActs` splits by `belongsTo`, so a study habit filed
-       * here pays this and never `dailies.completed`.
-       */
     ],
     hasTree: false,
   },

@@ -1,5 +1,4 @@
 import type {
-  AttemptRepository,
   BacklogItemRepository,
   ChallengeRepository,
   CampaignRepository,
@@ -7,8 +6,6 @@ import type {
   ExploredAreaRepository,
   FinanceRepository,
   PlaceRepository,
-  ProjectRepository,
-  ResumeRepository,
   RoomRepository,
   SettingsRepository,
   TripRepository,
@@ -28,9 +25,7 @@ import type { IdGenerator } from '@/domain/ids/ids'
  */
 export interface DemoDeps {
   readonly items: BacklogItemRepository
-  readonly attempts: AttemptRepository
   readonly challenges: ChallengeRepository
-  readonly projects: ProjectRepository
   readonly upgrades: UpgradeRepository
   readonly rooms: RoomRepository
   readonly finance: FinanceRepository
@@ -52,7 +47,6 @@ export interface DemoDeps {
    * behaviour, and a demonstration of nothing.
    */
   readonly settings: SettingsRepository
-  readonly resume: ResumeRepository
   readonly trips: TripRepository
   readonly clock: Clock
   readonly ids: IdGenerator

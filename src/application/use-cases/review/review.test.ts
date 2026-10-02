@@ -5,9 +5,8 @@ import type { CellId } from '@/domain/atlas/exploration/GeoCell'
 import type { Place } from '@/domain/atlas/place/Place'
 import { DEFAULT_SETTINGS } from '@/domain/settings/settings'
 import { SCORING } from '@/domain/game/registry'
-import { asExerciseId, asMetricId, asProjectId, asUpgradeId, type MetricId } from '@/domain/ids/ids'
+import { asExerciseId, asMetricId, asUpgradeId, type MetricId } from '@/domain/ids/ids'
 import type { Item } from '@/domain/backlog/item'
-import type { Project } from '@/domain/projects/project'
 import type { FinanceReading } from '@/domain/finance/reading'
 import type { Clock, WorkoutRepository, ReviewRepository } from '@/domain/repositories/ports'
 import type { MetricDefinition, MonthlySnapshot } from '@/domain/review/metric'
@@ -43,7 +42,6 @@ function harness(
   const clock: Clock = { now: () => at }
 
   const backlog: Item[] = []
-  const projectList: Project[] = []
   const financeList: FinanceReading[] = []
   const upgradeList: Upgrade[] = []
   const workoutList: ReturnType<typeof aWorkout>[] = []
@@ -92,9 +90,7 @@ function harness(
 
   const deps: ReviewDeps = {
     items: stub(backlog),
-    projects: stub(projectList),
     finance: stub(financeList),
-    attempts: stub([]),
     upgrades: stub(upgradeList),
     workouts: stub(workoutList) as unknown as WorkoutRepository,
     places: stub(placeList),
@@ -119,7 +115,6 @@ function harness(
   return {
     deps,
     backlog,
-    projectList,
     financeList,
     upgradeList,
     workoutList,
@@ -228,43 +223,6 @@ describe('measuring the hub', () => {
     )
 
     expect((await measureAll(deps))['upgrades.owned-share']).toBe(33)
-  })
-
-  it('counts the actions closed this month, and not last month’s', async () => {
-    const { deps, projectList } = harness()
-
-    projectList.push({
-      id: asProjectId('p'),
-      name: 'P',
-      impact: 5,
-      urgency: 5,
-      effort: 5,
-      status: 'active',
-      isBlocked: false,
-      blockedBy: [],
-      createdAt: '2026-01-01T00:00:00.000Z',
-      actions: [
-        {
-          id: 'a' as never,
-          description: 'this month',
-          status: 'done',
-          order: 1,
-          createdAt: '',
-          completedAt: '2026-08-10T00:00:00.000Z',
-        },
-        {
-          id: 'b' as never,
-          description: 'last month',
-          status: 'done',
-          order: 2,
-          createdAt: '',
-          completedAt: '2026-07-10T00:00:00.000Z',
-        },
-        { id: 'c' as never, description: 'open', status: 'pending', order: 3, createdAt: '' },
-      ],
-    })
-
-    expect((await measureAll(deps))['projects.actions-closed-in-month']).toBe(1)
   })
 
   it('uses the backlog’s own statistic rather than a second copy of it', async () => {
@@ -588,67 +546,5 @@ describe('saveMetric', () => {
     )
 
     expect(result.error).toMatch(/threshold/)
-  })
-})
-
-describe('measuring the job search', () => {
-  const application = (stages: readonly { at?: string }[]) =>
-    ({
-      id: 'j1',
-      name: 'Acme — Backend engineer',
-      status: 'active',
-      belongsTo: 'jobs',
-      createdAt: '2026-08-01T00:00:00.000Z',
-      actions: stages.map((stage, index) => ({
-        id: `s${String(index)}`,
-        description: 'Screen',
-        status: stage.at === undefined ? 'pending' : 'done',
-        order: index + 1,
-        createdAt: '2026-08-01T00:00:00.000Z',
-        ...(stage.at === undefined ? {} : { completedAt: stage.at }),
-      })),
-    }) as unknown as Project
-
-  it('counts the stages advanced inside the month', async () => {
-    const { deps, projectList } = harness()
-    projectList.push(
-      application([
-        { at: '2026-07-20T00:00:00.000Z' },
-        { at: '2026-08-12T00:00:00.000Z' },
-        { at: '2026-08-20T00:00:00.000Z' },
-        {},
-      ]),
-    )
-
-    const measured = await measureAll(deps)
-
-    expect(measured['jobs.stage-advances-in-month']).toBe(2)
-  })
-
-  /*
-   * The rating this feeds is about the quest log, and an application is
-   * a `Project` — so without the `isOwnArea` filter a screen and an
-   * interview would score as quest throughput. The same leak
-   * `recommendation` had, one layer down.
-   */
-  it('keeps stage advances out of quest throughput', async () => {
-    const { deps, projectList } = harness()
-    projectList.push(application([{ at: '2026-08-12T00:00:00.000Z' }]))
-
-    const measured = await measureAll(deps)
-
-    expect(measured['projects.actions-closed-in-month']).toBeUndefined()
-  })
-
-  /*
-   * The only weekly rating in the app, and `measure.ts` is monthly
-   * throughout. Declared and unfed reads as *absent*, which the spine
-   * skips — saying nothing rather than something false.
-   */
-  it('says nothing about the weekly application count', async () => {
-    const { deps, projectList } = harness()
-    projectList.push(application([{ at: '2026-08-12T00:00:00.000Z' }]))
-
-    expect((await measureAll(deps))['jobs.applications-in-week']).toBeUndefined()
   })
 })

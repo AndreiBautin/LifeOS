@@ -4,7 +4,6 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { DEFAULT_SETTINGS } from '@/domain/settings/settings'
 import { closeAppDatabase, openDatabase, type AppDatabase } from '@/infrastructure/db/database'
 import {
-  createAttemptRepository,
   createBacklogItemRepository,
   createCampaignRepository,
   createChallengeRepository,
@@ -14,8 +13,6 @@ import {
   createFinanceRepository,
   createPlaceRepository,
   createPositionRepository,
-  createProjectRepository,
-  createResumeRepository,
   createReviewRepository,
   createRoomRepository,
   createTombstoneRepository,
@@ -88,14 +85,11 @@ async function device(name: string): Promise<SyncRepositories> {
     exercises: createExerciseRepository(db, clock),
     workouts: createWorkoutRepository(db, clock),
     checkIns: createCheckInRepository(db, clock),
-    resume: createResumeRepository(db, clock),
     campaigns: createCampaignRepository(db, clock),
-    attempts: createAttemptRepository(db, clock),
     challenges: createChallengeRepository(db, clock),
     rooms: createRoomRepository(db, clock),
     tombstones: createTombstoneRepository(db),
     items: createBacklogItemRepository(db, clock),
-    projects: createProjectRepository(db, clock),
     upgrades: createUpgradeRepository(db, clock),
     review: createReviewRepository(db, clock),
     places: createPlaceRepository(db, clock),

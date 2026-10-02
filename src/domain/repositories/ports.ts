@@ -1,13 +1,9 @@
 import type { Room } from '@/domain/base/declutter'
-import type { TrackExercise, TrackId } from '@/domain/mind/tracks'
-import type { Attempt } from '@/domain/mind/practice'
 import type { ChallengeMark } from '@/domain/challenges/challenge'
 import type { Campaign } from '@/domain/campaign/campaign'
 import type { CheckIn } from '@/domain/autoregulation/check-in'
 import type { FinanceReading } from '@/domain/finance/reading'
-import type { Resume } from '@/domain/resume/resume'
 import type { Item } from '@/domain/backlog/item'
-import type { Project } from '@/domain/projects/project'
 import type { Upgrade } from '@/domain/upgrades/upgrade'
 import type { MetricDefinition, MonthlySnapshot } from '@/domain/review/metric'
 import type { Place } from '@/domain/atlas/place/Place'
@@ -22,12 +18,10 @@ import type {
   CheckInId,
   ExerciseId,
   MetricId,
-  ProjectId,
   UpgradeId,
   WorkoutId,
   ViceId,
   CampaignId,
-  AttemptId,
   RoomId,
 } from '@/domain/ids/ids'
 import type { WorkoutLog } from '@/domain/logging/workout-log'
@@ -213,40 +207,11 @@ export interface BacklogItemRepository {
 }
 
 /**
- * The quest log.
- *
- * Actions live inside their project, so there is no action repository —
- * closing one is a save of the project that holds it.
- */
-export interface ProjectRepository {
-  all(): Promise<readonly Project[]>
-  byId(id: ProjectId): Promise<Project | undefined>
-  save(project: Project): Promise<void>
-  /**
-   * Saves several as one transaction, stamping each.
-   *
-   * Completing a project can un-block others, and those others have to
-   * land with it: a partial write leaves the graph saying a project is
-   * blocked by something already finished. Distinct from `restoreMany`,
-   * which deliberately does not stamp.
-   */
-  saveMany(projects: readonly Project[]): Promise<void>
-  /** Writes records exactly as given, without stamping `updatedAt`. */
-  restoreMany(projects: readonly Project[]): Promise<void>
-  remove(id: ProjectId): Promise<void>
-  /** Deletes without recording a tombstone — the receiving half of a sync. */
-  purge(id: ProjectId): Promise<void>
-  clear(): Promise<void>
-  count(): Promise<number>
-}
-
-/**
  * The tech tree.
  *
- * No `saveMany`. Unlike a project, buying an upgrade changes no other
- * record — what it unblocks is *derived* from the graph on every read, so
- * nothing needs re-deriving and writing back. The whole reason the
- * projects repository needed a batch write is absent here.
+ * No `saveMany`: buying an upgrade changes no other record — what it
+ * unblocks is *derived* from the graph on every read, so nothing needs
+ * re-deriving and writing back.
  */
 export interface UpgradeRepository {
   all(): Promise<readonly Upgrade[]>
@@ -337,33 +302,6 @@ export interface FinanceRepository {
   purge(month: string): Promise<void>
 }
 
-/**
- * The resume, of which there is exactly one.
- *
- * No `all`, because there is nothing to list — a second resume would be
- * a *version*, which is a different feature and would need to say what
- * distinguishes them. `get` returns undefined until one is written.
- */
-export interface ResumeRepository {
-  get(): Promise<Resume | undefined>
-  save(resume: Resume): Promise<void>
-}
-
-/**
- * Reading a public ATS board.
- *
- * A port rather than a direct call, for the reason every port here
- * exists: the use-case must be testable without the internet, and the
- * one thing a job board is guaranteed to do is answer differently
- * tomorrow.
- */
-/**
- * Reading a public news source.
- *
- * A port for the reason every port here is one: the parsing is pure and
- * testable against fixtures, and the fetching is the one thing that
- * cannot be. See `domain/news/story.ts`.
- */
 export interface RoomRepository {
   all(): Promise<readonly Room[]>
   byId(id: RoomId): Promise<Room | undefined>
@@ -373,21 +311,6 @@ export interface RoomRepository {
   remove(id: RoomId): Promise<void>
   /** Deletes without a tombstone -- the receiving half of a sync. */
   purge(id: RoomId): Promise<void>
-}
-
-export interface TrackGateway {
-  read(track: TrackId): Promise<readonly TrackExercise[]>
-}
-
-export interface AttemptRepository {
-  all(): Promise<readonly Attempt[]>
-  byId(id: AttemptId): Promise<Attempt | undefined>
-  save(attempt: Attempt): Promise<void>
-  /** Writes exactly as given, without stamping. See `ExerciseRepository`. */
-  restoreMany(attempts: readonly Attempt[]): Promise<void>
-  remove(id: AttemptId): Promise<void>
-  /** Deletes without a tombstone -- the receiving half of a sync. */
-  purge(id: AttemptId): Promise<void>
 }
 
 /**

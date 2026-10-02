@@ -1,5 +1,5 @@
 import { Declutter } from './Declutter'
-import { Hammer, Plus, Undo2, Wrench } from 'lucide-react'
+import { Plus, Wrench } from 'lucide-react'
 import { useState } from 'react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { Link } from 'react-router-dom'
@@ -7,89 +7,23 @@ import { Link } from 'react-router-dom'
 import { Button, Card, CardHeading, Empty } from '@/components/shared/primitives'
 import { EyeIcon } from '@/components/shared/EyeIcon'
 import { buttonStyles } from '@/components/shared/styles'
-import type { Project } from '@/domain/projects/project'
 import type { Upgrade } from '@/domain/upgrades/upgrade'
-import { BASE, JOB_APPROACHES, stepsFor, type JobApproach } from '@/domain/base/base'
+import { BASE } from '@/domain/base/base'
 import { UPGRADE_SHELF_LABELS, UPGRADE_SHELVES } from '@/domain/upgrades/shelf'
 import { dropped, owned, wanted } from '@/domain/upgrades/wishlist'
 import { cn } from '@/lib/cn'
 
-import { useAddProject, useBaseProjects, useMoveProjectHome } from '../projects/hooks'
 import { NO_BUDGET, useAddUpgrade, useMoveUpgradeToShelf, useUpgradeTree } from '../upgrades/hooks'
 
 /**
- * Base: the place you live, and everything it asks of you.
+ * Base: the place you live — how clear it is, and what you mean to buy
+ * for it.
  *
- * Three kinds of thing, none of them new. A leaking tap is a project with
- * steps, a weekly hoover is a daily on a cadence, a new dishwasher is an
- * upgrade with a price — and the app already knows how to store all
- * three. What Base changes is where they appear.
- *
- * House work has a different rhythm from the rest of a quest log. It
- * arrives when something breaks rather than when you decide to do it, it
- * is mostly the same errand each time — find the right person, get them
- * to come — and it never finishes. Mixed into the quest list it crowds
- * out the things somebody actually chose; on its own screen it reads as
- * maintenance, which is what it is.
- *
- * The ordering is deliberate and matches Today's: **what is due, then
- * what is open, then what is wanted.** Chores first because they are the
- * part with a deadline today; jobs next because they are the part that
- * stalls; upgrades last because wanting a dishwasher is not a task.
+ * **House jobs left with the quests**, asked for as _"drop them too"_:
+ * house projects are worked through in Notion now. What is left is what
+ * the app measures about the house and the upgrades saved up for.
  */
 
-/**
- * A house job, shown by what is left rather than by score.
- *
- * The quest log ranks by impact, urgency and effort, which is the right
- * question when you are choosing what to start. It is the wrong one here:
- * you did not choose for the boiler to fail, and a ranking would tell you
- * the leak matters more than the draught, which you already knew. What
- * you need is which of them you have actually begun.
- */
-function JobRow({ project }: { readonly project: Project }) {
-  const moveHome = useMoveProjectHome()
-  const open = project.actions.filter((action) => action.status !== 'done')
-  const next = open[0]
-
-  return (
-    <li className="border-ink-800 border-b py-2 last:border-b-0">
-      <div className="flex items-baseline justify-between gap-3">
-        <span className="text-ink-50 min-w-0 flex-1 truncate text-sm font-medium">
-          {project.name}
-        </span>
-        <span className="text-ink-500 numeric shrink-0 text-xs">
-          {project.actions.length - open.length}/{project.actions.length}
-        </span>
-        {/* The way back out, so a thing filed here by mistake is one tap
-            from the quest log rather than a re-create. */}
-        <Button
-          variant="ghost"
-          size="sm"
-          aria-label={`Move ${project.name} back to Quests`}
-          disabled={moveHome.isPending}
-          onClick={() => {
-            moveHome.mutate({ id: project.id, home: undefined })
-          }}
-        >
-          <Undo2 size={14} aria-hidden />
-        </Button>
-      </div>
-      {next !== undefined && (
-        <p className="text-ink-500 mt-0.5 text-xs">Next: {next.description}</p>
-      )}
-    </li>
-  )
-}
-
-/**
- * A house upgrade, with the way back to the tech tree.
- *
- * Read-only otherwise, and deliberately: an upgrade carries a price, a
- * priority and a prerequisite, and a second editor for those on this
- * screen would be a second place for the gate rules to be got wrong. The
- * tree owns editing; Base owns the filing.
- */
 function UpgradeRow({ upgrade }: { readonly upgrade: Upgrade }) {
   const move = useMoveUpgradeToShelf()
 
@@ -214,127 +148,8 @@ function AddHouseUpgrade({ onDone }: { readonly onDone: () => void }) {
  * skips the first two — an offer, the same stance every other default in
  * this app takes.
  */
-function AddJob({ onDone }: { readonly onDone: () => void }) {
-  const add = useAddProject()
-  const [name, setName] = useState('')
-  /*
-   * Hiring is the default because it is the common case this screen was
-   * built around — house work "arrives when something breaks, and it is
-   * mostly the same errand each time". Doing it yourself is one tap.
-   */
-  const [approach, setApproach] = useState<JobApproach>('hired')
-  const offered = stepsFor(approach)
-  const [steps, setSteps] = useState<readonly string[]>(offered)
-
-  const toggle = (step: string): void => {
-    setSteps(steps.includes(step) ? steps.filter((one) => one !== step) : [...steps, step])
-  }
-
-  /*
-   * Switching approach re-ticks the new list rather than keeping what
-   * was ticked. The two share no step, so carrying the selection across
-   * would leave every box empty and the job would open with nothing.
-   */
-  const chooseApproach = (next: JobApproach): void => {
-    setApproach(next)
-    setSteps(stepsFor(next))
-  }
-
-  return (
-    <Card className="mb-3">
-      <form
-        className="space-y-3"
-        onSubmit={(event) => {
-          event.preventDefault()
-          if (name.trim() === '') return
-
-          add.mutate(
-            {
-              name,
-              belongsTo: BASE,
-              // In the order the errand runs, not the order they were
-              // ticked — unticking the quote and re-ticking it must not
-              // send it to the end. Filtered against the chosen
-              // approach's own list, so a step from the other one cannot
-              // survive a change of mind.
-              steps: offered.filter((one) => steps.includes(one)),
-              /*
-                Stored, so Crafting can be fed by the jobs you do
-                yourself and not by the ones you hire out. The steps used
-                to be the only record of which errand this was, and they
-                are free text the moment anybody edits one.
-              */
-              approach,
-            },
-            { onSuccess: onDone },
-          )
-        }}
-      >
-        <input
-          className="bg-ink-850 border-ink-800 text-ink-50 placeholder:text-ink-700 tap-target w-full rounded-xl border px-3 text-sm"
-          aria-label="What needs fixing"
-          placeholder="What needs fixing?"
-          value={name}
-          onChange={(event) => {
-            setName(event.target.value)
-          }}
-        />
-
-        {/*
-          The approach first, because it decides which steps are even
-          worth showing. Two buttons rather than a checkbox: these are
-          two named errands, not a setting with an on and an off.
-        */}
-        <div className="flex gap-1.5">
-          {JOB_APPROACHES.map((one) => (
-            <button
-              key={one.id}
-              type="button"
-              className={[
-                'tap-target flex-1 rounded-lg border px-2.5 text-xs font-medium',
-                approach === one.id
-                  ? 'border-accent-500 bg-accent-500/15 text-accent-400'
-                  : 'border-ink-800 text-ink-500',
-              ].join(' ')}
-              aria-pressed={approach === one.id}
-              onClick={() => {
-                chooseApproach(one.id)
-              }}
-            >
-              {one.label}
-            </button>
-          ))}
-        </div>
-
-        <div className="space-y-1.5">
-          <span className="text-ink-500 block text-xs">Steps to open it with</span>
-          {offered.map((step) => (
-            <label key={step} className="tap-target flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                className="size-5 shrink-0"
-                checked={steps.includes(step)}
-                onChange={() => {
-                  toggle(step)
-                }}
-              />
-              <span className="text-ink-300">{step}</span>
-            </label>
-          ))}
-        </div>
-
-        <Button type="submit" variant="primary" full disabled={add.isPending}>
-          <Plus size={16} aria-hidden />
-          Add it
-        </Button>
-      </form>
-    </Card>
-  )
-}
-
 export function BasePage() {
   const [addingUpgrade, setAddingUpgrade] = useState(false)
-  const [addingJob, setAddingJob] = useState(false)
   /*
    * What the eye in each card header reveals: rows the house is not
    * asking for today, which still carry the only control that can undo,
@@ -343,7 +158,6 @@ export function BasePage() {
    */
   const [showingRestUpgrades, setShowingRestUpgrades] = useState(false)
 
-  const jobs = useBaseProjects()
   /*
    * Ranked against an empty wallet, which shows the tree without claiming
    * anything is affordable. The Tech tree screen owns the budget control;
@@ -391,45 +205,6 @@ export function BasePage() {
         <Declutter />
 
         <div className="space-y-4">
-          <Card>
-            <CardHeading
-              icon={<Hammer size={16} aria-hidden />}
-              title="Jobs"
-              action={
-                <Button
-                  size="sm"
-                  onClick={() => {
-                    setAddingJob(!addingJob)
-                  }}
-                >
-                  {addingJob ? 'Close' : 'Add'}
-                </Button>
-              }
-            />
-
-            {addingJob && (
-              <AddJob
-                onDone={() => {
-                  setAddingJob(false)
-                }}
-              />
-            )}
-
-            {jobs.data === undefined ? null : jobs.data.length === 0 ? (
-              <Empty title="Nothing broken">
-                A job opens with the errand it usually is — find the right person, get a quote, book
-                the appointment — or with the one you do yourself: work out what it needs, get the
-                materials, do the work.
-              </Empty>
-            ) : (
-              <ul>
-                {jobs.data.map((project) => (
-                  <JobRow key={project.id} project={project} />
-                ))}
-              </ul>
-            )}
-          </Card>
-
           <Card>
             <CardHeading
               icon={<Wrench size={16} aria-hidden />}

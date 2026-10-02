@@ -5,18 +5,15 @@ import type {
   ExerciseRepository,
   ExploredAreaRepository,
   PlaceRepository,
-  ProjectRepository,
   ReviewRepository,
   TombstoneRepository,
   TripRepository,
   UpgradeRepository,
   ViceRepository,
-  AttemptRepository,
   ChallengeRepository,
   RoomRepository,
   CampaignRepository,
   FinanceRepository,
-  ResumeRepository,
   WorkoutRepository,
 } from '@/domain/repositories/ports'
 import type { CellId } from '@/domain/atlas/exploration/GeoCell'
@@ -44,7 +41,6 @@ export interface BackupRepositories {
   readonly checkIns: CheckInRepository
   readonly tombstones: TombstoneRepository
   readonly items: BacklogItemRepository
-  readonly projects: ProjectRepository
   readonly upgrades: UpgradeRepository
   readonly review: ReviewRepository
   readonly places: PlaceRepository
@@ -52,10 +48,8 @@ export interface BackupRepositories {
   readonly vices: ViceRepository
   readonly finance: FinanceRepository
   readonly campaigns: CampaignRepository
-  readonly attempts: AttemptRepository
   readonly challenges: ChallengeRepository
   readonly rooms: RoomRepository
-  readonly resume: ResumeRepository
   readonly explored: ExploredAreaRepository
 }
 
@@ -143,14 +137,6 @@ export const COLLECTIONS: Readonly<Record<CollectionKey, Collection>> = {
     tombstoneCollection: 'items',
     purge: (r, id) => r.items.purge(id as never),
   }),
-  projects: define({
-    local: (r) => r.projects.all(),
-    fromFile: (data) => data.projects ?? [],
-    idOf: (row) => row.id,
-    restore: (r, rows) => r.projects.restoreMany(rows),
-    tombstoneCollection: 'projects',
-    purge: (r, id) => r.projects.purge(id as never),
-  }),
   upgrades: define({
     local: (r) => r.upgrades.all(),
     fromFile: (data) => data.upgrades ?? [],
@@ -214,30 +200,6 @@ export const COLLECTIONS: Readonly<Record<CollectionKey, Collection>> = {
     tombstoneCollection: 'finance',
     purge: (r, id) => r.finance.purge(id as never),
   }),
-  /*
-   * A collection of nought or one, because there is one resume.
-   *
-   * It fits the table awkwardly and belongs in it anyway — the whole
-   * claim this module makes is that a thing joins the export, the
-   * preview and the import by gaining a row here, and the alternative
-   * was a fourth hand-written path for a single record. It carries no
-   * tombstone: a resume is edited down to nothing, never deleted.
-   *
-   * The id is fixed, because the record has none. That is also what
-   * makes a restore an overwrite rather than an accumulation.
-   */
-  resume: define({
-    local: async (r) => {
-      const resume = await r.resume.get()
-      return resume === undefined ? [] : [resume]
-    },
-    fromFile: (data) => data.resume ?? [],
-    idOf: () => 'current',
-    restore: async (r, rows) => {
-      const incoming = rows[0]
-      if (incoming !== undefined) await r.resume.save(incoming)
-    },
-  }),
   rooms: define({
     local: (r) => r.rooms.all(),
     fromFile: (data) => data.rooms ?? [],
@@ -245,14 +207,6 @@ export const COLLECTIONS: Readonly<Record<CollectionKey, Collection>> = {
     restore: (r, rows) => r.rooms.restoreMany(rows),
     tombstoneCollection: 'rooms',
     purge: (r, id) => r.rooms.purge(id as never),
-  }),
-  attempts: define({
-    local: (r) => r.attempts.all(),
-    fromFile: (data) => data.attempts ?? [],
-    idOf: (row) => row.id,
-    restore: (r, rows) => r.attempts.restoreMany(rows),
-    tombstoneCollection: 'attempts',
-    purge: (r, id) => r.attempts.purge(id as never),
   }),
   challenges: define({
     local: (r) => r.challenges.all(),

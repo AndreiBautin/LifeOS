@@ -1,4 +1,4 @@
-import type { CampaignId, ProjectId, StageId } from '@/domain/ids/ids'
+import type { CampaignId, StageId } from '@/domain/ids/ids'
 
 /**
  * A long arc across several areas — the thing a "main quest" actually
@@ -46,11 +46,6 @@ import type { CampaignId, ProjectId, StageId } from '@/domain/ids/ids'
 export type Requirement =
   /** You say when. The app records the date and takes your word. */
   | { readonly kind: 'declared' }
-  /** House projects finished, from Base. */
-  | { readonly kind: 'house-jobs'; readonly count: number }
-  /** Applications that reached the Offer stage, from Jobs. */
-  | { readonly kind: 'offers'; readonly count: number }
-  /** Houses actually seen — viewed, offered on, or ruled out. */
   /** Net worth, in minor units, from the monthly finance reading. */
   | { readonly kind: 'net-worth'; readonly minorUnits: number }
   /** Retirement savings, in minor units. */
@@ -79,8 +74,6 @@ export type Requirement =
 
 export const REQUIREMENT_KINDS = [
   'declared',
-  'house-jobs',
-  'offers',
   'net-worth',
   'retirement',
   'salary',
@@ -119,21 +112,6 @@ export interface Stage {
    * times is three laps; having £40,000 twice is not a thing.
    */
   readonly repeatable?: boolean
-  /**
-   * Quests that work toward this stage, by id.
-   *
-   * Asked for as _"the job is related to stuff like polishing the
-   * portfolio"_ — the arc said "Get a new job" and the quest log held the
-   * work that gets one, with nothing joining them. A declared stage with
-   * quests attached fills its bar from their steps, so the work shows on
-   * the arc as it happens; it is still **met only when you say so**,
-   * because finishing the portfolio is not the same as having the job.
-   *
-   * Ids rather than copies, read live through `Evidence.quests` — the
-   * "evidence gathered live, never copied" stance the measured stages
-   * take. A deleted quest's id simply stops matching anything.
-   */
-  readonly quests?: readonly ProjectId[]
 }
 
 export interface Campaign {
@@ -156,32 +134,11 @@ export interface Campaign {
  * target somebody set reads as failing when nothing has been measured.
  */
 export interface Evidence {
-  readonly houseJobsDone?: number
-  /** Rooms read as Clear — the decluttering half of the house work. */
-  readonly roomsCleared?: number
-  readonly offers?: number
-  /** Houses seen -- viewed, offered on, or ruled out. */
   readonly netWorthMinor?: number
   readonly retirementMinor?: number
   readonly salaryMinor?: number
   readonly savingsMinor?: number
   readonly creditScore?: number
-  /** Every quest's steps, by quest id, for the stages that link to them. */
-  readonly quests?: Readonly<Record<string, QuestProgress>>
-}
-
-export interface QuestProgress {
-  readonly name: string
-  readonly done: number
-  readonly of: number
-}
-
-/** The quests a stage links to that still exist, in the order it lists them. */
-export function linkedQuests(stage: Stage, evidence: Evidence): readonly QuestProgress[] {
-  return (stage.quests ?? []).flatMap((id) => {
-    const quest = evidence.quests?.[id]
-    return quest === undefined ? [] : [quest]
-  })
 }
 
 export interface StageStanding {
@@ -196,8 +153,6 @@ export interface StageStanding {
    * stage on a database with no finance readings has not been failed.
    */
   readonly unproven: boolean
-  /** The quests feeding a declared stage, as they stand. Absent when none. */
-  readonly linked?: readonly QuestProgress[]
 }
 
 export interface CampaignStanding {
@@ -246,21 +201,6 @@ function readingFor(requirement: Requirement, evidence: Evidence): number | unde
   switch (requirement.kind) {
     case 'declared':
       return undefined
-    case 'house-jobs':
-      /*
-       * **Jobs finished and rooms cleared, added together.** Asked for
-       * as _"fix up the house should include all the diy as well as
-       * getting everything decluttered."_ Both halves are the same
-       * question — what about this house is done — and neither is worth
-       * a stage of its own on a six-line arc.
-       *
-       * Kept as two fields on the evidence rather than one pre-summed
-       * number, so a screen can still say which half moved and the sum
-       * is visibly a sum.
-       */
-      return (evidence.houseJobsDone ?? 0) + (evidence.roomsCleared ?? 0)
-    case 'offers':
-      return evidence.offers ?? 0
     case 'net-worth':
       return evidence.netWorthMinor
     case 'retirement':
@@ -293,24 +233,6 @@ function standingForStage(stage: Stage, evidence: Evidence): StageStanding {
      * a stage that is met looks met wherever it appears.
      */
     const said = stage.reached.length > 0
-
-    /*
-     * With quests attached the bar is their steps, and saying so fills
-     * it: having the job is the end of the stage whatever the portfolio
-     * stood at.
-     */
-    const linked = linkedQuests(stage, evidence)
-    const of = linked.reduce((sum, quest) => sum + quest.of, 0)
-    if (of > 0) {
-      const done = linked.reduce((sum, quest) => sum + quest.done, 0)
-      return {
-        stage,
-        met: said,
-        progress: { value: said ? of : done, of },
-        unproven: false,
-        linked,
-      }
-    }
 
     return { stage, met: said, progress: { value: said ? 1 : 0, of: 1 }, unproven: false }
   }
@@ -393,8 +315,6 @@ export function undoReached(stage: Stage): Stage {
  */
 export const REQUIREMENT_LABELS: Record<Requirement['kind'], string> = {
   declared: 'When you say so',
-  'house-jobs': 'House jobs and rooms cleared',
-  offers: 'Applications through every stage',
   'net-worth': 'Net worth reaches',
   retirement: 'Retirement reaches',
   salary: 'Salary reaches',
@@ -419,11 +339,10 @@ export function isMoney(kind: Requirement['kind']): boolean {
  * `declared` has no target at all, which is a fourth answer rather than
  * a missing one — it is why the box is not drawn for it.
  */
-export function unitOf(kind: Requirement['kind']): 'money' | 'score' | 'count' | 'none' {
+export function unitOf(kind: Requirement['kind']): 'money' | 'score' | 'none' {
   if (kind === 'declared') return 'none'
   if (isMoney(kind)) return 'money'
-  if (kind === 'credit-score') return 'score'
-  return 'count'
+  return 'score'
 }
 
 /** The target a requirement carries, for an editor to open on. */
@@ -431,9 +350,6 @@ export function targetOf(requirement: Requirement): number | undefined {
   switch (requirement.kind) {
     case 'declared':
       return undefined
-    case 'house-jobs':
-    case 'offers':
-      return requirement.count
     case 'net-worth':
     case 'retirement':
     case 'salary':
@@ -458,10 +374,6 @@ export function requirementOf(kind: Requirement['kind'], target: number): Requir
   switch (kind) {
     case 'declared':
       return { kind: 'declared' }
-    case 'house-jobs':
-      return { kind: 'house-jobs', count: Math.max(1, value) }
-    case 'offers':
-      return { kind: 'offers', count: Math.max(1, value) }
     case 'net-worth':
       return { kind: 'net-worth', minorUnits: value }
     case 'retirement':
@@ -603,34 +515,33 @@ export function reshapeStage(
   stageId: StageId,
   name: string,
   requirement: Requirement,
-  quests?: readonly ProjectId[],
 ): Campaign {
   const trimmed = name.trim()
   if (trimmed === '') return campaign
 
-  return mapStage(campaign, stageId, (stage) => {
-    const { quests: _previous, ...rest } = stage
-    /*
-     * Absent leaves the links alone; an empty list clears them. Only a
-     * declared stage keeps any — a measured stage reads its own records.
-     */
-    const next = quests ?? stage.quests ?? []
-    return requirement.kind === 'declared' && next.length > 0
-      ? { ...rest, name: trimmed, requirement, quests: next }
-      : { ...rest, name: trimmed, requirement }
-  })
+  return mapStage(campaign, stageId, (stage) => ({ ...stage, name: trimmed, requirement }))
 }
 
 /**
- * Every quest linked to any stage of any arc.
+ * A stored arc, read into the shape this build knows.
  *
- * What makes a quest main: belonging to the arc, rather than a label
- * somebody picked. Asked for as the rule _"a quest linked to the arc
- * counts as main, anything else is side"_ after a quest feeding the move
- * turned out to be filed as side.
+ * **Quests, house jobs and job applications left the app**, asked for as
+ * _"drop quests, keep the arc as a checklist"_ — projects are worked
+ * through in Notion now. A stage stored as `house-jobs` or `offers`
+ * read records that no longer exist, so it reads as a declared stage:
+ * a box you tick, with every lap it already had kept. A stage's old
+ * `quests` links are dropped for the same reason. A derivation, not a
+ * migration — the record converges the next time anything saves it.
  */
-export function linkedQuestIds(campaigns: readonly Campaign[]): ReadonlySet<ProjectId> {
-  return new Set(
-    campaigns.flatMap((campaign) => campaign.stages.flatMap((stage) => stage.quests ?? [])),
-  )
+export function fromStoredCampaign(stored: Campaign): Campaign {
+  const known = new Set<string>(REQUIREMENT_KINDS)
+  return {
+    ...stored,
+    stages: stored.stages.map((stage) => {
+      const { quests: _quests, ...rest } = stage as Stage & { readonly quests?: unknown }
+      return known.has(stage.requirement.kind)
+        ? rest
+        : { ...rest, requirement: { kind: 'declared' } }
+    }),
+  }
 }

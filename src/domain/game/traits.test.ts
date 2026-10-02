@@ -97,26 +97,6 @@ describe('levelling a trait', () => {
     expect(standings.filter((one) => one.xp > 0)).toHaveLength(1)
   })
 
-  it('gathers a bundled trait from every area that feeds it', () => {
-    /*
-     * Intellect is the Codex and Mind — two areas, one bar. It used to
-     * be Craft that showed this, over quests, the house and the tree;
-     * Crafting claims a single area now, so the rule needed a trait that
-     * still bundles or it would have been asserting nothing.
-     */
-    const standings = traitStandings(
-      { 'backlog.item-finished': 1, 'mind.problem-solved': 1 },
-      ALL_ACTS,
-    )
-
-    const intellect = standings.find((one) => one.trait.id === 'intellect')?.xp ?? 0
-    const backlogOnly = traitStandings({ 'backlog.item-finished': 1 }, ALL_ACTS).find(
-      (one) => one.trait.id === 'intellect',
-    )?.xp
-
-    expect(intellect).toBeGreaterThan(backlogOnly ?? 0)
-  })
-
   /*
    * Absent, never zero. A trait nothing has paid into is unproven rather
    * than a zero, so the screen can say so instead of drawing a bar at

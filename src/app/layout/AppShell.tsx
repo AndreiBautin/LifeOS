@@ -6,7 +6,6 @@ import {
   Home,
   Map,
   Network,
-  Target,
   User,
 } from 'lucide-react'
 import { useState } from 'react'
@@ -107,7 +106,6 @@ const NAV = [
    */
   { to: '/today', label: 'You', Icon: User },
   { to: '/train', label: 'Train', Icon: Dumbbell },
-  { to: '/quests', label: 'Quests', Icon: Target },
   { to: '/backlog', label: 'Codex', Icon: BookMarked },
   { to: '/map', label: 'Map', Icon: Map },
   /*

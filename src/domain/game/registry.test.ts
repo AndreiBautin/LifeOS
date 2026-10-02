@@ -138,7 +138,7 @@ describe('looking an act up to acknowledge it', () => {
    * looking authoritative.
    */
   it('returns the registry’s own label and points', () => {
-    const sent = actById('jobs.application-sent')
+    const sent = actById('backlog.item-finished')
 
     expect(sent?.points).toBeGreaterThan(0)
     expect(sent?.label).toBeDefined()

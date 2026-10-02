@@ -61,7 +61,7 @@ export function SettingsPage() {
     queryFn: async () => {
       const counts = await Promise.all([
         services.items.count(),
-        services.projects.count(),
+        services.campaigns.all().then((arcs) => arcs.length),
         services.upgrades.count(),
         services.workouts.count(),
       ])

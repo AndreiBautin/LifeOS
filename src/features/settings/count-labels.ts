@@ -20,7 +20,6 @@ export const COUNT_LABELS: readonly (readonly [keyof BackupCounts, string])[] = 
   ['exercises', 'exercises'],
   ['checkIns', 'check-ins'],
   ['items', 'backlog items'],
-  ['projects', 'projects'],
   ['upgrades', 'upgrades'],
   ['places', 'places'],
   ['trips', 'trips'],
@@ -29,9 +28,7 @@ export const COUNT_LABELS: readonly (readonly [keyof BackupCounts, string])[] = 
   ['vices', 'buffs'],
   ['finance', 'monthly finance readings'],
   ['campaigns', 'arcs'],
-  ['attempts', 'practice problems'],
   ['challenges', 'seasonal challenges'],
   ['rooms', 'rooms'],
-  ['resume', 'the resume'],
   ['exploredCells', 'squares of walked ground'],
 ]

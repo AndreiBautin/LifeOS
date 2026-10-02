@@ -1,19 +1,11 @@
-import { addCampaign } from '@/application/use-cases/campaign/campaign'
+import { addCampaign, reachStage } from '@/application/use-cases/campaign/campaign'
 import { addPlace, visitPlace } from '@/application/use-cases/atlas/atlas'
 import { completeChallenge, readChallenges } from '@/application/use-cases/challenges/challenges'
-import { logAttempt } from '@/application/use-cases/mind/practice'
-import {
-  addContract,
-  addProject,
-  setActionStatus,
-  updateProject,
-} from '@/application/use-cases/projects/projects'
 import { addRoom, recordClear } from '@/application/use-cases/base/declutter'
 import { addUpgrade, updateUpgrade } from '@/application/use-cases/upgrades/upgrades'
-import { APPLICATION_STAGES } from '@/domain/jobs/application'
 import { createItem } from '@/domain/backlog/item'
 import type { CategoryId } from '@/domain/atlas/category/CategoryDefinition'
-import type { BulletId, CompanyId, ExerciseId, RoleId, WorkoutId } from '@/domain/ids/ids'
+import type { ExerciseId, WorkoutId } from '@/domain/ids/ids'
 import type { PlaceId } from '@/domain/atlas/place/PlaceId'
 import type { TripId } from '@/domain/atlas/trip/TripId'
 import type { LogEntry, WorkoutLog } from '@/domain/logging/workout-log'
@@ -95,16 +87,15 @@ function monthsAgo(clock: Clock, back: number): string {
  * everywhere else.
  */
 export async function seedDemoData(deps: DemoDeps): Promise<SeedResult> {
-  const [items, projects, upgrades] = await Promise.all([
+  const [items, upgrades, arcs] = await Promise.all([
     deps.items.count(),
-    deps.projects.count(),
     deps.upgrades.count(),
+    deps.campaigns.all(),
   ])
 
-  if (items + projects + upgrades > 0) return { seeded: false, reason: 'already-has-data' }
+  if (items + upgrades + arcs.length > 0) return { seeded: false, reason: 'already-has-data' }
 
   await seedCodex(deps)
-  await seedQuests(deps)
   await seedTechTree(deps)
   await seedBase(deps)
   await seedFinance(deps)
@@ -114,9 +105,7 @@ export async function seedDemoData(deps: DemoDeps): Promise<SeedResult> {
   await seedWalks(deps)
   await seedSettings(deps)
   await seedTraining(deps)
-  await seedMind(deps)
   await seedChallenges(deps)
-  await seedResume(deps)
 
   return { seeded: true }
 }
@@ -247,125 +236,6 @@ async function seedCodex(deps: DemoDeps): Promise<void> {
   ]
 
   await Promise.all(rows.map((item) => deps.items.save(item)))
-}
-
-/** One main quest, one side quest, a contract, and something finished. */
-async function seedQuests(deps: DemoDeps): Promise<void> {
-  await addProject(
-    {
-      name: 'Ship the portfolio site',
-      kind: 'main',
-      steps: ['Pick the three projects', 'Write the case studies', 'Buy the domain'],
-    },
-    deps,
-  )
-
-  await addProject(
-    {
-      name: 'Learn woodworking basics',
-      kind: 'side',
-      steps: ['Build a small shelf', 'Learn to use a router'],
-    },
-    deps,
-  )
-
-  const porch = await addProject(
-    {
-      name: 'Fix the porch light',
-      belongsTo: 'base',
-      approach: 'diy',
-      steps: ['Work out what it needs', 'Get the materials', 'Do the work'],
-    },
-    deps,
-  )
-
-  const tap = await addProject(
-    {
-      name: 'Replace the kitchen tap',
-      belongsTo: 'base',
-      approach: 'hired',
-      steps: ['Find the right person', 'Get a quote', 'Book the appointment'],
-    },
-    deps,
-  )
-
-  /*
-   * **A closed step is what pays**, and which area it pays is decided by
-   * the job's approach: hired work pays Base, work you do yourself pays
-   * Crafting. Both are seeded because they are the same record type
-   * scoring two different bars, and a fixture that closed neither leaves
-   * both areas reading silent on a screen full of house jobs.
-   */
-  const quote = tap.actions[0]
-  if (quote !== undefined) await setActionStatus(tap.id, quote.id, true, deps)
-
-  await addProject(
-    {
-      name: 'Senior engineer at Northwind Systems',
-      belongsTo: 'jobs',
-      steps: [...APPLICATION_STAGES],
-    },
-    deps,
-  )
-
-  /*
-   * A second one further along, because the screen's whole subject is
-   * **how far each one has got** — one application sitting at 0 of 3
-   * demonstrates the list and not the thing the list is for.
-   *
-   * Its closed stages are what `jobs.stage-advances-in-month` counts:
-   * `ActionItem.completedAt` is the only record of *when* an application
-   * reached a stage, which is why the stages are steps rather than a
-   * "current stage" field.
-   */
-  const further = await addProject(
-    {
-      name: 'Platform engineer at Contoso Labs',
-      belongsTo: 'jobs',
-      steps: [...APPLICATION_STAGES],
-    },
-    deps,
-  )
-  for (const stage of further.actions.slice(0, 2)) {
-    await setActionStatus(further.id, stage.id, true, deps)
-  }
-
-  /*
-   * **A contract is one step, and that is not tidiness.** Nothing pays
-   * for a project existing or being marked done — XP comes from closing
-   * a step — so a one-off created empty would earn nothing, and a
-   * section full of things that pay nothing teaches you not to use it.
-   */
-  await addContract('Return the parcel', deps)
-
-  /*
-   * One quest with a step already closed and one finished outright, so
-   * the board draws a part-done card, the fold has something behind it,
-   * and the XP total is not paid entirely by the Codex.
-   */
-  const main = await addProject(
-    {
-      name: 'Sort the photo archive',
-      kind: 'side',
-      steps: ['Buy the drive', 'Cull the duplicates', 'Back it up twice'],
-    },
-    deps,
-  )
-
-  const first = main.actions[0]
-  if (first !== undefined) await setActionStatus(main.id, first.id, true, deps)
-
-  const survey = porch.actions[0]
-  if (survey !== undefined) await setActionStatus(porch.id, survey.id, true, deps)
-
-  const done = await addProject(
-    { name: 'Renew the passport', kind: 'side', steps: ['Book the photo', 'Send the form'] },
-    deps,
-  )
-  for (const action of done.actions) {
-    await setActionStatus(done.id, action.id, true, deps)
-  }
-  await updateProject(done.id, { status: 'completed' }, deps)
 }
 
 /** Two shelves, a prerequisite chain, and something already owned. */
@@ -555,24 +425,16 @@ async function seedFinance(deps: DemoDeps): Promise<void> {
  */
 async function seedArc(deps: DemoDeps): Promise<void> {
   /*
-   * The portfolio quest works toward the new job, so the stage's bar
-   * shows that work rather than sitting empty until the day it happens.
+   * Every chapter is a box you tick: projects are worked through in
+   * Notion now, so nothing in the app measures how far along one is.
    */
-  const portfolio = (await deps.projects.all()).find(
-    (project) => project.name === 'Ship the portfolio site',
-  )
-
   await addCampaign(
     {
       name: 'Get ready to move',
       aim: 'Out of the flat and into somewhere with a bit of outside.',
       stages: [
-        { name: 'Fix up the flat', requirement: { kind: 'house-jobs', count: 8 } },
-        {
-          name: 'Get a new job',
-          requirement: { kind: 'declared' },
-          ...(portfolio === undefined ? {} : { quests: [portfolio.id] }),
-        },
+        { name: 'Fix up the flat', requirement: { kind: 'declared' } },
+        { name: 'Get a new job', requirement: { kind: 'declared' } },
         { name: 'Get mortgage-ready', requirement: { kind: 'declared' } },
         { name: 'Sell the flat', requirement: { kind: 'declared' } },
         { name: 'Find and buy the next place', requirement: { kind: 'declared' } },
@@ -581,6 +443,13 @@ async function seedArc(deps: DemoDeps): Promise<void> {
     },
     deps,
   )
+
+  /* One chapter already ticked, so the path is not all empty. */
+  const [arc] = await deps.campaigns.all()
+  const first = arc?.stages[0]
+  if (arc !== undefined && first !== undefined) {
+    await reachStage(arc.id, first.id, undefined, deps)
+  }
 }
 
 /**
@@ -816,103 +685,6 @@ async function seedMap(deps: DemoDeps): Promise<void> {
 }
 
 /**
- * A resume, for a person who does not exist.
- *
- * **The one record in the app that nothing regenerates**, and therefore
- * the one whose empty screen reads most like a broken feature rather
- * than an untouched one — there is no "add your first" path that makes
- * sense to demonstrate with nothing behind it.
- *
- * **The contact line carries a city and nothing else.** A real resume
- * has an email and a phone number on it, and this fixture is scanned for
- * exactly those: `seed.test.ts` reads its own source and fails on
- * anything shaped like one. A fictional address would pass the scan and
- * would still be a made-up email published in a public repository. The
- * line says what it is instead.
- *
- * Northwind is the fixture employer this repository already uses
- * everywhere else, for the same reason.
- */
-async function seedResume(deps: DemoDeps): Promise<void> {
-  const bullet = (text: string) => ({ id: deps.ids.next() as BulletId, text })
-
-  await deps.resume.save({
-    name: 'Alex Rivera',
-    contact: 'San Francisco · contact details omitted from the demo fixture',
-    summary:
-      'Software engineer with eight years building web applications, most recently on data-heavy internal tools. Happiest where the domain has real rules in it.',
-    skills: [
-      { label: 'Languages', skills: ['TypeScript', 'Python', 'Go', 'SQL'] },
-      { label: 'Frontend', skills: ['React', 'Vite', 'Tailwind', 'Testing Library'] },
-      { label: 'Platform', skills: ['Postgres', 'Docker', 'Terraform', 'GitHub Actions'] },
-    ],
-    companies: [
-      {
-        id: deps.ids.next() as CompanyId,
-        name: 'Northwind Systems',
-        location: 'San Francisco',
-        /*
-         * Two roles at one employer, newest first — a promotion, which a
-         * flat list of jobs prints as two employers and makes read as
-         * job-hopping. It is the case the `Company` type exists for, so
-         * the fixture has to contain one.
-         */
-        roles: [
-          {
-            id: deps.ids.next() as RoleId,
-            title: 'Senior Software Engineer',
-            from: 'March 2023',
-            bullets: [
-              bullet(
-                'Led the rewrite of the scheduling service, cutting p95 latency from 1.8s to 240ms.',
-              ),
-              bullet(
-                'Introduced typed contracts between four teams, removing a class of integration bug entirely.',
-              ),
-              bullet('Mentored three engineers through their first year.'),
-            ],
-          },
-          {
-            id: deps.ids.next() as RoleId,
-            title: 'Software Engineer',
-            from: 'June 2020',
-            to: 'March 2023',
-            bullets: [
-              bullet('Built the reporting pipeline that replaced a weekly manual export.'),
-              bullet('Moved the test suite off a shared database, taking CI from 22 minutes to 6.'),
-            ],
-          },
-        ],
-      },
-      {
-        id: deps.ids.next() as CompanyId,
-        name: 'Contoso Labs',
-        location: 'Remote',
-        roles: [
-          {
-            id: deps.ids.next() as RoleId,
-            title: 'Software Engineer',
-            from: 'August 2018',
-            to: 'May 2020',
-            bullets: [
-              bullet('Shipped the first version of the customer portal, from an empty repository.'),
-              bullet('Owned the on-call rotation for two services.'),
-            ],
-          },
-        ],
-      },
-    ],
-    education: [
-      {
-        school: 'University of Somewhere',
-        award: 'BSc Computer Science',
-        detail: 'Graduated 2018',
-      },
-    ],
-  })
-}
-
-/**
  * The one setting the demo states, and it is a denominator.
  *
  * **A ladder is only a ladder because something outside the app fixes
@@ -1122,41 +894,6 @@ async function seedTraining(deps: DemoDeps): Promise<void> {
       entries: session.entries,
     }
     await deps.workouts.save(log)
-  }
-}
-
-/**
- * A practice log, because Mind is otherwise a screen with a heading.
- *
- * The clock is shifted per entry rather than passed once: `logAttempt`
- * stamps `solvedOn` from `deps.clock`, so seeding them all against the
- * seed moment would file a week of practice on one afternoon — and the
- * *days practised* rating counts distinct days, which is the whole
- * reason it exists beside the problem count.
- */
-async function seedMind(deps: DemoDeps): Promise<void> {
-  const attempts: readonly [string, number, 'easy' | 'medium' | 'hard'][] = [
-    ['Merge Intervals', 96, 'medium'],
-    ['Climbing Stairs', 89, 'easy'],
-    ['Number of Islands', 75, 'medium'],
-    ['Group Anagrams', 61, 'medium'],
-    ['LRU Cache', 47, 'medium'],
-    ['Binary Tree Level Order Traversal', 33, 'medium'],
-    ['Median of Two Sorted Arrays', 26, 'hard'],
-    ['Top K Frequent Elements', 18, 'medium'],
-    ['Two Sum', 9, 'easy'],
-    ['Valid Parentheses', 7, 'easy'],
-    ['Longest Substring Without Repeating Characters', 4, 'medium'],
-    ['Course Schedule', 2, 'medium'],
-    ['Word Ladder', 1, 'hard'],
-  ]
-
-  for (const [title, daysBack, difficulty] of attempts) {
-    const on = new Date(deps.clock.now().getTime() - daysBack * 86_400_000)
-    await logAttempt(
-      { title, difficulty, source: 'leetcode' },
-      { attempts: deps.attempts, ids: deps.ids, clock: { now: () => on } },
-    )
   }
 }
 

@@ -145,21 +145,18 @@ never needed a separate repository to hold.
 Read off `registry.ts`. **Thirteen areas**, and the table is the whole
 model — an area joins the character sheet by gaining a row there.
 
-| Area             | Ladders                       | Ratings                              | Acts                                     | Tree |
-| ---------------- | ----------------------------- | ------------------------------------ | ---------------------------------------- | ---- |
-| **Training**     | Squat, bench, deadlift, total | Consistency                          | Session finished, working set logged     | —    |
-| **Conditioning** | —                             | —                                    | Session with conditioning completed      | —    |
-| **Crafting**     | —                             | —                                    | Build progress, build finished, DIY step | —    |
-| **Backlog**      | —                             | Backlog age                          | Progress logged, item finished           | —    |
-| **Projects**     | —                             | Throughput                           | Main step closed, side step closed       | —    |
-| **Upgrades**     | —                             | Purchase progress                    | —                                        | ✓    |
-| **Base**         | —                             | Clear, house jobs                    | Step on a house job                      | —    |
-| **Upkeep**       | —                             | Kept inside the limits               | —                                        | —    |
-| **Places**       | Exploration coverage          | —                                    | Place visited                            | —    |
-| **Job search**   | —                             | Applications sent, stage progression | Application sent                         | —    |
-| **Finance**      | Credit, net worth, retirement | —                                    | —                                        | —    |
-| **Challenges**   | —                             | —                                    | Challenge completed                      | —    |
-| **Mind**         | —                             | Problems solved, days practised      | Problem solved                           | —    |
+| Area             | Ladders                       | Ratings                | Acts                                 | Tree |
+| ---------------- | ----------------------------- | ---------------------- | ------------------------------------ | ---- |
+| **Training**     | Squat, bench, deadlift, total | Consistency            | Session finished, working set logged | —    |
+| **Conditioning** | —                             | —                      | Session with conditioning completed  | —    |
+| **Crafting**     | —                             | —                      | Build progress, build finished       | —    |
+| **Backlog**      | —                             | Backlog age            | Progress logged, item finished       | —    |
+| **Upgrades**     | —                             | Purchase progress      | —                                    | ✓    |
+| **Base**         | —                             | Clear                  | —                                    | —    |
+| **Upkeep**       | —                             | Kept inside the limits | —                                    | —    |
+| **Places**       | Exploration coverage          | —                      | Place visited                        | —    |
+| **Finance**      | Credit, net worth, retirement | —                      | —                                    | —    |
+| **Challenges**   | —                             | —                      | Challenge completed                  | —    |
 
 Several things this table says by omission.
 
@@ -186,15 +183,9 @@ area.**
 pays: not drinking is an outcome, and the only real _act_ was spending a
 charge, where paying XP for logging a beer is perverse.
 
-**Job search has no ladder.** A campaign has stages and an end, which is
-not the same as having a ceiling — there is no such thing as being
-maximally good at looking for work.
-
-**Mind has no ladder either, and it is where a count is most tempting.**
-Every practice site publishes a total solved, so a "1,200 problems"
-ceiling _looks_ like an external standard. It is a count of one site's
-catalogue, which grows, and nothing about having solved half of it says
-you are halfway to anything.
+**Quests, house jobs, the job search and the practice log left the app.**
+Projects are worked through in Notion; what stayed is the arc, a
+checklist of chapters on Today that pays nothing.
 
 **Conditioning is its own area rather than a share of training**, because
 a trait re-presents the XP of the areas it claims and an area feeds
@@ -214,15 +205,15 @@ Each area belongs to **at most one** trait, and a trait's XP is the sum of
 what those areas already paid. Same acts, new name. The partition is what
 makes rule three hold by construction rather than by attention.
 
-| Trait            | Fed by        |
-| ---------------- | ------------- |
-| **Strength**     | Training      |
-| **Stamina**      | Conditioning  |
-| **Intelligence** | Backlog, Mind |
-| **Crafting**     | Crafting      |
+| Trait            | Fed by       |
+| ---------------- | ------------ |
+| **Strength**     | Training     |
+| **Stamina**      | Conditioning |
+| **Intelligence** | Backlog      |
+| **Crafting**     | Crafting     |
 
-**Eight areas belong to no trait**, named exactly in `UNCLAIMED_AREAS`:
-places, projects, upgrades, base, jobs, upkeep, finance, challenges. So
+**Six areas belong to no trait**, named exactly in `UNCLAIMED_AREAS`:
+places, upgrades, base, upkeep, finance, challenges. So
 **the bars add up to less than the level above them**, which is precisely
 the symptom the original guard existed to catch. What makes it a decision
 rather than the bug: that list is asserted exactly, so an area added

@@ -1,12 +1,9 @@
-import type { Attempt } from '@/domain/mind/practice'
 import type { ChallengeMark } from '@/domain/challenges/challenge'
 import { describe, expect, it } from 'vitest'
 
 import { ALL_ACTS, SCORING } from '@/domain/game/registry'
 import type { Place } from '@/domain/atlas/place/Place'
 import type { Item } from '@/domain/backlog/item'
-import { BASE } from '@/domain/base/base'
-import type { Project } from '@/domain/projects/project'
 import type { Clock, ReviewRepository } from '@/domain/repositories/ports'
 import { DEFAULT_SETTINGS, type AppSettings } from '@/domain/settings/settings'
 
@@ -23,8 +20,6 @@ function harness(
   seed: {
     readonly places?: Place[]
     readonly items?: Item[]
-    readonly projects?: Project[]
-    readonly attempts?: Attempt[]
     readonly challenges?: ChallengeMark[]
     readonly settings?: Partial<AppSettings>
   } = {},
@@ -59,8 +54,6 @@ function harness(
 
   return {
     items: list(seed.items ?? []),
-    projects: list(seed.projects ?? []),
-    attempts: list(seed.attempts ?? []),
     challenges: list(seed.challenges ?? []),
     upgrades: list([]),
     workouts: list([]),
@@ -206,183 +199,12 @@ describe('the exploration ladder on the sheet', () => {
   })
 })
 
-describe('what a quest step is worth', () => {
-  const withAction = (kind: 'main' | 'side' | undefined, closedAs: 'main' | 'side' | undefined) =>
-    ({
-      id: 'q1',
-      name: 'A quest',
-      status: 'active',
-      ...(kind === undefined ? {} : { kind }),
-      actions: [
-        {
-          id: 'a1',
-          description: 'A step',
-          status: 'done',
-          order: 0,
-          createdAt: '2026-08-01T00:00:00.000Z',
-          completedAt: '2026-08-10T00:00:00.000Z',
-          ...(closedAs === undefined ? {} : { completedAsKind: closedAs }),
-        },
-      ],
-    }) as unknown as Project
-
-  it('pays more for a main quest step', async () => {
-    const sheet = await characterSheet(harness({ projects: [withAction('main', 'main')] }))
-
-    expect(sheet.areas.find((area) => area.area === 'projects')?.xp).toBe(40)
-  })
-
-  it('pays less for a side quest step', async () => {
-    const sheet = await characterSheet(harness({ projects: [withAction('side', 'side')] }))
-
-    expect(sheet.areas.find((area) => area.area === 'projects')?.xp).toBe(20)
-  })
-
-  /*
-   * The whole reason the kind is stamped on the action rather than read
-   * off the quest. Demote a main quest and the work already done must keep
-   * what it earned — XP is a record of effort, and a record of effort that
-   * goes *down* because you renamed something is not a record of anything.
-   */
-  it('keeps what was earned when the quest is demoted afterwards', async () => {
-    const demoted = withAction('side', 'main')
-
-    const sheet = await characterSheet(harness({ projects: [demoted] }))
-
-    expect(sheet.areas.find((area) => area.area === 'projects')?.xp).toBe(40)
-  })
-
-  /*
-   * And the reverse: promoting a quest must not retroactively enrich work
-   * that was done while it was a side quest.
-   */
-  it('does not repay old work when the quest is promoted', async () => {
-    const promoted = withAction('main', 'side')
-
-    const sheet = await characterSheet(harness({ projects: [promoted] }))
-
-    expect(sheet.areas.find((area) => area.area === 'projects')?.xp).toBe(20)
-  })
-
-  /*
-   * An action closed before quests had kinds carries no stamp, and counts
-   * as a side quest — the same thing `kindOf` says about a quest with no
-   * kind.
-   */
-  it('treats an unstamped closure as a side quest step', async () => {
-    const legacy = withAction(undefined, undefined)
-
-    const sheet = await characterSheet(harness({ projects: [legacy] }))
-
-    expect(sheet.areas.find((area) => area.area === 'projects')?.xp).toBe(20)
-  })
-})
-
-describe('what a job application pays', () => {
-  const application = (over: Record<string, unknown> = {}) =>
-    ({
-      id: 'j1',
-      name: 'Acme — Backend engineer',
-      status: 'active',
-      belongsTo: 'jobs',
-      createdAt: '2026-08-10T00:00:00.000Z',
-      actions: [
-        {
-          id: 's1',
-          description: 'Screen',
-          status: 'done',
-          order: 1,
-          createdAt: '2026-08-10T00:00:00.000Z',
-          completedAt: '2026-08-12T00:00:00.000Z',
-        },
-      ],
-      ...over,
-    }) as unknown as Project
-
-  it('pays for sending it', async () => {
-    const sheet = await characterSheet(harness({ projects: [application()] }))
-
-    expect(sheet.areas.find((area) => area.area === 'jobs')?.xp).toBe(30)
-  })
-
-  /*
-   * The act/outcome line, which this area draws more sharply than any
-   * other. Sending is a thing you decided to do; being given a screen is
-   * a thing that happened to you. A closed stage records the date — that
-   * is what `jobs.stage-advances-in-month` counts — and buys no points.
-   */
-  it('pays nothing extra for reaching a stage', async () => {
-    const one = await characterSheet(harness({ projects: [application()] }))
-    const two = await characterSheet(
-      harness({
-        projects: [
-          application({
-            actions: [
-              {
-                id: 's1',
-                description: 'Screen',
-                status: 'done',
-                order: 1,
-                createdAt: '2026-08-10T00:00:00.000Z',
-                completedAt: '2026-08-12T00:00:00.000Z',
-              },
-              {
-                id: 's2',
-                description: 'Interview',
-                status: 'done',
-                order: 2,
-                createdAt: '2026-08-10T00:00:00.000Z',
-                completedAt: '2026-08-20T00:00:00.000Z',
-              },
-            ],
-          }),
-        ],
-      }),
-    )
-
-    expect(two.areas.find((area) => area.area === 'jobs')?.xp).toBe(
-      one.areas.find((area) => area.area === 'jobs')?.xp,
-    )
-  })
-
-  /*
-   * Rule three, in the place it was most likely to break: an application
-   * is a `Project`, so without the `isOwnArea` split its closed stages
-   * would pay `projects.side-action-closed` as well.
-   */
-  it('does not also pay the quest log', async () => {
-    const sheet = await characterSheet(harness({ projects: [application()] }))
-
-    expect(sheet.areas.find((area) => area.area === 'projects')?.xp).toBe(0)
-  })
-})
-
 /**
  * Crafting is split off two other areas, so the thing worth testing is
  * that nothing pays twice — rule three, at the one place it is easiest
  * to break.
  */
 describe('what feeds Crafting', () => {
-  const houseJob = (approach: 'diy' | 'hired' | undefined) =>
-    ({
-      id: 'j1',
-      name: 'Fix the porch',
-      status: 'active',
-      belongsTo: BASE,
-      ...(approach === undefined ? {} : { approach }),
-      actions: [
-        {
-          id: 'a1',
-          description: 'Do the work',
-          status: 'done',
-          order: 0,
-          createdAt: '2026-08-01T00:00:00.000Z',
-          completedAt: '2026-08-10T00:00:00.000Z',
-          completedAsKind: 'side',
-        },
-      ],
-    }) as unknown as Project
-
   const build = (category: string) =>
     ({
       id: 'b1',
@@ -395,32 +217,6 @@ describe('what feeds Crafting', () => {
 
   const xpOf = (sheet: Awaited<ReturnType<typeof characterSheet>>, area: string) =>
     sheet.areas.find((one) => one.area === area)?.xp ?? 0
-
-  it('pays a DIY house job into Crafting and not into Base', async () => {
-    const sheet = await characterSheet(harness({ projects: [houseJob('diy')] }))
-
-    expect(xpOf(sheet, 'crafting')).toBe(20)
-    expect(xpOf(sheet, 'base')).toBe(0)
-  })
-
-  it('leaves a hired job paying Base, because getting a plumber in is not crafting', async () => {
-    const sheet = await characterSheet(harness({ projects: [houseJob('hired')] }))
-
-    expect(xpOf(sheet, 'base')).toBe(20)
-    expect(xpOf(sheet, 'crafting')).toBe(0)
-  })
-
-  /*
-   * Every house job filed before the field existed. Guessing from the
-   * step list would hand Crafting XP out on a string match, so an absent
-   * approach pays where it always paid.
-   */
-  it('pays a job with no recorded approach into Base, as it always did', async () => {
-    const sheet = await characterSheet(harness({ projects: [houseJob(undefined)] }))
-
-    expect(xpOf(sheet, 'base')).toBe(20)
-    expect(xpOf(sheet, 'crafting')).toBe(0)
-  })
 
   it('pays a Lego build into Crafting and not into the Codex', async () => {
     const sheet = await characterSheet(harness({ items: [build('lego')] }))

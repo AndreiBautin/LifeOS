@@ -1,13 +1,5 @@
-import { BASE, JOBS, keepFor } from '@/domain/base/base'
-import { houseStanding } from '@/domain/base/declutter'
-
-/** The bottom of `describeClear`'s top band. A room is done at Clear. */
-const CLEAR_ENOUGH = 90
-/** Far enough back that every stored reading counts as current. */
-const EPOCH = '1970-01-01'
 import {
   addStage,
-  linkedQuestIds,
   markReached,
   moveStage,
   removeStage,
@@ -24,22 +16,15 @@ import {
   type Stage,
 } from '@/domain/campaign/campaign'
 import { latest } from '@/domain/finance/reading'
-import { withKind } from '@/domain/projects/active'
-import type { CampaignId, IdGenerator, ProjectId, StageId } from '@/domain/ids/ids'
-import type {
-  CampaignRepository,
-  Clock,
-  FinanceRepository,
-  RoomRepository,
-  ProjectRepository,
-} from '@/domain/repositories/ports'
+import type { CampaignId, IdGenerator, StageId } from '@/domain/ids/ids'
+import type { CampaignRepository, Clock, FinanceRepository } from '@/domain/repositories/ports'
 import { toDayKey } from '@/domain/time/day'
 
 /**
  * The long arc, read against the areas that already record its parts.
  *
  * **Nothing here is stored twice.** The evidence is gathered live from
- * Base, Jobs and Finance every time the arc is read — a copied count
+ * Finance every time the arc is read — a copied count
  * would be a total that can be wrong, which this app already knows the
  * cost of. The campaign record holds only what nothing else does: the
  * stages somebody named, and the dates they declared.
@@ -47,9 +32,7 @@ import { toDayKey } from '@/domain/time/day'
 
 export interface CampaignDeps {
   readonly campaigns: CampaignRepository
-  readonly projects: ProjectRepository
   readonly finance: FinanceRepository
-  readonly rooms: RoomRepository
   readonly clock: Clock
   readonly ids: IdGenerator
 }
@@ -57,93 +40,28 @@ export interface CampaignDeps {
 /**
  * What the app can witness, read from where it already lives.
  *
- * **House jobs and offers are counted from projects, filtered by home.**
- * `keepFor` is what stops a quest counting as house work — the same leak
- * `recommendation` had, one layer up, found by driving the app rather
- * than by a test.
- *
- * **The money is read live rather than for a month**, which is the
- * ladder/rating split made concrete: a threshold does not care whether
- * this month's review was opened, so it takes the most recent figure
- * whenever that was. `latest` works per *field*, so somebody who checks
- * their score quarterly still gets a net worth from last month.
+ * **Only the money figures now.** House jobs, job applications and the
+ * quests a stage could link to all left the app — projects are worked
+ * through in Notion — so a stage is either declared, a box you tick, or
+ * reads a figure from the monthly finance reading. `latest` works per
+ * *field*, so somebody who checks their score quarterly still gets last
+ * month's net worth.
  */
 export async function gatherEvidence(deps: CampaignDeps): Promise<Evidence> {
-  const [projects, finance, rooms] = await Promise.all([
-    deps.projects.all(),
-    deps.finance.all(),
-    deps.rooms.all(),
-  ])
+  const finance = await deps.finance.all()
 
-  const houseJobsDone = keepFor(projects, BASE).filter(
-    (project) =>
-      project.actions.length > 0 && project.actions.every((one) => one.status === 'done'),
-  ).length
-
-  /*
-   * An application that has been through every stage — the last of which
-   * is Offer. Counted the same way a finished house job is, because both
-   * questions are "did this reach the end", and an application's stages
-   * are `ActionItem`s exactly so their dates are countable.
-   */
-  const offers = keepFor(projects, JOBS).filter(
-    (project) =>
-      project.actions.length > 0 && project.actions.every((one) => one.status === 'done'),
-  ).length
-
-  /*
-   * Per field, not per row. Somebody who checks their credit score
-   * quarterly has months holding a net worth and no score, and taking
-   * the newest *row* would report the score as missing for two months
-   * out of three.
-   */
   const netWorthMinor = latest(finance, 'netWorthMinor')
   const retirementMinor = latest(finance, 'retirementMinor')
   const salaryMinor = latest(finance, 'salaryMinor')
   const creditScore = latest(finance, 'creditScore')
   const savingsMinor = latest(finance, 'savingsMinor')
 
-  /*
-   * A room counts once it reads **Clear**, which is the top band
-   * `describeClear` names rather than a threshold invented here. A room
-   * nobody has read yet counts for nothing — the absent-never-zero rule,
-   * and the honest reading of "we have not looked in there".
-   */
-  const roomsCleared = houseStanding(rooms, EPOCH).rooms.filter(
-    (one) => one.clear !== undefined && one.clear >= CLEAR_ENOUGH,
-  ).length
-
-  /*
-   * Offered and ruled out both count as seen. You do not offer on a
-   * house you have not visited, and deciding against one is what
-   * viewing is *for* -- a count that only rose on houses you liked
-   * would measure optimism rather than effort.
-   */
-
   return {
-    houseJobsDone,
-    offers,
     ...(netWorthMinor === undefined ? {} : { netWorthMinor }),
     ...(retirementMinor === undefined ? {} : { retirementMinor }),
     ...(salaryMinor === undefined ? {} : { salaryMinor }),
     ...(creditScore === undefined ? {} : { creditScore }),
     ...(savingsMinor === undefined ? {} : { savingsMinor }),
-    roomsCleared,
-    /*
-     * Every quest's steps, keyed by id, for a stage that links to some.
-     * All of them rather than only the linked ones, because which are
-     * linked is a fact about each arc and this is read once for all.
-     */
-    quests: Object.fromEntries(
-      projects.map((project) => [
-        project.id,
-        {
-          name: project.name,
-          done: project.actions.filter((one) => one.status === 'done').length,
-          of: project.actions.length,
-        },
-      ]),
-    ),
   }
 }
 
@@ -354,26 +272,6 @@ export async function reshapeStageIn(
   name: string,
   requirement: Requirement,
   deps: CampaignDeps,
-  quests?: readonly ProjectId[],
 ): Promise<void> {
-  const before = linkedQuestIds(await deps.campaigns.all())
-
-  await editCampaign(id, deps, (campaign) =>
-    reshapeStage(campaign, stageId, name, requirement, quests),
-  )
-
-  /*
-   * **Linking decides main and side.** A quest linked to any arc's
-   * chapter is main; unlinked from all of them, it goes back to side.
-   * Only quests whose linkage changed are touched, so a quest filed by
-   * hand before this rule existed keeps its kind until it is linked or
-   * unlinked. One write for all of them, like completing a project.
-   */
-  const after = linkedQuestIds(await deps.campaigns.all())
-  const changed = (await deps.projects.all()).flatMap((project) => {
-    if (after.has(project.id) && !before.has(project.id)) return [withKind(project, 'main')]
-    if (before.has(project.id) && !after.has(project.id)) return [withKind(project, 'side')]
-    return []
-  })
-  if (changed.length > 0) await deps.projects.saveMany(changed)
+  await editCampaign(id, deps, (campaign) => reshapeStage(campaign, stageId, name, requirement))
 }

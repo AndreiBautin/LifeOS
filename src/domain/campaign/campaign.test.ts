@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { asCampaignId, asProjectId, asStageId } from '@/domain/ids/ids'
+import { asCampaignId, asStageId } from '@/domain/ids/ids'
 
 import {
   addStage,
@@ -84,60 +84,12 @@ describe('a declared stage', () => {
   })
 })
 
-describe('a declared stage with quests attached', () => {
-  const linked: Stage = {
-    ...stage('Get a new job', { kind: 'declared' }),
-    quests: [asProjectId('portfolio'), asProjectId('gone')],
-  }
-  const evidence = {
-    quests: {
-      portfolio: { name: 'Polish the portfolio', done: 2, of: 5 },
-      other: { name: 'Unrelated', done: 9, of: 9 },
-    },
-  }
-
-  /*
-   * The work toward the stage shows on the arc as it happens — and a
-   * quest that has since been deleted simply stops counting rather than
-   * breaking the bar.
-   */
-  it('fills its bar from the linked quests steps, ignoring ones that no longer exist', () => {
-    const standing = standingFor(campaign(linked), evidence).stages[0]
-
-    expect(standing?.progress).toEqual({ value: 2, of: 5 })
-    expect(standing?.linked?.map((quest) => quest.name)).toEqual(['Polish the portfolio'])
-  })
-
-  /*
-   * Finishing the portfolio is not having the job. The stage is met only
-   * by being declared, and declaring it fills the bar whatever the
-   * quests stood at.
-   */
-  it('is met only when declared, and declaring fills the bar', () => {
-    expect(standingFor(campaign(linked), evidence).stages[0]?.met).toBe(false)
-
-    const reached = { ...linked, reached: [{ at: '2026-10-01' }] }
-    const standing = standingFor(campaign(reached), evidence).stages[0]
-    expect(standing?.met).toBe(true)
-    expect(standing?.progress).toEqual({ value: 5, of: 5 })
-  })
-
-  it('keeps its links through a rename, and drops them when it stops being declared', () => {
-    const arc = campaign(linked)
-    const renamed = reshapeStage(arc, linked.id, 'A better job', { kind: 'declared' })
-    expect(renamed.stages[0]?.quests).toEqual(linked.quests)
-
-    const measured = reshapeStage(arc, linked.id, 'A better job', { kind: 'offers', count: 1 })
-    expect(measured.stages[0]?.quests).toBeUndefined()
-  })
-})
-
 describe('a measured stage', () => {
   it('reads the count the area already keeps', () => {
     const standing = standingFor(
-      campaign(stage('Fix the house', { kind: 'house-jobs', count: 5 })),
+      campaign(stage('Fix the house', { kind: 'savings', minorUnits: 5 })),
       {
-        houseJobsDone: 3,
+        savingsMinor: 3,
       },
     )
 
@@ -147,25 +99,13 @@ describe('a measured stage', () => {
 
   it('is met once the reading reaches the target', () => {
     const standing = standingFor(
-      campaign(stage('Fix the house', { kind: 'house-jobs', count: 5 })),
+      campaign(stage('Fix the house', { kind: 'savings', minorUnits: 5 })),
       {
-        houseJobsDone: 5,
+        savingsMinor: 5,
       },
     )
 
     expect(standing.stages[0]?.met).toBe(true)
-  })
-
-  /*
-   * A count is genuinely zero when nothing has happened — you can count
-   * no finished house jobs. Money is different: it is typed in monthly,
-   * and its absence means nobody has said, not that it is nothing.
-   */
-  it('treats a count with nothing recorded as zero, not unknown', () => {
-    const standing = standingFor(campaign(stage('Offers', { kind: 'offers', count: 1 })), {})
-
-    expect(standing.stages[0]?.unproven).toBe(false)
-    expect(standing.stages[0]?.progress).toEqual({ value: 0, of: 1 })
   })
 
   /*
@@ -220,21 +160,21 @@ describe('a measured stage', () => {
 describe('the arc as a whole', () => {
   const arc = () =>
     campaign(
-      stage('Fix the house', { kind: 'house-jobs', count: 3 }),
-      stage('Improve income', { kind: 'offers', count: 1 }),
+      stage('Fix the house', { kind: 'savings', minorUnits: 3 }),
+      stage('Improve income', { kind: 'credit-score', score: 1 }),
       stage('Find a house', { kind: 'declared' }),
       stage('Save the deposit', { kind: 'net-worth', minorUnits: 4_000_000 }),
     )
 
   it('counts what is done against stages you named, not a scale of ours', () => {
-    const standing = standingFor(arc(), { houseJobsDone: 3, offers: 1 })
+    const standing = standingFor(arc(), { savingsMinor: 3, creditScore: 1 })
 
     expect(standing.done).toBe(2)
     expect(standing.total).toBe(4)
   })
 
   it('names the earliest outstanding stage as what it is waiting on', () => {
-    const standing = standingFor(arc(), { houseJobsDone: 3 })
+    const standing = standingFor(arc(), { savingsMinor: 3 })
 
     expect(standing.next?.stage.name).toBe('Improve income')
   })
@@ -249,10 +189,10 @@ describe('the arc as a whole', () => {
   it('lets a later stage be met before an earlier one', () => {
     const standing = standingFor(
       campaign(
-        stage('Fix the house', { kind: 'house-jobs', count: 3 }),
+        stage('Fix the house', { kind: 'savings', minorUnits: 3 }),
         stage('Find a house', { kind: 'declared' }, ['2026-09-01']),
       ),
-      { houseJobsDone: 0 },
+      { savingsMinor: 0 },
     )
 
     expect(standing.stages[1]?.met).toBe(true)
@@ -270,11 +210,11 @@ describe('the arc as a whole', () => {
   it('numbers the outstanding stage by where it sits, not by how many are done', () => {
     const standing = standingFor(
       campaign(
-        stage('Fix the house', { kind: 'house-jobs', count: 3 }),
+        stage('Fix the house', { kind: 'savings', minorUnits: 3 }),
         stage('Find a house', { kind: 'declared' }),
         stage('Sell this house', { kind: 'declared' }, ['2026-09-01']),
       ),
-      { houseJobsDone: 0 },
+      { savingsMinor: 0 },
     )
 
     // One stage met, and it is the third — so a count says two and the
@@ -353,7 +293,7 @@ describe('running a stage again', () => {
 describe('editing a stage', () => {
   const arc = () =>
     campaign(
-      stage('Fix the house', { kind: 'house-jobs', count: 5 }),
+      stage('Fix the house', { kind: 'savings', minorUnits: 5 }),
       stage('Find a house', { kind: 'declared' }, ['2026-09-01']),
       stage('Move', { kind: 'declared' }),
     )
@@ -374,10 +314,10 @@ describe('editing a stage', () => {
   })
 
   it('changes a target, which changes whether it is met and nothing else', () => {
-    const before = standingFor(arc(), { houseJobsDone: 3 })
+    const before = standingFor(arc(), { savingsMinor: 3 })
     const after = standingFor(
-      retargetStage(arc(), asStageId('Fix the house'), { kind: 'house-jobs', count: 3 }),
-      { houseJobsDone: 3 },
+      retargetStage(arc(), asStageId('Fix the house'), { kind: 'savings', minorUnits: 3 }),
+      { savingsMinor: 3 },
     )
 
     expect(before.stages[0]?.met).toBe(false)
@@ -459,15 +399,6 @@ describe('building a requirement from a form', () => {
     }
   })
 
-  /*
-   * A count of zero is a stage met the instant it is created, which is
-   * never what somebody typing a number meant.
-   */
-  it('never lets a count reach zero', () => {
-    expect(targetOf(requirementOf('house-jobs', 0))).toBe(1)
-    expect(targetOf(requirementOf('offers', -4))).toBe(1)
-  })
-
   it('allows a money target of zero, which is a real threshold', () => {
     expect(targetOf(requirementOf('net-worth', 0))).toBe(0)
   })
@@ -476,7 +407,7 @@ describe('building a requirement from a form', () => {
     expect(isMoney('net-worth')).toBe(true)
     expect(isMoney('retirement')).toBe(true)
     expect(isMoney('credit-score')).toBe(false)
-    expect(isMoney('house-jobs')).toBe(false)
+    expect(isMoney('declared')).toBe(false)
   })
 
   it('has a label for every kind', () => {
@@ -541,7 +472,7 @@ describe('renaming and retargeting together', () => {
 
   it('refuses a blank name rather than half-applying', () => {
     const before = campaign(stage('Move', { kind: 'declared' }))
-    const next = reshapeStage(before, asStageId('Move'), '  ', { kind: 'house-jobs', count: 2 })
+    const next = reshapeStage(before, asStageId('Move'), '  ', { kind: 'savings', minorUnits: 2 })
 
     expect(next).toBe(before)
   })
@@ -551,18 +482,14 @@ describe('what a target is counted in', () => {
   /*
    * The bug this is the record of: a stage retargeted from applications
    * to a salary kept the count sitting in the editor's box, so
-   * `offers: 1` saved as one pound — a target nobody chose, which the
+   * `creditScore: 1` saved as one pound — a target nobody chose, which the
    * screen then reported as comfortably met. The editor clears the box
    * when the unit changes, and this is the rule it asks.
    */
-  it('separates money from a count, so a 1 cannot become a pound', () => {
-    expect(unitOf('offers')).toBe('count')
+  it('separates money from a score, so a 700 cannot become a pound', () => {
+    expect(unitOf('credit-score')).toBe('score')
     expect(unitOf('salary')).toBe('money')
     expect(unitOf('savings')).toBe('money')
-  })
-
-  it('calls two counts the same unit, so a five carries across', () => {
-    expect(unitOf('house-jobs')).toBe(unitOf('offers'))
   })
 
   /*

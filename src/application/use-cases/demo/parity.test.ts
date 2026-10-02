@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest'
 
 import { atlasView } from '@/application/use-cases/atlas/atlas'
 import { characterSheet } from '@/application/use-cases/character/sheet'
-import { listProjects } from '@/application/use-cases/projects/projects'
 import { shelfTree } from '@/application/use-cases/upgrades/upgrades'
 import { UNCLAIMED_AREAS } from '@/domain/game/traits'
 import type { Clock } from '@/domain/repositories/ports'
@@ -70,24 +69,10 @@ function store<T extends { id?: unknown; month?: unknown }>(key: 'id' | 'month' 
 function services() {
   let next = 0
   let settings: Record<string, unknown> = {}
-  let resume: Record<string, unknown> | undefined
-  const resumeRepo = {
-    get: () => Promise.resolve(resume),
-    save: (next: Record<string, unknown>) => {
-      resume = next
-      return Promise.resolve()
-    },
-    clear: () => {
-      resume = undefined
-      return Promise.resolve()
-    },
-  }
-
   const cells = new Set<string>()
 
   const parts = {
     items: store(),
-    projects: store(),
     upgrades: store(),
     rooms: store(),
     finance: store('month'),
@@ -95,7 +80,6 @@ function services() {
     vices: store(),
     places: store(),
     workouts: store(),
-    attempts: store(),
     challenges: store(),
     trips: store(),
   }
@@ -135,7 +119,6 @@ function services() {
       },
       count: () => Promise.resolve(cells.size),
     },
-    resume: resumeRepo,
     settings: {
       get: () => Promise.resolve(settings),
       save: (next_: Record<string, unknown>) => {
@@ -205,21 +188,6 @@ describe('what a reviewer sees on the landing page', () => {
 })
 
 describe('what a reviewer sees on the other screens', () => {
-  it('draws both halves of the quest board', async () => {
-    const deps = await seeded()
-    const open = await listProjects(deps, 'own-area')
-    const house = await listProjects(deps, 'base')
-
-    expect(open.length).toBeGreaterThan(1)
-    expect(house.length).toBeGreaterThan(0)
-    expect(open.some((project) => project.status === 'completed')).toBe(true)
-  })
-
-  /*
-   * **Owned and dropped both fold away behind the eye**, so a fixture of
-   * open upgrades alone leaves that control with nothing behind it and
-   * the screen looking like it has a dead button.
-   */
   it('covers every status the tech tree can draw', async () => {
     const deps = await seeded()
     const all = await deps.upgrades.all()
@@ -250,25 +218,19 @@ describe('what a reviewer sees on the other screens', () => {
   })
 
   /*
-   * **The resume is the one record nothing regenerates**, so its empty
-   * screen reads as a broken feature rather than an untouched one. Two
-   * roles at one employer is the case the `Company` type exists for —
-   * a promotion, which a flat list of jobs prints as job-hopping.
+   * Every chapter is a box now, so the arc has to show one ticked and
+   * some still to do — a fixture with none ticked draws an empty path.
    */
-  it('fills the resume, promotion included', async () => {
+  it('ticks one chapter of the arc and leaves the rest to do', async () => {
     const deps = await seeded()
-    const cv = (await deps.resume.get()) as
-      { companies: readonly { roles: readonly unknown[] }[] } | undefined
+    const [arc] = await deps.campaigns.all()
+    const stages =
+      (arc as { stages: readonly { reached: readonly unknown[] }[] } | undefined)?.stages ?? []
 
-    expect(cv?.companies.length ?? 0).toBeGreaterThan(1)
-    expect(cv?.companies.some((one) => one.roles.length > 1)).toBe(true)
+    expect(stages.filter((one) => one.reached.length > 0)).toHaveLength(1)
+    expect(stages.length).toBeGreaterThan(1)
   })
 
-  /*
-   * A trip is a few saved places and the days you will be near them, so
-   * one filed against no places demonstrates an empty list rather than a
-   * trip.
-   */
   it('plans trips against places that exist', async () => {
     const deps = await seeded()
     const trips = (await deps.trips.all()) as readonly { placeIds: readonly string[] }[]
@@ -279,21 +241,6 @@ describe('what a reviewer sees on the other screens', () => {
     expect(trips.length).toBeGreaterThan(1)
     expect(trips.every((t) => t.placeIds.length > 0)).toBe(true)
     expect(trips.every((t) => t.placeIds.every((id) => places.has(id)))).toBe(true)
-  })
-
-  /*
-   * The job screen is about **how far each one has got**, so a fixture
-   * where every application sits at nought demonstrates the list and not
-   * the thing the list is for.
-   */
-  it('has an application that has got somewhere', async () => {
-    const deps = await seeded()
-    const jobs = (await listProjects(deps, 'jobs')) as readonly {
-      actions: readonly { status: string }[]
-    }[]
-
-    expect(jobs.length).toBeGreaterThan(1)
-    expect(jobs.some((j) => j.actions.some((a) => a.status === 'done'))).toBe(true)
   })
 
   /*

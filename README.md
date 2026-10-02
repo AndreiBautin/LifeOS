@@ -7,9 +7,9 @@ scored by one model.
 sign-up, no account, nothing to install. It fills itself with generated
 data the first time you open it. Everything stays in your browser.
 
-Training, quests, a reading and playing log, a house, a tech tree of
+Training, an arc of life chapters, a reading log, a house, a tech tree of
 things to save up for, money, a map with fog that clears as you walk, a
-practice log, a seasonal challenge pass. Each pays into one currency and
+seasonal challenge pass. Each pays into one currency and
 one character sheet.
 
 ## The insight that makes it click

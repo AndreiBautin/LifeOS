@@ -1,13 +1,10 @@
-import type { AttemptId, CampaignId, RoomId } from '@/domain/ids/ids'
+import type { CampaignId, RoomId } from '@/domain/ids/ids'
 import type { Room } from '@/domain/base/declutter'
-import type { Attempt } from '@/domain/mind/practice'
 import type { ChallengeMark } from '@/domain/challenges/challenge'
-import type { Campaign } from '@/domain/campaign/campaign'
+import { fromStoredCampaign, type Campaign } from '@/domain/campaign/campaign'
 import type { CheckIn } from '@/domain/autoregulation/check-in'
 import type { FinanceReading } from '@/domain/finance/reading'
-import type { Resume } from '@/domain/resume/resume'
 import type { Item } from '@/domain/backlog/item'
-import type { Project } from '@/domain/projects/project'
 import type { Upgrade } from '@/domain/upgrades/upgrade'
 import type { MetricDefinition, MonthlySnapshot } from '@/domain/review/metric'
 import type { Place } from '@/domain/atlas/place/Place'
@@ -25,7 +22,6 @@ import type {
   CheckInId,
   ExerciseId,
   MetricId,
-  ProjectId,
   UpgradeId,
   ViceId,
   WorkoutId,
@@ -37,15 +33,12 @@ import type {
   Clock,
   ExerciseRepository,
   FinanceRepository,
-  AttemptRepository,
   ChallengeRepository,
   RoomRepository,
   CampaignRepository,
-  ResumeRepository,
   ExploredAreaRepository,
   PlaceRepository,
   PositionRepository,
-  ProjectRepository,
   ReviewRepository,
   TombstoneRepository,
   TripRepository,
@@ -307,57 +300,9 @@ export function createBacklogItemRepository(db: AppDatabase, clock: Clock): Back
 }
 
 /**
- * The quest log.
- *
- * `saveMany` exists because completing one project can un-block others,
- * and those have to land with it — a partial write leaves the graph saying
- * a project is blocked by something already finished. One transaction, and
- * every record in it stamped, which is what separates it from
- * `restoreMany`.
- */
-export function createProjectRepository(db: AppDatabase, clock: Clock): ProjectRepository {
-  return {
-    async all() {
-      return db.getAll('projects')
-    },
-    async byId(id: ProjectId) {
-      return db.get('projects', id)
-    },
-    async save(project: Project) {
-      await db.put('projects', stamp(project, clock))
-    },
-    async saveMany(projects: readonly Project[]) {
-      const tx = db.transaction('projects', 'readwrite')
-      await Promise.all([
-        ...projects.map((project) => tx.store.put(stamp(project, clock))),
-        tx.done,
-      ])
-    },
-    async restoreMany(projects: readonly Project[]) {
-      const tx = db.transaction('projects', 'readwrite')
-      await Promise.all([...projects.map((project) => tx.store.put(project)), tx.done])
-    },
-    async remove(id: ProjectId) {
-      await db.delete('projects', id)
-      await bury(db, clock, 'projects', id)
-    },
-    async purge(id: ProjectId) {
-      await db.delete('projects', id)
-    },
-    async clear() {
-      await db.clear('projects')
-    },
-    async count() {
-      return db.count('projects')
-    },
-  }
-}
-
-/**
  * The tech tree.
  *
- * No batch write, unlike projects: buying something changes no other
- * record, because what it unblocks is derived from the graph on every
+ * No batch write: buying something changes no other record, because what it unblocks is derived from the graph on every
  * read rather than stored on the nodes.
  */
 export function createUpgradeRepository(db: AppDatabase, clock: Clock): UpgradeRepository {
@@ -513,20 +458,6 @@ export function createFinanceRepository(db: AppDatabase, clock: Clock): FinanceR
   }
 }
 
-/** The single key the one resume lives under. */
-const RESUME_KEY = 'resume'
-
-export function createResumeRepository(db: AppDatabase, clock: Clock): ResumeRepository {
-  return {
-    async get() {
-      return db.get('resume', RESUME_KEY)
-    },
-    async save(resume: Resume) {
-      await db.put('resume', stamp(resume, clock), RESUME_KEY)
-    },
-  }
-}
-
 export function createTripRepository(db: AppDatabase, clock: Clock): TripRepository {
   return {
     async all() {
@@ -641,10 +572,11 @@ export function createCheckInRepository(db: AppDatabase, clock: Clock): CheckInR
 export function createCampaignRepository(db: AppDatabase, clock: Clock): CampaignRepository {
   return {
     async all() {
-      return db.getAll('campaigns')
+      return (await db.getAll('campaigns')).map(fromStoredCampaign)
     },
     async byId(id: CampaignId) {
-      return db.get('campaigns', id)
+      const stored = await db.get('campaigns', id)
+      return stored === undefined ? undefined : fromStoredCampaign(stored)
     },
     async save(campaign: Campaign) {
       await db.put('campaigns', stamp(campaign, clock))
@@ -659,32 +591,6 @@ export function createCampaignRepository(db: AppDatabase, clock: Clock): Campaig
     },
     async purge(id: CampaignId) {
       await db.delete('campaigns', id)
-    },
-  }
-}
-
-/** Problems practised, one row each. */
-export function createAttemptRepository(db: AppDatabase, clock: Clock): AttemptRepository {
-  return {
-    async all() {
-      return db.getAll('attempts')
-    },
-    async byId(id: AttemptId) {
-      return db.get('attempts', id)
-    },
-    async save(attempt: Attempt) {
-      await db.put('attempts', stamp(attempt, clock))
-    },
-    async restoreMany(attempts: readonly Attempt[]) {
-      const tx = db.transaction('attempts', 'readwrite')
-      await Promise.all([...attempts.map((one) => tx.store.put(one)), tx.done])
-    },
-    async remove(id: AttemptId) {
-      await db.delete('attempts', id)
-      await bury(db, clock, 'attempts', id)
-    },
-    async purge(id: AttemptId) {
-      await db.delete('attempts', id)
     },
   }
 }

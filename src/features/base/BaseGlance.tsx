@@ -6,10 +6,7 @@ import { PercentRing } from '@/components/shared/PercentRing'
 import { Skeleton } from '@/components/shared/Skeleton'
 import { buttonStyles } from '@/components/shared/styles'
 import { describeClear } from '@/domain/base/declutter'
-import { currentNextAction } from '@/domain/projects/priority'
-import type { Project } from '@/domain/projects/project'
 
-import { useBaseProjects } from '../projects/hooks'
 import { useHouse } from './hooks'
 
 const ROW_LABEL = 'text-ink-500 text-xs font-medium tracking-wide uppercase'
@@ -40,85 +37,14 @@ const ROW_LABEL = 'text-ink-500 text-xs font-medium tracking-wide uppercase'
  * the wide screens with room to spare — the same trade `Declutter`
  * itself already makes for its own ring.
  *
- * **The job named is the one already open, not the highest priority.**
- * `JobRow` on Base itself ranks by what has actually been started
- * rather than by impact — you did not choose for the tap to leak — and
- * this glance reads the same list in the same order rather than
- * inventing a second ranking for one line of text.
- *
- * **The job's name leads and its next step follows.** Reported against
- * a card reading only _"Roof"_ — a job name alone says what is broken
- * and nothing about what to do next. `ArcSlot` already settled the
- * order, `Fix the porch roof · Find the right person`: name first, so a
- * truncated line keeps the half that tells jobs apart, since every hired
- * job opens on the same three steps.
- *
- * **Two labelled rows, Clutter and Projects, with a rule between.** It
- * was one sentence — _"The house is Lived in, 51% clear."_ — over a job
- * name, reported as reading oddly and as blurring two different things.
- * They are different: clutter is a level that moves both ways, a job is
- * a task that closes. The number leads its row and the band follows it,
- * the same number-then-word order `Declutter` uses.
- *
- * **Each row carries its own visual, in one column under Open.** With
- * one ring the card read lopsided — reported as asymmetrical. A second
- * ring then read as the same widget twice, so Projects draws `JobTally`.
- * Open is fixed at the column's width so all three share a centre line.
+ * **Clutter only, now.** The Projects row named the next house job and
+ * its step; house jobs left with the quests — _"drop them too"_ — and
+ * are worked through in Notion.
  */
-/**
- * Jobs done out of all of them, written as a number, with a dot per job.
- *
- * It was a row of unlabelled bars, one per open job filled by its steps —
- * reported, fairly, as _"not clear what this is communicating."_ Eight
- * thin tubes mostly at zero said nothing a reader could name. The count
- * leads now in the same place the ring prints its percentage, captioned
- * so the number is never a mystery, and each dot is one job: filled once
- * finished, outlined once started, dim before anything is done. Same
- * 56-pixel column as the ring and Open, `lg` and up only, like the ring.
- */
-function JobTally({ jobs }: { readonly jobs: readonly Project[] }) {
-  const states = jobs.map((job) => {
-    if (job.status === 'completed') return 'done' as const
-    return job.actions.some((action) => action.status === 'done')
-      ? ('started' as const)
-      : ('untouched' as const)
-  })
-  const done = states.filter((state) => state === 'done').length
-  const started = states.filter((state) => state === 'started').length
-
-  return (
-    <div
-      role="img"
-      aria-label={`${String(done)} of ${String(jobs.length)} house jobs done, ${String(started)} started`}
-      className="hidden w-14 shrink-0 flex-col items-center gap-1 lg:flex"
-    >
-      <span className="numeric text-ink-100 text-xs leading-none font-semibold">
-        {done}/{jobs.length}
-      </span>
-      <span className="text-ink-500 text-[10px] leading-none">done</span>
-      <div className="mt-0.5 grid grid-cols-4 gap-1" aria-hidden>
-        {states.slice(0, 12).map((state, index) => (
-          <span
-            key={jobs[index]?.id ?? index}
-            className={
-              state === 'done'
-                ? 'bg-accent-500 size-2 rounded-full'
-                : state === 'started'
-                  ? 'ring-accent-500 size-2 rounded-full ring-1'
-                  : 'bg-ink-800 size-2 rounded-full'
-            }
-          />
-        ))}
-      </div>
-    </div>
-  )
-}
-
 export function BaseGlance() {
   const house = useHouse()
-  const jobs = useBaseProjects()
 
-  if (house.data === undefined || jobs.data === undefined) {
+  if (house.data === undefined) {
     return (
       <Card>
         <Skeleton className="h-4 w-16" label="Loading Base" />
@@ -126,10 +52,6 @@ export function BaseGlance() {
       </Card>
     )
   }
-
-  const open = jobs.data.filter((job) => job.status !== 'completed')
-  const next = open[0]
-  const step = next === undefined ? undefined : currentNextAction(next)
 
   return (
     <Card>
@@ -170,26 +92,6 @@ export function BaseGlance() {
               label={`Clutter: ${String(house.data.clear)}% clear, ${describeClear(house.data.clear)}`}
             />
           )}
-        </div>
-
-        <div className="border-ink-800 mt-3 flex items-center gap-3 border-t pt-3">
-          <div className="min-w-0 flex-1">
-            <dt className={ROW_LABEL}>Projects</dt>
-            <dd className="mt-0.5 truncate text-sm">
-              {next === undefined ? (
-                <span className="text-ink-500">No open jobs</span>
-              ) : (
-                <>
-                  <span className="text-ink-50 font-medium">{next.name}</span>
-                  {step !== undefined && (
-                    <span className="text-ink-300"> · {step.description}</span>
-                  )}
-                </>
-              )}
-            </dd>
-          </div>
-
-          {jobs.data.length > 0 && <JobTally jobs={jobs.data} />}
         </div>
       </dl>
     </Card>

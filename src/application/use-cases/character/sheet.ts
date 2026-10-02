@@ -1,8 +1,6 @@
 import { traitStandings, type TraitStanding } from '@/domain/game/traits'
 import { isResolved } from '@/domain/atlas/place/Place'
-import { isBase, isJobs, isOwnArea } from '@/domain/base/base'
 import type { Item } from '@/domain/backlog/item'
-import type { Project, QuestKind } from '@/domain/projects/project'
 import { readLadder, type LadderReading } from '@/domain/game/ladder'
 import { ALL_ACTS, SCORING } from '@/domain/game/registry'
 import { standing, xpFrom, type XpStanding } from '@/domain/game/xp'
@@ -155,22 +153,18 @@ export async function tallyActs(
 export interface ActRecords {
   readonly workouts: Awaited<ReturnType<SheetDeps['workouts']['recent']>>
   readonly items: readonly Item[]
-  readonly projects: readonly Project[]
   readonly places: Awaited<ReturnType<SheetDeps['places']['all']>>
-  readonly attempts: Awaited<ReturnType<SheetDeps['attempts']['all']>>
   readonly challenges: Awaited<ReturnType<SheetDeps['challenges']['all']>>
 }
 
 export async function loadActRecords(deps: SheetDeps): Promise<ActRecords> {
-  const [workouts, items, projects, places, attempts, challenges] = await Promise.all([
+  const [workouts, items, places, challenges] = await Promise.all([
     deps.workouts.recent(500),
     deps.items.all(),
-    deps.projects.all(),
     deps.places.all(),
-    deps.attempts.all(),
     deps.challenges.all(),
   ])
-  return { workouts, items, projects, places, attempts, challenges }
+  return { workouts, items, places, challenges }
 }
 
 /** The counting half of `tallyActs`, pure over records already loaded. */
@@ -178,37 +172,10 @@ export function countActs(
   records: ActRecords,
   within: Within = ALWAYS,
 ): Readonly<Record<string, number>> {
-  const { workouts, items, projects, places, attempts, challenges } = records
+  const { workouts, items, places, challenges } = records
 
   /** No date, no act — see the note above on why this holds even all-time. */
   const dated = (date: string | undefined): boolean => date !== undefined && within(date)
-
-  /*
-   * Every record pays exactly one area, and `belongsTo` decides which.
-   *
-   * A house job is stored as a project, so without this split a Base
-   * job's steps would pay the quest log *and* Base — rule three,
-   * nothing counted twice, broken in the most direct way available.
-   *
-   * Split here rather than at the repository, because the stores are
-   * genuinely one store each: a project is a project, and which screen it
-   * appears on is a question for the reader. Filtering at the source would
-   * mean every future caller inheriting an opinion it did not ask for.
-   */
-  const ownProjects = projects.filter(isOwnArea)
-  /*
-   * **A house job splits by how it gets done.** A DIY job's steps pay
-   * Crafting and a hired job's pay Base — one record, one act, which is
-   * rule three holding by the same split `belongsTo` already makes.
-   *
-   * A job with no `approach` is a job filed before the field existed.
-   * It pays Base, which is where it always paid: there is no way to tell
-   * from a step list what somebody meant, and guessing would hand
-   * Crafting XP out on a string match.
-   */
-  const houseProjects = projects.filter(isBase)
-  const diyProjects = houseProjects.filter((one) => one.approach === 'diy')
-  const baseProjects = houseProjects.filter((one) => one.approach !== 'diy')
 
   /*
    * **Lego splits off the backlog the same way.** A set is built rather
@@ -217,7 +184,6 @@ export function countActs(
    */
   const builds = items.filter((item) => item.category === 'lego')
   const readItems = items.filter((item) => item.category !== 'lego')
-  const applications = projects.filter(isJobs)
 
   const completed = workouts.filter((log) => log.status === 'completed' && within(log.date))
 
@@ -251,63 +217,6 @@ export function countActs(
     /* The same two counts over the builds, at the same rates. */
     'crafting.build-progress': progressDays(builds, within),
     'crafting.build-finished': builds.filter((item) => dated(item.dateCompleted)).length,
-    'crafting.diy-step-closed':
-      closedActions(diyProjects, dated, 'main') + closedActions(diyProjects, dated, 'side'),
-    /*
-     * Counted by the kind stamped on the action, never by the quest's
-     * current one. An action closed before quests had kinds carries none
-     * and counts as a side quest, which is what `kindOf` says about a
-     * quest with no kind either.
-     */
-    'projects.main-action-closed': closedActions(ownProjects, dated, 'main'),
-    'projects.side-action-closed': closedActions(ownProjects, dated, 'side'),
-    /*
-     * One flat rate for a house job's steps, where a quest has two.
-     *
-     * Main and side is a claim about what you have chosen to care about
-     * this week, and it does not translate: the tap is leaking whether or
-     * not it is your main quest. Counting them by kind would have every
-     * house job read as a side quest, which is a judgement nobody made.
-     */
-    'base.action-closed':
-      closedActions(baseProjects, dated, 'main') + closedActions(baseProjects, dated, 'side'),
-    /*
-     * `social.hangout-logged` is deliberately absent, and it is the one
-     * act the registry declares that cannot be counted.
-     *
-     * A friend record keeps `lastHangout` — one date, ratcheted forward —
-     * not a list of them. So the hub knows *when you last saw someone* and
-     * has no idea how many times you have. Counting friends-with-a-date
-     * would be a number that stops growing after the first coffee, which
-     * is worse than no number: it would read as a social life that
-     * happened once.
-     *
-     * Fixing it means storing hangouts as events, which is a real change
-     * to the social domain and a migration. Until then this costs 0 XP
-     * rather than a wrong amount of it.
-     */
-    /*
-     * Paid for *sending*, which is the thing you decide to do. The
-     * stages after it — screen, interview, offer — are outcomes, so
-     * closing one pays nothing and feeds a rating instead. That is the
-     * act/outcome line the whole model runs on, and the registry drew it
-     * here before there was anything to draw it around.
-     *
-     * Jobs projects are excluded from `ownProjects` by `isOwnArea`, so
-     * their closed stages cannot also pay `projects.*-action-closed`.
-     * Rule three holds by the same split that keeps a house chore off
-     * `dailies.completed`.
-     */
-    'jobs.application-sent': applications.filter((one) => dated(one.createdAt)).length,
-    /*
-     * One act per problem, counted from the day it was solved.
-     *
-     * Flat, and difficulty deliberately does not scale it -- see
-     * `domain/mind/practice.ts`. A hard problem paying triple would turn
-     * a record of practice into a thing to optimise, and the honest
-     * reason to do a hard one is that it is hard.
-     */
-    'mind.problem-solved': attempts.filter((attempt) => within(attempt.solvedOn)).length,
     /*
      * **Counted from the mark, not from the catalogue.** A completion is
      * a stamped record like every other act here, so a challenge ticked
@@ -336,25 +245,6 @@ function progressDays(items: readonly Item[], within: Within): number {
   return items.reduce(
     (total, item) =>
       total + item.dailyProgress.filter((entry) => entry.amount > 0 && within(entry.date)).length,
-    0,
-  )
-}
-
-/** Closed actions of one kind, within a window. */
-function closedActions(
-  projects: readonly Project[],
-  dated: (date: string | undefined) => boolean,
-  kind: QuestKind,
-): number {
-  return projects.reduce(
-    (total, project) =>
-      total +
-      project.actions.filter(
-        (action) =>
-          action.status === 'done' &&
-          dated(action.completedAt) &&
-          (action.completedAsKind ?? 'side') === kind,
-      ).length,
     0,
   )
 }

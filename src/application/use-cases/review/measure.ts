@@ -1,6 +1,4 @@
-import { daysPractisedIn, solvedIn } from '@/domain/mind/practice'
 import { getGoalsStats } from '@/domain/backlog/goals-stats'
-import { isBase, isJobs, isOwnArea } from '@/domain/base/base'
 import { houseStanding } from '@/domain/base/declutter'
 import { latest } from '@/domain/finance/reading'
 import { shiftDay } from '@/domain/time/day'
@@ -16,12 +14,10 @@ import type {
   Clock,
   ExploredAreaRepository,
   PlaceRepository,
-  ProjectRepository,
   RoomRepository,
   SettingsRepository,
   UpgradeRepository,
   ViceRepository,
-  AttemptRepository,
   FinanceRepository,
   WorkoutRepository,
 } from '@/domain/repositories/ports'
@@ -44,7 +40,6 @@ import { atlasView } from '@/application/use-cases/atlas/atlas'
 
 export interface MeasureDeps {
   readonly items: BacklogItemRepository
-  readonly projects: ProjectRepository
   readonly upgrades: UpgradeRepository
   readonly workouts: WorkoutRepository
   readonly places: PlaceRepository
@@ -53,7 +48,6 @@ export interface MeasureDeps {
   readonly rooms: RoomRepository
   readonly vices: ViceRepository
   readonly finance: FinanceRepository
-  readonly attempts: AttemptRepository
   readonly clock: Clock
 }
 
@@ -75,26 +69,6 @@ export async function measureAll(deps: MeasureDeps): Promise<Readonly<Record<str
     measured['backlog.median-age-days'] = getGoalsStats(items, now).averageBacklogAgeDays
   }
 
-  const allProjects = await deps.projects.all()
-
-  /*
-   * Own-area only, because this feeds `projects.throughput` — a rating
-   * about the quest log. Counting every project anywhere meant a house
-   * job's steps already scored as quest throughput, and adding the job
-   * search would have put a screen and an interview in there too. The
-   * same leak `recommendation` had, in the rating rather than the
-   * suggestion.
-   */
-  const projects = allProjects.filter(isOwnArea)
-  const closedThisMonth = projects.flatMap((project) =>
-    project.actions.filter(
-      (action) => action.status === 'done' && action.completedAt?.slice(0, 7) === toMonth(now),
-    ),
-  )
-  if (projects.length > 0) {
-    measured['projects.actions-closed-in-month'] = closedThisMonth.length
-  }
-
   /*
    * Purchase progress is the share of what was planned that is now owned.
    * Cancelled entries are out of both halves — something you decided
@@ -114,44 +88,6 @@ export async function measureAll(deps: MeasureDeps): Promise<Readonly<Record<str
   )
   if (workouts.length > 0) {
     measured['training.sessions-in-month'] = thisMonth.length
-  }
-
-  /*
-   * Stage advances, from the dates the steps were closed on.
-   *
-   * `completedAt` is what makes this countable: an application storing
-   * only its current stage would say where each one is and never when it
-   * got there, and a rating that judges a *direction* needs the dates.
-   *
-   * The other declared rating — `jobs.applications-in-week` — has no
-   * producer here on purpose. It is the only weekly rating in the app,
-   * and `measure.ts` is monthly throughout because a snapshot is what
-   * gives a direction two points in time. An unproduced source reads as
-   * **absent** rather than zero, which the spine skips, so declaring it
-   * and not feeding it says nothing rather than something false.
-   */
-  const applications = allProjects.filter(isJobs)
-  if (applications.length > 0) {
-    measured['jobs.stage-advances-in-month'] = applications
-      .flatMap((application) => application.actions)
-      .filter(
-        (action) => action.status === 'done' && action.completedAt?.slice(0, 7) === toMonth(now),
-      ).length
-  }
-
-  /*
-   * Two numbers rather than one, and the pair is the point: six problems
-   * in one Sunday and six spread over six days are very different
-   * months, and neither figure alone can say which happened.
-   *
-   * Absent when nothing has been practised at all, never zero -- a month
-   * with no practice is not a month that scored nought, and a fabricated
-   * reading makes the next month's trend a lie too.
-   */
-  const attempts = await deps.attempts.all()
-  if (attempts.length > 0) {
-    measured['mind.problems-solved-in-month'] = solvedIn(attempts, toMonth(now))
-    measured['mind.days-practised-in-month'] = daysPractisedIn(attempts, toMonth(now))
   }
 
   /*
@@ -237,26 +173,6 @@ export async function measureAll(deps: MeasureDeps): Promise<Readonly<Record<str
    */
   const house = houseStanding(await deps.rooms.all(), `${month}-01`)
   if (house.clear !== undefined) measured['base.clear'] = house.clear
-
-  /*
-   * Steps closed on house jobs this month.
-   *
-   * The Base half of `projects.actions-closed-in-month`, and it can be
-   * counted the same way precisely because that one is own-area only —
-   * so a house job's steps land here and nowhere else. Rule three holds
-   * by the two filters being complements.
-   *
-   * Absent when there are no house jobs at all: a month with nothing to
-   * do on the house did not fail to do it.
-   */
-  const houseJobs = allProjects.filter(isBase)
-  if (houseJobs.length > 0) {
-    measured['base.job-steps-in-month'] = houseJobs.flatMap((project) =>
-      project.actions.filter(
-        (action) => action.status === 'done' && action.completedAt?.slice(0, 7) === toMonth(now),
-      ),
-    ).length
-  }
 
   /*
    * The share of days this month that stayed inside every pool.
@@ -360,12 +276,6 @@ export async function measureAll(deps: MeasureDeps): Promise<Readonly<Record<str
     measured['places.explored-share'] = Math.min(1, view.areaKm2 / region)
   }
 
-  /*
-   * The two job-search sources are still left out on purpose. They belong
-   * to an area that has not been absorbed yet — phase 6 — and are declared
-   * in the registry because the model was decided in one go. They produce
-   * no reading until there is something to read.
-   */
   return measured
 }
 

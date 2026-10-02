@@ -26,7 +26,6 @@ export const TOMBSTONED_COLLECTIONS = [
   'workouts',
   'checkIns',
   'items',
-  'projects',
   'upgrades',
   'reviews',
   'places',
@@ -34,7 +33,6 @@ export const TOMBSTONED_COLLECTIONS = [
   'vices',
   'finance',
   'campaigns',
-  'attempts',
   'challenges',
   'rooms',
   /*

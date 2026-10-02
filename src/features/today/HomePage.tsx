@@ -8,13 +8,11 @@ import { MapGlance } from '@/features/atlas/MapGlance'
 import { SampleNotice } from './SampleNotice'
 import { TodayGoals } from '@/features/backlog/TodayGoals'
 import { BaseGlance } from '@/features/base/BaseGlance'
-import { useCampaigns } from '@/features/campaign/hooks'
+import { Campaigns } from '@/features/campaign/Campaigns'
 import { ChallengePass } from '@/features/challenges/ChallengePass'
 import { ActivityHeatmap } from '@/features/character/ActivityHeatmap'
 import { SheetCard } from '@/features/character/SheetCard'
 import { useSeasonProgress } from '@/features/character/hooks'
-import { ActiveQuests } from '@/features/projects/ActiveQuests'
-import { useActiveQuests } from '@/features/projects/hooks'
 import { NextSessionCard } from '@/features/train/NextSessionCard'
 import { NextUpgradeGlance } from '@/features/upgrades/NextUpgradeGlance'
 import { LimitsCard } from '@/features/vitals/LimitsCard'
@@ -107,16 +105,6 @@ import { LimitsCard } from '@/features/vitals/LimitsCard'
 
 export function HomePage() {
   const season = useSeasonProgress()
-  const active = useActiveQuests()
-  /*
-   * The first arc with something outstanding. Several arcs are possible
-   * and one that is finished has nothing to say about what you are
-   * working on now — the same logic `QuestsPage` runs for the same
-   * reason.
-   */
-  const arcs = useCampaigns()
-  const leadingArc = (arcs.data ?? []).find((one) => one.next !== undefined)
-
   return (
     <>
       <SampleNotice />
@@ -150,14 +138,13 @@ export function HomePage() {
             ),
           },
           {
-            key: 'quests',
-            node: (
-              <ActiveQuests
-                main={active.data?.main}
-                side={active.data?.side}
-                {...(leadingArc === undefined ? {} : { arc: leadingArc })}
-              />
-            ),
+            /*
+              The arc, as a checklist. Quests left the app for Notion —
+              _"drop quests, keep the arc as a checklist"_ — so this is the
+              one place the move is tracked, ticked chapter by chapter.
+            */
+            key: 'arc',
+            node: <Campaigns />,
           },
           { key: 'activity', node: <ActivityHeatmap /> },
           { key: 'buffs', node: <LimitsCard /> },

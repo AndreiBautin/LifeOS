@@ -1,15 +1,12 @@
 import type { Place } from '@/domain/atlas/place/Place'
 import type { Trip } from '@/domain/atlas/trip/Trip'
 import type { Room } from '@/domain/base/declutter'
-import type { Attempt } from '@/domain/mind/practice'
 import type { ChallengeMark } from '@/domain/challenges/challenge'
 import type { Campaign } from '@/domain/campaign/campaign'
-import type { Resume } from '@/domain/resume/resume'
 import type { Vice } from '@/domain/vitals/charges'
 import type { CheckIn } from '@/domain/autoregulation/check-in'
 import type { FinanceReading } from '@/domain/finance/reading'
 import type { Item } from '@/domain/backlog/item'
-import type { Project } from '@/domain/projects/project'
 import type { MetricDefinition, MonthlySnapshot } from '@/domain/review/metric'
 import type { Upgrade } from '@/domain/upgrades/upgrade'
 import type { Exercise } from '@/domain/exercises/exercise'
@@ -88,7 +85,6 @@ export interface BackupCounts {
   readonly workouts: number
   readonly checkIns: number
   readonly items: number
-  readonly projects: number
   readonly upgrades: number
   readonly metrics: number
   readonly reviews: number
@@ -97,10 +93,8 @@ export interface BackupCounts {
   readonly vices: number
   readonly finance: number
   readonly campaigns: number
-  readonly attempts: number
   readonly challenges: number
   readonly rooms: number
-  readonly resume: number
   /** Geohash cells of walked ground. Counted, though it is a set of ids. */
   readonly exploredCells: number
 }
@@ -123,23 +117,11 @@ export interface BackupData {
    * is here".
    */
   readonly items?: readonly Item[]
-  readonly projects?: readonly Project[]
   readonly upgrades?: readonly Upgrade[]
   readonly metrics?: readonly MetricDefinition[]
   readonly reviews?: readonly MonthlySnapshot[]
   readonly places?: readonly Place[]
   readonly trips?: readonly Trip[]
-  /**
-   * The resume, of which there is one — so a list of nought or one.
-   *
-   * A collection rather than a bare field because that is what the
-   * table in `infrastructure/backup/collections.ts` walks, and the
-   * whole point of that table is that a thing joins the backup by
-   * gaining a row in it. The resume shipped in no list anywhere — not
-   * this envelope, not the sync payload — so it lived on one device
-   * with no copy, while both reported success.
-   */
-  readonly resume?: readonly Resume[]
   /**
    * Optional, like everything added after the first envelope shipped.
    *
@@ -150,7 +132,6 @@ export interface BackupData {
   readonly vices?: readonly Vice[]
   readonly finance?: readonly FinanceReading[]
   readonly campaigns?: readonly Campaign[]
-  readonly attempts?: readonly Attempt[]
   readonly challenges?: readonly ChallengeMark[]
   readonly rooms?: readonly Room[]
   /**
@@ -169,7 +150,6 @@ export function countsFor(data: BackupData): BackupCounts {
     workouts: data.workouts.length,
     checkIns: data.checkIns.length,
     items: data.items?.length ?? 0,
-    projects: data.projects?.length ?? 0,
     upgrades: data.upgrades?.length ?? 0,
     metrics: data.metrics?.length ?? 0,
     reviews: data.reviews?.length ?? 0,
@@ -178,10 +158,8 @@ export function countsFor(data: BackupData): BackupCounts {
     vices: data.vices?.length ?? 0,
     finance: data.finance?.length ?? 0,
     campaigns: data.campaigns?.length ?? 0,
-    attempts: data.attempts?.length ?? 0,
     challenges: data.challenges?.length ?? 0,
     rooms: data.rooms?.length ?? 0,
-    resume: data.resume?.length ?? 0,
     exploredCells: data.exploredCells?.length ?? 0,
   }
 }
@@ -192,7 +170,6 @@ export const BACKUP_COUNT_KEYS = [
   'workouts',
   'checkIns',
   'items',
-  'projects',
   'upgrades',
   'metrics',
   'reviews',
@@ -201,10 +178,8 @@ export const BACKUP_COUNT_KEYS = [
   'vices',
   'finance',
   'campaigns',
-  'attempts',
   'challenges',
   'rooms',
-  'resume',
   'exploredCells',
 ] as const satisfies readonly (keyof BackupCounts)[]
 

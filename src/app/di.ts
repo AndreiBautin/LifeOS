@@ -10,17 +10,13 @@ import type {
   ExploredAreaRepository,
   PlaceRepository,
   PositionRepository,
-  ProjectRepository,
   ReviewRepository,
   SettingsRepository,
   TombstoneRepository,
-  AttemptRepository,
   ChallengeRepository,
   RoomRepository,
-  TrackGateway,
   CampaignRepository,
   FinanceRepository,
-  ResumeRepository,
   TripRepository,
   ViceRepository,
   UpgradeRepository,
@@ -36,15 +32,12 @@ import {
   createExploredAreaRepository,
   createPlaceRepository,
   createPositionRepository,
-  createProjectRepository,
   createReviewRepository,
   createTombstoneRepository,
-  createAttemptRepository,
   createChallengeRepository,
   createRoomRepository,
   createCampaignRepository,
   createFinanceRepository,
-  createResumeRepository,
   createTripRepository,
   createViceRepository,
   createUpgradeRepository,
@@ -55,7 +48,6 @@ import { createSettingsStore } from '@/infrastructure/storage/settings-store'
 import { createBrowserGeolocation } from '@/infrastructure/map/browser-geolocation'
 import { NominatimSearchProvider } from '@/infrastructure/map/nominatim-search'
 import { requestPersistence } from '@/infrastructure/storage/durability'
-import { createTrackGateway } from '@/infrastructure/mind/track-gateway'
 import { logger } from '@/shared/logging/logger'
 
 /**
@@ -83,18 +75,14 @@ export interface AppServices {
   readonly workouts: WorkoutRepository
   readonly checkIns: CheckInRepository
   readonly items: BacklogItemRepository
-  readonly projects: ProjectRepository
   readonly upgrades: UpgradeRepository
   readonly review: ReviewRepository
   readonly places: PlaceRepository
   readonly finance: FinanceRepository
   readonly campaigns: CampaignRepository
-  readonly attempts: AttemptRepository
   readonly challenges: ChallengeRepository
   readonly rooms: RoomRepository
-  readonly tracks: TrackGateway
   /** Which local day the boards were last read on their own. */
-  readonly resume: ResumeRepository
   readonly trips: TripRepository
   readonly vices: ViceRepository
   readonly explored: ExploredAreaRepository
@@ -147,17 +135,13 @@ export async function bootstrap(): Promise<BootstrapResult> {
     workouts: createWorkoutRepository(db, systemClock),
     checkIns: createCheckInRepository(db, systemClock),
     items: createBacklogItemRepository(db, systemClock),
-    projects: createProjectRepository(db, systemClock),
     upgrades: createUpgradeRepository(db, systemClock),
     review: createReviewRepository(db, systemClock),
     places: createPlaceRepository(db, systemClock),
     finance: createFinanceRepository(db, systemClock),
     campaigns: createCampaignRepository(db, systemClock),
-    attempts: createAttemptRepository(db, systemClock),
     challenges: createChallengeRepository(db, systemClock),
     rooms: createRoomRepository(db, systemClock),
-    tracks: createTrackGateway(),
-    resume: createResumeRepository(db, systemClock),
     trips: createTripRepository(db, systemClock),
     vices: createViceRepository(db, systemClock),
     explored: createExploredAreaRepository(db),

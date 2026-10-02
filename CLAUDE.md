@@ -58,6 +58,29 @@ throttled to fifteen seconds).
   most likely a truncated write, and replacing it would discard whatever
   the other device had.
 
+**Quests, house jobs, the job search, the resume and Mind are gone;
+every paragraph below about `Project`, quest kinds, contracts, blockers,
+`belongsTo` job steps, applications or the practice log is history.**
+Asked for as _"drop quests, keep the arc as a checklist"_, with house jobs
+and Job search/Resume/Mind answered "drop them too" — projects are worked
+through in Notion, which does the board and the steps better.
+
+- **The arc is a checklist card on Today** (`Campaigns` in the masonry),
+  every chapter a box. It pays nothing, as it never did. A stage reads
+  either a declaration or a finance figure; `house-jobs`, `offers` and
+  `Stage.quests` are gone, and `fromStoredCampaign` reads a stored
+  stage of a removed kind as declared and drops its quest links — a
+  derivation on read, not a migration.
+- **`projects`, `attempts` and `resume` are retired stores**, cleared at
+  `DB_VERSION` 23 and out of the backup, sync and tombstone lists. The
+  rows must be deleted, not left: sync would push them straight back.
+- **Base pays nothing now.** Its only acts were house-job steps and
+  chores, both gone; it measures the clutter, the footing Finance has.
+- `/quests`, `/next`, `/jobs`, `/resume`, `/mind` and `/goals` redirect
+  to `/today` — a PWA shortcut outlives the screen it named.
+- **No trait bundles two areas any more** (Intelligence lost Mind), so
+  the test that asserted bundling went with its last example.
+
 **The sample data is filled, never replaced.** `sampleData` in settings
 is `loaded` after seeding (Today shows a dismissible note), `kept`
 once dismissed, and `cleared` after Settings → **Start fresh** — which

@@ -87,7 +87,7 @@ export const TRAITS: readonly TraitDefinition[] = [
    * a session that contained conditioning actually done.
    */
   { id: 'stamina', label: 'Stamina', areas: ['cardio'] },
-  { id: 'intellect', label: 'Intelligence', areas: ['backlog', 'mind'] },
+  { id: 'intellect', label: 'Intelligence', areas: ['backlog'] },
   /*
    * **Crafting is things you built, and it used to be much wider.** It
    * was quests, the house and the tech tree — asked for as _"it
@@ -114,10 +114,8 @@ export const TRAITS: readonly TraitDefinition[] = [
  */
 export const UNCLAIMED_AREAS: readonly LifeArea[] = [
   'places',
-  'projects',
   'upgrades',
   'base',
-  'jobs',
   'vitals',
   'finance',
   'challenges',

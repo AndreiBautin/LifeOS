@@ -2,9 +2,8 @@ import { Check, Flag, Pencil, Plus, X } from 'lucide-react'
 import { useState } from 'react'
 
 import type { CampaignId } from '@/domain/ids/ids'
-import { Link } from 'react-router-dom'
 
-import { Badge, Button, Card, CardHeading, Empty, Section } from '@/components/shared/primitives'
+import { Badge, Button, Card, CardHeading, Empty } from '@/components/shared/primitives'
 import { Meter } from '@/components/shared/Meter'
 import type { CampaignStanding, Requirement, StageStanding } from '@/domain/campaign/campaign'
 import { formatMinorUnits } from '@/domain/upgrades/upgrade'
@@ -22,8 +21,8 @@ import { StageEditor } from './StageEditor'
 /**
  * The long arc — the move, and anything shaped like it.
  *
- * On the Quests page above the quest board, because this is what "main
- * quest" means when it is stated at full size: *"improving my job and my
+ * On Today, as a checklist of chapters — what "the long run" means when
+ * it is stated at full size: *"improving my job and my
  * house until I can retire in my ideal home."* Every input already
  * existed in the hub and nothing represented the arc itself.
  *
@@ -57,14 +56,7 @@ const LABEL = 'text-ink-500 mb-1 block text-xs tracking-wide uppercase'
  * house-job steps take — not a claim that everybody moves house this way.
  */
 const MOVE_STAGES: readonly { readonly name: string; readonly requirement: Requirement }[] = [
-  /*
-   * **House work counts the decluttering as well as the jobs**, asked
-   * for as _"fix up the house should include all the diy as well as
-   * getting everything decluttered."_ Both halves answer the same
-   * question — what about this house is done — so the count is jobs
-   * finished plus rooms read as Clear, and `readingFor` sums them.
-   */
-  { name: 'Fix up the house', requirement: { kind: 'house-jobs', count: 8 } },
+  { name: 'Fix up the house', requirement: { kind: 'declared' } },
   /*
    * **A new job, declared — no salary and no savings tracked.** Asked
    * for as _"no need to track finance… just make it get a new job, don't
@@ -101,18 +93,7 @@ function describe(requirement: Requirement, standing: StageStanding): string {
 
   switch (requirement.kind) {
     case 'declared':
-      if (standing.stage.reached.length > 0) return ''
-      /*
-       * With quests attached, the steps they have closed — the work
-       * toward the stage — named by quest so the bar is not a mystery.
-       */
-      return standing.linked !== undefined && standing.progress !== undefined
-        ? `${String(standing.progress.value)} of ${String(standing.progress.of)} steps · ${standing.linked.map((quest) => quest.name).join(', ')}`
-        : 'Not yet'
-    case 'house-jobs':
-      return `${String(progress?.value ?? 0)} of ${String(requirement.count)} jobs done and rooms cleared`
-    case 'offers':
-      return `${String(progress?.value ?? 0)} of ${String(requirement.count)} applications through every stage`
+      return standing.stage.reached.length > 0 ? '' : 'Not yet'
     case 'net-worth':
       return standing.unproven
         ? `Net worth of ${formatMinorUnits(requirement.minorUnits)} — nothing recorded yet`
@@ -136,46 +117,6 @@ function describe(requirement: Requirement, standing: StageStanding): string {
   }
 }
 
-/**
- * The screen a stage's requirement is read from.
- *
- * Reported: *"all the other things that just have manual completions,
- * like house search, should have sections that we could link to like the
- * other sections."* Right — a stage that says *0 of 5 house jobs
- * finished* is quoting a number Base owns, and the screen where that
- * number is moved was two taps away through the nav with nothing on the
- * row to say which screen it was.
- *
- * **The link goes where the evidence is, which is why it is keyed on the
- * requirement rather than on the stage's name.** A name is free text and
- * could say anything; the requirement is the app's own statement about
- * which records it reads, so a link derived from it cannot point
- * somewhere the number does not come from.
- *
- * **A declared stage has none, and that is the definition rather than a
- * gap.** It is declared precisely because nothing in the app records
- * it — there is no screen where "we found a house we liked" is written
- * down, so a link would have to be invented. *Houses seen* is the
- * measured version of house-hunting and does link, so a house-search
- * stage that wants one is a retarget away in the editor.
- *
- * **The five money kinds lost their link when Finance's own screen
- * did.** Reported directly against the deployed nav: "it doesn't really
- * fit and could vibe weird to employers." Those stages read exactly the
- * way a declared one does now — no evidence link, because there is no
- * longer a screen to point one at — while `latest(finance, …)` still
- * reads whatever is already on file, so `net-worth`, `salary`, `savings`
- * and the rest still resolve `met`/`progress` correctly. Only the link
- * is gone.
- *
- * The routes live here rather than in `domain/campaign` for the reason
- * `AREA_LINKS` does: the domain must not know that a browser exists.
- */
-const EVIDENCE_SCREENS: Partial<Record<Requirement['kind'], { to: string; label: string }>> = {
-  'house-jobs': { to: '/base', label: 'Base' },
-  offers: { to: '/jobs', label: 'Job search' },
-}
-
 function StageRow({
   standing,
   campaign,
@@ -191,7 +132,6 @@ function StageRow({
 
   const { stage, met, progress, unproven } = standing
   const declared = stage.requirement.kind === 'declared'
-  const screen = EVIDENCE_SCREENS[stage.requirement.kind]
   const isNext = campaign.next?.stage.id === stage.id
 
   if (editing) {
@@ -282,23 +222,8 @@ function StageRow({
         )}
       </div>
 
-      <div className="mt-0.5 flex items-baseline justify-between gap-2">
+      <div className="mt-0.5">
         <p className="text-ink-700 text-xs">{describe(stage.requirement, standing)}</p>
-        {/*
-          Where the number is kept, named. It is the same "all →" the
-          day's House and Training groups used to carry, put back where
-          it means something: one stage reads one screen, so it appears
-          once and cannot repeat.
-        */}
-        {screen !== undefined && (
-          <Link
-            viewTransition
-            to={screen.to}
-            className="text-ink-700 hover:text-ink-500 shrink-0 text-xs whitespace-nowrap"
-          >
-            {screen.label} →
-          </Link>
-        )}
       </div>
 
       {/*
@@ -588,61 +513,41 @@ function ArcEditor({
 }
 
 /**
- * One arc, under its own heading.
+ * One arc, as a card on Today.
  *
- * **The arc names the section.** That replaced a fixed title reading
- * *"The long way round"*, reported as *"I don't like that title — I'm
- * not sure what it even means or where it came from."* Fair: it was the
- * app's phrase for a thing the person had already named, so the screen
- * led with a heading nobody chose and put *Move out of GVR* a size
- * smaller underneath it, inside the card.
+ * **A checklist now, not the main quest.** Quests went to Notion — asked
+ * for as _"drop quests, keep the arc as a checklist"_ — so there is no
+ * slot for the arc to stand in for and no badge to say it does. The arc
+ * names its own card, the aim sits under the name, and each chapter is a
+ * box you tick.
  *
- * The aim becomes the description for the same reason. A campaign
- * already carries both halves of a section header — a name, and a
- * sentence saying where it goes — so drawing them as one is what makes
- * this part of the screen read as being *about* the arc rather than as a
- * list that happens to have one entry.
- *
- * A consequence worth knowing: with two arcs there are two headings and
- * no wrapper over them, which is right. Nothing is "the" arc.
+ * The heading is the arc's own name rather than a title the app
+ * supplies, for the reason it always was: *"I don't like 'The long way
+ * round' — I'm not sure what it even means."*
  */
-function Arc({
-  standing,
-  isMain,
-}: {
-  readonly standing: CampaignStanding
-  /**
-   * Whether this arc is the one standing in for the main quest.
-   *
-   * Computed by the caller from the same two facts the slot uses — no
-   * main quest activated, and this is the first arc with something
-   * outstanding — because two components deciding it separately is how
-   * the badge here and the card there start disagreeing.
-   */
-  readonly isMain: boolean
-}) {
+function Arc({ standing }: { readonly standing: CampaignStanding }) {
   const [editing, setEditing] = useState(false)
   const { campaign } = standing
 
   return (
-    <Section
-      title={campaign.name}
-      {...(campaign.aim === undefined || campaign.aim.trim() === ''
-        ? {}
-        : { description: campaign.aim })}
-      action={
-        <Button
-          size="sm"
-          variant="ghost"
-          aria-label={editing ? `Stop editing ${campaign.name}` : `Edit ${campaign.name}`}
-          onClick={() => {
-            setEditing(!editing)
-          }}
-        >
-          {editing ? <X size={14} aria-hidden /> : <Pencil size={14} aria-hidden />}
-        </Button>
-      }
-    >
+    <Card>
+      <CardHeading
+        icon={<Flag size={14} aria-hidden />}
+        title={campaign.name}
+        action={
+          <Button
+            size="sm"
+            variant="ghost"
+            aria-label={editing ? `Stop editing ${campaign.name}` : `Edit ${campaign.name}`}
+            onClick={() => {
+              setEditing(!editing)
+            }}
+          >
+            {editing ? <X size={14} aria-hidden /> : <Pencil size={14} aria-hidden />}
+          </Button>
+        }
+      />
+
       {editing && (
         <ArcEditor
           campaign={campaign}
@@ -652,50 +557,35 @@ function Arc({
         />
       )}
 
-      <Card>
-        {/*
-          The count in words, since the name and the aim have moved up
-          into the heading and this card would otherwise open with a bar
-          and no sentence.
+      {campaign.aim !== undefined && campaign.aim.trim() !== '' && (
+        <p className="text-ink-300 mb-2 text-sm">{campaign.aim}</p>
+      )}
 
-          **The badge says what the Active section is already showing.**
-          Asked for as *"some sort of designation to say this is the main
-          quest"* — the arc fills that slot above, and down here nothing
-          connected the two, so the same thing appeared twice on one page
-          without either mentioning the other. It is conditional because
-          the claim is: an activated quest wins, and the moment one
-          exists this arc is the direction underneath rather than the
-          main quest itself.
-        */}
-        <div className="flex items-center gap-2">
-          {isMain && <Badge tone="accent">Main quest</Badge>}
-          <p className="text-ink-500 text-xs">
-            {standing.done} of {standing.total} stages
-          </p>
-        </div>
+      <p className="text-ink-500 text-xs">
+        {standing.done} of {standing.total} chapters
+      </p>
 
-        {/*
-          The denominator is stages the person named, not a scale this
-          app invented — the same reason the season bar measures against
-          your own previous season.
-        */}
-        <Meter
-          className="mt-2 mb-1"
-          value={standing.done}
-          of={standing.total}
-          height={6}
-          label={`${campaign.name}, ${String(standing.done)} of ${String(standing.total)} stages`}
-        />
+      {/*
+        The denominator is chapters the person named, not a scale this
+        app invented — the same reason the season bar measures against
+        your own previous season.
+      */}
+      <Meter
+        className="mt-2 mb-1"
+        value={standing.done}
+        of={standing.total}
+        height={6}
+        label={`${campaign.name}, ${String(standing.done)} of ${String(standing.total)} chapters`}
+      />
 
-        <ul>
-          {standing.stages.map((stage, index) => (
-            <StageRow key={stage.stage.id} standing={stage} campaign={standing} index={index} />
-          ))}
-        </ul>
+      <ul>
+        {standing.stages.map((stage, index) => (
+          <StageRow key={stage.stage.id} standing={stage} campaign={standing} index={index} />
+        ))}
+      </ul>
 
-        <AddStage campaignId={campaign.id} />
-      </Card>
-    </Section>
+      {editing && <AddStage campaignId={campaign.id} />}
+    </Card>
   )
 }
 
@@ -704,16 +594,6 @@ export function Campaigns() {
   const [adding, setAdding] = useState(false)
 
   const arcs = campaigns.data ?? []
-
-  /*
-   * The arc currently filling the main quest slot, or none.
-   *
-   * The first arc with something still outstanding — the same fact the
-   * slot itself uses. The arc is the main quest whether or not a quest is
-   * activated; see `ActiveQuests`. An arc that is
-   * finished has nothing to say about what you are working on now.
-   */
-  const standingIn = arcs.find((one) => one.next !== undefined)
 
   /*
    * Nothing yet, so the app supplies a heading — the only place it does
@@ -766,11 +646,7 @@ export function Campaigns() {
   return (
     <>
       {arcs.map((standing) => (
-        <Arc
-          key={standing.campaign.id}
-          standing={standing}
-          isMain={standing.campaign.id === standingIn?.campaign.id}
-        />
+        <Arc key={standing.campaign.id} standing={standing} />
       ))}
 
       {/*
@@ -788,7 +664,6 @@ export function Campaigns() {
           <Button
             variant="ghost"
             size="sm"
-            className="mb-8"
             onClick={() => {
               setAdding(true)
             }}

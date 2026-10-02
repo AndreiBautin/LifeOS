@@ -89,7 +89,7 @@ export default defineConfig(({ mode }) => {
         },
 
         manifest: {
-          name: 'LifeOS — training, quests, codex and map',
+          name: 'LifeOS — training, codex and map',
           short_name: 'LifeOS',
           description:
             'Six things worth tracking, scored by one model: what you are training, building, reading, saving up for, who you are seeing and where you have been.',
@@ -142,7 +142,7 @@ export default defineConfig(({ mode }) => {
            * link was wrong.
            */
           shortcuts: [
-            { name: 'Quests', url: `${base}quests`, description: 'The next thing to do' },
+            { name: 'Today', url: `${base}today`, description: 'Where you stand and what is next' },
             {
               name: 'Start workout',
               url: `${base}train`,
