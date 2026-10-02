@@ -99,6 +99,8 @@ export interface AppSettings {
    * anything has been logged: somebody with a history is past it.
    */
   readonly setupDone?: boolean
+  /** A set has been swiped, so the rows stop showing that they can be. */
+  readonly swipeLearned?: boolean
   readonly schemaVersion: number
 }
 

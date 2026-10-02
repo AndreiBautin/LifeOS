@@ -116,6 +116,16 @@ SessionPage.tsx`, from `sessionDetail`). History rows could be deleted
   finished the minute it started reads as of unknown length rather
   than "0 min"; the demo seed stamped every session that way until this
   page showed it, and now gives each 45–75 minutes.
+- **A set row swipes** (`SwipeRow`): right logs it as planned (the same
+  `logPlanned` the check runs), left skips; the row reveals the action as
+  it moves and commits past a third of its width. Pointer events with
+  `touch-pan-y`, locking only once a drag is clearly sideways, so the page
+  still scrolls; a drag never also fires the tap. **A direction with no
+  action resists** rather than moving freely — an open slot with no
+  planned load has nothing to log, so it does not swipe right. The first
+  pending set slides once (`.swipe-peek`) until a set has been swiped
+  (`settings.swipeLearned`, in the parse with a test) — a gesture nothing
+  shows is a gesture nobody finds.
 - **On a desktop the player is a cockpit.** From `lg` the exercise card
   keeps its phone width on the left and `SessionMap` runs down the right
   — every exercise with a pip per working set, the current one lit, each

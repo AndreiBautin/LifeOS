@@ -13,6 +13,7 @@ import { cn } from '@/lib/cn'
 
 import { usePreviousSet, usePriorSets } from './hooks'
 import { RecordChip } from './RecordChip'
+import { SwipeRow } from './SwipeRow'
 import { VersusChip } from './VersusChip'
 
 /**
@@ -57,6 +58,9 @@ interface Props {
    * would be named a record for beating only last week.
    */
   readonly earlier?: readonly Performance[]
+  /** Slide this row once to show it can be swiped. */
+  readonly peek?: boolean
+  readonly onSwiped?: () => void
 }
 
 export function SetRow(props: Props) {
@@ -133,87 +137,98 @@ export function SetRow(props: Props) {
         : (set.prescription.label ??
           (set.plannedLoad === undefined && !quick ? 'Tap to enter' : undefined))
 
+  /** Logs the set exactly as planned — the check, and a swipe right. */
+  const logPlanned = () => {
+    onLog({
+      ...(set.plannedLoad !== undefined && !(props.bodyweight === true && set.plannedLoad === 0)
+        ? { load: set.plannedLoad }
+        : {}),
+      ...(set.plannedReps !== undefined ? { reps: set.plannedReps } : {}),
+    })
+  }
+
   if (!isOpen) {
     return (
-      <div
-        className={cn(
-          'flex items-stretch overflow-hidden rounded-xl border transition-colors',
-          done && 'border-good-500/30 bg-good-500/10',
-          skipped && 'border-ink-800 bg-ink-850 opacity-60',
-          !done && !skipped && 'border-ink-800 bg-ink-850 hover:border-ink-700',
-        )}
+      <SwipeRow
+        onRight={quick ? logPlanned : undefined}
+        onLeft={!done && !skipped && !set.isWarmup ? props.onSkip : undefined}
+        peek={props.peek === true}
+        {...(props.onSwiped === undefined ? {} : { onSwiped: props.onSwiped })}
       >
-        <button
-          type="button"
-          onClick={onOpen}
-          aria-label={`Set ${String(index + 1)}, ${headline}. ${done ? 'Logged' : skipped ? 'Skipped' : 'Edit'}.`}
-          className="tap-target flex min-w-0 flex-1 items-center gap-3 px-3 py-2.5 text-left"
+        <div
+          className={cn(
+            'flex items-stretch overflow-hidden rounded-xl border transition-colors',
+            done && 'border-good-500/30 bg-good-500/10',
+            skipped && 'border-ink-800 bg-ink-850 opacity-60',
+            !done && !skipped && 'border-ink-800 bg-ink-850 hover:border-ink-700',
+          )}
         >
-          <span
-            className={cn(
-              'flex size-7 shrink-0 items-center justify-center rounded-lg text-xs font-semibold',
-              done ? 'bg-good-500 text-black' : 'bg-ink-800 text-ink-300',
-            )}
-            aria-hidden
+          <button
+            type="button"
+            onClick={onOpen}
+            aria-label={`Set ${String(index + 1)}, ${headline}. ${done ? 'Logged' : skipped ? 'Skipped' : 'Edit'}.`}
+            className="tap-target flex min-w-0 flex-1 items-center gap-3 px-3 py-2.5 text-left"
           >
-            {done ? <Check size={15} /> : skipped ? <Minus size={14} /> : index + 1}
-          </span>
-          <span className="flex min-w-0 flex-col">
             <span
               className={cn(
-                'numeric truncate text-base font-semibold',
-                done ? 'text-good-500' : 'text-ink-50',
+                'flex size-7 shrink-0 items-center justify-center rounded-lg text-xs font-semibold',
+                done ? 'bg-good-500 text-black' : 'bg-ink-800 text-ink-300',
               )}
+              aria-hidden
             >
-              {skipped ? describePrescription(set.prescription, repsOverride) : headline}
+              {done ? <Check size={15} /> : skipped ? <Minus size={14} /> : index + 1}
             </span>
-            {detail !== undefined && (
-              <span className="text-ink-500 numeric truncate text-xs">{detail}</span>
-            )}
-          </span>
-          <span className="ml-auto flex shrink-0 items-center gap-1.5">
-            {/*
+            <span className="flex min-w-0 flex-col">
+              <span
+                className={cn(
+                  'numeric truncate text-base font-semibold',
+                  done ? 'text-good-500' : 'text-ink-50',
+                )}
+              >
+                {skipped ? describePrescription(set.prescription, repsOverride) : headline}
+              </span>
+              {detail !== undefined && (
+                <span className="text-ink-500 numeric truncate text-xs">{detail}</span>
+              )}
+            </span>
+            <span className="ml-auto flex shrink-0 items-center gap-1.5">
+              {/*
               A record outranks "ahead of last time": better than every
               time before says more than better than once before.
             */}
-            {done && record !== undefined ? (
-              <RecordChip kind={record} />
-            ) : (
-              done &&
-              previous != null && (
-                <VersusChip
-                  versus={versusLast(
-                    { load: set.actualLoad, reps: set.actualReps },
-                    { load: previous.load, reps: previous.reps },
-                  )}
-                  units={units}
-                />
-              )
-            )}
-            {set.isWarmup && <Badge>warm-up</Badge>}
-            {set.prescription.reps.kind === 'amrap' && !done && <Badge tone="accent">AMRAP</Badge>}
-          </span>
-        </button>
-
-        {quick && (
-          <button
-            type="button"
-            onClick={() => {
-              onLog({
-                ...(set.plannedLoad !== undefined &&
-                !(props.bodyweight === true && set.plannedLoad === 0)
-                  ? { load: set.plannedLoad }
-                  : {}),
-                ...(set.plannedReps !== undefined ? { reps: set.plannedReps } : {}),
-              })
-            }}
-            aria-label={`Log set ${String(index + 1)} as planned${set.plannedLoad === undefined ? '' : `: ${plannedSummary}`}`}
-            className="border-ink-800 text-ink-300 hover:text-accent-400 hover:bg-accent-500/10 flex w-14 shrink-0 items-center justify-center border-l transition-colors"
-          >
-            <Check size={20} aria-hidden />
+              {done && record !== undefined ? (
+                <RecordChip kind={record} />
+              ) : (
+                done &&
+                previous != null && (
+                  <VersusChip
+                    versus={versusLast(
+                      { load: set.actualLoad, reps: set.actualReps },
+                      { load: previous.load, reps: previous.reps },
+                    )}
+                    units={units}
+                  />
+                )
+              )}
+              {set.isWarmup && <Badge>warm-up</Badge>}
+              {set.prescription.reps.kind === 'amrap' && !done && (
+                <Badge tone="accent">AMRAP</Badge>
+              )}
+            </span>
           </button>
-        )}
-      </div>
+
+          {quick && (
+            <button
+              type="button"
+              onClick={logPlanned}
+              aria-label={`Log set ${String(index + 1)} as planned${set.plannedLoad === undefined ? '' : `: ${plannedSummary}`}`}
+              className="border-ink-800 text-ink-300 hover:text-accent-400 hover:bg-accent-500/10 flex w-14 shrink-0 items-center justify-center border-l transition-colors"
+            >
+              <Check size={20} aria-hidden />
+            </button>
+          )}
+        </div>
+      </SwipeRow>
     )
   }
 

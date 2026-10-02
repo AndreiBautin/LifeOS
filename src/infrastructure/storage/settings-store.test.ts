@@ -110,4 +110,9 @@ describe('the first-run setup', () => {
     writeSettings({ ...DEFAULT_SETTINGS, setupDone: true }, storage, at('2026-08-26T09:00:00Z'))
     expect(readSettings(storage).settings.setupDone).toBe(true)
   })
+
+  it('remembers that a set has been swiped', () => {
+    writeSettings({ ...DEFAULT_SETTINGS, swipeLearned: true }, storage, at('2026-08-26T09:00:00Z'))
+    expect(readSettings(storage).settings.swipeLearned).toBe(true)
+  })
 })

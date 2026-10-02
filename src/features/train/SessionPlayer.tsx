@@ -9,7 +9,7 @@ import {
 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 
-import { useServices } from '@/app/context'
+import { useServices, useSettings } from '@/app/context'
 
 import type { Exercise } from '@/domain/exercises/exercise'
 import type { ExerciseId } from '@/domain/ids/ids'
@@ -62,6 +62,17 @@ export function SessionPlayer({
   onAbandon,
 }: Props) {
   const [index, setIndex] = useState(() => runStart(workout, firstIncompleteIndex(workout)))
+  /*
+   * **The first pending set slides once, until a swipe has been used.**
+   * A gesture nothing shows is a gesture nobody finds; one that shows
+   * itself every set forever is noise. It stops for good the first time
+   * a set is swiped (`settings.swipeLearned`).
+   */
+  const { settings: playerSettings, update: updateSettings } = useSettings()
+  const swipeLearned = playerSettings.swipeLearned === true
+  const learnSwipe = () => {
+    if (!swipeLearned) updateSettings({ swipeLearned: true })
+  }
   const [openSet, setOpenSet] = useState<number | undefined>(undefined)
   const [restStartedAt, setRestStartedAt] = useState<number | undefined>(undefined)
   const [confirmingAbandon, setConfirmingAbandon] = useState(false)
@@ -118,6 +129,7 @@ export function SessionPlayer({
   const stepEnd = warmup === undefined ? index : (warmup.at(-1) ?? index)
   const next = workout.entries[stepEnd + 1]
   const first = entry.sets[0]
+  const firstPending = entry.sets.findIndex((set) => set.outcome === 'pending' && !set.isWarmup)
   const stepComplete =
     warmup === undefined
       ? isEntryComplete(entry)
@@ -273,6 +285,8 @@ export function SessionPlayer({
                     exerciseId={entry.exerciseId}
                     workoutId={workout.id}
                     variant={entry.variant}
+                    peek={!swipeLearned && setIndex === firstPending}
+                    onSwiped={learnSwipe}
                     earlier={entry.sets
                       .slice(0, setIndex)
                       .filter((one) => !one.isWarmup && one.outcome === 'completed')
