@@ -1,5 +1,5 @@
 import { TrendingUp } from 'lucide-react'
-import { useId } from 'react'
+import { useId, useState, type PointerEvent } from 'react'
 
 import { useSettings } from '@/app/context'
 import { Card, CardHeading } from '@/components/shared/primitives'
@@ -40,6 +40,14 @@ export function StrengthTrendCard() {
   const workouts = useRecentWorkouts(WINDOW)
   const { settings } = useSettings()
   const gradientBase = useId()
+  /*
+   * **The chart can be scrubbed.** Hover, or drag a finger across it, and
+   * a crosshair snaps to the nearest session while the three figures above
+   * read that day rather than today — the question a trend chart invites
+   * ("what was I benching in August?") answered where it is asked.
+   * `touch-action: pan-y` keeps a vertical swipe scrolling the page.
+   */
+  const [at, setAt] = useState<string | undefined>(undefined)
 
   if (workouts.data === undefined) return null
 
@@ -74,6 +82,21 @@ export function StrengthTrendCard() {
   const gridValues = [low, (low + high) / 2, high]
   const month = (date: string): string =>
     parseDay(date).toLocaleDateString('en-US', { month: 'short', timeZone: 'UTC' })
+  const dates = [...new Set(all.map((point) => point.date))].sort()
+  const valueAt = (points: readonly TrendPoint[], date: string): number | undefined =>
+    points.filter((point) => point.date <= date).at(-1)?.value
+
+  const scrub = (event: PointerEvent<SVGSVGElement>): void => {
+    const box = event.currentTarget.getBoundingClientRect()
+    const viewX = ((event.clientX - box.left) / box.width) * WIDTH
+    const nearest = dates.reduce((best, date) =>
+      Math.abs(x(date) - viewX) < Math.abs(x(best) - viewX) ? date : best,
+    )
+    setAt(nearest)
+  }
+  const day = (date: string): string =>
+    parseDay(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
+
   const firstDate = all.reduce((a, b) => (a.date < b.date ? a : b)).date
   const lastDate = all.reduce((a, b) => (a.date > b.date ? a : b)).date
 
@@ -85,8 +108,9 @@ export function StrengthTrendCard() {
         {drawn.map(({ lift, label, colour }) => {
           const points = trend[lift]
           const first = points[0]?.value ?? 0
-          const last = points.at(-1)?.value ?? 0
-          const gain = last - first
+          const scrubbed = at === undefined ? undefined : valueAt(points, at)
+          const last = at === undefined ? (points.at(-1)?.value ?? 0) : scrubbed
+          const gain = (last ?? first) - first
           return (
             <div key={lift} className="min-w-0">
               <p className="text-ink-500 flex items-center gap-1.5 text-xs">
@@ -97,18 +121,22 @@ export function StrengthTrendCard() {
                 {label}
               </p>
               <p className="text-ink-50 numeric text-lg font-semibold">
-                {last}
+                {last ?? '—'}
                 <span className="text-ink-500 ml-1 text-xs font-normal">{settings.units}</span>
               </p>
-              {gain !== 0 && (
-                <p
-                  className={
-                    gain > 0 ? 'text-good-500 numeric text-xs' : 'text-bad-500 numeric text-xs'
-                  }
-                >
-                  {gain > 0 ? '+' : '−'}
-                  {Math.abs(gain)} since {month(points[0]?.date ?? firstDate)}
-                </p>
+              {at !== undefined ? (
+                <p className="text-ink-500 numeric text-xs">{day(at)}</p>
+              ) : (
+                gain !== 0 && (
+                  <p
+                    className={
+                      gain > 0 ? 'text-good-500 numeric text-xs' : 'text-bad-500 numeric text-xs'
+                    }
+                  >
+                    {gain > 0 ? '+' : '−'}
+                    {Math.abs(gain)} since {month(points[0]?.date ?? firstDate)}
+                  </p>
+                )
               )}
             </div>
           )
@@ -117,7 +145,15 @@ export function StrengthTrendCard() {
 
       <svg
         viewBox={`0 0 ${String(WIDTH)} ${String(HEIGHT)}`}
-        className="h-auto w-full"
+        className="h-auto w-full cursor-crosshair touch-pan-y select-none"
+        onPointerMove={scrub}
+        onPointerDown={scrub}
+        onPointerLeave={() => {
+          setAt(undefined)
+        }}
+        onPointerCancel={() => {
+          setAt(undefined)
+        }}
         role="img"
         aria-label={`Estimated maxes from ${month(firstDate)} to ${month(lastDate)}: ${drawn
           .map(({ lift, label }) => `${label} ${String(trend[lift].at(-1)?.value ?? 0)}`)
@@ -209,6 +245,34 @@ export function StrengthTrendCard() {
             </g>
           )
         })}
+
+        {at !== undefined && (
+          <g pointerEvents="none">
+            <line
+              x1={x(at)}
+              x2={x(at)}
+              y1={PAD.top}
+              y2={HEIGHT - PAD.bottom}
+              stroke="var(--color-ink-300)"
+              strokeOpacity={0.5}
+              strokeDasharray="3 3"
+            />
+            {drawn.map(({ lift, colour }) => {
+              const value = valueAt(trend[lift], at)
+              return value === undefined ? null : (
+                <circle
+                  key={lift}
+                  cx={x(at)}
+                  cy={y(value)}
+                  r={5}
+                  fill="var(--color-ink-950)"
+                  stroke={colour}
+                  strokeWidth={2.5}
+                />
+              )
+            })}
+          </g>
+        )}
       </svg>
     </Card>
   )

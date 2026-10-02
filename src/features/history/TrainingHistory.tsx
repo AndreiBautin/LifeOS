@@ -213,8 +213,9 @@ function SessionRow({
             {workout.status === 'abandoned' && <Badge tone="warn">Abandoned</Badge>}
           </p>
           <p className="text-ink-500 numeric mt-0.5 text-xs">
-            {when.toLocaleDateString(undefined, { weekday: 'long' })} · {sets} sets ·{' '}
-            {Math.round(totalTonnage(workout)).toLocaleString()} {units}
+            {when.toLocaleDateString(undefined, { weekday: 'long' })} · {sets}{' '}
+            {sets === 1 ? 'set' : 'sets'} · {Math.round(totalTonnage(workout)).toLocaleString()}{' '}
+            {units}
           </p>
         </div>
 

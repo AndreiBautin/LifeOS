@@ -106,6 +106,11 @@ standards.ts`): the estimated max, its multiple of bodyweight, and the
   one. The hero stats count up once (`useCountUp`); reduced motion shows
   the figure directly, and a screen reader gets the number, not the
   animation.
+- **The strength chart scrubs.** Hover or drag across it and a crosshair
+  snaps to the nearest session, ringing each lift's line, while the three
+  figures above read that day instead of today. Pointer events with
+  `touch-pan-y`, so a vertical swipe still scrolls the page; leaving the
+  chart puts the figures back.
 - **The home page's plan shows today's bar**, "215 lb · 4 × 3", rather
   than the rule "4 × 3–5". `previewWorkout` in `start-workout.ts` is
   Start's own build run early and saved nowhere, so the preview and the
