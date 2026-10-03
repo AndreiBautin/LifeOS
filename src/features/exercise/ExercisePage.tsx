@@ -14,6 +14,7 @@ import { Button, Card, CardHeading } from '@/components/shared/primitives'
 import { useExerciseHistory, useExercises } from '@/features/train/hooks'
 
 import { StallCard } from './StallCard'
+import { RepMaxCard } from './RepMaxCard'
 import { splitDayLabel } from '@/features/train/useNextSession'
 
 /**
@@ -115,6 +116,10 @@ export function ExercisePage() {
         </dl>
         <Staircase series={shown} bodyweight={bodyweight} units={settings.units} />
       </section>
+
+      {!bodyweight && estimate?.estimate !== undefined && (
+        <RepMaxCard series={shown} estimate={estimate.estimate} />
+      )}
 
       <SessionList sessions={shown.sessions} units={settings.units} bodyweight={bodyweight} />
     </div>

@@ -116,6 +116,15 @@ SessionPage.tsx`, from `sessionDetail`). History rows could be deleted
   finished the minute it started reads as of unknown length rather
   than "0 min"; the demo seed stamped every session that way until this
   page showed it, and now gives each 45–75 minutes.
+- **The exercise page has a rep-max table** (`repMaxTable` in
+  `domain/strength/rep-max.ts`, `RepMaxCard`): the estimate run back
+  through the same formula for 1, 3, 5, 8, 10 and 12 reps, rounded down
+  to a loadable bar, as dashed bars, with a solid bar for the heaviest
+  done **in that row's bracket** (gold where it reaches the prediction).
+  "At least that many reps" was tried first and filled the single row
+  with five-rep weight under a prediction nobody had attempted, which
+  read as a weakness. Hidden for bodyweight movements and without an
+  estimate.
 - **⌘K (Ctrl+K) or / opens a command palette anywhere**
   (`features/palette`, mounted in `AppShell`): pages, every exercise and
   the last thirty sessions, ranked by `rankItems` (tested) — every word
