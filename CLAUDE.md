@@ -116,6 +116,16 @@ SessionPage.tsx`, from `sessionDetail`). History rows could be deleted
   finished the minute it started reads as of unknown length rather
   than "0 min"; the demo seed stamped every session that way until this
   page showed it, and now gives each 45–75 minutes.
+- **History searches and filters** (`domain/logging/history-filter.ts`,
+  tested): a search matches the day, an exercise **actually done** (a
+  skipped slot is not something the session had), or a note, every word
+  narrowing; chips for the days the history holds and for sessions with
+  records. **The fold steps aside while any filter is on** — folding
+  matches behind "Show all" would be the list arguing with its own box —
+  and the header reads "11 of 81". The search has a row of its own.
+  Updates are functional (`onChange(current => …)`): two taps landing
+  in one tick otherwise wrote from the same stale filter, the second
+  undoing the first.
 - **Notes, on a set and on a session.** The set editor has one line
   under the steppers; the row shows it after "Logged", and **next
   session shows it beside "Last"** on the same set (`previousSetFor`

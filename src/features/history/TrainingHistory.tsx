@@ -1,12 +1,20 @@
 import { useQuery } from '@tanstack/react-query'
 import { MorphText } from '@/components/shared/MorphText'
 import { morphName } from '@/components/shared/morph'
-import { History, RotateCcw, Star, Trash2 } from 'lucide-react'
+import { History, RotateCcw, Search, Star, Trash2 } from 'lucide-react'
 import { useMemo, useState } from 'react'
 
 import { useServices, useSettings } from '@/app/context'
 import type { WorkoutId } from '@/domain/ids/ids'
 import { sessionRecords } from '@/domain/logging/records'
+import {
+  dayNameOf,
+  filterHistory,
+  isFiltering,
+  NO_FILTER,
+  type HistoryFilter,
+} from '@/domain/logging/history-filter'
+import { useExercises } from '@/features/train/hooks'
 import type { WorkoutLog } from '@/domain/logging/workout-log'
 import { remainingSets, totalTonnage, totalWorkingSets } from '@/domain/logging/workout-log'
 import type { WeightUnit } from '@/domain/units/weight'
@@ -40,6 +48,8 @@ export function TrainingHistory() {
   const deleteWorkout = useDeleteWorkout()
   const reopenWorkout = useReopenWorkout()
   const [showAll, setShowAll] = useState(false)
+  const [filter, setFilter] = useState<HistoryFilter>(NO_FILTER)
+  const exercises = useExercises()
 
   /*
    * Which row is asking to be confirmed, if any.
@@ -77,6 +87,21 @@ export function TrainingHistory() {
   const records = useMemo(() => sessionRecords(workouts.data ?? []), [workouts.data])
   const abandoned = sessions.length - completed
 
+  /*
+   * **Search and chips, and the fold steps aside while either is on**: a
+   * search is a request for what matches, and folding matches away
+   * behind "Show all" would be the list arguing with its own box. The day
+   * chips are the days this history actually holds, most recent first.
+   */
+  const filtering = isFiltering(filter)
+  const nameOf = (id: string): string =>
+    exercises.data?.find((exercise) => exercise.id === id)?.name ?? id
+  const matches = filtering
+    ? filterHistory(sessions, filter, nameOf, (id) => records.get(id)?.length ?? 0)
+    : sessions
+  const days = [...new Set(sessions.map((workout) => dayNameOf(workout.title)))].slice(0, 6)
+  const shown = filtering || showAll ? matches : matches.slice(0, RECENT)
+
   if (workouts.data === undefined) return null
 
   if (sessions.length === 0) {
@@ -94,12 +119,29 @@ export function TrainingHistory() {
         title="Recent sessions"
         action={
           <span className="text-ink-500 numeric text-xs">
-            {completed} logged{abandoned > 0 ? ` · ${String(abandoned)} abandoned` : ''}
+            {filtering
+              ? `${String(matches.length)} of ${String(sessions.length)}`
+              : `${String(completed)} logged${abandoned > 0 ? ` · ${String(abandoned)} abandoned` : ''}`}
           </span>
         }
       />
+      <HistoryFilters filter={filter} days={days} onChange={setFilter} />
+      {matches.length === 0 && (
+        <p className="text-ink-500 py-4 text-center text-sm">
+          Nothing matches.{' '}
+          <button
+            type="button"
+            className="text-accent-400 underline-offset-2 hover:underline"
+            onClick={() => {
+              setFilter(NO_FILTER)
+            }}
+          >
+            Clear
+          </button>
+        </p>
+      )}
       <ul className="-mx-2 space-y-1">
-        {(showAll ? sessions : sessions.slice(0, RECENT)).map((workout) => (
+        {shown.map((workout) => (
           <li key={workout.id}>
             <SessionRow
               workout={workout}
@@ -137,7 +179,7 @@ export function TrainingHistory() {
           </li>
         ))}
       </ul>
-      {sessions.length > RECENT && (
+      {!filtering && sessions.length > RECENT && (
         <Button
           variant="ghost"
           full
@@ -150,6 +192,77 @@ export function TrainingHistory() {
         </Button>
       )}
     </Card>
+  )
+}
+
+/**
+ * The search box on a row of its own — a field sharing a row with other
+ * controls at 375 is the defect this codebase has shipped four times —
+ * and the chips under it, wrapping rather than scrolling.
+ */
+function HistoryFilters({
+  filter,
+  days,
+  onChange,
+}: {
+  readonly filter: HistoryFilter
+  readonly days: readonly string[]
+  readonly onChange: (next: (current: HistoryFilter) => HistoryFilter) => void
+}) {
+  const chip = (active: boolean) =>
+    cn(
+      'tap-target rounded-full border px-3 text-xs font-medium transition-colors',
+      active
+        ? 'border-accent-500/60 bg-accent-500/15 text-accent-400'
+        : 'border-ink-800 text-ink-300 hover:border-ink-700',
+    )
+  return (
+    <div className="mb-3 space-y-2">
+      <label className="relative block">
+        <span className="sr-only">Search sessions</span>
+        <Search
+          size={14}
+          className="text-ink-500 pointer-events-none absolute top-1/2 left-3 -translate-y-1/2"
+          aria-hidden
+        />
+        <input
+          type="search"
+          value={filter.query}
+          placeholder="Search a day, a lift, a note"
+          onChange={(event) => {
+            const query = event.target.value
+            onChange((current) => ({ ...current, query }))
+          }}
+          className="bg-ink-900 border-ink-800 text-ink-100 placeholder:text-ink-500 w-full rounded-lg border py-2 pr-3 pl-8 text-sm"
+        />
+      </label>
+      <div className="flex flex-wrap gap-1.5" role="group" aria-label="Filter sessions">
+        {days.map((day) => (
+          <button
+            key={day}
+            type="button"
+            aria-pressed={filter.day === day}
+            className={chip(filter.day === day)}
+            onClick={() => {
+              onChange((current) => ({ ...current, day: current.day === day ? undefined : day }))
+            }}
+          >
+            {day}
+          </button>
+        ))}
+        <button
+          type="button"
+          aria-pressed={filter.recordsOnly}
+          className={cn(chip(filter.recordsOnly), 'inline-flex items-center gap-1')}
+          onClick={() => {
+            onChange((current) => ({ ...current, recordsOnly: !current.recordsOnly }))
+          }}
+        >
+          <Star size={12} aria-hidden />
+          Records
+        </button>
+      </div>
+    </div>
   )
 }
 
