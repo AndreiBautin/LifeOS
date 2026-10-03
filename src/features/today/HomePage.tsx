@@ -1,5 +1,6 @@
 import { useState } from 'react'
 
+import { BalanceCard } from '@/features/train/BalanceCard'
 import { GoalsCard } from '@/features/train/GoalsCard'
 import { withViewTransition } from '@/app/view-transitions'
 import type { WorkoutReport } from '@/application/use-cases/training/finish-workout'
@@ -126,6 +127,7 @@ export function HomePage() {
           { key: 'session', node: <NextSessionCard /> },
           { key: 'week', node: <WeekCard /> },
           { key: 'last-week', node: <LastWeekCard /> },
+          { key: 'balance', node: <BalanceCard /> },
           { key: 'standards', node: <StrengthStandards /> },
           { key: 'goals', node: <GoalsCard /> },
           { key: 'trend', node: <StrengthTrendCard /> },

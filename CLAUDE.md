@@ -116,6 +116,16 @@ SessionPage.tsx`, from `sessionDetail`). History rows could be deleted
   finished the minute it started reads as of unknown length rather
   than "0 min"; the demo seed stamped every session that way until this
   page showed it, and now gives each 45–75 minutes.
+- **A balance card reads four weeks as a tug of war**
+  (`domain/volume/balance.ts`, `muscleBalance`, `BalanceCard`): push
+  against pull, quads against the hinge, upper against lower, in sets by
+  the week card's own `loggedVolume`, over four calendar weeks — one week
+  is noise, a missed pull day is not an imbalance. A knob pulled towards
+  the heavier side, a faint dot per week behind it (oldest faintest) so
+  the drift shows, and a band either side of centre that reads Even
+  (`EVEN`, a tenth). **A lean, not a verdict**: a squat-heavy week is
+  often the plan, so outside the band it says "Upper-heavy · 2.2×" in
+  amber and nothing more.
 - **The player takes a keyboard** (`keyboard.ts`, `KeyboardFlow`):
   Enter or L logs the next set as planned, S skips, E opens it, ← → or
   J K move between exercises, Esc closes the key sheet, then the editor,

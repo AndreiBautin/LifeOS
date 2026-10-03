@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
+import { muscleBalance } from '@/application/use-cases/training/balance'
 import type { ExerciseId, WorkoutId } from '@/domain/ids/ids'
 import type { WorkoutLog } from '@/domain/logging/workout-log'
 import { exerciseHistory } from '@/domain/logging/exercise-history'
@@ -117,6 +118,12 @@ export function useSchedule() {
 export function useWeekSummary() {
   const services = useServices()
   return useQuery({ queryKey: ['workouts', 'week'], queryFn: () => weekSummary(services) })
+}
+
+/** Push and pull, quads and hinge, upper and lower, over four weeks. */
+export function useMuscleBalance() {
+  const services = useServices()
+  return useQuery({ queryKey: ['workouts', 'balance'], queryFn: () => muscleBalance(services) })
 }
 
 export function useRecentWorkouts(limit = 20) {
