@@ -116,6 +116,14 @@ SessionPage.tsx`, from `sessionDetail`). History rows could be deleted
   finished the minute it started reads as of unknown length rather
   than "0 min"; the demo seed stamped every session that way until this
   page showed it, and now gives each 45–75 minutes.
+- **The page can be pure black** (`settings.trueBlack`, in the parse
+  with a test; Settings → Look → Background, two drawn previews rather
+  than a switch). `AppShell` sets `data-black` on the root and moves the
+  `theme-color` meta to black with it, so an installed app's status bar
+  is not a grey stripe. The washes and the ambient backdrop go too — a
+  glow on black lights the pixels the setting exists to switch off — and
+  cards stay a shade above black so they still read as surfaces. The
+  override is unlayered CSS so it outranks the base layer's tokens.
 - **An exercise's notes are kept on its page** (`NotesCard`, from
   `exerciseNotes` in `domain/logging/exercise-notes.ts`, tested). A set
   note was shown once, beside "Last" next session, and then gone; the

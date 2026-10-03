@@ -105,6 +105,46 @@ export function SettingsPage() {
               )
             })}
           </div>
+          <p className="text-ink-300 mt-5 mb-3 text-sm">Background</p>
+          <div className="grid grid-cols-2 gap-3" role="radiogroup" aria-label="Background">
+            {BACKGROUNDS.map(({ black, name, page, card }) => {
+              const chosen = (settings.trueBlack === true) === black
+              return (
+                <button
+                  key={name}
+                  type="button"
+                  role="radio"
+                  aria-checked={chosen}
+                  onClick={() => {
+                    update({ trueBlack: black })
+                  }}
+                  className={cn(
+                    'tap-target overflow-hidden rounded-xl border-2 text-left transition-colors',
+                    chosen ? 'border-accent-500' : 'border-ink-800 hover:border-ink-700',
+                  )}
+                >
+                  {/* A page with a card on it, drawn in that background. */}
+                  <span className="block p-2.5" style={{ background: page }} aria-hidden>
+                    <span
+                      className="border-ink-800 block rounded-md border p-2"
+                      style={{ background: card }}
+                    >
+                      <span className="bg-accent-500 block h-1.5 w-1/2 rounded-full" />
+                      <span className="bg-ink-700 mt-1.5 block h-1 w-3/4 rounded-full" />
+                    </span>
+                  </span>
+                  <span
+                    className={cn(
+                      'block px-2.5 py-1.5 text-xs',
+                      chosen ? 'text-ink-50' : 'text-ink-500',
+                    )}
+                  >
+                    {name}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
         </Card>
       </Section>
 
@@ -654,3 +694,14 @@ function PlateSetting() {
     </div>
   )
 }
+
+/** The two pages on offer, each drawn in its own colours for the picker. */
+const BACKGROUNDS = [
+  {
+    black: false,
+    name: 'Dark',
+    page: 'oklch(0.16 0.008 265)',
+    card: 'oklch(0.2 0.008 265)',
+  },
+  { black: true, name: 'Pure black · OLED', page: '#000', card: 'oklch(0.14 0.006 265)' },
+] as const

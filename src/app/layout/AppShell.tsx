@@ -51,6 +51,21 @@ export function AppShell() {
   }, [hue])
 
   /*
+   * **Pure black is an attribute on the root, and the theme colour
+   * follows it**, so the status bar on an installed app is not a grey
+   * stripe above a black page.
+   */
+  const black = settings.trueBlack === true
+  useEffect(() => {
+    const root = document.documentElement
+    if (black) root.dataset.black = ''
+    else delete root.dataset.black
+    document
+      .querySelector('meta[name="theme-color"]')
+      ?.setAttribute('content', black ? '#000000' : '#0a0a0b')
+  }, [black])
+
+  /*
    * The body already carries `padding-bottom: var(--safe-bottom)` to clear
    * the home indicator, so a full-height shell inside it would make the
    * document taller than the viewport by exactly that inset.

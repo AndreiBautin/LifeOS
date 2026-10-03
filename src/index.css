@@ -1162,3 +1162,23 @@ html {
     transform: translateY(-14px) scale(0.6);
   }
 }
+
+/*
+ * Pure black for OLED screens: the page is off pixels, and the washes and
+ * the drifting backdrop go with it — a glow on black lights the very
+ * pixels the setting exists to switch off. Cards stay a shade above black
+ * so they still read as surfaces.
+ */
+:root[data-black] {
+  --surface: #000;
+  --surface-raised: oklch(0.14 0.006 265);
+  --surface-inset: oklch(0.18 0.007 265);
+}
+
+:root[data-black] body {
+  background-image: none;
+}
+
+:root[data-black] .ambient {
+  display: none;
+}

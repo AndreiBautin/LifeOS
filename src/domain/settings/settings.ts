@@ -113,6 +113,8 @@ export interface AppSettings {
   readonly liftGoals?: LiftGoals
   /** The accent's hue, one of `ACCENT_HUES`; absent is cyan. */
   readonly accentHue?: number
+  /** A pure-black page for OLED screens; absent is the dark grey. */
+  readonly trueBlack?: boolean
   /**
    * The lifter's own cues per exercise — "elbows under the bar", "push the
    * floor away" — shown in the player under the exercise's name.

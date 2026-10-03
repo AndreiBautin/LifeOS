@@ -242,6 +242,7 @@ function mergeWithDefaults(parsed: unknown): AppSettings {
     ...(typeof stored.seenNotes === 'string' ? { seenNotes: stored.seenNotes } : {}),
     ...homeCardsOf(stored.homeCards),
     // Only a hue on offer: anything else could land on the good colour.
+    ...(stored.trueBlack === true ? { trueBlack: true } : {}),
     ...(typeof stored.accentHue === 'number' &&
     ACCENT_HUES.some((one) => one.hue === stored.accentHue)
       ? { accentHue: stored.accentHue }

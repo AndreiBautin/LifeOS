@@ -161,6 +161,17 @@ describe('accepted resets', () => {
     expect(readSettings(storage).settings.accentHue).toBeUndefined()
   })
 
+  it('keeps a pure-black background only when it is on', () => {
+    const storage = memoryStorage()
+    storage.setItem(STORAGE_KEYS.settings, JSON.stringify({ ...DEFAULT_SETTINGS, trueBlack: true }))
+    expect(readSettings(storage).settings.trueBlack).toBe(true)
+    storage.setItem(
+      STORAGE_KEYS.settings,
+      JSON.stringify({ ...DEFAULT_SETTINGS, trueBlack: 'yes' }),
+    )
+    expect(readSettings(storage).settings.trueBlack).toBeUndefined()
+  })
+
   it('keeps each exercise cue as a trimmed line and drops blanks', () => {
     const storage = memoryStorage()
     storage.setItem(
