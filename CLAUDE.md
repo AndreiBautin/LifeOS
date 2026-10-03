@@ -116,6 +116,12 @@ SessionPage.tsx`, from `sessionDetail`). History rows could be deleted
   finished the minute it started reads as of unknown length rather
   than "0 min"; the demo seed stamped every session that way until this
   page showed it, and now gives each 45–75 minutes.
+- **The session bar projects the finish** ("⚑ 8:32 PM", `FinishAt`,
+  from `remainingSeconds` in `domain/logging/remaining.ts`): every
+  pending set's work and the rest the timer will give it, by the
+  planner's own `setSeconds` and the timer's own `restAfter`, so the
+  three cannot disagree about what a set costs. It is the plan's pace,
+  not a measurement of the lifter, and moves as the session does.
 - **A one-action log or skip offers Undo for five seconds**
   (`UndoToast`): "Logged 215 lb × 3 · Undo" above the rest timer when one
   is showing. Undo returns the set to pending (`clearSet`) and cancels the

@@ -1,5 +1,6 @@
 import {
   ArrowLeftRight,
+  Flag,
   Check,
   TrendingDown,
   CheckCircle2,
@@ -17,7 +18,9 @@ import { useServices, useSettings } from '@/app/context'
 
 import type { Exercise } from '@/domain/exercises/exercise'
 import type { ExerciseId } from '@/domain/ids/ids'
-import type { WorkoutLog } from '@/domain/logging/workout-log'
+import type { LogEntry, WorkoutLog } from '@/domain/logging/workout-log'
+import { remainingSeconds } from '@/domain/logging/remaining'
+import type { RestWork } from '@/domain/programs/rest'
 import { isEntryComplete, remainingSets, totalWorkingSets } from '@/domain/logging/workout-log'
 import { describePrescription } from '@/domain/programs/prescription'
 import { stepFor } from '@/domain/programs/progression'
@@ -297,6 +300,7 @@ export function SessionPlayer({
               sets
             </span>
             <Elapsed startedAt={workout.startedAt} />
+            <FinishAt workout={workout} exercises={exercises} />
           </p>
         </div>
         <div className="bg-ink-800 mt-2 h-1 overflow-hidden rounded-full" aria-hidden>
@@ -856,14 +860,7 @@ function restFor(
 ): RestPlan {
   const entry = workout.entries[entryIndex]
   if (entry === undefined) return { seconds: 0, reason: '' }
-  const workOf = (one: (typeof workout.entries)[number]) => {
-    const exercise = exercises.find((candidate) => candidate.id === one.exerciseId)
-    return {
-      role: one.role,
-      isCompound: exercise?.isCompound ?? false,
-      restSeconds: exercise?.defaultRestSeconds,
-    }
-  }
+  const workOf = (one: LogEntry) => restWorkOf(one, exercises)
   const lastOfExercise = !entry.sets.some(
     (set, at) => at !== setIndex && !set.isWarmup && set.outcome === 'pending',
   )
@@ -877,4 +874,58 @@ function restFor(
     plannedReps: entry.sets[setIndex]?.plannedReps,
     doneReps,
   })
+}
+
+/** What a slot asks of the rest timer: its role, and the exercise's own rest. */
+function restWorkOf(entry: LogEntry, exercises: readonly Exercise[]): RestWork {
+  const exercise = exercises.find((candidate) => candidate.id === entry.exerciseId)
+  return {
+    role: entry.role,
+    isCompound: exercise?.isCompound ?? false,
+    restSeconds: exercise?.defaultRestSeconds,
+  }
+}
+
+/**
+ * **When the session should end, at the plan's pace** — "→ 7:42" beside
+ * the elapsed time, from the pending sets and the rests the timer will
+ * give them (`remainingSeconds`). The question between sets is often
+ * "will I be out by eight", and the session already knows. Moves as the
+ * session does; gone once nothing is pending.
+ */
+function FinishAt({
+  workout,
+  exercises,
+}: {
+  readonly workout: WorkoutLog
+  readonly exercises: readonly Exercise[]
+}) {
+  const { clock } = useServices()
+  const [now, setNow] = useState(() => clock.now().getTime())
+
+  useEffect(() => {
+    const tick = (): void => {
+      setNow(clock.now().getTime())
+    }
+    const handle = window.setInterval(tick, 30_000)
+    document.addEventListener('visibilitychange', tick)
+    return () => {
+      window.clearInterval(handle)
+      document.removeEventListener('visibilitychange', tick)
+    }
+  }, [clock])
+
+  const left = remainingSeconds(workout, (entry) => restWorkOf(entry, exercises))
+  if (left <= 0) return null
+  const at = new Date(now + left * 1000).toLocaleTimeString(undefined, {
+    hour: 'numeric',
+    minute: '2-digit',
+  })
+
+  return (
+    <span className="flex items-center gap-1" aria-label={`Projected to finish at ${at}`}>
+      <Flag size={12} aria-hidden />
+      {at}
+    </span>
+  )
 }
