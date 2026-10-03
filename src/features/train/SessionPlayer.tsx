@@ -32,6 +32,9 @@ import { cn } from '@/lib/cn'
 
 import { useClearSet, useExerciseHistory, useLogSet, useSwapExercise } from './hooks'
 import { SwapPanel } from './SwapPanel'
+import { KeyboardFlow, KeyHelp } from './KeyboardFlow'
+import type { KeyAction } from './keyboard'
+import { canLogPlanned, plannedResult } from './planned'
 import { LadderStrip } from './LadderStrip'
 import { BarSection } from './BarSection'
 import { RestTimer } from './RestTimer'
@@ -87,8 +90,10 @@ export function SessionPlayer({
     { readonly startedAt: number; readonly plan: RestPlan } | undefined
   >(undefined)
   const [confirmingAbandon, setConfirmingAbandon] = useState(false)
+  const [showKeys, setShowKeys] = useState(false)
 
   const logSet = useLogSet(workout.id)
+  const { clock } = useServices()
   const swap = useSwapExercise(workout.id)
   /* Open per exercise: paging on closes it rather than offering the next one's. */
   const [swappingAt, setSwappingAt] = useState<number | undefined>(undefined)
@@ -157,6 +162,80 @@ export function SessionPlayer({
     setIndex(runStart(workout, Math.max(0, Math.min(workout.entries.length - 1, to))))
     setOpenSet(undefined)
     window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const bodyweightHere =
+    exercises.find((one) => one.id === entry.exerciseId)?.loadBasis === 'bodyweight'
+
+  /** Logs a set of this exercise: the row, its swipe and the keyboard. */
+  const logAt = (
+    setIndex: number,
+    result: { load?: number | undefined; reps?: number | undefined; notes?: string | undefined },
+  ) => {
+    // Closed and resting on the tap, not on the save: the row is already
+    // green (see `useLogSet`).
+    setOpenSet(undefined)
+    const set = entry.sets[setIndex]
+    // A warm-up does not earn a rest timer.
+    if (set !== undefined && !set.isWarmup && restEnabled) {
+      const plan = restFor(workout, index, setIndex, result.reps, exercises)
+      setRest(plan.seconds > 0 ? { startedAt: clock.now().getTime(), plan } : undefined)
+    }
+    // Spread conditionally rather than passing `undefined` through: an
+    // absent number and an explicitly unknown one differ to the log.
+    logSet.mutate({
+      entryIndex: index,
+      setIndex,
+      result: {
+        ...(result.load !== undefined ? { load: result.load } : {}),
+        ...(result.reps !== undefined ? { reps: result.reps } : {}),
+        ...(result.notes !== undefined ? { notes: result.notes } : {}),
+        outcome: 'completed',
+      },
+    })
+  }
+
+  const skipAt = (setIndex: number) => {
+    setOpenSet(undefined)
+    logSet.mutate({ entryIndex: index, setIndex, result: { outcome: 'skipped' } })
+  }
+
+  /*
+   * **The keyboard drives the same actions the rows do**, on the next
+   * pending set of the exercise on screen. Logging a set the plan cannot
+   * fill (no load to confirm) opens it instead, the rule the row's own
+   * check follows (`canLogPlanned`).
+   */
+  const nextOpen = entry.sets.findIndex((set) => set.outcome === 'pending')
+  const onKey = (action: KeyAction) => {
+    const set = entry.sets[nextOpen]
+    switch (action) {
+      case 'log':
+        if (set === undefined || warmup !== undefined) return
+        if (canLogPlanned(set)) logAt(nextOpen, plannedResult(set, bodyweightHere))
+        else setOpenSet(nextOpen)
+        return
+      case 'skip':
+        if (set !== undefined && warmup === undefined && !set.isWarmup) skipAt(nextOpen)
+        return
+      case 'edit':
+        if (set !== undefined && warmup === undefined) setOpenSet(nextOpen)
+        return
+      case 'next':
+        go(stepEnd + 1)
+        return
+      case 'previous':
+        go(index - 1)
+        return
+      case 'close':
+        if (showKeys) setShowKeys(false)
+        else if (openSet !== undefined) setOpenSet(undefined)
+        else setRest(undefined)
+        return
+      case 'help':
+        setShowKeys((shown) => !shown)
+        return
+    }
   }
 
   return (
@@ -380,41 +459,16 @@ export function SessionPlayer({
                       .filter((one) => !one.isWarmup && one.outcome === 'completed')
                       .map((one) => ({ load: one.actualLoad, reps: one.actualReps }))}
                     units={units}
-                    bodyweight={
-                      exercises.find((one) => one.id === entry.exerciseId)?.loadBasis ===
-                      'bodyweight'
-                    }
+                    bodyweight={bodyweightHere}
                     isOpen={openSet === setIndex}
                     onOpen={() => {
                       setOpenSet(setIndex)
                     }}
                     onLog={(result) => {
-                      // Spread conditionally rather than passing `undefined`
-                      // through: an absent number and a number that is explicitly
-                      // unknown are different things to the log, and only the
-                      // first is meant here.
-                      // Closed and resting on the tap, not on the save:
-                      // the row is already green (see `useLogSet`).
-                      setOpenSet(undefined)
-                      // A warm-up does not earn a rest timer.
-                      if (!set.isWarmup && restEnabled) {
-                        const plan = restFor(workout, index, setIndex, result.reps, exercises)
-                        setRest(plan.seconds > 0 ? { startedAt: Date.now(), plan } : undefined)
-                      }
-                      logSet.mutate({
-                        entryIndex: index,
-                        setIndex,
-                        result: {
-                          ...(result.load !== undefined ? { load: result.load } : {}),
-                          ...(result.reps !== undefined ? { reps: result.reps } : {}),
-                          ...(result.notes !== undefined ? { notes: result.notes } : {}),
-                          outcome: 'completed',
-                        },
-                      })
+                      logAt(setIndex, result)
                     }}
                     onSkip={() => {
-                      setOpenSet(undefined)
-                      logSet.mutate({ entryIndex: index, setIndex, result: { outcome: 'skipped' } })
+                      skipAt(setIndex)
                     }}
                     onClear={() => {
                       clearSet.mutate(
@@ -556,6 +610,15 @@ export function SessionPlayer({
           onGo={go}
         />
       </div>
+
+      <KeyboardFlow onAction={onKey} />
+      {showKeys && (
+        <KeyHelp
+          onClose={() => {
+            setShowKeys(false)
+          }}
+        />
+      )}
 
       {rest !== undefined && (
         <RestTimer

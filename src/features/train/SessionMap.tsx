@@ -92,6 +92,14 @@ export function SessionMap({
           )
         })}
       </ol>
+      {/* The map is the desktop layout, which is where a keyboard is. */}
+      <p className="text-ink-500 mt-3 px-2.5 text-xs">
+        Press{' '}
+        <kbd className="border-ink-700 bg-ink-900 text-ink-300 rounded border px-1.5 font-sans">
+          ?
+        </kbd>{' '}
+        for keys
+      </p>
     </nav>
   )
 }

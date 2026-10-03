@@ -16,6 +16,7 @@ import { usePreviousSet, usePriorSets } from './hooks'
 import { Stepper } from './Stepper'
 import { RecordChip } from './RecordChip'
 import { SwipeRow } from './SwipeRow'
+import { canLogPlanned, plannedResult } from './planned'
 import { VersusChip } from './VersusChip'
 
 /**
@@ -123,10 +124,7 @@ export function SetRow(props: Props) {
    * history has no load to confirm, and logging it blank would file a set
    * with no weight.
    */
-  const quick =
-    !done &&
-    !skipped &&
-    (set.plannedLoad !== undefined || set.isWarmup || set.prescription.reps.kind === 'time')
+  const quick = !done && !skipped && canLogPlanned(set)
 
   const headline = done
     ? summary
@@ -156,12 +154,7 @@ export function SetRow(props: Props) {
 
   /** Logs the set exactly as planned — the check, and a swipe right. */
   const logPlanned = () => {
-    onLog({
-      ...(set.plannedLoad !== undefined && !(props.bodyweight === true && set.plannedLoad === 0)
-        ? { load: set.plannedLoad }
-        : {}),
-      ...(set.plannedReps !== undefined ? { reps: set.plannedReps } : {}),
-    })
+    onLog(plannedResult(set, props.bodyweight === true))
   }
 
   if (!isOpen) {

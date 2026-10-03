@@ -116,6 +116,18 @@ SessionPage.tsx`, from `sessionDetail`). History rows could be deleted
   finished the minute it started reads as of unknown length rather
   than "0 min"; the demo seed stamped every session that way until this
   page showed it, and now gives each 45–75 minutes.
+- **The player takes a keyboard** (`keyboard.ts`, `KeyboardFlow`):
+  Enter or L logs the next set as planned, S skips, E opens it, ← → or
+  J K move between exercises, Esc closes the key sheet, then the editor,
+  then the rest timer, and ? lists the keys; the desktop map says
+  "Press ? for keys". **Nothing fires while typing** except Escape, and
+  Enter on a focused button stays the button's. It drives the rows' own
+  actions — `logAt`/`skipAt` in the player, and `canLogPlanned` /
+  `plannedResult` (`planned.ts`) shared with the row's check and swipe —
+  so L opens a set the plan cannot fill rather than logging it blank.
+  Logging moved out of the row's inline callback, and its rest start now
+  reads the clock port: the purity lint refuses `Date.now()` in a
+  function declared in render.
 - **History searches and filters** (`domain/logging/history-filter.ts`,
   tested): a search matches the day, an exercise **actually done** (a
   skipped slot is not something the session had), or a note, every word
