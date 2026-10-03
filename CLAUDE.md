@@ -116,6 +116,19 @@ SessionPage.tsx`, from `sessionDetail`). History rows could be deleted
   finished the minute it started reads as of unknown length rather
   than "0 min"; the demo seed stamped every session that way until this
   page showed it, and now gives each 45–75 minutes.
+- **A lift can carry a goal with a date** (`domain/strength/goal.ts`,
+  `GoalsCard`, `settings.liftGoals` — in the parse, with a test). Its
+  picture is a **glide path**: the dashed line the goal asks for, from
+  where the lift measured the day it was set (`from`, stored so the start
+  does not move) to the target on the date; the lift's own line since;
+  and the trend carried to the date, green on pace and amber behind.
+  **Judged on the fitted line, not the last session** — `fitTrend` came
+  out of `projectReach` so both read one fit. Too little to fit still
+  says the weekly need, never a forecast. A goal at or below where the
+  lift already is is refused: it read as reached on setting, with the
+  path running downhill. **The form fills its default when opened, not
+  when mounted** — the trend loads after the card, and a mount-time
+  default offered 145 for a bench sessions put at 245.
 - **Finishing grows the session bar into the report's hero.** Both
   carry `view-transition-name: session-hero`, and the swap — one route,
   so React Router's `viewTransition` cannot see it — runs through

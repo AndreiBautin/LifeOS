@@ -2,6 +2,7 @@ import { asExerciseId, type ExerciseId } from '@/domain/ids/ids'
 import type { E1rmFormula } from '@/domain/strength/one-rep-max'
 import type { WeightUnit } from '@/domain/units/weight'
 import type { LoadResets } from '@/domain/programs/stall'
+import type { LiftGoals } from '@/domain/strength/goal'
 
 /**
  * Everything about the lifter that is not a program or a workout.
@@ -107,6 +108,8 @@ export interface AppSettings {
    * a session of the exercise is logged after the day it was accepted.
    */
   readonly loadResets?: LoadResets
+  /** A goal per competition lift, with a date (`domain/strength/goal`). */
+  readonly liftGoals?: LiftGoals
   readonly schemaVersion: number
 }
 

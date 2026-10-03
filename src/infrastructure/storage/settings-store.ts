@@ -235,6 +235,7 @@ function mergeWithDefaults(parsed: unknown): AppSettings {
     ...(stored.setupDone === true ? { setupDone: true } : {}),
     ...(stored.swipeLearned === true ? { swipeLearned: true } : {}),
     ...loadResetsOf(stored.loadResets),
+    ...liftGoalsOf(stored.liftGoals),
     schemaVersion: SETTINGS_SCHEMA_VERSION,
   }
 }
@@ -310,4 +311,32 @@ function loadResetsOf(value: unknown): Pick<AppSettings, 'loadResets'> {
       : []
   })
   return kept.length === 0 ? {} : { loadResets: Object.fromEntries(kept) }
+}
+
+const GOAL_LIFTS = ['squat', 'bench', 'deadlift'] as const
+const DAY = /^\d{4}-\d{2}-\d{2}$/
+
+/**
+ * Lift goals, each checked: a lift this build does not train, a load that
+ * is not positive or a date that is not a day would draw a goal nobody set.
+ */
+function liftGoalsOf(value: unknown): Pick<AppSettings, 'liftGoals'> {
+  if (typeof value !== 'object' || value === null) return {}
+  const record = value as Record<string, unknown>
+  const kept = GOAL_LIFTS.flatMap((lift) => {
+    const goal = record[lift]
+    if (typeof goal !== 'object' || goal === null) return []
+    const { load, by, setOn, from } = goal as Record<string, unknown>
+    return typeof load === 'number' &&
+      load > 0 &&
+      typeof from === 'number' &&
+      from >= 0 &&
+      typeof by === 'string' &&
+      DAY.test(by) &&
+      typeof setOn === 'string' &&
+      DAY.test(setOn)
+      ? [[lift, { load, by, setOn, from }] as const]
+      : []
+  })
+  return kept.length === 0 ? {} : { liftGoals: Object.fromEntries(kept) }
 }

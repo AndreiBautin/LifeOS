@@ -134,4 +134,22 @@ describe('accepted resets', () => {
       'bench-press': { load: 200, at: '2026-09-01T10:00:00.000Z' },
     })
   })
+
+  it('keeps lift goals that make sense and drops the rest', () => {
+    const storage = memoryStorage()
+    storage.setItem(
+      STORAGE_KEYS.settings,
+      JSON.stringify({
+        ...DEFAULT_SETTINGS,
+        liftGoals: {
+          bench: { load: 275, by: '2027-03-01', setOn: '2026-10-02', from: 240 },
+          squat: { load: 0, by: '2027-03-01', setOn: '2026-10-02', from: 300 },
+          press: { load: 150, by: '2027-03-01', setOn: '2026-10-02', from: 120 },
+        },
+      }),
+    )
+    expect(readSettings(storage).settings.liftGoals).toEqual({
+      bench: { load: 275, by: '2027-03-01', setOn: '2026-10-02', from: 240 },
+    })
+  })
 })
