@@ -1074,3 +1074,18 @@ html {
 .plate-on-right {
   animation-name: plate-slide-right;
 }
+
+/* Shared-element morph (`components/shared/morph.ts`): the tapped name
+   travels into the next page's heading on the same curve the page rises
+   on, so the two read as one movement. The text snapshots crossfade as
+   the group resizes. */
+::view-transition-group(*.morph) {
+  animation-duration: 420ms;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+::view-transition-old(*.morph),
+::view-transition-new(*.morph) {
+  height: 100%;
+  object-fit: fill;
+}

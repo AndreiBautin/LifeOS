@@ -1,4 +1,6 @@
 import { ChevronDown, ChevronRight } from 'lucide-react'
+import { MorphText } from '@/components/shared/MorphText'
+import { morphName } from '@/components/shared/morph'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 
@@ -174,7 +176,12 @@ export function SessionOutline({
                         to={`/exercise/${slot.exercise.exerciseId}`}
                         className="hover:text-accent-400 truncate transition-colors"
                       >
-                        {nameOf(slot)}
+                        <MorphText
+                          to={`/exercise/${slot.exercise.exerciseId}`}
+                          name={morphName('exercise', slot.exercise.exerciseId)}
+                        >
+                          {nameOf(slot)}
+                        </MorphText>
                       </Link>
                     ) : (
                       <span className="truncate">{nameOf(slot)}</span>

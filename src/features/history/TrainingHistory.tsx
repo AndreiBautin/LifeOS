@@ -1,4 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
+import { MorphText } from '@/components/shared/MorphText'
+import { morphName } from '@/components/shared/morph'
 import { History, RotateCcw, Star, Trash2 } from 'lucide-react'
 import { useMemo, useState } from 'react'
 
@@ -223,7 +225,13 @@ function SessionRow({
 
           <div className="min-w-0 flex-1">
             <p className="text-ink-50 flex items-center gap-2 truncate text-sm font-medium">
-              <span className="truncate">{name}</span>
+              <MorphText
+                to={`/session/${workout.id}`}
+                name={morphName('session', workout.id)}
+                className="truncate"
+              >
+                {name}
+              </MorphText>
               {/*
               Said in a word rather than left to the set count: a two-set
               squat day otherwise reads as a bad session rather than an

@@ -116,6 +116,18 @@ SessionPage.tsx`, from `sessionDetail`). History rows could be deleted
   finished the minute it started reads as of unknown length rather
   than "0 min"; the demo seed stamped every session that way until this
   page showed it, and now gives each 45–75 minutes.
+- **A tapped name grows into the next page's heading**
+  (`components/shared/morph.ts`, `MorphText`): a history row or an
+  exercise page's session row into the session heading, an exercise name
+  in the plan or a past session into the exercise heading, and back.
+  **Named only while that transition runs** (`useViewTransitionState`
+  answers both directions): a transition name must be unique on the page
+  and a list has many rows, so naming them permanently would abort every
+  transition. The heading carries its name always and is `w-fit`, so the
+  snapshot is the words and not a full-width bar. **Not watched
+  animating**: the agent's pane is hidden and a hidden document aborts
+  every view transition (`InvalidStateError`); what was checked is that
+  the names land on both sides and are unique.
 - **Rest fits the work** (`restAfter` in `domain/programs/rest.ts`):
   3:00 after a heavy lift, 2:00 after a compound, 1:30 after isolation,
   an exercise's own catalogue rest winning on time, and nothing before

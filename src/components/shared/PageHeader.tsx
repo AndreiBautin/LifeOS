@@ -2,6 +2,8 @@ import { ChevronLeft } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 
+import { morphStyle } from './morph'
+
 /**
  * The top of every screen, treated once instead of seventeen times.
  *
@@ -53,11 +55,14 @@ export function PageHeader({
   subtitle,
   action,
   leading,
+  morph,
 }: {
   readonly title: string
   readonly subtitle?: ReactNode
   readonly action?: ReactNode
   readonly leading?: ReactNode
+  /** A shared-element name: the title grows out of the link that opened it. */
+  readonly morph?: string
 }) {
   return (
     <header className="mb-6">
@@ -73,7 +78,12 @@ export function PageHeader({
         <div className="flex min-w-0 items-center gap-3">
           {leading}
           <div className="min-w-0">
-            <h1 className="text-ink-50 text-2xl font-semibold tracking-tight">{title}</h1>
+            <h1
+              className="text-ink-50 w-fit max-w-full text-2xl font-semibold tracking-tight"
+              style={morph === undefined ? undefined : morphStyle(morph)}
+            >
+              {title}
+            </h1>
             {subtitle !== undefined && (
               <div className="text-ink-500 mt-0.5 text-sm">{subtitle}</div>
             )}

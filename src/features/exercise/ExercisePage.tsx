@@ -1,4 +1,6 @@
 import { History } from 'lucide-react'
+import { MorphText } from '@/components/shared/MorphText'
+import { morphName } from '@/components/shared/morph'
 import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 
@@ -65,6 +67,7 @@ export function ExercisePage() {
     <div className="mx-auto max-w-2xl space-y-4 pb-8">
       <PageHeader
         title={title}
+        morph={morphName('exercise', exerciseId)}
         subtitle={`${String(shown.sessions.length)} ${shown.sessions.length === 1 ? 'session' : 'sessions'}${
           first === undefined ? '' : ` since ${monthYear(first.date)}`
         }`}
@@ -273,9 +276,13 @@ function SessionList({
             >
               <span className="min-w-0">
                 <span className="text-ink-100 block text-sm">{shortDate(session.date)}</span>
-                <span className="text-ink-500 block truncate text-xs">
+                <MorphText
+                  to={`/session/${session.workoutId}`}
+                  name={morphName('session', session.workoutId)}
+                  className="text-ink-500 block truncate text-xs"
+                >
                   {splitDayLabel(session.title).name}
-                </span>
+                </MorphText>
               </span>
               <span className="numeric text-ink-300 shrink-0 text-right text-xs">
                 {summarise(session.sets, units, bodyweight)}

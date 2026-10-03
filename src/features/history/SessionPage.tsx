@@ -1,4 +1,6 @@
 import { Check, ChevronDown, ChevronRight, Minus, Star } from 'lucide-react'
+import { MorphText } from '@/components/shared/MorphText'
+import { morphName } from '@/components/shared/morph'
 import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 
@@ -64,6 +66,7 @@ export function SessionPage() {
     <div className="mx-auto max-w-2xl space-y-4 pb-8">
       <PageHeader
         title={splitDayLabel(workout.title).name}
+        morph={morphName('session', workout.id)}
         subtitle={
           <span className="flex flex-wrap items-center gap-2">
             {when.toLocaleDateString(undefined, {
@@ -197,7 +200,12 @@ function ExerciseCard({
               to={`/exercise/${entry.exerciseId}`}
               className="hover:text-accent-400 transition-colors"
             >
-              {exercise?.name ?? entry.exerciseId}
+              <MorphText
+                to={`/exercise/${entry.exerciseId}`}
+                name={morphName('exercise', entry.exerciseId)}
+              >
+                {exercise?.name ?? entry.exerciseId}
+              </MorphText>
             </Link>
           </h2>
           {entry.variant !== undefined && (
