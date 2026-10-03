@@ -116,6 +116,9 @@ SessionPage.tsx`, from `sessionDetail`). History rows could be deleted
   finished the minute it started reads as of unknown length rather
   than "0 min"; the demo seed stamped every session that way until this
   page showed it, and now gives each 45–75 minutes.
+- **Type a weight into the palette and it loads the bar**: "245" or
+  "plates 245" draws that load with your plates (`PlateLoader`) above any
+  matches, and the "nothing by that name" line steps aside for it.
 - **The warm-up ramp ticks off** (`BarSection`): "Done — next step"
   under the step in view ticks it (a green check on its chip, "2/4 done")
   and puts the next undone step on the plate picture; after the last, the

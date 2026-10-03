@@ -1,4 +1,7 @@
 import { Search } from 'lucide-react'
+import { useSettings } from '@/app/context'
+import { platesToHand } from '@/domain/units/plates'
+import { PlateLoader } from '@/features/train/PlateLoader'
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
@@ -62,6 +65,7 @@ export function CommandPalette() {
 
 function Palette({ onClose }: { readonly onClose: () => void }) {
   const navigate = useNavigate()
+  const { settings } = useSettings()
   const exercises = useExercises()
   const workouts = useRecentWorkouts(30)
   const [query, setQuery] = useState('')
@@ -89,6 +93,14 @@ function Palette({ onClose }: { readonly onClose: () => void }) {
   }, [exercises.data, workouts.data])
 
   const shown = rankItems(items, query)
+  /*
+   * **A number is a plate question.** "245" or "plates 245" draws that
+   * load on a bar with the plates you have, above whatever else matches —
+   * the calculator a lifter reaches for at a desk is one keystroke away
+   * here rather than inside a session.
+   */
+  const asked = /^(?:plates?\s+)?(\d{2,4}(?:\.\d+)?)$/i.exec(query.trim())?.[1]
+  const plateLoad = asked === undefined ? undefined : Number(asked)
   const at = Math.min(chosen, Math.max(0, shown.length - 1))
 
   const go = (item: PaletteItem | undefined) => {
@@ -116,7 +128,7 @@ function Palette({ onClose }: { readonly onClose: () => void }) {
           <input
             autoFocus
             value={query}
-            placeholder="Go to a page, an exercise, a session…"
+            placeholder="Go to a page, an exercise, a session — or type a weight"
             role="combobox"
             aria-expanded="true"
             aria-controls="palette-results"
@@ -145,8 +157,17 @@ function Palette({ onClose }: { readonly onClose: () => void }) {
             Esc
           </kbd>
         </label>
+        {plateLoad !== undefined && (
+          <div className="border-ink-800 border-b px-4 pt-3 pb-1">
+            <PlateLoader
+              load={plateLoad}
+              unit={settings.units}
+              available={platesToHand(settings.plates, settings.units)}
+            />
+          </div>
+        )}
         <ul id="palette-results" role="listbox" className="max-h-[50vh] overflow-y-auto p-2">
-          {shown.length === 0 && (
+          {shown.length === 0 && plateLoad === undefined && (
             <li className="text-ink-500 px-3 py-6 text-center text-sm">Nothing by that name.</li>
           )}
           {shown.map((item, index) => (
