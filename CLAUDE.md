@@ -116,6 +116,15 @@ SessionPage.tsx`, from `sessionDetail`). History rows could be deleted
   finished the minute it started reads as of unknown length rather
   than "0 min"; the demo seed stamped every session that way until this
   page showed it, and now gives each 45–75 minutes.
+- **A records wall** (`/records`, `bestsByExercise` in
+  `domain/logging/bests.ts`, linked from the Strength card): a tile per
+  exercise, heaviest bar in large type (more reps breaking a tie), the
+  best estimate from a **reliable** set only, and the day. Competition
+  lifts lead, then the freshest. Gold for a best set this week; a best
+  untouched for eight weeks reads "Since …" in amber. Gold for the month
+  was tried and lit every tile — steady progress makes nearly every best
+  recent. The demo still lights all fifteen, truthfully: its generator
+  raises every lift every week.
 - **The accent is a setting** (Settings → Look, `ACCENT_HUES`,
   `settings.accentHue` in the parse with a test): every accent token is
   `oklch(L C var(--accent-hue))`, and `AppShell` writes the one property,

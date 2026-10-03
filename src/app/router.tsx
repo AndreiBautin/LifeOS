@@ -1,5 +1,6 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom'
 
+import { RecordsPage } from '@/features/records/RecordsPage'
 import { HomePage } from '@/features/today/HomePage'
 import { ProgramPage } from '@/features/program/ProgramPage'
 import { SessionPage } from '@/features/history/SessionPage'
@@ -73,6 +74,7 @@ export const router = createBrowserRouter(
         { path: 'program', element: <ProgramPage /> },
         { path: 'session/:id', element: <SessionPage /> },
         { path: 'exercise/:id', element: <ExercisePage /> },
+        { path: 'records', element: <RecordsPage /> },
         { path: 'today', element: <HomePage /> },
         { path: 'settings', element: <SettingsPage /> },
         { path: '*', element: <NotFoundPage /> },

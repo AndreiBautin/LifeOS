@@ -1,5 +1,6 @@
 import { Trophy } from 'lucide-react'
 
+import { Link } from 'react-router-dom'
 import { useServices, useSettings } from '@/app/context'
 import { STRENGTH_LIFT_SLUGS } from '@/domain/exercises/catalogue'
 import { asExerciseId } from '@/domain/ids/ids'
@@ -83,7 +84,15 @@ export function StrengthStandards() {
 
   return (
     <Card>
-      <CardHeading icon={<Trophy size={16} aria-hidden />} title="Strength" />
+      <CardHeading
+        icon={<Trophy size={16} aria-hidden />}
+        title="Strength"
+        action={
+          <Link viewTransition to="/records" className="text-accent-400 text-xs hover:underline">
+            All records →
+          </Link>
+        }
+      />
 
       <ul className="space-y-4">
         {/*
