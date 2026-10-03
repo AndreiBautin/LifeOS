@@ -1,5 +1,7 @@
 import { useState } from 'react'
 
+import { arrangeCards } from '@/domain/settings/home-cards'
+import { ArrangeCards } from './ArrangeCards'
 import { WhatsNew } from './WhatsNew'
 import { DeloadSuggestion } from '@/features/train/DeloadSuggestion'
 import { BalanceCard } from '@/features/train/BalanceCard'
@@ -127,18 +129,35 @@ export function HomePage() {
       <HeroBanner />
       <DeloadSuggestion />
       <Masonry
-        items={[
-          { key: 'session', node: <NextSessionCard /> },
-          { key: 'week', node: <WeekCard /> },
-          { key: 'last-week', node: <LastWeekCard /> },
-          { key: 'balance', node: <BalanceCard /> },
-          { key: 'standards', node: <StrengthStandards /> },
-          { key: 'goals', node: <GoalsCard /> },
-          { key: 'trend', node: <StrengthTrendCard /> },
-          { key: 'activity', node: <ActivityHeatmap /> },
-          { key: 'history', node: <TrainingHistory /> },
-        ]}
+        items={arrangeCards(
+          HOME_CARDS.map((card) => card.key),
+          settings.homeCards,
+        ).flatMap((key) => {
+          const card = HOME_CARDS.find((one) => one.key === key)
+          return card === undefined ? [] : [{ key, node: card.node }]
+        })}
+      />
+      <ArrangeCards
+        defaults={HOME_CARDS.map((card) => card.key)}
+        labels={Object.fromEntries(HOME_CARDS.map((card) => [card.key, card.label]))}
       />
     </div>
   )
 }
+
+/** The home page's cards in their default order, with the names the arranger shows. */
+const HOME_CARDS: readonly {
+  readonly key: string
+  readonly label: string
+  readonly node: React.ReactNode
+}[] = [
+  { key: 'session', label: 'Next session', node: <NextSessionCard /> },
+  { key: 'week', label: 'This week', node: <WeekCard /> },
+  { key: 'last-week', label: 'Last week', node: <LastWeekCard /> },
+  { key: 'balance', label: 'Balance', node: <BalanceCard /> },
+  { key: 'standards', label: 'Strength', node: <StrengthStandards /> },
+  { key: 'goals', label: 'Goals', node: <GoalsCard /> },
+  { key: 'trend', label: 'Strength over time', node: <StrengthTrendCard /> },
+  { key: 'activity', label: 'Training grid', node: <ActivityHeatmap /> },
+  { key: 'history', label: 'Recent sessions', node: <TrainingHistory /> },
+]

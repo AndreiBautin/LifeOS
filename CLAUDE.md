@@ -116,6 +116,14 @@ SessionPage.tsx`, from `sessionDetail`). History rows could be deleted
   finished the minute it started reads as of unknown length rather
   than "0 min"; the demo seed stamped every session that way until this
   page showed it, and now gives each 45–75 minutes.
+- **The home cards can be reordered and hidden** (`arrangeCards` in
+  `domain/settings/home-cards.ts`, tested; `ArrangeCards` folded to a
+  button at the foot of Today; `settings.homeCards` in the parse with a
+  test). **Stored as choices, read against the app's list**: a card
+  shipped after an order was saved slots in after its default neighbour
+  rather than vanishing, and a retired key is ignored. Up/down buttons,
+  not drag — a masonry reflows under a dragging finger. `HOME_CARDS` in
+  `HomePage` is the one list of cards and their names.
 - **Swiping the exercise card sideways turns the page** (`SwipePager`,
   `usePageSwipe`): 70 px, at least twice as sideways as down, read when
   the gesture ends so the card never moves under a scrolling thumb. It

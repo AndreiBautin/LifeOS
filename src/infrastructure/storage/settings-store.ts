@@ -240,6 +240,7 @@ function mergeWithDefaults(parsed: unknown): AppSettings {
     ...liftGoalsOf(stored.liftGoals),
     ...exerciseCuesOf(stored.exerciseCues),
     ...(typeof stored.seenNotes === 'string' ? { seenNotes: stored.seenNotes } : {}),
+    ...homeCardsOf(stored.homeCards),
     // Only a hue on offer: anything else could land on the good colour.
     ...(typeof stored.accentHue === 'number' &&
     ACCENT_HUES.some((one) => one.hue === stored.accentHue)
@@ -359,4 +360,13 @@ function exerciseCuesOf(value: unknown): Pick<AppSettings, 'exerciseCues'> {
       : [],
   )
   return kept.length === 0 ? {} : { exerciseCues: Object.fromEntries(kept) }
+}
+
+/** Card keys as lists of strings; anything else falls out. */
+function homeCardsOf(value: unknown): Pick<AppSettings, 'homeCards'> {
+  if (typeof value !== 'object' || value === null) return {}
+  const { order, hidden } = value as Record<string, unknown>
+  const strings = (list: unknown): readonly string[] =>
+    Array.isArray(list) ? list.filter((one): one is string => typeof one === 'string') : []
+  return { homeCards: { order: strings(order), hidden: strings(hidden) } }
 }

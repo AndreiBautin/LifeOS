@@ -1,4 +1,5 @@
 import { asExerciseId, type ExerciseId } from '@/domain/ids/ids'
+import type { HomeCardPrefs } from '@/domain/settings/home-cards'
 import type { E1rmFormula } from '@/domain/strength/one-rep-max'
 import type { WeightUnit } from '@/domain/units/weight'
 import type { LoadResets } from '@/domain/programs/stall'
@@ -119,6 +120,8 @@ export interface AppSettings {
   readonly exerciseCues?: Readonly<Record<string, string>>
   /** The newest release note dismissed; see `WhatsNew`. */
   readonly seenNotes?: string
+  /** The home page's card order and hidden cards; see `home-cards.ts`. */
+  readonly homeCards?: HomeCardPrefs
   readonly schemaVersion: number
 }
 
