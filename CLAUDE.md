@@ -116,6 +116,11 @@ SessionPage.tsx`, from `sessionDetail`). History rows could be deleted
   finished the minute it started reads as of unknown length rather
   than "0 min"; the demo seed stamped every session that way until this
   page showed it, and now gives each 45–75 minutes.
+- **The warm-up ramp ticks off** (`BarSection`): "Done — next step"
+  under the step in view ticks it (a green check on its chip, "2/4 done")
+  and puts the next undone step on the plate picture; after the last, the
+  working load comes up. Ephemeral component state, like the step in
+  view — a ramp is not a logged set and is not filed.
 - **An exercise carries the lifter's own cue** (`settings.exerciseCues`,
   in the parse with a test, `CueCard` on the exercise page): one line,
   saved when the field is left or on Enter, shown in italic accent under
