@@ -3,7 +3,13 @@ import { describe, expect, it } from 'vitest'
 import { builtInExercises } from '@/domain/exercises/catalogue'
 import type { WorkoutLog } from '@/domain/logging/workout-log'
 import type { ProgramPosition } from '@/domain/programs/position'
-import { blockStartFor, sessionFrom, sessionOn, slotOn } from '@/domain/programs/schedule'
+import {
+  blockStartFor,
+  sessionFrom,
+  sessionOn,
+  slotOn,
+  weeksAhead,
+} from '@/domain/programs/schedule'
 import type { Clock } from '@/domain/repositories/ports'
 import { shiftDay } from '@/domain/time/day'
 import { DEFAULT_SETTINGS } from '@/domain/settings/settings'
@@ -168,5 +174,31 @@ describe('the schedule for today', () => {
     const freestyle = aWorkout({ date: '2026-01-06', status: 'completed' })
     const schedule = await scheduleFor(program, deps([freestyle], TUESDAY, stored))
     expect(schedule.doneToday).toBe(false)
+  })
+})
+
+describe('the weeks ahead', () => {
+  it('lays out four calendar weeks from this one, with the deload where it falls', () => {
+    const ahead = weeksAhead(program, BLOCK, '2026-01-07', 4)
+    expect(ahead.map((week) => week.monday)).toEqual([
+      '2026-01-05',
+      '2026-01-12',
+      '2026-01-19',
+      '2026-01-26',
+    ])
+    expect(ahead[0]?.days[0]?.session?.label).toBe('Monday — Upper')
+    expect(ahead[0]?.days[5]?.session).toBeUndefined()
+    // The last week of the block is the deload, wherever four weeks lands.
+    const deloadAt = weeks - 1
+    const inView = ahead.findIndex((week) => week.isDeload)
+    expect(inView === -1 ? deloadAt >= 4 : inView === deloadAt).toBe(true)
+  })
+
+  it('agrees with the day the rest of the app asks for', () => {
+    for (const week of weeksAhead(program, BLOCK, '2026-01-07', 4)) {
+      for (const day of week.days) {
+        expect(day.session?.label).toBe(sessionOn(program, BLOCK, day.on)?.day.label)
+      }
+    }
   })
 })

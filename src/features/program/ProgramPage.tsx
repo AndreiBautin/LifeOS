@@ -13,7 +13,14 @@ import { resolveSets } from '@/domain/resolution/resolve'
 import { Badge, Card, CardHeading } from '@/components/shared/primitives'
 
 import { MuscleWeekGrid } from './MuscleWeekGrid'
-import { useExercises, useJumpToWeek, useProgram, useWeekSummary } from '@/features/train/hooks'
+import { Runway } from './Runway'
+import {
+  useExercises,
+  useJumpToWeek,
+  useProgram,
+  useSchedule,
+  useWeekSummary,
+} from '@/features/train/hooks'
 import { splitDayLabel, useNextSession } from '@/features/train/useNextSession'
 
 /**
@@ -37,6 +44,7 @@ export function ProgramPage() {
   const { thisWeek } = useNextSession()
   const exercises = useExercises()
   const jumpToWeek = useJumpToWeek()
+  const schedule = useSchedule()
   /*
    * **The strip ticks off the days this week has had.** It said what is
    * on which day and nothing about where the week stands, so on a
@@ -241,6 +249,15 @@ export function ProgramPage() {
         <CardHeading icon={<BarChart3 size={16} aria-hidden />} title="Sets per muscle" />
         <MuscleWeekGrid week={week} lookup={lookup} />
       </Card>
+
+      {schedule.data !== undefined && (
+        <Runway
+          program={program.data}
+          blockStartedOn={schedule.data.blockStartedOn}
+          today={schedule.data.today}
+          done={done}
+        />
+      )}
     </div>
   )
 }

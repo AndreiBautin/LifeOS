@@ -116,6 +116,13 @@ SessionPage.tsx`, from `sessionDetail`). History rows could be deleted
   finished the minute it started reads as of unknown length rather
   than "0 min"; the demo seed stamped every session that way until this
   page showed it, and now gives each 45–75 minutes.
+- **The Program page ends on the next four weeks** (`Runway`, from
+  `weeksAhead` in `domain/programs/schedule.ts`): a row a week, a cell a
+  day, this week's finished days ticked, missed ones dimmed, today
+  ringed, and the deload row tinted violet with "Deload in N weeks"
+  above. **It asks `sessionOn`**, the question the hero asks, and a test
+  holds every cell equal to it. A cell names the day in up to four
+  letters — two for everything read Push and Pull both as "Pu".
 - **A lift can carry a goal with a date** (`domain/strength/goal.ts`,
   `GoalsCard`, `settings.liftGoals` — in the parse, with a test). Its
   picture is a **glide path**: the dashed line the goal asks for, from

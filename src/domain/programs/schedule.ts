@@ -153,3 +153,43 @@ export function blockStartFor(program: ProgramTemplate, slot: ScheduledSlot, on:
   const back = offset + weeks.length * Math.max(0, slot.cycleNumber - 1)
   return shiftDay(mondayOf(on), -7 * back)
 }
+
+/** A week of the calendar as the program fills it. */
+export interface WeekAhead {
+  readonly monday: string
+  readonly slot: ScheduledSlot
+  readonly isDeload: boolean
+  /** Monday to Sunday; `session` absent on a rest day. */
+  readonly days: readonly { readonly on: string; readonly session?: ProgramDay }[]
+}
+
+/**
+ * The weeks from this one on, as the calendar will hold them — where the
+ * deload falls, and what each day is. The same `sessionOn` every other
+ * screen asks, so the runway cannot promise a day the hero will not offer.
+ */
+export function weeksAhead(
+  program: ProgramTemplate,
+  blockStartedOn: string,
+  today: string,
+  count: number,
+): readonly WeekAhead[] {
+  const first = mondayOf(today)
+  return Array.from({ length: count }, (_, at) => shiftDay(first, at * 7)).flatMap((monday) => {
+    const slot = slotOn(program, blockStartedOn, monday)
+    if (slot === undefined) return []
+    const week = program.blocks[slot.blockIndex]?.weeks[slot.weekIndex]
+    return [
+      {
+        monday,
+        slot,
+        isDeload: week?.isDeload === true,
+        days: Array.from({ length: 7 }, (_, offset) => {
+          const on = shiftDay(monday, offset)
+          const session = sessionOn(program, blockStartedOn, on)?.day
+          return session === undefined ? { on } : { on, session }
+        }),
+      },
+    ]
+  })
+}
