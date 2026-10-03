@@ -183,6 +183,8 @@ export function SessionPlayer({
         style={{
           marginTop: 'calc(-1rem - var(--safe-top))',
           paddingTop: 'calc(0.75rem + var(--safe-top))',
+          // Morphs into the report's hero on finish; see `HomePage`.
+          viewTransitionName: 'session-hero',
         }}
       >
         <div className="flex items-center justify-between gap-3">

@@ -1,3 +1,5 @@
+import { flushSync } from 'react-dom'
+
 /**
  * Keeps a skipped screen transition from surfacing as an error.
  *
@@ -23,4 +25,25 @@ export function quietSkippedTransitions(): void {
     transition.finished.catch(() => undefined)
     return transition
   }) as typeof document.startViewTransition
+}
+
+/**
+ * Runs a state change inside a view transition, so elements sharing a
+ * `view-transition-name` across the change morph rather than swap.
+ *
+ * For the changes that are not navigations — finishing a session swaps
+ * the player for the report on one route, and React Router's
+ * `viewTransition` only covers links. `flushSync` is what makes the DOM
+ * the browser snapshots as "after" the new one; without it React would
+ * commit later and the transition would capture the old screen twice.
+ * Where the API is missing, the change simply happens.
+ */
+export function withViewTransition(update: () => void): void {
+  if (typeof document.startViewTransition !== 'function') {
+    update()
+    return
+  }
+  document.startViewTransition(() => {
+    flushSync(update)
+  })
 }

@@ -124,7 +124,12 @@ function ApplyEstimates({ progress }: { readonly progress: WorkoutReport['progre
 export function SessionReport({ report, units, onDismiss }: Props) {
   return (
     <div className="mx-auto max-w-2xl space-y-4 pb-8">
-      <section className="hero-panel p-5 sm:p-6" aria-labelledby="report-title">
+      <section
+        className="hero-panel p-5 sm:p-6"
+        aria-labelledby="report-title"
+        // The session bar grows into this on finish; see `HomePage`.
+        style={{ viewTransitionName: 'session-hero' }}
+      >
         <p className="text-accent-400 flex items-center gap-1.5 text-xs font-semibold tracking-[0.14em] uppercase">
           <Sparkles size={14} aria-hidden />
           Session complete

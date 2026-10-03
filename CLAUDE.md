@@ -116,6 +116,18 @@ SessionPage.tsx`, from `sessionDetail`). History rows could be deleted
   finished the minute it started reads as of unknown length rather
   than "0 min"; the demo seed stamped every session that way until this
   page showed it, and now gives each 45–75 minutes.
+- **Finishing grows the session bar into the report's hero.** Both
+  carry `view-transition-name: session-hero`, and the swap — one route,
+  so React Router's `viewTransition` cannot see it — runs through
+  `withViewTransition` in `app/view-transitions.ts`, which wraps the
+  state change in `flushSync` so the browser snapshots the new screen
+  rather than the old one twice. **The report opens scrolled to the
+  top**: it inherited the player's scroll and opened a screen down, with
+  the hero the morph lands on out of view. **A view transition in the
+  agent's pane freezes**: no frames are painted, so the animation clock
+  stops at its first tick and the transition's overlay swallows every
+  click until `skipTransition()`. That is the harness (the same reason
+  `CountUp` reads 0 there), not the app.
 - **Counters roll like an odometer** (`RollingNumber`): the session
   bar's sets settled and the rest timer's clock turn a wheel per digit
   rather than swapping text. **Digits are keyed from the right**, so

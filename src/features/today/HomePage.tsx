@@ -1,5 +1,6 @@
 import { useState } from 'react'
 
+import { withViewTransition } from '@/app/view-transitions'
 import type { WorkoutReport } from '@/application/use-cases/training/finish-workout'
 import { useSettings } from '@/app/context'
 import { Masonry } from '@/components/shared/Masonry'
@@ -84,7 +85,21 @@ export function HomePage() {
         restEnabled={settings.restTimerEnabled}
         keepAwake={settings.keepScreenAwake}
         onFinish={() => {
-          finishWorkout.mutate(workout.id, { onSuccess: setReport })
+          /*
+           * **The session bar becomes the report's hero.** Both carry the
+           * `session-hero` transition name, so finishing grows the slim
+           * bar into the panel rather than swapping screens.
+           */
+          finishWorkout.mutate(workout.id, {
+            onSuccess: (finished) => {
+              withViewTransition(() => {
+                setReport(finished)
+                // The report opens at its hero, where the bar was pinned;
+                // left at the player's scroll it opened a screen down.
+                window.scrollTo(0, 0)
+              })
+            },
+          })
         }}
         onAbandon={() => {
           abandonWorkout.mutate(workout.id)

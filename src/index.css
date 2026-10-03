@@ -1089,3 +1089,17 @@ html {
   height: 100%;
   object-fit: fill;
 }
+
+/* Finishing a session: the pinned session bar grows into the report's
+   hero panel. A little slower than a page, because it is the one moment
+   the app marks. */
+::view-transition-group(session-hero) {
+  animation-duration: 600ms;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+::view-transition-old(session-hero),
+::view-transition-new(session-hero) {
+  height: 100%;
+  object-fit: fill;
+}
