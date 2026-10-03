@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
+import { pairSuperset, unpairSuperset } from '@/application/use-cases/training/superset'
 import { muscleBalance } from '@/application/use-cases/training/balance'
 import type { ExerciseId, WorkoutId } from '@/domain/ids/ids'
 import type { WorkoutLog } from '@/domain/logging/workout-log'
@@ -211,6 +212,24 @@ export function useSwapOptions(entry: LogEntry | undefined, enabled: boolean) {
     queryKey: ['workouts', 'swap-options', entry?.exerciseId, entry?.substitutedFor],
     queryFn: () => (entry === undefined ? [] : swapOptions(entry, services)),
     enabled: enabled && entry !== undefined,
+  })
+}
+
+/** Pairs an accessory with the next one, or splits the pair it is in. */
+export function useSuperset(workoutId: WorkoutId | undefined) {
+  const services = useServices()
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: (input: { entryIndex: number; pair: boolean }) => {
+      if (workoutId === undefined) throw new Error('No workout is open.')
+      return input.pair
+        ? pairSuperset(workoutId, input.entryIndex, services)
+        : unpairSuperset(workoutId, input.entryIndex, services)
+    },
+    onSuccess: (updated) => {
+      client.setQueryData(keys.activeWorkout, updated)
+      void client.invalidateQueries({ queryKey: keys.activeWorkout })
+    },
   })
 }
 

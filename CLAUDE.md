@@ -116,6 +116,15 @@ SessionPage.tsx`, from `sessionDetail`). History rows could be deleted
   finished the minute it started reads as of unknown length rather
   than "0 min"; the demo seed stamped every session that way until this
   page showed it, and now gives each 45–75 minutes.
+- **Two accessories can run as a superset** (`domain/logging/
+superset.ts`, tested; `pairSuperset` / `unpairSuperset`, two names for
+  two operations). Pair joins an accessory to the next one by a group
+  name both entries carry, **on the log**, so history reads how it was
+  run. Logging the first half turns straight to the partner with no
+  rest; logging the second runs the full rest and turns back. Only
+  hypertrophy and assistance slots pair — a competition lift wants its
+  whole rest. On a phone the card's Pair and Swap are icons with labels
+  (`aria-label`), because the two words wrapped the header to two lines.
 - **A month page** (`/month` → the latest month, `/month/YYYY-MM`,
   `monthRecap` in `domain/logging/month.ts`, linked from Last week and
   the palette): totals against the month before, the month as a wall

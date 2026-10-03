@@ -1,5 +1,7 @@
 import {
   ArrowLeftRight,
+  Link2,
+  Unlink2,
   Flag,
   Check,
   TrendingDown,
@@ -33,7 +35,8 @@ import { Badge, Button, Card } from '@/components/shared/primitives'
 import { useKeepAwake } from '@/shared/hooks/useKeepAwake'
 import { cn } from '@/lib/cn'
 
-import { useClearSet, useExerciseHistory, useLogSet, useSwapExercise } from './hooks'
+import { useClearSet, useExerciseHistory, useLogSet, useSuperset, useSwapExercise } from './hooks'
+import { canPair, partnerOf } from '@/domain/logging/superset'
 import { SwapPanel } from './SwapPanel'
 import { UndoToast } from './UndoToast'
 import { KeyboardFlow, KeyHelp } from './KeyboardFlow'
@@ -112,6 +115,7 @@ export function SessionPlayer({
   const logSet = useLogSet(workout.id)
   const { clock } = useServices()
   const swap = useSwapExercise(workout.id)
+  const superset = useSuperset(workout.id)
   /* Open per exercise: paging on closes it rather than offering the next one's. */
   const [swappingAt, setSwappingAt] = useState<number | undefined>(undefined)
   const swapping = swappingAt === index
@@ -184,6 +188,12 @@ export function SessionPlayer({
   const bodyweightHere =
     exercises.find((one) => one.id === entry.exerciseId)?.loadBasis === 'bodyweight'
 
+  /** Turns to an entry without scrolling: a superset alternates in place. */
+  const showEntry = (to: number) => {
+    setIndex(to)
+    setOpenSet(undefined)
+  }
+
   /** Logs a set of this exercise: the row, its swipe and the keyboard. */
   const logAt = (
     setIndex: number,
@@ -201,11 +211,23 @@ export function SessionPlayer({
         stamp: clock.now().getTime(),
       })
     }
+    /*
+     * **A superset goes straight to its partner.** After the first half of
+     * a pair, the next set is the other exercise and there is no rest;
+     * after the second, the full rest runs and the pair begins again.
+     */
+    const partner = partnerOf(workout, index)
+    const partnerPending =
+      partner !== undefined &&
+      workout.entries[partner]?.sets.some((one) => one.outcome === 'pending' && !one.isWarmup) ===
+        true
+    const straightOn = partnerPending && partner > index
     // A warm-up does not earn a rest timer.
-    if (set !== undefined && !set.isWarmup && restEnabled) {
+    if (set !== undefined && !set.isWarmup && restEnabled && !straightOn) {
       const plan = restFor(workout, index, setIndex, result.reps, exercises)
       setRest(plan.seconds > 0 ? { startedAt: clock.now().getTime(), plan } : undefined)
     }
+    if (partnerPending) showEntry(partner)
     // Spread conditionally rather than passing `undefined` through: an
     // absent number and an explicitly unknown one differ to the log.
     logSet.mutate({
@@ -401,17 +423,33 @@ export function SessionPlayer({
                 <span className="text-ink-500 ml-auto text-xs">
                   {index + 1} of {workout.entries.length}
                 </span>
+                {partnerOf(workout, index) === undefined &&
+                  canPair(entry, workout.entries[index + 1]) && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={superset.isPending}
+                      aria-label={`Superset with ${nameOf(workout.entries[index + 1]?.exerciseId ?? entry.exerciseId)}`}
+                      onClick={() => {
+                        superset.mutate({ entryIndex: index, pair: true })
+                      }}
+                    >
+                      <Link2 size={14} aria-hidden />
+                      <span className="hidden sm:inline">Pair</span>
+                    </Button>
+                  )}
                 {entry.sets.some((set) => set.outcome === 'pending') && (
                   <Button
                     variant="ghost"
                     size="sm"
                     aria-expanded={swapping}
+                    aria-label={swapping ? 'Keep this exercise' : 'Swap this exercise'}
                     onClick={() => {
                       setSwappingAt(swapping ? undefined : index)
                     }}
                   >
                     <ArrowLeftRight size={14} aria-hidden />
-                    {swapping ? 'Keep' : 'Swap'}
+                    <span className="hidden sm:inline">{swapping ? 'Keep' : 'Swap'}</span>
                   </Button>
                 )}
               </div>
@@ -421,6 +459,15 @@ export function SessionPlayer({
               >
                 {nameOf(entry.exerciseId)}
               </h1>
+              <SupersetLine
+                workout={workout}
+                index={index}
+                nameOf={nameOf}
+                busy={superset.isPending}
+                onUnpair={() => {
+                  superset.mutate({ entryIndex: index, pair: false })
+                }}
+              />
               {entry.substitutedFor !== undefined && (
                 <p className="text-ink-500 text-xs">In place of {nameOf(entry.substitutedFor)}</p>
               )}
@@ -927,5 +974,44 @@ function FinishAt({
       <Flag size={12} aria-hidden />
       {at}
     </span>
+  )
+}
+
+/**
+ * Says the exercise on screen is half of a superset, names the other half,
+ * and offers to split them. Silent for an exercise run on its own.
+ */
+function SupersetLine({
+  workout,
+  index,
+  nameOf,
+  busy,
+  onUnpair,
+}: {
+  readonly workout: WorkoutLog
+  readonly index: number
+  readonly nameOf: (id: ExerciseId) => string
+  readonly busy: boolean
+  readonly onUnpair: () => void
+}) {
+  const partner = partnerOf(workout, index)
+  const other = partner === undefined ? undefined : workout.entries[partner]
+  if (partner === undefined || other === undefined) return null
+  return (
+    <p className="text-accent-400 mt-1 flex items-center gap-2 text-xs">
+      <Link2 size={13} aria-hidden />
+      <span className="min-w-0 truncate">
+        Superset {partner > index ? 'A1' : 'A2'} · with {nameOf(other.exerciseId)}
+      </span>
+      <button
+        type="button"
+        disabled={busy}
+        onClick={onUnpair}
+        className="text-ink-500 hover:text-ink-300 ml-auto flex shrink-0 items-center gap-1"
+      >
+        <Unlink2 size={12} aria-hidden />
+        Unpair
+      </button>
+    </p>
   )
 }

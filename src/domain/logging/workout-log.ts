@@ -80,6 +80,8 @@ export interface LogEntry {
   readonly notes?: string
   /** Set when the lifter swapped the prescribed exercise for another. */
   readonly substitutedFor?: ExerciseId
+  /** The pair this entry is run as a superset in; see `logging/superset.ts`. */
+  readonly superset?: string
 }
 
 export type WorkoutStatus = 'in-progress' | 'completed' | 'abandoned'
