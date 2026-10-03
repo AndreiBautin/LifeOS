@@ -1,5 +1,6 @@
 import { useState } from 'react'
 
+import { DeloadSuggestion } from '@/features/train/DeloadSuggestion'
 import { BalanceCard } from '@/features/train/BalanceCard'
 import { GoalsCard } from '@/features/train/GoalsCard'
 import { withViewTransition } from '@/app/view-transitions'
@@ -122,6 +123,7 @@ export function HomePage() {
       <SampleNotice />
       <FirstRunSetup />
       <HeroBanner />
+      <DeloadSuggestion />
       <Masonry
         items={[
           { key: 'session', node: <NextSessionCard /> },

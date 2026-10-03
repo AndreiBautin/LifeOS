@@ -1,5 +1,9 @@
 import { isProgress, versusLast, type Performance } from '@/domain/logging/versus-last'
 import { roundLoad } from '@/domain/units/weight'
+import type { ExerciseId } from '@/domain/ids/ids'
+import { exerciseHistory } from '@/domain/logging/exercise-history'
+import type { WorkoutLog } from '@/domain/logging/workout-log'
+import { shiftDay } from '@/domain/time/day'
 
 /**
  * When an exercise has stopped moving, and where to go from.
@@ -90,4 +94,34 @@ export function resetPending(
   latestStartedAt: string | undefined,
 ): boolean {
   return reset !== undefined && (latestStartedAt === undefined || latestStartedAt < reset.at)
+}
+
+/** At least this many exercises stalled at once reads as fatigue rather than one lift. */
+export const FATIGUE_STALLS = 3
+/** How recently an exercise must have been trained for its stall to count. */
+const RECENT_DAYS = 21
+
+/**
+ * Which exercises are stalled across the training, newest-trained first —
+ * **one stall is a lift; several at once is the lifter.** When three or
+ * more exercises trained in the last three weeks have each gone three
+ * sessions without beating their best, the likelier cause is accumulated
+ * fatigue, and the honest offer is the deload week the programme already
+ * has, taken now rather than when the calendar reaches it.
+ */
+export function stalledExercises(
+  logs: readonly WorkoutLog[],
+  today: string,
+): readonly ExerciseId[] {
+  const since = shiftDay(today, -RECENT_DAYS)
+  const recent = new Set(
+    logs
+      .filter((log) => log.status === 'completed' && log.date >= since)
+      .flatMap((log) => log.entries.map((entry) => entry.exerciseId)),
+  )
+  return [...recent].filter((id) =>
+    exerciseHistory(logs, id).some((series) =>
+      isStalled(series.sessions.map((session) => session.top)),
+    ),
+  )
 }

@@ -116,6 +116,15 @@ SessionPage.tsx`, from `sessionDetail`). History rows could be deleted
   finished the minute it started reads as of unknown length rather
   than "0 min"; the demo seed stamped every session that way until this
   page showed it, and now gives each 45–75 minutes.
+- **Several stalls at once offer the deload** (`stalledExercises` in
+  `domain/programs/stall.ts`, tested; `DeloadSuggestion` under the hero).
+  One stalled lift is a lift; three or more trained in the last three
+  weeks, each three sessions without beating its best, is usually the
+  lifter — so the card names them and offers "Take the deload this
+  week", the same `jumpToWeek` the Program page's picker writes. Offered,
+  never applied; silent below three, on the deload, or with no deload in
+  the block. Checked by cloning a session three times (six stalls, two of
+  them real demo plateaus), taking the deload, then restoring week 1.
 - **A past session compares itself with another** (`compareSessions`
   in `domain/logging/compare.ts`, tested; `CompareCard`): a butterfly —
   the other session's volume grows left of a centre line, this one's
