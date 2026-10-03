@@ -15,6 +15,7 @@ import { cn } from '@/lib/cn'
 import { usePreviousSet, usePriorSets } from './hooks'
 import { Stepper } from './Stepper'
 import { RecordChip } from './RecordChip'
+import { RecordBurst } from './RecordBurst'
 import { SwipeRow } from './SwipeRow'
 import { canLogPlanned, plannedResult } from './planned'
 import { VersusChip } from './VersusChip'
@@ -207,7 +208,10 @@ export function SetRow(props: Props) {
               time before says more than better than once before.
             */}
               {done && record !== undefined ? (
-                <RecordChip kind={record} />
+                <span className="relative">
+                  <RecordChip kind={record} />
+                  <RecordBurst completedAt={set.completedAt} />
+                </span>
               ) : (
                 done &&
                 previous != null && (

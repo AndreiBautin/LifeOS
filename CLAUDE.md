@@ -116,6 +116,12 @@ SessionPage.tsx`, from `sessionDetail`). History rows could be deleted
   finished the minute it started reads as of unknown length rather
   than "0 min"; the demo seed stamped every session that way until this
   page showed it, and now gives each 45–75 minutes.
+- **A record set bursts once** (`RecordBurst`): twelve gold sparks from
+  the chip and a short buzz where the platform allows, only for a set
+  logged in the last three seconds — the chip mounts with the record, so
+  the decision is made in `useState`'s initializer (a setState inside
+  the effect is refused by the hooks lint). Ten seconds was tried and
+  re-burst on paging away and back.
 - **Two accessories can run as a superset** (`domain/logging/
 superset.ts`, tested; `pairSuperset` / `unpairSuperset`, two names for
   two operations). Pair joins an accessory to the next one by a group
