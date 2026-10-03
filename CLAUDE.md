@@ -116,6 +116,14 @@ SessionPage.tsx`, from `sessionDetail`). History rows could be deleted
   finished the minute it started reads as of unknown length rather
   than "0 min"; the demo seed stamped every session that way until this
   page showed it, and now gives each 45–75 minutes.
+- **The accent is a setting** (Settings → Look, `ACCENT_HUES`,
+  `settings.accentHue` in the parse with a test): every accent token is
+  `oklch(L C var(--accent-hue))`, and `AppShell` writes the one property,
+  so the whole app follows one write. **Five named cool hues, not a
+  slider** — a wheel reaches greens that read as the good colour and
+  violets that read as the deload. Checked by reading the computed
+  colour, not the class: `text-accent-400` resolves to hue 15 under Rose.
+  The share card draws on a canvas and stays cyan.
 - **The session bar projects the finish** ("⚑ 8:32 PM", `FinishAt`,
   from `remainingSeconds` in `domain/logging/remaining.ts`): every
   pending set's work and the rest the timer will give it, by the

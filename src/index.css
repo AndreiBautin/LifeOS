@@ -6,6 +6,12 @@
  * worked and it has been removed; the note further down says what that
  * costs and what bringing one back would actually take.
  */
+/* The accent's hue is the one thing a person may choose about the palette
+   (Settings → Look, `ACCENT_HUES`); `AppShell` writes it here. */
+:root {
+  --accent-hue: 200;
+}
+
 @theme {
   --color-ink-950: oklch(0.16 0.008 265);
   --color-ink-900: oklch(0.2 0.008 265);
@@ -44,9 +50,9 @@
    * sit in the same family, far enough from `cool` below that a level
    * badge and an Elite badge are still telling two different things.
    */
-  --color-accent-500: oklch(0.72 0.12 200);
-  --color-accent-400: oklch(0.79 0.11 200);
-  --color-accent-600: oklch(0.63 0.12 200);
+  --color-accent-500: oklch(0.72 0.12 var(--accent-hue));
+  --color-accent-400: oklch(0.79 0.11 var(--accent-hue));
+  --color-accent-600: oklch(0.63 0.12 var(--accent-hue));
 
   --color-good-500: oklch(0.72 0.16 152);
   --color-warn-500: oklch(0.78 0.15 85);

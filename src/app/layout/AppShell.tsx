@@ -1,5 +1,8 @@
+import { useEffect } from 'react'
 import { Outlet } from 'react-router-dom'
 
+import { useSettings } from '@/app/context'
+import { DEFAULT_ACCENT_HUE } from '@/domain/settings/settings'
 import { AmbientBackdrop } from './AmbientBackdrop'
 import { useCardSpotlight } from './useCardSpotlight'
 import { useGitHubSync } from '@/features/sync/useGitHubSync'
@@ -34,6 +37,17 @@ export function AppShell() {
    */
   useCardSpotlight()
   useGitHubSync()
+
+  /*
+   * **The accent is a setting, applied as one custom property** — every
+   * accent token is mixed from `--accent-hue`, so the whole app follows
+   * one write. The share card draws on a canvas and keeps cyan.
+   */
+  const { settings } = useSettings()
+  const hue = settings.accentHue ?? DEFAULT_ACCENT_HUE
+  useEffect(() => {
+    document.documentElement.style.setProperty('--accent-hue', String(hue))
+  }, [hue])
 
   /*
    * The body already carries `padding-bottom: var(--safe-bottom)` to clear

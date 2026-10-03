@@ -110,6 +110,8 @@ export interface AppSettings {
   readonly loadResets?: LoadResets
   /** A goal per competition lift, with a date (`domain/strength/goal`). */
   readonly liftGoals?: LiftGoals
+  /** The accent's hue, one of `ACCENT_HUES`; absent is cyan. */
+  readonly accentHue?: number
   readonly schemaVersion: number
 }
 
@@ -216,3 +218,20 @@ export function backupAge(settings: AppSettings, now: Date): BackupAge {
 
   return { days, stale: days >= BACKUP_STALE_DAYS }
 }
+
+/**
+ * The accents on offer: cool hues only, at the lightness and chroma the
+ * palette was tuned at, so any of them sits on the ink the way cyan does.
+ * **Named, not a hue slider**: a wheel reaches greens that read as the
+ * good colour and violets that read as the deload, and a picker that can
+ * make "done" and "accent" the same colour is a picker for a bug.
+ */
+export const ACCENT_HUES: readonly { readonly hue: number; readonly name: string }[] = [
+  { hue: 200, name: 'Cyan' },
+  { hue: 180, name: 'Teal' },
+  { hue: 235, name: 'Azure' },
+  { hue: 260, name: 'Indigo' },
+  { hue: 15, name: 'Rose' },
+]
+
+export const DEFAULT_ACCENT_HUE = 200

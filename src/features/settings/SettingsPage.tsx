@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import { ACCENT_HUES, DEFAULT_ACCENT_HUE } from '@/domain/settings/settings'
 import { BuildLine } from '@/features/pwa/BuildLine'
 import { PageHeader } from '@/components/shared/PageHeader'
 
@@ -7,6 +8,7 @@ import { AlertTriangle, Download, HardDrive, RotateCcw, Sparkles, Upload } from 
 import { useId, useRef, useState, useSyncExternalStore } from 'react'
 
 import { useServices, useSettings } from '@/app/context'
+import { cn } from '@/lib/cn'
 import { DEFAULT_INCREMENT } from '@/domain/units/weight'
 import { backupAge } from '@/domain/settings/settings'
 import { Badge, Button, Card, Section } from '@/components/shared/primitives'
@@ -66,6 +68,44 @@ export function SettingsPage() {
   return (
     <div>
       <PageHeader title="Settings" />
+
+      <Section title="Look">
+        <Card>
+          <p className="text-ink-300 mb-3 text-sm">Accent</p>
+          <div className="flex flex-wrap gap-3" role="radiogroup" aria-label="Accent colour">
+            {ACCENT_HUES.map(({ hue, name }) => {
+              const chosen = (settings.accentHue ?? DEFAULT_ACCENT_HUE) === hue
+              return (
+                <button
+                  key={hue}
+                  type="button"
+                  role="radio"
+                  aria-checked={chosen}
+                  aria-label={name}
+                  onClick={() => {
+                    update({ accentHue: hue })
+                  }}
+                  className="tap-target flex flex-col items-center gap-1.5"
+                >
+                  <span
+                    className={cn(
+                      'size-9 rounded-full ring-2 ring-offset-2 ring-offset-transparent transition-shadow',
+                      chosen ? 'ring-ink-100' : 'ring-transparent',
+                    )}
+                    style={{
+                      background: `radial-gradient(circle at 35% 30%, oklch(0.85 0.1 ${String(hue)}), oklch(0.63 0.12 ${String(hue)}))`,
+                    }}
+                    aria-hidden
+                  />
+                  <span className={cn('text-xs', chosen ? 'text-ink-50' : 'text-ink-500')}>
+                    {name}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+        </Card>
+      </Section>
 
       <Section title="Units">
         <Card className="space-y-4">

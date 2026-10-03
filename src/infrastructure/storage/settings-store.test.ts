@@ -152,4 +152,12 @@ describe('accepted resets', () => {
       bench: { load: 275, by: '2027-03-01', setOn: '2026-10-02', from: 240 },
     })
   })
+
+  it('keeps an accent on offer and drops any other hue', () => {
+    const storage = memoryStorage()
+    storage.setItem(STORAGE_KEYS.settings, JSON.stringify({ ...DEFAULT_SETTINGS, accentHue: 235 }))
+    expect(readSettings(storage).settings.accentHue).toBe(235)
+    storage.setItem(STORAGE_KEYS.settings, JSON.stringify({ ...DEFAULT_SETTINGS, accentHue: 150 }))
+    expect(readSettings(storage).settings.accentHue).toBeUndefined()
+  })
 })

@@ -3,6 +3,7 @@ import {
   DEFAULT_SETTINGS,
   SAMPLE_DATA_STATES,
   SETTINGS_SCHEMA_VERSION,
+  ACCENT_HUES,
 } from '@/domain/settings/settings'
 import type { SettingsRepository } from '@/domain/repositories/ports'
 import { migrateBenchEstimate } from '@/domain/exercises/derived-maxes'
@@ -236,6 +237,11 @@ function mergeWithDefaults(parsed: unknown): AppSettings {
     ...(stored.swipeLearned === true ? { swipeLearned: true } : {}),
     ...loadResetsOf(stored.loadResets),
     ...liftGoalsOf(stored.liftGoals),
+    // Only a hue on offer: anything else could land on the good colour.
+    ...(typeof stored.accentHue === 'number' &&
+    ACCENT_HUES.some((one) => one.hue === stored.accentHue)
+      ? { accentHue: stored.accentHue }
+      : {}),
     schemaVersion: SETTINGS_SCHEMA_VERSION,
   }
 }
