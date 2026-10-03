@@ -116,6 +116,12 @@ SessionPage.tsx`, from `sessionDetail`). History rows could be deleted
   finished the minute it started reads as of unknown length rather
   than "0 min"; the demo seed stamped every session that way until this
   page showed it, and now gives each 45–75 minutes.
+- **An exercise carries the lifter's own cue** (`settings.exerciseCues`,
+  in the parse with a test, `CueCard` on the exercise page): one line,
+  saved when the field is left or on Enter, shown in italic accent under
+  the exercise's name in the player. Blank removes it. A script's
+  `focus()`/`blur()` does not reach a hidden pane, so it was checked by
+  typing into the field for real.
 - **A record set bursts once** (`RecordBurst`): twelve gold sparks from
   the chip and a short buzz where the platform allows, only for a set
   logged in the last three seconds — the chip mounts with the record, so

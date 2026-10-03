@@ -468,6 +468,12 @@ export function SessionPlayer({
                   superset.mutate({ entryIndex: index, pair: false })
                 }}
               />
+              {/* The lifter's own cue, from the exercise page. */}
+              {playerSettings.exerciseCues?.[entry.exerciseId] !== undefined && (
+                <p className="text-accent-400 mt-1 text-sm italic">
+                  “{playerSettings.exerciseCues[entry.exerciseId]}”
+                </p>
+              )}
               {entry.substitutedFor !== undefined && (
                 <p className="text-ink-500 text-xs">In place of {nameOf(entry.substitutedFor)}</p>
               )}

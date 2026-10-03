@@ -160,4 +160,18 @@ describe('accepted resets', () => {
     storage.setItem(STORAGE_KEYS.settings, JSON.stringify({ ...DEFAULT_SETTINGS, accentHue: 150 }))
     expect(readSettings(storage).settings.accentHue).toBeUndefined()
   })
+
+  it('keeps each exercise cue as a trimmed line and drops blanks', () => {
+    const storage = memoryStorage()
+    storage.setItem(
+      STORAGE_KEYS.settings,
+      JSON.stringify({
+        ...DEFAULT_SETTINGS,
+        exerciseCues: { 'bench-press': '  elbows under the bar ', squat: '   ', deadlift: 4 },
+      }),
+    )
+    expect(readSettings(storage).settings.exerciseCues).toEqual({
+      'bench-press': 'elbows under the bar',
+    })
+  })
 })

@@ -112,6 +112,11 @@ export interface AppSettings {
   readonly liftGoals?: LiftGoals
   /** The accent's hue, one of `ACCENT_HUES`; absent is cyan. */
   readonly accentHue?: number
+  /**
+   * The lifter's own cues per exercise — "elbows under the bar", "push the
+   * floor away" — shown in the player under the exercise's name.
+   */
+  readonly exerciseCues?: Readonly<Record<string, string>>
   readonly schemaVersion: number
 }
 
@@ -235,3 +240,6 @@ export const ACCENT_HUES: readonly { readonly hue: number; readonly name: string
 ]
 
 export const DEFAULT_ACCENT_HUE = 200
+
+/** A cue is a line, read between sets, not a page. */
+export const CUE_LIMIT = 160

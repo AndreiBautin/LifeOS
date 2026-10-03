@@ -1,4 +1,5 @@
 import { History } from 'lucide-react'
+import { CueCard } from './CueCard'
 import { MorphText } from '@/components/shared/MorphText'
 import { morphName } from '@/components/shared/morph'
 import { useState } from 'react'
@@ -97,6 +98,7 @@ export function ExercisePage() {
       )}
 
       <StallCard exerciseId={exerciseId} series={shown} bodyweight={bodyweight} />
+      <CueCard key={exerciseId} exerciseId={exerciseId} />
 
       <section className="hero-panel p-5 sm:p-6" aria-label="Progress">
         <dl className="grid grid-cols-3 gap-3">

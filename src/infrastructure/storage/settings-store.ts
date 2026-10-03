@@ -4,6 +4,7 @@ import {
   SAMPLE_DATA_STATES,
   SETTINGS_SCHEMA_VERSION,
   ACCENT_HUES,
+  CUE_LIMIT,
 } from '@/domain/settings/settings'
 import type { SettingsRepository } from '@/domain/repositories/ports'
 import { migrateBenchEstimate } from '@/domain/exercises/derived-maxes'
@@ -237,6 +238,7 @@ function mergeWithDefaults(parsed: unknown): AppSettings {
     ...(stored.swipeLearned === true ? { swipeLearned: true } : {}),
     ...loadResetsOf(stored.loadResets),
     ...liftGoalsOf(stored.liftGoals),
+    ...exerciseCuesOf(stored.exerciseCues),
     // Only a hue on offer: anything else could land on the good colour.
     ...(typeof stored.accentHue === 'number' &&
     ACCENT_HUES.some((one) => one.hue === stored.accentHue)
@@ -345,4 +347,15 @@ function liftGoalsOf(value: unknown): Pick<AppSettings, 'liftGoals'> {
       : []
   })
   return kept.length === 0 ? {} : { liftGoals: Object.fromEntries(kept) }
+}
+
+/** Cues, each a non-empty line kept to `CUE_LIMIT`; anything else falls out. */
+function exerciseCuesOf(value: unknown): Pick<AppSettings, 'exerciseCues'> {
+  if (typeof value !== 'object' || value === null) return {}
+  const kept = Object.entries(value as Record<string, unknown>).flatMap(([id, cue]) =>
+    typeof cue === 'string' && cue.trim() !== ''
+      ? [[id, cue.trim().slice(0, CUE_LIMIT)] as const]
+      : [],
+  )
+  return kept.length === 0 ? {} : { exerciseCues: Object.fromEntries(kept) }
 }
