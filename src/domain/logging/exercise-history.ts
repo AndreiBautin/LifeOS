@@ -1,4 +1,5 @@
 import type { ExerciseId, WorkoutId } from '@/domain/ids/ids'
+import { mondayOf, shiftDay } from '@/domain/time/day'
 import { topSet, type Performance } from '@/domain/logging/versus-last'
 import { workingSets, type WorkoutLog } from '@/domain/logging/workout-log'
 import { DAY_VERSIONS } from '@/domain/splits/rp-splits'
@@ -88,5 +89,39 @@ export function exerciseHistory(
   return [...byVariant.entries()].flatMap(([variant, sessions]) => {
     const best = topSet(sessions.map((session) => session.top))
     return best === undefined ? [] : [{ variant, sessions, best }]
+  })
+}
+
+/** One calendar week of an exercise: its working sets, and their volume. */
+export interface ExerciseWeek {
+  readonly monday: string
+  readonly sets: number
+  readonly volume: number
+}
+
+/**
+ * The last `count` calendar weeks of an exercise, oldest first, counting
+ * every working set its sessions held — a week it was not trained is a
+ * week of nothing, which is the point of drawing them.
+ */
+export function setsByWeek(
+  sessions: readonly ExerciseSession[],
+  today: string,
+  count = 12,
+): readonly ExerciseWeek[] {
+  const first = shiftDay(mondayOf(today), -7 * (count - 1))
+  return Array.from({ length: count }, (_, at) => {
+    const monday = shiftDay(first, at * 7)
+    const sunday = shiftDay(monday, 6)
+    const inWeek = sessions.filter((session) => session.date >= monday && session.date <= sunday)
+    return {
+      monday,
+      sets: inWeek.reduce((sum, session) => sum + session.sets.length, 0),
+      volume: inWeek.reduce(
+        (sum, session) =>
+          sum + session.sets.reduce((total, set) => total + (set.load ?? 0) * (set.reps ?? 0), 0),
+        0,
+      ),
+    }
   })
 }

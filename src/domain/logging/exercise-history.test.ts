@@ -4,7 +4,7 @@ import { asExerciseId, asWorkoutId } from '@/domain/ids/ids'
 import type { WorkoutLog } from '@/domain/logging/workout-log'
 import { anEntry, aSet, aWorkout } from '@/test/builders/workout'
 
-import { exerciseHistory } from './exercise-history'
+import { exerciseHistory, setsByWeek } from './exercise-history'
 
 const calf = asExerciseId('barbell-calf-raise')
 
@@ -77,5 +77,26 @@ describe('one exercise across its sessions', () => {
       calf,
     )
     expect(series).toEqual([])
+  })
+})
+
+describe('an exercise by week', () => {
+  const session = (date: string, sets: number) => ({
+    workoutId: asWorkoutId(date),
+    date,
+    startedAt: `${date}T09:00:00.000Z`,
+    title: 'Upper',
+    top: { load: 100, reps: 5 },
+    sets: Array.from({ length: sets }, () => ({ load: 100, reps: 5 })),
+  })
+
+  it('counts each calendar week, a week untrained as nothing', () => {
+    const weeks = setsByWeek([session('2026-09-21', 3), session('2026-09-30', 4)], '2026-10-02', 3)
+    expect(weeks.map((week) => [week.monday, week.sets])).toEqual([
+      ['2026-09-14', 0],
+      ['2026-09-21', 3],
+      ['2026-09-28', 4],
+    ])
+    expect(weeks[2]?.volume).toBe(2000)
   })
 })

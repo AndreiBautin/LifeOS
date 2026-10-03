@@ -16,6 +16,7 @@ import { useExerciseHistory, useExercises } from '@/features/train/hooks'
 
 import { StallCard } from './StallCard'
 import { RepMaxCard } from './RepMaxCard'
+import { WeeklySetsCard } from './WeeklySetsCard'
 import { splitDayLabel } from '@/features/train/useNextSession'
 
 /**
@@ -122,6 +123,8 @@ export function ExercisePage() {
       {!bodyweight && estimate?.estimate !== undefined && (
         <RepMaxCard series={shown} estimate={estimate.estimate} />
       )}
+
+      <WeeklySetsCard sessions={shown.sessions} />
 
       <SessionList sessions={shown.sessions} units={settings.units} bodyweight={bodyweight} />
     </div>
