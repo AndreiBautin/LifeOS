@@ -1,5 +1,6 @@
 import { CalendarDays } from 'lucide-react'
 
+import { Link } from 'react-router-dom'
 import { Card, CardHeading } from '@/components/shared/primitives'
 import { Skeleton } from '@/components/shared/Skeleton'
 import type { ActivityDay } from '@/application/use-cases/training/activity'
@@ -80,12 +81,14 @@ export function ActivityHeatmap() {
         Friday, because a line of text is taller than a thirteen-pixel cell.
         Sharing the grid's rows is what keeps them level at any width.
       */}
-      <div
-        className="grid gap-[3px]"
-        style={{ gridTemplateColumns: columns }}
-        role="img"
-        aria-label={summary}
-      >
+      {/*
+        **A trained day opens its session.** The grid was a picture of the
+        work and nothing more; every lit cell is now a link to what was
+        done that day (the larger session, on a day with two). Hover lifts
+        it, so the grid reads as something to explore.
+      */}
+      <p className="sr-only">{summary}</p>
+      <div className="grid gap-[3px]" style={{ gridTemplateColumns: columns }}>
         <span aria-hidden />
         {/* A month's name over the week it begins in. */}
         {weeks.map((week, index) => {
@@ -115,20 +118,32 @@ export function ActivityHeatmap() {
         </div>
 
         {weeks.map((week, column) => (
-          <div key={week[0]?.day ?? column} aria-hidden className="grid grid-rows-7 gap-[3px]">
-            {week.map((day) => (
-              <span
-                key={day.day}
-                title={day.future ? undefined : describe(day)}
-                className={cn('heat-cell aspect-square rounded-[3px]', day.future && 'opacity-0')}
-                style={
-                  {
-                    backgroundColor: BAND_FILL[bandOf(day.sets)],
-                    '--cell-delay': `${String(column * 22)}ms`,
-                  } as React.CSSProperties
-                }
-              />
-            ))}
+          <div key={week[0]?.day ?? column} className="grid grid-rows-7 gap-[3px]">
+            {week.map((day) => {
+              const style = {
+                backgroundColor: BAND_FILL[bandOf(day.sets)],
+                '--cell-delay': `${String(column * 22)}ms`,
+              } as React.CSSProperties
+              return day.workoutId === undefined ? (
+                <span
+                  key={day.day}
+                  aria-hidden
+                  title={day.future ? undefined : describe(day)}
+                  className={cn('heat-cell aspect-square rounded-[3px]', day.future && 'opacity-0')}
+                  style={style}
+                />
+              ) : (
+                <Link
+                  key={day.day}
+                  viewTransition
+                  to={`/session/${day.workoutId}`}
+                  title={describe(day)}
+                  aria-label={describe(day)}
+                  className="heat-cell hover:ring-accent-400 focus-visible:ring-accent-400 aspect-square rounded-[3px] transition-transform hover:z-10 hover:scale-125 hover:ring-1"
+                  style={style}
+                />
+              )
+            })}
           </div>
         ))}
       </div>

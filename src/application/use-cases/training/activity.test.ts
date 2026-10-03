@@ -37,6 +37,15 @@ describe('the training grid', () => {
     expect(activity.sets).toBe(11)
   })
 
+  it('opens the larger session on a day with two', async () => {
+    const small = trained('2026-01-19', 2)
+    const big = trained('2026-01-19', 6)
+    const activity = await activityFor(harness([small, big], NOW), 1)
+    const monday = activity.weeks.flat().find((one) => one.day === '2026-01-19')
+    expect(monday?.workoutId).toBe(big.id)
+    expect(activity.weeks.flat().find((one) => one.day === '2026-01-20')?.workoutId).toBeUndefined()
+  })
+
   /*
    * An abandoned session is work inside a session walked away from, and
    * the history screen already counts it apart. The grid is a picture of

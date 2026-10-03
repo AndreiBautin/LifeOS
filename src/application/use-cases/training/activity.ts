@@ -1,4 +1,5 @@
 import { totalWorkingSets } from '@/domain/logging/workout-log'
+import type { WorkoutId } from '@/domain/ids/ids'
 import type { Clock, WorkoutRepository } from '@/domain/repositories/ports'
 import { parseDay, shiftDay, toDayKey } from '@/domain/time/day'
 
@@ -22,6 +23,8 @@ export interface ActivityDay {
   readonly sets: number
   /** Past today, so the grid can draw the rest of this week as empty slots. */
   readonly future: boolean
+  /** The day's largest session, which a cell opens. */
+  readonly workoutId?: WorkoutId
 }
 
 export interface Activity {
@@ -43,14 +46,24 @@ export async function activityFor(deps: ActivityDeps, weekCount = 18): Promise<A
   )
 
   const setsOn = new Map<string, number>()
+  const biggest = new Map<string, { readonly id: WorkoutId; readonly sets: number }>()
   for (const log of finished) {
-    setsOn.set(log.date, (setsOn.get(log.date) ?? 0) + totalWorkingSets(log))
+    const sets = totalWorkingSets(log)
+    setsOn.set(log.date, (setsOn.get(log.date) ?? 0) + sets)
+    const held = biggest.get(log.date)
+    if (held === undefined || sets > held.sets) biggest.set(log.date, { id: log.id, sets })
   }
 
   const weeks = Array.from({ length: weekCount }, (_, week) =>
     Array.from({ length: 7 }, (_, offset): ActivityDay => {
       const day = shiftDay(start, week * 7 + offset)
-      return { day, sets: setsOn.get(day) ?? 0, future: day > today }
+      const workoutId = biggest.get(day)?.id
+      return {
+        day,
+        sets: setsOn.get(day) ?? 0,
+        future: day > today,
+        ...(workoutId === undefined ? {} : { workoutId }),
+      }
     }),
   )
 

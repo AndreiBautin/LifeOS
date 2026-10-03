@@ -116,6 +116,11 @@ SessionPage.tsx`, from `sessionDetail`). History rows could be deleted
   finished the minute it started reads as of unknown length rather
   than "0 min"; the demo seed stamped every session that way until this
   page showed it, and now gives each 45–75 minutes.
+- **A lit cell in the training grid opens that day's session**
+  (`ActivityDay.workoutId`, the larger session on a day with two,
+  tested). The grid lost `role="img"`: an image cannot contain links, so
+  the summary is `sr-only` text and each lit cell a labelled link
+  ("Fri, Oct 2 · 8 working sets"). Empty and future cells stay hidden.
 - **A records wall** (`/records`, `bestsByExercise` in
   `domain/logging/bests.ts`, linked from the Strength card): a tile per
   exercise, heaviest bar in large type (more reps breaking a tie), the
