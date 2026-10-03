@@ -174,4 +174,13 @@ describe('accepted resets', () => {
       'bench-press': 'elbows under the bar',
     })
   })
+
+  it('keeps which release note was seen', () => {
+    const storage = memoryStorage()
+    storage.setItem(
+      STORAGE_KEYS.settings,
+      JSON.stringify({ ...DEFAULT_SETTINGS, seenNotes: '2026-10-03' }),
+    )
+    expect(readSettings(storage).settings.seenNotes).toBe('2026-10-03')
+  })
 })

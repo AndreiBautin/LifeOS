@@ -116,6 +116,13 @@ SessionPage.tsx`, from `sessionDetail`). History rows could be deleted
   finished the minute it started reads as of unknown length rather
   than "0 min"; the demo seed stamped every session that way until this
   page showed it, and now gives each 45–75 minutes.
+- **An update says what it brought, once** (`WhatsNew` on Today, notes in
+  `features/today/releases.ts`, `settings.seenNotes` in the parse with a
+  test). An installed app updates itself, so a feature could arrive with
+  nothing on screen saying so. Only the newest release shows, two lines
+  then "N more", to somebody with training logged; dismissing it is for
+  good. **Add a release at the top of `RELEASES` when a change is worth
+  telling** — the card only appears for ids nobody has dismissed.
 - **The exercise page counts sets by week as towers** (`setsByWeek` in
   `exercise-history.ts`, tested; `WeeklySetsCard`): twelve calendar
   weeks, a column each, a block per working set — three blocks is three

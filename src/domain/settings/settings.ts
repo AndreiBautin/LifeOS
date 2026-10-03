@@ -117,6 +117,8 @@ export interface AppSettings {
    * floor away" — shown in the player under the exercise's name.
    */
   readonly exerciseCues?: Readonly<Record<string, string>>
+  /** The newest release note dismissed; see `WhatsNew`. */
+  readonly seenNotes?: string
   readonly schemaVersion: number
 }
 

@@ -239,6 +239,7 @@ function mergeWithDefaults(parsed: unknown): AppSettings {
     ...loadResetsOf(stored.loadResets),
     ...liftGoalsOf(stored.liftGoals),
     ...exerciseCuesOf(stored.exerciseCues),
+    ...(typeof stored.seenNotes === 'string' ? { seenNotes: stored.seenNotes } : {}),
     // Only a hue on offer: anything else could land on the good colour.
     ...(typeof stored.accentHue === 'number' &&
     ACCENT_HUES.some((one) => one.hue === stored.accentHue)

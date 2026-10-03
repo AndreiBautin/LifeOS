@@ -1,5 +1,6 @@
 import { useState } from 'react'
 
+import { WhatsNew } from './WhatsNew'
 import { DeloadSuggestion } from '@/features/train/DeloadSuggestion'
 import { BalanceCard } from '@/features/train/BalanceCard'
 import { GoalsCard } from '@/features/train/GoalsCard'
@@ -122,6 +123,7 @@ export function HomePage() {
     <div className="space-y-6">
       <SampleNotice />
       <FirstRunSetup />
+      <WhatsNew />
       <HeroBanner />
       <DeloadSuggestion />
       <Masonry
