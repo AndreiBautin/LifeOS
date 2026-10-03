@@ -21,6 +21,7 @@ import { isEntryComplete, remainingSets, totalWorkingSets } from '@/domain/loggi
 import { describePrescription } from '@/domain/programs/prescription'
 import { stepFor } from '@/domain/programs/progression'
 import { isStalled, sessionsWithoutProgress } from '@/domain/programs/stall'
+import { restAfter, type RestPlan } from '@/domain/programs/rest'
 import { DAY_VERSIONS } from '@/domain/splits/rp-splits'
 import { slotRoleLabel, slotRoleTone, slotVariant } from '@/domain/programs/program'
 import { formatLoad, type WeightUnit } from '@/domain/units/weight'
@@ -52,7 +53,8 @@ interface Props {
   readonly workout: WorkoutLog
   readonly exercises: readonly Exercise[]
   readonly units: WeightUnit
-  readonly restSeconds: number
+  /** Whether a rest timer starts after a working set. */
+  readonly restEnabled: boolean
   readonly keepAwake: boolean
   readonly onFinish: () => void
   readonly onAbandon: () => void
@@ -62,7 +64,7 @@ export function SessionPlayer({
   workout,
   exercises,
   units,
-  restSeconds,
+  restEnabled,
   keepAwake,
   onFinish,
   onAbandon,
@@ -80,7 +82,9 @@ export function SessionPlayer({
     if (!swipeLearned) updateSettings({ swipeLearned: true })
   }
   const [openSet, setOpenSet] = useState<number | undefined>(undefined)
-  const [restStartedAt, setRestStartedAt] = useState<number | undefined>(undefined)
+  const [rest, setRest] = useState<
+    { readonly startedAt: number; readonly plan: RestPlan } | undefined
+  >(undefined)
   const [confirmingAbandon, setConfirmingAbandon] = useState(false)
 
   const logSet = useLogSet(workout.id)
@@ -389,7 +393,10 @@ export function SessionPlayer({
                       // the row is already green (see `useLogSet`).
                       setOpenSet(undefined)
                       // A warm-up does not earn a rest timer.
-                      if (!set.isWarmup) setRestStartedAt(Date.now())
+                      if (!set.isWarmup && restEnabled) {
+                        const plan = restFor(workout, index, setIndex, result.reps, exercises)
+                        setRest(plan.seconds > 0 ? { startedAt: Date.now(), plan } : undefined)
+                      }
                       logSet.mutate({
                         entryIndex: index,
                         setIndex,
@@ -545,13 +552,14 @@ export function SessionPlayer({
         />
       </div>
 
-      {restStartedAt !== undefined && (
+      {rest !== undefined && (
         <RestTimer
-          seconds={restSeconds}
-          startedAt={restStartedAt}
+          seconds={rest.plan.seconds}
+          reason={rest.plan.reason}
+          startedAt={rest.startedAt}
           next={nextUp(workout, index, nameOf, exercises, units)}
           onDismiss={() => {
-            setRestStartedAt(undefined)
+            setRest(undefined)
           }}
         />
       )}
@@ -727,4 +735,41 @@ function Elapsed({ startedAt }: { readonly startedAt: string }) {
       {text}
     </span>
   )
+}
+
+/**
+ * The rest after a set, from what it was and what comes next — see
+ * `restAfter`. The last working set of an exercise rests for the next
+ * exercise with anything left to do.
+ */
+function restFor(
+  workout: WorkoutLog,
+  entryIndex: number,
+  setIndex: number,
+  doneReps: number | undefined,
+  exercises: readonly Exercise[],
+): RestPlan {
+  const entry = workout.entries[entryIndex]
+  if (entry === undefined) return { seconds: 0, reason: '' }
+  const workOf = (one: (typeof workout.entries)[number]) => {
+    const exercise = exercises.find((candidate) => candidate.id === one.exerciseId)
+    return {
+      role: one.role,
+      isCompound: exercise?.isCompound ?? false,
+      restSeconds: exercise?.defaultRestSeconds,
+    }
+  }
+  const lastOfExercise = !entry.sets.some(
+    (set, at) => at !== setIndex && !set.isWarmup && set.outcome === 'pending',
+  )
+  const next = workout.entries
+    .slice(entryIndex + 1)
+    .find((one) => one.sets.some((set) => set.outcome === 'pending'))
+  return restAfter({
+    work: workOf(entry),
+    next: next === undefined ? undefined : workOf(next),
+    lastOfExercise,
+    plannedReps: entry.sets[setIndex]?.plannedReps,
+    doneReps,
+  })
 }

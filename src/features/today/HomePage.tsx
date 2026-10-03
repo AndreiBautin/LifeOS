@@ -81,7 +81,7 @@ export function HomePage() {
         workout={workout}
         exercises={exercises.data}
         units={settings.units}
-        restSeconds={settings.restTimerEnabled ? 120 : 0}
+        restEnabled={settings.restTimerEnabled}
         keepAwake={settings.keepScreenAwake}
         onFinish={() => {
           finishWorkout.mutate(workout.id, { onSuccess: setReport })

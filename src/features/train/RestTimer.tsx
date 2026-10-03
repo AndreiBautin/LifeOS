@@ -22,6 +22,8 @@ interface Props {
   /** When the set that triggered this was logged, as epoch milliseconds. */
   readonly startedAt: number
   readonly seconds: number
+  /** Why this long — "Heavy lift", "Isolation · short set". */
+  readonly reason?: string | undefined
   /**
    * The set this rest leads up to, so the bar can be loaded while the
    * clock runs rather than after it. Absent once nothing is pending.
@@ -30,7 +32,7 @@ interface Props {
   readonly onDismiss: () => void
 }
 
-export function RestTimer({ startedAt, seconds, next, onDismiss }: Props) {
+export function RestTimer({ startedAt, seconds, reason, next, onDismiss }: Props) {
   /**
    * Milliseconds the lifter has spent with the timer paused. Kept as a
    * shift applied to the deadline rather than as a stopped clock, so the
@@ -147,8 +149,14 @@ export function RestTimer({ startedAt, seconds, next, onDismiss }: Props) {
           </svg>
 
           <div className="min-w-0 flex-1">
-            <p className="text-ink-500 text-[0.7rem] font-medium tracking-wide uppercase">
-              {elapsed ? 'Rest complete' : pausedAt === undefined ? 'Resting' : 'Paused'}
+            <p className="text-ink-500 truncate text-[0.7rem] font-medium tracking-wide uppercase">
+              {elapsed
+                ? 'Rest complete'
+                : pausedAt !== undefined
+                  ? 'Paused'
+                  : reason !== undefined && reason !== ''
+                    ? reason
+                    : 'Resting'}
             </p>
             <p className="numeric text-ink-50 text-2xl leading-tight font-semibold tabular-nums">
               {elapsed ? 'Go' : formatRemaining(remaining)}

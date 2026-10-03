@@ -116,6 +116,16 @@ SessionPage.tsx`, from `sessionDetail`). History rows could be deleted
   finished the minute it started reads as of unknown length rather
   than "0 min"; the demo seed stamped every session that way until this
   page showed it, and now gives each 45–75 minutes.
+- **Rest fits the work** (`restAfter` in `domain/programs/rest.ts`):
+  3:00 after a heavy lift, 2:00 after a compound, 1:30 after isolation,
+  an exercise's own catalogue rest winning on time, and nothing before
+  conditioning. It was a flat two minutes everywhere. **The last set of an
+  exercise rests for the next one** — the squat after the curls decides —
+  and **a set short of its planned reps adds thirty seconds** before the
+  next set of the same exercise. The timer's label says which, in a word
+  or two (the column is about a hundred pixels at 375 and its "Up next"
+  line already names the exercise; "Next: isolation" truncated). The
+  setting is now `restEnabled`, a switch rather than a number.
 - **An exercise can be swapped mid-session** (`swap-exercise.ts`,
   `SwapPanel`). The entry is filed under what was **done**, with
   `substitutedFor` naming the programmed one, and the swapped exercise
