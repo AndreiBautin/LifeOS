@@ -8,6 +8,7 @@ import { useCardSpotlight } from './useCardSpotlight'
 import { useGitHubSync } from '@/features/sync/useGitHubSync'
 import { ReadFailure } from '@/features/errors/ReadFailure'
 import { UpdatePrompt } from '@/features/pwa/UpdatePrompt'
+import { CommandPalette } from '@/features/palette/CommandPalette'
 
 /**
  * The shell every screen sits inside, and it has no navigation.
@@ -66,6 +67,7 @@ export function AppShell() {
 
       <AmbientBackdrop />
       <UpdatePrompt />
+      <CommandPalette />
       <ReadFailure />
 
       <main

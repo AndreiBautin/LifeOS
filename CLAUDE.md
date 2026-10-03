@@ -116,6 +116,15 @@ SessionPage.tsx`, from `sessionDetail`). History rows could be deleted
   finished the minute it started reads as of unknown length rather
   than "0 min"; the demo seed stamped every session that way until this
   page showed it, and now gives each 45–75 minutes.
+- **⌘K (Ctrl+K) or / opens a command palette anywhere**
+  (`features/palette`, mounted in `AppShell`): pages, every exercise and
+  the last thirty sessions, ranked by `rankItems` (tested) — every word
+  must match, a label starting with the query leads, then a word starting
+  with it, then any match; hidden keywords let "sep 25" find a session.
+  ↑ ↓ Enter Esc, and navigation runs through `withViewTransition`. **The
+  slash is ignored while typing** so search boxes keep it. A `*/` inside
+  its doc comment ("**/ is ignored**") ended the comment early — the
+  typecheck caught it as a type predicate.
 - **A lit cell in the training grid opens that day's session**
   (`ActivityDay.workoutId`, the larger session on a day with two,
   tested). The grid lost `role="img"`: an image cannot contain links, so
