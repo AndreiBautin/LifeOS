@@ -116,6 +116,12 @@ SessionPage.tsx`, from `sessionDetail`). History rows could be deleted
   finished the minute it started reads as of unknown length rather
   than "0 min"; the demo seed stamped every session that way until this
   page showed it, and now gives each 45–75 minutes.
+- **Every set exports as CSV** (`setsCsv` in `domain/logging/csv.ts`,
+  tested; Settings → Backup): a row a set, oldest first, skipped and
+  warm-up sets included with their outcome, cells quoted per RFC 4180.
+  **Not a backup and never read back** — the backup is the database with
+  a checksum. Checked in the preview by intercepting the download link
+  and reading the blob: 1,331 rows from the demo.
 - **Several stalls at once offer the deload** (`stalledExercises` in
   `domain/programs/stall.ts`, tested; `DeloadSuggestion` under the hero).
   One stalled lift is a lift; three or more trained in the last three
