@@ -5,6 +5,7 @@ import { RouterProvider } from 'react-router-dom'
 import { bootstrap } from '@/app/di'
 import { AppProviders } from '@/app/providers'
 import { router } from '@/app/router'
+import { watchForInstall } from '@/features/pwa/install'
 import { watchForStaleChunks } from '@/features/pwa/stale-chunk'
 import { quietSkippedTransitions } from '@/app/view-transitions'
 import { logger } from '@/shared/logging/logger'
@@ -20,6 +21,7 @@ import './index.css'
  * category of loading state spread across every component.
  */
 watchForStaleChunks()
+watchForInstall()
 quietSkippedTransitions()
 
 const container = document.getElementById('root')

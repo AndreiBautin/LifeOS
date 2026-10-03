@@ -2,6 +2,7 @@ import { useState } from 'react'
 
 import { arrangeCards } from '@/domain/settings/home-cards'
 import { ArrangeCards } from './ArrangeCards'
+import { InstallCard } from '@/features/pwa/InstallCard'
 import { WhatsNew } from './WhatsNew'
 import { DeloadSuggestion } from '@/features/train/DeloadSuggestion'
 import { BalanceCard } from '@/features/train/BalanceCard'
@@ -126,6 +127,7 @@ export function HomePage() {
       <SampleNotice />
       <FirstRunSetup />
       <WhatsNew />
+      <InstallCard />
       <HeroBanner />
       <DeloadSuggestion />
       <Masonry

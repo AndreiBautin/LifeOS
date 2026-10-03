@@ -116,6 +116,17 @@ SessionPage.tsx`, from `sessionDetail`). History rows could be deleted
   finished the minute it started reads as of unknown length rather
   than "0 min"; the demo seed stamped every session that way until this
   page showed it, and now gives each 45–75 minutes.
+- **The app offers to install itself, once** (`InstallCard`,
+  `installOffer` in `features/pwa/install.ts`, tested). Chromium's
+  `beforeinstallprompt` fires early and once, so `watchForInstall` in
+  `main.tsx` holds it for the card rather than the card listening for
+  itself. iOS has no event, so it gets the Share-sheet instructions;
+  anywhere else with no dialog gets nothing — a button that does nothing
+  is worse than no card. Only after a session has been filed, and
+  dismissed **per device** through the long-unused
+  `STORAGE_KEYS.installPromptDismissed` (`device-flags.ts`), because a
+  phone and a desktop answer it differently. Verified with a synthetic
+  event; the real dialog was not driven.
 - **Every exercise has a shelf** (`/exercises`, `features/library/
 LibraryPage.tsx`, from `libraryShelves` in `domain/logging/library.ts`,
   tested), linked from the Program header and the palette. Shelved by

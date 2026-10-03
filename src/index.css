@@ -1148,3 +1148,17 @@ html {
   box-shadow: 0 0 6px oklch(0.86 0.13 85 / 70%);
   animation: record-spark 900ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
+
+/* The install card's tile drops onto the home screen once. */
+.install-tile {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: install-tile-drop 700ms cubic-bezier(0.34, 1.56, 0.64, 1) 300ms both;
+}
+
+@keyframes install-tile-drop {
+  from {
+    opacity: 0;
+    transform: translateY(-14px) scale(0.6);
+  }
+}
