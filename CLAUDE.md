@@ -116,6 +116,13 @@ SessionPage.tsx`, from `sessionDetail`). History rows could be deleted
   finished the minute it started reads as of unknown length rather
   than "0 min"; the demo seed stamped every session that way until this
   page showed it, and now gives each 45–75 minutes.
+- **Counters roll like an odometer** (`RollingNumber`): the session
+  bar's sets settled and the rest timer's clock turn a wheel per digit
+  rather than swapping text. **Digits are keyed from the right**, so
+  9 → 10 adds a wheel on the left instead of every wheel shifting one
+  place and rolling to the wrong neighbour. The wheels are `aria-hidden`
+  with the value once as `sr-only` text. A wheel is `1lh` tall, so it
+  takes the line height of whatever text it sits in.
 - **A tapped name grows into the next page's heading**
   (`components/shared/morph.ts`, `MorphText`): a history row or an
   exercise page's session row into the session heading, an exercise name

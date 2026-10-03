@@ -1,4 +1,5 @@
 import { Pause, Play } from 'lucide-react'
+import { RollingNumber } from '@/components/shared/RollingNumber'
 import { useEffect, useState } from 'react'
 
 import { Button } from '@/components/shared/primitives'
@@ -159,7 +160,7 @@ export function RestTimer({ startedAt, seconds, reason, next, onDismiss }: Props
                     : 'Resting'}
             </p>
             <p className="numeric text-ink-50 text-2xl leading-tight font-semibold tabular-nums">
-              {elapsed ? 'Go' : formatRemaining(remaining)}
+              {elapsed ? 'Go' : <RollingNumber value={formatRemaining(remaining)} />}
             </p>
           </div>
 

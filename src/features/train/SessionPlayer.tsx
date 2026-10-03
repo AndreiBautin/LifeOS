@@ -9,6 +9,7 @@ import {
   Timer,
   XCircle,
 } from 'lucide-react'
+import { RollingNumber } from '@/components/shared/RollingNumber'
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 
@@ -188,7 +189,8 @@ export function SessionPlayer({
           <p className="text-ink-300 min-w-0 truncate text-sm font-medium">{workout.title}</p>
           <p className="numeric text-ink-500 flex shrink-0 items-center gap-3 text-xs">
             <span>
-              <span className="text-ink-50 font-semibold">{settled}</span>/{totalSets} sets
+              <RollingNumber value={settled} className="text-ink-50 font-semibold" />/{totalSets}{' '}
+              sets
             </span>
             <Elapsed startedAt={workout.startedAt} />
           </p>
