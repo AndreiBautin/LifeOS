@@ -1,5 +1,6 @@
 import { Check, ChevronDown, ChevronRight, Minus, Star } from 'lucide-react'
 import { SessionNote } from './SessionNote'
+import { CompareCard } from './CompareCard'
 import { ShareSession } from '@/features/share/ShareSession'
 import { shareCardFrom } from '@/features/share/card-from'
 import { MorphText } from '@/components/shared/MorphText'
@@ -124,6 +125,8 @@ export function SessionPage() {
           units={settings.units}
         />
       ))}
+
+      <CompareCard workout={workout} library={library} units={settings.units} />
 
       <SessionTimeline workout={workout} nameOf={(exerciseId) => nameOf(library, exerciseId)} />
     </div>

@@ -116,6 +116,15 @@ SessionPage.tsx`, from `sessionDetail`). History rows could be deleted
   finished the minute it started reads as of unknown length rather
   than "0 min"; the demo seed stamped every session that way until this
   page showed it, and now gives each 45–75 minutes.
+- **A past session compares itself with another** (`compareSessions`
+  in `domain/logging/compare.ts`, tested; `CompareCard`): a butterfly —
+  the other session's volume grows left of a centre line, this one's
+  right, on one scale — with both top sets and the usual chip under each
+  exercise, and exercises only one session had kept in. Defaults to the
+  last time this day was run; any finished session can be picked. Top
+  sets come from the sets themselves: `topSetIn` filters by day version
+  and read a Light calf raise as having none. A bodyweight movement has
+  no load, so no bar, only its top sets.
 - **Type a weight into the palette and it loads the bar**: "245" or
   "plates 245" draws that load with your plates (`PlateLoader`) above any
   matches, and the "nothing by that name" line steps aside for it.
