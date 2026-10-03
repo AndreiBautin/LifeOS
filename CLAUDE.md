@@ -116,6 +116,14 @@ SessionPage.tsx`, from `sessionDetail`). History rows could be deleted
   finished the minute it started reads as of unknown length rather
   than "0 min"; the demo seed stamped every session that way until this
   page showed it, and now gives each 45–75 minutes.
+- **Every exercise has a shelf** (`/exercises`, `features/library/
+LibraryPage.tsx`, from `libraryShelves` in `domain/logging/library.ts`,
+  tested), linked from the Program header and the palette. Shelved by
+  primary muscle, the routine's exercises first, then the most recently
+  done. **A row's mark is a barcode of its last twelve calendar weeks** —
+  a bar per week as tall as its working sets, accent where the routine
+  names it — so a shelf says what has been done lately without opening
+  anything. A retired exercise shows only if it was ever done.
 - **The home cards can be reordered and hidden** (`arrangeCards` in
   `domain/settings/home-cards.ts`, tested; `ArrangeCards` folded to a
   button at the foot of Today; `settings.homeCards` in the parse with a

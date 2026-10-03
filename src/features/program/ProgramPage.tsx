@@ -1,5 +1,7 @@
 import { BarChart3, Check, ChevronDown, ChevronRight } from 'lucide-react'
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
+
 import { PageHeader } from '@/components/shared/PageHeader'
 
 import { useServices, useSettings } from '@/app/context'
@@ -130,6 +132,15 @@ export function ProgramPage() {
       */}
       <PageHeader
         title="Program"
+        action={
+          <Link
+            viewTransition
+            to="/exercises"
+            className="text-accent-400 tap-target flex items-center text-sm hover:underline"
+          >
+            Exercises
+          </Link>
+        }
         subtitle={
           <span className="flex flex-wrap items-center gap-x-1.5 gap-y-1">
             <span>

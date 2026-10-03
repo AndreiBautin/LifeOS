@@ -1,6 +1,7 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom'
 
 import { MonthPage } from '@/features/month/MonthPage'
+import { LibraryPage } from '@/features/library/LibraryPage'
 import { RecordsPage } from '@/features/records/RecordsPage'
 import { HomePage } from '@/features/today/HomePage'
 import { ProgramPage } from '@/features/program/ProgramPage'
@@ -76,6 +77,7 @@ export const router = createBrowserRouter(
         { path: 'session/:id', element: <SessionPage /> },
         { path: 'exercise/:id', element: <ExercisePage /> },
         { path: 'records', element: <RecordsPage /> },
+        { path: 'exercises', element: <LibraryPage /> },
         { path: 'month', element: <MonthPage /> },
         { path: 'month/:month', element: <MonthPage /> },
         { path: 'today', element: <HomePage /> },
