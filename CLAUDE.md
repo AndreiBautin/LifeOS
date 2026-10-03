@@ -116,6 +116,13 @@ SessionPage.tsx`, from `sessionDetail`). History rows could be deleted
   finished the minute it started reads as of unknown length rather
   than "0 min"; the demo seed stamped every session that way until this
   page showed it, and now gives each 45–75 minutes.
+- **An exercise's notes are kept on its page** (`NotesCard`, from
+  `exerciseNotes` in `domain/logging/exercise-notes.ts`, tested). A set
+  note was shown once, beside "Last" next session, and then gone; the
+  page draws them all on a rail, newest first, each hung from its day (a
+  link to the session) and the set it was written on. **A session's own
+  note is left out** — it is about the day, not the lift. Silent with no
+  notes; four shown, the rest a tap away.
 - **The app offers to install itself, once** (`InstallCard`,
   `installOffer` in `features/pwa/install.ts`, tested). Chromium's
   `beforeinstallprompt` fires early and once, so `watchForInstall` in
