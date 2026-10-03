@@ -14,6 +14,10 @@
  * palette here.
  */
 export interface ShareCard {
+  /** The small line on top; a session's card says "Session complete". */
+  readonly eyebrow?: string
+  /** Replaces the long date under the title — "18 sessions · 64 hours". */
+  readonly dateLine?: string
   readonly title: string
   /** A day key. */
   readonly date: string
@@ -21,8 +25,12 @@ export interface ShareCard {
   /** Already formatted with its unit: "14,620 lb". */
   readonly volume: string
   readonly minutes?: number | undefined
+  /** The third figure's name when it is not minutes — a month says hours. */
+  readonly timeLabel?: string
   /** "about 1.1 African elephants", when there is one. */
   readonly heft?: string | undefined
+  /** The heading over the list; "New records" by default. */
+  readonly recordsHeading?: string | undefined
   readonly records: readonly {
     readonly name: string
     readonly detail: string
@@ -61,7 +69,7 @@ export function drawShareCard(card: ShareCard): Promise<Blob> {
 
   ctx.fillStyle = ACCENT
   ctx.font = `600 30px ${FONT}`
-  ctx.fillText('SESSION COMPLETE', left, y)
+  ctx.fillText((card.eyebrow ?? 'Session complete').toUpperCase(), left, y)
 
   y += 100
   ctx.fillStyle = INK_50
@@ -71,14 +79,17 @@ export function drawShareCard(card: ShareCard): Promise<Blob> {
   y += 56
   ctx.fillStyle = INK_300
   ctx.font = `400 36px ${FONT}`
-  ctx.fillText(longDate(card.date), left, y)
+  ctx.fillText(card.dateLine ?? longDate(card.date), left, y)
 
   // Three numbers, the report's own.
   y += 110
   const stats: readonly (readonly [string, string])[] = [
     ['SETS', String(card.sets)],
     ['VOLUME', card.volume],
-    ['MINUTES', card.minutes === undefined ? '—' : String(card.minutes)],
+    [
+      (card.timeLabel ?? 'Minutes').toUpperCase(),
+      card.minutes === undefined ? '—' : String(card.minutes),
+    ],
   ]
   const column = (W - left * 2) / stats.length
   stats.forEach(([label, value], at) => {
@@ -112,7 +123,11 @@ export function drawShareCard(card: ShareCard): Promise<Blob> {
 
     ctx.fillStyle = GOLD
     ctx.font = `600 28px ${FONT}`
-    ctx.fillText(`★ ${records.length === 1 ? 'NEW RECORD' : 'NEW RECORDS'}`, left, y + 10)
+    ctx.fillText(
+      `★ ${(card.recordsHeading ?? (records.length === 1 ? 'New record' : 'New records')).toUpperCase()}`,
+      left,
+      y + 10,
+    )
     y += 30
     for (const record of records) {
       y += 76

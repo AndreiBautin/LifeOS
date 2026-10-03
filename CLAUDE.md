@@ -116,6 +116,16 @@ SessionPage.tsx`, from `sessionDetail`). History rows could be deleted
   finished the minute it started reads as of unknown length rather
   than "0 min"; the demo seed stamped every session that way until this
   page showed it, and now gives each 45–75 minutes.
+- **A month page** (`/month` → the latest month, `/month/YYYY-MM`,
+  `monthRecap` in `domain/logging/month.ts`, linked from Last week and
+  the palette): totals against the month before, the month as a wall
+  calendar lit by sets, each lift's estimate first to last reading, and
+  the records, stepped month to month. **A month still running is
+  compared like for like** — October 1–2 against September 1–2, said
+  under the totals; against all of September it read −93% on the second.
+  Its share card reuses the session renderer (`eyebrow`, `dateLine`,
+  `timeLabel`, `recordsHeading`) and leads with the lifts' changes: four
+  of thirty-two records picked by date said little.
 - **The exercise page has a rep-max table** (`repMaxTable` in
   `domain/strength/rep-max.ts`, `RepMaxCard`): the estimate run back
   through the same formula for 1, 3, 5, 8, 10 and 12 reps, rounded down

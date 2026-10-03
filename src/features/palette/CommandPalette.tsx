@@ -13,6 +13,7 @@ const PAGES: readonly PaletteItem[] = [
   { id: 'today', label: 'Today', kind: 'Page', keywords: 'home dashboard', to: '/today' },
   { id: 'program', label: 'Program', kind: 'Page', keywords: 'week plan deload', to: '/program' },
   { id: 'records', label: 'Records', kind: 'Page', keywords: 'bests prs', to: '/records' },
+  { id: 'month', label: 'This month', kind: 'Page', keywords: 'recap month', to: '/month' },
   {
     id: 'settings',
     label: 'Settings',

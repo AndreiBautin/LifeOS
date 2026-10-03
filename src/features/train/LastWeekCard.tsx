@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import { Link } from 'react-router-dom'
 import { CalendarRange, Star } from 'lucide-react'
 
 import { useServices, useSettings } from '@/app/context'
@@ -39,7 +40,15 @@ export function LastWeekCard() {
 
   return (
     <Card>
-      <CardHeading icon={<CalendarRange size={16} aria-hidden />} title="Last week" />
+      <CardHeading
+        icon={<CalendarRange size={16} aria-hidden />}
+        title="Last week"
+        action={
+          <Link viewTransition to="/month" className="text-accent-400 text-xs hover:underline">
+            The month →
+          </Link>
+        }
+      />
 
       <div
         className="flex h-24 items-end gap-2"
