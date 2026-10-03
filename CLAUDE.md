@@ -116,6 +116,12 @@ SessionPage.tsx`, from `sessionDetail`). History rows could be deleted
   finished the minute it started reads as of unknown length rather
   than "0 min"; the demo seed stamped every session that way until this
   page showed it, and now gives each 45–75 minutes.
+- **A one-action log or skip offers Undo for five seconds**
+  (`UndoToast`): "Logged 215 lb × 3 · Undo" above the rest timer when one
+  is showing. Undo returns the set to pending (`clearSet`) and cancels the
+  rest it started. Offered only when the set was pending before — undoing
+  a re-log would clear the earlier result rather than restore it. Its
+  lifetime is a timer, not the animation, so reduced motion keeps it.
 - **A balance card reads four weeks as a tug of war**
   (`domain/volume/balance.ts`, `muscleBalance`, `BalanceCard`): push
   against pull, quads against the hinge, upper against lower, in sets by

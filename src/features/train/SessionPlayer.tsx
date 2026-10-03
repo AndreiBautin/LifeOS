@@ -10,7 +10,7 @@ import {
   XCircle,
 } from 'lucide-react'
 import { RollingNumber } from '@/components/shared/RollingNumber'
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 
 import { useServices, useSettings } from '@/app/context'
@@ -32,6 +32,7 @@ import { cn } from '@/lib/cn'
 
 import { useClearSet, useExerciseHistory, useLogSet, useSwapExercise } from './hooks'
 import { SwapPanel } from './SwapPanel'
+import { UndoToast } from './UndoToast'
 import { KeyboardFlow, KeyHelp } from './KeyboardFlow'
 import type { KeyAction } from './keyboard'
 import { canLogPlanned, plannedResult } from './planned'
@@ -91,6 +92,19 @@ export function SessionPlayer({
   >(undefined)
   const [confirmingAbandon, setConfirmingAbandon] = useState(false)
   const [showKeys, setShowKeys] = useState(false)
+  /** The last one-tap log or skip, offered back for a few seconds. */
+  const [undo, setUndo] = useState<
+    | {
+        readonly entryIndex: number
+        readonly setIndex: number
+        readonly label: string
+        readonly stamp: number
+      }
+    | undefined
+  >(undefined)
+  const dismissUndo = useCallback(() => {
+    setUndo(undefined)
+  }, [])
 
   const logSet = useLogSet(workout.id)
   const { clock } = useServices()
@@ -176,6 +190,14 @@ export function SessionPlayer({
     // green (see `useLogSet`).
     setOpenSet(undefined)
     const set = entry.sets[setIndex]
+    if (set?.outcome === 'pending' && !set.isWarmup) {
+      setUndo({
+        entryIndex: index,
+        setIndex,
+        label: `Logged ${result.load === undefined ? '' : `${formatLoad(result.load, units)} × `}${String(result.reps ?? '—')}`,
+        stamp: clock.now().getTime(),
+      })
+    }
     // A warm-up does not earn a rest timer.
     if (set !== undefined && !set.isWarmup && restEnabled) {
       const plan = restFor(workout, index, setIndex, result.reps, exercises)
@@ -197,6 +219,7 @@ export function SessionPlayer({
 
   const skipAt = (setIndex: number) => {
     setOpenSet(undefined)
+    setUndo({ entryIndex: index, setIndex, label: 'Skipped', stamp: clock.now().getTime() })
     logSet.mutate({ entryIndex: index, setIndex, result: { outcome: 'skipped' } })
   }
 
@@ -616,6 +639,20 @@ export function SessionPlayer({
         <KeyHelp
           onClose={() => {
             setShowKeys(false)
+          }}
+        />
+      )}
+
+      {undo !== undefined && (
+        <UndoToast
+          label={undo.label}
+          stamp={undo.stamp}
+          raised={rest !== undefined}
+          onDone={dismissUndo}
+          onUndo={() => {
+            clearSet.mutate({ entryIndex: undo.entryIndex, setIndex: undo.setIndex })
+            setRest(undefined)
+            setUndo(undefined)
           }}
         />
       )}
