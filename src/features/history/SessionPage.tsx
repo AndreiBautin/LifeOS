@@ -1,4 +1,6 @@
 import { Check, ChevronDown, ChevronRight, Minus, Star } from 'lucide-react'
+import { ShareSession } from '@/features/share/ShareSession'
+import { shareCardFrom } from '@/features/share/card-from'
 import { MorphText } from '@/components/shared/MorphText'
 import { morphName } from '@/components/shared/morph'
 import { useState } from 'react'
@@ -67,6 +69,22 @@ export function SessionPage() {
       <PageHeader
         title={splitDayLabel(workout.title).name}
         morph={morphName('session', workout.id)}
+        action={
+          <ShareSession
+            card={shareCardFrom({
+              title: workout.title,
+              date: workout.date,
+              sets,
+              tonnage,
+              minutes,
+              units: settings.units,
+              records: records.map((record) => ({
+                ...record,
+                name: nameOf(library, record.exerciseId),
+              })),
+            })}
+          />
+        }
         subtitle={
           <span className="flex flex-wrap items-center gap-2">
             {when.toLocaleDateString(undefined, {

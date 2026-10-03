@@ -1,5 +1,7 @@
 import { ArrowDown, ArrowUp, BarChart3, Minus, Sparkles, Star, TrendingUp } from 'lucide-react'
 
+import { ShareSession } from '@/features/share/ShareSession'
+import { shareCardFrom } from '@/features/share/card-from'
 import type { WorkoutReport } from '@/application/use-cases/training/finish-workout'
 import { MUSCLE_GROUP_LABELS } from '@/domain/exercises/taxonomy'
 import { formatLoad, type WeightUnit } from '@/domain/units/weight'
@@ -130,10 +132,23 @@ export function SessionReport({ report, units, onDismiss }: Props) {
         // The session bar grows into this on finish; see `HomePage`.
         style={{ viewTransitionName: 'session-hero' }}
       >
-        <p className="text-accent-400 flex items-center gap-1.5 text-xs font-semibold tracking-[0.14em] uppercase">
-          <Sparkles size={14} aria-hidden />
-          Session complete
-        </p>
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-accent-400 flex items-center gap-1.5 text-xs font-semibold tracking-[0.14em] uppercase">
+            <Sparkles size={14} aria-hidden />
+            Session complete
+          </p>
+          <ShareSession
+            card={shareCardFrom({
+              title: report.workout.title,
+              date: report.workout.date,
+              sets: report.workingSets,
+              tonnage: report.tonnage,
+              minutes: report.durationMinutes,
+              units,
+              records: report.records,
+            })}
+          />
+        </div>
         <h1
           id="report-title"
           className="text-ink-50 mt-2 text-3xl font-semibold tracking-tight sm:text-4xl"

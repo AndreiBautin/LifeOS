@@ -116,6 +116,17 @@ SessionPage.tsx`, from `sessionDetail`). History rows could be deleted
   finished the minute it started reads as of unknown length rather
   than "0 min"; the demo seed stamped every session that way until this
   page showed it, and now gives each 45–75 minutes.
+- **A session shares as a picture** (`features/share`): Share on the
+  report and on a past session draws a 1080 × 1350 card on a canvas —
+  name, date, sets, volume, minutes, the volume in pictures and up to four
+  records — from `shareCardFrom`, which takes what those screens already
+  hold. **It is shown before it goes anywhere**, with Share and Save
+  under it; the Web Share call needs a tap of its own and drawing first
+  would have spent it. Share appears only where `navigator.canShare({
+files })` says yes; Save downloads the PNG everywhere. The palette is
+  literals because a canvas cannot read CSS variables. **Unverified: the
+  share sheet itself** — the agent's browser cannot share files, so only
+  the image and Save were checked.
 - **The Program page ends on the next four weeks** (`Runway`, from
   `weeksAhead` in `domain/programs/schedule.ts`): a row a week, a cell a
   day, this week's finished days ticked, missed ones dimmed, today
