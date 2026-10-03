@@ -51,7 +51,11 @@ interface Props {
   readonly bodyweight?: boolean
   readonly isOpen: boolean
   readonly onOpen: () => void
-  readonly onLog: (result: { load?: number | undefined; reps?: number | undefined }) => void
+  readonly onLog: (result: {
+    load?: number | undefined
+    reps?: number | undefined
+    notes?: string | undefined
+  }) => void
   readonly onSkip: () => void
   readonly onClear: () => void
   /**
@@ -130,12 +134,23 @@ export function SetRow(props: Props) {
       ? plannedSummary
       : describePrescription(set.prescription, repsOverride)
 
+  /*
+   * **A note travels to the same set next time.** Written on the set it
+   * explains ("belt", "left knee"), it shows on that row now and beside
+   * "Last" on the same row next session — which is when it is worth
+   * reading again.
+   */
+  const withNote = (text: string | undefined, note: string | undefined) =>
+    note === undefined ? text : `${text === undefined ? '' : `${text} · `}“${note}”`
   const detail = done
-    ? (set.prescription.label ?? 'Logged')
+    ? withNote(set.prescription.label ?? 'Logged', set.notes)
     : skipped
-      ? 'Skipped'
+      ? withNote('Skipped', set.notes)
       : previous != null && (previous.load !== undefined || props.bodyweight === true)
-        ? `Last ${loadText(previous.load)} × ${String(previous.reps ?? '—')}`
+        ? withNote(
+            `Last ${loadText(previous.load)} × ${String(previous.reps ?? '—')}`,
+            previous.notes,
+          )
         : (set.prescription.label ??
           (set.plannedLoad === undefined && !quick ? 'Tap to enter' : undefined))
 
@@ -269,6 +284,7 @@ function SetEditorPanel({
     String(set.actualLoad ?? set.plannedLoad ?? previousLoad ?? ''),
   )
   const [reps, setReps] = useState(() => String(set.actualReps ?? set.plannedReps ?? ''))
+  const [note, setNote] = useState(() => set.notes ?? '')
   const { settings } = useSettings()
 
   const done = set.outcome === 'completed' && set.completedAt !== undefined
@@ -327,6 +343,21 @@ function SetEditorPanel({
         />
       </div>
 
+      <label htmlFor={`note-${String(entryIndex)}-${String(index)}`} className="sr-only">
+        Note on this set
+      </label>
+      <input
+        id={`note-${String(entryIndex)}-${String(index)}`}
+        type="text"
+        maxLength={80}
+        value={note}
+        placeholder="Note — belt, grip, how it felt"
+        onChange={(event) => {
+          setNote(event.target.value)
+        }}
+        className="bg-ink-900 border-ink-800 text-ink-100 placeholder:text-ink-500 mt-2 w-full rounded-lg border px-3 py-2 text-sm"
+      />
+
       <div className="mt-3 flex gap-2">
         <Button
           variant="primary"
@@ -340,6 +371,7 @@ function SetEditorPanel({
             onLog({
               ...(loadValue !== undefined ? { load: loadValue } : {}),
               ...(repsValue !== undefined ? { reps: repsValue } : {}),
+              notes: note.trim(),
             })
           }}
         >

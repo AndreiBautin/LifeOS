@@ -407,6 +407,7 @@ export function SessionPlayer({
                         result: {
                           ...(result.load !== undefined ? { load: result.load } : {}),
                           ...(result.reps !== undefined ? { reps: result.reps } : {}),
+                          ...(result.notes !== undefined ? { notes: result.notes } : {}),
                           outcome: 'completed',
                         },
                       })

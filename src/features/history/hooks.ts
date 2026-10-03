@@ -10,6 +10,7 @@ import {
   type ReopenWorkoutResult,
 } from '@/application/use-cases/training/reopen-workout'
 import { sessionDetail } from '@/application/use-cases/training/session-detail'
+import { noteWorkout } from '@/application/use-cases/training/note-workout'
 import type { WorkoutId } from '@/domain/ids/ids'
 import { logger } from '@/shared/logging/logger'
 
@@ -65,5 +66,18 @@ export function useSessionDetail(id: WorkoutId) {
   return useQuery({
     queryKey: ['workouts', 'detail', id],
     queryFn: () => sessionDetail(id, services).then((detail) => detail ?? null),
+  })
+}
+
+/** A line about the whole session; see `noteWorkout`. */
+export function useNoteWorkout() {
+  const services = useServices()
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: (input: { readonly id: WorkoutId; readonly notes: string }) =>
+      noteWorkout(input.id, input.notes, services),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: ['workouts'] })
+    },
   })
 }

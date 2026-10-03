@@ -1,4 +1,5 @@
 import { Check, ChevronDown, ChevronRight, Minus, Star } from 'lucide-react'
+import { SessionNote } from './SessionNote'
 import { ShareSession } from '@/features/share/ShareSession'
 import { shareCardFrom } from '@/features/share/card-from'
 import { MorphText } from '@/components/shared/MorphText'
@@ -108,6 +109,8 @@ export function SessionPage() {
         </p>
         <SessionStats sets={sets} tonnage={tonnage} minutes={minutes} units={settings.units} />
       </section>
+
+      <SessionNote key={workout.id} workoutId={workout.id} initial={workout.notes} />
 
       {warmups.length > 0 && <WarmupLine entries={warmups} library={library} />}
 
@@ -270,6 +273,18 @@ function ExerciseCard({
           </li>
         ))}
       </ol>
+
+      {sets.some((set) => set.notes !== undefined) && (
+        <ul className="mt-3 space-y-1">
+          {sets.map((set, index) =>
+            set.notes === undefined ? null : (
+              <li key={index} className="text-ink-300 text-xs">
+                <span className="text-ink-500 numeric">Set {index + 1}</span> · “{set.notes}”
+              </li>
+            ),
+          )}
+        </ul>
+      )}
 
       {previous !== undefined && (
         <p className="text-ink-500 numeric mt-3 text-xs">

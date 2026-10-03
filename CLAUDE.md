@@ -116,6 +116,16 @@ SessionPage.tsx`, from `sessionDetail`). History rows could be deleted
   finished the minute it started reads as of unknown length rather
   than "0 min"; the demo seed stamped every session that way until this
   page showed it, and now gives each 45–75 minutes.
+- **Notes, on a set and on a session.** The set editor has one line
+  under the steppers; the row shows it after "Logged", and **next
+  session shows it beside "Last"** on the same set (`previousSetFor`
+  carries `notes`), which is when "belt" or "left knee" is worth reading
+  again. A note given replaces the old one and an empty one removes it;
+  the one-tap log, which gives none, keeps what was there (`applyResult`,
+  tested both ways). The session note (`noteWorkout`, trimmed, capped at
+  280, blank removes rather than storing `''`) sits on the report before
+  Done and on the session page, saving when the field is left; the page
+  lists set notes under each exercise.
 - **A session shares as a picture** (`features/share`): Share on the
   report and on a past session draws a 1080 × 1350 card on a canvas —
   name, date, sets, volume, minutes, the volume in pictures and up to four

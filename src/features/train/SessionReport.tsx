@@ -1,5 +1,6 @@
 import { ArrowDown, ArrowUp, BarChart3, Minus, Sparkles, Star, TrendingUp } from 'lucide-react'
 
+import { SessionNote } from '@/features/history/SessionNote'
 import { ShareSession } from '@/features/share/ShareSession'
 import { shareCardFrom } from '@/features/share/card-from'
 import type { WorkoutReport } from '@/application/use-cases/training/finish-workout'
@@ -238,6 +239,8 @@ export function SessionReport({ report, units, onDismiss }: Props) {
       )}
 
       <TimelineCard workout={report.workout} />
+
+      <SessionNote workoutId={report.workout.id} initial={report.workout.notes} />
 
       <Button variant="primary" size="lg" full onClick={onDismiss}>
         Done

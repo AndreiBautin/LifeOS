@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { asExerciseId, asWorkoutId } from '@/domain/ids/ids'
 import type { WorkoutLog } from '@/domain/logging/workout-log'
 import type { Clock, WorkoutRepository } from '@/domain/repositories/ports'
-import { previousSetFor } from '@/application/use-cases/training/log-set'
+import { previousSetFor, withSetResult } from '@/application/use-cases/training/log-set'
 import { anEntry, aSet, aWorkout } from '@/test/builders/workout'
 
 /**
@@ -108,5 +108,29 @@ describe('the previous set for a lift that appears twice in a session', () => {
     )
 
     expect(previous).toBeUndefined()
+  })
+})
+
+describe('a note on a set', () => {
+  const at = new Date('2026-08-25T10:00:00.000Z')
+  const workout = aWorkout({
+    id: asWorkoutId('today'),
+    status: 'in-progress',
+    entries: [anEntry({ sets: [aSet({ outcome: 'pending', notes: 'belt' })] })],
+  })
+  const request = (notes?: string) => ({
+    workoutId: workout.id,
+    entryIndex: 0,
+    setIndex: 0,
+    result: { outcome: 'completed' as const, reps: 5, ...(notes === undefined ? {} : { notes }) },
+  })
+
+  it('is kept by a one-tap log that says nothing about it', () => {
+    expect(withSetResult(workout, request(), at).entries[0]?.sets[0]?.notes).toBe('belt')
+  })
+
+  it('is replaced by a new one and removed by an empty one', () => {
+    expect(withSetResult(workout, request('straps'), at).entries[0]?.sets[0]?.notes).toBe('straps')
+    expect(withSetResult(workout, request(''), at).entries[0]?.sets[0]?.notes).toBeUndefined()
   })
 })

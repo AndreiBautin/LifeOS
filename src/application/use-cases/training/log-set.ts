@@ -117,13 +117,19 @@ function applyResult(set: LoggedSet, result: SetResult, now: Date): LoggedSet {
     }
   }
 
+  /*
+   * A note given replaces the old one, and an empty one removes it; no
+   * note given (the one-tap log) keeps whatever the set already had.
+   */
+  const { notes: kept, ...rest } = set
+  const notes = result.notes === undefined ? kept : result.notes === '' ? undefined : result.notes
   return {
-    ...set,
+    ...rest,
     ...(result.load !== undefined ? { actualLoad: result.load } : {}),
     ...(result.reps !== undefined ? { actualReps: result.reps } : {}),
     outcome: result.outcome,
     completedAt: now.toISOString(),
-    ...(result.notes !== undefined ? { notes: result.notes } : {}),
+    ...(notes !== undefined ? { notes } : {}),
   }
 }
 
@@ -168,6 +174,8 @@ export interface PreviousSet {
   readonly load?: number
   readonly reps?: number
   readonly rpe?: number
+  /** What was written on that set, so this time can read it. */
+  readonly notes?: string
   readonly date: string
 }
 
@@ -230,6 +238,7 @@ export async function previousSetFor(
       ...(set.actualLoad !== undefined ? { load: set.actualLoad } : {}),
       ...(set.actualReps !== undefined ? { reps: set.actualReps } : {}),
       ...(set.actualRpe !== undefined ? { rpe: set.actualRpe } : {}),
+      ...(set.notes !== undefined ? { notes: set.notes } : {}),
       date: workout.date,
     }
   }
