@@ -102,7 +102,7 @@ export function SwipeRow({
   const progress = Math.min(1, Math.abs(dx) / (width * COMMIT))
 
   return (
-    <div className="relative overflow-hidden rounded-xl">
+    <div className="relative overflow-hidden rounded-xl" data-swipe-row>
       {enabled && dx !== 0 && (
         <div
           className={cn(

@@ -12,6 +12,7 @@ import {
   Timer,
   XCircle,
 } from 'lucide-react'
+import { SwipePager } from './SwipePager'
 import { RollingNumber } from '@/components/shared/RollingNumber'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
@@ -416,7 +417,14 @@ export function SessionPlayer({
           {warmup !== undefined ? (
             <WarmupBlock workout={workout} indices={warmup} nameOf={nameOf} />
           ) : (
-            <section className="card p-4 lg:p-6" aria-labelledby="exercise-name">
+            <SwipePager
+              onNext={() => {
+                go(stepEnd + 1)
+              }}
+              onPrevious={() => {
+                go(index - 1)
+              }}
+            >
               <div className="mb-1 flex flex-wrap items-center gap-1.5">
                 <Badge tone={slotRoleTone(entry.role)}>{slotRoleLabel(entry.role)}</Badge>
                 {slotVariant(entry) !== '' && <Badge tone="sub">{slotVariant(entry)}</Badge>}
@@ -570,7 +578,7 @@ export function SessionPlayer({
                   <span>{entry.notes}</span>
                 </p>
               )}
-            </section>
+            </SwipePager>
           )}
 
           {/*
