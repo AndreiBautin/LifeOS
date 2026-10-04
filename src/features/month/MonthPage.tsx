@@ -1,4 +1,4 @@
-import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, Star } from 'lucide-react'
+import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, Play, Star } from 'lucide-react'
 import { Link, Navigate, useParams } from 'react-router-dom'
 
 import { useServices, useSettings } from '@/app/context'
@@ -74,6 +74,24 @@ export function MonthPage() {
           <p className="text-accent-400 text-xs font-semibold tracking-[0.14em] uppercase">
             The month
           </p>
+          {recap.sessions > 0 && (
+            <span className="ml-auto flex items-center gap-1">
+              <Link
+                viewTransition
+                to={`/wrapped/${month}`}
+                className="text-ink-100 hover:text-accent-400 tap-target flex items-center gap-1.5 px-2 text-sm font-medium"
+              >
+                <Play size={14} aria-hidden /> Play
+              </Link>
+              <Link
+                viewTransition
+                to={`/wrapped/${month.slice(0, 4)}`}
+                className="text-ink-500 hover:text-accent-400 tap-target flex items-center px-2 text-sm"
+              >
+                The year
+              </Link>
+            </span>
+          )}
           {recap.sessions > 0 && (
             <ShareSession
               card={{

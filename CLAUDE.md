@@ -116,6 +116,17 @@ SessionPage.tsx`, from `sessionDetail`). History rows could be deleted
   finished the minute it started reads as of unknown length rather
   than "0 min"; the demo seed stamped every session that way until this
   page showed it, and now gives each 45–75 minutes.
+- **A month or a year plays as a story** (`/wrapped/YYYY-MM` or
+  `/wrapped/YYYY`, `wrappedFor` and `periodOf` in `domain/logging/
+wrapped.ts`, tested; Play and The year on the month page). Full screen,
+  one figure a card on its own hue — days, volume with its heft, the
+  heaviest bar, what moved most, the biggest week, records — a segment
+  per card filling along the top. Tap right for on, left for back, hold
+  to pause; it moves on after 5.5 s. **Every figure is one another page
+  gives**, by the same rule (totals and the most improved through
+  `blockReport`, the heaviest bar by the records wall's tie-break), and a
+  card with nothing to say is not drawn. Its numbers count up through
+  `useCountUp`, which reads 0 in the agent's hidden pane — the harness.
 - **A block has a report** (`/block`, `?ago=` steps back; `blockReport`
   and `blockWindow` in `domain/logging/block.ts`, tested; linked from the
   Program header and the palette). Totals, sets by week with the deload

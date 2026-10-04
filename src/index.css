@@ -1225,3 +1225,32 @@ html {
     stroke-dashoffset: 0;
   }
 }
+
+/* The story: each card rises in, and the current segment fills over its time. */
+.story-card {
+  animation: story-card 520ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+@keyframes story-card {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.98);
+  }
+}
+
+.story-fill {
+  width: 100%;
+  transform-origin: left;
+  animation-name: story-fill;
+  animation-timing-function: linear;
+  animation-fill-mode: both;
+}
+
+@keyframes story-fill {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
