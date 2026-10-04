@@ -18,7 +18,10 @@ export function usePageSwipe(onNext: () => void, onPrevious: () => void) {
   return {
     onPointerDown: (event: React.PointerEvent) => {
       const target = event.target as Element
-      if (target.closest('[data-swipe-row], input, textarea, select, button, a') !== null) {
+      if (
+        target.closest('[data-swipe-row], [role=slider], input, textarea, select, button, a') !==
+        null
+      ) {
         start.current = undefined
         return
       }

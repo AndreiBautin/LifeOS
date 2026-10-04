@@ -116,6 +116,17 @@ SessionPage.tsx`, from `sessionDetail`). History rows could be deleted
   finished the minute it started reads as of unknown length rather
   than "0 min"; the demo seed stamped every session that way until this
   page showed it, and now gives each 45–75 minutes.
+- **The set editor has a weight dial** (`LoadDial`, under the steppers;
+  `dialValue` in `domain/units/step.ts`, tested): a ruler with a notch per
+  rounding step and a label every five, dragged sideways past a fixed
+  mark — left to go up, like a tape pulled through a window — snapping to
+  the grid and ticking the phone once a notch where it can. For 135 to
+  225 in one swipe; the steppers stay for the nudge. It is a
+  `role="slider"` and takes the arrow keys. **Two things had to learn to
+  leave it alone, both found by driving it**: the exercise card's page
+  swipe turned to the next exercise mid-drag (`usePageSwipe` now skips
+  `[role=slider]`), and the player's ← → shortcuts turned the page on its
+  arrow keys (`isTypingIn` counts a slider as owning its keys).
 - **A past session replays** (`SessionReplay` on the session page, from
   `replayFrames` and `frameAt` in `domain/logging/replay.ts`, tested):
   play and the sets come back in the order they were logged — the

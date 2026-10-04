@@ -14,3 +14,20 @@ export function stepValue(current: number, direction: 1 | -1, step: number, min 
     : (direction > 0 ? Math.ceil(units) : Math.floor(units)) * step
   return Number(Math.max(min, next).toFixed(2))
 }
+
+/**
+ * Where a drag across the weight dial lands: the start moved by whole
+ * steps for every `pxPerStep` dragged, onto the step's grid, never below
+ * `min`. **Dragging left raises the number**, the way a tape is pulled
+ * through a window — the ruler moves with the finger and the mark stays.
+ */
+export function dialValue(
+  start: number,
+  dragPx: number,
+  pxPerStep: number,
+  step: number,
+  min = 0,
+): number {
+  const moved = start - (dragPx / pxPerStep) * step
+  return Number(Math.max(min, Math.round(moved / step) * step).toFixed(2))
+}

@@ -13,6 +13,7 @@ import { useSettings } from '@/app/context'
 import { cn } from '@/lib/cn'
 
 import { usePreviousSet, usePriorSets } from './hooks'
+import { LoadDial } from './LoadDial'
 import { Stepper } from './Stepper'
 import { RecordChip } from './RecordChip'
 import { RecordBurst } from './RecordBurst'
@@ -339,6 +340,13 @@ function SetEditorPanel({
           hint={previousReps === undefined ? undefined : String(previousReps)}
         />
       </div>
+      <LoadDial
+        value={load}
+        onChange={setLoad}
+        step={settings.roundingIncrement}
+        hint={previousLoad === undefined ? undefined : String(previousLoad)}
+        unit={units}
+      />
 
       <label htmlFor={`note-${String(entryIndex)}-${String(index)}`} className="sr-only">
         Note on this set

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { stepValue } from './step'
+import { dialValue, stepValue } from './step'
 
 describe('a stepper press', () => {
   it('moves one step from a number on the grid', () => {
@@ -22,5 +22,22 @@ describe('a stepper press', () => {
   it('does not go below the floor', () => {
     expect(stepValue(0, -1, 1)).toBe(0)
     expect(stepValue(3, -1, 5)).toBe(0)
+  })
+})
+
+describe('the weight dial', () => {
+  it('raises the number as the ruler is dragged left, a step per notch', () => {
+    expect(dialValue(200, -36, 12, 5)).toBe(215)
+    expect(dialValue(200, 24, 12, 5)).toBe(190)
+  })
+
+  it('snaps a part-notch drag to the nearest step, and lands on the grid', () => {
+    expect(dialValue(200, -5, 12, 5)).toBe(200)
+    expect(dialValue(200, -7, 12, 5)).toBe(205)
+    expect(dialValue(317, 0, 12, 5)).toBe(315)
+  })
+
+  it('does not go below the floor', () => {
+    expect(dialValue(10, 600, 12, 5)).toBe(0)
   })
 })

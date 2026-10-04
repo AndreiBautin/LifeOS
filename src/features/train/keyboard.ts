@@ -52,10 +52,14 @@ export function keyActionFor(press: KeyPress): KeyAction | undefined {
   }
 }
 
-/** Whether an element takes typed text, so keys there are its own. */
+/**
+ * Whether an element takes keys of its own — typed text, or a slider's
+ * arrows (the weight dial) — so the player's shortcuts leave them be.
+ */
 export function isTypingIn(element: Element | null): boolean {
   if (element === null) return false
   if (element instanceof HTMLElement && element.isContentEditable) return true
+  if (element.getAttribute('role') === 'slider') return true
   const tag = element.tagName
   return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT'
 }
