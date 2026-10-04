@@ -1,6 +1,7 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom'
 
 import { MonthPage } from '@/features/month/MonthPage'
+import { BlockPage } from '@/features/block/BlockPage'
 import { LibraryPage } from '@/features/library/LibraryPage'
 import { RecordsPage } from '@/features/records/RecordsPage'
 import { HomePage } from '@/features/today/HomePage'
@@ -78,6 +79,7 @@ export const router = createBrowserRouter(
         { path: 'exercise/:id', element: <ExercisePage /> },
         { path: 'records', element: <RecordsPage /> },
         { path: 'exercises', element: <LibraryPage /> },
+        { path: 'block', element: <BlockPage /> },
         { path: 'month', element: <MonthPage /> },
         { path: 'month/:month', element: <MonthPage /> },
         { path: 'today', element: <HomePage /> },

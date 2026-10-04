@@ -23,6 +23,13 @@ const PAGES: readonly PaletteItem[] = [
     keywords: 'library catalogue swap',
     to: '/exercises',
   },
+  {
+    id: 'block',
+    label: 'Block report',
+    kind: 'Page',
+    keywords: 'block deload cycle',
+    to: '/block',
+  },
   { id: 'month', label: 'This month', kind: 'Page', keywords: 'recap month', to: '/month' },
   {
     id: 'settings',

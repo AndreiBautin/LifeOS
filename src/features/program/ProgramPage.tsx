@@ -133,13 +133,22 @@ export function ProgramPage() {
       <PageHeader
         title="Program"
         action={
-          <Link
-            viewTransition
-            to="/exercises"
-            className="text-accent-400 tap-target flex items-center text-sm hover:underline"
-          >
-            Exercises
-          </Link>
+          <>
+            <Link
+              viewTransition
+              to="/block"
+              className="text-accent-400 tap-target flex items-center text-sm hover:underline"
+            >
+              Block
+            </Link>
+            <Link
+              viewTransition
+              to="/exercises"
+              className="text-accent-400 tap-target flex items-center text-sm hover:underline"
+            >
+              Exercises
+            </Link>
+          </>
         }
         subtitle={
           <span className="flex flex-wrap items-center gap-x-1.5 gap-y-1">

@@ -116,6 +116,17 @@ SessionPage.tsx`, from `sessionDetail`). History rows could be deleted
   finished the minute it started reads as of unknown length rather
   than "0 min"; the demo seed stamped every session that way until this
   page showed it, and now gives each 45–75 minutes.
+- **A block has a report** (`/block`, `?ago=` steps back; `blockReport`
+  and `blockWindow` in `domain/logging/block.ts`, tested; linked from the
+  Program header and the palette). Totals, sets by week with the deload
+  in violet and weeks to come dashed, and **a fan**: every loaded
+  exercise leaves one point on the left and ends at its top-set change on
+  one percentage scale, because 45 and 405 cannot share a load axis and
+  changes can. The window is whole weeks from the anchor Monday cut into
+  runs of the program's length — `slotOn`'s own arithmetic, so it agrees
+  with the week the Program page names. **A day version is its own
+  line**: the first build read a light calf raise after a heavy one as
+  −28.6%. Unloaded bodyweight sets are left out rather than read as zero.
 - **Rest can be heard** (`settings.restSounds`, off by default, in the
   parse with a test; Settings → During a session): a tick in each of the
   last three seconds and two rising notes at the end, synthesised with

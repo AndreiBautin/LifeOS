@@ -1211,3 +1211,17 @@ html {
     transform: translateY(12px) scale(0.97);
   }
 }
+
+/* The block fan: each line draws out from the shared start, one after another. */
+.fan-line path {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: fan-draw 900ms cubic-bezier(0.3, 0.7, 0.2, 1) forwards;
+  animation-delay: inherit;
+}
+
+@keyframes fan-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
