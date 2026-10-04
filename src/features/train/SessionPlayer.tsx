@@ -9,6 +9,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Lightbulb,
+  Maximize2,
   Timer,
   XCircle,
 } from 'lucide-react'
@@ -46,6 +47,7 @@ import { canLogPlanned, plannedResult } from './planned'
 import { LadderStrip } from './LadderStrip'
 import { BarSection } from './BarSection'
 import { RestTimer } from './RestTimer'
+import { FocusView } from './FocusView'
 import { SessionMap } from './SessionMap'
 import { SetRow } from './SetRow'
 import { WarmupBlock } from './WarmupBlock'
@@ -99,6 +101,11 @@ export function SessionPlayer({
   >(undefined)
   const [confirmingAbandon, setConfirmingAbandon] = useState(false)
   const [showKeys, setShowKeys] = useState(false)
+  /** The one-set, full-screen view; see `FocusView`. Not remembered across sessions. */
+  const [focus, setFocus] = useState(false)
+  const closeFocus = useCallback(() => {
+    setFocus(false)
+  }, [])
   /** The last one-tap log or skip, offered back for a few seconds. */
   const [undo, setUndo] = useState<
     | {
@@ -446,6 +453,17 @@ export function SessionPlayer({
                       <span className="hidden sm:inline">Pair</span>
                     </Button>
                   )}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  aria-label="Focus on this set"
+                  onClick={() => {
+                    setFocus(true)
+                  }}
+                >
+                  <Maximize2 size={14} aria-hidden />
+                  <span className="hidden sm:inline">Focus</span>
+                </Button>
                 {entry.sets.some((set) => set.outcome === 'pending') && (
                   <Button
                     variant="ghost"
@@ -722,7 +740,35 @@ export function SessionPlayer({
         />
       )}
 
-      {rest !== undefined && (
+      {focus && warmup === undefined && (
+        <FocusView
+          name={nameOf(entry.exerciseId)}
+          sets={entry.sets}
+          bodyweight={bodyweightHere}
+          units={units}
+          rest={
+            rest === undefined
+              ? undefined
+              : { startedAt: rest.startedAt, seconds: rest.plan.seconds }
+          }
+          nextName={next === undefined ? undefined : nameOf(next.exerciseId)}
+          onLog={(setIndex) => {
+            const set = entry.sets[setIndex]
+            if (set !== undefined) logAt(setIndex, plannedResult(set, bodyweightHere))
+          }}
+          onSkip={skipAt}
+          onEdit={(setIndex) => {
+            setFocus(false)
+            setOpenSet(setIndex)
+          }}
+          onNext={() => {
+            go(stepEnd + 1)
+          }}
+          onClose={closeFocus}
+        />
+      )}
+
+      {rest !== undefined && !(focus && warmup === undefined) && (
         <RestTimer
           seconds={rest.plan.seconds}
           reason={rest.plan.reason}

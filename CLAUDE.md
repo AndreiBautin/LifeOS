@@ -116,6 +116,16 @@ SessionPage.tsx`, from `sessionDetail`). History rows could be deleted
   finished the minute it started reads as of unknown length rather
   than "0 min"; the demo seed stamped every session that way until this
   page showed it, and now gives each 45–75 minutes.
+- **Focus puts one set on the whole screen** (`FocusView`, the Focus
+  button on the exercise card): which set of how many, the planned bar in
+  type readable from the floor, and Log as planned / Skip / Edit. While
+  resting the bar gives way to a ring countdown with the next set under
+  it. **It calls the player's own `logAt`, `skipAt`, `setOpenSet` and
+  `go`**, so a set cannot be filed differently from focus; Edit leaves
+  focus and opens the row's editor. The countdown reads the rest timer's
+  `startedAt` and length but not its +30s or pause, which stay on that
+  card — the card is hidden behind focus and returns when it closes.
+  Escape closes it. The screen was already kept awake (`useKeepAwake`).
 - **A body map says what was trained lately** (`BodyMapCard`, "Lately",
   from `muscleRecency` in `domain/volume/recency.ts`, tested): front and
   back figures of rounded blocks, each muscle lit for today or yesterday,
