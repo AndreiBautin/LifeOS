@@ -22,6 +22,7 @@ import { cn } from '@/lib/cn'
 import { useExercises } from '@/features/train/hooks'
 import { SessionStats } from '@/features/train/SessionStats'
 import { SessionTimeline } from '@/features/train/SessionTimeline'
+import { SessionReplay } from './SessionReplay'
 import { splitDayLabel } from '@/features/train/useNextSession'
 import { RecordChip } from '@/features/train/RecordChip'
 import { VersusChip } from '@/features/train/VersusChip'
@@ -127,6 +128,8 @@ export function SessionPage() {
       ))}
 
       <CompareCard workout={workout} library={library} units={settings.units} />
+
+      <SessionReplay workout={workout} library={library} units={settings.units} />
 
       <SessionTimeline workout={workout} nameOf={(exerciseId) => nameOf(library, exerciseId)} />
     </div>

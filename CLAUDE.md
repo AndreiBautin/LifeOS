@@ -116,6 +116,19 @@ SessionPage.tsx`, from `sessionDetail`). History rows could be deleted
   finished the minute it started reads as of unknown length rather
   than "0 min"; the demo seed stamped every session that way until this
   page showed it, and now gives each 45–75 minutes.
+- **A past session replays** (`SessionReplay` on the session page, from
+  `replayFrames` and `frameAt` in `domain/logging/replay.ts`, tested):
+  play and the sets come back in the order they were logged — the
+  exercise and set named, the bar drawn on the plate loader, rest
+  counting between sets of one exercise, a session clock — a whole
+  session in about twenty-four seconds; the track scrubs. **The session
+  as lived, one moment at a time**, where the timeline under it is the
+  whole thing at once. Silent with fewer than two set times, the same
+  evidence rule. The two share `timeline-colours.ts` so an exercise is
+  one colour on the page; the track is positioned dots, because a
+  stretched SVG drew them as ellipses. Playback runs on
+  `requestAnimationFrame`, so it was checked by scrubbing — the agent's
+  hidden pane fires no frames.
 - **A month or a year plays as a story** (`/wrapped/YYYY-MM` or
   `/wrapped/YYYY`, `wrappedFor` and `periodOf` in `domain/logging/
 wrapped.ts`, tested; Play and The year on the month page). Full screen,

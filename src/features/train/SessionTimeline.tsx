@@ -1,5 +1,6 @@
 import { Clock3 } from 'lucide-react'
 
+import { TIMELINE_COLOURS, WARMUP_COLOUR } from './timeline-colours'
 import type { WorkoutLog } from '@/domain/logging/workout-log'
 import { sessionTimeline } from '@/domain/logging/timeline'
 import { Card, CardHeading } from '@/components/shared/primitives'
@@ -14,12 +15,6 @@ import { Card, CardHeading } from '@/components/shared/primitives'
  * minutes" — a twenty-minute row band says it without a number — and it
  * costs nothing to keep, because every logged set is already stamped.
  */
-const COLOURS = [
-  'var(--color-accent-400)',
-  'var(--color-cool-500)',
-  'var(--color-warn-500)',
-  'var(--color-good-500)',
-] as const
 
 export function SessionTimeline({
   workout,
@@ -37,7 +32,9 @@ export function SessionTimeline({
   let colour = 0
   const bands = timeline.bands.map((band) => ({
     ...band,
-    colour: band.warmup ? 'var(--color-ink-500)' : (COLOURS[colour++ % COLOURS.length] ?? ''),
+    colour: band.warmup
+      ? WARMUP_COLOUR
+      : (TIMELINE_COLOURS[colour++ % TIMELINE_COLOURS.length] ?? ''),
   }))
   const minutes = Math.round(timeline.length / 60_000)
 

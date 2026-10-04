@@ -1254,3 +1254,15 @@ html {
     transform: scaleX(1);
   }
 }
+
+/* A replayed set slides in as the playhead reaches it. */
+.replay-frame {
+  animation: replay-frame 260ms ease-out both;
+}
+
+@keyframes replay-frame {
+  from {
+    opacity: 0;
+    transform: translateX(10px);
+  }
+}
