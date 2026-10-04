@@ -186,6 +186,17 @@ describe('accepted resets', () => {
     })
   })
 
+  it('keeps rest sounds on once turned on, and off by default', () => {
+    const storage = memoryStorage()
+    storage.setItem(
+      STORAGE_KEYS.settings,
+      JSON.stringify({ ...DEFAULT_SETTINGS, restSounds: true }),
+    )
+    expect(readSettings(storage).settings.restSounds).toBe(true)
+    storage.setItem(STORAGE_KEYS.settings, JSON.stringify({ units: 'lb' }))
+    expect(readSettings(storage).settings.restSounds).toBe(false)
+  })
+
   it('keeps which release note was seen', () => {
     const storage = memoryStorage()
     storage.setItem(

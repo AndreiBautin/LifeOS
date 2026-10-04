@@ -48,6 +48,7 @@ import { LadderStrip } from './LadderStrip'
 import { BarSection } from './BarSection'
 import { RestTimer } from './RestTimer'
 import { FocusView } from './FocusView'
+import { primeRestSounds } from './rest-sounds'
 import { SessionMap } from './SessionMap'
 import { SetRow } from './SetRow'
 import { WarmupBlock } from './WarmupBlock'
@@ -233,6 +234,8 @@ export function SessionPlayer({
     // A warm-up does not earn a rest timer.
     if (set !== undefined && !set.isWarmup && restEnabled && !straightOn) {
       const plan = restFor(workout, index, setIndex, result.reps, exercises)
+      // Inside the tap: iOS only wakes audio during a gesture.
+      if (playerSettings.restSounds) primeRestSounds()
       setRest(plan.seconds > 0 ? { startedAt: clock.now().getTime(), plan } : undefined)
     }
     if (partnerPending) showEntry(partner)
@@ -768,8 +771,10 @@ export function SessionPlayer({
         />
       )}
 
-      {rest !== undefined && !(focus && warmup === undefined) && (
+      {rest !== undefined && (
         <RestTimer
+          hidden={focus && warmup === undefined}
+          sounds={playerSettings.restSounds}
           seconds={rest.plan.seconds}
           reason={rest.plan.reason}
           startedAt={rest.startedAt}

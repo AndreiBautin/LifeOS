@@ -116,6 +116,19 @@ SessionPage.tsx`, from `sessionDetail`). History rows could be deleted
   finished the minute it started reads as of unknown length rather
   than "0 min"; the demo seed stamped every session that way until this
   page showed it, and now gives each 45–75 minutes.
+- **Rest can be heard** (`settings.restSounds`, off by default, in the
+  parse with a test; Settings → During a session): a tick in each of the
+  last three seconds and two rising notes at the end, synthesised with
+  Web Audio (`rest-sounds.ts`) so no file ships. **Fired on a crossing of
+  the time left** (`restCuesBetween` in `domain/programs/rest-cues.ts`,
+  tested), because readings come every quarter second and a suspended
+  tab can jump straight to nothing — which sounds only the chime, never
+  a burst of ticks. iOS only wakes audio inside a gesture, so the context
+  is primed in `logAt`, on the tap that starts the rest. **The rest
+  timer stays mounted behind focus** (`hidden`) so its pause, +30s and
+  sounds carry through. Checked: the context is created on the log tap
+  and the timer hides and returns with focus; **the sounds themselves
+  were not heard** — the agent's pane plays no audio.
 - **Focus puts one set on the whole screen** (`FocusView`, the Focus
   button on the exercise card): which set of how many, the planned bar in
   type readable from the floor, and Log as planned / Skip / Edit. While

@@ -215,6 +215,13 @@ export function SettingsPage() {
             }}
           />
           <Toggle
+            label="Rest sounds — ticks before the end, a chime at it"
+            checked={settings.restSounds}
+            onChange={(restSounds) => {
+              update({ restSounds })
+            }}
+          />
+          <Toggle
             label="Keep the screen awake"
             checked={settings.keepScreenAwake}
             onChange={(keepScreenAwake) => {

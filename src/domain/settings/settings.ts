@@ -68,6 +68,8 @@ export interface AppSettings {
   readonly e1rmFormula: E1rmFormula
   readonly restTimerEnabled: boolean
   readonly keepScreenAwake: boolean
+  /** Ticks in the last three seconds of a rest and a chime at the end; off by default. */
+  readonly restSounds: boolean
 
   readonly theme: 'system' | 'light' | 'dark'
   /**
@@ -189,6 +191,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   e1rmFormula: 'epley',
   restTimerEnabled: true,
   keepScreenAwake: true,
+  restSounds: false,
   theme: 'system',
   schemaVersion: SETTINGS_SCHEMA_VERSION,
 }

@@ -1,6 +1,10 @@
 import { Pause, Play } from 'lucide-react'
 import { RollingNumber } from '@/components/shared/RollingNumber'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+
+import { restCuesBetween } from '@/domain/programs/rest-cues'
+
+import { playRestCue } from './rest-sounds'
 
 import { Button } from '@/components/shared/primitives'
 import { cn } from '@/lib/cn'
@@ -31,9 +35,21 @@ interface Props {
    */
   readonly next?: { readonly title: string; readonly detail: string } | undefined
   readonly onDismiss: () => void
+  /** Kept running but out of sight, so its pause and +30s survive (focus view). */
+  readonly hidden?: boolean
+  /** Ticks and a chime; see `restCuesBetween`. */
+  readonly sounds?: boolean
 }
 
-export function RestTimer({ startedAt, seconds, reason, next, onDismiss }: Props) {
+export function RestTimer({
+  startedAt,
+  seconds,
+  reason,
+  next,
+  onDismiss,
+  hidden = false,
+  sounds = false,
+}: Props) {
   /**
    * Milliseconds the lifter has spent with the timer paused. Kept as a
    * shift applied to the deadline rather than as a stopped clock, so the
@@ -83,6 +99,17 @@ export function RestTimer({ startedAt, seconds, reason, next, onDismiss }: Props
     if (!elapsed) return
     if ('vibrate' in navigator) navigator.vibrate([90, 70, 90])
   }, [elapsed])
+  /*
+   * **Sounds fire on a crossing of the time left**, compared with the
+   * reading before; see `restCuesBetween` for why not on equality.
+   */
+  const lastRemaining = useRef(remaining)
+  useEffect(() => {
+    const before = lastRemaining.current
+    lastRemaining.current = remaining
+    if (!sounds || pausedAt !== undefined) return
+    for (const cue of restCuesBetween(before, remaining)) playRestCue(cue)
+  }, [remaining, sounds, pausedAt])
   const total = seconds * 1000 + extraMs
   const progress = total <= 0 ? 1 : Math.min(1, 1 - remaining / total)
 
@@ -107,6 +134,7 @@ export function RestTimer({ startedAt, seconds, reason, next, onDismiss }: Props
       style={{ paddingBottom: 'calc(0.75rem + var(--safe-bottom))' }}
       role="status"
       aria-live="polite"
+      hidden={hidden}
     >
       <div
         className={cn(

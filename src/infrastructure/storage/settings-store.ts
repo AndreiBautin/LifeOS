@@ -206,6 +206,7 @@ function mergeWithDefaults(parsed: unknown): AppSettings {
         : DEFAULT_SETTINGS.e1rmFormula,
     restTimerEnabled: asBoolean(stored.restTimerEnabled, DEFAULT_SETTINGS.restTimerEnabled),
     keepScreenAwake: asBoolean(stored.keepScreenAwake, DEFAULT_SETTINGS.keepScreenAwake),
+    restSounds: asBoolean(stored.restSounds, DEFAULT_SETTINGS.restSounds),
     theme:
       stored.theme === 'light' || stored.theme === 'dark' || stored.theme === 'system'
         ? stored.theme
