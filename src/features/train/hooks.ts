@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import { pairSuperset, unpairSuperset } from '@/application/use-cases/training/superset'
 import { muscleBalance } from '@/application/use-cases/training/balance'
+import { recentMuscles } from '@/application/use-cases/training/recency'
 import type { ExerciseId, WorkoutId } from '@/domain/ids/ids'
 import type { WorkoutLog } from '@/domain/logging/workout-log'
 import { exerciseHistory } from '@/domain/logging/exercise-history'
@@ -125,6 +126,12 @@ export function useWeekSummary() {
 export function useMuscleBalance() {
   const services = useServices()
   return useQuery({ queryKey: ['workouts', 'balance'], queryFn: () => muscleBalance(services) })
+}
+
+/** How long ago each muscle last worked, and its sets this past week. */
+export function useMuscleRecency() {
+  const services = useServices()
+  return useQuery({ queryKey: ['workouts', 'recency'], queryFn: () => recentMuscles(services) })
 }
 
 export function useRecentWorkouts(limit = 20) {

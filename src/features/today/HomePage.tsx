@@ -6,6 +6,7 @@ import { InstallCard } from '@/features/pwa/InstallCard'
 import { WhatsNew } from './WhatsNew'
 import { DeloadSuggestion } from '@/features/train/DeloadSuggestion'
 import { BalanceCard } from '@/features/train/BalanceCard'
+import { BodyMapCard } from '@/features/train/BodyMapCard'
 import { GoalsCard } from '@/features/train/GoalsCard'
 import { withViewTransition } from '@/app/view-transitions'
 import type { WorkoutReport } from '@/application/use-cases/training/finish-workout'
@@ -156,6 +157,7 @@ const HOME_CARDS: readonly {
   { key: 'session', label: 'Next session', node: <NextSessionCard /> },
   { key: 'week', label: 'This week', node: <WeekCard /> },
   { key: 'last-week', label: 'Last week', node: <LastWeekCard /> },
+  { key: 'lately', label: 'Lately', node: <BodyMapCard /> },
   { key: 'balance', label: 'Balance', node: <BalanceCard /> },
   { key: 'standards', label: 'Strength', node: <StrengthStandards /> },
   { key: 'goals', label: 'Goals', node: <GoalsCard /> },

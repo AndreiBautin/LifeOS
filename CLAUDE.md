@@ -116,6 +116,15 @@ SessionPage.tsx`, from `sessionDetail`). History rows could be deleted
   finished the minute it started reads as of unknown length rather
   than "0 min"; the demo seed stamped every session that way until this
   page showed it, and now gives each 45–75 minutes.
+- **A body map says what was trained lately** (`BodyMapCard`, "Lately",
+  from `muscleRecency` in `domain/volume/recency.ts`, tested): front and
+  back figures of rounded blocks, each muscle lit for today or yesterday,
+  half-lit for two or three days, unlit beyond; pressing one names its
+  days since and its sets in the last seven days. **Days since, not this
+  week's count** — the radar already draws the calendar week, and this
+  carries over Monday, which is when it is most wanted. The bands claim
+  nothing about readiness; the app measures none. Counted by the week
+  card's own `loggedVolume`.
 - **The page can be pure black** (`settings.trueBlack`, in the parse
   with a test; Settings → Look → Background, two drawn previews rather
   than a switch). `AppShell` sets `data-black` on the root and moves the

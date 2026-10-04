@@ -1182,3 +1182,20 @@ html {
 :root[data-black] .ambient {
   display: none;
 }
+
+/* The body map: a muscle eases to its tone and rings when chosen. */
+.body-region {
+  transition:
+    fill 300ms ease,
+    filter 200ms ease;
+}
+
+.body-region:hover,
+.body-region:focus-visible {
+  filter: brightness(1.25);
+}
+
+.body-region-chosen {
+  stroke: var(--color-ink-50);
+  stroke-width: 1.2;
+}
